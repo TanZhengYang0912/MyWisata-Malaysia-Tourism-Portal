@@ -159,10 +159,33 @@ const DESTINATION_SOURCES: MalaysiaDestination[] = [
   },
 ];
 
-export const MALAYSIA_DESTINATIONS: MalaysiaDestination[] = DESTINATION_SOURCES.map((destination) => ({
-  ...destination,
-  image: placeImageUrl(destination.image) ?? destination.image,
-}));
+const DESTINATION_ORDER = [
+  "Kuala Lumpur",
+  "Penang",
+  "Kedah",
+  "Sabah",
+  "Melaka",
+  "Pahang",
+  "Terengganu",
+  "Sarawak",
+  "Selangor",
+  "Johor",
+  "Putrajaya",
+  "Perak",
+  "Kelantan",
+  "Negeri Sembilan",
+  "Perlis",
+  "Labuan",
+] as const;
+
+const destinationRank = new Map<string, number>(DESTINATION_ORDER.map((state, index) => [state, index]));
+
+export const MALAYSIA_DESTINATIONS: MalaysiaDestination[] = [...DESTINATION_SOURCES]
+  .sort((left, right) => (destinationRank.get(left.state) ?? Number.MAX_SAFE_INTEGER) - (destinationRank.get(right.state) ?? Number.MAX_SAFE_INTEGER))
+  .map((destination) => ({
+    ...destination,
+    image: placeImageUrl(destination.image) ?? destination.image,
+  }));
 
 export function destinationHref(state: string): string {
   const slug = state.trim().toLowerCase().replace(/\s+/g, "-");

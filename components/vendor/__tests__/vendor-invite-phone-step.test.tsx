@@ -9,7 +9,7 @@ const { translate } = vi.hoisted(() => {
     'invite.phone.sendOtp': 'Send phone OTP',
     'invite.phone.mobileDescription': 'This number stays private. It verifies your User identity and is separate from the Outlet contact.',
     'invite.phone.useAsOutletContact': 'Use this mobile as Outlet contact',
-    'invite.phone.pendingReview': 'Pending MyWisata review. The Vendor and Outlet stay private until approval.',
+    'invite.phone.pendingReview': 'Pending MyLawatan review. The Vendor and Outlet stay private until approval.',
     'invite.phone.authorization': 'I confirm that I am authorized to represent this business and submit this Vendor application.',
     'invite.actions.back': 'Back',
     'invite.phone.submitting': 'Submitting…',
@@ -174,7 +174,7 @@ describe('vendor invite phone and claim executable state', () => {
   });
 
   it.each([
-    ['send', 'PHONE_ALREADY_CLAIMED', 409, 'This mobile number is already linked to another MyWisata account. Use a different number.'],
+    ['send', 'PHONE_ALREADY_CLAIMED', 409, 'This mobile number is already linked to another MyLawatan account. Use a different number.'],
     ['send', 'RATE_LIMITED', 429, 'Too many codes requested. Try again in 1 hour.'],
     ['verify', 'OTP_INVALID', 422, 'That code is invalid or has expired. Request a new code and try again.'],
     ['verify', 'VERIFICATION_UNAVAILABLE', 502, 'Mobile verification is temporarily unavailable. Try again later.'],

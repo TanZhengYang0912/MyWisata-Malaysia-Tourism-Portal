@@ -29,7 +29,7 @@ const STATUS_COPY: Record<RecommendationStatus, { label: string; description: st
   pending: { label: 'Pending review', description: 'Admin is checking the recommendation and the vendor details.' },
   changes_requested: { label: 'Changes requested', description: 'Update the requested recommendation details and resubmit them for review.' },
   approved: { label: 'Approved for outreach', description: 'Admin approved it; the vendor still needs to join or be linked before going live.' },
-  invited: { label: 'Vendor invited', description: 'The vendor has been invited to join MyWisata.' },
+  invited: { label: 'Vendor invited', description: 'The vendor has been invited to join MyLawatan.' },
   claimed: { label: 'Invitation claimed', description: 'The vendor has claimed the invitation and started onboarding.' },
   onboarding: { label: 'Vendor onboarding', description: 'The vendor is completing the onboarding process.' },
   vendor_pending_review: { label: 'Vendor review pending', description: 'The vendor application is waiting for review.' },

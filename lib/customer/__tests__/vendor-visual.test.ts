@@ -41,4 +41,42 @@ describe("getVendorVisual", () => {
       initials: "AA",
     });
   });
+
+  it("accepts versioned, manifest-owned vendor Storage covers", () => {
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+    expect(getVendorVisual({
+      name: "Ghee Hiang",
+      coverUrl: "curated-v2/vendor/ghee-hiang/cover.jpg",
+    })).toEqual({
+      coverUrl: `${base}/storage/v1/object/public/vendor-images/curated-v2/vendor/ghee-hiang/cover.jpg`,
+      logoUrl: null,
+      initials: "GH",
+    });
+  });
+
+  it("accepts versioned vendor logos and nested outlet gallery paths", () => {
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+    expect(getVendorVisual({
+      name: "Ghee Hiang",
+      logoUrl: "curated-v3/vendor/ghee-hiang/logo.png",
+      coverUrl: "curated-v3/outlet/ghee-hiang/jalan-macalister/gallery-1.jpg",
+    })).toEqual({
+      coverUrl: `${base}/storage/v1/object/public/vendor-images/curated-v3/outlet/ghee-hiang/jalan-macalister/gallery-1.jpg`,
+      logoUrl: `${base}/storage/v1/object/public/vendor-images/curated-v3/vendor/ghee-hiang/logo.png`,
+      initials: "GH",
+    });
+  });
+
+  it("accepts the nested entity media paths used by the vendor/outlet repair", () => {
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+    expect(getVendorVisual({
+      name: "Abdul Antiques",
+      coverUrl: "entities/vendor/abdul-antiques/gallery-1.png",
+      logoUrl: "entities/vendor/abdul-antiques/logo.png",
+    })).toEqual({
+      coverUrl: `${base}/storage/v1/object/public/vendor-images/entities/vendor/abdul-antiques/gallery-1.png`,
+      logoUrl: `${base}/storage/v1/object/public/vendor-images/entities/vendor/abdul-antiques/logo.png`,
+      initials: "AA",
+    });
+  });
 });

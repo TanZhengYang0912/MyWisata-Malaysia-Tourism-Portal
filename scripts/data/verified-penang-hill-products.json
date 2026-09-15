@@ -1,0 +1,106 @@
+{
+  "vendor": {
+    "id": "dea2b059-4907-9c66-7584-3aaec7d65781",
+    "name": "Penang Hill Corporation",
+    "source_page": "https://penanghill.gov.my/index.php/en/tickets",
+    "price_reference_page": "https://penanghill.gov.my/index.php/en/tickets"
+  },
+  "outlets": [
+    {
+      "id": "e686fa64-59f8-a809-8e04-a67372b27261",
+      "name": "Penang Hill — Lower Station"
+    }
+  ],
+  "archive_legacy_slugs": [
+    "penang-hill-express-return",
+    "penang-hill-funicular-return",
+    "penang-hill-sunrise-ticket"
+  ],
+  "products": [
+    {
+      "slug": "penang-hill-adult-normal-mykad-return",
+      "name": "Funicular Return Ticket (Adult, MyKad Normal Lane)",
+      "description": "Penang Hill adult MyKad or equivalent resident return ticket for the normal lane, listed on the official ticket page.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 8,
+      "source_type": "official",
+      "source_page": "https://penanghill.gov.my/index.php/en/tickets",
+      "source_image_url": "https://penanghill.gov.my/templates/yootheme/cache/buy-ticket-9ab99744.jpeg",
+      "price_reference_page": "https://penanghill.gov.my/index.php/en/tickets",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/penang-hill-adult-ticket-real.jpg",
+      "sha256": "d5df019507d44ad3171484d7a6b4d5fc7294092d90fec687d19eac490bec1d00",
+      "artist": "Penang Hill Corporation",
+      "license": "Official operator media; source attribution recorded"
+    },
+    {
+      "slug": "penang-hill-adult-express-mykad-return",
+      "name": "Funicular Return Ticket (Adult, MyKad Express Lane)",
+      "description": "Penang Hill adult MyKad or equivalent resident return ticket for the express lane, listed on the official ticket page.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 25,
+      "source_type": "official",
+      "source_page": "https://penanghill.gov.my/index.php/en/tickets",
+      "source_image_url": "https://penanghill.gov.my/templates/yootheme/cache/Calendar_20260806-cfad08f2.jpeg",
+      "price_reference_page": "https://penanghill.gov.my/index.php/en/tickets",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/penang-hill-child-ticket-real.jpg",
+      "sha256": "3297c4d58a0d2197e92549d7bdf82e5f3ec75f2c89dc124caa0ff954abfc36bf",
+      "artist": "Penang Hill Corporation",
+      "license": "Official operator media; source attribution recorded"
+    },
+    {
+      "slug": "penang-hill-child-normal-mykad-return",
+      "name": "Funicular Return Ticket (Child, MyKad Normal Lane)",
+      "description": "Penang Hill child MyKad or equivalent resident return ticket for the normal lane, listed on the official ticket page.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 4,
+      "source_type": "official",
+      "source_page": "https://penanghill.gov.my/index.php/en/tickets",
+      "source_image_url": "https://penanghill.gov.my/templates/yootheme/cache/purchase-14cab8f2.jpeg",
+      "price_reference_page": "https://penanghill.gov.my/index.php/en/tickets",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/penang-hill-annual-pass-real.jpg",
+      "sha256": "57a4d539f258343e2c1b969006b6d771a60a4a4faf55c6555cba3e64c55f365c",
+      "artist": "Penang Hill Corporation",
+      "license": "Official operator media; source attribution recorded"
+    },
+    {
+      "slug": "penang-hill-sunrise-resident-return",
+      "name": "Sunrise Rate Return Ticket (Resident)",
+      "description": "Resident sunrise-rate funicular return ticket, available at the Lower Station during the published morning window.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 6,
+      "source_type": "official",
+      "source_page": "https://penanghill.gov.my/index.php/en/tickets",
+      "source_image_url": "https://penanghill.gov.my/images/purchaseicon.png",
+      "price_reference_page": "https://penanghill.gov.my/index.php/en/tickets",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/penang-hill-funicular-return.jpg",
+      "sha256": "5a05b38d34ee2e60f17fea97b96e6b65f466977cc5d08519ccc58cd764b2dff4",
+      "artist": "Penang Hill Corporation",
+      "license": "Official operator ticket imagery; source attribution recorded"
+    },
+    {
+      "slug": "penang-hill-annual-funicular-pass-mykad",
+      "name": "Annual Funicular Pass (MyKad / MyKid)",
+      "description": "Annual resident funicular pass for MyKad or MyKid holders, listed on the official ticket page.",
+      "product_type": "activity",
+      "requires_booking": false,
+      "base_price": 440,
+      "source_type": "official",
+      "source_page": "https://penanghill.gov.my/index.php/en/tickets",
+      "source_image_url": "https://penanghill.gov.my/templates/yootheme/cache/English_Visitors_Guide-d74af2e9.png",
+      "price_reference_page": "https://penanghill.gov.my/index.php/en/tickets",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/penang-hill-sunrise-ticket-corrected.jpg",
+      "sha256": "7eba4f8014ea84394f8b5101e44e4732489271ff9120becacd861152982452f4",
+      "artist": "Penang Hill Corporation",
+      "license": "Official operator ticket imagery; source attribution recorded"
+    }
+  ]
+}

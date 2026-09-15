@@ -1,19 +1,23 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { useMemo, useState } from "react";
-import { ArrowRight, Bookmark, ImageOff, MapPin, Navigation, SlidersHorizontal, Star, X } from "lucide-react";
+import { ArrowRight, ImageOff, MapPin, Navigation, SlidersHorizontal, Star, X } from "lucide-react";
 import { DEMO_STATES, getState } from "@/lib/demo-map/data";
 import { activityToMapPlace } from "@/lib/demo-map/adapt";
 import { useWishlist } from "@/components/providers/wishlist";
+import { SaveToggleButton } from "@/components/customer/save-toggle-button";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { CategoryIcon } from "@/components/customer/category-icon";
 import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
 import type { ComputedActivity } from "@/backend/core/types";
 import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
-import { MalaysiaStateMap, type StateCounts } from "./malaysia-state-map";
+import type { StateCounts } from "./malaysia-state-map";
+import { MyWisataExploreMap } from "./mywisata-explore-map";
+import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { HIDDEN_GEM_SYMBOL } from "@/lib/i18n/invariant-tokens";
 import { formatMYR } from "@/lib/i18n/format";
 
@@ -51,6 +55,7 @@ function StateDetailPanel({
 }) {
   const { t } = useTranslation("customer");
   const selectedState = selectedStateId ? getState(selectedStateId) : undefined;
+  const selectedDestination = selectedState ? MALAYSIA_DESTINATIONS.find((destination) => destination.state === selectedState.name) : undefined;
   const placeCount = selectedStateId ? (stateCounts[selectedStateId] ?? []).reduce((total, bucket) => total + bucket.count, 0) : 0;
   const highlights = selectedStateId
     ? activities.filter((activity) => activityToMapPlace(activity).stateId === selectedStateId).slice(0, 3)
@@ -73,8 +78,27 @@ function StateDetailPanel({
 
         {selectedState ? (
           <>
+            {selectedDestination && (
+              <div data-destination-photo-card className="group relative mt-4 [perspective:1000px]">
+                <div aria-hidden="true" className="absolute inset-2 translate-x-2 translate-y-2 rounded-2xl bg-accent/25 shadow-lg transition-transform duration-500 motion-safe:group-hover:translate-x-3 motion-safe:group-hover:translate-y-3 motion-reduce:transition-none" />
+                <div className="relative h-36 overflow-hidden rounded-2xl border border-border bg-secondary shadow-[0_12px_24px_rgba(1,0,102,0.16)] transition-[transform,box-shadow] duration-500 transform-gpu motion-safe:group-hover:-translate-y-1 motion-safe:group-hover:rotate-[0.35deg] motion-safe:group-hover:shadow-[0_20px_34px_rgba(1,0,102,0.24)] motion-reduce:transform-none motion-reduce:transition-none sm:h-44">
+                  <Image
+                    src={selectedDestination.image}
+                    alt={selectedDestination.attraction}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 280px"
+                    className="object-cover transition-transform duration-700 motion-safe:group-hover:scale-[1.04] motion-reduce:transition-none"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-primary/75 via-primary/10 to-transparent" />
+                  <div className="absolute inset-x-3 bottom-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/75">{selectedDestination.zone}</p>
+                    <p className="mt-1 text-sm font-bold text-white">{selectedDestination.attraction}</p>
+                  </div>
+                </div>
+              </div>
+            )}
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {placeCount > 0 ? t("ui.map.placesReady", { count: placeCount }) : t("ui.map.noPublishedPlaces")}
+              {selectedDestination?.tagline ?? (placeCount > 0 ? t("ui.map.placesReady", { count: placeCount }) : t("ui.map.noPublishedPlaces"))}
             </p>
             <div className="mt-5 grid grid-cols-2 gap-2">
               <div className="rounded-2xl bg-secondary px-3 py-3">
@@ -92,7 +116,7 @@ function StateDetailPanel({
                 <div className="mt-2 space-y-2">
                   {highlights.map((activity) => (
                     <button key={activity.id} type="button" onClick={() => onSelectPlace(activity.id)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-border px-3 py-2 text-left transition hover:border-primary hover:bg-secondary">
-                      <span className="min-w-0"><span className="block truncate text-sm font-bold text-foreground">{activity.name}</span>{activity.sponsorship && <span className="mt-1 inline-flex rounded-full bg-amber-400 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-slate-950">{t("ui.labels.sponsored")}</span>}</span>
+                      <span className="min-w-0"><span className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground">{activity.name}{activity.sponsorship && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">{t("ui.labels.sponsored")}</span>}</span>{activity.outlet.hours && <span className="mt-1 block truncate text-[10px] text-muted-foreground">{t("ui.labels.operatingHours")}: {activity.outlet.hours}</span>}</span>
                       <ArrowRight size={14} className="shrink-0 text-primary" aria-hidden="true" />
                     </button>
                   ))}
@@ -281,11 +305,11 @@ export function StoryMap({
   );
 
   return (
-    <div className="bg-background text-foreground">
+    <div className="overflow-x-hidden bg-background text-foreground">
       <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.75fr)] lg:items-stretch">
           <div className="relative min-w-0 lg:h-full lg:min-h-0">
-            <MalaysiaStateMap stateCounts={stateCounts} selectedStateId={selectedStateId} onSelectState={selectState} onDismissPlace={() => setSelectedPlaceId(null)} />
+            <MyWisataExploreMap selectedStateId={selectedStateId} onSelectState={selectState} />
 
             {selectedActivity && (
               <div className="relative z-20 mx-auto mt-3 w-[calc(100%-1.5rem)] max-w-2xl lg:absolute lg:bottom-4 lg:left-1/2 lg:mt-0 lg:-translate-x-1/2">
@@ -302,16 +326,17 @@ export function StoryMap({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">{selectedActivity.category}</span>
-                    {selectedActivity.sponsorship && <span className="rounded-full bg-amber-400 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-950">{t("ui.labels.sponsored")}</span>}
+                    {selectedActivity.sponsorship && <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-900">{t("ui.labels.sponsored")}</span>}
                   </div>
                   <h2 className="mt-2 truncate font-[family-name:var(--font-display)] text-xl font-bold text-foreground">{selectedActivity.name}</h2>
                   <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><MapPin size={12} />{selectedActivity.outlet.city} · {selectedActivity.outlet.state}</p>
                 </div>
-                <button type="button" aria-label={t(saved ? "ui.map.removeSavedPlace" : "ui.map.savePlace")} aria-pressed={saved} onClick={() => { if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return; void toggleSaved(selectedActivity.id); }} className={`rounded-xl p-2 ${saved ? "bg-accent text-accent-foreground" : "bg-secondary text-primary"}`}><Bookmark size={17} fill={saved ? "currentColor" : "none"} /></button>
+                <SaveToggleButton saved={saved} iconSize={17} aria-label={t(saved ? "ui.map.removeSavedPlace" : "ui.map.savePlace")} onClick={() => { if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return; void toggleSaved(selectedActivity.id); }} className={`rounded-xl p-2 ${saved ? "bg-accent text-accent-foreground" : "bg-secondary text-primary"}`} />
                 <button type="button" aria-label={t("ui.actions.cancel")} onClick={() => setSelectedPlaceId(null)} className="rounded-xl bg-secondary p-2 text-primary hover:bg-muted"><X size={17} /></button>
               </div>
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-                <div className="flex items-center gap-1 text-xs font-bold text-foreground"><Star size={13} fill="var(--accent)" stroke="none" /> {selectedActivity.rating} <span className="font-normal text-muted-foreground">({t("ui.reviews.count", { count: selectedActivity.reviews })})</span><span className="ml-2 font-[family-name:var(--font-mono)] text-sm text-primary">{formatMYR(Number(selectedActivity.price))}</span></div>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
+                  {selectedActivity.outlet.hours && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><span className="font-semibold text-foreground">{t("ui.labels.operatingHours")}:</span> {selectedActivity.outlet.hours}</span>}
+                  <div className="flex items-center gap-1 text-xs font-bold text-foreground"><Star size={13} fill="var(--accent)" stroke="none" /> {selectedActivity.rating} <span className="font-normal text-muted-foreground">({t("ui.reviews.count", { count: selectedActivity.reviews })})</span><span className="ml-2 font-[family-name:var(--font-mono)] text-sm text-primary">{formatMYR(Number(selectedActivity.price))}</span></div>
                 <div className="flex items-center gap-2"><Link href={`/customer/activity/${selectedActivity.id}`} onClick={() => onSponsoredClick?.(selectedActivity)} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-white hover:bg-primary/90">{t("ui.map.viewDestination")} <ArrowRight size={13} /></Link><a href={`https://www.google.com/maps/search/?api=1&query=${selectedActivity.outlet.lat},${selectedActivity.outlet.lng}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-xs font-bold text-primary hover:bg-secondary"><Navigation size={13} /> {t("ui.actions.getDirections")}</a></div>
               </div>
             </article>
@@ -385,9 +410,9 @@ export function StoryMap({
                           </div>
                         )}
                          <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 text-xs font-bold leading-tight text-foreground 2xl:text-base">{activity.name}</p>
-                          {activity.sponsorship && <span className="mt-0.5 inline-flex rounded-full bg-amber-400 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-slate-950 2xl:text-[10px]">{t("ui.labels.sponsored")}</span>}
-                          <p className="mt-0.5 truncate text-[9px] text-muted-foreground 2xl:text-xs">{activity.outlet.city} · {t(`categories.${activity.categorySlug ?? "activity"}`)}</p>
+                           <p className="line-clamp-2 text-xs font-bold leading-tight text-foreground 2xl:text-base">{activity.name}</p>
+                           {activity.sponsorship && <span className="mt-1 inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">{t("ui.labels.sponsored")}</span>}
+                           <p className="mt-0.5 truncate text-[9px] text-muted-foreground 2xl:text-xs">{activity.outlet.city} · {t(`categories.${activity.categorySlug ?? "activity"}`)}{activity.outlet.hours ? ` · ${activity.outlet.hours}` : ""}</p>
                          </div>
                         <span className="shrink-0 self-start font-[family-name:var(--font-mono)] text-[11px] font-bold text-primary 2xl:text-sm">{formatMYR(Number(activity.price))}</span>
                        </div>

@@ -19,6 +19,7 @@ import {
 const CUSTOMER_IDS = new Set([5, 6, 7, 8].map(
   (number) => `aaaaaaaa-0000-0000-0000-${String(number).padStart(12, "0")}`,
 ));
+const COMMERCE_SCOPE_PATH = path.resolve(process.cwd(), "scripts/data/enabled-commerce-outlet-scope.json");
 
 function loadEnv() {
   for (const filename of [".env.local", ".env"]) {
@@ -35,6 +36,9 @@ function loadEnv() {
 }
 
 loadEnv();
+
+const commerceScope = JSON.parse(fs.readFileSync(COMMERCE_SCOPE_PATH, "utf8"));
+const enabledOutletIds = new Set(commerceScope.outlets.map((outlet) => outlet.id));
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
@@ -116,11 +120,13 @@ async function main() {
     listAllAuthUserIds(),
   ]);
 
-  const approvedVendors = vendors.filter((vendor) => vendor.status === "approved");
-  const approvedVendorIds = new Set(approvedVendors.map((vendor) => vendor.id));
+  const approvedVendorCatalog = vendors.filter((vendor) => vendor.status === "approved");
+  const approvedVendorIds = new Set(approvedVendorCatalog.map((vendor) => vendor.id));
   const activeOutlets = outlets.filter(
     (outlet) => activeApproved(outlet) && approvedVendorIds.has(outlet.vendor_id),
-  );
+  ).filter((outlet) => enabledOutletIds.has(outlet.id));
+  const commerceVendorIds = new Set(activeOutlets.map((outlet) => outlet.vendor_id));
+  const approvedVendors = approvedVendorCatalog.filter((vendor) => commerceVendorIds.has(vendor.id));
   const outletById = new Map(outlets.map((outlet) => [outlet.id, outlet]));
   const productById = new Map(products.map((product) => [product.id, product]));
   const orderById = new Map(orders.map((order) => [order.id, order]));
@@ -474,9 +480,10 @@ async function main() {
     .filter((assignment) => !roleKeys.has(`${assignment.user_id}:outlet_manager`))
     .map((assignment) => ({ outletId: assignment.outlet_id, managerId: assignment.user_id }));
 
-  const demoEarnings = walletTransactions.filter((transaction) =>
-    transaction.idempotency_key?.startsWith("vendor-account-demo:earning:"),
-  );
+  const demoEarnings = walletTransactions.filter((transaction) => {
+    const match = /^vendor-account-demo:earning:([0-9a-f-]{36}):/i.exec(transaction.idempotency_key ?? "");
+    return Boolean(match && commerceVendorIds.has(match[1]));
+  });
   const approvedVendorById = new Map(approvedVendors.map((vendor) => [vendor.id, vendor]));
   const qualifyingItemsByVendorOrder = new Map();
   for (const item of qualifyingOrderItems) {
@@ -594,6 +601,10 @@ async function main() {
   const managerNotificationScopeMismatches = notifications
     .filter((notification) =>
       notification.event_key?.startsWith("vendor-account-demo:notification:order:manager:"),
+    )
+    .filter((notification) =>
+      commerceVendorIds.has(notification.vendor_id)
+      && enabledOutletIds.has(notification.outlet_id),
     )
     .flatMap((notification) => {
       const outlet = outletById.get(notification.outlet_id);

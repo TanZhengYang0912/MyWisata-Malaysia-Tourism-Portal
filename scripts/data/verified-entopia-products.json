@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "48a84aef-842f-8056-8ccc-0bf108730669",
+    "name": "Entopia by Penang Butterfly Farm",
+    "source_page": "https://www.entopia.com/visitor-info/",
+    "price_reference_page": "https://www.entopia.com/visitor-info/"
+  },
+  "outlets": [
+    {
+      "id": "a12dfaa1-8dea-3dcf-da08-2750cb47e738",
+      "name": "Entopia by Penang Butterfly Farm"
+    }
+  ],
+  "archive_legacy_slugs": ["entopia-admission", "entopia-guided-discovery-tour"],
+  "products": [
+    {
+      "slug": "entopia-standard-adult-admission",
+      "name": "Entopia Standard Adult Admission",
+      "description": "Standard admission for visitors aged 13 to 59, listed on Entopia's official visitor information page.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 75,
+      "source_type": "official",
+      "source_page": "https://www.entopia.com/visitor-info/",
+      "source_image_url": "https://www.entopia.com/wp-content/uploads/2017/05/NaturalLearning_Natureland.jpg",
+      "price_reference_page": "https://www.entopia.com/visitor-info/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/entopia-adult-admission-real.jpg",
+      "sha256": "eeaa980aac23141bd7ae300af7bceabe2baa63302fbe93a4d67a07a126ac3935",
+      "artist": "Entopia by Penang Butterfly Farm",
+      "license": "Official vendor media; source attribution recorded"
+    },
+    {
+      "slug": "entopia-standard-child-admission",
+      "name": "Entopia Standard Child Admission",
+      "description": "Standard admission for children aged 4 to 12, listed on Entopia's official visitor information page.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 55,
+      "source_type": "official",
+      "source_page": "https://www.entopia.com/visitor-info/",
+      "source_image_url": "https://www.entopia.com/wp-content/uploads/2026/03/discovery-pass-photo.jpg",
+      "price_reference_page": "https://www.entopia.com/visitor-info/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/entopia-child-admission-real.jpg",
+      "sha256": "b1e13ea2cedcd46203cda8e4989d2b8b756ea6799dc4ef8fa4717cf61a9c68ce",
+      "artist": "Entopia by Penang Butterfly Farm",
+      "license": "Official vendor media; source attribution recorded"
+    },
+    {
+      "slug": "entopia-standard-senior-admission",
+      "name": "Entopia Standard Senior Citizen Admission",
+      "description": "Standard admission for visitors aged 60 and above, listed on Entopia's official visitor information page.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 55,
+      "source_type": "official",
+      "source_page": "https://www.entopia.com/visitor-info/",
+      "source_image_url": "https://www.entopia.com/wp-content/uploads/2026/03/discovery-pass-photo2.jpg",
+      "price_reference_page": "https://www.entopia.com/visitor-info/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/entopia-senior-admission-real.jpg",
+      "sha256": "086d1f64f15ff2ebec26cbe90383845e90fa010ae17373fc34a052e370e5bd4a",
+      "artist": "Entopia by Penang Butterfly Farm",
+      "license": "Official vendor media; source attribution recorded"
+    },
+    {
+      "slug": "entopia-family-package-two-adults-two-children",
+      "name": "Entopia Family Package (2 Adults + 2 Children)",
+      "description": "Walk-in family package for two adults and two children, listed on Entopia's official visitor information page.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 238,
+      "source_type": "official",
+      "source_page": "https://www.entopia.com/visitor-info/",
+      "source_image_url": "https://www.entopia.com/wp-content/uploads/2026/03/discovery-pass-photo3.jpg",
+      "price_reference_page": "https://www.entopia.com/visitor-info/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/entopia-family-package-real.jpg",
+      "sha256": "ed8ed68b55cd6dc1b66ad617248c7df2a72fa32d5b9f0fe36ef7e8212860fc37",
+      "artist": "Entopia by Penang Butterfly Farm",
+      "license": "Official vendor media; source attribution recorded"
+    },
+    {
+      "slug": "entopia-discovery-pass-365-days",
+      "name": "Entopia Discovery Pass (365 Days)",
+      "description": "One-person annual discovery pass for unlimited visits for 365 days from activation, listed on Entopia's official Discovery Pass page.",
+      "product_type": "activity",
+      "requires_booking": false,
+      "base_price": 200,
+      "source_type": "official",
+      "source_page": "https://www.entopia.com/discoverypass/",
+      "source_image_url": "https://www.entopia.com/wp-content/uploads/2026/03/discovery-pass-photo4.jpg",
+      "price_reference_page": "https://www.entopia.com/discoverypass/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/entopia-discovery-pass-real.jpg",
+      "sha256": "6953fffec5db6d61eecdfe2cb34530afd813692bef1ef5a5a9b65a944baf87fc",
+      "artist": "Entopia by Penang Butterfly Farm",
+      "license": "Official vendor media; source attribution recorded"
+    }
+  ]
+}

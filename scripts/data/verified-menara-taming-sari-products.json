@@ -1,0 +1,104 @@
+{
+  "vendor": {
+    "id": "6e1487f5-98be-765a-8a20-c6f70546b07f",
+    "name": "Menara Taming Sari",
+    "source_page": "https://www.menaratamingsari.com/shop/",
+    "price_reference_page": "https://www.menaratamingsari.com/shop/"
+  },
+  "outlets": [
+    {
+      "id": "832de0ac-99e9-8482-85aa-1563dd605b20",
+      "name": "Menara Taming Sari — Ticket Booth"
+    }
+  ],
+  "archive_legacy_slugs": [
+    "op-taming-sari-ride"
+  ],
+  "products": [
+    {
+      "slug": "menara-taming-sari-adult-day-local",
+      "name": "Menara Taming Sari Adult Day Pass — Local",
+      "description": "Adult local day pass for the 360-degree revolving tower ride, 9:00 AM to 5:59 PM.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 20,
+      "source_type": "official",
+      "source_page": "https://www.menaratamingsari.com/shop/",
+      "source_image_url": "https://www.menaratamingsari.com/wp-content/uploads/2022/12/adult-home-product.png",
+      "price_reference_page": "https://www.menaratamingsari.com/shop/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/menara-taming-sari-adult-day-local-real.png",
+      "sha256": "680c7b3f4faa0ea7e83abde568436b4b820e33cb343857771d56674afb017b6f",
+      "artist": "Menara Taming Sari official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "menara-taming-sari-adult-sunset-local",
+      "name": "Menara Taming Sari Adult Sunset Pass — Local",
+      "description": "Adult local sunset pass for the 360-degree revolving tower ride, 6:00 PM to 7:59 PM.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 25,
+      "source_type": "official",
+      "source_page": "https://www.menaratamingsari.com/shop/",
+      "source_image_url": "https://www.menaratamingsari.com/wp-content/uploads/2022/12/people.png",
+      "price_reference_page": "https://www.menaratamingsari.com/shop/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/menara-taming-sari-adult-sunset-local-real.png",
+      "sha256": "337c88e5ff74ae8c39288c1450ea9508c3f0f11444765e265e33fd21f656fa34",
+      "artist": "Menara Taming Sari official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "menara-taming-sari-adult-night-local",
+      "name": "Menara Taming Sari Adult Night View Pass — Local",
+      "description": "Adult local night-view pass for the 360-degree revolving tower ride, 8:00 PM to 11:00 PM.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 25,
+      "source_type": "official",
+      "source_page": "https://www.menaratamingsari.com/shop/",
+      "source_image_url": "https://www.menaratamingsari.com/wp-content/uploads/2022/12/home-overview-1-1024x550.png",
+      "price_reference_page": "https://www.menaratamingsari.com/shop/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/menara-taming-sari-adult-night-local-real.png",
+      "sha256": "50e25338f37c72cb93f1e808504accf925dacb4ac00f8450f189977ce8ec6f61",
+      "artist": "Menara Taming Sari official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "menara-taming-sari-child-day-local",
+      "name": "Menara Taming Sari Child Day Pass — Local",
+      "description": "Local child day pass for visitors below 12 years old, 9:00 AM to 5:59 PM.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 15,
+      "source_type": "official",
+      "source_page": "https://www.menaratamingsari.com/shop/",
+      "source_image_url": "https://www.menaratamingsari.com/wp-content/uploads/2022/11/child-home-product.png",
+      "price_reference_page": "https://www.menaratamingsari.com/shop/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/menara-taming-sari-child-day-local-real.png",
+      "sha256": "9088710398d40b5fc822bc131099542b50685293922c5a58e13705b6300b5b08",
+      "artist": "Menara Taming Sari official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "menara-taming-sari-senior-day-local",
+      "name": "Menara Taming Sari Senior Day Pass — Local",
+      "description": "Local senior citizen day pass for visitors above 55 years old, listed on the official visitor page.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 11,
+      "source_type": "official",
+      "source_page": "https://www.menaratamingsari.com/shop/",
+      "source_image_url": "https://www.menaratamingsari.com/wp-content/uploads/2022/12/senior-home-product.png",
+      "price_reference_page": "https://www.menaratamingsari.com/shop/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/menara-taming-sari-senior-day-local-real.png",
+      "sha256": "66ce57aafd2ab9ed1ff49bdb7a029799a6d32affca847330f5a2b00b8ab49a70",
+      "artist": "Menara Taming Sari official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

@@ -38,7 +38,9 @@ REJECT_TITLE_TERMS = {
     "loyal-maxim-chocolate-box": {"manufacture of", "cocoa", "ice box coating", "cake", "dessert"},
     "pht-george-town-heritage-walk": {"sundarban", "west bengal", "india"},
     "shangrila-garden-room": {"waiting room", "lobby", "desk-top", "writing pad", "room supplies"},
-    "taman-ular-entry-ticket": {"ticket counter", "railway station"},
+    "taman-ular-entry-ticket": {"ticket counter", "railway station", "bako", "mulu", "national park"},
+    "op-river-cruise-day-ticket": {"night", "evening", "illuminated", "lights"},
+    "istanalama-entry-ticket": {"locomotive", "railway", "museum negara"},
     "tar-marine-park-snorkel-dive-trip": {"diving platforms", "aquatic center", "mylan park"},
     "toh-soon-hainanese-kopi": {"cup-shaped", "balconies", "tableware", "street"},
     "twentytrees-standard-room": {"floor directory", "hospital", "dinner room service", "room service"},
@@ -51,15 +53,21 @@ REJECT_TITLE_TERMS = {
     "zon-duty-free-chocolate-snacks-box": {"cake", "st. honoré", "albatross", "butterfly", "insect"},
     "retail-cameron-tea-gift-set": {"tea estate", "plantation", "tea plantations", "cameron valley tea", "papan tanda"},
     "retail-nyonya-beaded-slippers": {"craft activity"},
+    "maheran-laksam": {"laksam", "comilla", "bangladesh", "bagicha bari", "nawab", "mosque", "grave", "house"},
+    "kwan-kee-steamboat-for-two": {"geyser", "yellowstone", "volcano", "national park", "hot spring"},
+    "baba-nyonya-heritage-trust-child-admission": {"foundling", "arms of", "hospital", "historical ticket"},
 }
 CACHE_PATH = Path("/tmp/mywisata-product-commons-cache.json")
 PROGRESS_PATH = Path("/tmp/mywisata-product-image-progress.json")
+QUERY_LIMIT = 0
+ALLOW_EXISTING_FALLBACK = False
 USER_AGENT = "MyWisata-product-image-curator/1.0 (local development; Wikimedia Commons attribution recorded)"
+CACHE_QUERY_DELAY_SECONDS = 2.5
 
 CATEGORY_TERMS = {
     "food": {"food", "dish", "meal", "restaurant", "restoran", "cafe", "coffee", "tea", "bakery", "noodle", "rice", "satay", "cooking", "dining", "drink", "dessert", "cake", "hawker", "market"},
     "accommodation": {"hotel", "resort", "room", "suite", "villa", "chalet", "hostel", "homestay", "guesthouse", "lodge", "inn", "motel", "accommodation", "bedroom", "lobby"},
-    "activity": {"park", "museum", "temple", "beach", "island", "waterfall", "forest", "garden", "heritage", "tour", "trail", "cruise", "cable", "railway", "ticket", "attraction", "monument", "mosque", "church", "gallery", "cave", "fort", "castle", "bridge", "diving", "village", "tower", "nature", "walk", "adventure", "mansion", "skyway", "boardwalk", "waterfront", "rapids", "kongsi"},
+    "activity": {"park", "museum", "temple", "beach", "island", "waterfall", "forest", "garden", "heritage", "tour", "trail", "cruise", "cable", "railway", "ticket", "attraction", "monument", "mosque", "church", "gallery", "cave", "fort", "castle", "bridge", "diving", "village", "tower", "nature", "walk", "adventure", "mansion", "skyway", "boardwalk", "waterfront", "rapids", "kongsi", "market", "culture", "craft"},
     "retail": {"shop", "store", "market", "mall", "shopping", "batik", "craft", "handicraft", "souvenir", "book", "bookstore", "boutique", "bakery", "biscuit", "chocolate", "pottery", "textile", "sarong", "postcard", "oil", "box", "product", "lamp"},
 }
 
@@ -82,7 +90,7 @@ def load_env() -> dict[str, str]:
     return values
 
 
-def get_json(url: str, *, timeout: int = 30, attempts: int = 4) -> dict | list:
+def get_json(url: str, *, timeout: int = 15, attempts: int = 5) -> dict | list:
     last_error: Exception | None = None
     for attempt in range(attempts):
         try:
@@ -91,14 +99,20 @@ def get_json(url: str, *, timeout: int = 30, attempts: int = 4) -> dict | list:
                 return json.loads(response.read().decode("utf-8"))
         except HTTPError as exc:  # Commons throttles bursts with HTTP 429.
             last_error = exc
-            time.sleep(8.0 + attempt * 4.0 if exc.code == 429 else 1.0 + attempt)
+            retry_after = 0
+            if exc.code == 429:
+                try:
+                    retry_after = int(exc.headers.get("Retry-After", "0"))
+                except (TypeError, ValueError):
+                    retry_after = 0
+            time.sleep(max(retry_after, 20.0 + attempt * 15.0) if exc.code == 429 else 1.0 + attempt)
         except Exception as exc:  # network failures are retried with bounded backoff
             last_error = exc
             time.sleep(1.0 + attempt)
     raise RuntimeError(f"request failed after {attempts} attempts: {last_error}")
 
 
-def download(url: str, destination: Path, *, timeout: int = 30, attempts: int = 4) -> bytes:
+def download(url: str, destination: Path, *, timeout: int = 12, attempts: int = 2) -> bytes:
     last_error: Exception | None = None
     for attempt in range(attempts):
         try:
@@ -184,6 +198,18 @@ def semantic_aliases(name: str) -> list[str]:
         aliases.extend(["gunung raya", "mount raya"])
     if "jonker" in lowered:
         aliases.extend(["jonker street", "night market"])
+    if "jalan alor" in lowered:
+        aliases.extend(["Jalan Alor Kuala Lumpur", "Jalan Alor street food"])
+    if "late night" in lowered or "hawker tour" in lowered:
+        aliases.extend(["Jalan Alor night market", "Jalan Alor street food"])
+    if "old kl market" in lowered:
+        aliases.extend(["Central Market Kuala Lumpur", "Kasturi Walk Kuala Lumpur"])
+    if "taman ular" in lowered or "reptilia" in lowered:
+        aliases.extend(["snake reptile Malaysia", "snake park Malaysia"])
+    if "twin towers" in lowered or "skybridge" in lowered:
+        aliases.extend(["Petronas Twin Towers Kuala Lumpur", "Petronas Skybridge"])
+    if "river cruise day" in lowered:
+        aliases.extend(["Melaka River Sunrise", "Melaka river daytime"])
     if "kilim" in lowered or "mangrove" in lowered:
         aliases.extend(["Kilim Geoforest Park", "Langkawi Mangrove Forest"])
     if "lata berkoh" in lowered:
@@ -220,6 +246,12 @@ def semantic_aliases(name: str) -> list[str]:
         aliases.extend(["strawberry jam jar", "strawberry preserves"])
     if "gift box" in lowered:
         aliases.append("gift box")
+    if "gift pack" in lowered:
+        aliases.extend(["gift pack", "gift box", "gift hamper"])
+    if "gift set" in lowered:
+        aliases.extend(["gift set", "gift box", "gift hamper"])
+    if "snack box" in lowered:
+        aliases.extend(["snack box", "traditional snacks", "Malaysian snacks"])
     if "family room" in lowered:
         aliases.extend(["family room hotel", "family room interior"])
     if "garden" in lowered and "room" in lowered:
@@ -268,10 +300,16 @@ def semantic_aliases(name: str) -> list[str]:
         aliases.extend(["Wat Pothivihan", "Pothivihan temple"])
     if "upside" in lowered and "ticket" in lowered:
         aliases.extend(["Upside Down House ticket", "Upside Down House"])
+    if "seri menanti" in lowered or "istana lama" in lowered:
+        aliases.extend(["Istana Lama Seri Menanti", "Muzium Seri Menanti"])
+    if "adventureplay" in lowered or "waterplay" in lowered:
+        aliases.extend(["ESCAPE Adventureplay", "ESCAPE Penang"])
     if "lime" in lowered or "calamansi" in lowered:
         aliases.extend(["lime juice", "limeade", "calamansi juice"])
     if "nasi kandar" in lowered:
         aliases.append("kandar")
+    if "kut teh" in lowered:
+        aliases.extend(["bak kut teh", "bah kut teh", "bak kut teh Malaysia"])
     if "cendol" in lowered:
         aliases.append("chendol")
     return aliases
@@ -282,15 +320,45 @@ def relation_name(row: dict, relation: str) -> str:
     return value.get("name", "") if isinstance(value, dict) else ""
 
 
+def photo_category(name: str, fallback: str) -> str:
+    """Infer the visual subject from the product name before DB taxonomy.
+
+    The demo catalogue contains a few legacy rows whose vendor taxonomy is
+    broader than the actual item name (for example an admission row under a
+    food vendor). The cover must follow the named item, so photo curation uses
+    the name's strongest subject signal while leaving the business taxonomy
+    untouched.
+    """
+    lowered = name.lower()
+    if re.search(r"\b(?:ticket|admission|entry|pass|tour|walk|trek|trail|cruise|guided|visit|transfer|skyway|funicular|yoga)\b|work from heritage|forest bathing|sound healing", lowered):
+        return "activity"
+    if re.search(r"\b(?:room|suite|chalet|villa|bedroom|accommodation)\b", lowered):
+        return "accommodation"
+    if re.search(r"\bbreakfast package\b", lowered):
+        return "food"
+    if re.search(r"\b(?:gift|souvenir|keepsake|postcard|reader|book|batik|sarong|songket|oil|basket|lampshade|cushion)\b|snack box|tea gift|chocolate box|biscuit box", lowered):
+        return "retail"
+    if re.search(r"\b(?:food|rice|nasi|mee|noodle|laksa|curry|soup|chicken|beef|prawn|shrimp|crab|squid|fish|cake|bun|bread|toast|cendol|coffee|kopi|tea|teh|barley|satay|naan|egg|dessert|drink|smoothie|burger|roti|breakfast)\b", lowered):
+        return "food"
+    return fallback
+
+
+def source_key(row: dict) -> str:
+    name = str(row.get("name") or row.get("slug") or "").strip().casefold()
+    name = name.replace("bak kut teh", "bah kut teh")
+    fallback = ((row.get("categories") or {}).get("slug") or row.get("product_type") or "activity").casefold()
+    return f"{name}||{photo_category(name, fallback)}"
+
+
 def context(row: dict) -> dict[str, str | set[str]]:
-    category = ((row.get("categories") or {}).get("slug") or row.get("product_type") or "activity").lower()
+    fallback_category = ((row.get("categories") or {}).get("slug") or row.get("product_type") or "activity").lower()
     outlet = row.get("outlets") or {}
     vendor_name = relation_name(row, "vendors")
     location = " ".join(str(outlet.get(part, "")) for part in ("city", "state"))
     description = row.get("description") or ""
     name = row.get("name") or row.get("slug") or ""
     return {
-        "category": category,
+        "category": photo_category(str(name), fallback_category),
         "name": name,
         "vendor": vendor_name,
         "location": location,
@@ -353,17 +421,25 @@ def query_variants(row: dict) -> list[str]:
     vendor_terms = " ".join(sorted(meaningful(vendor)))
     location_terms = " ".join(sorted(meaningful(location)))
     queries = [
+        name,
+        f"{name} Malaysia",
         name_terms,
+    ]
+    # Product-specific aliases must be tried before vendor/location searches;
+    # broad place searches are the main source of scenic or storefront false
+    # positives.
+    for alias in semantic_aliases(name):
+        if len(tokens(alias)) >= 2:
+            queries.extend([alias, f"{alias} Malaysia", f"{alias} {category} Malaysia"])
+    queries.extend([
         vendor_terms,
         " ".join(part for part in (location_terms, category) if part),
         " ".join(part for part in (name_terms, location_terms, "Malaysia") if part),
         " ".join(part for part in (vendor_terms, location_terms, "Malaysia") if part),
         " ".join(part for part in (name_terms, category, "Malaysia") if part),
-    ]
+    ])
     for index in range(len(name_sequence) - 1):
         queries.append(" ".join((name_sequence[index], name_sequence[index + 1], category, "Malaysia")))
-    for alias in semantic_aliases(name):
-        queries.extend([alias, f"{alias} Malaysia", f"{alias} {category} Malaysia"])
     if "mari mari" in vendor.lower():
         queries.extend(["Mari Mari Cultural Village Sabah", "Mari Mari Cultural Village entrance"])
     if "penang hill" in vendor.lower() or "funicular" in str(ctx["description"]).lower():
@@ -377,6 +453,108 @@ def query_variants(row: dict) -> list[str]:
         "retail": "Malaysia craft shop",
     }.get(category, "Malaysia tourism"))
     return list(dict.fromkeys(query.strip() for query in queries if query.strip()))
+
+
+def object_compatible(candidate: dict, row: dict) -> bool:
+    """Reject a visually plausible but semantically wrong location photo.
+
+    Commons search often ranks a vendor or destination photo above an image of
+    the named item. Category compatibility alone is therefore insufficient for
+    customer-facing product covers. These rules intentionally prefer a lower
+    confidence match with the named object over a high-ranked scenic photo.
+    """
+    name = str(row.get("name") or "").lower()
+    title = str(candidate.get("title") or "").lower()
+    description = str(candidate.get("description") or "").lower()
+    haystack = f"{title} {description}"
+    title_tokens = set(tokens(title))
+
+    def has_any(*terms: str) -> bool:
+        return any(term in haystack for term in terms)
+
+    def has_title_any(*terms: str) -> bool:
+        return any(term in title_tokens for term in terms)
+
+    category = str(context(row)["category"])
+    if category == "food":
+        if any(term in title for term in {"airline", "airplane", "airport", "activity park", "railway", "station", "road", "street", "building", "landscape", "town", "village", "city", "house", "facade", "exterior", "signboard", "logo", "book", "illustration", "drawing", "painting", "portrait", "poster", "cover", "oologist", "bird", "birds", "nest", "nests", "student of", "masjid", "mosque", "temple", "palace", "castle", "fort", "church", "cathedral", "museum", "monument", "tower", "bridge", "waterfall", "grave", "tomb", "cemetery"}):
+            return False
+        if "breakfast" in name and has_any("tea tin", "tea bag", "tea bags", "tea package") and not has_any("egg", "toast", "bacon", "sausage", "meal", "plate"):
+            return False
+        if "breakfast" in name and has_any("tea", "label") and not has_any("egg", "toast", "bacon", "sausage", "beans", "plate", "meal"):
+            return False
+        if "mee goreng" in name or "meehoon" in name or "wanton noodle" in name or "beef noodles" in name or "curry noodle" in name:
+            return has_any("mee", "noodle", "vermicelli", "mihun") and has_any("goreng", "fried", "noodle", "mee", "vermicelli", "mihun")
+        if "nasi lemak" in name:
+            return has_any("nasi lemak", "nasi", "lemak", "coconut rice")
+        if "chicken rice" in name or "rice ball" in name:
+            return has_any("chicken rice", "chicken", "rice")
+        if "teh tarik" in name or "white coffee" in name or "kopi" in name or "chai" in name or "iced barley" in name or "iced lime" in name:
+            return has_any("tea", "teh", "tarik", "coffee", "kopi", "barley", "lime", "juice", "drink", "beverage")
+        if "cendol" in name or "chendol" in name or "ice kacang" in name or "dessert" in name:
+            return has_any("cendol", "chendol", "ice kacang", "ais kacang", "dessert", "kuih", "shaved ice", "sweet")
+        if "cake" in name or "bun" in name or "bread" in name or "toast" in name or "pau" in name:
+            return has_any("cake", "bun", "bread", "toast", "pastry", "pau", "bakery")
+        if "prawn" in name or "shrimp" in name or "crab" in name or "squid" in name or "fish" in name or "seafood" in name:
+            return has_any("prawn", "shrimp", "crab", "squid", "fish", "seafood")
+        if "curry" in name or "laksa" in name or "soup" in name:
+            return has_any("curry", "laksa", "soup", "noodle", "rice")
+        if "steamboat" in name or "hotpot" in name or "hot pot" in name:
+            return has_any("hot pot", "hotpot", "food", "dish", "meal", "restaurant") and not has_any("vessel", "river", "boat", "geyser", "volcano")
+        if "egg" in name:
+            return has_any("egg", "omelette", "boiled")
+        return has_any("food", "dish", "meal", "tea", "coffee", "noodle", "rice", "cake", "dessert", "drink", "beverage", "bowl", "plate", "cup", "bakery", "breakfast") and not has_any("shop", "store", "hotel", "museum", "park", "restaurant facade")
+
+    if category == "accommodation":
+        if has_any("airline", "airplane", "airport", "restaurant", "dining", "banquet", "kitchen", "conference", "shop", "store", "tasting room", "winery", "bar", "entrance", "class room", "classroom", "school", "training", "meeting", "railway", "station", "waiting room", "museum", "building"):
+            return False
+        # A hotel/venue exterior or skyline is not a room product cover. Room
+        # variants must show an interior lodging space or an unmistakable bed.
+        if any(term in name for term in ("room", "suite", "twin", "family", "deluxe", "superior", "standard", "shophouse", "chalet", "villa", "beachfront", "sea view", "courtyard")) and not has_any("room", "bedroom", "suite", "interior", "living", "bed", "chalet", "villa"):
+            return False
+        if "suite" in name:
+            return has_any("suite", "room", "bedroom", "interior", "living", "bathroom")
+        if "room" in name or "chalet" in name or "villa" in name:
+            return has_any("room", "bedroom", "chalet", "villa", "interior", "suite")
+        return has_any("hotel", "resort", "room", "suite", "chalet", "villa", "accommodation")
+
+    if category == "retail":
+        item_terms = {
+            "gift", "box", "pack", "hamper", "snack", "souvenir", "keepsake",
+            "craft", "handicraft", "artisan", "book", "postcard", "tea", "oil",
+            "chocolate", "biscuit", "sarong", "batik", "songket", "textile",
+            "pottery", "lamp", "coaster", "slipper", "bead", "basket",
+        }
+        # A shop, market, or storefront is a place photo, not a product photo.
+        # Keep it only when the title also identifies the physical item.
+        if has_title_any("shop", "store", "market", "mall", "bazaar") and not title_tokens.intersection(item_terms):
+            return False
+        if "gift set" in name or "gift pack" in name or "snack box" in name or "gift box" in name:
+            return has_any("gift", "gift box", "gift set", "gift pack", "hamper", "snack box", "box", "pack") and not (
+                has_title_any("shop", "store", "market") and not has_any("box", "pack", "set", "hamper")
+            )
+        if "souvenir" in name or "keepsake" in name:
+            return has_any("souvenir", "keepsake", "craft", "handicraft", "artisan", "gift")
+        if "book" in name or "reader" in name or "postcard" in name:
+            return has_any("book", "reader", "postcard", "post card")
+        if "tea" in name or "oil" in name or "chocolate" in name or "biscuit" in name or "sarong" in name or "batik" in name or "songket" in name:
+            return has_any("tea", "oil", "chocolate", "biscuit", "sarong", "batik", "songket", "textile", "box", "pack")
+        if "lamp" in name:
+            return has_any("lamp", "lampshade", "lantern", "lighting")
+        if "basket" in name or "cushion" in name:
+            return has_any("basket", "cushion", "rattan", "woven", "textile")
+        return has_any("craft", "product", "souvenir", "keepsake", "handicraft", "gift", "box", "pack", "textile")
+
+    if category == "activity":
+        if has_any("painting", "portrait", "drawing", "illustration", "artwork", "oil on canvas", "sleeping", "asleep"):
+            return False
+        if "ticket" in name or "admission" in name or "pass" in name or "entry" in name:
+            return has_any("ticket", "admission", "entry", "pass", "attraction", "park", "museum", "tower", "heritage")
+        if "tour" in name or "walk" in name or "trek" in name or "trail" in name or "cruise" in name or "trip" in name or "guided" in name:
+            return has_any("tour", "walk", "trek", "trail", "cruise", "trip", "guided", "forest", "river", "island", "heritage", "park", "beach")
+        return has_any("attraction", "park", "museum", "temple", "heritage", "nature", "tour")
+
+    return True
 
 
 def candidate_score(candidate: dict, row: dict) -> tuple[int, bool]:
@@ -437,6 +615,8 @@ def candidate_score(candidate: dict, row: dict) -> tuple[int, bool]:
             category_compatible = True
         if "lamp" in str(ctx["name"]).lower() and "lamp" in title:
             category_compatible = True
+        if any(term in str(ctx["name"]).lower() for term in ("gift set", "gift pack", "snack box", "gift box")) and title_tokens & {"gift", "box", "pack", "hamper", "snack"}:
+            category_compatible = True
     elif category == "activity":
         category_compatible = category_compatible or any(term in hay_tokens for term in {"attraction", "hill", "walk", "ticket", "tour", "museum", "temple", "park", "beach", "island", "cruise", "heritage", "nature"})
         activity_generic_tokens = {"ticket", "pass", "entry", "day", "tour", "guided", "discovery", "walk", "return", "adult", "family", "climb", "trail", "admission", "experience", "activity", "visit"}
@@ -457,6 +637,22 @@ def candidate_score(candidate: dict, row: dict) -> tuple[int, bool]:
             category_compatible = True
         if "penang hill" in str(ctx["vendor"]).lower() and title_tokens & {"office", "administration", "headquarters"}:
             category_compatible = False
+        if str(row.get("slug")) == "istanalama-entry-ticket" and title_tokens & {"menanti", "palace"}:
+            category_compatible = True
+        if str(row.get("slug")) in {"jalan-alor-heritage-food-walk", "jalan-alor-street-food-crawl"} and title_tokens & {"alor", "street"}:
+            category_compatible = True
+        if str(row.get("slug")) == "late-night-hawker-tour" and title_tokens & {"night", "alor"}:
+            category_compatible = True
+        if str(row.get("slug")) == "old-kl-market-heritage-walk" and title_tokens & {"market"}:
+            category_compatible = True
+        if str(row.get("slug")) == "taman-ular-entry-ticket" and title_tokens & {"snake", "snakes", "reptile", "reptiles"}:
+            category_compatible = True
+        if str(row.get("slug")) == "tamadun-islam-entry-ticket" and title_tokens & {"tamadun", "ihp"}:
+            category_compatible = True
+        if str(row.get("slug")) in {"skybridge-observation-deck", "twin-towers-city-centre-walking-tour"} and title_tokens & {"petronas", "towers", "klcc", "skybridge"}:
+            category_compatible = True
+        if str(row.get("slug")) == "op-river-cruise-day-ticket" and title_tokens & {"river", "sunrise", "daytime"}:
+            category_compatible = True
         if "semenggoh" in str(ctx["name"]).lower() and title_tokens & {"semenggoh", "semenggok", "orangutan", "orangutans"}:
             category_compatible = True
         if name_tokens & {"trek", "climb", "trail", "hike", "hiking"} and title_tokens & {
@@ -524,12 +720,60 @@ def candidate_score(candidate: dict, row: dict) -> tuple[int, bool]:
     return score, category_compatible
 
 
+def existing_source_fallback(row: dict) -> dict | None:
+    """Use an already checked-in real source photo as a last-resort subject fallback.
+
+    This is intentionally limited to source-backed product manifests and the
+    checked-in activity credits. It never falls back to vendor/outlet gallery
+    media, generated art, or an uncredited local file.
+    """
+    sources: list[dict] = []
+    data_dir = ROOT / "scripts/data"
+    if data_dir.exists():
+        for manifest_path in sorted(data_dir.glob("verified-*-products.json")):
+            try:
+                payload = json.loads(manifest_path.read_text())
+            except json.JSONDecodeError:
+                continue
+            sources.extend(payload.get("products", []))
+    credits_path = ASSET_DIR / "activity-media-credits.json"
+    if credits_path.exists():
+        try:
+            sources.extend(json.loads(credits_path.read_text()).get("products", []))
+        except json.JSONDecodeError:
+            pass
+    wanted = str(context(row)["category"])
+    for item in sources:
+        asset_path = str(item.get("asset_path") or "")
+        asset = ROOT / "public" / asset_path.lstrip("/")
+        if not asset.exists() or photo_category(str(item.get("name") or ""), "") != wanted:
+            continue
+        return {
+            "asset_path": asset_path,
+            "source_type": item.get("source_type", "commons"),
+            "source_page": item.get("source_page", ""),
+            "source_image_url": item.get("source_image_url", ""),
+            "title": item.get("title", ""),
+            "license": item.get("license", ""),
+            "artist": item.get("artist", ""),
+            "sha256": item.get("sha256", ""),
+            "pageid": int(item.get("pageid") or 0),
+            "fallback_reason": "real source-backed subject fallback",
+        }
+    return None
+
+
 def choose_candidate(row: dict, used_pages: set[int], used_hashes: set[str], cache: dict[str, list[dict]]) -> dict:
     all_candidates: dict[int, dict] = {}
-    for query in query_variants(row):
+    queries = query_variants(row)
+    if QUERY_LIMIT:
+        queries = queries[:QUERY_LIMIT]
+    for query in queries:
         if query not in cache:
             cache[query] = commons_search(query)
-            time.sleep(1.0)
+            # Wikimedia Commons applies burst throttling. Keep the curator
+            # polite even when a query was not cached from a previous run.
+            time.sleep(CACHE_QUERY_DELAY_SECONDS)
         for candidate in cache[query]:
             pageid = candidate.get("pageid")
             if pageid and pageid not in all_candidates:
@@ -547,6 +791,23 @@ def choose_candidate(row: dict, used_pages: set[int], used_hashes: set[str], cac
             continue
         if row["slug"] == "upsidedown-entry-ticket" and not any(term in candidate_title for term in {"ticket", "booth", "upside down", "upside-down"}):
             continue
+        required_title_terms = {
+            "istanajahar-entry-ticket": {"jahar"},
+            "istanalama-entry-ticket": {"menanti", "seri menanti", "muzium seri"},
+            "lostworld-entry-ticket": {"lost world", "tambun"},
+            "tamadun-islam-entry-ticket": {"tamadun", "islam"},
+            "taman-ular-entry-ticket": {"ular", "snake", "reptile"},
+            "penang-hill-sunrise-ticket": {"penang hill", "funicular"},
+            "jalan-alor-heritage-food-walk": {"jalan alor", "alor street"},
+            "jalan-alor-street-food-crawl": {"jalan alor", "alor street"},
+            "late-night-hawker-tour": {"jalan alor", "night market"},
+            "old-kl-market-heritage-walk": {"central market", "kuala lumpur"},
+            "skybridge-observation-deck": {"petronas", "twin towers", "skybridge", "klcc"},
+            "twin-towers-city-centre-walking-tour": {"petronas", "twin towers", "klcc"},
+            "op-river-cruise-day-ticket": {"sunrise", "daytime"},
+        }.get(str(row["slug"]))
+        if required_title_terms and not any(term in candidate_title for term in required_title_terms):
+            continue
         exact_semantic_match = str(row.get("name", "")).lower() in candidate_title or any(
             alias.lower() in candidate_title for alias in semantic_aliases(str(row.get("name", "")))
         )
@@ -555,7 +816,7 @@ def choose_candidate(row: dict, used_pages: set[int], used_hashes: set[str], cac
         ):
             continue
         score, compatible = candidate_score(candidate, row)
-        if not compatible:
+        if not compatible or not object_compatible(candidate, row):
             continue
         ranked.append((score, candidate))
     ranked.sort(key=lambda item: (-item[0], item[1].get("pageid", 0)))
@@ -576,11 +837,15 @@ def choose_candidate(row: dict, used_pages: set[int], used_hashes: set[str], cac
         used_hashes.add(digest)
         return {**candidate, "asset_path": f"/assets/customer/products/{destination.name}", "sha256": digest}
 
+    if ALLOW_EXISTING_FALLBACK:
+        fallback = existing_source_fallback(row)
+        if fallback:
+            return fallback
     context_label = f"{row.get('slug')} ({row.get('name')})"
     raise RuntimeError(f"no unique semantically relevant Commons image found for {context_label}")
 
 
-def write_outputs(rows: list[dict], manifest: list[dict]) -> None:
+def write_outputs(rows: list[dict], manifest: list[dict], migration_path: Path) -> None:
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
     manifest = sorted(manifest, key=lambda item: item["slug"])
     MANIFEST_PATH.write_text(json.dumps({"products": manifest}, ensure_ascii=False, indent=2) + "\n")
@@ -620,8 +885,8 @@ def write_outputs(rows: list[dict], manifest: list[dict]) -> None:
         "  SELECT count(*) INTO scoped_count FROM public.products WHERE status = 'active' AND review_status = 'approved';",
         "  SELECT count(*) INTO missing_count FROM public.products WHERE status = 'active' AND review_status = 'approved' AND cover_url IS NULL;",
         "  SELECT count(DISTINCT cover_url) INTO unique_count FROM public.products WHERE status = 'active' AND review_status = 'approved';",
-        "  IF scoped_count <> 293 OR missing_count <> 0 OR unique_count <> 293 THEN",
-        "    RAISE EXCEPTION 'expected 293 active approved products with unique local cover paths; count=%, missing=%, unique=%', scoped_count, missing_count, unique_count;",
+        f"  IF scoped_count <> {len(rows)} OR missing_count <> 0 OR unique_count <> {len(rows)} THEN",
+        f"    RAISE EXCEPTION 'expected {len(rows)} active approved products with unique local cover paths; count=%, missing=%, unique=%', scoped_count, missing_count, unique_count;",
         "  END IF;",
         "  IF EXISTS (SELECT 1 FROM public.products WHERE status = 'active' AND review_status = 'approved' AND cover_url NOT LIKE '/assets/customer/products/%') THEN",
         "    RAISE EXCEPTION 'all active approved product cover paths must be local product assets';",
@@ -631,19 +896,59 @@ def write_outputs(rows: list[dict], manifest: list[dict]) -> None:
         "COMMIT;",
         "",
     ])
-    MIGRATION_PATH.write_text("\n".join(sql))
+    migration_path.parent.mkdir(parents=True, exist_ok=True)
+    migration_path.write_text("\n".join(sql))
 
 
 def main() -> int:
+    global PROGRESS_PATH, CACHE_PATH, QUERY_LIMIT, ALLOW_EXISTING_FALLBACK, CACHE_QUERY_DELAY_SECONDS
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=0, help="curate only the first N products; for a connectivity smoke test")
     parser.add_argument("--resume", action="store_true", help="reuse the completed product selections from the previous interrupted run")
+    parser.add_argument("--reuse-by-name", action="store_true", help="curate one source-backed image per product name/type key for safe reuse")
+    parser.add_argument("--library-path", default="scripts/data/product-image-library.json", help="write a reusable name/type image library")
+    parser.add_argument("--progress-path", default=str(PROGRESS_PATH), help="checkpoint file for interrupted runs")
+    parser.add_argument("--cache-path", default=str(CACHE_PATH), help="Wikimedia query cache file")
+    parser.add_argument("--query-limit", type=int, default=0, help="limit ordered Commons queries per product; 0 uses all")
+    parser.add_argument("--allow-existing-fallback", action="store_true", help="use only checked-in real source-backed subject photos when exact Commons search has no match")
+    parser.add_argument("--library", action="store_true", help="write a reusable library instead of a product-cover migration")
     parser.add_argument("--recurate", nargs="*", default=[], help="remove and reselect the listed slugs while resuming")
+    parser.add_argument(
+        "--migration-path",
+        default="supabase/migrations/20260913100000_verified_product_images.sql",
+        help="write a new migration instead of modifying historical image migrations",
+    )
     args = parser.parse_args()
 
+    PROGRESS_PATH = Path(args.progress_path)
+    CACHE_PATH = Path(args.cache_path)
+    QUERY_LIMIT = max(0, args.query_limit)
+    ALLOW_EXISTING_FALLBACK = args.allow_existing_fallback
+    CACHE_QUERY_DELAY_SECONDS = max(0.0, float(os.environ.get("MYWISATA_COMMONS_QUERY_DELAY", "2.5")))
+
     rows = fetch_inventory()
-    if len(rows) != 293:
-        raise RuntimeError(f"expected 293 active approved products, received {len(rows)}")
+    if not rows:
+        raise RuntimeError("expected at least one active approved product")
+    reliable_slugs: set[str] = set()
+    data_dir = ROOT / "scripts/data"
+    if data_dir.exists():
+        for manifest_path in data_dir.glob("verified-*-products.json"):
+            try:
+                payload = json.loads(manifest_path.read_text())
+            except json.JSONDecodeError:
+                continue
+            reliable_slugs.update(str(item.get("slug")) for item in payload.get("products", []) if item.get("slug"))
+
+    if args.reuse_by_name:
+        representatives: dict[str, dict] = {}
+        for row in rows:
+            if row["slug"] in reliable_slugs:
+                continue
+            key = source_key(row)
+            representatives.setdefault(key, row)
+        rows = [representatives[key] for key in sorted(representatives)]
+
     if args.limit:
         rows = rows[:args.limit]
 
@@ -686,14 +991,17 @@ def main() -> int:
             "name": row["name"],
             "category": ((row.get("categories") or {}).get("slug") or row.get("product_type") or "activity"),
             "asset_path": selected["asset_path"],
+            "source_type": selected.get("source_type", "commons"),
             "source_page": selected["source_page"],
-            "source_image_url": selected["image_url"],
+            "source_image_url": selected.get("image_url") or selected["source_image_url"],
             "title": selected["title"],
             "license": selected["license"],
             "artist": selected["artist"],
             "sha256": selected["sha256"],
             "pageid": selected["pageid"],
         }
+        if selected.get("fallback_reason"):
+            item["fallback_reason"] = selected["fallback_reason"]
         manifest.append(item)
         completed.add(row["slug"])
         PROGRESS_PATH.write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
@@ -702,14 +1010,28 @@ def main() -> int:
             CACHE_PATH.write_text(json.dumps(cache, ensure_ascii=False))
 
     CACHE_PATH.write_text(json.dumps(cache, ensure_ascii=False))
-    if args.limit:
+    if args.limit and not args.library:
         print(f"curated smoke-test subset: {len(manifest)} products; no migration generated")
         return 0
-    write_outputs(rows, manifest)
+    if args.library:
+        library = []
+        for item in manifest:
+            row = next(row for row in rows if row["slug"] == item["slug"])
+            library.append({
+                **item,
+                "source_key": source_key(row),
+            })
+        library_path = ROOT / args.library_path
+        library_path.parent.mkdir(parents=True, exist_ok=True)
+        library_path.write_text(json.dumps({"observed_at": "2026-09-13", "products": sorted(library, key=lambda item: item["source_key"])}, ensure_ascii=False, indent=2) + "\n")
+        print(f"curated {len(library)} reusable product image sources")
+        print(f"library: {library_path}")
+        return 0
+    write_outputs(rows, manifest, ROOT / args.migration_path)
     print(f"curated {len(manifest)} unique product images")
     print(f"manifest: {MANIFEST_PATH}")
     print(f"credits: {CREDITS_PATH}")
-    print(f"migration: {MIGRATION_PATH}")
+    print(f"migration: {ROOT / args.migration_path}")
     return 0
 
 

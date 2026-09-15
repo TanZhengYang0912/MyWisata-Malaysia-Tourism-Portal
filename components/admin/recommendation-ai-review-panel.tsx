@@ -28,6 +28,7 @@ const FIELD_LABELS: Record<RecommendationEvidenceField, string> = {
   photos: "recommendation.aiReview.fields.photos",
   image_attestation: "recommendation.aiReview.fields.imageRights",
   duplicate: "recommendation.aiReview.fields.exactNameMatches",
+  links: "recommendation.aiReview.fields.links",
 };
 
 const FINDING_KIND_LABELS: Record<ModerationFinding["kind"], string> = {
@@ -62,6 +63,7 @@ const FIELD_TARGETS: Partial<Record<RecommendationEvidenceField, string>> = {
   contact: "recommendation-field-contact",
   photos: "recommendation-field-photos",
   image_attestation: "recommendation-field-photos",
+  links: "recommendation-field-contact",
 };
 
 function scrollToEvidence(field: RecommendationEvidenceField) {

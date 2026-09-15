@@ -12,7 +12,8 @@ import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useChatPresence } from "@/hooks/use-chat-presence";
 import { ChatThreadPanel } from "@/components/customer/chat-thread-panel";
-import type { ChatMessage, ChatThread } from "@/backend/core/types";
+import { useSupportChat } from "@/components/providers/support-chat";
+import type { ChatMessage, ChatMessageContext, ChatThread } from "@/backend/core/types";
 
 type ChatOutlet = { id: string; name: string; city: string; state: string };
 type RawChatMessage = {
@@ -23,6 +24,7 @@ type RawChatMessage = {
   attachment_url?: string | null;
   reply_to_message_id?: string | null;
   context_product_id?: string | null;
+  context_snapshot?: ChatMessageContext | null;
 };
 type ApiThread = {
   id: string;
@@ -33,6 +35,9 @@ type ApiThread = {
   created_at: string;
   outlets?: ChatOutlet | ChatOutlet[] | null;
   chat_messages?: RawChatMessage[];
+  readByOthers?: string[];
+  deliveredByOthers?: string[];
+  reportedByMe?: boolean;
 };
 
 function normalizeApiThread(row: ApiThread) {
@@ -57,6 +62,7 @@ function normalizeApiThread(row: ApiThread) {
       attachmentUrl: message.attachment_url ?? undefined,
       replyToId: message.reply_to_message_id ?? undefined,
       contextProductId: message.context_product_id ?? undefined,
+      context: message.context_snapshot ?? undefined,
     }));
   return { thread, outlet, messages };
 }
@@ -71,11 +77,15 @@ interface ChatWidgetVendorThreadProps {
 export function ChatWidgetVendorThread({ threadId, currentUserId, onBack }: ChatWidgetVendorThreadProps) {
   const { t: tCustomer } = useTranslation("customer");
   const { t: tCommon } = useTranslation("common");
+  const { pendingContext, clearPendingContext } = useSupportChat();
   const [thread, setThread] = useState<ChatThread | null | undefined>(undefined);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [outlet, setOutlet] = useState<ChatOutlet | undefined>(undefined);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
+  const [readByOthers, setReadByOthers] = useState<Set<string>>(new Set());
+  const [deliveredByOthers, setDeliveredByOthers] = useState<Set<string>>(new Set());
+  const [reportedByMe, setReportedByMe] = useState(false);
   const presence = useChatPresence(thread ? `chat-presence-vendor-${thread.vendorId}` : undefined, currentUserId, "customer");
   const vendorOnline = presence.some((p) => p.role === "vendor");
 
@@ -98,6 +108,9 @@ export function ChatWidgetVendorThread({ threadId, currentUserId, onBack }: Chat
         setThread(normalized.thread);
         setOutlet(normalized.outlet);
         setMessages(normalized.messages);
+        setReadByOthers(new Set(Array.isArray(payload.data?.readByOthers) ? payload.data.readByOthers : []));
+        setDeliveredByOthers(new Set(Array.isArray(payload.data?.deliveredByOthers) ? payload.data.deliveredByOthers : []));
+        setReportedByMe(Boolean(payload.data?.reportedByMe));
         setLoadError(null);
       } catch {
         if (!cancelled) setLoadError(tCustomer("ui.chat.conversationMissing"));
@@ -170,14 +183,15 @@ export function ChatWidgetVendorThread({ threadId, currentUserId, onBack }: Chat
           badge: tCustomer("ui.chat.vendor"),
           online: vendorOnline,
         }}
-        onSend={async (text, replyToId) => {
+        onSend={async (text, replyToId, contextProductId) => {
           const response = await fetch(`/api/customer/chat/${thread.id}/messages`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ body: text, replyToId }),
+            body: JSON.stringify({ body: text, replyToId, contextProductId }),
           });
           const payload = await response.json().catch(() => ({}));
           if (!response.ok || !payload.data) throw new Error(tCustomer("strictMigration.chat.sendFailed"));
+          if (contextProductId) clearPendingContext();
           const row = payload.data as RawChatMessage & { thread_id?: string };
           return {
             id: row.id,
@@ -189,9 +203,15 @@ export function ChatWidgetVendorThread({ threadId, currentUserId, onBack }: Chat
             attachmentUrl: row.attachment_url ?? undefined,
             replyToId: row.reply_to_message_id ?? undefined,
             contextProductId: row.context_product_id ?? undefined,
+            context: row.context_snapshot ?? undefined,
           };
         }}
         onMessageSent={(message) => setMessages((previous) => previous.some((item) => item.id === message.id) ? previous : [...previous, message])}
+        pendingContext={pendingContext}
+        onDismissContext={clearPendingContext}
+        readByOthers={readByOthers}
+        deliveredByOthers={deliveredByOthers}
+        underReview={reportedByMe}
         isMuted={isMuted}
         onToggleMute={() => void toggleMute()}
       />

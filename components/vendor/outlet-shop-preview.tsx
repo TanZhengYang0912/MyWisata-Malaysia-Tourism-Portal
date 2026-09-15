@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, Pencil, Store } from "lucide-react";
+import { ExternalLink, Pencil, Store, TicketPercent } from "lucide-react";
 import { useEffect, useState } from "react";
 import { OutletPageRenderer } from "@/components/outlet/outlet-page-renderer";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
@@ -35,9 +35,10 @@ interface Props {
     state: string | null;
   };
   onEdit: () => void;
+  onCreateVoucher: () => void;
 }
 
-export default function OutletShopPreview({ vendorId, outlet, onEdit }: Props) {
+export default function OutletShopPreview({ vendorId, outlet, onEdit, onCreateVoucher }: Props) {
   const { t, i18n } = useTranslation("vendor");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : "en";
   const [preview, setPreview] = useState<OutletPreviewData | null>(null);
@@ -144,6 +145,13 @@ export default function OutletShopPreview({ vendorId, outlet, onEdit }: Props) {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onCreateVoucher}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/15 bg-secondary px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-secondary/80"
+          >
+            <TicketPercent size={15} /> {t("ui.outlets.createVoucher")}
+          </button>
           {preview.isPublished ? (
             <a
               href={getOutletShopHref(outlet.id)}

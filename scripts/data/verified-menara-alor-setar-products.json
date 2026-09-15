@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "4a9fb5fc-0d56-208f-0b5e-e048b37860ed",
+    "name": "Menara Alor Setar Management",
+    "source_page": "https://menaraalorsetar.com.my/en/ticket-packages-promotions/ticket",
+    "price_reference_page": "https://menaraalorsetar.com.my/en/ticket-packages-promotions/ticket"
+  },
+  "outlets": [
+    {
+      "id": "6764ac09-c181-8eee-8e58-5913c7f39a3a",
+      "name": "Menara Alor Setar"
+    }
+  ],
+  "archive_legacy_slugs": [],
+  "products": [
+    {
+      "slug": "menara-alor-setar-observation-mykad-adult",
+      "name": "Menara Alor Setar Observation Deck — MyKad Adult",
+      "description": "Weekday or weekend observation deck admission for a MyKad adult, listed in Menara Alor Setar's official ticket price list.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 7,
+      "source_type": "official",
+      "source_page": "https://menaraalorsetar.com.my/en/ticket-packages-promotions/ticket",
+      "source_image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cc/Menara_Alor_Setar-zamwan.jpg/1280px-Menara_Alor_Setar-zamwan.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "price_reference_page": "https://menaraalorsetar.com.my/en/ticket-packages-promotions/ticket",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/menara-alor-setar-observation-mykad-adult-real.jpg",
+      "sha256": "5aa0479b868997829bae405853fe89af7825ed6a2058b0bf4b7a337a097ce8dd",
+      "artist": "Menara Alor Setar official ticket list / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "menara-alor-setar-observation-mykad-child-senior",
+      "name": "Menara Alor Setar Observation Deck — MyKad Child / Senior",
+      "description": "Observation deck admission for a MyKad child aged 4 years and below or senior citizen aged 80 years and above, listed in the official ticket price list.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 5,
+      "source_type": "official",
+      "source_page": "https://menaraalorsetar.com.my/en/ticket-packages-promotions/ticket",
+      "source_image_url": "https://upload.wikimedia.org/wikipedia/commons/0/0a/Alor_Setar_Tower_aerial_view.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+      "price_reference_page": "https://menaraalorsetar.com.my/en/ticket-packages-promotions/ticket",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/menara-alor-setar-observation-mykad-child-senior-real.jpg",
+      "sha256": "fb16a9f6f70a3073aa0a2bcc4598b2a3351b740794d51d40e50a3e95b4dc8d7a",
+      "artist": "Menara Alor Setar official ticket list / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "menara-alor-setar-observation-international-adult",
+      "name": "Menara Alor Setar Observation Deck — International Adult",
+      "description": "Observation deck admission for an international adult visitor, listed in Menara Alor Setar's official ticket price list.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 10,
+      "source_type": "official",
+      "source_page": "https://menaraalorsetar.com.my/en/ticket-packages-promotions/ticket",
+      "source_image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/77/Menara_Alor_Setar_02.jpg/1280px-Menara_Alor_Setar_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "price_reference_page": "https://menaraalorsetar.com.my/en/ticket-packages-promotions/ticket",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/menara-alor-setar-observation-international-adult-real.jpg",
+      "sha256": "a9312eae7e6b9111fcbc4b573200242b13a7eb92d372db53ebe55e14ab2e0d78",
+      "artist": "Menara Alor Setar official ticket list / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "menara-alor-setar-observation-international-child-senior",
+      "name": "Menara Alor Setar Observation Deck — International Child / Senior",
+      "description": "Observation deck admission for an international child aged 4 years and below or senior citizen aged 80 years and above, listed in the official ticket price list.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 7,
+      "source_type": "official",
+      "source_page": "https://menaraalorsetar.com.my/en/ticket-packages-promotions/ticket",
+      "source_image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6f/Menara_Alor_Setar_01.jpg/1280px-Menara_Alor_Setar_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "price_reference_page": "https://menaraalorsetar.com.my/en/ticket-packages-promotions/ticket",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/menara-alor-setar-observation-international-child-senior-real.jpg",
+      "sha256": "ff8017c7f59992b521797c4d83aa75af0f32e04cc250b3b740a294cd431b5d02",
+      "artist": "Menara Alor Setar official ticket list / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "menara-alor-setar-star-view-mykad-adult",
+      "name": "Menara Alor Setar Star View — MyKad Adult",
+      "description": "Star View admission for a MyKad adult, listed in Menara Alor Setar's official ticket price list.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 25,
+      "source_type": "official",
+      "source_page": "https://menaraalorsetar.com.my/en/ticket-packages-promotions/ticket",
+      "source_image_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/68/Menara_Alor_Setar_04.jpg/1280px-Menara_Alor_Setar_04.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "price_reference_page": "https://menaraalorsetar.com.my/en/ticket-packages-promotions/ticket",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/menara-alor-setar-star-view-mykad-adult-real.jpg",
+      "sha256": "1198cabb0fd25d5ef001daf7d9bf82d358ad074e17ef11e4a71d7ca9e303f516",
+      "artist": "Menara Alor Setar official ticket list / Wikimedia Commons contributors",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

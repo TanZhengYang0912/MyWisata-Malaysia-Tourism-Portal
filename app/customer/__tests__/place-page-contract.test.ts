@@ -18,8 +18,35 @@ describe("place page layout and copy", () => {
     expect(pageSource).toContain("products.length > 0 ?");
   });
 
+  it("renders verified public access without turning it into a vendor product", () => {
+    expect(pageSource).toContain("getPlaceAccesses");
+    expect(pageSource).toContain("getPlaceInformationalActivities");
+    expect(pageSource).toContain("PlaceAccessSection");
+    expect(pageSource).toContain("PlaceInformationalActivitySection");
+    expect(pageSource).toContain("accesses.length > 0 || informationalActivities.length > 0 || products.length > 0");
+    expect(pageSource).not.toContain("imageUrl={place.imageUrl}");
+  });
+
+  it("keeps verification sources internal instead of linking customers away", () => {
+    const accessSource = readFileSync(resolve(process.cwd(), "components/customer/place-access-section.tsx"), "utf8");
+    expect(accessSource).toContain("access.sourceTitle");
+    expect(accessSource).not.toContain("href={access.sourceUrl}");
+    expect(accessSource).not.toContain('target="_blank"');
+  });
+
+  it("uses each free activity's own image instead of repeating the place hero", () => {
+    const accessSource = readFileSync(resolve(process.cwd(), "components/customer/place-access-section.tsx"), "utf8");
+    expect(accessSource).toContain('from "@/components/customer/place-activity-card"');
+    expect(accessSource).toContain("<PlaceActivityCard");
+    expect(accessSource).toContain("imageUrl={access.imageUrl}");
+    expect(accessSource).not.toContain("imageUrl={place.imageUrl}");
+    expect(accessSource).toContain("freeToExplore");
+  });
+
   it("singularises the activity and vendor counts", () => {
     const activitySource = readFileSync(resolve(process.cwd(), "components/customer/place-activity-section.tsx"), "utf8");
+    expect(activitySource).toContain('from "@/components/customer/place-activity-card"');
+    expect(activitySource).toContain("<PlaceActivityCard");
     expect(activitySource).toContain('t("ui.place.activityCount"');
     expect(activitySource).toContain("count: products.length");
     expect(activitySource).toContain('t("ui.place.vendorCount"');

@@ -22,7 +22,7 @@ import { formatMYRNumber } from '@/lib/i18n/format';
 interface Props {
   vendorId: string;
   outletIds?: string[];
-  initialData?: ProductCreate & { id?: string };
+  initialData?: Partial<ProductCreate> & { id?: string };
   onSuccess?: () => void;
   onClose?: () => void;
 }
@@ -53,6 +53,8 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
   });
   // eslint-disable-next-line react-hooks/incompatible-library
   const productType = watch('productType');
+  const requiresBooking = watch('requiresBooking');
+  const ticketEntryPolicy = watch('ticketEntryPolicy');
   const tags = normalizeProductTags(watch('tags'));
   const gallery = (watch('gallery') || []) as { url: string; alt?: string }[];
 
@@ -129,6 +131,13 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
       description: data.description ? String(data.description).trim() : undefined,
       productType: data.productType,
       requiresBooking: Boolean(data.requiresBooking),
+      ticketEntryPolicy: data.ticketEntryPolicy,
+      ticketEntryLimit: data.requiresBooking && data.ticketEntryPolicy !== 'single_entry'
+        ? Number(data.ticketEntryLimit)
+        : 1,
+      ticketValidityDays: data.requiresBooking && data.ticketEntryPolicy === 'multi_entry'
+        ? Number(data.ticketValidityDays)
+        : undefined,
       basePrice: Number(data.basePrice),
       categoryId: data.categoryId || undefined,
       coverUrl: data.coverUrl || undefined,
@@ -348,6 +357,41 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
             </label>
           </div>
         </div>
+
+        {requiresBooking && (
+          <section className="rounded-xl border border-primary/15 bg-secondary/25 p-4">
+            <div>
+              <p className="text-sm font-semibold text-gray-900">{t('productForm.ticketAdmission')}</p>
+              <p className="mt-1 text-xs text-gray-500">{t('productForm.ticketAdmissionHint')}</p>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm font-medium text-gray-700">
+                {t('productForm.entryPolicy')}
+                <select {...register('ticketEntryPolicy')} className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
+                  <option value="single_entry">{t('productForm.singleEntry')}</option>
+                  <option value="group_entry">{t('productForm.groupEntry')}</option>
+                  <option value="multi_entry">{t('productForm.multiEntry')}</option>
+                </select>
+              </label>
+              {ticketEntryPolicy !== 'single_entry' && (
+                <label className="block text-sm font-medium text-gray-700">
+                  {ticketEntryPolicy === 'group_entry' ? t('productForm.entriesIncluded') : t('productForm.visitsIncluded')}
+                  <Input {...register('ticketEntryLimit', { valueAsNumber: true })} className="mt-1" type="number" min="2" max="1000" step="1" />
+                </label>
+              )}
+              {ticketEntryPolicy === 'multi_entry' && (
+                <label className="block text-sm font-medium text-gray-700 sm:col-span-2">
+                  {t('productForm.passValidityDays')}
+                  <Input {...register('ticketValidityDays', { valueAsNumber: true })} className="mt-1" type="number" min="1" max="365" step="1" />
+                  <span className="mt-1 block text-xs font-normal text-gray-500">{t('productForm.validityHint')}</span>
+                </label>
+              )}
+            </div>
+            {ticketEntryPolicy === 'single_entry' && <p className="mt-3 text-xs text-gray-600">{t('productForm.singleEntryHint')}</p>}
+            {ticketEntryPolicy === 'group_entry' && <p className="mt-3 text-xs text-gray-600">{t('productForm.groupEntryHint')}</p>}
+            {ticketEntryPolicy === 'multi_entry' && <p className="mt-3 text-xs text-gray-600">{t('productForm.multiEntryHint')}</p>}
+          </section>
+        )}
 
         <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-start justify-between gap-3">

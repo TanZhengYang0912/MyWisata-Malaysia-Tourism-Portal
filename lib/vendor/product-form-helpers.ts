@@ -2,10 +2,13 @@ import type { ProductCreate } from '@/lib/validation/vendor-schemas';
 
 export const PRODUCT_TAG_LIMIT = 20;
 
-export function buildProductFormDefaults(initialData?: ProductCreate & { id?: string }) {
+export function buildProductFormDefaults(initialData?: Partial<ProductCreate> & { id?: string }) {
   if (!initialData) {
     return {
       requiresBooking: false,
+      ticketEntryPolicy: 'single_entry' as const,
+      ticketEntryLimit: 1,
+      ticketValidityDays: 30,
       productType: 'product' as const,
       tags: '',
       submissionMode: 'review' as const,
@@ -17,6 +20,9 @@ export function buildProductFormDefaults(initialData?: ProductCreate & { id?: st
   const { id: _id, outletId: _outletId, ...editableFields } = initialData;
   return {
     ...editableFields,
+    ticketEntryPolicy: initialData.ticketEntryPolicy ?? 'single_entry',
+    ticketEntryLimit: initialData.ticketEntryLimit ?? 1,
+    ticketValidityDays: initialData.ticketValidityDays ?? 30,
     tags: Array.isArray(initialData.tags) ? initialData.tags.join(', ') : '',
     submissionMode: 'review' as const,
   };

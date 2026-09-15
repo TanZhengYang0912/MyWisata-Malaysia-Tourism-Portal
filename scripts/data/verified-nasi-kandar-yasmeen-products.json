@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "2ba01d12-f860-a932-b7ae-9a38d3fb0088",
+    "name": "Restoran Nasi Kandar Yasmeen",
+    "source_page": "https://www.foodpanda.my/restaurant/t3dr/restoran-nasi-kandar-yasmeen-alor-setar",
+    "price_reference_page": "https://www.foodpanda.my/restaurant/t3dr/restoran-nasi-kandar-yasmeen-alor-setar"
+  },
+  "outlets": [
+    {
+      "id": "e4483d6a-3c1f-c788-c936-f17c4459f560",
+      "name": "Restoran Nasi Kandar Yasmeen"
+    }
+  ],
+  "archive_legacy_slugs": [],
+  "products": [
+    {
+      "slug": "yasmeen-nasi-kandar-ayam-goreng",
+      "name": "Nasi Kandar + Ayam Goreng",
+      "description": "Nasi Kandar with fried chicken listed on Restoran Nasi Kandar Yasmeen's current delivery menu.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 10.9,
+      "source_type": "marketplace",
+      "source_page": "https://www.foodpanda.my/restaurant/t3dr/restoran-nasi-kandar-yasmeen-alor-setar",
+      "source_image_url": "https://images.deliveryhero.io/image/fd-my/products/1158976730.jpg",
+      "price_reference_page": "https://www.foodpanda.my/restaurant/t3dr/restoran-nasi-kandar-yasmeen-alor-setar",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/yasmeen-nasi-kandar-ayam-goreng-real.jpg",
+      "sha256": "9ce05153e38c63a941db648c1b6cefb02bdc96b0070bb8563c9face797107632",
+      "artist": "Foodpanda marketplace listing imagery",
+      "license": "Marketplace listing media; menu and prices observed from Foodpanda listing"
+    },
+    {
+      "slug": "yasmeen-nasi-kandar-ayam-telur",
+      "name": "Nasi Kandar + Ayam Goreng + Telur",
+      "description": "Nasi Kandar with fried chicken and egg listed on Restoran Nasi Kandar Yasmeen's current delivery menu.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 12.9,
+      "source_type": "marketplace",
+      "source_page": "https://www.foodpanda.my/restaurant/t3dr/restoran-nasi-kandar-yasmeen-alor-setar",
+      "source_image_url": "https://images.deliveryhero.io/image/fd-my/products/1158976732.jpg",
+      "price_reference_page": "https://www.foodpanda.my/restaurant/t3dr/restoran-nasi-kandar-yasmeen-alor-setar",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/yasmeen-nasi-kandar-ayam-telur-real.jpg",
+      "sha256": "cc6f849e8802e54f2eae19cf85c31e13bfc6a08bc40b98d8075e07efaf7ad895",
+      "artist": "Foodpanda marketplace listing imagery",
+      "license": "Marketplace listing media; menu and prices observed from Foodpanda listing"
+    },
+    {
+      "slug": "yasmeen-nasi-kandar-ayam-half",
+      "name": "Nasi Kandar + Ayam 1/2",
+      "description": "Nasi Kandar with half chicken listed on Restoran Nasi Kandar Yasmeen's current delivery menu.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 7,
+      "source_type": "marketplace",
+      "source_page": "https://www.foodpanda.my/restaurant/t3dr/restoran-nasi-kandar-yasmeen-alor-setar",
+      "source_image_url": "https://images.deliveryhero.io/image/fd-my/products/1160868093.jpg",
+      "price_reference_page": "https://www.foodpanda.my/restaurant/t3dr/restoran-nasi-kandar-yasmeen-alor-setar",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/yasmeen-nasi-kandar-ayam-half-real.jpg",
+      "sha256": "388d8e19762acbbbc1919d9f385870548be1586c8290090c46abde74fef9601c",
+      "artist": "Foodpanda marketplace listing imagery",
+      "license": "Marketplace listing media; menu and prices observed from Foodpanda listing"
+    },
+    {
+      "slug": "yasmeen-teh-ais",
+      "name": "Teh Ais",
+      "description": "Iced milk tea listed on Restoran Nasi Kandar Yasmeen's current delivery menu.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 3.5,
+      "source_type": "marketplace",
+      "source_page": "https://www.foodpanda.my/restaurant/t3dr/restoran-nasi-kandar-yasmeen-alor-setar",
+      "source_image_url": "https://images.deliveryhero.io/image/fd-my/products/1428777590.jpg",
+      "price_reference_page": "https://www.foodpanda.my/restaurant/t3dr/restoran-nasi-kandar-yasmeen-alor-setar",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/yasmeen-teh-ais-real.jpg",
+      "sha256": "1aa8ef0a0e27a71a2a3111c5bbc35d5aaf80e5f70d983fb0cc1fbc2e976163be",
+      "artist": "Foodpanda marketplace listing imagery",
+      "license": "Marketplace listing media; menu and prices observed from Foodpanda listing"
+    },
+    {
+      "slug": "yasmeen-telur-sotong",
+      "name": "Telur Sotong",
+      "description": "Squid roe listed as an a la carte item on Restoran Nasi Kandar Yasmeen's current delivery menu.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 8.6,
+      "source_type": "marketplace",
+      "source_page": "https://www.foodpanda.my/restaurant/t3dr/restoran-nasi-kandar-yasmeen-alor-setar",
+      "source_image_url": "https://images.deliveryhero.io/image/fd-my/products/1158976822.jpg",
+      "price_reference_page": "https://www.foodpanda.my/restaurant/t3dr/restoran-nasi-kandar-yasmeen-alor-setar",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/yasmeen-telur-sotong-real.jpg",
+      "sha256": "2ce469898f25a1c62bb3b57dd0be93efe2be69ecfbfc25268e28d2fde9c30be7",
+      "artist": "Foodpanda marketplace listing imagery",
+      "license": "Marketplace listing media; menu and prices observed from Foodpanda listing"
+    }
+  ]
+}

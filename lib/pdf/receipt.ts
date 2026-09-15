@@ -30,7 +30,7 @@ export function generateReceiptPdf(data: ReceiptData): Promise<Buffer> {
     doc.on('error', reject);
 
     // Header
-    doc.fontSize(22).font('Helvetica-Bold').text('MyWisata Malaysia', { align: 'center' });
+    doc.fontSize(22).font('Helvetica-Bold').text('MyLawatan Malaysia', { align: 'center' });
     doc.fontSize(11).font('Helvetica').text('Order Receipt', { align: 'center' });
     doc.moveDown(0.5);
     doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();
@@ -98,8 +98,8 @@ export function generateReceiptPdf(data: ReceiptData): Promise<Buffer> {
     doc.text(formatMYR(data.total), totalsX + 90, doc.y - doc.currentLineHeight(), { width: 85, align: 'right' });
 
     doc.moveDown(2);
-    doc.fontSize(9).font('Helvetica').fillColor('#888888').text('Thank you for booking with MyWisata Malaysia!', { align: 'center' });
-    doc.text('For support, contact us at mywisatamalaysia@gmail.com', { align: 'center' });
+    doc.fontSize(9).font('Helvetica').fillColor('#888888').text('Thank you for booking with MyLawatan Malaysia!', { align: 'center' });
+    doc.text('For support, contact us at support@mylawatan.my', { align: 'center' });
 
     doc.end();
   });

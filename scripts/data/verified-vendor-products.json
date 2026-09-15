@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "name": "Penang Road Famous Teochew Chendul",
+    "id": "1b173716-4da6-ac21-34c6-26d1384521e5",
+    "source_page": "https://chendul.my/our-food/",
+    "price_reference_page": "https://www.foodpanda.my/restaurant/t7mf/penang-chendul-at-gurney-plaza"
+  },
+  "outlets": [
+    { "name": "Penang Road Famous Teochew Chendul — Gurney Plaza", "id": "325dfa9f-c5ab-8bdd-413e-643544a44ed6" },
+    { "name": "Penang Road Famous Teochew Chendul — Lebuh Keng Kwee", "id": "5cef7583-2294-8350-934a-4f843bca5dfc" },
+    { "name": "Penang Road Famous Teochew Chendul — Queensbay Mall", "id": "31f50cec-5cca-6002-acc6-e8920fa4d868" },
+    { "name": "Penang Road Famous Teochew Chendul — Sunway Carnival", "id": "56435d09-941e-2f98-3f9e-2d20e3a5f7c9" }
+  ],
+  "archive_legacy_slugs": ["chendul-penang-rojak"],
+  "products": [
+    {
+      "slug": "chendul-pandan-nasi-lemak-rendang-chicken",
+      "name": "Pandan Nasi Lemak Rendang Chicken",
+      "description": "Fragrant pandan coconut rice served with rendang chicken and traditional nasi lemak accompaniments.",
+      "base_price": 22.9,
+      "product_type": "food",
+      "requires_booking": false,
+      "price_reference_page": "https://www.foodpanda.my/restaurant/t7mf/penang-chendul-at-gurney-plaza",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/chendul-pandan-nasi-lemak-rendang-chicken.png",
+      "source_type": "official",
+      "source_page": "https://chendul.my/our-food/",
+      "source_image_url": "https://chendul.my/wp-content/uploads/2022/08/Group-111717-IMG.png",
+      "artist": "Penang Road Famous Teochew Chendul",
+      "license": "Official vendor media; source attribution recorded",
+      "sha256": "7e0476e96d1c90c679812a6869b55cccba8c4ab07082c67d47324a07cf5fd1df"
+    },
+    {
+      "slug": "chendul-fried-wantan",
+      "name": "Fried Wantan",
+      "description": "Crispy fried chicken wantan served with a sweet chilli dipping sauce.",
+      "base_price": 9.9,
+      "product_type": "food",
+      "requires_booking": false,
+      "price_reference_page": "https://www.foodpanda.my/restaurant/t7mf/penang-chendul-at-gurney-plaza",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/chendul-fried-wantan.png",
+      "source_type": "official",
+      "source_page": "https://chendul.my/our-food/",
+      "source_image_url": "https://chendul.my/wp-content/uploads/2022/08/Group-111721-IMG.png",
+      "artist": "Penang Road Famous Teochew Chendul",
+      "license": "Official vendor media; source attribution recorded",
+      "sha256": "34101487c03bdfdfd33bc273051ef154cebda5b00cd6c8706df91f814eccb01d"
+    },
+    {
+      "slug": "chendul-penang-asam-laksa",
+      "name": "Penang Asam Laksa",
+      "description": "Tangy Penang fish broth with rice noodles and fresh herbs, vegetables and chilli.",
+      "base_price": 15.9,
+      "product_type": "food",
+      "requires_booking": false,
+      "price_reference_page": "https://www.foodpanda.my/restaurant/t7mf/penang-chendul-at-gurney-plaza",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/chendul-penang-asam-laksa.png",
+      "source_type": "official",
+      "source_page": "https://chendul.my/our-food/",
+      "source_image_url": "https://chendul.my/wp-content/uploads/2022/08/Group-111729-IMG.png",
+      "artist": "Penang Road Famous Teochew Chendul",
+      "license": "Official vendor media; source attribution recorded",
+      "sha256": "308c3e89d9f6b08a0bdb752858c987d46303695698222a164709c62c739239bf"
+    },
+    {
+      "slug": "chendul-penang-chendul",
+      "name": "Original Chendul",
+      "description": "The vendor's official Original Chendul dessert shown on its Our Food page.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 4.5,
+      "price_reference_page": "https://www.foodpanda.my/restaurant/t7mf/penang-chendul-at-gurney-plaza",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/chendul-original-penang-chendul.jpg",
+      "source_type": "official",
+      "source_page": "https://chendul.my/our-food/",
+      "source_image_url": "https://chendul.my/wp-content/uploads/2022/08/Group-111716-IMG.png",
+      "artist": "Penang Road Famous Teochew Chendul",
+      "license": "Official vendor media; source attribution recorded",
+      "sha256": "e2e7d2a87a5445f2a879714fb4489aa8ef06b3dd2759859146c64a5926971e42"
+    },
+    {
+      "slug": "chendul-ice-kacang",
+      "name": "Original Ice Kacang",
+      "description": "The vendor's official Original Ice Kacang dessert shown on its Our Food page.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 5.5,
+      "price_reference_page": "https://www.foodpanda.my/restaurant/t7mf/penang-chendul-at-gurney-plaza",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/chendul-original-ice-kacang.jpg",
+      "source_type": "official",
+      "source_page": "https://chendul.my/our-food/",
+      "source_image_url": "https://chendul.my/wp-content/uploads/2022/08/Group-111679-IMG.png",
+      "artist": "Penang Road Famous Teochew Chendul",
+      "license": "Official vendor media; source attribution recorded",
+      "sha256": "4fd24bc8a0de87fb9240e2a13fb6268648c0a3c02d3f36c3a800a4716d1498c6"
+    }
+  ]
+}

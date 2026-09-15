@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "31515d45-200b-dbea-0506-947f8e729943",
+    "name": "Gerakbudaya Bookshop",
+    "source_page": "https://www.gerakbudaya.com/products/all-products",
+    "price_reference_page": "https://www.gerakbudaya.com/products/all-products"
+  },
+  "outlets": [
+    {
+      "id": "6dbf6ac9-13fb-003e-c063-b6e5ad70da0c",
+      "name": "Gerakbudaya Bookshop"
+    }
+  ],
+  "archive_legacy_slugs": [],
+  "products": [
+    {
+      "slug": "gerakbudaya-myth-of-the-lazy-native",
+      "name": "The Myth of the Lazy Native — Syed Hussein Alatas",
+      "description": "Book sold by Gerakbudaya with the product title, author, SKU and price listed on the official product page.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 68,
+      "source_type": "official",
+      "source_page": "https://www.gerakbudaya.com/product/the-myth-of-the-lazy-native",
+      "source_image_url": "https://cdn1.sgliteasset.com/gerakbud/images/product/product-2716452/cached/UyhmF3dD6413d45669124_1679021142_420x420.jpg",
+      "price_reference_page": "https://www.gerakbudaya.com/product/the-myth-of-the-lazy-native",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/gerakbudaya-myth-of-the-lazy-native-real.jpg",
+      "sha256": "82626fb222bcaac755eff011a28a64e8f81b0cd3a00163ef7ae6cdb1f8d97ee6",
+      "artist": "Gerakbudaya official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "gerakbudaya-the-accidental-malay",
+      "name": "The Accidental Malay — Karina Robles Bahrin",
+      "description": "Book sold by Gerakbudaya with the product title, author, SKU and price listed on the official product page.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 57.8,
+      "source_type": "official",
+      "source_page": "https://www.gerakbudaya.com/product/the-accidental-malay",
+      "source_image_url": "https://cdn1.sgliteasset.com/gerakbud/images/product/product-2716781/cached/qgSwBzvT6413d48ce0666_1679021196_420x420.jpg",
+      "price_reference_page": "https://www.gerakbudaya.com/product/the-accidental-malay",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/gerakbudaya-the-accidental-malay-real.jpg",
+      "sha256": "c18d6b173455cb357bf596f104942998f8214addfe343d88b3bcc2f41814cbf2",
+      "artist": "Gerakbudaya official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "gerakbudaya-intellectuals-in-developing-societies",
+      "name": "Intellectuals in Developing Societies — Syed Hussein Alatas",
+      "description": "Book sold by Gerakbudaya with the product title, author, SKU and price listed on the official product page.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 38.25,
+      "source_type": "official",
+      "source_page": "https://www.gerakbudaya.com/product/intellectuals-in-developing-societies",
+      "source_image_url": "https://cdn1.sgliteasset.com/gerakbud/images/product/product-6033868/cached/REhEtzSN679830c1007f5_1738027201_420x420.jpg",
+      "price_reference_page": "https://www.gerakbudaya.com/product/intellectuals-in-developing-societies",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/gerakbudaya-intellectuals-in-developing-societies-real.jpg",
+      "sha256": "94c9e1f0972b3e140f84c1c24b83f003114c0964b8481f07146db04b7302a582",
+      "artist": "Gerakbudaya official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "gerakbudaya-peoples-constitutional-proposals",
+      "name": "The People's Constitutional Proposals for Malaya — 70th Anniversary Edition",
+      "description": "Book sold by Gerakbudaya with the product title, edition, SKU and price listed on the official product page.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 17,
+      "source_type": "official",
+      "source_page": "https://www.gerakbudaya.com/product/the-peoples-constitutional-proposals-for-malaya",
+      "source_image_url": "https://cdn1.sgliteasset.com/gerakbud/images/product/product-2716567/cached/xh6fo8Cl6413d469de46b_1679021161_420x420.jpg",
+      "price_reference_page": "https://www.gerakbudaya.com/product/the-peoples-constitutional-proposals-for-malaya",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/gerakbudaya-peoples-constitutional-proposals-real.jpg",
+      "sha256": "335d9bf109372c3772ac7377e4177ce2d9cb12dee7eaf980c1090791aad5545e",
+      "artist": "Gerakbudaya official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "gerakbudaya-memoir-shamsiah-fakeh",
+      "name": "Memoir Shamsiah Fakeh — Dari AWAS ke Rejimen Ke-10",
+      "description": "Book sold by Gerakbudaya with the product title, edition, SKU and price listed on the official product page.",
+      "product_type": "product",
+      "requires_booking": false,
+      "base_price": 25.5,
+      "source_type": "official",
+      "source_page": "https://www.gerakbudaya.com/product/memoir-shamsiah-fakeh",
+      "source_image_url": "https://cdn1.sgliteasset.com/gerakbud/images/product/product-2716671/cached/LJSK28hy6413d47a11328_1679021178_420x420.jpg",
+      "price_reference_page": "https://www.gerakbudaya.com/product/memoir-shamsiah-fakeh",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/gerakbudaya-memoir-shamsiah-fakeh-real.jpg",
+      "sha256": "238b4aad0833a4ecb0148e6f70ff8a187ada9f516eff64e10b689f8c13acf39e",
+      "artist": "Gerakbudaya official online shop",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

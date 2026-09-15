@@ -3,6 +3,7 @@
 import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Filter, MapPin, ReceiptText, Search, X } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { getBookingsForUser } from "@/backend/domains/commerce";
@@ -12,12 +13,13 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { BookingDayDrawer } from "@/components/customer/booking-day-drawer";
 import type { Booking, Outlet } from "@/backend/core/types";
-import { activityHref } from "@/lib/customer/activity-navigation";
+import { activityHref, isActivityHistory } from "@/lib/customer/activity-navigation";
 import { calendarDateKey, countItineraryGroupsInMonth, getHiddenItineraryGroupCount, groupBookings, groupBookingsByDay, type BookingItineraryGroup } from "@/lib/customer/itinerary-calendar";
 import { formatDate } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
+import { getMalaysiaDateRangeDefaults } from "@/lib/datetime/date-input";
 
 type BookingScope = "upcoming" | "past" | "all";
 
@@ -25,10 +27,12 @@ function startOfMonth(date: Date) { return new Date(date.getFullYear(), date.get
 function addMonths(date: Date, amount: number) { return new Date(date.getFullYear(), date.getMonth() + amount, 1); }
 function statusClass(status: BookingItineraryGroup["status"]) { return status === "mixed" || status === "cancelled" || status === "no_show" ? "bg-red-50 text-malaysia-red" : status === "checked_in" ? "bg-[#FFF4CC] text-[#7A5A00]" : "bg-secondary text-primary"; }
 
-export default function CustomerCalendarPage({ initialScope = "upcoming" }: { initialScope?: BookingScope } = {}) {
+export default function CustomerCalendarPage() {
   const { t: tCustomer, i18n } = useTranslation("customer");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const { currentUser } = useAuth();
+  const searchParams = useSearchParams();
+  const initialScope: BookingScope = isActivityHistory(searchParams.get("history")) ? "past" : "upcoming";
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [monthStart, setMonthStart] = useState<Date | null>(null);
@@ -44,6 +48,12 @@ export default function CustomerCalendarPage({ initialScope = "upcoming" }: { in
   const [monthPickerOpen, setMonthPickerOpen] = useState(false);
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
+
+  function primeDateRange() {
+    const defaults = getMalaysiaDateRangeDefaults();
+    setFrom((value) => value || defaults.from);
+    setTo((value) => value || defaults.to);
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => { setMonthStart(startOfMonth(new Date())); }, 0);
@@ -174,7 +184,7 @@ export default function CustomerCalendarPage({ initialScope = "upcoming" }: { in
                 <button type="button" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} aria-controls="calendar-filters" className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-primary/20 ${filtersOpen || hasFilters ? "border-primary bg-secondary text-primary" : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-primary"}`}><Filter size={14} /> {tCustomer("ui.calendar.filters")} {activeFilterCount > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] text-white">{activeFilterCount}</span>}</button>
               </div>
             </div>
-            {filtersOpen && <div id="calendar-filters" className="border-t border-border px-4 py-3 sm:px-6"><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6"><label className="relative min-w-0 lg:col-span-2"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => { setSelectedDayKey(null); setQuery(event.target.value); }} placeholder={tCustomer("ui.calendar.searchBookings")} aria-label={tCustomer("ui.calendar.searchActivity")} className="h-10 w-full rounded-xl border border-border bg-secondary/50 pl-9 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-[rgba(1,0,102,0.12)]" /></label><select value={scope} onChange={(event) => { setSelectedDayKey(null); setScope(event.target.value as BookingScope); }} aria-label={tCustomer("ui.calendar.bookingScope")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="upcoming">{tCustomer("ui.calendar.upcoming")}</option><option value="past">{tCustomer("ui.calendar.past")}</option><option value="all">{tCustomer("ui.calendar.allBookings")}</option></select><select value={outletId} onChange={(event) => { setSelectedDayKey(null); setOutletId(event.target.value); }} aria-label={tCustomer("ui.calendar.bookingOutlet")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.calendar.allOutlets")}</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}</select><select value={activityId} onChange={(event) => { setSelectedDayKey(null); setActivityId(event.target.value); }} aria-label={tCustomer("ui.calendar.bookingActivity")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.calendar.allActivities")}</option>{activityOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select><input type="date" value={from} onChange={(event) => { setSelectedDayKey(null); setFrom(event.target.value); }} aria-label={tCustomer("ui.calendar.fromDate")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /><input type="date" value={to} onChange={(event) => { setSelectedDayKey(null); setTo(event.target.value); }} aria-label={tCustomer("ui.calendar.toDate")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /></div>{hasFilters && <button type="button" onClick={clearFilters} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><X size={13} /> {tCustomer("ui.actions.clearFilters")}</button>}</div>}
+            {filtersOpen && <div id="calendar-filters" className="border-t border-border px-4 py-3 sm:px-6"><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6"><label className="relative min-w-0 lg:col-span-2"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => { setSelectedDayKey(null); setQuery(event.target.value); }} placeholder={tCustomer("ui.calendar.searchBookings")} aria-label={tCustomer("ui.calendar.searchActivity")} className="h-10 w-full rounded-xl border border-border bg-secondary/50 pl-9 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-[rgba(1,0,102,0.12)]" /></label><select value={scope} onChange={(event) => { setSelectedDayKey(null); setScope(event.target.value as BookingScope); }} aria-label={tCustomer("ui.calendar.bookingScope")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="upcoming">{tCustomer("ui.calendar.upcoming")}</option><option value="past">{tCustomer("ui.calendar.past")}</option><option value="all">{tCustomer("ui.calendar.allBookings")}</option></select><select value={outletId} onChange={(event) => { setSelectedDayKey(null); setOutletId(event.target.value); }} aria-label={tCustomer("ui.calendar.bookingOutlet")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.calendar.allOutlets")}</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}</select><select value={activityId} onChange={(event) => { setSelectedDayKey(null); setActivityId(event.target.value); }} aria-label={tCustomer("ui.calendar.bookingActivity")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.calendar.allActivities")}</option>{activityOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select><input type="date" value={from} onFocus={primeDateRange} onChange={(event) => { setSelectedDayKey(null); setFrom(event.target.value); }} aria-label={tCustomer("ui.calendar.fromDate")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /><input type="date" value={to} onFocus={primeDateRange} onChange={(event) => { setSelectedDayKey(null); setTo(event.target.value); }} aria-label={tCustomer("ui.calendar.toDate")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /></div>{hasFilters && <button type="button" onClick={clearFilters} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><X size={13} /> {tCustomer("ui.actions.clearFilters")}</button>}</div>}
           </div>
           {error && <div role="alert" className="m-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:m-5">{error}</div>}
           <div className="hidden md:block">

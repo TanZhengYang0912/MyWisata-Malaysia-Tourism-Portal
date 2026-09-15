@@ -6,6 +6,7 @@ import {
   firstFreeSlot,
   fits,
   gridRowCount,
+  rectFromResizePointer,
   readingOrder,
   rectsOverlap,
 } from '@/lib/vendor/outlet-grid';
@@ -61,5 +62,32 @@ describe('outlet grid geometry', () => {
     expect(density(4, 3)).toEqual({ columns: 4, items: 8 });
     expect(density(8, 2)).toEqual({ columns: 4, items: 4 });
     expect(density(1, 1)).toEqual({ columns: 1, items: 1 });
+  });
+
+  it('converts direct resize pointer movement into snapped grid dimensions', () => {
+    const bounds = { left: 100, top: 40, width: 800 };
+    const original = { x: 2, y: 1, w: 2, h: 2 };
+
+    expect(rectFromResizePointer(bounds, 700, 40, original, 92, GRID_COLS, 'east')).toEqual({
+      x: 2, y: 1, w: 4, h: 2,
+    });
+    expect(rectFromResizePointer(bounds, 100, 500, original, 92, GRID_COLS, 'south')).toEqual({
+      x: 2, y: 1, w: 2, h: 4,
+    });
+    expect(rectFromResizePointer(bounds, 900, 1052, original, 92, GRID_COLS, 'south-east')).toEqual({
+      x: 2, y: 1, w: 6, h: 10,
+    });
+  });
+
+  it('clamps direct resizing to minimum dimensions and the canvas bounds', () => {
+    const bounds = { left: 100, top: 40, width: 800 };
+    const original = { x: 2, y: 1, w: 2, h: 2 };
+
+    expect(rectFromResizePointer(bounds, 100, 40, original, 92, GRID_COLS, 'south-east', 2, 2)).toEqual({
+      x: 2, y: 1, w: 2, h: 2,
+    });
+    expect(rectFromResizePointer(bounds, 900, 1052, original, 92, GRID_COLS, 'south-east', 2, 2)).toEqual({
+      x: 2, y: 1, w: 6, h: 10,
+    });
   });
 });

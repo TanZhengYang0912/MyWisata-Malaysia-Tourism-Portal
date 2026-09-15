@@ -9,7 +9,7 @@ interface Props { params: Promise<{ vendorId: string; voucherId: string }> }
 
 export async function PATCH(request: Request, { params }: Props) {
   const { vendorId, voucherId } = await params;
-  const access = await authorizeVendor(vendorId, ['vendor_owner']);
+  const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
   const supabase = access.access.serviceDb;
 
@@ -19,14 +19,26 @@ export async function PATCH(request: Request, { params }: Props) {
 
   const { data: existing, error: existingError } = await supabase
     .from('vouchers')
-    .select('outlet_id,product_id')
+    .select('outlet_id,product_id,review_status,vendor_review_status')
     .eq('id', voucherId)
     .eq('vendor_id', vendorId)
     .maybeSingle();
   if (existingError) return apiFail('DB_ERROR', existingError.message, 500);
   if (!existing) return apiFail('NOT_FOUND', 'Voucher not found', 404);
+  if (access.access.isOutletManager && (!existing.outlet_id || !access.access.outletIds.includes(existing.outlet_id))) {
+    return apiFail('FORBIDDEN', 'This voucher is outside your assigned outlet scope', 403);
+  }
+  if (access.access.isOutletManager && body.isActive !== undefined) {
+    return apiFail('FORBIDDEN', 'Voucher activation is available after HQ approval', 403);
+  }
+  if (body.isActive === true && existing.review_status !== 'approved') {
+    return apiFail('INVALID_STATE', 'Voucher must be approved by HQ before activation', 400);
+  }
 
   const targetOutletId = body.outletId !== undefined ? body.outletId : existing.outlet_id;
+  if (access.access.isOutletManager && (!targetOutletId || !access.access.outletIds.includes(targetOutletId))) {
+    return apiFail('FORBIDDEN', 'Outlet managers can only edit vouchers for their assigned outlet', 403);
+  }
   const targetProductId = body.productId !== undefined ? body.productId : existing.product_id;
   if (targetOutletId) {
     const { data: outlet } = await supabase.from('outlets').select('id').eq('id', targetOutletId).eq('vendor_id', vendorId).maybeSingle();
@@ -65,6 +77,10 @@ export async function PATCH(request: Request, { params }: Props) {
     updateData.review_note = null;
     updateData.reviewed_by = null;
     updateData.reviewed_at = null;
+    updateData.vendor_review_status = access.access.isOutletManager ? 'pending' : 'approved';
+    updateData.vendor_review_note = null;
+    updateData.vendor_reviewed_by = null;
+    updateData.vendor_reviewed_at = null;
     updateData.is_active = false;
   }
 

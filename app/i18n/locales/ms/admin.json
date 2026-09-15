@@ -1,39 +1,59 @@
 {
   "shell": {
     "panel": "Panel pentadbir",
-    "signedInAs": "Log masuk sebagai"
+    "signedInAs": "Log masuk sebagai",
+    "portal": "Portal Vendor",
+    "brand": "Pelancongan Malaysia",
+    "navigation": "Navigasi portal",
+    "context": {
+      "superAdmin": "Ruang kerja tadbir urus",
+      "approver": "Kelulusan dompet",
+      "admin": "Ruang kerja pentadbir",
+      "staff": "Tugasan yang diberikan"
+    }
   },
   "roles": {
     "admin": "Pentadbir",
     "approver": "Pelulus",
-    "super_admin": "Pentadbir super"
+    "super_admin": "Pentadbir super",
+    "staff": "Kakitangan"
   },
   "navigation": {
-    "Overview": "Gambaran keseluruhan",
-    "Vendor Approvals": "Kelulusan vendor",
-    "Catalogue Review": "Semakan katalog",
-    "User Management": "Pengurusan pengguna",
-    "KYC Review": "Semakan KYC",
+    "Overview": "Ringkasan",
+    "Vendor Approvals": "Semakan vendor",
+    "Catalogue Review": "Katalog",
+    "User Management": "Pengguna",
+    "KYC Review": "KYC",
     "Withdrawals": "Pengeluaran",
     "Refunds": "Bayaran balik",
-    "Wallet Settings": "Tetapan dompet",
-    "Wallet Approvers": "Pelulus Dompet",
-    "Payout Reports": "Laporan pembayaran",
+    "Wallet Settings": "Dompet",
+    "Wallet Approvers": "Pelulus",
+    "Payout Reports": "Bayaran",
+    "Reconciliation": "Rekonsiliasi",
     "Recommendations": "Cadangan",
-    "Support Tickets": "Tiket sokongan",
+    "Support Tickets": "Sokongan",
     "Chat Reports": "Laporan sembang",
     "Affiliate": "Afiliasi",
     "Chatbot": "Chatbot",
     "AI Assistant": "Pembantu AI",
-    "Staff Conduct": "Kelakuan kakitangan",
+    "Staff Conduct": "Tatakelakuan",
     "Access Control": "Kawalan akses",
-    "Sponsored Placements": "Penempatan ditaja"
+    "Sponsored Placements": "Ditaja"
+  },
+  "navigationSections": {
+    "workspace": "Ruang kerja",
+    "governance": "Tadbir urus",
+    "finance": "Kewangan",
+    "support": "Sokongan",
+    "administration": "Pentadbiran"
   },
   "sponsoredPlacements": {
     "eyebrow": "Kempen penemuan",
     "title": "Penempatan ditaja",
     "description": "Cipta, semak dan jeda penempatan penemuan ditaja yang dilabel dengan jelas.",
-    "accessibility": { "lifecycleFilters": "Penapis kitar hayat kempen" },
+    "accessibility": {
+      "lifecycleFilters": "Penapis kitar hayat kempen"
+    },
     "form": {
       "title": "Cipta draf kempen",
       "product": "Produk",
@@ -67,10 +87,25 @@
       "empty": "Belum ada kempen penempatan ditaja.",
       "emptyGroup": "Tiada kempen dalam paparan ini."
     },
-    "prompts": { "rejectReason": "Masukkan sebab penolakan (sekurang-kurangnya 5 aksara)." },
-    "actions": { "submit": "Hantar", "approve": "Luluskan", "reject": "Tolak", "pause": "Jeda" },
-    "categories": { "food": "Makanan", "activity": "Aktiviti", "accommodation": "Penginapan", "retail": "Runcit" },
-    "list": { "title": "Kempen", "position": "Kedudukan {{position}}" },
+    "prompts": {
+      "rejectReason": "Masukkan sebab penolakan (sekurang-kurangnya 5 aksara)."
+    },
+    "actions": {
+      "submit": "Hantar",
+      "approve": "Luluskan",
+      "reject": "Tolak",
+      "pause": "Jeda"
+    },
+    "categories": {
+      "food": "Makanan",
+      "activity": "Aktiviti",
+      "accommodation": "Penginapan",
+      "retail": "Runcit"
+    },
+    "list": {
+      "title": "Kempen",
+      "position": "Kedudukan {{position}}"
+    },
     "lifecycle": {
       "active": "Aktif / Dijadualkan",
       "pending": "Menunggu",
@@ -91,8 +126,18 @@
       "confirmCreate": "Sahkan draf",
       "confirmApprove": "Sahkan kelulusan"
     },
-    "scope": { "allStates": "Semua negeri", "allCategories": "Semua kategori" },
-    "status": { "draft": "Draf", "pending_approval": "Menunggu kelulusan", "approved": "Diluluskan", "rejected": "Ditolak", "paused": "Dijeda", "archived": "Diarkibkan" }
+    "scope": {
+      "allStates": "Semua negeri",
+      "allCategories": "Semua kategori"
+    },
+    "status": {
+      "draft": "Draf",
+      "pending_approval": "Menunggu kelulusan",
+      "approved": "Diluluskan",
+      "rejected": "Ditolak",
+      "paused": "Dijeda",
+      "archived": "Diarkibkan"
+    }
   },
   "accessControl": {
     "eyebrow": "Tadbir urus keselamatan",
@@ -320,7 +365,33 @@
       "confirmTitle": "Sahkan perubahan peranan kakitangan",
       "confirmDescription": "Perubahan kebenaran akan direkodkan dalam Log Audit.",
       "confirmSave": "Simpan peranan kakitangan",
-      "inviteTitle": "Jemput kakitangan baharu", "inviteHelp": "Pilih Peranan Kakitangan tersuai dan hantar jemputan tujuh hari ke e-mel pekerja khusus. Pekerja menyemak dan menerima kebenaran tepat.", "inviteRole": "Peranan Kakitangan tersuai", "selectCustomRole": "Pilih peranan tersuai", "inviteEmail": "E-mel kakitangan", "inviteEmailPlaceholder": "pekerja@contoh.com", "inviteReason": "Sebab tadbir urus", "inviteReasonPlaceholder": "Terangkan mengapa kakitangan baharu ini memerlukan kebenaran tersebut.", "reviewInvitation": "Semak jemputan", "confirmInvitationTitle": "Sahkan jemputan kakitangan", "sendInvitation": "Hantar e-mel jemputan", "pendingInvitations": "Jemputan belum selesai", "noPendingInvitations": "Tiada jemputan belum selesai.", "resendInvitation": "Hantar semula", "revokeInvitation": "Batalkan", "revokeReasonPrompt": "Masukkan sebab pembatalan (sekurang-kurangnya 10 aksara).", "invitationSent": "E-mel jemputan dihantar.", "invitationResent": "E-mel jemputan dihantar semula dengan pautan baharu.", "invitationRevoked": "Jemputan dibatalkan.", "invitationError": "Tidak dapat memproses jemputan kakitangan.", "joinedEmployees": "Kakitangan yang telah menyertai", "delivery": { "pending": "Menunggu", "sending": "Menghantar", "sent": "E-mel dihantar", "failed": "Penghantaran gagal" }
+      "inviteTitle": "Jemput kakitangan baharu",
+      "inviteHelp": "Pilih Peranan Kakitangan tersuai dan hantar jemputan tujuh hari ke e-mel pekerja khusus. Pekerja menyemak dan menerima kebenaran tepat.",
+      "inviteRole": "Peranan Kakitangan tersuai",
+      "selectCustomRole": "Pilih peranan tersuai",
+      "inviteEmail": "E-mel kakitangan",
+      "inviteEmailPlaceholder": "pekerja@contoh.com",
+      "inviteReason": "Sebab tadbir urus",
+      "inviteReasonPlaceholder": "Terangkan mengapa kakitangan baharu ini memerlukan kebenaran tersebut.",
+      "reviewInvitation": "Semak jemputan",
+      "confirmInvitationTitle": "Sahkan jemputan kakitangan",
+      "sendInvitation": "Hantar e-mel jemputan",
+      "pendingInvitations": "Jemputan belum selesai",
+      "noPendingInvitations": "Tiada jemputan belum selesai.",
+      "resendInvitation": "Hantar semula",
+      "revokeInvitation": "Batalkan",
+      "revokeReasonPrompt": "Masukkan sebab pembatalan (sekurang-kurangnya 10 aksara).",
+      "invitationSent": "E-mel jemputan dihantar.",
+      "invitationResent": "E-mel jemputan dihantar semula dengan pautan baharu.",
+      "invitationRevoked": "Jemputan dibatalkan.",
+      "invitationError": "Tidak dapat memproses jemputan kakitangan.",
+      "joinedEmployees": "Kakitangan yang telah menyertai",
+      "delivery": {
+        "pending": "Menunggu",
+        "sending": "Menghantar",
+        "sent": "E-mel dihantar",
+        "failed": "Penghantaran gagal"
+      }
     },
     "confirm": {
       "capabilityTitle": "Sahkan perubahan keupayaan",
@@ -758,7 +829,11 @@
     "referralCount_one": "{{count}} rujukan",
     "referralCount_other": "{{count}} rujukan",
     "accept": "Terima",
-    "reject": "Tolak"
+    "reject": "Tolak",
+    "minSalesAmount": "Jualan min (RM)",
+    "activePeriodDays": "Aktif dalam (hari)",
+    "maxFraudRate": "Kadar penipuan maks",
+    "noLimit": "—"
   },
   "aiAssistant": {
     "ask": {
@@ -931,7 +1006,12 @@
     "reindexErrors_one": ", {{count}} ralat",
     "reindexErrors_other": ", {{count}} ralat",
     "questionMeta_one": "×{{count}} · kali terakhir ditanya {{date}}",
-    "questionMeta_other": "×{{count}} · kali terakhir ditanya {{date}}"
+    "questionMeta_other": "×{{count}} · kali terakhir ditanya {{date}}",
+    "topEscalated": {
+      "title": "Soalan paling kerap dieskalasi ke tiket",
+      "description": "Walau apa pun jawapan bot, pelanggan tetap meningkatkan soalan ini — perbaiki Pusat Bantuan untuk topik ini dahulu.",
+      "empty": "Belum ada yang dieskalasikan kepada tiket lagi."
+    }
   },
   "chatReports": {
     "eyebrow": "Kepercayaan & keselamatan",
@@ -1323,6 +1403,40 @@
       "count_other": "{{count}} akaun"
     }
   },
+  "reconciliation": {
+    "eyebrow": "Penyata kewangan",
+    "title": "Penyata pesanan",
+    "description": "Pecahan setiap pesanan: bayaran pelanggan, bersih vendor, komisen platform, dan berapa banyak daripadanya membiayai pembayaran ahli gabungan dan cadangan.",
+    "month": "Bulan",
+    "reload": "Muat semula",
+    "loading": "Memuatkan…",
+    "exportCsv": "Eksport CSV",
+    "noOrders": "Tiada pesanan diselesaikan bulan ini.",
+    "negativeWarning": "{{count}} pesanan membayar lebih banyak komisen rujukan daripada pendapatan platform — dijangka untuk bonus jualan pertama, ditunjukkan di sini untuk ketelusan.",
+    "negativeWarning_one": "{{count}} pesanan membayar lebih banyak komisen rujukan daripada pendapatan platform — dijangka untuk bonus jualan pertama, ditunjukkan di sini untuk ketelusan.",
+    "negativeWarning_other": "{{count}} pesanan membayar lebih banyak komisen rujukan daripada pendapatan platform — dijangka untuk bonus jualan pertama, ditunjukkan di sini untuk ketelusan.",
+    "errors": {
+      "load": "Tidak dapat memuatkan laporan penyata."
+    },
+    "metrics": {
+      "gross": "Bayaran pelanggan",
+      "platformFee": "Komisen platform",
+      "vendorNet": "Bersih vendor",
+      "affiliate": "Pembayaran ahli gabungan",
+      "recommendation": "Pembayaran cadangan",
+      "platformNet": "Bersih platform"
+    },
+    "columns": {
+      "order": "Pesanan",
+      "status": "Keadaan",
+      "gross": "Kasar",
+      "fee": "Komisen",
+      "vendorNet": "Bersih vendor",
+      "affiliate": "Ahli gabungan",
+      "recommendation": "Cadangan",
+      "platformNet": "Bersih platform"
+    }
+  },
   "payouts": {
     "allSources": "Semua sumber",
     "amountMetrics": {
@@ -1495,7 +1609,7 @@
       "contributorLine": "Cadangan pelanggan · {{category}} · {{state}} · oleh {{author}}",
       "description": "Semak cadangan komuniti sebelum menghubungi vendor.",
       "duplicate": "Pendua",
-      "member": "Ahli MyWisata",
+      "member": "Ahli MyLawatan",
       "noPending": "Tiada cadangan belum selesai",
       "pending": "Belum selesai ({{count}})",
       "pendingLabel": "cadangan belum selesai",
@@ -1593,7 +1707,8 @@
       "minutes_one": "{{count}} minit",
       "minutes_other": "{{count}} minit",
       "hours_one": "{{count}} jam",
-      "hours_other": "{{count}} jam"
+      "hours_other": "{{count}} jam",
+      "routedToTeam": "Dihalakan kepada pasukan ini berdasarkan kategori tiket"
     },
     "table": {
       "action": "Tindakan",
@@ -1832,7 +1947,16 @@
       "outlets_one": "{{count}} outlet",
       "outlets_other": "{{count}} outlet",
       "listings_one": "{{count}} penyenaraian",
-      "listings_other": "{{count}} penyenaraian"
+      "listings_other": "{{count}} penyenaraian",
+      "reasonModal": {
+        "draft": "Rangka dengan AI",
+        "drafting": "Merangka…",
+        "placeholder": "Taip sebab, atau rangka dengan AI…",
+        "advisory": "AI merangka sebab — semak dan sunting sebelum mengesahkan.",
+        "cancel": "Batal",
+        "error": "Tidak dapat merangka sebab sekarang — tulis secara manual.",
+        "close": "Tutup"
+      }
     },
     "walletApprovers": {
       "active": "Akaun aktif",
@@ -2123,7 +2247,8 @@
         "contactMethod": "Kaedah hubungan",
         "photos": "Foto",
         "imageRights": "Hak imej",
-        "exactNameMatches": "Padanan nama tepat"
+        "exactNameMatches": "Padanan nama tepat",
+        "links": "Pautan"
       },
       "findingKinds": {
         "lowQuality": "Kualiti rendah",
@@ -2629,7 +2754,7 @@
       "eventStatus": "Status penyedia",
       "amount": "Amaun",
       "providerTime": "Masa penyedia",
-      "receivedTime": "Diterima MyWisata",
+      "receivedTime": "Diterima MyLawatan",
       "signatureVerified": "Tandatangan disahkan",
       "payloadHash": "SHA-256 muatan",
       "deliveryStatus": "Penghantaran panggilan balik",
@@ -2798,7 +2923,7 @@
     "providers": {
       "bankTransferSimulator": "Pindahan bank — Simulasi",
       "grabpaySimulator": "GrabPay — Simulasi",
-      "mywisataWallet": "Dompet MyWisata",
+      "mywisataWallet": "Dompet MyLawatan",
       "stripeSandbox": "Stripe Sandbox",
       "tngSimulator": "eDompet Touch ’n Go — Simulasi",
       "unknown": "Penyedia tidak diketahui"
@@ -2848,5 +2973,45 @@
     "recommendationFindingMeta": "{{kindLabel}}: {{kind}} · {{severityLabel}}: {{severity}}",
     "recommendationEvidence": "{{label}}: {{evidence}}",
     "recommendationPhotoStatus": "{{photo}} · {{status}}"
+  },
+  "moderationWords": {
+    "eyebrow": "Moderasi",
+    "title": "Perkataan Moderasi",
+    "description": "Tambah perkataan untuk disamar secara automatik merentasi tiket, komen, chatbot, dan sembang — melengkapi senarai terbina dalam, terutamanya untuk bahasa lain.",
+    "loading": "Memuatkan…",
+    "empty": "Belum ada perkataan tersuai ditambah.",
+    "confirmDelete": "Buang \"{{term}}\" daripada senarai penyamaran automatik?",
+    "form": {
+      "term": "Perkataan",
+      "termPlaceholder": "Masukkan perkataan untuk disamar",
+      "category": "Kategori",
+      "language": "Bahasa (pilihan)",
+      "languagePlaceholder": "cth. ms, zh",
+      "add": "Tambah perkataan"
+    },
+    "category": {
+      "profanity": "Bahasa kesat",
+      "slur": "Hinaan"
+    },
+    "status": {
+      "active": "Aktif",
+      "inactive": "Tidak aktif"
+    },
+    "table": {
+      "term": "Perkataan",
+      "category": "Kategori",
+      "language": "Bahasa",
+      "status": "Status",
+      "remove": "Buang"
+    },
+    "success": {
+      "added": "Perkataan ditambah",
+      "removed": "Perkataan dibuang"
+    },
+    "errors": {
+      "add": "Tidak dapat menambah perkataan",
+      "update": "Tidak dapat mengemas kini perkataan",
+      "remove": "Tidak dapat membuang perkataan"
+    }
   }
 }

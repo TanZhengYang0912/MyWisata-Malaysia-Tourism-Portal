@@ -161,6 +161,7 @@ export async function getMessages(threadId: string): Promise<ChatMessage[]> {
     attachmentUrl: m.attachment_url ?? undefined,
     replyToId: m.reply_to_message_id ?? undefined,
     contextProductId: m.context_product_id ?? undefined,
+    context: m.context_snapshot ?? undefined,
   }));
 }
 
@@ -200,7 +201,7 @@ export async function getOtherDeliveredMessageIds(myUserId: string, messageIds: 
 }
 
 export async function sendMessage(threadId: string, senderId: string, senderRole: "customer" | "vendor", text: string, replyToId?: string, contextProductId?: string): Promise<ChatMessage> {
-  const { clean } = maskChatBody(text);
+  const { clean } = await maskChatBody(text, supabase);
   const { data, error } = await supabase
     .from("chat_messages")
     .insert({ thread_id: threadId, sender_id: senderId, body: clean, reply_to_message_id: replyToId ?? null, context_product_id: contextProductId ?? null })
@@ -212,7 +213,7 @@ export async function sendMessage(threadId: string, senderId: string, senderRole
   // Reopen an archived thread on new activity; never override a manually 'closed' one.
   await supabase.from("chat_threads").update({ status: "open" }).eq("id", threadId).eq("status", "archived");
 
-  return { id: data.id, threadId: data.thread_id, senderId: data.sender_id, senderRole, text: data.body, sentAt: data.created_at, replyToId: data.reply_to_message_id ?? undefined, contextProductId: data.context_product_id ?? undefined };
+  return { id: data.id, threadId: data.thread_id, senderId: data.sender_id, senderRole, text: data.body, sentAt: data.created_at, replyToId: data.reply_to_message_id ?? undefined, contextProductId: data.context_product_id ?? undefined, context: data.context_snapshot ?? undefined };
 }
 
 // ─── Support tickets ────────────────────────────────────────────────────────

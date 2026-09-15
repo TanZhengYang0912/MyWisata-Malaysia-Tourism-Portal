@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const read = (file: string) => readFileSync(resolve(process.cwd(), file), "utf8");
 const pageSource = read("app/customer/partners/page.tsx");
 const clientSource = read("app/customer/search/search-client.tsx");
+const vendorCardSource = read("components/customer/vendor-card.tsx");
 const catalogueSource = read("backend/domains/catalogue.ts");
 const filterSource = read("components/customer/discovery-filters.tsx");
 
@@ -21,13 +22,13 @@ describe("customer vendor search contract", () => {
     expect(pageSource).not.toContain("review_note");
     expect(pageSource).not.toContain("approved_by");
     expect(clientSource).toContain("<SponsoredPartnerRail");
-    expect(filterSource).toContain("CATEGORIES.map");
+    expect(filterSource).toContain("categoryOptions.map");
   });
 
   it("renders vendors as the primary search result", () => {
     expect(clientSource).toContain("filteredVendors");
     expect(clientSource).toContain("recommendedVendors");
-    expect(clientSource).toContain('t("ui.search.verifiedPartnerDescription")');
+    expect(clientSource).toContain('t("ui.search.approvedPartnerDescription")');
     expect(clientSource).not.toContain("<ActivityCard");
     expect(clientSource).not.toContain("<PlaceActivityCard");
   });
@@ -41,10 +42,33 @@ describe("customer vendor search contract", () => {
   });
 
   it("keeps category and state filtering in the vendor flow", () => {
-    expect(filterSource).toContain("CATEGORIES.map");
-    expect(clientSource).toContain("STATES_MY.filter");
+    expect(filterSource).toContain("categoryOptions.map");
+    expect(clientSource).toContain("<CustomerDiscoveryFilterPanel");
     expect(clientSource).toContain("category");
     expect(clientSource).toContain("state");
+  });
+
+  it("filters partners by open-now and complete operating-hour ranges", () => {
+    expect(clientSource).toContain("timeFrom");
+    expect(clientSource).toContain("timeTo");
+    expect(filterSource).toContain('type="time"');
+    expect(filterSource).toContain('t("ui.labels.openNow")');
+    expect(clientSource).toContain("isOperatingHoursWindowAvailable");
+    expect(clientSource).toContain("operatingHours");
+  });
+
+  it("uses the same customer discovery filter panel as Explore", () => {
+    expect(clientSource).toContain("<CustomerDiscoveryFilterPanel");
+    expect(clientSource).toContain("operatingDays");
+    expect(clientSource).toContain("hoursMode");
+    expect(clientSource).toContain("timeAt");
+    expect(clientSource).toContain("overnight");
+  });
+
+  it("inherits the shared collapsed advanced filter behavior", () => {
+    expect(clientSource).toContain("<CustomerDiscoveryFilterPanel");
+    expect(filterSource).toContain("filtersOpen");
+    expect(filterSource).toContain('t("ui.map.moreFilters")');
   });
 
   it("uses equal-sized responsive controls for every category filter", () => {
@@ -55,10 +79,33 @@ describe("customer vendor search contract", () => {
   });
 
   it("keeps the first viewport vendor-first", () => {
-    const filterIndex = clientSource.indexOf("<DiscoveryCategoryFilter");
-    const vendorIndex = clientSource.indexOf("<VendorDirectoryCard");
+    const filterIndex = clientSource.indexOf("<CustomerDiscoveryFilterPanel");
+    const vendorIndex = clientSource.indexOf("<VendorCard");
     expect(filterIndex).toBeGreaterThan(-1);
     expect(vendorIndex).toBeGreaterThan(filterIndex);
+  });
+
+  it("places partner filtering between the introduction and sponsored recommendations", () => {
+    const introductionIndex = clientSource.indexOf('t("ui.search.description")');
+    const sponsoredIndex = clientSource.indexOf("<SponsoredPartnerRail");
+    const filterIndex = clientSource.indexOf("<CustomerDiscoveryFilterPanel");
+    expect(introductionIndex).toBeGreaterThan(-1);
+    expect(sponsoredIndex).toBeGreaterThan(-1);
+    expect(filterIndex).toBeGreaterThan(-1);
+    expect(introductionIndex).toBeLessThan(filterIndex);
+    expect(filterIndex).toBeLessThan(sponsoredIndex);
+  });
+
+  it("keeps partner discovery controls in one unified filter surface", () => {
+    expect(clientSource.match(/data-testid="partner-filter-bar"/g)).toHaveLength(1);
+    expect(clientSource).toContain("<CustomerDiscoveryFilterPanel");
+    expect(clientSource).toContain('data-testid="partner-view-control"');
+    expect(clientSource).toContain('data-testid="partner-sort-control"');
+    expect(clientSource).toContain('t("ui.search.activeFilters")');
+    expect(filterSource).toContain('includeAll={includeAllCategories}');
+    expect(filterSource).toContain('headingKey="ui.search.category"');
+    expect(clientSource).not.toContain('!hasActiveFilters && <span className="text-xs text-muted-foreground">');
+    expect(clientSource).not.toContain("lg:w-[460px]");
   });
 
   it("uses a white canvas and the brand blue for vendor surfaces", () => {
@@ -72,9 +119,9 @@ describe("customer vendor search contract", () => {
   });
 
   it("uses vendor media and never turns a destination photo into a vendor cover", () => {
-    expect(catalogueSource).toContain('select("id,name,status,logo_url,cover_url,outlets(id,name,city,state)")');
-    expect(clientSource).toContain("getVendorVisual");
-    expect(clientSource).toContain("visual.logoUrl");
+    expect(catalogueSource).toContain('select("id,name,status,logo_url,cover_url,outlets(id,name,city,state,status,review_status)")');
+    expect(vendorCardSource).toContain("getVendorVisual");
+    expect(vendorCardSource).toContain("visual.logoUrl");
     expect(clientSource).not.toContain("MALAYSIA_DESTINATIONS");
     expect(clientSource).not.toContain("vendorDestination");
     expect(clientSource).not.toContain("destination.image");

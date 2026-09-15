@@ -125,6 +125,7 @@
       "recommendations_affiliate": "Cadangan & Afiliasi",
       "support": "Sokongan",
       "account_security": "Akaun & Keselamatan",
+      "messages": "Mesej",
       "vendor_orders": "Pesanan",
       "vendor_bookings": "Tempahan",
       "vendor_products": "Produk",
@@ -132,6 +133,11 @@
       "vendor_account": "Akaun"
     },
     "events": {
+      "chatMessage": {
+        "title": "Mesej baharu daripada {{name}}",
+        "body": "{{preview}}",
+        "attachmentBody": "Menghantar lampiran"
+      },
       "withdrawalApproved": {
         "title": "Pengeluaran diluluskan — pembayaran sedang diproses",
         "body": "Pengeluaran anda telah diluluskan dan akan dipindahkan ke destinasi bayaran yang dipilih tidak lama lagi."
@@ -231,9 +237,12 @@
       "stop": "Berhenti mendengar"
     },
     "list": {
-      "supportLabel": "Sokongan MyWisata",
+      "supportLabel": "Sokongan MyLawatan",
       "signInPrompt": "Log masuk untuk berbual dengan vendor."
-    }
+    },
+    "expandChat": "Kembangkan ke skrin penuh",
+    "collapseChat": "Keluar skrin penuh",
+    "resizeSidebar": "Ubah saiz senarai perbualan"
   },
   "account": {
     "menu": "Menu akaun",
@@ -259,8 +268,8 @@
   },
   "command": {
     "title": "Palet Arahan",
-    "searchAdminPlaceholder": "Taip arahan atau cari barisan gilir… (⌘K)",
-    "searchVendorPlaceholder": "Taip arahan atau lompat ke ruang kerja… (⌘K)",
+    "searchAdminPlaceholder": "Taip arahan atau cari barisan gilir…",
+    "searchVendorPlaceholder": "Taip arahan atau lompat ke ruang kerja…",
     "noResults": "Tiada arahan atau halaman ditemui.",
     "navigation": "Navigasi",
     "queue": "Barisan Gilir Semakan",
@@ -285,9 +294,13 @@
     "cmdK": "⌘K"
   },
   "brand": {
-    "speed": "MyWisata Speed"
+    "speed": "MyLawatan Speed",
+    "copyright": "© {{year}} MyLawatan. Hak cipta terpelihara."
   },
   "ui": {
+    "vendor": {
+      "localExperiencePartner": "Rakan pengalaman tempatan"
+    },
     "place": {
       "localNotes": {
         "justNow": "Sebentar tadi",

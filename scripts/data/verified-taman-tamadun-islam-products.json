@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "d6a66802-a895-5059-18d5-3706171dc8cd",
+    "name": "Taman Tamadun Islam",
+    "source_page": "https://www.tti.com.my/monument-park-admission/",
+    "price_reference_page": "https://www.tti.com.my/monument-park-admission/"
+  },
+  "outlets": [
+    {
+      "id": "a2e8adc9-b631-ee75-2c71-da2eeb1acb69",
+      "name": "Taman Tamadun Islam"
+    }
+  ],
+  "archive_legacy_slugs": [],
+  "products": [
+    {
+      "slug": "tti-monument-park-adult",
+      "name": "TTI Monument Park Adult Passport",
+      "description": "Monument Park passport for visitors aged 13 to 59, listed on the official TTI admission page.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 25,
+      "source_type": "official",
+      "source_page": "https://www.tti.com.my/monument-park-admission/",
+      "source_image_url": "https://www.tti.com.my/wp-content/uploads/2019/05/DSC04907-800x450.jpg",
+      "price_reference_page": "https://www.tti.com.my/monument-park-admission/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/tti-monument-park-adult-real.jpg",
+      "sha256": "8b2f32b4a11b65cfb8db18fdff6ba89c426f9ada474d92a764027e43383e3116",
+      "artist": "Taman Tamadun Islam official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "tti-monument-park-child-senior",
+      "name": "TTI Monument Park Child / Senior Passport",
+      "description": "Monument Park passport for children aged 7 to 12 and senior citizens aged 60 and above.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 20,
+      "source_type": "official",
+      "source_page": "https://www.tti.com.my/monument-park-admission/",
+      "source_image_url": "https://www.tti.com.my/wp-content/uploads/2019/05/mki1.jpg",
+      "price_reference_page": "https://www.tti.com.my/monument-park-admission/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/tti-monument-park-child-senior-real.jpg",
+      "sha256": "960f66d254c93500323a238dc3b8cb7fb8bba4e0b5e379a43cc858392e070677",
+      "artist": "Taman Tamadun Islam official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "tti-monument-park-river-cruise-adult",
+      "name": "TTI Monument Park & River Cruise Adult Package",
+      "description": "Two-in-one adult package combining the Monument Park passport and a 45-minute river cruise.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 55,
+      "source_type": "official",
+      "source_page": "https://www.tti.com.my/monument-park-admission/",
+      "source_image_url": "https://www.tti.com.my/wp-content/uploads/2020/01/tti-river-cruise.jpg",
+      "price_reference_page": "https://www.tti.com.my/monument-park-admission/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/tti-monument-park-river-cruise-adult-real.jpg",
+      "sha256": "96376b05917a7b6c39b255ae3a3a712c21940ce365292229aaf03eeb6136f212",
+      "artist": "Taman Tamadun Islam official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "tti-monument-park-river-cruise-child-senior",
+      "name": "TTI Monument Park & River Cruise Child / Senior Package",
+      "description": "Two-in-one child or senior package combining the Monument Park passport and a 45-minute river cruise.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 45,
+      "source_type": "official",
+      "source_page": "https://www.tti.com.my/monument-park-admission/",
+      "source_image_url": "https://www.tti.com.my/wp-content/uploads/2019/08/1200x1200-Hi-tea-cruise.jpg",
+      "price_reference_page": "https://www.tti.com.my/monument-park-admission/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/tti-monument-park-river-cruise-child-senior-real.jpg",
+      "sha256": "204d48abc5858dac766c1feaac9f0ddb54c22d58265585fd06b48cf360b1da94",
+      "artist": "Taman Tamadun Islam official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "tti-monument-park-family-package",
+      "name": "TTI Monument Park Family Package",
+      "description": "Family package for two adults and two children, listed on the official TTI admission page.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 90,
+      "source_type": "official",
+      "source_page": "https://www.tti.com.my/monument-park-admission/",
+      "source_image_url": "https://www.tti.com.my/wp-content/uploads/2020/01/1200x1200-kapas-island-day-trip.jpg",
+      "price_reference_page": "https://www.tti.com.my/monument-park-admission/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/tti-monument-park-family-package-real.jpg",
+      "sha256": "b7be7ecf1b465019f13cca2cff4a9b4488bc6109cd3619c51983fceb480cbdaf",
+      "artist": "Taman Tamadun Islam official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

@@ -21,6 +21,21 @@ import { sanitizeCampaign } from './campaign';
 import { getAttributionCookieDays, getMonthlyClickCap } from './settings';
 import { logFraudFlag, hasRecentOpenFlag } from './fraud';
 import { GUEST_EXPLORE_PATH, guestVendorHref } from '@/lib/auth/guest-mode';
+import { ratingFromRows } from '@/lib/reviews/rating-summary';
+
+// Rating prefix for the crawler-facing OG preview card (WhatsApp/Telegram/
+// etc. unfurl THIS page, not the real destination — see renderOgPreview).
+// Never fabricated: omitted entirely when there are zero visible reviews.
+async function withRatingPrefix(
+  service: ReturnType<typeof createServiceClient>,
+  column: 'product_id' | 'outlet_id',
+  id: string,
+  description: string,
+): Promise<string> {
+  const { data: reviewRows } = await service.from('reviews').select('rating').eq(column, id).eq('is_visible', true);
+  const { rating } = await ratingFromRows(reviewRows ?? []);
+  return rating !== null ? `★ ${rating.toFixed(1)} · ${description}` : description;
+}
 
 const MW_VISITOR_COOKIE = 'mw_visitor';
 const MW_REF_COOKIE = 'mw_ref';
@@ -117,7 +132,7 @@ async function resolveTarget(
       targetId: data.id,
       destinationPath: `/customer/activity/${data.id}`,
       ogTitle: data.name,
-      ogDescription: data.description ?? SITE_PREVIEW_DESCRIPTION,
+      ogDescription: await withRatingPrefix(service, 'product_id', data.id, data.description ?? SITE_PREVIEW_DESCRIPTION),
       ogImage: productImageUrl(data.cover_url) || null,
     };
   }
@@ -132,7 +147,7 @@ async function resolveTarget(
       targetId: outlet.id,
       destinationPath: `/customer/outlet/${outlet.id}`,
       ogTitle: outlet.name,
-      ogDescription: page?.seo_description || `Explore products and experiences at ${outlet.name}.`,
+      ogDescription: await withRatingPrefix(service, 'outlet_id', outlet.id, page?.seo_description || `Explore products and experiences at ${outlet.name}.`),
       ogImage: page?.hero_url ?? null,
     };
   }
@@ -238,7 +253,7 @@ ${preview.image ? `<meta name="twitter:image" content="${escapeHtml(preview.imag
  * on any unexpected failure it falls back to a plain redirect so a broken
  * link never shows the visitor an error page.
  */
-const SITE_PREVIEW_TITLE = 'MyWisata — Malaysian Tourism Marketplace';
+const SITE_PREVIEW_TITLE = 'MyLawatan — Malaysian Tourism Marketplace';
 const SITE_PREVIEW_DESCRIPTION = 'Discover and book activities, tours, and experiences across Malaysia.';
 
 export async function handleAffiliateRedirect(

@@ -12,6 +12,7 @@ import { filterTransactions, transactionLabel, transactionTone, type Transaction
 import { getWithdrawalDisplayGroups } from "@/lib/wallet/withdrawal-display";
 import { DEMO_PAYOUT_ACCOUNT } from "@/lib/i18n/invariant-tokens";
 import { formatMYR, formatMYRNumber } from "@/lib/i18n/format";
+import { VendorSettlementPanel } from "@/components/vendor/vendor-settlement-panel";
 
 const MIN_WITHDRAWAL = 50;
 const DESTINATIONS = [
@@ -168,6 +169,7 @@ export default function VendorWalletPage() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-6">
+          <VendorSettlementPanel />
           {pending.length > 0 && <section className="overflow-hidden rounded-2xl border border-amber-100 bg-card shadow-sm"><div className="flex items-center justify-between border-b border-border px-5 py-4"><div className="flex items-center gap-2"><Clock3 size={16} className="text-amber-600" /><div><h2 className="text-sm font-bold text-foreground">{t('ui.wallet.activeWithdrawals')}</h2><p className="mt-1 text-xs text-muted-foreground">{t('ui.wallet.activeDescription')}</p></div></div><span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">{t('ui.wallet.activeCount', { count: pending.length })}</span></div><div className="divide-y divide-border">{pending.map((withdrawal) => <div key={withdrawal.id} className="flex items-center justify-between gap-4 px-5 py-4"><div className="min-w-0"><p className="truncate text-sm font-semibold text-foreground">{withdrawal.destination || t('ui.wallet.payoutDestination')}</p><p className="mt-1 text-xs text-muted-foreground">{t('ui.wallet.submittedOn', { date: formatDate(withdrawal.createdAt, locale) })}</p>{withdrawal.requiresDualApproval && <span className="mt-2 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">{t('ui.wallet.dualApprovalRequired')}</span>}</div><div className="shrink-0 text-right"><p className="font-bold text-foreground font-[family-name:var(--font-mono)]">{formatMYR(withdrawal.amount)}</p><StatusBadge status={withdrawal.status} /></div></div>)}</div></section>}
 
           <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">

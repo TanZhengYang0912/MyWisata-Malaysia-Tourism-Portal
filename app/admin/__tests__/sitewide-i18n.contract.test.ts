@@ -16,7 +16,9 @@ function flattenStrings(value: unknown, prefix = "", result: Record<string, stri
 
 const INTENTIONAL_IDENTICAL_VALUES = {
   "zh-CN": new Set([
+    "affiliate.noLimit",
     "kyc.documents.national_id",
+    "navigation.KYC Review",
     "ui.table.kyc",
     "ui.vendors.kyc",
     "email.draft.recipientPlaceholder",
@@ -27,6 +29,7 @@ const INTENTIONAL_IDENTICAL_VALUES = {
   ]),
   ms: new Set([
     "accessControl.audit.fieldLabels.status",
+    "affiliate.noLimit",
     "navigation.Chatbot",
     "affiliate.columns.status",
     "catalogue.entity.outlet",
@@ -37,10 +40,12 @@ const INTENTIONAL_IDENTICAL_VALUES = {
     "chatReports.reasons.spam",
     "chatReports.roles.vendor",
     "kyc.documents.national_id",
+    "navigation.KYC Review",
     "ui.support.sort.status",
     "ui.support.statusLabel",
     "ui.table.bio",
     "ui.table.kyc",
+    "moderationWords.table.status",
     "ui.table.status",
     "ui.table.vendor",
     "ui.vendors.kyc",
@@ -97,6 +102,7 @@ export const ADMIN_I18N_FILES = [
   "components/admin/recommendation-detail-view.tsx",
   "components/admin/staff-conduct-panel.tsx",
   "components/admin/user-management-drawer.tsx",
+  "components/admin/vendor-reason-modal.tsx",
   "components/shared/affiliate-qr-code.tsx",
   "components/shared/share-button.tsx",
 ] as const;
@@ -105,6 +111,7 @@ export const ADMIN_I18N_FILES = [
 export const PRIOR_TASK_FILES = [
   "components/admin/access-control/staff-roles-tab.tsx",
   "components/admin/access-control/types.ts",
+  "components/admin/admin-ai-message.tsx",
   "components/admin/admin-page-shell.tsx",
   "components/admin/batch-action-bar.tsx",
   "components/admin/confirm-dialog.tsx",

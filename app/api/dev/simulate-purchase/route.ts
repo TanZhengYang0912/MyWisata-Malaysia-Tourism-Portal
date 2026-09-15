@@ -16,6 +16,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { simulatePurchaseSchema } from '@/lib/validation/affiliate-schemas';
 import { onOrderPaid } from '@/lib/affiliate/attribution';
+import { settleOrderVendorEarnings } from '@/lib/vendor/settlement';
 import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 import { VENDOR_EVENT_MATRIX } from '@/lib/vendor-notifications/event-policy';
 import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
@@ -93,6 +94,7 @@ export async function POST(request: Request) {
   const orderId = order.order_id;
 
   await onOrderPaid(orderId);
+  await settleOrderVendorEarnings(service, orderId);
 
   // The order is persisted before the vendor feed is touched. Notification
   // failure must not make the completed demo purchase look unsuccessful.

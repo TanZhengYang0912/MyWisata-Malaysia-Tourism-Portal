@@ -50,4 +50,10 @@ describe("customer home first viewport", () => {
     expect(homeSource).not.toContain("customer:ui.vendor");
     expect(homeSource).toContain('t("ui.home.vendorDescription", { location })');
   });
+
+  it("offers a customer event calendar popup from the home route", () => {
+    expect(homeSource).toContain("EventCalendarDialog");
+    expect(homeSource).toContain('t("ui.home.viewEventCalendar")');
+    expect(homeSource).toContain('aria-label={t("ui.home.eventCalendar")');
+  });
 });

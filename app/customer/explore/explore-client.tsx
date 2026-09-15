@@ -8,7 +8,7 @@ import { Compass, Map } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { searchActivities } from "@/backend/domains/catalogue";
 import { ActivityCard } from "@/components/customer/activity-card";
-import { DiscoveryAdvancedFilters, DiscoveryCategoryFilter, DiscoverySearchField } from "@/components/customer/discovery-filters";
+import { CustomerDiscoveryFilterPanel } from "@/components/customer/discovery-filters";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { StoryMap } from "@/components/demo-map/story-map";
 import type { ComputedActivity } from "@/backend/core/types";
@@ -53,6 +53,19 @@ export function ExploreClient({
   const [visibleLimit, setVisibleLimit] = useState(8);
 
   useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const previousOverflowX = html.style.overflowX;
+    const previousBodyOverflowX = body.style.overflowX;
+    html.style.overflowX = "hidden";
+    body.style.overflowX = "hidden";
+    return () => {
+      html.style.overflowX = previousOverflowX;
+      body.style.overflowX = previousBodyOverflowX;
+    };
+  }, []);
+
+  useEffect(() => {
     const timeout = globalThis.setTimeout(() => setDebouncedQuery(filters.q), 250);
     return () => globalThis.clearTimeout(timeout);
   }, [filters.q]);
@@ -63,6 +76,13 @@ export function ExploreClient({
     categories: filters.categories,
     types: filters.types,
     priceMax: filters.priceMax,
+    operatingDays: filters.operatingDays,
+    hoursMode: filters.hoursMode,
+    timeAt: filters.timeAt,
+    timeFrom: filters.timeFrom,
+    timeTo: filters.timeTo,
+    overnight: filters.overnight,
+    openNow: filters.openNow,
     freeOnly: filters.freeOnly,
     bookableOnly: filters.bookableOnly,
     hiddenGemOnly: filters.hiddenGemOnly,
@@ -74,6 +94,13 @@ export function ExploreClient({
     filters.categories,
     filters.types,
     filters.priceMax,
+    filters.operatingDays,
+    filters.hoursMode,
+    filters.timeAt,
+    filters.timeFrom,
+    filters.timeTo,
+    filters.overnight,
+    filters.openNow,
     filters.freeOnly,
     filters.bookableOnly,
     filters.hiddenGemOnly,
@@ -144,7 +171,7 @@ export function ExploreClient({
   }, [activities, recordSponsoredEvent]);
 
   const hasActiveFilters = Boolean(
-    filters.q.trim() || filters.state || filters.categories.length || filters.types.length || filters.priceMax !== null ||
+    filters.q.trim() || filters.state || filters.categories.length || filters.types.length || filters.priceMax !== null || filters.operatingDays.length || filters.hoursMode !== "during" || filters.timeAt || filters.timeFrom || filters.timeTo || filters.overnight || filters.openNow ||
     filters.freeOnly || filters.bookableOnly || filters.hiddenGemOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly,
   );
 
@@ -156,11 +183,11 @@ export function ExploreClient({
   };
 
   const clearFilters = () => {
-    updateFilters({ q: "", state: null, categories: [], types: [], priceMax: null, freeOnly: false, bookableOnly: false, hiddenGemOnly: false, familyFriendlyOnly: false, coupleFriendlyOnly: false });
+    updateFilters({ q: "", state: null, categories: [], types: [], priceMax: null, operatingDays: [], hoursMode: "during", timeAt: null, timeFrom: null, timeTo: null, overnight: false, openNow: false, freeOnly: false, bookableOnly: false, hiddenGemOnly: false, familyFriendlyOnly: false, coupleFriendlyOnly: false });
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen overflow-x-hidden bg-background">
       {/* Header */}
       <section className="border-b border-border bg-background">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
@@ -245,7 +272,7 @@ export function ExploreClient({
                                 alt={dest.state}
                                 fill
                                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
-                                className="object-cover transition duration-500 group-hover:scale-105"
+                                className="object-cover object-top transition duration-500 group-hover:scale-105"
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                               <div className="absolute inset-x-3 bottom-3">
@@ -276,18 +303,21 @@ export function ExploreClient({
       {tab === "experiences" && (
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
           <section className="mb-8 space-y-6">
-            <DiscoverySearchField value={filters.q} onChange={(q) => updateFilters({ q })} placeholder={t("ui.map.searchExperience")} />
-            <DiscoveryCategoryFilter
-              category={filters.categories.length === 1 ? filters.categories[0] : filters.hiddenGemOnly ? "hidden_gem" : null}
+            <CustomerDiscoveryFilterPanel
+              value={filters}
               hasActiveFilters={hasActiveFilters}
+              onChange={updateFilters}
+              onClear={clearFilters}
+              placeholder={t("ui.map.searchExperience")}
+              category={filters.categories.length === 1 ? filters.categories[0] : filters.hiddenGemOnly ? "hidden_gem" : null}
               onCategoryChange={(category) => updateFilters(
                 category === "hidden_gem"
                   ? { categories: [], types: [], hiddenGemOnly: true }
                   : { categories: category ? [category] : [], types: [], hiddenGemOnly: false },
               )}
-              onClear={clearFilters}
+              categoryVariant="cards"
+              includeAllCategories={false}
             />
-            <DiscoveryAdvancedFilters value={filters} onChange={updateFilters} />
           </section>
 
           {/* Experience cards */}
@@ -306,7 +336,9 @@ export function ExploreClient({
             </div>
             {activities.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-                {t("ui.explore.noExperiences")}
+                <p className="font-semibold text-foreground">{t("ui.explore.noExperiences")}</p>
+                {hasActiveFilters && <p className="mt-2">{t("ui.discovery.adjustFilters")}</p>}
+                {hasActiveFilters && <button type="button" onClick={clearFilters} className="mt-4 rounded-full border border-primary px-4 py-2 text-xs font-bold text-primary hover:bg-secondary">{t("ui.actions.clearFilters")}</button>}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">

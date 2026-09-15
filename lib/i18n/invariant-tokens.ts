@@ -2,8 +2,9 @@
  * Product names, standards, symbols, and demo identifiers that are intentionally
  * identical in every locale. Human-readable UI copy must not be added here.
  */
-export const BRAND_NAME = "MyWisata";
-export const ATLAS_BRAND_NAME = "MyWisata / Atlas";
+export const BRAND_NAME = "MyLawatan";
+export const LOGO_BRAND_NAME = BRAND_NAME;
+export const ATLAS_BRAND_NAME = "MyLawatan / Atlas";
 export const ATLAS_PRODUCT_NAME = "Atlas";
 export const MYR_CODE = "RM";
 export const DISTANCE_UNIT_KM = "km";

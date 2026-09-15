@@ -1,0 +1,104 @@
+{
+  "vendor": {
+    "id": "175cf1eb-d839-75f8-bb90-e02fc59d9960",
+    "name": "Langkawi Cable Car Sdn Bhd",
+    "source_page": "https://panoramalangkawi.com/",
+    "price_reference_page": "https://panoramalangkawi.com/skytrail/"
+  },
+  "outlets": [
+    {
+      "id": "b58ff1af-ccf3-d81a-3707-a11cbd354a8e",
+      "name": "Langkawi Cable Car — Base Station"
+    }
+  ],
+  "archive_legacy_slugs": [
+    "skycab-return-ticket"
+  ],
+  "products": [
+    {
+      "slug": "langkawi-skyglide-adult-return",
+      "name": "SkyGlide Adult Return Ticket",
+      "description": "Adult round-trip SkyGlide ticket to and from SkyBridge, listed on Panorama Langkawi's official page.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 16,
+      "source_type": "official",
+      "source_page": "https://panoramalangkawi.com/skytrail/",
+      "source_image_url": "https://panoramalangkawi.com/wp-content/uploads/2020/05/skyglide.jpg",
+      "price_reference_page": "https://panoramalangkawi.com/skytrail/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/langkawi-skyglide-adult-return-real.jpg",
+      "sha256": "a588e70b5a5d5ecf175046184dc469e01d0bcb3dcfa11eddbb8a8c7b8ed98a87",
+      "artist": "Panorama Langkawi official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "langkawi-skyglide-child-return",
+      "name": "SkyGlide Child Return Ticket",
+      "description": "Child round-trip SkyGlide ticket to and from SkyBridge, listed on Panorama Langkawi's official page.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 11,
+      "source_type": "official",
+      "source_page": "https://panoramalangkawi.com/skytrail/",
+      "source_image_url": "https://panoramalangkawi.com/wp-content/uploads/2020/05/skydome.jpg",
+      "price_reference_page": "https://panoramalangkawi.com/skytrail/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/langkawi-skyglide-child-return-real.jpg",
+      "sha256": "81a2b0748f44b2970de665ca6ee0ba9f07569888484c0a5234156ac9b5dd5c99",
+      "artist": "Panorama Langkawi official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "langkawi-skytrail-beginner",
+      "name": "Langkawi SkyTrail Beginner Trail",
+      "description": "Guided SkyTrail route from SkyCab Middle Station to the summit, approximately two hours, inclusive of SkyCab Express Lane ticket.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 180,
+      "source_type": "official",
+      "source_page": "https://panoramalangkawi.com/skytrail/",
+      "source_image_url": "https://panoramalangkawi.com/wp-content/uploads/2020/05/skybridge.jpg",
+      "price_reference_page": "https://panoramalangkawi.com/skytrail/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/langkawi-skytrail-beginner-real.jpg",
+      "sha256": "cd766f80c836695257e626d618da00b08bc2042332408ea5d19ed9ceecf3e6e6",
+      "artist": "Panorama Langkawi official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "langkawi-skytrail-intermediate",
+      "name": "Langkawi SkyTrail Intermediate Trail",
+      "description": "Guided SkyTrail route from Oriental Village to the SkyCab Middle Station, approximately three to four hours.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 230,
+      "source_type": "official",
+      "source_page": "https://panoramalangkawi.com/skytrail/",
+      "source_image_url": "https://panoramalangkawi.com/wp-content/uploads/2020/05/272A2724-min-1024x683.jpg",
+      "price_reference_page": "https://panoramalangkawi.com/skytrail/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/langkawi-skytrail-intermediate-real.jpg",
+      "sha256": "768bbb4a1f4263353aeb2174f0730f6689f175a46facf50ebf4f99c8065bca0f",
+      "artist": "Panorama Langkawi official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    },
+    {
+      "slug": "langkawi-skytrail-challenging",
+      "name": "Langkawi SkyTrail Challenging Trail",
+      "description": "Guided SkyTrail route from Oriental Village to the summit, approximately four to five hours.",
+      "product_type": "experience",
+      "requires_booking": true,
+      "base_price": 280,
+      "source_type": "official",
+      "source_page": "https://panoramalangkawi.com/skytrail/",
+      "source_image_url": "https://panoramalangkawi.com/wp-content/uploads/2020/05/IMG_0326-min-1024x683.jpg",
+      "price_reference_page": "https://panoramalangkawi.com/skytrail/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/langkawi-skytrail-challenging-real.jpg",
+      "sha256": "e9ae6134a9b83f92e2b6d35492c4700ee495999fe88aad9e8c103a95920e5f31",
+      "artist": "Panorama Langkawi official website",
+      "license": "Official vendor media or Wikimedia Commons media; source attribution recorded"
+    }
+  ]
+}

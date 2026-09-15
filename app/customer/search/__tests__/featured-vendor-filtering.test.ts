@@ -30,4 +30,10 @@ describe("featured partner directory contract", () => {
     expect(source).toContain("setPartnerView(event.target.value as PartnerView); setCurrentPage(1);");
     expect(source).toContain("setPartnerSort(event.target.value as PartnerSort); setCurrentPage(1);");
   });
+
+  it("uses the featured ranking to label the shared vendor card", () => {
+    expect(source).toContain("featuredVendorIds");
+    expect(source).toContain("rankPartnerDirectory");
+    expect(source).toContain("isFeatured={featuredVendorIds.has(vendor.id)}");
+  });
 });

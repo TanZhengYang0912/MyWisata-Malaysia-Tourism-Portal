@@ -13,7 +13,10 @@ export type VendorVisual = {
 };
 
 const VENDOR_UPLOAD_PATH = /\/storage\/v1\/object\/public\/vendor-products\/[^/]+\/.+/;
-const CURATED_VENDOR_IMAGE_PATH = /^(?:\/assets\/customer\/)?vendor-images\/[^/]+\.(?:avif|gif|jpe?g|png|webp)$/i;
+const CURATED_VENDOR_IMAGE_PATH = /^(?:\/assets\/customer\/)?vendor-images\/[^/]+(?:\/[^/]+)?\.(?:avif|gif|jpe?g|png|svg|webp)$/i;
+const MANIFEST_VENDOR_IMAGE_PATH = /^curated-v\d+\/(?:vendor|outlet)\/(?:[^/]+\/){1,2}(?:cover|logo|gallery-\d+)\.(?:avif|gif|jpe?g|png|svg|webp)$/i;
+const ENTITY_VENDOR_IMAGE_PATH = /^entities\/(?:vendor|outlet)\/[^/]+\/(?:logo|gallery-\d+)\.(?:avif|gif|jpe?g|png|svg|webp)$/i;
+const ENTITY_VENDOR_IMAGE_PUBLIC_URL = /\/storage\/v1\/object\/public\/vendor-images\/entities\/(?:vendor|outlet)\/[^/]+\/(?:logo|gallery-\d+)\.(?:avif|gif|jpe?g|png|svg|webp)(?:[?#].*)?$/i;
 const VERIFIED_PENANG_VENDOR_IMAGE_PATH = /^(?:\/assets\/customer\/)?penang\/(?:cheong-fatt-tze-mansion|eastern-oriental-hotel|kek-lok-si-temple|khoo-kongsi|penang-hill|pinang-peranakan-mansion)\.webp$/;
 
 function trustedVendorMedia(url?: string | null) {
@@ -21,6 +24,9 @@ function trustedVendorMedia(url?: string | null) {
   return normalized && (
     VENDOR_UPLOAD_PATH.test(normalized) ||
     CURATED_VENDOR_IMAGE_PATH.test(normalized) ||
+    MANIFEST_VENDOR_IMAGE_PATH.test(normalized) ||
+    ENTITY_VENDOR_IMAGE_PATH.test(normalized) ||
+    ENTITY_VENDOR_IMAGE_PUBLIC_URL.test(normalized) ||
     VERIFIED_PENANG_VENDOR_IMAGE_PATH.test(normalized)
   ) ? normalized : null;
 }

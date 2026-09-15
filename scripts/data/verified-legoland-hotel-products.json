@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "1981c34a-47c6-f73b-2285-ccd590003575",
+    "name": "Legoland Hotel Malaysia",
+    "source_page": "https://www.legoland.com.my/hotel/discover/room-overview/",
+    "price_reference_page": "https://www.legoland.com.my/hotel/discover/room-overview/"
+  },
+  "outlets": [
+    {
+      "id": "870c05e3-813a-6d95-fc35-b1458d82f66e",
+      "name": "Legoland Hotel Malaysia"
+    }
+  ],
+  "archive_legacy_slugs": [],
+  "products": [
+    {
+      "slug": "legoland-hotel-kingdom-premium",
+      "name": "LEGOLAND Hotel Kingdom Premium Room",
+      "description": "LEGO-themed Kingdom Premium room for up to five guests, with separate adult and children sleeping areas and breakfast-inclusive booking availability.",
+      "product_type": "service",
+      "requires_booking": true,
+      "base_price": 792,
+      "source_type": "official",
+      "source_page": "https://www.legoland.com.my/hotel/discover/room-overview/kingdom-premium/",
+      "source_image_url": "https://www.legoland.com.my/media/whdp1mps/1200x630-hotel-2222.jpg?format=jpg",
+      "price_reference_page": "https://www.legoland.com.my/hotel/discover/room-overview/kingdom-premium/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/legoland-hotel-kingdom-premium-real.jpg",
+      "sha256": "f0713b95dec0b51e72fdf2adceb3d60eaa94b8dfcbe683fa10ce30d0c72c5167",
+      "artist": "LEGOLAND Malaysia Resort official website",
+      "license": "Official LEGOLAND Malaysia Resort media; source attribution recorded"
+    },
+    {
+      "slug": "legoland-hotel-pirate-premium",
+      "name": "LEGOLAND Hotel Pirate Premium Room",
+      "description": "LEGO-themed Pirate Premium room for up to five guests, listed on the official LEGOLAND Hotel room page.",
+      "product_type": "service",
+      "requires_booking": true,
+      "base_price": 792,
+      "source_type": "official",
+      "source_page": "https://www.legoland.com.my/hotel/discover/room-overview/pirate-premium/",
+      "source_image_url": "https://www.legoland.com.my/media/jvsgx5ot/1200x630-hotel-22.jpg?format=jpg",
+      "price_reference_page": "https://www.legoland.com.my/hotel/discover/room-overview/pirate-premium/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/legoland-hotel-pirate-premium-real.jpg",
+      "sha256": "708ad80d7ccf0d0761624dcccacf8cab0c01b37937169f6b5f2e7ffd232ed7a4",
+      "artist": "LEGOLAND Malaysia Resort official website",
+      "license": "Official LEGOLAND Malaysia Resort media; source attribution recorded"
+    },
+    {
+      "slug": "legoland-hotel-adventure-premium",
+      "name": "LEGOLAND Hotel Adventure Premium Room",
+      "description": "LEGO-themed Adventure Premium room for up to five guests, listed on the official LEGOLAND Hotel room page.",
+      "product_type": "service",
+      "requires_booking": true,
+      "base_price": 792,
+      "source_type": "official",
+      "source_page": "https://www.legoland.com.my/hotel/discover/room-overview/adventure-premium/",
+      "source_image_url": "https://www.legoland.com.my/media/5pafmcrj/1200x630-hotel-31.jpg?format=jpg",
+      "price_reference_page": "https://www.legoland.com.my/hotel/discover/room-overview/adventure-premium/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/legoland-hotel-adventure-premium-real.jpg",
+      "sha256": "5cbb21ab1c90805a638dbfc492f93c845ebe5ba5dc9e337c276e12617ee5ec71",
+      "artist": "LEGOLAND Malaysia Resort official website",
+      "license": "Official LEGOLAND Malaysia Resort media; source attribution recorded"
+    },
+    {
+      "slug": "legoland-hotel-ninjago-premium",
+      "name": "LEGOLAND Hotel NINJAGO Premium Room",
+      "description": "LEGO-themed NINJAGO Premium room for up to five guests, listed on the official LEGOLAND Hotel room page.",
+      "product_type": "service",
+      "requires_booking": true,
+      "base_price": 840,
+      "source_type": "official",
+      "source_page": "https://www.legoland.com.my/hotel/discover/room-overview/ninjago-premium/",
+      "source_image_url": "https://www.legoland.com.my/media/caify5sb/1200x630-hotel-333.jpg?format=jpg",
+      "price_reference_page": "https://www.legoland.com.my/hotel/discover/room-overview/ninjago-premium/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/legoland-hotel-ninjago-premium-real.jpg",
+      "sha256": "e61ff239459d81eb486587a0af74d591918846c82533c3b54347a5c6f957e0d5",
+      "artist": "LEGOLAND Malaysia Resort official website",
+      "license": "Official LEGOLAND Malaysia Resort media; source attribution recorded"
+    },
+    {
+      "slug": "legoland-hotel-kingdom-suite",
+      "name": "LEGOLAND Hotel Kingdom Suite",
+      "description": "LEGO-themed Kingdom Suite with the official room page's published starting rate and room features.",
+      "product_type": "service",
+      "requires_booking": true,
+      "base_price": 1887,
+      "source_type": "official",
+      "source_page": "https://www.legoland.com.my/hotel/discover/room-overview/kingdom-suite/",
+      "source_image_url": "https://www.legoland.com.my/media/y0dpndiu/kingdom-suite-1-1800x1200.jpg",
+      "price_reference_page": "https://www.legoland.com.my/hotel/discover/room-overview/kingdom-suite/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/legoland-hotel-kingdom-suite-real.jpg",
+      "sha256": "04074f450c4548fd8dbfb2bb9fbdca6bb80783b0c253ec1294ab7c5421e828f7",
+      "artist": "LEGOLAND Malaysia Resort official website",
+      "license": "Official LEGOLAND Malaysia Resort media; source attribution recorded"
+    }
+  ]
+}

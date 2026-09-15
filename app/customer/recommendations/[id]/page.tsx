@@ -8,6 +8,8 @@ import { useTranslation } from "react-i18next";
 import { CustomerPageShell, CustomerPageTitle, CustomerPanel } from "@/components/customer/customer-page-shell";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
+import { RecommendationEarningsPanel } from "@/components/customer/recommendation-earnings-panel";
+import { ShareButton } from "@/components/shared/share-button";
 
 type CustomerRecommendationDetail = {
   id: string;
@@ -61,7 +63,8 @@ export default function CustomerRecommendationDetailPage() {
           <CustomerPanel><h2 className="font-bold text-foreground">{detail.name}</h2><p className="mt-2 text-sm text-muted-foreground">{[detail.category, detail.state].filter(Boolean).join(" · ")}</p>{detail.description && <p className="mt-4 text-sm text-foreground">{detail.description}</p>}{detail.whyRecommend && <div className="mt-4 rounded-xl bg-muted/40 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("ui.recommendations.why")}</p><p className="mt-1 text-sm">{detail.whyRecommend}</p></div>}</CustomerPanel>
           {detail.changesRequested && <CustomerPanel className="border-amber-200 bg-amber-50"><h2 className="font-semibold text-amber-950">{t("ui.recommendations.status.changes_requested")}</h2><p className="mt-2 text-sm text-amber-900">{detail.changesRequested.message}</p>{detail.nextAction === "update_recommendation" && <Button asChild className="mt-4"><Link href="/customer/recommendations">{t("ui.recommendations.updateDetails")}</Link></Button>}</CustomerPanel>}
           {detail.decision?.message && <CustomerPanel><h2 className="font-semibold">{t(`ui.recommendations.status.${detail.status}`)}</h2><p className="mt-2 text-sm text-muted-foreground">{detail.decision.message}</p></CustomerPanel>}
-          {detail.vendor && <CustomerPanel className="border-primary/20 bg-primary/[0.03]"><h2 className="font-semibold">{detail.vendor.name ?? detail.name}</h2><Button asChild className="mt-3"><Link href={`/customer/vendor/${detail.vendor.id}`}>{t("ui.recommendations.viewVendor")}</Link></Button></CustomerPanel>}
+          {detail.vendor && <CustomerPanel className="border-primary/20 bg-primary/[0.03]"><h2 className="font-semibold">{detail.vendor.name ?? detail.name}</h2><div className="mt-3 flex flex-wrap items-center gap-3"><Button asChild><Link href={`/customer/vendor/${detail.vendor.id}`}>{t("ui.recommendations.viewVendor")}</Link></Button><ShareButton shareType="vendor" contentId={detail.vendor.id} title={detail.vendor.name ?? detail.name} compact /></div></CustomerPanel>}
+          {detail.vendor && <RecommendationEarningsPanel recommendationId={id} />}
         </div>
         <CustomerPanel><h2 className="font-bold text-foreground">{t("ui.labels.history")}</h2><ol className="mt-4 space-y-4"><li className="flex gap-3"><CheckCircle2 size={15} className="mt-0.5 shrink-0 text-primary" /><div><p className="text-sm font-semibold">{t("ui.recommendations.submitted")}</p><p className="text-xs text-muted-foreground">{new Date(detail.submittedAt).toLocaleString(i18n.resolvedLanguage)}</p></div></li>{detail.events.map((event) => <li key={event.id} className="flex gap-3"><Clock size={15} className="mt-0.5 shrink-0 text-accent" /><div><p className="text-sm font-semibold">{t(`ui.recommendations.status.${event.toStatus}`)}</p><p className="mt-1 text-sm text-muted-foreground">{event.message}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(event.createdAt).toLocaleString(i18n.resolvedLanguage)}</p></div></li>)}</ol></CustomerPanel>
       </div>}

@@ -54,8 +54,13 @@ describe('vendor notification event matrix', () => {
     expect(read('app/api/vendors/[vendorId]/batch/route.ts')).toContain('fulfilmentError');
   });
 
-  it('keeps ordinary customer messages App-only', () => {
-    const source = read('app/api/vendors/[vendorId]/inbox/route.ts');
-    expect(source).toContain("email: false");
+  it('keeps chat messages App-only in both directions', () => {
+    // Both send paths route through notifyNewChatMessage, which only ever writes
+    // notification-center rows — there is no email fan-out for chat.
+    for (const path of ['app/api/vendors/[vendorId]/inbox/route.ts', 'app/api/customer/chat/[threadId]/messages/route.ts']) {
+      const source = read(path);
+      expect(source, path).toContain('notifyNewChatMessage');
+      expect(source, path).not.toContain('enqueueVendorEmail');
+    }
   });
 });

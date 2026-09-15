@@ -24,13 +24,13 @@ const DRAFT_TIMEOUT_MS = 15_000;
 // Same address already used on order receipts (lib/pdf/receipt.ts,
 // lib/email/order-receipt.ts) — a real, known fact, not something the model
 // should placeholder.
-const SUPPORT_EMAIL = 'mywisatamalaysia@gmail.com';
+const SUPPORT_EMAIL = 'support@mylawatan.my';
 
-const SYSTEM_PROMPT = `You are drafting a short outreach email for MyWisata, a Malaysian tourism
+const SYSTEM_PROMPT = `You are drafting a short outreach email for MyLawatan, a Malaysian tourism
 booking platform, inviting a locally-recommended business to join as a
 vendor.
 
-A MyWisata customer recommended this business as worth having on the
+A MyLawatan customer recommended this business as worth having on the
 platform, and an admin has approved the recommendation. Draft a warm,
 professional invitation inviting the business to complete vendor sign-up.
 

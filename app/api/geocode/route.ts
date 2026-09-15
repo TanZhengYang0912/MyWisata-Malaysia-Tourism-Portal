@@ -36,7 +36,7 @@ async function geocodeViaNominatim(q: string): Promise<GeoHit[] | null> {
   try {
     const params = new URLSearchParams({ q, format: "json", countrycodes: "my", limit: "5" });
     const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
-      headers: { "User-Agent": "MyWisata/1.0 (tourism-portal)" }, // Nominatim policy requires an identifying UA.
+      headers: { "User-Agent": "MyLawatan/1.0 (tourism-portal)" }, // Nominatim policy requires an identifying UA.
     });
     if (!res.ok) return null;
     const hits = (await res.json()) as Array<{ lat?: string; lon?: string; display_name?: string }>;

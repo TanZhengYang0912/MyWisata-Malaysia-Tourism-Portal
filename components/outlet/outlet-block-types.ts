@@ -3,6 +3,7 @@ import type { GalleryItem, OutletPageBlock, OutletPageDocument } from '@/lib/ven
 export interface OutletRendererOutlet {
   id: string;
   name: string;
+  vendorId?: string | null;
   vendorName?: string | null;
   address?: string | null;
   city?: string | null;
@@ -13,6 +14,7 @@ export interface OutletRendererOutlet {
   operating_hours?: unknown;
   wheelchair_accessible?: boolean | null;
   pet_friendly?: boolean | null;
+  logoUrl?: string | null;
 }
 
 export interface OutletRendererProduct {

@@ -84,7 +84,7 @@ export default async function VendorDashboard({ searchParams }: Props) {
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm lg:col-span-2"><SalesChart data={data.chart} /></div>
-        <OutletPieChart data={data.salesByOutlet} total={data.totalOutletSales} />
+        <OutletPieChart data={data.salesByProduct} total={data.totalProductSales} />
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">

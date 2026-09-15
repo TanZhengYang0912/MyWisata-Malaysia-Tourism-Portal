@@ -3,9 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { searchActivities } from "@/backend/domains/catalogue";
 import { getStatesWithPlaces } from "@/backend/domains/places";
 import { ExploreClient } from "./explore-client";
+import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 
 export const metadata: Metadata = {
-  title: "Explore Malaysia — MyWisata",
+  title: `Explore Malaysia — ${BRAND_NAME}`,
   description: "Discover destinations by state or filter experiences by category across Malaysia.",
 };
 

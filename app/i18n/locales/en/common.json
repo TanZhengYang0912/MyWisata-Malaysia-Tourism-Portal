@@ -125,6 +125,7 @@
       "recommendations_affiliate": "Recommendations & Affiliate",
       "support": "Support",
       "account_security": "Account & Security",
+      "messages": "Messages",
       "vendor_orders": "Orders",
       "vendor_bookings": "Bookings",
       "vendor_products": "Products",
@@ -132,6 +133,11 @@
       "vendor_account": "Account"
     },
     "events": {
+      "chatMessage": {
+        "title": "New message from {{name}}",
+        "body": "{{preview}}",
+        "attachmentBody": "Sent an attachment"
+      },
       "withdrawalApproved": {
         "title": "Withdrawal approved — payout in progress",
         "body": "Your withdrawal has been approved and will be transferred to your selected payout destination shortly."
@@ -231,9 +237,12 @@
       "stop": "Stop listening"
     },
     "list": {
-      "supportLabel": "MyWisata Support",
+      "supportLabel": "MyLawatan Support",
       "signInPrompt": "Sign in to chat with vendors."
-    }
+    },
+    "expandChat": "Expand to full screen",
+    "collapseChat": "Exit full screen",
+    "resizeSidebar": "Resize the conversation list"
   },
   "account": {
     "menu": "Account menu",
@@ -259,8 +268,8 @@
   },
   "command": {
     "title": "Command Palette",
-    "searchAdminPlaceholder": "Type a command or search queues… (⌘K)",
-    "searchVendorPlaceholder": "Type a command or jump to workspace… (⌘K)",
+    "searchAdminPlaceholder": "Type a command or search queues…",
+    "searchVendorPlaceholder": "Type a command or jump to workspace…",
     "noResults": "No commands or pages found.",
     "navigation": "Navigation",
     "queue": "Review Queues",
@@ -285,9 +294,13 @@
     "cmdK": "⌘K"
   },
   "brand": {
-    "speed": "MyWisata Speed"
+    "speed": "MyLawatan Speed",
+    "copyright": "© {{year}} MyLawatan. All rights reserved."
   },
   "ui": {
+    "vendor": {
+      "localExperiencePartner": "Local experience partner"
+    },
     "place": {
       "localNotes": {
         "justNow": "Just now",

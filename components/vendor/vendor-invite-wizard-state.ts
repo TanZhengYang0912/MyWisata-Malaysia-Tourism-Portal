@@ -1,6 +1,6 @@
 import type { VendorInvitePreview } from '@/lib/recommendations/vendor-invite-preview';
 
-export const VENDOR_INVITE_SUPPORT_EMAIL = 'mywisatamalaysia@gmail.com';
+export const VENDOR_INVITE_SUPPORT_EMAIL = 'support@mylawatan.my';
 
 export type VendorInviteStep = 'account' | 'details' | 'verify';
 

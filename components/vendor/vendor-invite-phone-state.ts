@@ -63,7 +63,7 @@ export async function verifyPhoneOtp(fetcher: Fetcher, phone: string, digits: st
 
 export function mapPhoneOtpError({ phase, code, status }: ApiFailure & { phase: 'send' | 'verify' }) {
   if (code === 'PHONE_ALREADY_CLAIMED') {
-    return 'This mobile number is already linked to another MyWisata account. Use a different number.';
+    return 'This mobile number is already linked to another MyLawatan account. Use a different number.';
   }
   if (code === 'RATE_LIMITED' || status === 429) {
     return 'Too many codes requested. Try again in 1 hour.';

@@ -1,0 +1,116 @@
+{
+  "vendor": {
+    "id": "1aa86fbf-d6af-9dfa-08f0-8ab112bcea3f",
+    "name": "Hameediyah Restaurant",
+    "source_page": "https://www.visitpenang.com/food/hameediyah-restaurant",
+    "price_reference_page": "https://www.foodpanda.my/restaurant/rgfu/hameediyah-restaurant-jalan-baru"
+  },
+  "outlets": [
+    {
+      "id": "229f8863-a288-bb87-0910-3170f2451c34",
+      "name": "Hameediyah — Lebuh Campbell"
+    },
+    {
+      "id": "0099bd9a-d1b1-ce35-b64e-55288467a4b1",
+      "name": "Hameediyah — Campbell Annexe"
+    }
+  ],
+  "archive_legacy_slugs": [
+    "hameediyah-chicken-murtabak",
+    "hameediyah-kari-kambing",
+    "hameediyah-nasi-kandar-ayam-goreng",
+    "hameediyah-teh-tarik"
+  ],
+  "products": [
+    {
+      "slug": "hameediyah-briyani-kosong-real-menu",
+      "name": "Briyani Kosong",
+      "description": "Briyani rice listed on Hameediyah Restaurant's current Foodpanda menu.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 8.48,
+      "source_type": "marketplace",
+      "source_page": "https://www.foodpanda.my/restaurant/rgfu/hameediyah-restaurant-jalan-baru",
+      "source_image_url": "https://images.deliveryhero.io/image/fd-my/products/1475308613.jpg?width=480&height=480",
+      "price_reference_page": "https://www.foodpanda.my/restaurant/rgfu/hameediyah-restaurant-jalan-baru",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/hameediyah-briyani-kosong.jpg",
+      "sha256": "7a4e4870885b5ac05bbcb40c356ba70cddf5ff3e61692766316d33ab8e5fe735",
+      "artist": "Hameediyah Restaurant via Foodpanda",
+      "license": "Marketplace vendor image; source attribution recorded",
+      "tags": ["penang", "food", "briyani"]
+    },
+    {
+      "slug": "hameediyah-ayam-bawang-biasa-real-menu",
+      "name": "Ayam Bawang Biasa",
+      "description": "Chicken stir-fried with onions, listed as an a la carte Hameediyah menu item.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 14.84,
+      "source_type": "marketplace",
+      "source_page": "https://www.foodpanda.my/restaurant/rgfu/hameediyah-restaurant-jalan-baru",
+      "source_image_url": "https://images.deliveryhero.io/image/fd-my/Products/266010948.jpg?width=480&height=480",
+      "price_reference_page": "https://www.foodpanda.my/restaurant/rgfu/hameediyah-restaurant-jalan-baru",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/hameediyah-ayam-bawang-biasa.jpg",
+      "sha256": "3a900c791dc61c4d794ff02c1133cb5f8732d15985ccdb7ba798e4bc2714023b",
+      "artist": "Hameediyah Restaurant via Foodpanda",
+      "license": "Marketplace vendor image; source attribution recorded",
+      "tags": ["penang", "food", "chicken"]
+    },
+    {
+      "slug": "hameediyah-daging-rendang-real-menu",
+      "name": "Daging Rendang",
+      "description": "Beef in spicy rendang gravy, listed on Hameediyah Restaurant's current menu.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 6.89,
+      "source_type": "marketplace",
+      "source_page": "https://www.foodpanda.my/restaurant/rgfu/hameediyah-restaurant-jalan-baru",
+      "source_image_url": "https://images.deliveryhero.io/image/fd-my/products/1532516085.jpg?width=480&height=480",
+      "price_reference_page": "https://www.foodpanda.my/restaurant/rgfu/hameediyah-restaurant-jalan-baru",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/hameediyah-daging-rendang.jpg",
+      "sha256": "00a993302e5c23e083df1e47d4e77ea76f329b2ff0d722ef8de8cba18f623c78",
+      "artist": "Hameediyah Restaurant via Foodpanda",
+      "license": "Marketplace vendor image; source attribution recorded",
+      "tags": ["penang", "food", "rendang"]
+    },
+    {
+      "slug": "hameediyah-nasi-ayam-goreng-set-real-menu",
+      "name": "Set A - Nasi Ayam Goreng Set",
+      "description": "Rice with fried chicken, bendi, boiled egg and sambal nyok, listed in Hameediyah's set menu.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 19.08,
+      "source_type": "marketplace",
+      "source_page": "https://www.foodpanda.my/restaurant/rgfu/hameediyah-restaurant-jalan-baru",
+      "source_image_url": "https://images.deliveryhero.io/image/fd-my/Products/266010805.jpg?width=480&height=480",
+      "price_reference_page": "https://www.foodpanda.my/restaurant/rgfu/hameediyah-restaurant-jalan-baru",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/hameediyah-nasi-ayam-goreng-set.jpg",
+      "sha256": "f234d110f33638534ff56bd19b9f5b5f6e73a1332bc29084d37face2cd8c9ef2",
+      "artist": "Hameediyah Restaurant via Foodpanda",
+      "license": "Marketplace vendor image; source attribution recorded",
+      "tags": ["penang", "food", "nasi-kandar"]
+    },
+    {
+      "slug": "hameediyah-briyani-ayam-kapitan-set-real-menu",
+      "name": "Set Briyani Ayam Kapitan",
+      "description": "Briyani rice with dalcha and timun nenas, listed as a popular Hameediyah set.",
+      "product_type": "food",
+      "requires_booking": false,
+      "base_price": 21.2,
+      "source_type": "marketplace",
+      "source_page": "https://www.foodpanda.my/restaurant/rgfu/hameediyah-restaurant-jalan-baru",
+      "source_image_url": "https://images.deliveryhero.io/image/fd-my/Products/1468817623.jpg?width=480&height=480",
+      "price_reference_page": "https://www.foodpanda.my/restaurant/rgfu/hameediyah-restaurant-jalan-baru",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/hameediyah-briyani-ayam-kapitan-set.jpg",
+      "sha256": "b0822b099a91172ebff9ae722c8aff64a07480b0e6499913571f6bd1a67d8c96",
+      "artist": "Hameediyah Restaurant via Foodpanda",
+      "license": "Marketplace vendor image; source attribution recorded",
+      "tags": ["penang", "food", "briyani"]
+    }
+  ]
+}

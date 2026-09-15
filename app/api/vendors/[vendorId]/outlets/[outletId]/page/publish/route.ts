@@ -12,7 +12,7 @@ const publishSchema = z.object({
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId, outletId } = await params;
-  const access = await authorizeOutlet(vendorId, outletId);
+  const access = await authorizeOutlet(vendorId, outletId, ['outlet_manager']);
   if (!access.ok) return access.response;
 
   const parsed = await parseBody(request, publishSchema);

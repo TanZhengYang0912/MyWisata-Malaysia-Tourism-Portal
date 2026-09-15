@@ -92,6 +92,8 @@ export interface AffiliateStats {
     referrals: number;
     pendingEarnings: number;
     availableToWithdraw: number;
+    /** Lifetime pending+confirmed commission (excludes reversed/rejected) — unlike availableToWithdraw, never drops after a withdrawal. */
+    totalEarnings: number;
   };
   byProduct: AffiliateProductStat[];
   byCampaign: AffiliateCampaignStat[];
@@ -122,7 +124,7 @@ function zeroFilledDays(): AffiliateDailyClicks[] {
 function emptyStats(tier: TierInfo): AffiliateStats {
   return {
     affiliateCode: null,
-    totals: { clicks: 0, referrals: 0, pendingEarnings: 0, availableToWithdraw: 0 },
+    totals: { clicks: 0, referrals: 0, pendingEarnings: 0, availableToWithdraw: 0, totalEarnings: 0 },
     byProduct: [],
     byCampaign: [],
     clicksByDay: zeroFilledDays(),
@@ -183,6 +185,7 @@ export async function getAffiliateStats(service: SupabaseClient, userId: string)
   const pendingEarnings = attributionRows
     .filter((a) => a.status === 'pending')
     .reduce((sum, a) => add(sum, Number(a.commission_amount)), 0);
+  const totalEarnings = activeAttributions.reduce((sum, a) => add(sum, Number(a.commission_amount)), 0);
 
   // Order amounts for the earnings history's "order amount" column — one
   // extra lookup, not worth folding into the attribution row itself since
@@ -302,6 +305,7 @@ export async function getAffiliateStats(service: SupabaseClient, userId: string)
       referrals: activeAttributions.length,
       pendingEarnings,
       availableToWithdraw,
+      totalEarnings,
     },
     byProduct,
     byCampaign,

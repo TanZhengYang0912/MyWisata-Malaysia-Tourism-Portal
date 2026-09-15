@@ -74,6 +74,26 @@ describe('notification localization', () => {
     expect(result.title).toBe('Your recommendation "testing 567" was approved');
   });
 
+  it('renders a chat message from metadata, and its attachment variant', () => {
+    const text = localizeNotification({
+      type: 'chat_message',
+      title: 'New message from Ada',
+      body: 'stored fallback',
+      metadata: { name: 'Ada', preview: 'see you at 3', attachment: false },
+    }, translate);
+    expect(text.title).toContain('notifications.events.chatMessage.title');
+    expect(text.title).toContain('Ada');
+    expect(text.body).toBe('see you at 3');
+
+    const attachment = localizeNotification({
+      type: 'chat_message',
+      title: 'New message from Ada',
+      body: 'stored fallback',
+      metadata: { name: 'Ada', preview: null, attachment: true },
+    }, translate);
+    expect(attachment.body).toContain('notifications.events.chatMessage.attachmentBody');
+  });
+
   it('does not overwrite the approver version of withdrawal submitted', () => {
     const result = localizeNotification({
       type: 'withdrawal_submitted',

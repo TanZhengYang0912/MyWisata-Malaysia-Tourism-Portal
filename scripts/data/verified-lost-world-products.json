@@ -1,0 +1,102 @@
+{
+  "vendor": {
+    "id": "db5cba61-ba27-83d3-9313-9b74b2a519ad",
+    "name": "Sunway Lost World of Tambun",
+    "source_page": "https://sunwaylostworldoftambun.com/tickets-rentals/",
+    "price_reference_page": "https://sunwaylostworldoftambun.com/tickets-rentals/"
+  },
+  "outlets": [
+    {
+      "id": "66b016f0-d598-4034-32f8-8da5f55774d9",
+      "name": "Sunway Lost World of Tambun"
+    }
+  ],
+  "archive_legacy_slugs": ["lostworld-entry-ticket"],
+  "products": [
+    {
+      "slug": "lost-world-published-adult-day-admission",
+      "name": "Published Adult Day Admission",
+      "description": "Published-rate admission for adults aged 13 and above, including access to all parks, rides and attractions listed by Lost World of Tambun.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 160,
+      "source_type": "official",
+      "source_page": "https://sunwaylostworldoftambun.com/tickets-rentals/",
+      "source_image_url": "https://sunwaylostworldoftambun.com/wp-content/uploads/2025/01/20250124_103138.jpg",
+      "price_reference_page": "https://sunwaylostworldoftambun.com/tickets-rentals/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/lost-world-adult-day-pass-real.jpg",
+      "sha256": "2f62fdbf658b2a593e107e3e6e6526b59629167b84838c549ab7946dc3c52ea1",
+      "artist": "Sunway Lost World of Tambun",
+      "license": "Official operator media; source attribution recorded"
+    },
+    {
+      "slug": "lost-world-published-child-day-admission",
+      "name": "Published Child Day Admission",
+      "description": "Published-rate admission for children above 90 cm and aged 12 or below, including access to all parks and attractions listed by Lost World of Tambun.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 140,
+      "source_type": "official",
+      "source_page": "https://sunwaylostworldoftambun.com/tickets-rentals/",
+      "source_image_url": "https://sunwaylostworldoftambun.com/wp-content/uploads/2025/07/DJI_0004-scaled-1.jpg",
+      "price_reference_page": "https://sunwaylostworldoftambun.com/tickets-rentals/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/lost-world-child-day-pass-real.jpg",
+      "sha256": "e4eedd98619f28ea30a8f79b4baedaab7eb5a38c484b4ce1065201a4884fbac1",
+      "artist": "Sunway Lost World of Tambun",
+      "license": "Official operator media; source attribution recorded"
+    },
+    {
+      "slug": "lost-world-published-senior-day-admission",
+      "name": "Published Senior Citizen Day Admission",
+      "description": "Published-rate admission for senior citizens aged 60 and above, listed on Lost World of Tambun's official tickets page.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 140,
+      "source_type": "official",
+      "source_page": "https://sunwaylostworldoftambun.com/tickets-rentals/",
+      "source_image_url": "https://sunwaylostworldoftambun.com/wp-content/uploads/2025/07/cropped-6.jpg",
+      "price_reference_page": "https://sunwaylostworldoftambun.com/tickets-rentals/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/lost-world-senior-day-pass-real.jpg",
+      "sha256": "5d606d6d7d9b19d0a8ce1a08c316b9da5e9493e84b1bf19a503657fe141aeab5",
+      "artist": "Sunway Lost World of Tambun",
+      "license": "Official operator media; source attribution recorded"
+    },
+    {
+      "slug": "lost-world-hot-springs-night-adult",
+      "name": "Hot Springs & Night Park Adult Admission",
+      "description": "Published-rate evening admission for adults to Lost World Hot Springs and Night Park from 6pm to 11pm.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 130,
+      "source_type": "official",
+      "source_page": "https://sunwaylostworldoftambun.com/tickets-rentals/",
+      "source_image_url": "https://sunwaylostworldoftambun.com/wp-content/uploads/2016/03/Adventure-River-800x600-1.jpg",
+      "price_reference_page": "https://sunwaylostworldoftambun.com/tickets-rentals/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/lost-world-hot-springs-adult-real.jpg",
+      "sha256": "69b169eea7c3941efee58ed7fcc5f9b74a6d8b5683d44e2ac1fad7b27b230087",
+      "artist": "Sunway Lost World of Tambun",
+      "license": "Official operator media; source attribution recorded"
+    },
+    {
+      "slug": "lost-world-hot-springs-night-child",
+      "name": "Hot Springs & Night Park Child Admission",
+      "description": "Published-rate evening admission for children above 90 cm and aged 12 or below to Lost World Hot Springs and Night Park.",
+      "product_type": "activity",
+      "requires_booking": true,
+      "base_price": 105,
+      "source_type": "official",
+      "source_page": "https://sunwaylostworldoftambun.com/tickets-rentals/",
+      "source_image_url": "https://sunwaylostworldoftambun.com/wp-content/uploads/2025/07/cropped-7.jpg",
+      "price_reference_page": "https://sunwaylostworldoftambun.com/tickets-rentals/",
+      "observed_at": "2026-09-13",
+      "asset_path": "/assets/customer/products/lost-world-hot-springs-child-real.jpg",
+      "sha256": "1b4f5e3ee84d5748bb2874ee492d5ee7289d432b9323769420044fa9eedf1812",
+      "artist": "Sunway Lost World of Tambun",
+      "license": "Official operator media; source attribution recorded"
+    }
+  ]
+}

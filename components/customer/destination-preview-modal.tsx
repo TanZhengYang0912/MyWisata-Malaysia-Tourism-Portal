@@ -55,7 +55,7 @@ export function DestinationPreviewModal({ destination, onClose, onExplore }: Des
       >
         <div className="relative h-56 overflow-hidden sm:h-64">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={destination.image} alt={`${destination.attraction}, ${destination.state}`} className="h-full w-full object-cover saturate-[1.2] contrast-[1.04]" />
+          <img src={destination.image} alt={`${destination.attraction}, ${destination.state}`} className="h-full w-full object-cover object-top saturate-[1.2] contrast-[1.04]" />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.02),rgba(2,6,23,0.72))]" />
           <div className="absolute inset-x-0 bottom-0 p-6 text-white sm:p-8">
             <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-accent"><MapPin size={13} /> {destination.zone}</p>

@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/server';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { getLatestReplyTimestamps, getEarliestReplyTimestamps, isUnread } from '@/lib/support/unread';
+import { teamForCategory } from '@/lib/support/team-routing';
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -63,6 +64,7 @@ export async function GET(request: Request) {
       body: t.body,
       category: t.category,
       classificationMethod: t.classification_method,
+      team: teamForCategory(t.category),
       status: t.status,
       assignedTo: t.assigned_to,
       createdAt: t.created_at,

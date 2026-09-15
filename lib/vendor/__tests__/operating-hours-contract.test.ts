@@ -12,7 +12,12 @@ describe('operating hours contract', () => {
   it('preserves closed and note fields when validating outlet updates', () => {
     const result = outletUpdateSchema.safeParse({
       operatingHours: {
-        mon: { open: '09:00', close: '18:00', closed: true, note: 'Public holiday' },
+        mon: {
+          open: '09:00',
+          close: '18:00',
+          closed: true,
+          note: 'Public holiday',
+        },
       },
     });
 
@@ -28,7 +33,16 @@ describe('operating hours contract', () => {
   });
 
   it('uses distinct labels for operating hours and booking slots', () => {
-    expect(bookingsPage).toContain("t('ui.bookings.operatingHours')");
-    expect(bookingsPage).toContain("t('ui.bookings.slotsSummary'");
+    expect(bookingsPage).toMatch(/t\(["']ui\.bookings\.operatingHours["']\)/);
+    expect(bookingsPage).toMatch(/t\(["']ui\.bookings\.slotsSummary["']/);
+  });
+
+  it('offers date shortcuts and explicit exception modes', () => {
+    expect(bookingsPage).toMatch(/t\(["']ui\.bookings\.quickAdd["']\)/);
+    expect(bookingsPage).toMatch(/t\(["']ui\.bookings\.today["']\)/);
+    expect(bookingsPage).toMatch(/t\(["']ui\.bookings\.tomorrow["']\)/);
+    expect(bookingsPage).toMatch(/t\(["']ui\.bookings\.thisWeekend["']\)/);
+    expect(bookingsPage).toMatch(/t\(["']ui\.bookings\.closedAllDay["']\)/);
+    expect(bookingsPage).toMatch(/t\(["']ui\.bookings\.customHours["']\)/);
   });
 });

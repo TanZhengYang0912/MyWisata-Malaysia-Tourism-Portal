@@ -108,7 +108,7 @@ export async function GET() {
   if (authorError) return apiFail('DB_ERROR', authorError.message, 500);
   const authorById = new Map((authors ?? []).map((author) => [author.id, {
     id: author.id,
-    name: author.display_name?.trim() || author.full_name?.trim() || 'MyWisata member',
+    name: author.display_name?.trim() || author.full_name?.trim() || 'MyLawatan member',
     avatarUrl: author.avatar_url ?? null,
     city: author.city ?? null,
     country: author.country ?? null,

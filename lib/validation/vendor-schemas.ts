@@ -2,6 +2,7 @@
 // EVERY API route in this domain MUST pass request body through .parse() or .safeParse()
 
 import { z } from 'zod';
+import { TICKET_ENTRY_POLICIES } from '@/lib/tickets/product-ticket-policy';
 
 // ── Common building blocks ─────────────────────────────────
 
@@ -123,6 +124,9 @@ export const productCreateSchema = z.object({
   description: z.string().trim().max(5000).optional(),
   productType: z.enum(['product', 'activity', 'experience', 'food', 'digital', 'service']),
   requiresBooking: z.boolean().default(false),
+  ticketEntryPolicy: z.enum(TICKET_ENTRY_POLICIES).default('single_entry'),
+  ticketEntryLimit: z.number().int().min(1).max(1000).default(1),
+  ticketValidityDays: z.number().int().min(1).max(365).optional(),
   basePrice: rmMoney.min(0.01),
   categoryId: uuid.optional(),
   coverUrl: z.string().url().max(2000).optional().or(z.literal('')),

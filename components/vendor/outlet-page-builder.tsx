@@ -50,6 +50,7 @@ import OutletBuilderInspector from "@/components/vendor/outlet-builder-inspector
 import OutletBuilderPalette from "@/components/vendor/outlet-builder-palette";
 import { OutletPageRenderer } from "@/components/outlet/outlet-page-renderer";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { useAppDialog } from "@/components/providers/app-dialog";
 import { useTranslation } from "react-i18next";
 import { isAppLocale } from "@/lib/i18n/locale";
 import { formatDateTime } from "@/lib/i18n/format";
@@ -127,6 +128,7 @@ export default function OutletPageBuilder({
   const [closing, setClosing] = useState(false);
   const draftStorageKey = getOutletBuilderDraftStorageKey(vendorId, outletId);
   const { showFeedback } = useActionFeedback();
+  const { confirm } = useAppDialog();
 
   function syncHistoryState() {
     setHistoryState({
@@ -564,11 +566,11 @@ export default function OutletPageBuilder({
 
   const viewportConfig = getBuilderViewportConfig(view);
 
-  function closeBuilder() {
+  async function closeBuilder() {
     if (isOutletBuilderBusy({ saving, publishing, discarding, closing })) return;
     if (
       dirty &&
-      !window.confirm(t("builder.closeConfirm"))
+      !(await confirm(t("builder.closeConfirm")))
     ) {
       return;
     }
@@ -822,7 +824,7 @@ export default function OutletPageBuilder({
                       }))
                     }
                     rows={3}
-                    className="mt-1 w-full rounded-xl border border-gray-200 px-2 py-1.5 text-xs"
+                    className="mt-1 w-full resize-none rounded-xl border border-gray-200 px-2 py-1.5 text-xs"
                   />
                 </label>
               </div>

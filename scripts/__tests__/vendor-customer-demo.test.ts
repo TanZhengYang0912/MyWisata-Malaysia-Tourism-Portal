@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  OUTLET_TIMELINE_SCENARIOS,
   buildVendorCustomerDemoPlan,
   stableUuid,
 } from "../lib/vendor-customer-demo.mjs";
@@ -42,9 +43,12 @@ const baseInput = {
 describe("vendor customer demo planner", () => {
   it("creates a twelve-order customer timeline for every active outlet", () => {
     const plan = buildVendorCustomerDemoPlan(baseInput);
-    const timelineOrders = plan.rows.orders.filter((order) =>
-      String(order.notes ?? "").startsWith("Demo purchase at "),
+    const expectedTimelineOrderIds = new Set(
+      outlets.flatMap((outlet) => OUTLET_TIMELINE_SCENARIOS.map((scenario) =>
+        stableUuid(`vendor-customer-demo:${outlet.id}:${scenario.key}:order`),
+      )),
     );
+    const timelineOrders = plan.rows.orders.filter((order) => expectedTimelineOrderIds.has(String(order.id)));
     const timelineOrderIds = new Set(timelineOrders.map((order) => String(order.id)));
 
     for (const outlet of outlets) {
@@ -83,6 +87,25 @@ describe("vendor customer demo planner", () => {
       expect(agesInDays.filter((age) => age > 30 && age <= 60)).toHaveLength(2);
       expect(agesInDays.filter((age) => age > 60 && age <= 365)).toHaveLength(4);
     }
+  });
+
+  it("creates varied, contextual reviews and natural visible activity labels", () => {
+    const plan = buildVendorCustomerDemoPlan(baseInput);
+    const reviews = plan.rows.reviews;
+
+    expect(new Set(reviews.map((review) => String(review.body))).size).toBe(reviews.length);
+    expect(new Set(reviews.map((review) => String(review.title))).size).toBeGreaterThan(2);
+    expect(new Set(reviews.map((review) => Number(review.rating))).size).toBeGreaterThan(1);
+    expect(reviews.every((review) => Number(review.rating) >= 1 && Number(review.rating) <= 5)).toBe(true);
+    expect(reviews.every((review) => {
+      const product = products.find((candidate) => candidate.id === review.product_id);
+      const outlet = outlets.find((candidate) => candidate.id === review.outlet_id);
+      const body = String(review.body);
+      return product?.name && outlet?.name && body.includes(product.name) && body.includes(outlet.name);
+    })).toBe(true);
+    expect(plan.rows.orders.every((order) => !String(order.notes ?? "").startsWith("Demo"))).toBe(true);
+    expect(plan.rows.vouchers.every((voucher) => !String(voucher.name ?? "").startsWith("Demo"))).toBe(true);
+    expect(plan.rows.bookings.every((booking) => !String(booking.demo_qr_code ?? "").startsWith("DEMO"))).toBe(true);
   });
 
   it("builds a deterministic processed refund tied to Alice's own order and payment", () => {

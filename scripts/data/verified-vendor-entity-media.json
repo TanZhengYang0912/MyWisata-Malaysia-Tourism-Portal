@@ -1,0 +1,36 @@
+{
+  "vendor": {
+    "id": "1b173716-4da6-ac21-34c6-26d1384521e5",
+    "name": "Penang Road Famous Teochew Chendul",
+    "source_page": "https://chendul.my/our-food/"
+  },
+  "gallery": [
+    {
+      "asset_path": "/assets/customer/products/chendul-pandan-nasi-lemak-rendang-chicken.png",
+      "object_path": "curated-v1/vendor/penang-road-famous-teochew-chendul/gallery-1.png",
+      "source_image_url": "https://chendul.my/wp-content/uploads/2022/08/Group-111717-IMG.png",
+      "artist": "Penang Road Famous Teochew Chendul",
+      "license": "Official vendor media; source attribution recorded",
+      "alt": "Pandan nasi lemak with rendang chicken from Penang Road Famous Teochew Chendul",
+      "sha256": "7e0476e96d1c90c679812a6869b55cccba8c4ab07082c67d47324a07cf5fd1df"
+    },
+    {
+      "asset_path": "/assets/customer/products/chendul-fried-wantan.png",
+      "object_path": "curated-v1/vendor/penang-road-famous-teochew-chendul/gallery-2.png",
+      "source_image_url": "https://chendul.my/wp-content/uploads/2022/08/Group-111721-IMG.png",
+      "artist": "Penang Road Famous Teochew Chendul",
+      "license": "Official vendor media; source attribution recorded",
+      "alt": "Fried wantan from Penang Road Famous Teochew Chendul",
+      "sha256": "34101487c03bdfdfd33bc273051ef154cebda5b00cd6c8706df91f814eccb01d"
+    },
+    {
+      "asset_path": "/assets/customer/products/chendul-penang-asam-laksa.png",
+      "object_path": "curated-v1/vendor/penang-road-famous-teochew-chendul/gallery-3.png",
+      "source_image_url": "https://chendul.my/wp-content/uploads/2022/08/Group-111729-IMG.png",
+      "artist": "Penang Road Famous Teochew Chendul",
+      "license": "Official vendor media; source attribution recorded",
+      "alt": "Penang asam laksa from Penang Road Famous Teochew Chendul",
+      "sha256": "308c3e89d9f6b08a0bdb752858c987d46303695698222a164709c62c739239bf"
+    }
+  ]
+}
