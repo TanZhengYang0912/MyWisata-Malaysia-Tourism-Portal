@@ -667,6 +667,7 @@
       "routeOptions": "Route options",
       "trafficLive": "Live traffic",
       "trafficPredicted": "Predicted traffic",
+      "trafficProviderRetrievedAt": "Mapbox · {{time}}",
       "trafficNormal": "Normal",
       "trafficSlow": "Slow",
       "trafficCongested": "Congested",
@@ -2618,6 +2619,8 @@
       "filters": {
         "title": "Filter places",
         "results": "{{count}} places match",
+        "results_one": "{{count}} place matches",
+        "results_other": "{{count}} places match",
         "clearAll": "Clear all",
         "done": "Done",
         "priceRange": "Price range",

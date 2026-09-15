@@ -127,6 +127,8 @@ describe("trip planner layout contract", () => {
     expect(plannerSource).toContain("data-route-traffic-status");
     expect(plannerSource).toContain('tCustomer("ui.map.trafficLive")');
     expect(plannerSource).toContain('tCustomer("ui.map.trafficPredicted")');
+    expect(plannerSource).toContain('tCustomer("ui.map.trafficProviderRetrievedAt"');
+    expect(plannerSource).not.toContain(">Mapbox · {");
     expect(plannerSource).toContain('tCustomer("ui.map.trafficSlow")');
     expect(plannerSource).toContain('tCustomer("ui.map.trafficCongested")');
     expect(plannerSource).toContain("ROUTE_TRAFFIC_REFRESH_MS");

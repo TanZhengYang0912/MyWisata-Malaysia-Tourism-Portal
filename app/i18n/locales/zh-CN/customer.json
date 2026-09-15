@@ -667,6 +667,7 @@
       "routeOptions": "路线选项",
       "trafficLive": "实时路况",
       "trafficPredicted": "预测路况",
+      "trafficProviderRetrievedAt": "Mapbox · {{time}}",
       "trafficNormal": "畅通",
       "trafficSlow": "缓行",
       "trafficCongested": "拥堵",
@@ -2618,6 +2619,8 @@
       "filters": {
         "title": "筛选地点",
         "results": "有 {{count}} 个符合条件的地点",
+        "results_one": "有 {{count}} 个符合条件的地点",
+        "results_other": "有 {{count}} 个符合条件的地点",
         "clearAll": "清除全部",
         "done": "完成",
         "priceRange": "价格范围",

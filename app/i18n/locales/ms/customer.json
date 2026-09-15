@@ -667,6 +667,7 @@
       "routeOptions": "Pilihan laluan",
       "trafficLive": "Trafik langsung",
       "trafficPredicted": "Ramalan trafik",
+      "trafficProviderRetrievedAt": "Mapbox · {{time}}",
       "trafficNormal": "Lancar",
       "trafficSlow": "Perlahan",
       "trafficCongested": "Sesak",
@@ -2618,6 +2619,8 @@
       "filters": {
         "title": "Tapis tempat",
         "results": "{{count}} tempat sepadan",
+        "results_one": "{{count}} tempat sepadan",
+        "results_other": "{{count}} tempat sepadan",
         "clearAll": "Kosongkan semua",
         "done": "Selesai",
         "priceRange": "Julat harga",

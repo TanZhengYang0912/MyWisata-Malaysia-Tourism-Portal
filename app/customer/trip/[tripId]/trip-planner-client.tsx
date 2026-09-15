@@ -987,7 +987,7 @@ export function MapClient({
               <div data-route-traffic-status className="mb-2 rounded-xl border border-border bg-muted/70 px-2.5 py-2">
                 <div className="flex items-center justify-between gap-2 text-[10px] font-bold text-foreground">
                   <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />{activeRoute.traffic.basis === "live" ? tCustomer("ui.map.trafficLive") : tCustomer("ui.map.trafficPredicted")}</span>
-                  <span className="font-semibold text-muted-foreground">Mapbox · {new Date(activeRoute.traffic.retrievedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  <span className="font-semibold text-muted-foreground">{tCustomer("ui.map.trafficProviderRetrievedAt", { time: new Date(activeRoute.traffic.retrievedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}</span>
                 </div>
                 <div className="mt-1.5 grid grid-cols-4 gap-1 text-[9px] font-semibold text-muted-foreground">
                   <span className="flex items-center gap-1"><i className="h-1 w-4 rounded-full bg-[#2563EB]" />{tCustomer("ui.map.trafficNormal")}</span>
