@@ -2082,6 +2082,21 @@
       "ruleBased": "基于规则的摘要（AI 不可用）",
       "title": "洞察"
     },
+    "copilot": {
+      "aiGenerated": "AI 生成",
+      "captionCopied": "已复制！",
+      "captionFailed": "暂时无法生成文案。",
+      "copyCaption": "复制",
+      "draftCaption": "生成文案",
+      "draftingCaption": "生成中…",
+      "generateFailed": "暂时无法生成建议。",
+      "generating": "生成中…",
+      "generatingActions": "正在为您寻找最佳行动建议…",
+      "noActivity": "分享您的第一个商品，即可解锁个性化建议。",
+      "regenerate": "重新生成",
+      "ruleBased": "基于规则的摘要（AI 不可用）",
+      "title": "Copilot"
+    },
     "rank": {
       "earnings": "按收入排名——本月 {{amount}}",
       "empty": "分享链接即可加入排行榜。",

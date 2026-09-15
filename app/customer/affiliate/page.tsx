@@ -13,6 +13,7 @@ import { sanitizeCampaign } from "@/lib/affiliate/campaign";
 import { AffiliateClicksChart } from "@/components/customer/affiliate-clicks-chart";
 import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
 import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
+import { AffiliateCopilotCard } from "@/components/customer/affiliate-copilot-card";
 import { AffiliateRankCard } from "@/components/shared/affiliate-rank-card";
 import { RecommendationEarningsPanel } from "@/components/customer/recommendation-earnings-panel";
 import { AffiliateQrCode } from "@/components/shared/affiliate-qr-code";
@@ -451,6 +452,10 @@ export default function AffiliateDashboardPage() {
 
       <div className="mb-8">
         <AffiliateInsightCard scope="user" requiredCapability="affiliate.earn_commission" nextPath="/customer/affiliate" />
+      </div>
+
+      <div className="mb-8">
+        <AffiliateCopilotCard />
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-[0_8px_24px_rgba(1,0,102,0.06)]">

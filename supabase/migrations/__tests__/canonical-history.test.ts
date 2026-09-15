@@ -41,6 +41,7 @@ const approvedForwardMigrations = [
   "20260912190000_vendor_featured_products.sql",
   "20260912210000_place_community_mock_data_v2.sql",
   "20260912233000_activity_media_consistency.sql",
+  "20260913000000_share_event_device.sql",
   "20260913003000_vendor_outlet_media.sql",
   "20260913005000_place_accesses.sql",
   "20260913013000_place_informational_activities.sql",

@@ -76,6 +76,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/activity-card.tsx",
   "components/customer/activity-reviews.tsx",
   "components/customer/affiliate-clicks-chart.tsx",
+  "components/customer/affiliate-copilot-card.tsx",
   "components/customer/ai-tag.tsx",
   "components/customer/booking-day-drawer.tsx",
   "components/customer/booking-qr-code.tsx",

@@ -2082,6 +2082,21 @@
       "ruleBased": "Rule-based summary (AI unavailable)",
       "title": "Insights"
     },
+    "copilot": {
+      "aiGenerated": "AI-generated",
+      "captionCopied": "Copied!",
+      "captionFailed": "Couldn’t draft a caption right now.",
+      "copyCaption": "Copy",
+      "draftCaption": "Draft a caption",
+      "draftingCaption": "Drafting…",
+      "generateFailed": "Couldn’t generate suggestions right now.",
+      "generating": "Generating…",
+      "generatingActions": "Finding your next best actions…",
+      "noActivity": "Share your first listing to unlock personalised suggestions.",
+      "regenerate": "Regenerate",
+      "ruleBased": "Rule-based summary (AI unavailable)",
+      "title": "Copilot"
+    },
     "rank": {
       "earnings": "by earnings — {{amount}} this month",
       "empty": "Share a link to join the leaderboard.",

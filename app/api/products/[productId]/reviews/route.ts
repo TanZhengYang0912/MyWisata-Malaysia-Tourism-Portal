@@ -52,8 +52,9 @@ export async function POST(request: Request, { params }: Props) {
   const parsed = await parseBody(request, productReviewSubmitSchema);
   if (!parsed.ok) return parsed.response;
 
-  const cleanedTitle = parsed.data.title ? cleanUserContent(parsed.data.title) : null;
-  const cleanedBody = parsed.data.body ? cleanUserContent(parsed.data.body) : null;
+  const service = createServiceClient();
+  const cleanedTitle = parsed.data.title ? await cleanUserContent(parsed.data.title, service) : null;
+  const cleanedBody = parsed.data.body ? await cleanUserContent(parsed.data.body, service) : null;
   if (cleanedTitle?.hadSlur || cleanedBody?.hadSlur) {
     return apiFail("CONTENT_REJECTED", "This review cannot be published", 422);
   }
@@ -61,7 +62,6 @@ export async function POST(request: Request, { params }: Props) {
   const body = cleanedBody?.display.trim() || null;
 
   try {
-    const service = createServiceClient();
     const { data: orderItem, error: orderItemError } = await service
       .from("order_items")
       .select("id,vendor_id,outlet_id,product_id,orders!inner(user_id,status)")

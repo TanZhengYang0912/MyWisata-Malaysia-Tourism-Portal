@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
+import { ratingFromRows } from "@/lib/reviews/rating-summary";
 import { selectPublicDocument } from "@/lib/vendor/outlet-page-persistence";
 import { getOutletProductIds } from "@/backend/domains/catalogue";
 import { buildPublicOutletProfile, getOutletNavigationModel, selectFullOutletMenu } from "@/lib/customer/outlet-shop";
@@ -46,12 +48,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!outlet) return { title: t("ui.outletPage.notFound") };
   const document = selectPublicDocument(page || {});
   const vendor = Array.isArray(outlet.vendors) ? outlet.vendors[0] : undefined;
+
+  // Rating prefix for the WhatsApp/social preview card — never fabricated,
+  // omitted entirely when there are zero visible reviews.
+  const { data: reviewRows } = await createServiceClient().from("reviews").select("rating").eq("outlet_id", outletId).eq("is_visible", true);
+  const { rating } = await ratingFromRows(reviewRows ?? []);
+  const baseDescription = document.seoDescription || t("ui.outletPage.metaDescription", { name: outlet.name });
+  const description = rating !== null ? `★ ${rating.toFixed(1)} · ${baseDescription}` : baseDescription;
+  const url = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/customer/vendor/${vendorId}/outlet/${outletId}`;
+
   return {
     title: document.seoTitle || `${outlet.name}${vendor ? ` — ${vendor.name}` : ""} | ${BRAND_NAME}`,
-    description: document.seoDescription || t("ui.outletPage.metaDescription", { name: outlet.name }),
+    description,
     openGraph: {
       title: document.seoTitle || outlet.name,
-      description: document.seoDescription || t("ui.outletPage.metaDescription", { name: outlet.name }),
+      description,
+      url,
       images: document.hero.imageUrl || gallery[0]?.url ? [{ url: document.hero.imageUrl || gallery[0].url }] : undefined,
     },
   };

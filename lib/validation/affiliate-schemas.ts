@@ -82,3 +82,12 @@ export const rejectAttributionSchema = z.object({
 }).strict();
 
 export type RejectAttributionInput = z.infer<typeof rejectAttributionSchema>;
+
+// ── Affiliate Copilot (CLAUDE-AFFILIATE-COPILOT.md) ─────────────────────────
+
+export const copilotCaptionSchema = z.object({
+  productId: uuid,
+  lang: z.enum(['en', 'bm', 'zh']),
+}).strict();
+
+export type CopilotCaptionInput = z.infer<typeof copilotCaptionSchema>;
