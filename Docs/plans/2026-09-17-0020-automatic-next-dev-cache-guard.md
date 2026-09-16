@@ -1,6 +1,20 @@
 # Automatic Next.js Development Cache Guard
 
-**Status:** Approved design; implementation pending.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use `executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Status:** Implemented and verified on 2026-09-17.
+
+**Verification result:** Cache-guard Node tests passed (12/12), the existing
+Next development contract passed (2/2), Stripe launcher tests passed (11/11),
+the full Vitest suite passed (768 files and 3,818 tests; 12 files and 42 tests
+skipped), `npx tsc --noEmit` passed, and ESLint completed with 0 errors and 80
+pre-existing warnings.
+
+**Goal:** Make `npm run dev` automatically remove unsafe or oversized generated Next.js cache data without deleting a live server's files or forcing every startup to cold-compile.
+
+**Architecture:** A cross-platform Node.js `predev` command applies a repository-local cache policy before the existing Webpack runner starts. Filesystem behavior lives in a separately tested helper; the CLI only resolves the repository root, invokes the helper, and reports the result.
+
+**Tech Stack:** Node.js 20 built-ins, npm lifecycle scripts, Next.js 16 Webpack development mode, Node test runner, Vitest.
 
 ## Context
 
@@ -22,12 +36,17 @@ full cold compile.
 - Run a cross-platform Node.js cache guard automatically through `predev`.
 - Never delete a live development server's cache. If `.next/dev/lock` identifies
   a live process, fail with an actionable message instead.
+- If `.next/dev/lock` contains a valid but dead PID, skip cache cleanup without
+  failing `predev` and let Next.js apply its own stale-lock behavior.
 - Remove `.next/dev/cache/turbopack` whenever it exists because it is unused by
   the Webpack development command.
+- Acquire `.next/dev/lock` atomically for the cleanup window so another standard
+  Next startup cannot pass the same check and begin writing during deletion.
 - After removing stale Turbopack data, remove the whole generated `.next`
-  cache only when its remaining size exceeds 2 GiB. Preserve an active
+  cache only when its remaining size exceeds 2 GiB. Always preserve
   `.next/dev-stripe.lock`, because `npm run dev:stripe` acquires that launcher
-  lock before it starts `npm run dev`; stale launcher locks may be removed.
+  lock before it starts `npm run dev`; stale launcher-lock recovery remains the
+  existing Stripe launcher's responsibility.
 - Preserve a normal-sized Webpack cache so routine restarts remain warm.
 - Do not add a timer that deletes cache while Next.js is running. Live deletion
   can corrupt the active compiler and cannot release memory already retained by
@@ -51,7 +70,7 @@ full cold compile.
 |---|---|---|---|
 | Stable Webpack development contract | `scripts/__tests__/next-dev-server.contract.test.ts` | Extend | It already protects the required `next dev --webpack` behavior and is the correct place to assert the new `predev` entry point. |
 | Script helper/test layout | `scripts/lib/stripe-dev-env.mjs`, `scripts/lib/stripe-dev-env.test.mjs` | Reuse pattern | These establish cross-platform `.mjs` helpers tested with `node:test` and temporary directories. |
-| Existing development launcher | `scripts/dev-stripe.mjs` | Reuse unchanged | It starts `npm run dev`, so it automatically receives the guard. Its live `.next/dev-stripe.lock` must be preserved during a threshold cleanup. |
+| Existing development launcher | `scripts/dev-stripe.mjs` | Reuse unchanged | It starts `npm run dev`, so it automatically receives the guard. Its `.next/dev-stripe.lock` must never be deleted by the cache guard. |
 | Stripe launcher lock tests | `scripts/lib/stripe-dev-env.test.mjs` | Reuse contract | They establish that the lock contains an owner PID and stale locks are recoverable; the cache guard will follow the same ownership rule without duplicating the launcher. |
 | Prior stabilization record | `Docs/plans/2026-08-20-2141-stabilize-next-dev-server.md` | Extend operational decision | It establishes Webpack and generated-cache cleanup as the accepted recovery strategy. |
 | Unconditional shell `rm -rf` | None | Reject | It is platform-specific, unsafe against a live process, and forces cold compilation every time. |
@@ -67,7 +86,7 @@ full cold compile.
     bounded cleanup functions.
 - `scripts/lib/next-dev-cache.test.mjs`
   - Test normal-cache preservation, stale Turbopack removal, threshold cleanup,
-    live-server refusal, active Stripe-lock preservation, and stale-lock cleanup
+    live-server refusal, atomic cleanup locking, and Stripe-lock preservation
     using temporary directories.
 - `scripts/prepare-next-dev-cache.mjs`
   - Resolve the repository-local `.next`, invoke the helper, and print a concise
@@ -91,7 +110,7 @@ export function prepareNextDevCache(options) {}
 
 `prepareNextDevCache` will return a small result describing whether it removed
 the Turbopack cache, cleaned oversized `.next` contents, or preserved the cache.
-An oversized cleanup may leave only a live `dev-stripe.lock` in place. It will
+An oversized cleanup may leave only `dev-stripe.lock` in place. It will
 accept injected paths/process checks for deterministic tests but will not expose
 test-only behavior in the CLI.
 
@@ -101,7 +120,7 @@ test-only behavior in the CLI.
   production behavior will change.
 - No automatic process killing or background scheduler will be introduced.
 - No deletion target outside the repository-local `.next` directory is allowed.
-- No changes to `dev:stripe` are required because the guard preserves its live
+- No changes to `dev:stripe` are required because the guard never removes its
   launcher lock and it already delegates to `npm run dev`.
 
 ## New Dependencies
@@ -114,11 +133,13 @@ None.
 
 ## Risks and Controls
 
-- **Deleting an active cache:** parse `.next/dev/lock` and verify its PID before
-  cleanup; fail closed when it is live.
-- **Breaking the Stripe launcher lock:** inspect `.next/dev-stripe.lock` using
-  its existing PID ownership format; retain it when the owner is alive and
-  remove it only when stale.
+- **Deleting an active cache:** strictly parse `.next/dev/lock`, fail closed when
+  its PID is live, and atomically own that lock throughout cleanup.
+- **Crash-stale Next lock:** leave the lock untouched, skip cleanup for that
+  startup, and return success so the Next runner—not the cache guard—decides how
+  to recover it.
+- **Breaking the Stripe launcher lock:** never remove `.next/dev-stripe.lock`;
+  its existing launcher already owns stale-lock detection and recovery.
 - **Deleting an unrelated path:** derive all targets from an explicit repository
   root and validate that cleanup targets remain inside its `.next` directory.
 - **Slow startup scan:** remove the known Turbopack subtree first, then scan only
@@ -130,15 +151,17 @@ None.
 
 ## Implementation Phases
 
-1. Extend the existing contract test and add Node tests for the desired cache
-   policy; run them and confirm they fail because the helper and `predev` do not
-   exist.
-2. Implement the filesystem helper and CLI with the minimum behavior required
-   by the tests.
-3. Add the `predev` package entry and README explanation.
-4. Run focused tests, TypeScript, lint, and a temporary-directory CLI smoke test.
-5. Perform one independent read-only review focused on deletion scope and live
-   process safety, then address only confirmed must-fix findings.
+- [x] **Task 1 — RED:** Extend the existing package-script contract and add
+  temporary-directory Node tests for healthy-cache preservation, Turbopack
+  removal, threshold cleanup, live Next refusal, and Stripe-lock handling. Run
+  both focused test commands and confirm the missing helper/`predev` failures.
+- [x] **Task 2 — GREEN:** Implement `scripts/lib/next-dev-cache.mjs` and
+  `scripts/prepare-next-dev-cache.mjs`, then run both focused suites to green.
+- [x] **Task 3 — Integration:** Add the `predev` lifecycle entry and document the
+  behavior in `README.md`; rerun the focused suites.
+- [x] **Task 4 — Verification:** Run the temporary-directory smoke test,
+  TypeScript, lint, and `git diff --check`; then request one independent
+  deletion-scope and lock-safety review from `luna_worker`.
 
 ## Verification
 

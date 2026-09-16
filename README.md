@@ -49,12 +49,19 @@ Open [http://localhost:3000](http://localhost:3000) — it redirects to `/login`
 
 | Command | What it does |
 |---|---|
-| `npm run dev` | Start the dev server |
+| `npm run dev` | Safely prepare the local Next.js cache, then start the Webpack dev server |
 | `npm run dev:stripe` | Sync the local Stripe webhook secret, then start Stripe CLI and the dev server together |
 | `npm run build` / `npm run start` | Production build / serve |
 | `npm test` | Run unit tests (money, voucher, distance, order-state helpers) |
 | `npm run test:dev-stripe` | Test the local Stripe secret and listener launcher |
 | `npm run lint` | Lint |
+
+`npm run dev` automatically removes stale Turbopack data and cleans the
+repository-local `.next` cache only when its remaining size exceeds 2 GiB. It
+preserves a healthy Webpack cache for faster restarts and refuses to delete
+files when another Next development server owns the cache. A server left
+running for an extended period can still retain excessive memory; stop it with
+Ctrl+C and run `npm run dev` again to restart the process and apply the guard.
 
 ## Local Stripe payments
 

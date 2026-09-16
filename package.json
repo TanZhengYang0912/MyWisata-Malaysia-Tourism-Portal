@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/prepare-next-dev-cache.mjs",
     "dev": "next dev --webpack",
     "dev:stripe": "node scripts/dev-stripe.mjs",
     "build": "next build --webpack",
