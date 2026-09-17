@@ -1187,6 +1187,7 @@
       "guestDescription": "Log masuk sebelum menghantar dokumen identiti.",
       "description": "Hantar dokumen identiti anda untuk membuka pengeluaran dompet dan pendapatan afiliasi penuh.",
       "continue": "Teruskan",
+      "backToVendorWallet": "Kembali ke Dompet Vendor",
       "verified": "KYC disahkan",
       "infoRequired": "Maklumat tambahan diperlukan",
       "rejected": "Penghantaran KYC ditolak",

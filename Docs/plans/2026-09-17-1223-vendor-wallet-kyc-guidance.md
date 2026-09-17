@@ -86,9 +86,9 @@ Database changes: none.
 - Create: `components/kyc/kyc-submission-page.tsx`
 - Modify: `app/customer/kyc/page.tsx`
 - Create: `app/vendor/kyc/page.tsx`
-- Modify: `messages/en/customer.json`
-- Modify: `messages/ms/customer.json`
-- Modify: `messages/zh-CN/customer.json`
+- Modify: `app/i18n/locales/en/customer.json`
+- Modify: `app/i18n/locales/ms/customer.json`
+- Modify: `app/i18n/locales/zh-CN/customer.json`
 - Create: `app/vendor/__tests__/kyc-guidance.contract.test.ts`
 
 **Components:**

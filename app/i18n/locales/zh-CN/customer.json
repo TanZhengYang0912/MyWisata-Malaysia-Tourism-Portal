@@ -1187,6 +1187,7 @@
       "guestDescription": "提交身份证件前，请先登录。",
       "description": "提交身份证件以解锁钱包提现和完整的联盟收益功能。",
       "continue": "继续",
+      "backToVendorWallet": "返回商家钱包",
       "verified": "KYC 已验证",
       "infoRequired": "需要更多信息",
       "rejected": "KYC 提交被拒绝",

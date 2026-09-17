@@ -1187,6 +1187,7 @@
       "guestDescription": "Sign in before submitting identity documents.",
       "description": "Submit your identity documents to unlock wallet withdrawals and full affiliate earnings.",
       "continue": "Continue",
+      "backToVendorWallet": "Back to Vendor Wallet",
       "verified": "KYC verified",
       "infoRequired": "Additional information required",
       "rejected": "KYC submission rejected",
