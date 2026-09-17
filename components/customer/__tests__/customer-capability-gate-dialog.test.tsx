@@ -119,6 +119,32 @@ describe("customer capability gate dialog contract", () => {
     ]);
   });
 
+  it.each([
+    ["KYC_PENDING", "wait_for_kyc", "ui.capabilityGate.blockers.KYC_PENDING"],
+    ["KYC_RESUBMISSION_REQUIRED", "resubmit_kyc", "ui.capabilityGate.blockers.KYC_RESUBMISSION_REQUIRED"],
+  ] as const)("uses the %s action copy for a KYC status route", (blockerCode, nextAction, copyKey) => {
+    const actions = customerCapabilityRecoveryActions({
+      capability: "wallet.request_withdrawal",
+      decision: {
+        capability: "wallet.request_withdrawal",
+        allowed: false,
+        blockerCode,
+        qualificationPaths: [{ type: "kyc", href: "/vendor/kyc" }],
+        entitlementGeneration: 0,
+        source: "hard_guard",
+        currentTier: null,
+        requiredTier: null,
+        nextAction,
+      },
+      nextPath: "/vendor/wallet",
+    });
+
+    expect(actions).toEqual([{
+      href: "/vendor/kyc?capability=wallet.request_withdrawal&next=%2Fvendor%2Fwallet",
+      copyKey,
+    }]);
+  });
+
   it("maps stable blocker codes to localized copy keys", () => {
     expect(capabilityGateCopyKey("PROFILE_COMPLETION_REQUIRED"))
       .toBe("ui.capabilityGate.blockers.PROFILE_COMPLETION_REQUIRED");

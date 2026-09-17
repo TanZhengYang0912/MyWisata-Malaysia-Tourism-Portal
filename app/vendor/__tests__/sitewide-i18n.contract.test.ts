@@ -65,6 +65,8 @@ export const VENDOR_I18N_FILES = [
 
 const priorTaskFiles = new Set([
   'components/vendor/voucher-metric-card.tsx',
+  // Thin route wrapper; rendered KYC copy is owned by the shared customer-namespace component.
+  'app/vendor/kyc/page.tsx',
   'app/vendor/layout.tsx',
   'app/vendor/loading.tsx',
   'app/vendor/redemptions/page.tsx',

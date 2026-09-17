@@ -6,6 +6,7 @@ export default function VendorKycPage() {
       selfPath="/vendor/kyc"
       backHref="/vendor/wallet"
       backLabelKey="ui.kyc.backToVendorWallet"
+      defaultContinuation="/vendor/wallet"
     />
   );
 }

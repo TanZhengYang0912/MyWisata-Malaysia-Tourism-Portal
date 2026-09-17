@@ -48,13 +48,15 @@ type KycSubmissionPageProps = {
   selfPath: "/customer/kyc" | "/vendor/kyc";
   backHref: "/customer/profile" | "/vendor/wallet";
   backLabelKey: "ui.profile.backToProfile" | "ui.kyc.backToVendorWallet";
+  defaultContinuation: "/customer/profile" | "/vendor/wallet";
 };
 
-export function KycSubmissionPage({ selfPath, backHref, backLabelKey }: KycSubmissionPageProps) {
+export function KycSubmissionPage({ selfPath, backHref, backLabelKey, defaultContinuation }: KycSubmissionPageProps) {
   const { t: tCustomer, i18n } = useTranslation("customer");
   const { currentUser, refreshUser, verificationFacts } = useAuth();
   const searchParams = useSearchParams();
-  const continuation = postLoginPath(searchParams.get("next"));
+  const requestedContinuation = postLoginPath(searchParams.get("next"));
+  const continuation = requestedContinuation ?? defaultContinuation;
   const { showFeedback } = useActionFeedback();
   const [submitting,        setSubmitting]        = useState(false);
   const [form,              setForm]              = useState({ icNumber: "", docType: "national_id" });
@@ -158,7 +160,7 @@ export function KycSubmissionPage({ selfPath, backHref, backLabelKey }: KycSubmi
   const showForm = canSubmit && !isVerified && !loading && canStartNewSubmission;
   const submitDisabled = submitting || !frontFile || !backFile || Boolean(fileErrors.front || fileErrors.back);
 
-  if (!currentUser) return <CustomerPageShell><GuestAccountEmptyState title={tCustomer("ui.kyc.guestTitle")} description={tCustomer("ui.kyc.guestDescription")} nextPath={continuation ?? selfPath} /></CustomerPageShell>;
+  if (!currentUser) return <CustomerPageShell><GuestAccountEmptyState title={tCustomer("ui.kyc.guestTitle")} description={tCustomer("ui.kyc.guestDescription")} nextPath={requestedContinuation ?? selfPath} /></CustomerPageShell>;
 
   return (
     <>
@@ -334,4 +336,3 @@ export function KycSubmissionPage({ selfPath, backHref, backLabelKey }: KycSubmi
     </>
   );
 }
-

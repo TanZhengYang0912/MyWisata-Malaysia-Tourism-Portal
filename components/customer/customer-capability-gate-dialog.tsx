@@ -87,7 +87,13 @@ export function customerCapabilityRecoveryActions(
       const safePath = postLoginPath(path.href);
       if (!safePath) return [];
       const query = `capability=${encodeURIComponent(request.capability)}&next=${encodeURIComponent(safeNext)}`;
-      return [{ href: `${safePath}?${query}`, copyKey: qualificationCopyKey(path.type) }];
+      const statusSpecificKycAction = path.type === "kyc"
+        && (request.decision.blockerCode === "KYC_PENDING"
+          || request.decision.blockerCode === "KYC_RESUBMISSION_REQUIRED");
+      const copyKey = statusSpecificKycAction
+        ? capabilityGateCopyKey(request.decision.blockerCode!)
+        : qualificationCopyKey(path.type);
+      return [{ href: `${safePath}?${query}`, copyKey }];
     });
   }
 

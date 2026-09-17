@@ -17,9 +17,11 @@ describe("Vendor Wallet KYC guidance contract", () => {
     expect(customerRoute).toContain('from "@/components/kyc/kyc-submission-page"');
     expect(customerRoute).toContain('selfPath="/customer/kyc"');
     expect(customerRoute).toContain('backHref="/customer/profile"');
+    expect(customerRoute).toContain('defaultContinuation="/customer/profile"');
     expect(vendorRoute).toContain('from "@/components/kyc/kyc-submission-page"');
     expect(vendorRoute).toContain('selfPath="/vendor/kyc"');
     expect(vendorRoute).toContain('backHref="/vendor/wallet"');
+    expect(vendorRoute).toContain('defaultContinuation="/vendor/wallet"');
   });
 
   it("keeps the Vendor Wallet return label available in every maintained customer locale", () => {

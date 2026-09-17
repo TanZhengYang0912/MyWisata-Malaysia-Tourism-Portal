@@ -6,6 +6,7 @@ export default function CustomerKycPage() {
       selfPath="/customer/kyc"
       backHref="/customer/profile"
       backLabelKey="ui.profile.backToProfile"
+      defaultContinuation="/customer/profile"
     />
   );
 }
