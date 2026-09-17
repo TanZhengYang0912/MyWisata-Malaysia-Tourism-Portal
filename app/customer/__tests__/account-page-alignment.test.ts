@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const page = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
+const page = (path: string) => readFileSync(new URL(
+  path === "../kyc/page.tsx" ? "../../../components/kyc/kyc-submission-page.tsx" : path,
+  import.meta.url,
+), "utf8");
 
 describe("customer account page alignment", () => {
   it.each([
@@ -29,6 +32,11 @@ describe("customer account page alignment", () => {
   it("aligns both Become a Vendor states", () => {
     const source = page("../profile/register-vendor/page.tsx");
     expect(source.match(/<CustomerPageTitle/g) ?? []).toHaveLength(2);
+  });
+
+  it("keeps the customer KYC route as a thin wrapper around the shared aligned page", () => {
+    const route = readFileSync(new URL("../kyc/page.tsx", import.meta.url), "utf8");
+    expect(route).toContain('from "@/components/kyc/kyc-submission-page"');
   });
 
   it.each(["../calendar/page.tsx", "../orders/page.tsx"])(

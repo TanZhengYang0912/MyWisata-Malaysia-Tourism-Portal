@@ -26,7 +26,7 @@ describe('profile completion display contract', () => {
 
   it('uses a neutral identity verification heading for every KYC status', () => {
     const sections = readFileSync(new URL('../../../../components/profile/profile-sections.tsx', import.meta.url), 'utf8');
-    const kycPage = readFileSync(new URL('../../kyc/page.tsx', import.meta.url), 'utf8');
+    const kycPage = readFileSync(new URL('../../../../components/kyc/kyc-submission-page.tsx', import.meta.url), 'utf8');
 
     expect(sections).toContain('tCustomer("ui.profileSections.identityVerification")');
     expect(sections).not.toContain('title={tCustomer("ui.kyc.verified")}');
@@ -57,13 +57,16 @@ describe('profile completion display contract', () => {
   });
 
   it('keeps KYC independent while offering optional navigation back to Profile', () => {
-    const kycPage = readFileSync(new URL('../../kyc/page.tsx', import.meta.url), 'utf8');
+    const kycPage = readFileSync(new URL('../../../../components/kyc/kyc-submission-page.tsx', import.meta.url), 'utf8');
+    const customerRoute = readFileSync(new URL('../../kyc/page.tsx', import.meta.url), 'utf8');
 
     expect(kycPage).toContain('verificationFacts?.kycStatus');
     expect(kycPage).not.toContain('TIER_STEPS');
     expect(kycPage).not.toContain('isProfileComplete');
-    expect(kycPage).toContain('href="/customer/profile"');
-    expect(kycPage).toContain('tCustomer("ui.profile.backToProfile")');
+    expect(kycPage).toContain('href={backHref}');
+    expect(kycPage).toContain('tCustomer(backLabelKey)');
+    expect(customerRoute).toContain('backHref="/customer/profile"');
+    expect(customerRoute).toContain('backLabelKey="ui.profile.backToProfile"');
   });
 
   it('uses the same upload and camera picker in wizard and completed Profile settings', () => {

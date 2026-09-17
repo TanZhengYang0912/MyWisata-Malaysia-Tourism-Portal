@@ -29,9 +29,15 @@ describe("customer page dimensions", () => {
 
   it("uses the shared page frame on every requested customer route", () => {
     for (const route of requestedRoutes) {
-      const source = readFileSync(resolve(workspace, route), "utf8");
+      const implementation = route === "app/customer/kyc/page.tsx"
+        ? "components/kyc/kyc-submission-page.tsx"
+        : route;
+      const source = readFileSync(resolve(workspace, implementation), "utf8");
       expect(source, route).toContain("CustomerPageShell");
       expect(source, route).toContain("CustomerPageTitle");
     }
+
+    const kycRoute = readFileSync(resolve(workspace, "app/customer/kyc/page.tsx"), "utf8");
+    expect(kycRoute).toContain('from "@/components/kyc/kyc-submission-page"');
   });
 });
