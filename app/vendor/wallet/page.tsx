@@ -13,6 +13,9 @@ import { getWithdrawalDisplayGroups } from "@/lib/wallet/withdrawal-display";
 import { DEMO_PAYOUT_ACCOUNT } from "@/lib/i18n/invariant-tokens";
 import { formatMYR, formatMYRNumber } from "@/lib/i18n/format";
 import { VendorSettlementPanel } from "@/components/vendor/vendor-settlement-panel";
+import { useCustomerCapabilityGateDialog } from "@/components/customer/customer-capability-gate-dialog";
+import { CUSTOMER_CAPABILITY_KEY } from "@/lib/auth/customer-capabilities";
+import { getVendorWithdrawalKycDecision } from "@/lib/kyc/vendor-withdrawal-gate";
 
 const MIN_WITHDRAWAL = 50;
 const DESTINATIONS = [
@@ -49,7 +52,8 @@ export default function VendorWalletPage() {
     : transaction.withdrawalId
       ? t('ui.wallet.withdrawalReference', { id: transaction.withdrawalId.slice(0, 8).toUpperCase() })
       : t('ui.wallet.walletLedger');
-  const { currentUser } = useAuth();
+  const { currentUser, verificationFacts } = useAuth();
+  const { showCapabilityGate } = useCustomerCapabilityGateDialog();
   const [wallet, setWallet] = useState({ topup: 0, earnings: 0, pendingEarnings: 0 });
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
@@ -93,9 +97,29 @@ export default function VendorWalletPage() {
   const canRequestWithdrawal = available >= MIN_WITHDRAWAL && pending.length === 0;
   const filteredTransactions = useMemo(() => filterTransactions(transactions, activeFilter), [transactions, activeFilter]);
 
+  function requireApprovedWithdrawalKyc() {
+    const decision = getVendorWithdrawalKycDecision(verificationFacts);
+    if (decision.allowed) return true;
+
+    setShowModal(false);
+    showCapabilityGate({
+      capability: CUSTOMER_CAPABILITY_KEY.WITHDRAWAL,
+      decision,
+      nextPath: "/vendor/wallet",
+    });
+    return false;
+  }
+
+  function openWithdraw() {
+    setError("");
+    if (!requireApprovedWithdrawalKyc()) return;
+    setShowModal(true);
+  }
+
   async function handleWithdraw(e: React.FormEvent) {
     e.preventDefault();
     if (!currentUser) return;
+    if (!requireApprovedWithdrawalKyc()) return;
     setError("");
     const amount = parseFloat(form.amount);
     if (!amount || amount < MIN_WITHDRAWAL) {
@@ -140,7 +164,7 @@ export default function VendorWalletPage() {
           </div>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
-          <Button onClick={() => { setError(""); setShowModal(true); }} disabled={!canRequestWithdrawal || loading} className="flex items-center justify-center gap-2">
+          <Button onClick={openWithdraw} disabled={!canRequestWithdrawal || loading} className="flex items-center justify-center gap-2">
             <ArrowDownCircle size={15} /> {t('ui.wallet.withdrawFunds')}
           </Button>
           <p className="text-right text-xs text-muted-foreground">{withdrawalHelp}</p>

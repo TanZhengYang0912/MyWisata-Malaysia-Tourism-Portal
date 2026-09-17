@@ -30,4 +30,23 @@ describe("Vendor Wallet KYC guidance contract", () => {
       expect(messages.ui?.kyc?.backToVendorWallet, locale).toEqual(expect.any(String));
     }
   });
+
+  it("mounts the existing capability dialog provider for Vendor routes", () => {
+    const layoutSource = read("app/vendor/layout.tsx");
+
+    expect(layoutSource).toContain("CustomerCapabilityGateProvider");
+    expect(layoutSource).toContain("<CustomerCapabilityGateProvider>");
+  });
+
+  it("checks KYC before both opening and submitting the withdrawal modal", () => {
+    const walletSource = read("app/vendor/wallet/page.tsx");
+
+    expect(walletSource).toContain("useCustomerCapabilityGateDialog");
+    expect(walletSource).toContain("getVendorWithdrawalKycDecision");
+    expect(walletSource).toContain("const { currentUser, verificationFacts } = useAuth()");
+    expect(walletSource).toContain("function requireApprovedWithdrawalKyc()");
+    expect(walletSource).toMatch(/function openWithdraw\(\)[\s\S]*requireApprovedWithdrawalKyc\(\)[\s\S]*setShowModal\(true\)/);
+    expect(walletSource).toMatch(/async function handleWithdraw[\s\S]*requireApprovedWithdrawalKyc\(\)[\s\S]*requestWithdrawal/);
+    expect(walletSource).toContain("onClick={openWithdraw}");
+  });
 });
