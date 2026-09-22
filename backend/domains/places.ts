@@ -10,6 +10,7 @@ import { supabase } from "@/backend/supabase";
 import { haversineKm } from "@/backend/core/helpers";
 import type { Outlet, Place, PlaceAccess, PlaceAccessType, PlaceInformationalActivity, PlaceInformationalActivityType, PlaceLevel, PlaceProduct, PlaceRelation } from "@/backend/core/types";
 import { getActivities, getOutlets, getVendors } from "@/backend/domains/catalogue";
+import { selectEntityGallery, type EntityMediaRow } from "@/lib/customer/entity-media";
 import { placeImageUrl } from "@/lib/storage/place-image";
 
 type PlaceRow = {
@@ -330,10 +331,33 @@ export async function getNearbyOutlets(
   db: SupabaseClient = supabase,
 ): Promise<{ outlet: Outlet; km: number }[]> {
   const outlets = await getOutlets(db);
-  return outlets
+  const nearby = outlets
     .map((outlet) => ({ outlet, km: haversineKm(origin, { lat: outlet.lat, lng: outlet.lng }) }))
     .filter((entry) => entry.km <= radiusKm)
     .sort((a, b) => a.km - b.km);
+  if (nearby.length === 0) return nearby;
+
+  // The place card can reuse the same curated outlet gallery that the outlet
+  // page displays when its hero_url is empty. Fetch media only for nearby
+  // outlets so unrelated catalogue consumers do not pay for gallery rows.
+  const { data: media, error } = await db
+    .from("media_assets")
+    .select("outlet_id,product_id,url,alt_text,media_type,sort_order")
+    .in("outlet_id", nearby.map(({ outlet }) => outlet.id));
+  if (error) return nearby;
+
+  const galleryByOutlet = new Map<string, EntityMediaRow[]>();
+  for (const row of media ?? []) {
+    if (!row.outlet_id || row.product_id !== null) continue;
+    const gallery = galleryByOutlet.get(row.outlet_id) ?? [];
+    gallery.push({ url: row.url, altText: row.alt_text, mediaType: row.media_type, sortOrder: row.sort_order });
+    galleryByOutlet.set(row.outlet_id, gallery);
+  }
+
+  return nearby.map((entry) => {
+    const coverUrl = entry.outlet.coverUrl ?? selectEntityGallery(galleryByOutlet.get(entry.outlet.id) ?? [], 1)[0]?.url ?? null;
+    return { ...entry, outlet: { ...entry.outlet, coverUrl } };
+  });
 }
 
 /** States that have a places tree — drives the D7 fallback: render the new place-first page only when this includes the state, else fall through to the existing destination page. */

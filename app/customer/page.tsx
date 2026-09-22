@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getRecommendedFeed } from "@/backend/domains/recommend";
 import { rankFeaturedVendors } from "@/backend/domains/vendor-recommend";
 import { getCachedComputedActivities } from "@/lib/cache/catalogue-cache";
+import { selectEntityLogo, type EntityMediaRow } from "@/lib/customer/entity-media";
+import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import type { ComputedActivity } from "@/backend/core/types";
 import { CustomerHomeClient } from "./customer-home-client";
 
@@ -26,12 +28,30 @@ export default async function CustomerHomePage() {
     aiTag: item.reasonLabel ?? undefined,
   })) as ComputedActivity[];
 
+  const vendorIds = (vendorRows.data ?? []).map((vendor) => vendor.id);
+  const vendorMediaRows = vendorIds.length
+    ? (await db
+      .from("media_assets")
+      .select("vendor_id,url,alt_text,media_type,sort_order")
+      .in("vendor_id", vendorIds)
+      .is("outlet_id", null)
+      .is("product_id", null)
+      .order("sort_order")).data ?? []
+    : [];
+  const mediaByVendorId = new Map<string, EntityMediaRow[]>();
+  for (const row of vendorMediaRows) {
+    const rows = mediaByVendorId.get(row.vendor_id) ?? [];
+    rows.push({ url: row.url, altText: row.alt_text, mediaType: row.media_type, sortOrder: row.sort_order });
+    mediaByVendorId.set(row.vendor_id, rows);
+  }
+
   const vendors = (vendorRows.data ?? [])
     .map((vendor) => ({
       id: vendor.id,
       name: vendor.name,
       description: vendor.description,
-      logoUrl: vendor.logo_url,
+      logoUrl: getVendorVisual({ name: vendor.name, logoUrl: vendor.logo_url }).logoUrl
+        ?? selectEntityLogo(mediaByVendorId.get(vendor.id) ?? []),
       coverUrl: vendor.cover_url,
       businessType: vendor.business_type,
       outlets: (vendor.outlets ?? [])

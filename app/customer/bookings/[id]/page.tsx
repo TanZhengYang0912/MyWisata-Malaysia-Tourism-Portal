@@ -129,14 +129,16 @@ export default function CustomerBookingDetailsPage() {
         </section>
 
         <section className="mt-4 flex flex-col gap-5 rounded-3xl border border-border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:p-7" aria-labelledby="entry-heading">
-          <div className="flex h-32 w-32 shrink-0 items-center justify-center rounded-2xl bg-secondary p-2 text-primary">
+          <div className="flex min-h-32 w-32 shrink-0 items-center justify-center rounded-2xl bg-secondary p-2 text-primary">
             <BookingQrCode
               bookingId={booking.id}
+              orderId={booking.orderId}
               size={112}
               passToken={booking.passToken}
               policy={booking.policy}
               entryLimit={booking.entryLimit}
               entriesUsed={booking.entriesUsed}
+              validUntil={booking.validUntil}
             />
           </div>
           <div className="min-w-0">

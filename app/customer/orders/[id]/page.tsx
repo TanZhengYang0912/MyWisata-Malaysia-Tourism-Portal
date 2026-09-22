@@ -22,6 +22,7 @@ import { getOutlets } from "@/backend/domains/catalogue";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { BookingQrCode } from "@/components/customer/booking-qr-code";
+import { FoodOrderQrCodes } from "@/components/customer/food-order-qr-codes";
 import { Button } from "@/components/ui/button";
 import type { Booking, Order, Outlet } from "@/backend/core/types";
 import { productImageUrl } from "@/lib/storage/product-image";
@@ -287,7 +288,7 @@ export default function OrderDetailPage() {
                           </h3>
                           <p className="mt-1 text-xs font-semibold text-muted-foreground">
                             <span className="rounded-md bg-secondary px-2 py-0.5 text-primary">
-                              {item.qty}× {item.variantLabel}
+                              {item.qty}×{item.variantLabel ? ` ${item.variantLabel}` : ""}
                             </span>
                           </p>
                           {itemOutlet && (
@@ -325,7 +326,7 @@ export default function OrderDetailPage() {
               </section>
 
               {/* Digital Entry Pass / QR Codes if Bookings exist */}
-              {bookings.length > 0 && (
+              {bookings.length > 0 && isPaid && (
                 <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                   <div className="border-b border-border bg-secondary/40 px-5 py-4 sm:px-6">
                     <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-primary">
@@ -339,35 +340,45 @@ export default function OrderDetailPage() {
                     {bookings.map((b) => (
                       <div
                         key={b.id}
-                        className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-6"
+                        className="grid gap-6 p-5 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-center sm:gap-10 sm:p-8"
                       >
-                        <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-white p-2 border border-border shadow-sm">
+                        <div className="flex min-w-0 flex-col justify-center gap-6 sm:py-6">
+                          <h3 className="break-words text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+                            {b.activityName}
+                          </h3>
+                          {b.slotStartsAt && (
+                            <p className="flex min-w-0 items-center gap-3 text-base font-medium text-muted-foreground">
+                              <CalendarDays size={19} className="shrink-0 text-primary" aria-hidden="true" />
+                              <span>{dateTimeLabel(b.slotStartsAt, locale)}</span>
+                            </p>
+                          )}
+                          <div className="flex min-w-0 flex-col gap-1 border-t border-border pt-4">
+                            <p className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              {tCustomer("ui.labels.bookingReference")}
+                            </p>
+                            <p className="break-all font-[family-name:var(--font-mono)] text-sm font-semibold text-primary sm:text-base">
+                              {b.id}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-secondary/20 p-4 sm:col-start-2 sm:min-h-[280px] sm:p-5">
                           <BookingQrCode
                             bookingId={b.id}
-                            size={84}
+                            orderId={order.id}
+                            size={176}
                             passToken={b.passToken}
                             policy={b.policy}
                             entryLimit={b.entryLimit}
                             entriesUsed={b.entriesUsed}
+                            validUntil={b.validUntil}
                           />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold text-foreground text-base truncate">{b.activityName}</p>
-                          {b.slotStartsAt && (
-                            <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <CalendarDays size={13} className="text-primary" />
-                              <span>{dateTimeLabel(b.slotStartsAt, locale)}</span>
-                            </p>
-                          )}
-                          <p className="mt-2 font-[family-name:var(--font-mono)] text-xs text-muted-foreground">
-                            {tCustomer("ui.labels.bookingReference")}: <span className="font-bold text-primary">{b.id}</span>
-                          </p>
                         </div>
                       </div>
                     ))}
                   </div>
                 </section>
               )}
+              {isPaid && <FoodOrderQrCodes orderId={order.id} />}
             </div>
 
             {/* Right Column: Order Summary & Quick Action Card (1 Col) */}
@@ -466,7 +477,10 @@ export default function OrderDetailPage() {
       <RefundRequestDialog
         open={refundModalOpen}
         summary={`${shortOrderId(order.id)} · ${formatMYR(order.total)}`}
-        items={order.items.map((item) => ({ qty: item.qty, label: `${item.activityName} (${item.variantLabel})` }))}
+        items={order.items.map((item) => ({
+          qty: item.qty,
+          label: `${item.activityName}${item.variantLabel ? ` (${item.variantLabel})` : ""}`,
+        }))}
         submitting={requestingRefund}
         onCancel={() => setRefundModalOpen(false)}
         onConfirm={(reason) => void handleRefundSubmit(reason)}
@@ -547,7 +561,7 @@ export default function OrderDetailPage() {
                   <td className="py-3 text-gray-400 font-mono">{idx + 1}</td>
                   <td className="py-3 pr-4">
                     <p className="font-bold text-gray-900">{item.activityName}</p>
-                    <p className="text-gray-500 text-[11px]">{item.variantLabel}</p>
+                    {item.variantLabel && <p className="text-gray-500 text-[11px]">{item.variantLabel}</p>}
                     {item.slotStartsAt && (
                       <p className="text-gray-500 text-[11px] font-medium">
                         {tCustomer("ui.orders.slot", { time: dateTimeLabel(item.slotStartsAt, locale) })}
@@ -584,28 +598,39 @@ export default function OrderDetailPage() {
         </div>
 
         {/* Verification QR Pass (if applicable) */}
-        {bookings.length > 0 && (
-          <div className="mt-8 border border-gray-300 rounded-xl p-4 flex items-center justify-between break-inside-avoid">
-            <div>
+        {bookings.length > 0 && isPaid && (
+          <div className="mt-8 border border-gray-300 rounded-xl p-4 break-inside-avoid">
+            <div className="mb-4">
               <p className="font-bold text-sm text-gray-900 uppercase tracking-wide">
                 {tCustomer("ui.booking.entryPass")}
               </p>
               <p className="text-xs text-gray-600 mt-1 max-w-sm">
                 {tCustomer("ui.booking.scanAtOutlet")}
               </p>
-              <p className="text-[11px] font-mono text-gray-400 mt-2">
-                {tCustomer("ui.orders.bookingId", { id: bookings[0].id })}
-              </p>
             </div>
-            <div className="p-1 border border-gray-200 rounded-lg">
-              <BookingQrCode
-                bookingId={bookings[0].id}
-                size={96}
-                passToken={bookings[0].passToken}
-                policy={bookings[0].policy}
-                entryLimit={bookings[0].entryLimit}
-                entriesUsed={bookings[0].entriesUsed}
-              />
+            <div className="space-y-4">
+              {bookings.map((booking) => (
+                <div key={booking.id} className="flex items-center justify-between gap-4 break-inside-avoid border-t border-gray-200 pt-4 first:border-t-0 first:pt-0">
+                  <div>
+                    <p className="font-bold text-sm text-gray-900">{booking.activityName}</p>
+                    <p className="text-[11px] font-mono text-gray-500 mt-2">
+                      {tCustomer("ui.orders.bookingId", { id: booking.id })}
+                    </p>
+                  </div>
+                  <div className="p-1 border border-gray-200 rounded-lg">
+                    <BookingQrCode
+                      bookingId={booking.id}
+                      orderId={order.id}
+                      size={96}
+                      passToken={booking.passToken}
+                      policy={booking.policy}
+                      entryLimit={booking.entryLimit}
+                      entriesUsed={booking.entriesUsed}
+                      validUntil={booking.validUntil}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

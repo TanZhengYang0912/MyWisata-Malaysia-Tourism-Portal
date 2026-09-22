@@ -167,29 +167,42 @@ export async function POST(request: Request) {
   if (voucher && totals.voucherError) return NextResponse.json({ error: totals.voucherError }, { status: 422 });
 
   const productIds = [...new Set(cartItems.map((item) => item.activityId))];
-  const { data: productRows } = await db.from('products').select('id,outlet_id,vendor_id,name,cover_url,requires_booking').in('id', productIds);
+  const { data: productRows, error: productRowsError } = await db.from('products')
+    .select('id,outlet_id,vendor_id,name,cover_url,requires_booking,categories(slug)')
+    .in('id', productIds);
+  if (productRowsError) return NextResponse.json({
+    error: {
+      code: 'PRODUCT_LOOKUP_FAILED',
+      message: 'We could not verify cart items right now. Please try again shortly.',
+    },
+  }, { status: 503 });
   const productMap = new Map((productRows ?? []).map((row) => [row.id, row]));
 
-  const lines = selectedRows.map((row) => {
+  const candidateLines = selectedRows.map((row) => {
     const variant = relation(row.product_variants);
     const slot = relation(row.booking_slots);
     const productId = variant?.product_id ?? slot?.product_id ?? '';
     const activity = activityMap.get(productId);
     const product = productMap.get(productId);
-    if (!activity || !product || !variant) throw new Error('Cart contains an unavailable product');
+    if (
+      !activity
+      || !product
+      || (!variant && (!product.requires_booking || row.variant_id !== null))
+      || (product.requires_booking && !slot)
+    ) return null;
     const linePrice = slot?.price_override !== null && slot?.price_override !== undefined
       ? Number(slot.price_override)
-      : unitPrice(activity, variant.id, row.quantity, new Date(), productIds);
+      : unitPrice(activity, variant?.id ?? '', row.quantity, new Date(), productIds);
     return {
       cart_item_id: row.id,
       product_id: productId,
-      variant_id: variant.id,
+      variant_id: variant?.id ?? null,
       slot_id: row.slot_id,
       vendor_id: product.vendor_id,
       outlet_id: row.outlet_id,
       product_name: product.name,
       image_url: product.cover_url,
-      variant_name: variant.name,
+      variant_name: variant?.name ?? null,
       slot_starts_at: slot?.starts_at ?? null,
       unit_price: linePrice,
       quantity: row.quantity,
@@ -197,6 +210,39 @@ export async function POST(request: Request) {
       requires_booking: product.requires_booking,
     };
   });
+  if (candidateLines.some((line) => line === null)) return NextResponse.json({
+    error: {
+      code: 'CART_ITEM_UNAVAILABLE',
+      message: 'One or more cart items are no longer available. Refresh your cart and try again.',
+    },
+  }, { status: 409 });
+  const lines = candidateLines.filter((line) => line !== null);
+
+  const selectedFoodOutlets = [...new Set(lines.flatMap((line) => {
+    const product = productMap.get(line.product_id) as { categories?: { slug?: string } | { slug?: string }[] | null } | undefined;
+    const category = Array.isArray(product?.categories) ? product.categories[0] : product?.categories;
+    return category?.slug === 'food' ? [line.outlet_id] : [];
+  }))];
+  const selectedModes = normalized.foodServiceModes;
+  if (selectedModes.length !== selectedFoodOutlets.length || new Set(selectedModes.map((selection) => selection.outletId)).size !== selectedModes.length) {
+    return NextResponse.json({
+      data: null,
+      error: { code: 'FOOD_SERVICE_MODE_REQUIRED', message: 'Choose dine-in or takeaway for every food outlet in checkout.' },
+    }, { status: 422 });
+  }
+  if (selectedFoodOutlets.length > 0) {
+    const { data: foodOutlets, error: outletModesError } = await db.from('outlets')
+      .select('id,food_service_modes')
+      .in('id', selectedFoodOutlets);
+    if (outletModesError) return NextResponse.json({ error: 'Food service options could not be verified. Please try again.' }, { status: 503 });
+    const allowedModes = new Map((foodOutlets ?? []).map((outlet: { id: string; food_service_modes: string[] }) => [outlet.id, outlet.food_service_modes]));
+    if (selectedModes.some((selection) => !selectedFoodOutlets.includes(selection.outletId) || !allowedModes.get(selection.outletId)?.includes(selection.mode))) {
+      return NextResponse.json({
+        data: null,
+        error: { code: 'FOOD_SERVICE_MODE_UNAVAILABLE', message: 'The selected food service option is unavailable at this outlet. Refresh checkout and try again.' },
+      }, { status: 422 });
+    }
+  }
 
   const checkoutArgs = {
     p_cart_id: cart.id,
@@ -211,7 +257,11 @@ export async function POST(request: Request) {
     p_lines: lines,
     ...(normalized.claimId ? { p_claim_id: normalized.claimId } : {}),
   };
-  const { data: prepared, error: prepareError } = await db.rpc('prepare_checkout', checkoutArgs);
+  const checkoutFunction = selectedFoodOutlets.length > 0 ? 'prepare_checkout_with_food_service_modes' : 'prepare_checkout';
+  const rpcArgs = selectedFoodOutlets.length > 0
+    ? { ...checkoutArgs, p_claim_id: normalized.claimId, p_food_service_modes: selectedModes.map(({ outletId, mode }) => ({ outlet_id: outletId, mode })) }
+    : checkoutArgs;
+  const { data: prepared, error: prepareError } = await db.rpc(checkoutFunction, rpcArgs);
   if (prepareError) {
     const rawMessage = prepareError.message ?? "checkout_failed";
     const code = getCheckoutErrorCode(rawMessage);

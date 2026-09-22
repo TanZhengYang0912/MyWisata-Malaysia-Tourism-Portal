@@ -135,7 +135,7 @@ function mapOrderItem(row: OrderItemRow): OrderItem {
     activityId: row.product_id ?? "",
     activityName: row.product_name,
     imageUrl: row.image_url ?? row.products?.cover_url ?? undefined,
-    variantLabel: row.variant_name ?? "Standard",
+    variantLabel: row.variant_name ?? (row.slot_starts_at ? "" : "Standard"),
     slotStartsAt: row.slot_starts_at ?? undefined,
     unitPrice: Number(row.unit_price),
     qty: row.quantity,
@@ -200,6 +200,8 @@ type TicketPassRow = {
   entry_limit: number;
   entries_used: number;
   status: string;
+  valid_from?: string | null;
+  valid_until?: string | null;
 };
 
 type BookingRow = {
@@ -245,10 +247,12 @@ function mapBooking(row: BookingRow): Booking | null {
     policy: pass?.policy,
     entryLimit: pass?.entry_limit,
     entriesUsed: pass?.entries_used,
+    validFrom: pass?.valid_from ?? undefined,
+    validUntil: pass?.valid_until ?? undefined,
   };
 }
 
-const BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity),ticket_passes(id,policy,entry_limit,entries_used,status)";
+const BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)";
 
 export async function getBookingsForOrder(orderId: string): Promise<Booking[]> {
   const { data, error } = await supabase.from("bookings").select(BOOKING_SELECT).eq("order_items.order_id", orderId);

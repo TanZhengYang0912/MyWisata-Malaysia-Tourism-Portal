@@ -31,6 +31,12 @@ describe("customer account page alignment", () => {
     expect(source.match(/<CustomerPageTitle/g) ?? []).toHaveLength(2);
   });
 
+  it("keeps the vendor application panel and fields aligned to the wide step shell", () => {
+    const source = page("../profile/register-vendor/page.tsx");
+    expect(source).not.toContain("max-w-5xl");
+    expect(source).toContain('<CustomerPanel className="p-5 sm:p-7">');
+  });
+
   it.each(["../calendar/page.tsx", "../orders/page.tsx"])(
     "uses the shared two-anchor layout in %s",
     (path) => {

@@ -1,8 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import { REFERENCE_CURRENCIES } from "@/lib/currency/reference";
-import { saveCurrencyPreference } from "../currency-switcher";
+import { CURRENCY_FLAG_ASSETS, saveCurrencyPreference } from "../currency-switcher";
 
 describe("currency switcher preference save", () => {
+  it("maps every supported currency to its regional flag asset", () => {
+    expect(CURRENCY_FLAG_ASSETS).toEqual({
+      MYR: "/flags/my.svg",
+      SGD: "/flags/sg.svg",
+      USD: "/flags/us.svg",
+      CNY: "/flags/cn.svg",
+      EUR: "/flags/eu.svg",
+    });
+  });
+
   it("posts one of the exact approved currency codes", async () => {
     const fetcher = vi.fn().mockResolvedValue({ status: 200 });
 

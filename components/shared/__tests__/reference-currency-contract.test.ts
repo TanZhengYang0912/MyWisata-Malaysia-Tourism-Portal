@@ -40,6 +40,20 @@ describe("reference currency UI contract", () => {
     expect(switcher).toContain('fetcher("/api/currency"');
     expect(switcher).toContain("router.refresh()");
     expect(switcher).toContain('t("currency.label")');
+    expect(switcher).toContain("SelectTrigger");
+    expect(switcher).toContain("CURRENCY_FLAG_ASSETS");
+    expect(switcher).not.toContain("<select");
+  });
+
+  it("uses the shared styled Select for both language and currency preferences", () => {
+    const language = read("components/shared/language-switcher.tsx");
+    const currency = read("components/shared/currency-switcher.tsx");
+
+    expect(language).toContain('from "@/components/ui/select"');
+    expect(currency).toContain('from "@/components/ui/select"');
+    expect(language).toContain("onValueChange={(value) => { void handleLocaleChange(value); }}");
+    expect(language).not.toContain("<select");
+    expect(currency).not.toContain("<select");
   });
 
   it("exposes the switcher in both customer and guest headers", () => {

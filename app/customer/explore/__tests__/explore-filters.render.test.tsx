@@ -22,6 +22,7 @@ vi.mock("react-i18next", () => ({
       "ui.explore.experiences": "Experiences",
       "ui.discovery.state": "State",
       "ui.discovery.maximumPrice": "Maximum price",
+      "ui.discovery.priceInvalid": "Enter a value between 0 and 10,000.",
       "ui.discovery.freeOnly": "Free entry",
       "ui.discovery.bookableOnly": "Booking required",
       "ui.discovery.hiddenGemOnly": "Hidden Gem",
@@ -31,6 +32,11 @@ vi.mock("react-i18next", () => ({
       "categories.activity": "Activity",
       "categories.hiddenGem": "Hidden Gem",
       "ui.discovery.searchLabel": "Search",
+      "ui.discovery.openingHours": "Opening hours",
+      "ui.discovery.locationAndPrice": "Location and budget",
+      "ui.discovery.experienceTypes": "Activity types",
+      "ui.discovery.preferences": "Preferences",
+      "ui.labels.openNow": "Open now",
       "ui.map.moreFilters": "More filters",
       "ui.map.activeFilters": "Active filters",
       "ui.map.types.nature": "Nature",
@@ -161,6 +167,48 @@ describe("ExploreClient URL-backed advanced filters", () => {
     expect(labelled(container, "State").value).toBe("Sabah");
     expect(labelled(container, "Nature").getAttribute("aria-pressed")).toBe("true");
     expect(findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false)).toHaveLength(8);
+  });
+
+  it("keeps Open now at hand and opens opening hours before secondary filter groups", async () => {
+    mocks.params = new URLSearchParams();
+    await render(root, <ExploreClient initialActivities={activities} />);
+    await click(button(container, "Experiences"));
+
+    expect(button(container, "Open now").getAttribute("aria-pressed")).toBe("false");
+    await click(button(container, "Open now"));
+    expect(button(container, "Open now").getAttribute("aria-pressed")).toBe("true");
+
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent?.startsWith("More filters") === true));
+    const groups = findElements(container, (element) => element.tagName === "DETAILS");
+    expect(groups).toHaveLength(4);
+    expect(groups[0].hasAttribute("open")).toBe(true);
+    expect(groups.slice(1).every((group) => !group.hasAttribute("open"))).toBe(true);
+    expect(findOne(container, (element) => element.tagName === "SUMMARY" && element.textContent === "Opening hours")).not.toBeNull();
+  });
+
+  it("rejects invalid maximum prices without applying them, while accepting a valid amount", async () => {
+    mocks.params = new URLSearchParams("priceMax=100");
+    await render(root, <ExploreClient initialActivities={activities} />);
+    await click(button(container, "Experiences"));
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent?.startsWith("More filters") === true));
+    await click(findOne(container, (element) => element.tagName === "SUMMARY" && element.textContent === "Location and budget"));
+    const priceInput = labelled(container, "Maximum price");
+    mocks.searchActivities.mockClear();
+
+    await setInputValue(priceInput, "-100");
+    expect(priceInput.getAttribute("aria-invalid")).toBe("true");
+    expect(findOne(container, (element) => element.getAttribute("role") === "alert").textContent).toBe("Enter a value between 0 and 10,000.");
+    expect(mocks.searchActivities).toHaveBeenLastCalledWith(expect.objectContaining({ priceMax: null }));
+    expect(mocks.searchActivities.mock.calls.some(([query]) => query.priceMax === -100)).toBe(false);
+
+    await setInputValue(priceInput, "10001");
+    expect(priceInput.getAttribute("aria-invalid")).toBe("true");
+    expect(mocks.searchActivities.mock.calls.some(([query]) => query.priceMax === 10001)).toBe(false);
+
+    await setInputValue(priceInput, "100");
+    expect(priceInput.getAttribute("aria-invalid")).toBe("false");
+    expect(findElements(container, (element) => element.getAttribute("role") === "alert")).toHaveLength(0);
+    expect(mocks.searchActivities).toHaveBeenLastCalledWith(expect.objectContaining({ priceMax: 100 }));
   });
 
   it("maps the Hidden Gem category card to the badge flag instead of an invalid category branch", async () => {

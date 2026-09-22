@@ -24,6 +24,7 @@ export function VoucherRedeemDialog({
   const { t: tCustomer, i18n } = useTranslation("customer");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
+  const [storeTokenCopied, setStoreTokenCopied] = useState(false);
   const [codeType, setCodeType] = useState<"qr" | "barcode">("qr");
 
   const storeToken = voucher?.claim?.storeToken;
@@ -49,6 +50,17 @@ export function VoucherRedeemDialog({
       await navigator.clipboard.writeText(voucher.code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback
+    }
+  }
+
+  async function copyStoreToken() {
+    if (!storeToken) return;
+    try {
+      await navigator.clipboard.writeText(storeToken);
+      setStoreTokenCopied(true);
+      setTimeout(() => setStoreTokenCopied(false), 2000);
     } catch {
       // fallback
     }
@@ -99,49 +111,81 @@ export function VoucherRedeemDialog({
           <p className="mt-1 text-xs text-muted-foreground">{expiryLabel}</p>
         </div>
 
-        {/* Format Selector: QR Code vs Barcode */}
-        <div className="flex justify-center">
-          <div className="inline-flex rounded-xl bg-secondary/70 p-1 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setCodeType("qr")}
-              className={`rounded-lg px-4 py-1.5 transition ${
-                codeType === "qr" ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tCustomer("ui.voucherHub.barcodeModal.qrCode")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setCodeType("barcode")}
-              className={`rounded-lg px-4 py-1.5 transition ${
-                codeType === "barcode" ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tCustomer("ui.voucherHub.barcodeModal.barcode")}
-            </button>
-          </div>
-        </div>
+        {storeToken ? (
+          <>
+            {/* Format Selector: QR Code vs Barcode */}
+            <div className="flex justify-center">
+              <div className="inline-flex rounded-xl bg-secondary/70 p-1 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setCodeType("qr")}
+                  className={`rounded-lg px-4 py-1.5 transition ${
+                    codeType === "qr" ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {tCustomer("ui.voucherHub.barcodeModal.qrCode")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCodeType("barcode")}
+                  className={`rounded-lg px-4 py-1.5 transition ${
+                    codeType === "barcode" ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {tCustomer("ui.voucherHub.barcodeModal.barcode")}
+                </button>
+              </div>
+            </div>
 
-        {/* Code Visual Display */}
-        <div className="flex flex-col items-center justify-center py-2">
-          {codeType === "qr" ? (
-            <div className="rounded-2xl border border-border bg-white p-4 shadow-sm">
-              <canvas ref={canvasRef} className="h-auto max-w-full" aria-label={tCustomer("ui.voucherHub.barcodeModal.redemptionQrCode")} />
+            {/* Code Visual Display */}
+            <div className="flex flex-col items-center justify-center py-2">
+              {codeType === "qr" ? (
+                <div className="rounded-2xl border border-border bg-white p-4 shadow-sm">
+                  <canvas ref={canvasRef} className="h-auto max-w-full" aria-label={tCustomer("ui.voucherHub.barcodeModal.redemptionQrCode")} />
+                </div>
+              ) : (
+                <div className="w-full max-w-xs rounded-2xl border border-border bg-white p-3 shadow-sm">
+                  <VoucherBarcode
+                    value={storeToken}
+                    text={voucher.code}
+                    label={tCustomer("ui.voucherHub.barcodeModal.storeBarcode")}
+                  />
+                </div>
+              )}
+              <p className="mt-3 max-w-xs text-center text-xs text-muted-foreground">
+                {tCustomer("ui.voucherHub.barcodeInstruction", "Present this code to the staff at checkout to scan and apply discount.")}
+              </p>
             </div>
-          ) : (
-            <div className="w-full max-w-xs rounded-2xl border border-border bg-white p-3 shadow-sm">
-              <VoucherBarcode
-                value={storeToken || voucher.code}
-                text={voucher.code}
-                label={tCustomer("ui.voucherHub.barcodeModal.storeBarcode")}
-              />
+
+            <div className="flex flex-col gap-2 rounded-2xl border border-border bg-secondary/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs leading-5 text-muted-foreground">
+                {tCustomer("ui.voucherHub.storeTokenManualHint")}
+              </p>
+              <button
+                type="button"
+                onClick={copyStoreToken}
+                className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-bold text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                aria-live="polite"
+              >
+                {storeTokenCopied ? (
+                  <>
+                    <Check size={14} className="text-emerald-600" />
+                    <span className="text-emerald-600">{tCustomer("ui.voucherHub.storeTokenCopied")}</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={14} />
+                    <span>{tCustomer("ui.voucherHub.copyStoreToken")}</span>
+                  </>
+                )}
+              </button>
             </div>
-          )}
-          <p className="mt-3 max-w-xs text-center text-xs text-muted-foreground">
-            {tCustomer("ui.voucherHub.barcodeInstruction", "Present this code to the staff at checkout to scan and apply discount.")}
+          </>
+        ) : (
+          <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="alert">
+            {tCustomer("ui.voucherHub.storeTokenUnavailable")}
           </p>
-        </div>
+        )}
 
         {/* Manual Code & Copy */}
         <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-3.5 shadow-sm">

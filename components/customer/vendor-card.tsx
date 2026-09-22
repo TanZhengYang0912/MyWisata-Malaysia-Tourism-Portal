@@ -79,6 +79,9 @@ export function VendorCard({
             {visual.logoUrl ? <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={visual.logoUrl} alt={t("ui.vendor.logoAlt", { vendor: vendor.name })} className="h-full w-full object-contain p-1" />
+            </> : visual.coverUrl ? <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={visual.coverUrl} alt="" className="h-full w-full object-cover" />
             </> : visual.initials}
           </span>
         </div>

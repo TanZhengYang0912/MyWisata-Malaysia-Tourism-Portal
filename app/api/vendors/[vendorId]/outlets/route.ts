@@ -26,7 +26,7 @@ export async function GET(request: Request, { params }: Props) {
 
   const selection = metadataOnly
     ? 'id,name,city,state,status,operating_hours'
-    : 'id,display_id,name,slug,address,city,state,postcode,country,lat,lng,phone,email,operating_hours,welcome_message,welcome_enabled,status,review_status,review_note,created_at,outlet_pages(hero_url,brand_colour),products(count),outlet_managers(user_id,users(id,full_name,email)),outlet_manager_invitations(invited_email,expires_at,status)';
+    : 'id,display_id,name,slug,address,city,state,postcode,country,lat,lng,phone,email,operating_hours,welcome_message,welcome_enabled,food_service_modes,status,review_status,review_note,created_at,outlet_pages(hero_url,brand_colour),products(count),outlet_managers(user_id,users(id,full_name,email)),outlet_manager_invitations(invited_email,expires_at,status)';
   let query = supabase
     .from('outlets')
     .select(selection, { count: 'exact' })
@@ -108,6 +108,7 @@ export async function POST(request: Request, { params }: Props) {
     welcome_enabled: body.welcomeEnabled ?? true,
     wheelchair_accessible: body.wheelchairAccessible ?? null,
     pet_friendly: body.petFriendly ?? null,
+    food_service_modes: body.foodServiceModes,
     status: 'inactive',
     review_status: 'pending_review',
   }).select().single();

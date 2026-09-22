@@ -97,6 +97,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/directory-pagination.tsx",
   "components/customer/discovery-filters.tsx",
   "components/customer/event-calendar-dialog.tsx",
+  "components/customer/food-order-qr-codes.tsx",
   "components/customer/guest-account-empty-state.tsx",
   "components/customer/malaysia-destination-rail.tsx",
   "components/customer/media-gallery.tsx",

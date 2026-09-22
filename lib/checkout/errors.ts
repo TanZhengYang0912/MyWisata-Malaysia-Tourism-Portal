@@ -7,6 +7,7 @@ export type CheckoutErrorPayload =
 export type CheckoutErrorCode =
   | "BOOKING_CAPACITY_UNAVAILABLE"
   | "BOOKING_SLOT_INVALID"
+  | "CART_ITEM_UNAVAILABLE"
   | "INVENTORY_UNAVAILABLE"
   | "WALLET_INSUFFICIENT"
   | "VOUCHER_NOT_AVAILABLE"
@@ -32,6 +33,7 @@ export function getCheckoutErrorCode(payload: CheckoutErrorPayload): CheckoutErr
   const text = payloadText(payload).toLowerCase();
   if (text.includes("booking_capacity_unavailable")) return "BOOKING_CAPACITY_UNAVAILABLE";
   if (text.includes("booking_slot_invalid")) return "BOOKING_SLOT_INVALID";
+  if (text.includes("cart_item_unavailable")) return "CART_ITEM_UNAVAILABLE";
   if (text.includes("inventory_unavailable")) return "INVENTORY_UNAVAILABLE";
   if (text.includes("wallet_insufficient")) return "WALLET_INSUFFICIENT";
   if (text.includes("voucher_not_available")) return "VOUCHER_NOT_AVAILABLE";
@@ -55,6 +57,8 @@ export function getCheckoutErrorMessage(payload: CheckoutErrorPayload): string {
       return "This time slot was just booked by another customer. Please choose another available slot.";
     case "BOOKING_SLOT_INVALID":
       return "This time slot is no longer valid. Please return to your cart and choose another slot.";
+    case "CART_ITEM_UNAVAILABLE":
+      return "One or more cart items are no longer available. Refresh your cart and try again.";
     case "INVENTORY_UNAVAILABLE":
       return "This item is no longer available in the requested quantity. Please return to your cart and adjust it.";
     case "WALLET_INSUFFICIENT":

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { cn } from "@/components/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DEFAULT_LOCALE, isAppLocale, type AppLocale } from "@/lib/i18n/locale";
 
 export const LANGUAGE_OPTIONS = [
@@ -58,20 +59,33 @@ export function LanguageSwitcher({ compact = false, className }: { compact?: boo
   return (
     <div className={cn("flex items-center gap-2", compact ? "w-full" : "w-fit", className)}>
       <label htmlFor={id} className={compact ? "sr-only" : "text-sm font-semibold text-foreground"}>{t("language.label")}</label>
-      <select
-        id={id}
-        aria-label={t("language.label")}
-        aria-busy={saving}
-        disabled={saving}
+      <Select
         value={resolvedLocale}
-        onChange={(event) => { void handleLocaleChange(event.currentTarget.value); }}
-        className={cn(
-          "rounded-xl border border-border bg-background text-sm text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:cursor-wait disabled:opacity-60",
-          compact ? "h-9 min-w-0 flex-1 px-3" : "h-10 min-w-44 px-3",
-        )}
+        onValueChange={(value) => { void handleLocaleChange(value); }}
+        disabled={saving}
       >
-        {LANGUAGE_OPTIONS.map(({ locale, label }) => <option key={locale} value={locale}>{label}</option>)}
-      </select>
+        <SelectTrigger
+          id={id}
+          aria-label={t("language.label")}
+          aria-busy={saving}
+          className={cn(
+            "rounded-xl border border-border bg-background text-sm text-foreground transition focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 disabled:cursor-wait disabled:opacity-60",
+            compact ? "h-9 min-w-0 flex-1 px-3" : "h-10 min-w-44 px-3",
+          )}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent
+          align="end"
+          className="min-w-[var(--radix-select-trigger-width)] rounded-xl border-border shadow-[0_12px_32px_rgba(1,0,102,0.14)]"
+        >
+          {LANGUAGE_OPTIONS.map(({ locale, label }) => (
+            <SelectItem key={locale} value={locale} className="rounded-lg py-2">
+              {label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <span className="sr-only" aria-live="polite">{status}</span>
     </div>
   );

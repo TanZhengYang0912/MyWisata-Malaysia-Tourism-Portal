@@ -15,6 +15,7 @@ export async function POST(request: Request, { params }: Props) {
   if (!access.ok) return access.response;
   const supabase = access.access.serviceDb;
   const outletIds = access.access.outletIds;
+  let tokenClaims: ReturnType<typeof verifyTicketPassToken>["claims"];
 
   let body: { passToken?: string; entriesAdmitted?: number } = {};
   try {
@@ -31,12 +32,13 @@ export async function POST(request: Request, { params }: Props) {
     if (verification.claims?.bookingId !== bookingId) {
       return apiFail('TOKEN_MISMATCH', 'Ticket token does not match this booking', 400);
     }
+    tokenClaims = verification.claims;
   }
 
   // Get booking
   const { data: booking } = await supabase
     .from('bookings')
-    .select('*, order_items(vendor_id,outlet_id,quantity)')
+    .select('*, order_items(order_id,vendor_id,outlet_id,quantity)')
     .eq('id', bookingId)
     .single();
 
@@ -49,6 +51,16 @@ export async function POST(request: Request, { params }: Props) {
   const { vendorId: bookingVendorId, outletId: bookingOutletId } = getBookingOrderItem(booking.order_items);
   if (bookingVendorId !== vendorId || !bookingOutletId || !outletIds.includes(bookingOutletId)) {
     return apiFail('FORBIDDEN', 'Booking is not at your outlet', 403);
+  }
+  if (tokenClaims && tokenClaims.outletId !== bookingOutletId) return apiFail('TOKEN_MISMATCH', 'Ticket token does not match this outlet', 400);
+
+  const bookingItem = Array.isArray(booking.order_items) ? booking.order_items[0] : booking.order_items;
+  const orderId = bookingItem && typeof bookingItem === 'object' && 'order_id' in bookingItem ? bookingItem.order_id : null;
+  if (typeof orderId !== 'string') return apiFail('INVALID_STATE', 'Booking has no associated order', 409);
+  const { data: order, error: orderError } = await supabase.from('orders').select('status').eq('id', orderId).maybeSingle();
+  if (orderError) return apiFail('DB_ERROR', orderError.message, 500);
+  if (!order || !['paid', 'completed'].includes(String(order.status).toLowerCase())) {
+    return apiFail('ORDER_NOT_PAID', 'This ticket cannot be admitted until its order is paid', 409);
   }
 
   // Retrieve or lazy-initialize ticket_pass
@@ -80,6 +92,7 @@ export async function POST(request: Request, { params }: Props) {
     }
     pass = createdPass;
   }
+  if (tokenClaims && tokenClaims.passId !== pass.id) return apiFail('TOKEN_MISMATCH', 'Ticket token does not match the current pass', 400);
 
   // Determine requested admissions
   const remaining = pass.entry_limit - pass.entries_used;

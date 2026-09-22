@@ -28,7 +28,8 @@ import { useTranslation } from "react-i18next";
 
 type OutletOption = { id: string; name: string };
 type ResolvedScan =
-  | { kind: "ticket"; bookingId: string; passToken: string | null; outletId: string; status: string; productName: string; quantity: number; pass: { policy?: string; entry_limit?: number; entries_used?: number; status?: string } | null }
+  | { kind: "ticket"; bookingId: string; passToken: string | null; outletId: string; status: string; productName: string; quantity: number; pass: { policy?: string; entry_limit?: number; entries_used?: number; status?: string; valid_until?: string | null } | null }
+  | { kind: "food_order"; orderId: string; foodToken: string; outletId: string; mode: "dine_in" | "takeaway"; items: { id: string; name: string; variant: string | null; quantity: number }[] }
   | { kind: "voucher"; claimId: string; voucherId: string; outletId: string; code: string; name: string; voucherType: string; discountValue: number; validUntil: string | null; redemptionMode: string; outletName: string };
 
 interface RecentScanItem {
@@ -235,6 +236,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
     setBusy(true);
     setScanError("");
     try {
+      let successMessage = "";
       if (result.kind === "ticket") {
         const entriesAdmitted = result.pass?.policy === 'group_entry' ? entriesToAdmit : 1;
         const response = await fetch(`/api/vendors/${vendorId}/bookings/${result.bookingId}/checkin`, {
@@ -242,8 +244,23 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ passToken: result.passToken, entriesAdmitted }),
         });
-        const payload = await response.json() as { error?: { message?: string } };
+        const payload = await response.json() as { data?: { pass?: { entries_used?: number; entry_limit?: number; remaining?: number } }; error?: { message?: string } };
         if (!response.ok) throw new Error(payload.error?.message ?? t("ui.scanner.commitFailed"));
+        const progress = payload.data?.pass;
+        successMessage = progress
+          ? t("ui.scanner.ticketAcceptedCount", { used: progress.entries_used ?? 0, total: progress.entry_limit ?? 1, remaining: progress.remaining ?? 0 })
+          : t("ui.scanner.ticketAccepted");
+      } else if (result.kind === "food_order") {
+        const response = await fetch("/api/vendors/" + vendorId + "/scanner/fulfil-food-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ foodToken: result.foodToken, outletId }),
+        });
+        const payload = await response.json() as { data?: { mode?: "dine_in" | "takeaway"; status?: "checked_in" | "fulfilled" }; error?: { message?: string } };
+        if (!response.ok) throw new Error(payload.error?.message ?? t("ui.scanner.commitFailed"));
+        successMessage = payload.data?.status === "checked_in"
+          ? t("ui.scanner.foodDineInCheckedIn")
+          : t("ui.scanner.foodOrderFulfilled");
       } else {
         const response = await fetch(`/api/vendors/${vendorId}/scanner/redeem-voucher`, {
           method: "POST",
@@ -252,9 +269,10 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
         });
         const payload = await response.json() as { error?: { message?: string } };
         if (!response.ok) throw new Error(payload.error?.message ?? t("ui.scanner.commitFailed"));
+        successMessage = t("ui.scanner.voucherRedeemed");
       }
       if (soundEnabled) playBeep(true);
-      setMessage(t(result.kind === "ticket" ? "ui.scanner.ticketAccepted" : "ui.scanner.voucherRedeemed"));
+      setMessage(successMessage);
       setResult(null);
       setManualValue("");
       void loadStationData();
@@ -583,11 +601,19 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                           {t("ui.scanner.reviewBeforeConfirm")}
                         </p>
                         <span className="rounded-md bg-white px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
-                          {result.kind === "voucher" ? "Voucher" : "Admission Ticket"}
+                          {result.kind === "voucher" ? t("ui.scanner.voucherKind") : result.kind === "food_order" ? t("ui.scanner.foodOrderKind") : t("ui.scanner.ticketKind")}
                         </span>
                       </div>
 
-                      {result.kind === "voucher" ? (
+                      {result.kind === "food_order" ? (
+                        <div className="mt-3">
+                          <h2 className="text-lg font-bold text-gray-950">{t("ui.scanner.foodOrderTitle", { order: result.orderId.slice(0, 8).toUpperCase() })}</h2>
+                          <p className="mt-1 text-sm font-semibold text-primary">{result.mode === "dine_in" ? t("ui.scanner.customerFoodMode.dine_in") : t("ui.scanner.customerFoodMode.takeaway")}</p>
+                          <ul className="mt-3 space-y-1 text-sm text-gray-700">
+                            {result.items.map((item) => <li key={item.id}>{item.quantity} × {item.name}{item.variant ? " · " + item.variant : ""}</li>)}
+                          </ul>
+                        </div>
+                      ) : result.kind === "voucher" ? (
                         <div className="mt-3">
                           <h2 className="text-lg font-bold text-gray-950">{result.name}</h2>
                           <div className="mt-1 flex items-center gap-2">
@@ -616,6 +642,9 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                               <p className="mt-0.5 text-base font-bold text-primary">
                                 {Math.max(0, (result.pass?.entry_limit ?? result.quantity) - (result.pass?.entries_used ?? 0))}
                               </p>
+                              <p className="mt-1 text-[11px] text-gray-500">
+                                {t("ui.scanner.ticketProgress", { used: result.pass?.entries_used ?? 0, total: result.pass?.entry_limit ?? result.quantity })}
+                              </p>
                             </div>
                             {result.pass?.policy === 'group_entry' ? (
                               <label className="text-gray-500">
@@ -636,6 +665,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                               </div>
                             )}
                           </div>
+                          {result.pass?.policy === "multi_entry" && result.pass.valid_until && <p className="mt-3 text-xs text-gray-500">{t("ui.scanner.passExpires", { date: new Date(result.pass.valid_until).toLocaleDateString() })}</p>}
                         </div>
                       )}
 

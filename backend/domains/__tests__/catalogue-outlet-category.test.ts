@@ -69,4 +69,40 @@ describe("getOutlets", () => {
       expect(outlets.map((o) => o.coverUrl)).toEqual(["https://cdn.example.com/flagship.jpg", null]);
     });
   });
+
+  it("retries without the optional food modes column when its migration is not live", async () => {
+    const responses = [
+      { data: null, error: { code: "42703", message: "column outlets.food_service_modes does not exist" } },
+      { data: [{
+        id: "o1", vendor_id: "v1", name: "Food stall", address: null, city: null, state: null,
+        lat: null, lng: null, operating_hours: null, phone: null, status: "active",
+        wheelchair_accessible: null, pet_friendly: null, outlet_pages: null,
+        vendors: { name: "Food stall", slug: null, status: "approved", products: [] },
+      }], error: null },
+    ];
+    const selections: string[] = [];
+    let attempt = 0;
+    const db = {
+      from: () => {
+        const response = responses[attempt++];
+        const query: {
+          select: (columns: string) => typeof query;
+          eq: () => typeof query;
+          then: (resolve: (value: (typeof responses)[number]) => unknown) => Promise<unknown>;
+        } = {
+          select: (columns) => { selections.push(columns); return query; },
+          eq: () => query,
+          then: (resolve) => Promise.resolve(response).then(resolve),
+        };
+        return query;
+      },
+    };
+
+    const outlets = await getOutlets(db as never);
+
+    expect(attempt).toBe(2);
+    expect(selections[0]).toContain("food_service_modes");
+    expect(selections[1]).not.toContain("food_service_modes");
+    expect(outlets[0].foodServiceModes).toEqual(["dine_in", "takeaway"]);
+  });
 });

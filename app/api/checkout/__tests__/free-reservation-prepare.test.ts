@@ -55,7 +55,7 @@ vi.mock('@/lib/stripe', () => ({ stripe: { checkout: { sessions: { create: mocks
 
 import { POST } from '../prepare/route';
 
-function request() {
+function request(foodServiceModes?: { outletId: string; mode: "dine_in" | "takeaway" }[]) {
   return new Request('http://localhost/api/checkout/prepare', {
     method: 'POST',
     headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
@@ -63,6 +63,7 @@ function request() {
       paymentMethod: 'free_reservation',
       idempotencyKey: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       selectedKeys: [`${PRODUCT_ID}|${VARIANT_ID}|${SLOT_ID}|${OUTLET_ID}`],
+      foodServiceModes,
     }),
   });
 }
@@ -151,5 +152,84 @@ describe('POST /api/checkout/prepare with free_reservation', () => {
         p_total: 0,
       }),
     );
+  });
+
+  it("persists an explicitly selected food mode through the transactional checkout wrapper", async () => {
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "carts") return queryResult({ id: CART_ID });
+      if (table === "cart_items") return queryResult([{
+        id: CART_ITEM_ID,
+        variant_id: VARIANT_ID,
+        slot_id: SLOT_ID,
+        outlet_id: OUTLET_ID,
+        quantity: 2,
+        product_variants: { id: VARIANT_ID, product_id: PRODUCT_ID, name: "Standard" },
+        booking_slots: { id: SLOT_ID, product_id: PRODUCT_ID, outlet_id: OUTLET_ID, starts_at: "2026-09-15T09:00:00Z", price_override: 0 },
+      }]);
+      if (table === "products") return queryResult([{
+        id: PRODUCT_ID,
+        outlet_id: OUTLET_ID,
+        vendor_id: VENDOR_ID,
+        name: "Food tour",
+        cover_url: null,
+        requires_booking: true,
+        categories: { slug: "food" },
+      }]);
+      if (table === "outlets") return queryResult([{ id: OUTLET_ID, food_service_modes: ["takeaway"] }]);
+      return queryResult(null);
+    });
+    mocks.getActivities.mockResolvedValue([{
+      id: PRODUCT_ID,
+      name: "Food tour",
+      categorySlug: "food",
+      variants: [{ id: VARIANT_ID, label: "Standard", price: 0 }],
+    }]);
+    mocks.rpc.mockResolvedValue({
+      data: { checkout_session_id: CHECKOUT_ID, order_id: ORDER_ID, status: "paid" },
+      error: null,
+    });
+
+    const res = await POST(request([{ outletId: OUTLET_ID, mode: "takeaway" }]));
+    expect(res.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith("prepare_checkout_with_food_service_modes", expect.objectContaining({
+      p_claim_id: null,
+      p_food_service_modes: [{ outlet_id: OUTLET_ID, mode: "takeaway" }],
+    }));
+  });
+
+  it("rejects a food mode that the selected outlet does not support", async () => {
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "carts") return queryResult({ id: CART_ID });
+      if (table === "cart_items") return queryResult([{
+        id: CART_ITEM_ID,
+        variant_id: VARIANT_ID,
+        slot_id: SLOT_ID,
+        outlet_id: OUTLET_ID,
+        quantity: 2,
+        product_variants: { id: VARIANT_ID, product_id: PRODUCT_ID, name: "Standard" },
+        booking_slots: { id: SLOT_ID, product_id: PRODUCT_ID, outlet_id: OUTLET_ID, starts_at: "2026-09-15T09:00:00Z", price_override: 0 },
+      }]);
+      if (table === "products") return queryResult([{
+        id: PRODUCT_ID,
+        outlet_id: OUTLET_ID,
+        vendor_id: VENDOR_ID,
+        name: "Food tour",
+        cover_url: null,
+        requires_booking: true,
+        categories: { slug: "food" },
+      }]);
+      if (table === "outlets") return queryResult([{ id: OUTLET_ID, food_service_modes: ["takeaway"] }]);
+      return queryResult(null);
+    });
+    mocks.getActivities.mockResolvedValue([{
+      id: PRODUCT_ID,
+      name: "Food tour",
+      categorySlug: "food",
+      variants: [{ id: VARIANT_ID, label: "Standard", price: 0 }],
+    }]);
+
+    const res = await POST(request([{ outletId: OUTLET_ID, mode: "dine_in" }]));
+    expect(res.status).toBe(422);
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });

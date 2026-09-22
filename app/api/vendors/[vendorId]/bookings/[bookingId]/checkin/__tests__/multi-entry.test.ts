@@ -18,7 +18,7 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
   const bookingId = "bk-300";
   const passId = "pass-400";
 
-  function setupAuth({ policy = 'group_entry', entryLimit = 2, entriesUsed = 0 }: { policy?: 'single_entry' | 'group_entry' | 'multi_entry'; entryLimit?: number; entriesUsed?: number } = {}) {
+  function setupAuth({ policy = 'group_entry', entryLimit = 2, entriesUsed = 0, orderStatus = 'paid' }: { policy?: 'single_entry' | 'group_entry' | 'multi_entry'; entryLimit?: number; entriesUsed?: number; orderStatus?: string } = {}) {
     vi.mocked(authorizeVendor).mockResolvedValue({
       ok: true,
       access: {
@@ -42,6 +42,7 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
                         customer_id: "cust-600",
                         status: "confirmed",
                         order_items: {
+                          order_id: "order-700",
                           vendor_id: vendorId,
                           outlet_id: outletId,
                           quantity: 2,
@@ -68,6 +69,15 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
                       },
                       error: null,
                     }),
+                  }),
+                }),
+              };
+            }
+            if (table === "orders") {
+              return {
+                select: vi.fn().mockReturnValue({
+                  eq: vi.fn().mockReturnValue({
+                    maybeSingle: vi.fn().mockResolvedValue({ data: { status: orderStatus }, error: null }),
                   }),
                 }),
               };
@@ -214,5 +224,20 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data.status).toBe("checked_in");
+  });
+
+  it("does not admit an unpaid order", async () => {
+    setupAuth({ orderStatus: "pending_payment" });
+    const res = await POST(new Request("http://localhost", { method: "POST", body: JSON.stringify({}) }), { params: Promise.resolve({ vendorId, bookingId }) });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error.code).toBe("ORDER_NOT_PAID");
+  });
+
+  it("rejects a signed token for another pass", async () => {
+    setupAuth();
+    const passToken = signTicketPassToken({ passId: "pass-from-another-ticket", bookingId, outletId, issuedAt: Date.now() });
+    const res = await POST(new Request("http://localhost", { method: "POST", body: JSON.stringify({ passToken }) }), { params: Promise.resolve({ vendorId, bookingId }) });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe("TOKEN_MISMATCH");
   });
 });

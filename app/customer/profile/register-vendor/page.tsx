@@ -61,17 +61,30 @@ export default async function RegisterVendorPage() {
       />
 
       <CustomerPageShell wide className="pt-0 sm:pt-0">
-        <Link href="/customer/profile" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <Link
+          href="/customer/profile"
+          className="mb-5 inline-flex min-h-9 items-center gap-2 rounded-lg text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        >
           <span aria-hidden="true">←</span> {t('ui.profile.backToProfile')}
         </Link>
 
-        <div className="mb-6 grid gap-3 rounded-2xl border border-primary/10 bg-primary/[0.04] p-5 text-sm text-muted-foreground sm:grid-cols-3 sm:p-6">
-          <div><p className="font-semibold text-foreground">{t('ui.profile.vendorStepApply')}</p><p className="mt-1 text-xs leading-5">{t('ui.profile.vendorStepApplyHint')}</p></div>
-          <div><p className="font-semibold text-foreground">{t('ui.profile.vendorStepReview')}</p><p className="mt-1 text-xs leading-5">{t('ui.profile.vendorStepReviewHint')}</p></div>
-          <div><p className="font-semibold text-foreground">{t('ui.profile.vendorStepLive')}</p><p className="mt-1 text-xs leading-5">{t('ui.profile.vendorStepLiveHint')}</p></div>
-        </div>
+        <ol className="mb-6 grid gap-3 sm:grid-cols-3">
+          <li aria-current="step" className="relative overflow-hidden rounded-2xl border border-primary/20 bg-card p-4 shadow-sm shadow-primary/5 sm:p-5">
+            <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-accent" />
+            <p className="font-semibold text-foreground">{t('ui.profile.vendorStepApply')}</p>
+            <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{t('ui.profile.vendorStepApplyHint')}</p>
+          </li>
+          <li className="rounded-2xl border border-border bg-card/70 p-4 sm:p-5">
+            <p className="font-semibold text-foreground">{t('ui.profile.vendorStepReview')}</p>
+            <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{t('ui.profile.vendorStepReviewHint')}</p>
+          </li>
+          <li className="rounded-2xl border border-border bg-card/70 p-4 sm:p-5">
+            <p className="font-semibold text-foreground">{t('ui.profile.vendorStepLive')}</p>
+            <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{t('ui.profile.vendorStepLiveHint')}</p>
+          </li>
+        </ol>
 
-        <CustomerPanel>
+        <CustomerPanel className="p-5 sm:p-7">
           <RegisterVendorForm />
         </CustomerPanel>
       </CustomerPageShell>

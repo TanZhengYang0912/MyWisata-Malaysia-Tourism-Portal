@@ -13,6 +13,7 @@ import {
   type RealCategorySlug,
 } from "@/lib/customer/discovery-categories";
 import { productImageUrl } from "@/lib/storage/product-image";
+import { vendorImageUrl } from "@/lib/storage/vendor-image";
 import { getMalaysiaTodayKey, getOperatingHoursPeriods, isOperatingHoursAtAvailable, isOperatingHoursOpenNow, isOperatingHoursWindowAvailable } from "@/lib/customer/operating-hours";
 
 export { STATES_MY } from "@/lib/customer/malaysia-states";
@@ -23,7 +24,7 @@ const REVIEW_METRICS_BATCH_SIZE = 100;
 
 // ─── Vendors (approval lives here, not per-outlet — see VendorSummary) ─────
 export async function getVendors(db: SupabaseClient = supabase): Promise<VendorSummary[]> {
-  const { data, error } = await db.from("vendors").select("id,name,status,logo_url,cover_url,outlets(id,name,city,state,status,review_status)");
+  const { data, error } = await db.from("vendors").select("id,name,status,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours)");
   if (error) throw error;
   return (data ?? []).map((v) => ({
     id: v.id,
@@ -34,7 +35,16 @@ export async function getVendors(db: SupabaseClient = supabase): Promise<VendorS
     outlets: (v.outlets ?? []).filter((outlet) =>
       (!outlet.status || outlet.status === "active") &&
       (!outlet.review_status || outlet.review_status === "approved"),
-    ),
+    ).map((outlet) => ({
+      id: outlet.id,
+      name: outlet.name,
+      city: outlet.city,
+      state: outlet.state,
+      operatingHours: outlet.operating_hours,
+      currentlyOpen: outlet.status === "active" && outlet.operating_hours
+        ? isOperatingHoursOpenNow(outlet.operating_hours)
+        : false,
+    })),
   }));
 }
 
@@ -65,15 +75,28 @@ type OutletRow = {
   status: string;
   wheelchair_accessible: boolean | null;
   pet_friendly: boolean | null;
+  food_service_modes?: ("dine_in" | "takeaway")[] | null;
   outlet_pages: { hero_url: string | null } | { hero_url: string | null }[] | null;
   vendors: {
     name: string | null;
+    slug: string | null;
     status: string;
     products: { categories: { name: string; slug: string | null } | null }[] | null;
   } | null;
 };
 
-const OUTLET_SELECT = "id,vendor_id,name,address,city,state,lat,lng,operating_hours,phone,status,wheelchair_accessible,pet_friendly,outlet_pages(hero_url),vendors(name,status,products(categories(name,slug)))";
+const VENDOR_LOGO_PATH_OVERRIDES: Record<string, string> = {
+  "ghee-hiang": "curated-v3/vendor/ghee-hiang/logo.png",
+};
+
+function getVendorLogoUrl(slug: string | null | undefined): string | null {
+  if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return null;
+  const path = VENDOR_LOGO_PATH_OVERRIDES[slug] ?? `entities/vendor/${slug}/logo.png`;
+  return vendorImageUrl(path);
+}
+
+const OUTLET_SELECT = "id,vendor_id,name,address,city,state,lat,lng,operating_hours,phone,status,wheelchair_accessible,pet_friendly,food_service_modes,outlet_pages(hero_url),vendors(name,slug,status,products(categories(name,slug)))";
+const LEGACY_OUTLET_SELECT = OUTLET_SELECT.replace(",food_service_modes", "");
 
 // An outlet's category belongs to its vendor, not to whichever product happens
 // to be pinned to that one outlet. Vendor-wide products carry outlet_id NULL, so
@@ -111,6 +134,7 @@ function mapOutlet(row: OutletRow): Outlet {
     id: row.id,
     vendorId: row.vendor_id,
     vendorName: row.vendors?.name ?? undefined,
+    vendorLogoUrl: getVendorLogoUrl(row.vendors?.slug),
     name: row.name,
     coverUrl: outletPage?.hero_url?.trim() || null,
     category: resolveVendorCategory(row.vendors?.products),
@@ -129,17 +153,26 @@ function mapOutlet(row: OutletRow): Outlet {
     reviews: 0,
     wheelchairAccessible: row.wheelchair_accessible,
     petFriendly: row.pet_friendly,
+    foodServiceModes: row.food_service_modes ?? ["dine_in", "takeaway"],
   };
 }
 
 export async function getOutlets(db: SupabaseClient = supabase): Promise<Outlet[]> {
-  const { data, error } = await db
+  const queryOutlets = (select: string) => db
     .from("outlets")
-    .select(OUTLET_SELECT)
+    .select(select)
     .eq("status", "active")
     .eq("review_status", "approved");
-  if (error) throw error;
-  return (data as unknown as OutletRow[]).map(mapOutlet);
+  const result = await queryOutlets(OUTLET_SELECT);
+  if (result.error?.code === "42703" && result.error.message.includes("outlets.food_service_modes")) {
+    // Keep discovery available while the additive food-mode migration is pending.
+    // mapOutlet supplies the schema default of both modes for these legacy rows.
+    const legacy = await queryOutlets(LEGACY_OUTLET_SELECT);
+    if (legacy.error) throw legacy.error;
+    return (legacy.data as unknown as OutletRow[]).map(mapOutlet);
+  }
+  if (result.error) throw result.error;
+  return (result.data as unknown as OutletRow[]).map(mapOutlet);
 }
 
 /** One buyable choice on the product page: which outlet, at what price. */
@@ -765,12 +798,14 @@ export async function searchActivities(filters: SearchFilters, db: SupabaseClien
 
 // ─── Vouchers ───────────────────────────────────────────────────────────────
 function mapVoucher(row: {
-  id: string; code: string; name?: string | null; voucher_type: string; discount_value: number; min_spend: number | null;
+  id: string; vendor_id: string; outlet_id: string | null; code: string; name?: string | null; voucher_type: string; discount_value: number; min_spend: number | null;
   max_uses: number | null; uses_count: number; per_customer_limit?: number | null; valid_until: string | null;
   product_id?: string | null; buy_quantity?: number | null; free_quantity?: number | null;
 }): Voucher {
   return {
     id: row.id,
+    vendorId: row.vendor_id,
+    outletId: row.outlet_id ?? undefined,
     code: row.code,
     name: row.name ?? undefined,
     type: row.voucher_type as Voucher["type"],

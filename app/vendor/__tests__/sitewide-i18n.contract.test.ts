@@ -66,6 +66,9 @@ export const VENDOR_I18N_FILES = [
 
 const priorTaskFiles = new Set([
   'components/vendor/voucher-metric-card.tsx',
+  'components/vendor/vendor-profile-gallery-manager.tsx',
+  'components/vendor/vendor-registration-gallery-field.tsx',
+  'components/vendor/vendor-registration-image-field.tsx',
   'app/vendor/layout.tsx',
   'app/vendor/loading.tsx',
   'app/vendor/redemptions/page.tsx',

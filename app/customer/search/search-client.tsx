@@ -132,36 +132,43 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
   const matchingVendors = useMemo(() => initialVendors.filter((vendor) => {
     const normalizedQuery = filters.q.trim().toLowerCase();
     const matchesQuery = !normalizedQuery || `${vendor.name} ${vendor.outlets.map((outlet) => `${outlet.city} ${outlet.state}`).join(" ")}`.toLowerCase().includes(normalizedQuery);
-    const matchesState = !filters.state || filters.state === "All Malaysia" || vendor.outlets.some((outlet) => outlet.state === filters.state);
+    const hasTimeFilter = filters.openNow ||
+      (filters.hoursMode === "at" && Boolean(filters.timeAt)) ||
+      (filters.hoursMode !== "at" && Boolean(filters.timeFrom && filters.timeTo));
+    const hasStateFilter = Boolean(filters.state && filters.state !== "All Malaysia");
+    const matchesOutlets = (!hasStateFilter && !hasTimeFilter) || vendor.outlets.some((outlet) => {
+      const matchesState = !hasStateFilter || outlet.state === filters.state;
+      const hours = outlet.operatingHours ?? null;
+      const matchesOpenNow = !filters.openNow || outlet.currentlyOpen === true;
+      const matchesTime = filters.hoursMode === "at" && filters.timeAt
+        ? Boolean(hours && isOperatingHoursAtAvailable(filters.timeAt, hours, filters.operatingDays))
+        : filters.hoursMode !== "at" && filters.timeFrom && filters.timeTo
+          ? Boolean(hours && isOperatingHoursWindowAvailable(filters.timeFrom, filters.timeTo, hours, filters.operatingDays, { overnight: filters.overnight }))
+          : true;
+      return matchesState && matchesOpenNow && matchesTime;
+    });
     const labels = categoriesByVendor.get(vendor.id) ?? new Set<string>();
     const category = filters.categories.length === 1 ? filters.categories[0] : filters.hiddenGemOnly ? "hidden_gem" : null;
-     const matchesCategory = !category || labels.has(category);
-     const vendorActivities = initialResults.filter((activity) => activity.outlet.vendorId === vendor.id);
-     const matchesActivities = vendorActivities.some((activity) => {
-       const activityCategory = canonicalCategorySlug(activity.categorySlug) ?? activity.categorySlug ?? activity.category;
-       const matchesTypes = filters.types.length === 0 || filters.types.some((token) => {
-         const [selectedCategory, selectedType] = token.split(":", 2);
-         return selectedCategory === activityCategory && Boolean(selectedType && activity.typeSlugs?.includes(selectedType));
-       });
-       const matchesCategoryBranch = filters.categories.length === 0 || filters.categories.includes(activityCategory) || (filters.hiddenGemOnly && activity.isHiddenGem);
-       const matchesBoolean = !(filters.hiddenGemOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly) ||
-         (filters.hiddenGemOnly && activity.isHiddenGem) ||
-         (filters.familyFriendlyOnly && activity.isFamilyFriendly) ||
-         (filters.coupleFriendlyOnly && activity.isCoupleFriendly);
-       const matchesPrice = filters.priceMax === null || activity.price <= filters.priceMax;
-       const matchesCommerce = (!filters.freeOnly || activity.price === 0) && (!filters.bookableOnly || activity.requiresBooking);
-       const hours = activity.outlet.operatingHours ?? null;
-       if (filters.openNow && !(activity.outlet.currentlyOpen ?? activity.outlet.open)) return false;
-       if (!matchesCategoryBranch || !matchesTypes || !matchesBoolean || !matchesPrice || !matchesCommerce) return false;
-       if (filters.hoursMode === "at" && filters.timeAt) {
-         return activity.outlet.open && hours ? isOperatingHoursAtAvailable(filters.timeAt, hours, filters.operatingDays) : false;
-      }
-      if (filters.hoursMode !== "at" && filters.timeFrom && filters.timeTo) {
-        return activity.outlet.open && hours ? isOperatingHoursWindowAvailable(filters.timeFrom, filters.timeTo, hours, filters.operatingDays, { overnight: filters.overnight }) : false;
-       }
-       return true;
-     });
-     return matchesQuery && matchesState && matchesCategory && matchesActivities;
+    const matchesCategory = !category || labels.has(category);
+    const vendorActivities = initialResults.filter((activity) => activity.outlet.vendorId === vendor.id);
+    const hasActivityFilters = filters.categories.length > 0 || filters.types.length > 0 || filters.priceMax !== null ||
+      filters.freeOnly || filters.bookableOnly || filters.hiddenGemOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly;
+    const matchesActivities = !hasActivityFilters || vendorActivities.some((activity) => {
+      const activityCategory = canonicalCategorySlug(activity.categorySlug) ?? activity.categorySlug ?? activity.category;
+      const matchesTypes = filters.types.length === 0 || filters.types.some((token) => {
+        const [selectedCategory, selectedType] = token.split(":", 2);
+        return selectedCategory === activityCategory && Boolean(selectedType && activity.typeSlugs?.includes(selectedType));
+      });
+      const matchesCategoryBranch = filters.categories.length === 0 || filters.categories.includes(activityCategory) || (filters.hiddenGemOnly && activity.isHiddenGem);
+      const matchesBoolean = !(filters.hiddenGemOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly) ||
+        (filters.hiddenGemOnly && activity.isHiddenGem) ||
+        (filters.familyFriendlyOnly && activity.isFamilyFriendly) ||
+        (filters.coupleFriendlyOnly && activity.isCoupleFriendly);
+      const matchesPrice = filters.priceMax === null || activity.price <= filters.priceMax;
+      const matchesCommerce = (!filters.freeOnly || activity.price === 0) && (!filters.bookableOnly || activity.requiresBooking);
+      return matchesCategoryBranch && matchesTypes && matchesBoolean && matchesPrice && matchesCommerce;
+    });
+    return matchesQuery && matchesOutlets && matchesCategory && matchesActivities;
   }), [categoriesByVendor, filters, initialResults, initialVendors]);
 
   const featuredVendorIds = useMemo(
@@ -235,7 +242,9 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
               placeholder={t("ui.search.searchVendors")}
               category={category}
               onCategoryChange={(nextCategory) => updateFilters({ categories: nextCategory ? [nextCategory] : [], types: [], hiddenGemOnly: false })}
-              categoryVariant="compact"
+              categoryVariant="cards"
+              includeAllCategories={false}
+              filterButtonAlignment="end"
             />
 
             <div className="mt-3.5 flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">

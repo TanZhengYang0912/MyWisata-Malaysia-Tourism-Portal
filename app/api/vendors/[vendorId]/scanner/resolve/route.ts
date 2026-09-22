@@ -4,6 +4,7 @@ import { authorizeVendor } from "@/lib/vendor-authorization";
 import { getBookingOrderItem } from "@/lib/vendor/booking-scope";
 import { verifyTicketPassToken } from "@/lib/tickets/tokens";
 import { verifyVoucherStoreToken } from "@/lib/vouchers/store-token";
+import { verifyFoodFulfilmentToken } from "@/lib/food/food-fulfilment-token";
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -30,6 +31,18 @@ function parseBookingPayload(rawValue: string) {
   }
 }
 
+function parseFoodOrderPayload(rawValue: string) {
+  try {
+    const url = new URL(rawValue, "http://localhost:3000");
+    const match = url.pathname.match(/^\/customer\/orders\/([^/]+)$/);
+    const foodToken = url.searchParams.get("food_t");
+    if (!match || !foodToken) return null;
+    return { orderId: decodeURIComponent(match[1]), foodToken };
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
   const access = await authorizeVendor(vendorId);
@@ -48,7 +61,7 @@ export async function POST(request: Request, { params }: Props) {
 
     const { data: booking, error } = await access.access.serviceDb
       .from("bookings")
-      .select("id,status,order_items(vendor_id,outlet_id,quantity,product_name),ticket_passes(policy,entry_limit,entries_used,status)")
+      .select("id,status,order_items(order_id,vendor_id,outlet_id,quantity,product_name),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)")
       .eq("id", ticket.bookingId)
       .maybeSingle();
     if (error) return apiFail("DB_ERROR", error.message, 500);
@@ -60,7 +73,53 @@ export async function POST(request: Request, { params }: Props) {
     const quantity = rawOrderItem && typeof rawOrderItem === "object" && "quantity" in rawOrderItem && Number.isFinite(Number(rawOrderItem.quantity)) ? Number(rawOrderItem.quantity) : 1;
     if (orderItem.vendorId !== vendorId || orderItem.outletId !== outlet.outletId) return apiFail("FORBIDDEN", "This ticket is not valid at the selected outlet", 403);
     const pass = Array.isArray(booking.ticket_passes) ? booking.ticket_passes[0] : booking.ticket_passes;
+    if (!rawOrderItem || typeof rawOrderItem !== "object" || !("order_id" in rawOrderItem) || typeof rawOrderItem.order_id !== "string") return apiFail("INVALID_TICKET", "This ticket has no associated order", 400);
+    const { data: order, error: orderError } = await access.access.serviceDb.from("orders").select("status").eq("id", rawOrderItem.order_id).maybeSingle();
+    if (orderError) return apiFail("DB_ERROR", orderError.message, 500);
+    if (!order || !["paid", "completed"].includes(String(order.status).toLowerCase())) return apiFail("ORDER_NOT_PAID", "This ticket is not active because its order is unpaid", 409);
+    if (!pass?.id || verification.claims?.passId !== pass.id || verification.claims?.outletId !== outlet.outletId) return apiFail("INVALID_TICKET", "This code does not match the ticket pass or outlet", 400);
+    if (pass.valid_from && new Date(pass.valid_from).getTime() > Date.now()) return apiFail("TICKET_NOT_YET_VALID", "This ticket is not valid yet", 409);
+    if (pass.valid_until && new Date(pass.valid_until).getTime() < Date.now()) return apiFail("TICKET_EXPIRED", "This ticket has expired", 409);
     return apiOk({ kind: "ticket", bookingId: ticket.bookingId, passToken: ticket.passToken, outletId: outlet.outletId, status: booking.status, productName, quantity, pass: pass ?? null });
+  }
+
+  const foodOrder = parseFoodOrderPayload(parsed.data.rawValue);
+  if (foodOrder) {
+    const verification = verifyFoodFulfilmentToken(foodOrder.foodToken);
+    if (!verification.valid || verification.claims?.orderId !== foodOrder.orderId || verification.claims.outletId !== outlet.outletId) {
+      return apiFail("INVALID_FOOD_ORDER", "This food order code is invalid for the selected outlet", 400);
+    }
+    const { data: order, error: orderError } = await access.access.serviceDb.from("orders")
+      .select("id,status")
+      .eq("id", foodOrder.orderId)
+      .maybeSingle();
+    if (orderError) return apiFail("DB_ERROR", orderError.message, 500);
+    if (!order || !["paid", "completed"].includes(String(order.status).toLowerCase())) return apiFail("ORDER_NOT_PAID", "This food order has not been paid", 409);
+
+    const { data: rows, error: rowsError } = await access.access.serviceDb.from("order_items")
+      .select("id,product_name,variant_name,quantity,food_fulfilment_mode,food_qr_scanned_at,fulfil_status,vendor_id,outlet_id,products(categories(slug))")
+      .eq("order_id", foodOrder.orderId)
+      .eq("vendor_id", vendorId)
+      .eq("outlet_id", outlet.outletId);
+    if (rowsError) return apiFail("DB_ERROR", rowsError.message, 500);
+    const foodRows = (rows ?? []).filter((row: { fulfil_status: string; products: { categories: { slug: string } | { slug: string }[] | null } | { categories: { slug: string } | { slug: string }[] | null }[] | null }) => {
+      const product = Array.isArray(row.products) ? row.products[0] : row.products;
+      const category = Array.isArray(product?.categories) ? product.categories[0] : product?.categories;
+      return category?.slug === "food" && row.fulfil_status !== "cancelled";
+    });
+    if (foodRows.length === 0) return apiFail("FOOD_ORDER_NOT_FOUND", "No food items belong to this order at the selected outlet", 404);
+    if (foodRows.some((row: { food_fulfilment_mode: string | null }) => !["dine_in", "takeaway"].includes(row.food_fulfilment_mode ?? ""))) return apiFail("FOOD_ORDER_UNAVAILABLE", "This food order has no valid service mode", 409);
+    if (foodRows.some((row: { food_qr_scanned_at: string | null }) => row.food_qr_scanned_at) || foodRows.every((row: { fulfil_status: string }) => row.fulfil_status === "fulfilled")) return apiFail("FOOD_ORDER_FULFILLED", "This food order has already been scanned", 409);
+    const modes = [...new Set(foodRows.map((row: { food_fulfilment_mode: string }) => row.food_fulfilment_mode))];
+    if (modes.length !== 1) return apiFail("FOOD_ORDER_INCONSISTENT", "Food items at this outlet have different service modes", 409);
+    return apiOk({
+      kind: "food_order",
+      orderId: foodOrder.orderId,
+      foodToken: foodOrder.foodToken,
+      outletId: outlet.outletId,
+      mode: modes[0],
+      items: foodRows.map((row: { id: string; product_name: string; variant_name: string | null; quantity: number }) => ({ id: row.id, name: row.product_name, variant: row.variant_name, quantity: row.quantity })),
+    });
   }
 
   const voucherToken = verifyVoucherStoreToken(parsed.data.rawValue);

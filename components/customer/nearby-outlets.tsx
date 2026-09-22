@@ -20,6 +20,10 @@ const RADIUS_OPTIONS_KM = [1, 3, 8] as const;
 
 function OutletRow({ outlet, km }: { outlet: Outlet; km: number }) {
   const { t } = useTranslation("customer");
+  const [failedImageUrls, setFailedImageUrls] = useState<string[]>([]);
+  const logoUrl = outlet.vendorLogoUrl && !failedImageUrls.includes(outlet.vendorLogoUrl) ? outlet.vendorLogoUrl : null;
+  const coverUrl = outlet.coverUrl && !failedImageUrls.includes(outlet.coverUrl) ? outlet.coverUrl : null;
+  const imageUrl = logoUrl ?? coverUrl;
   const categoryKey = getOptionalDiscoveryCategoryLabelKey(outlet.category);
   return (
     <Link
@@ -29,9 +33,14 @@ function OutletRow({ outlet, km }: { outlet: Outlet; km: number }) {
     >
       <div className="flex min-w-0 flex-1 items-start gap-4 p-4 sm:p-5">
         <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-secondary text-primary shadow-sm sm:h-20 sm:w-20">
-          {outlet.coverUrl ? (
+          {imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={outlet.coverUrl} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+            <img
+              src={imageUrl}
+              alt=""
+              onError={() => setFailedImageUrls((failed) => failed.includes(imageUrl) ? failed : [...failed, imageUrl])}
+              className={logoUrl ? "h-full w-full object-contain p-2" : "h-full w-full object-cover transition duration-500 group-hover:scale-105"}
+            />
           ) : (
             <span className="flex h-full w-full items-center justify-center">
               <Store size={24} strokeWidth={1.8} aria-hidden="true" />

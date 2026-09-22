@@ -16,6 +16,45 @@ const mocks = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({ useRouter: mocks.useRouter }));
 vi.mock("react-i18next", () => ({ useTranslation: mocks.useTranslation }));
 vi.mock("@/components/providers/action-feedback", () => ({ useActionFeedback: mocks.useActionFeedback }));
+vi.mock("@/components/ui/select", async () => {
+  const ReactModule = await import("react");
+
+  function SelectTrigger() { return null; }
+  function SelectValue() { return null; }
+  function SelectContent({ children }: { children: React.ReactNode }) { return children; }
+  function SelectItem({ value, children }: { value: string; children: React.ReactNode }) {
+    return ReactModule.createElement("option", { value }, children);
+  }
+  function Select({
+    value,
+    onValueChange,
+    disabled,
+    children,
+  }: {
+    value: string;
+    onValueChange: (value: string) => void;
+    disabled?: boolean;
+    children: React.ReactNode;
+  }) {
+    const controls = ReactModule.Children.toArray(children) as Array<
+      React.ReactElement<{ children?: React.ReactNode } & Record<string, unknown>>
+    >;
+    const trigger = controls.find((child) => child.type === SelectTrigger);
+    const content = controls.find((child) => child.type === SelectContent);
+    return ReactModule.createElement(
+      "select",
+      {
+        ...trigger?.props,
+        value,
+        disabled,
+        onChange: (event: React.ChangeEvent<HTMLSelectElement>) => onValueChange(event.currentTarget.value),
+      },
+      content?.props.children,
+    );
+  }
+
+  return { Select, SelectContent, SelectItem, SelectTrigger, SelectValue };
+});
 
 import { LANGUAGE_OPTIONS, LanguageSwitcher, saveLocalePreference } from "../language-switcher";
 
@@ -380,7 +419,7 @@ describe("LanguageSwitcher", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders one native, keyboard-accessible select with native language labels and the resolved selection", async () => {
+  it("keeps the language labels, accessible label, and resolved selection through the shared select", async () => {
     const select = await renderSwitcher();
     const options = findElements(select, (element) => element.tagName === "OPTION");
     const label = findOne(container, (element) => element.tagName === "LABEL");
@@ -390,7 +429,6 @@ describe("LanguageSwitcher", () => {
     expect(options.map((option) => option.getAttribute("value"))).toEqual(["en", "zh-CN", "ms"]);
     expect(select.value).toBe("en");
     expect(select.getAttribute("aria-label")).toBe("Language");
-    expect(select.getAttribute("role")).toBeNull();
     expect(select.tabIndex).toBeGreaterThanOrEqual(0);
     expect(label.htmlFor).toBe(select.id);
     expect(label.textContent).toBe("Language");
