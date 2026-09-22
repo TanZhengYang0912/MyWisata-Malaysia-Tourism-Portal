@@ -9,6 +9,9 @@ const CART_ITEM_ID = '66666666-6666-4666-8666-666666666666';
 const CHECKOUT_ID = '77777777-7777-4777-8777-777777777777';
 const ORDER_ID = '88888888-8888-4888-8888-888888888888';
 let productOutletId: string | null = OUTLET_ID;
+let productRequiresBooking = false;
+let cartItemRow: Record<string, unknown>;
+let productLookupError: unknown = null;
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
@@ -71,6 +74,17 @@ describe('POST /api/checkout/prepare simulator provider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     productOutletId = OUTLET_ID;
+    productRequiresBooking = false;
+    productLookupError = null;
+    cartItemRow = {
+      id: CART_ITEM_ID,
+      variant_id: VARIANT_ID,
+      slot_id: null,
+      outlet_id: OUTLET_ID,
+      quantity: 1,
+      product_variants: { id: VARIANT_ID, product_id: PRODUCT_ID, name: 'Standard' },
+      booking_slots: null,
+    };
     vi.stubEnv('NODE_ENV', 'test');
     vi.stubEnv('PAYMENT_SIMULATOR_MODE', 'enabled');
     vi.stubEnv('PAYMENT_SIMULATOR_WEBHOOK_SECRET', 'local-simulator-secret');
@@ -96,23 +110,15 @@ describe('POST /api/checkout/prepare simulator provider', () => {
         phone_verified_at: '2026-08-17T01:00:00.000Z',
       });
       if (table === 'carts') return queryResult({ id: CART_ID });
-      if (table === 'cart_items') return queryResult([{
-        id: CART_ITEM_ID,
-        variant_id: VARIANT_ID,
-        slot_id: null,
-        outlet_id: OUTLET_ID,
-        quantity: 1,
-        product_variants: { id: VARIANT_ID, product_id: PRODUCT_ID, name: 'Standard' },
-        booking_slots: null,
-      }]);
+      if (table === 'cart_items') return queryResult([cartItemRow]);
       if (table === 'products') return queryResult([{
         id: PRODUCT_ID,
         outlet_id: productOutletId,
         vendor_id: VENDOR_ID,
         name: 'Test activity',
         cover_url: null,
-        requires_booking: false,
-      }]);
+        requires_booking: productRequiresBooking,
+      }], productLookupError);
       throw new Error(`unexpected table ${table}`);
     });
     mocks.serviceFrom.mockImplementation(() => queryResult(null));
@@ -147,6 +153,69 @@ describe('POST /api/checkout/prepare simulator provider', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('prepare_checkout', expect.objectContaining({
       p_lines: [expect.objectContaining({ outlet_id: OUTLET_ID })],
     }));
+  });
+
+  it('prepares a booking with a slot when the bookable product has no variant', async () => {
+    productRequiresBooking = true;
+    cartItemRow = {
+      id: CART_ITEM_ID,
+      variant_id: null,
+      slot_id: '99999999-9999-4999-8999-999999999999',
+      outlet_id: OUTLET_ID,
+      quantity: 1,
+      product_variants: null,
+      booking_slots: {
+        id: '99999999-9999-4999-8999-999999999999',
+        product_id: PRODUCT_ID,
+        outlet_id: OUTLET_ID,
+        starts_at: '2026-09-21T01:00:00.000Z',
+        price_override: null,
+      },
+    };
+    mocks.cartTotals.mockReturnValue({ subtotal: 30, discount: 0, total: 30 });
+    mocks.unitPrice.mockReturnValue(30);
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.simulatorUrl).toBe(`/customer/checkout/simulator/${CHECKOUT_ID}`);
+    expect(mocks.rpc).toHaveBeenCalledWith('prepare_checkout', expect.objectContaining({
+      p_lines: [expect.objectContaining({
+        product_id: PRODUCT_ID,
+        variant_id: null,
+        variant_name: null,
+        slot_id: '99999999-9999-4999-8999-999999999999',
+        unit_price: 30,
+      })],
+    }));
+  });
+
+  it('returns a JSON conflict when a booking cart line no longer has an available slot', async () => {
+    productRequiresBooking = true;
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body).toEqual({
+      error: {
+        code: 'CART_ITEM_UNAVAILABLE',
+        message: 'One or more cart items are no longer available. Refresh your cart and try again.',
+      },
+    });
+    expect(mocks.rpc).not.toHaveBeenCalledWith('prepare_checkout', expect.anything());
+  });
+
+  it('returns a service error when product availability cannot be checked', async () => {
+    productLookupError = { message: 'database unavailable' };
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('PRODUCT_LOOKUP_FAILED');
+    expect(mocks.rpc).not.toHaveBeenCalledWith('prepare_checkout', expect.anything());
   });
 
   it('fails closed when simulator configuration is unavailable', async () => {

@@ -11,4 +11,11 @@ describe("catalogue voucher checkout scope", () => {
     expect(getVouchers).toContain('.in("redemption_mode", ["online", "both"])');
     expect(getVouchers).toContain('getVoucherByCode');
   });
+
+  it("maps vendor and outlet IDs so the cart can filter unrelated vouchers", () => {
+    const source = readFileSync(resolve(process.cwd(), "backend/domains/catalogue.ts"), "utf8");
+    const mapper = source.slice(source.indexOf("function mapVoucher"), source.indexOf("export async function getVouchers"));
+    expect(mapper).toContain("vendorId: row.vendor_id");
+    expect(mapper).toContain("outletId: row.outlet_id ?? undefined");
+  });
 });

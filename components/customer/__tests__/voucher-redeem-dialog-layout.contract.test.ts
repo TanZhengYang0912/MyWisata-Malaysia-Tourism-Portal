@@ -15,4 +15,10 @@ describe("customer voucher redeem dialog layout", () => {
     expect(source).toContain("<CenteredDetailModal");
     expect(source).not.toContain("<DialogContent");
   });
+
+  it("copies the signed store token separately and never treats the display code as a scan token", () => {
+    expect(source).toContain("copyStoreToken");
+    expect(source).toContain("navigator.clipboard.writeText(storeToken)");
+    expect(source).not.toContain("storeToken || voucher.code");
+  });
 });

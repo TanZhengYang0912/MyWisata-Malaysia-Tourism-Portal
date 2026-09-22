@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const read = (file: string) => readFileSync(resolve(process.cwd(), file), "utf8");
 const pageSource = read("app/customer/partners/page.tsx");
 const clientSource = read("app/customer/search/search-client.tsx");
+const exploreSource = read("app/customer/explore/explore-client.tsx");
 const vendorCardSource = read("components/customer/vendor-card.tsx");
 const catalogueSource = read("backend/domains/catalogue.ts");
 const filterSource = read("components/customer/discovery-filters.tsx");
@@ -108,6 +109,12 @@ describe("customer vendor search contract", () => {
     expect(clientSource).not.toContain("lg:w-[460px]");
   });
 
+  it("aligns More filters right for Partners and Explore", () => {
+    expect(clientSource).toContain('filterButtonAlignment="end"');
+    expect(exploreSource).toContain('filterButtonAlignment="end"');
+    expect(filterSource).toContain('filterButtonAlignment = "start"');
+  });
+
   it("uses a white canvas and the brand blue for vendor surfaces", () => {
     expect(clientSource).toContain("min-h-screen bg-background");
     expect(clientSource).toContain("text-foreground");
@@ -119,7 +126,7 @@ describe("customer vendor search contract", () => {
   });
 
   it("uses vendor media and never turns a destination photo into a vendor cover", () => {
-    expect(catalogueSource).toContain('select("id,name,status,logo_url,cover_url,outlets(id,name,city,state,status,review_status)")');
+    expect(catalogueSource).toContain('select("id,name,status,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours)")');
     expect(vendorCardSource).toContain("getVendorVisual");
     expect(vendorCardSource).toContain("visual.logoUrl");
     expect(clientSource).not.toContain("MALAYSIA_DESTINATIONS");

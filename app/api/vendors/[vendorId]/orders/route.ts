@@ -37,7 +37,7 @@ export async function GET(request: Request, { params }: Props) {
       id, display_id, user_id, status, paid_at, completed_at, created_at,
       users(full_name, email),
       order_items!inner(
-        id, order_id, product_name, variant_name, slot_starts_at, quantity, line_total, fulfil_status, created_at, vendor_id,
+        id, order_id, product_name, variant_name, slot_starts_at, quantity, line_total, fulfil_status, food_fulfilment_mode, food_qr_scanned_at, created_at, vendor_id,
         outlets(id, name, city, state),
         products(cover_url)
       )

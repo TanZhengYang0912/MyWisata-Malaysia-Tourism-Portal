@@ -59,6 +59,7 @@ interface OutletData {
   productsCount: number;
   welcome_message?: string | null;
   welcome_enabled?: boolean;
+  food_service_modes?: ("dine_in" | "takeaway")[] | null;
   manager?: { id: string; fullName: string; email: string } | null;
   pendingInvitation?: { email: string; expiresAt: string } | null;
 }
@@ -567,6 +568,7 @@ export default function VendorOutletsPage() {
                       welcomeMessage:
                         editingOutlet.welcome_message || undefined,
                       welcomeEnabled: editingOutlet.welcome_enabled ?? true,
+                      foodServiceModes: editingOutlet.food_service_modes ?? ["dine_in", "takeaway"],
                     }
                   : undefined
               }

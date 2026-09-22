@@ -317,6 +317,7 @@ export function ExploreClient({
               )}
               categoryVariant="cards"
               includeAllCategories={false}
+              filterButtonAlignment="end"
             />
           </section>
 

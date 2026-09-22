@@ -48,4 +48,9 @@ describe("customer booking details", () => {
       expect(pageSource).not.toContain(lightOnlyClass);
     }
   });
+
+  it("lets the entry pass container grow to fit the QR status controls", () => {
+    expect(pageSource).toContain("min-h-32 w-32");
+    expect(pageSource).not.toMatch(/className="flex h-32 w-32\b/);
+  });
 });

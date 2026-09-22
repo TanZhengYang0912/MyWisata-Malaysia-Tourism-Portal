@@ -51,7 +51,7 @@ describe('POST vendor booking check-in outlet scope', () => {
           id: bookingId,
           status: 'confirmed',
           order_item_id: 'order-item-1',
-          order_items: [{ vendor_id: vendorId, outlet_id: assignedOutletId }],
+          order_items: [{ order_id: 'order-1', vendor_id: vendorId, outlet_id: assignedOutletId }],
           booking_slots: [{ outlet_id: conflictingSlotOutletId }],
         },
         error: null,
@@ -88,6 +88,11 @@ describe('POST vendor booking check-in outlet scope', () => {
     mocks.from.mockImplementation((table: string) => {
       if (table === 'bookings') return bookingQuery;
       if (table === 'ticket_passes') return ticketPassQuery;
+      if (table === 'orders') return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({ data: { status: 'paid' }, error: null }),
+      };
       return updateQuery;
     });
   });

@@ -80,6 +80,7 @@ export default function CheckoutPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [slotsById, setSlotsById] = useState<Map<string, BookingSlot>>(new Map());
+  const [foodModeByOutlet, setFoodModeByOutlet] = useState<Record<string, "dine_in" | "takeaway">>({});
   const checkoutAllowed = capabilities.checkout.allowed;
 
   useEffect(() => {
@@ -166,6 +167,17 @@ export default function CheckoutPage() {
   const walletSpendableSen = (walletSummary?.topupSen ?? 0) + (walletSummary?.earningsSen ?? 0);
   const walletInsufficient = !isFreeReservation && walletSummaryLoaded && walletSpendableSen < totalSen;
   const selectedMethod = METHODS.find((choice) => choice.id === methodId) ?? METHODS[0]!;
+  const foodOutletGroups = useMemo(() => {
+    const ids = new Set<string>();
+    for (const item of selectedItems) {
+      const activity = activities.find((candidate) => candidate.id === item.activityId);
+      if (activity?.categorySlug?.toLowerCase() === "food") ids.add(item.outletId ?? activity.outletId);
+    }
+    return [...ids].map((outletId) => ({ outletId, outlet: outlets.find((outlet) => outlet.id === outletId) }));
+  }, [activities, outlets, selectedItems]);
+  const foodModeMissing = foodOutletGroups.some(({ outletId, outlet }) =>
+    !outlet || !foodModeByOutlet[outletId] || !outlet.foodServiceModes?.includes(foodModeByOutlet[outletId]!),
+  );
 
   if (toyyibPayReturned) {
     return (
@@ -208,6 +220,10 @@ export default function CheckoutPage() {
 
   async function handlePay() {
     if (paying || !gate(CUSTOMER_CAPABILITY.CHECKOUT, "/customer/checkout")) return;
+    if (foodModeMissing) {
+      setCheckoutError(tCustomer("ui.checkout.foodServiceModeRequired"));
+      return;
+    }
     setPaying(true);
     setCheckoutError(null);
     try {
@@ -223,6 +239,7 @@ export default function CheckoutPage() {
           selectedKeys: [...selectedKeys],
           voucherCode,
           claimId,
+          foodServiceModes: foodOutletGroups.map(({ outletId }) => ({ outletId, mode: foodModeByOutlet[outletId]! })),
           paymentMethod,
           paymentProvider,
           idempotencyKey,
@@ -357,6 +374,39 @@ export default function CheckoutPage() {
             </div>
           </section>
 
+          {foodOutletGroups.length > 0 && (
+            <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6" aria-labelledby="food-service-mode-heading">
+              <h2 id="food-service-mode-heading" className="text-base font-bold text-foreground">{tCustomer("ui.checkout.foodServiceModeTitle")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{tCustomer("ui.checkout.foodServiceModeDescription")}</p>
+              <div className="mt-4 space-y-4">
+                {foodOutletGroups.map(({ outletId, outlet }) => {
+                  const supportedModes = outlet?.foodServiceModes ?? [];
+                  return (
+                    <fieldset key={outletId} className="rounded-xl border border-border p-4">
+                      <legend className="px-1 text-sm font-semibold text-foreground">{outlet?.name ?? tCustomer("ui.checkout.foodServiceOutletUnavailable")}</legend>
+                      <div className="mt-1 flex flex-wrap gap-4">
+                        {supportedModes.map((mode) => (
+                          <label key={mode} className="inline-flex min-h-10 items-center gap-2 text-sm text-foreground">
+                            <input
+                              type="radio"
+                              name={`food-mode-${outletId}`}
+                              value={mode}
+                              checked={foodModeByOutlet[outletId] === mode}
+                              onChange={() => setFoodModeByOutlet((current) => ({ ...current, [outletId]: mode }))}
+                              className="h-4 w-4 accent-primary"
+                            />
+                            {mode === "dine_in" ? tCustomer("ui.checkout.foodModes.dine_in") : tCustomer("ui.checkout.foodModes.takeaway")}
+                          </label>
+                        ))}
+                      </div>
+                      {supportedModes.length === 0 && <p className="mt-2 text-xs text-destructive">{tCustomer("ui.checkout.foodServiceModeUnavailable")}</p>}
+                    </fieldset>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
           {/* Payment or Free Reservation Card */}
           <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
             {isFreeReservation ? (
@@ -465,7 +515,7 @@ export default function CheckoutPage() {
               </p>
             )}
 
-            <Button className="h-12 w-full rounded-full text-base font-semibold shadow-md" disabled={paying} onClick={() => void handlePay()}>
+            <Button className="h-12 w-full rounded-full text-base font-semibold shadow-md" disabled={paying || foodModeMissing} onClick={() => void handlePay()}>
               {paying
                 ? tCustomer("ui.states.preparingPayment")
                 : isFreeReservation

@@ -11,6 +11,7 @@ import AddressAutocomplete, { type AddressSelection } from '@/components/vendor/
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { useTranslation } from 'react-i18next';
 import { SAMPLE_MY_PHONE } from '@/lib/i18n/invariant-tokens';
+import { z } from 'zod';
 
 interface Props {
   vendorId: string;
@@ -25,12 +26,13 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
   const { showFeedback } = useActionFeedback();
   const [serverError, setServerError] = useState<string | null>(null);
 
-  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<OutletCreate>({
+  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<z.input<typeof outletCreateSchema>, unknown, OutletCreate>({
     resolver: zodResolver(outletCreateSchema),
     defaultValues: { country: 'Malaysia', welcomeEnabled: true, ...initialData },
   });
   // eslint-disable-next-line react-hooks/incompatible-library
   const address = watch('address');
+  const foodServiceModes = watch('foodServiceModes') ?? [];
 
   function applyAddress(selection: AddressSelection) {
     setValue('address', selection.address || selection.label, { shouldDirty: true });
@@ -165,6 +167,30 @@ export default function OutletForm({ vendorId, initialData, onSuccess, onClose }
           </div>
         </div>
         <p className="-mt-2 text-xs text-gray-400">{t('outletForm.accessibilityHint')}</p>
+
+        <fieldset className="space-y-2 rounded-xl border border-gray-200 p-4">
+          <legend className="px-1 text-sm font-medium text-gray-700">{t('outletForm.foodServiceModes')}</legend>
+          <p className="text-xs text-gray-500">{t('outletForm.foodServiceModesHint')}</p>
+          <div className="flex flex-wrap gap-4">
+            {(['dine_in', 'takeaway'] as const).map((mode) => (
+              <label key={mode} className="inline-flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={foodServiceModes.includes(mode)}
+                  onChange={(event) => {
+                    const next = event.target.checked
+                      ? [...foodServiceModes, mode]
+                      : foodServiceModes.filter((value) => value !== mode);
+                    setValue('foodServiceModes', next, { shouldDirty: true, shouldValidate: true });
+                  }}
+                  className="h-4 w-4 rounded border-gray-300 text-primary"
+                />
+                {mode === "dine_in" ? t("outletForm.dine_in") : t("outletForm.takeaway")}
+              </label>
+            ))}
+          </div>
+          {errors.foodServiceModes && <p className="text-xs text-red-600">{t('outletForm.foodServiceModeRequired')}</p>}
+        </fieldset>
 
         <div>
           <div className="flex items-center justify-between mb-1">

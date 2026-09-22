@@ -136,6 +136,10 @@ export const checkoutPrepareSchema = z.object({
     'bank_transfer_simulator',
     'toyyibpay',
   ]).nullable().optional(),
+  foodServiceModes: z.array(z.object({
+    outletId: uuid,
+    mode: z.enum(['dine_in', 'takeaway']),
+  }).strict()).max(50).optional(),
   idempotencyKey: idempotencyHeaderSchema,
 }).strict();
 

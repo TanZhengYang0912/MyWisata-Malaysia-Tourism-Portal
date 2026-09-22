@@ -164,17 +164,34 @@ export default function CartPage() {
         const activity = activities.find((candidate) => candidate.id === item.activityId);
         return {
           productId: item.activityId,
-          outletId: activity?.outletId,
+          outletId: item.outletId ?? activity?.outletId,
           quantity: item.qty,
-          unitPrice: activity ? unitPrice(activity, item.variantId, item.qty, new Date(), items.map((cartItem) => cartItem.activityId)) : 0,
+          unitPrice: item.priceOverride ?? (activity ? unitPrice(activity, item.variantId, item.qty, new Date(), items.map((cartItem) => cartItem.activityId)) : 0),
         };
       }),
     [activities, items, selectedKeys],
   );
 
+  const selectedVendorIds = useMemo(() => new Set(
+    voucherValidationItems
+      .map((item) => item.outletId ? outlets.get(item.outletId)?.vendorId : undefined)
+      .filter((vendorId): vendorId is string => Boolean(vendorId)),
+  ), [outlets, voucherValidationItems]);
+
+  const candidateVouchers = useMemo(() => {
+    const selectedProductIds = new Set(voucherValidationItems.map((item) => item.productId));
+    const selectedOutletIds = new Set(voucherValidationItems.map((item) => item.outletId).filter((outletId): outletId is string => Boolean(outletId)));
+    return vouchers.filter((voucher) =>
+      (!voucher.vendorId || selectedVendorIds.has(voucher.vendorId))
+      && (!voucher.outletId || selectedOutletIds.has(voucher.outletId))
+      && (!voucher.productId || selectedProductIds.has(voucher.productId))
+      && subtotal >= voucher.minSpend,
+    );
+  }, [selectedVendorIds, subtotal, voucherValidationItems, vouchers]);
+
   useEffect(() => {
     let active = true;
-    if (vouchers.length === 0 || voucherValidationItems.length === 0) {
+    if (candidateVouchers.length === 0 || voucherValidationItems.length === 0) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setVoucherOptions([]);
       setLoadingVouchers(false);
@@ -182,11 +199,11 @@ export default function CartPage() {
     }
 
     setLoadingVouchers(true);
-    Promise.all(vouchers.map(async (voucher) => {
+    Promise.all(candidateVouchers.map(async (voucher) => {
       const response = await fetch("/api/vouchers/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: voucher.code, cartSubtotal: subtotal, items: voucherValidationItems, intent: "view" }),
+        body: JSON.stringify({ code: voucher.code, vendorId: selectedVendorIds.size === 1 ? [...selectedVendorIds][0] : undefined, cartSubtotal: subtotal, items: voucherValidationItems, intent: "view" }),
       });
       const payload = await response.json() as { data?: { valid?: boolean; discountAmount?: number } };
       return payload.data?.valid ? { voucher, discountAmount: Number(payload.data.discountAmount ?? 0) } : null;
@@ -211,7 +228,7 @@ export default function CartPage() {
       });
 
     return () => { active = false; };
-  }, [subtotal, voucherValidationItems, vouchers]);
+  }, [candidateVouchers, selectedVendorIds, subtotal, voucherValidationItems]);
 
   const allVoucherOptions = useMemo(() => {
     const needle = voucherSearch.trim().toLowerCase();
@@ -230,11 +247,13 @@ export default function CartPage() {
     if (!normalizedCode) return;
     setCode(normalizedCode);
     setVoucherError(null);
+    const selectedVendorId = selectedVendorIds.size === 1 ? [...selectedVendorIds][0] : undefined;
     const response = await fetch("/api/vouchers/validate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         code: normalizedCode,
+        vendorId: selectedVendorId,
         cartSubtotal: subtotal,
         items: voucherValidationItems,
         intent: "apply",
@@ -341,7 +360,7 @@ export default function CartPage() {
           if (!activity) return null;
           const key = cartItemKey(item);
           const checked = selectedKeys.has(key);
-          const outlet = outlets.get(activity.outletId);
+          const outlet = outlets.get(item.outletId ?? activity.outletId);
           const variant = activity.variants.find((v) => v.id === item.variantId);
           const slot = item.slotId ? slotsById.get(item.slotId) : undefined;
           const price = item.priceOverride ?? unitPrice(activity, item.variantId, item.qty, new Date(), items.map((cartItem) => cartItem.activityId));

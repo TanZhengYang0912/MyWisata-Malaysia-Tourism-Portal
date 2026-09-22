@@ -41,6 +41,8 @@ interface OrderItemData {
   quantity: number;
   line_total: number;
   fulfil_status: string;
+  food_fulfilment_mode?: "dine_in" | "takeaway" | null;
+  food_qr_scanned_at?: string | null;
   created_at: string;
   outlets?: { id?: string; name?: string; city?: string; state?: string };
   products?:
@@ -1159,6 +1161,19 @@ export default function VendorOrdersPage() {
                             {item.variant_name || t("ui.orders.standard")} ·{" "}
                             {item.outlets?.name}
                           </p>
+                          {item.food_fulfilment_mode && (
+                            <p className="mt-1 text-xs font-semibold text-primary">
+                              {t("ui.orders.foodServiceMode", {
+                                service: t("ui.orders.foodService"),
+                                mode: item.food_fulfilment_mode === "dine_in"
+                                  ? t("ui.scanner.customerFoodMode.dine_in")
+                                  : t("ui.scanner.customerFoodMode.takeaway"),
+                              })}
+                            </p>
+                          )}
+                          {item.food_fulfilment_mode === "dine_in" && item.food_qr_scanned_at && (
+                            <p className="mt-1 text-xs font-semibold text-emerald-700">{t("ui.orders.dineInArrivalConfirmed")}</p>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">

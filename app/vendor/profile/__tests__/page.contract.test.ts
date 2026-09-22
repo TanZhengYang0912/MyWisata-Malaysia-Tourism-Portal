@@ -10,4 +10,12 @@ describe('vendor profile image URL contract', () => {
     expect(source).toContain('value={vendorImageUrl(form.coverUrl)}');
     expect(source).toContain('const resolvedSrc = vendorImageUrl(src);');
   });
+
+  it('keeps logo, cover, and gallery controls file-based', () => {
+    expect(source).toContain('ProductMediaUploader');
+    expect(source).toContain('VendorProfileGalleryManager');
+    expect(source).not.toContain('ui.profile.pasteImageUrl');
+    expect(source).not.toContain('<input value={form.logoUrl}');
+    expect(source).not.toContain('<input value={form.coverUrl}');
+  });
 });

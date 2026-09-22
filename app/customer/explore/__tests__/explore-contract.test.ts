@@ -41,6 +41,10 @@ describe("customer discovery filter contract", () => {
     expect(exploreSource).toContain("openNow");
   });
 
+  it("aligns the More filters action to the right on Explore", () => {
+    expect(exploreSource).toContain('filterButtonAlignment="end"');
+  });
+
   it("keeps sponsored analytics metadata and labels sponsored places in the customer UI", () => {
     expect(exploreSource).toContain("sponsorship");
     expect(exploreSource).toContain("onSponsoredClick");

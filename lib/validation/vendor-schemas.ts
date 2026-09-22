@@ -3,6 +3,7 @@
 
 import { z } from 'zod';
 import { TICKET_ENTRY_POLICIES } from '@/lib/tickets/product-ticket-policy';
+import { validateMalaysianPhone } from '@/lib/phone/normalize';
 
 // ── Common building blocks ─────────────────────────────────
 
@@ -14,6 +15,16 @@ const productMediaSchema = z.object({
   url: z.string().url().max(2000),
   alt: z.string().trim().max(255).optional(),
 }).strict();
+
+export const VENDOR_BUSINESS_TYPES = [
+  'restaurant',
+  'tour_operator',
+  'accommodation',
+  'retail',
+  'wellness',
+  'adventure',
+  'other',
+] as const;
 
 // ── Vendor ─────────────────────────────────────────────────
 
@@ -61,12 +72,15 @@ export const vendorRegisterSchema = z.object({
   name: z.string({ error: vendorRegisterKey('name', 'required') }).trim().min(2, { error: vendorRegisterKey('name', 'min') }).max(255, { error: vendorRegisterKey('name', 'max') }),
   slug: slug.optional(), // auto-generated from name if not provided
   description: z.string({ error: vendorRegisterKey('description', 'invalid') }).trim().max(2000, { error: vendorRegisterKey('description', 'max') }).optional(),
-  businessType: z.string({ error: vendorRegisterKey('businessType', 'invalid') }).max(50, { error: vendorRegisterKey('businessType', 'max') }).optional(),
+  businessType: z.enum(VENDOR_BUSINESS_TYPES, { error: vendorRegisterKey('businessType', 'invalid') }).optional().or(z.literal('')),
   legalBusinessName: z.string({ error: vendorRegisterKey('legalBusinessName', 'invalid') }).trim().max(255, { error: vendorRegisterKey('legalBusinessName', 'max') }).optional(),
   registrationNumber: z.string({ error: vendorRegisterKey('registrationNumber', 'invalid') }).trim().max(120, { error: vendorRegisterKey('registrationNumber', 'max') }).optional(),
   contactName: z.string({ error: vendorRegisterKey('contactName', 'invalid') }).trim().max(255, { error: vendorRegisterKey('contactName', 'max') }).optional(),
-  contactEmail: z.string({ error: vendorRegisterKey('contactEmail', 'invalid') }).email({ error: vendorRegisterKey('contactEmail', 'format') }).max(255, { error: vendorRegisterKey('contactEmail', 'max') }).optional().or(z.literal('')),
-  contactPhone: z.string({ error: vendorRegisterKey('contactPhone', 'invalid') }).max(50, { error: vendorRegisterKey('contactPhone', 'max') }).optional(),
+  contactEmail: z.string({ error: vendorRegisterKey('contactEmail', 'invalid') }).trim().email({ error: vendorRegisterKey('contactEmail', 'format') }).max(255, { error: vendorRegisterKey('contactEmail', 'max') }).optional().or(z.literal('')),
+  contactPhone: z.string({ error: vendorRegisterKey('contactPhone', 'invalid') }).trim().max(50, { error: vendorRegisterKey('contactPhone', 'max') }).refine(
+    (phone) => phone === '' || (/^[+()\d.\-\s]+$/.test(phone) && validateMalaysianPhone(phone)),
+    { error: vendorRegisterKey('contactPhone', 'invalid') },
+  ).optional(),
   businessAddress: z.string({ error: vendorRegisterKey('businessAddress', 'invalid') }).trim().max(500, { error: vendorRegisterKey('businessAddress', 'max') }).optional(),
   logoUrl: z.string({ error: vendorRegisterKey('logoUrl', 'invalid') }).url({ error: vendorRegisterKey('logoUrl', 'format') }).max(2000, { error: vendorRegisterKey('logoUrl', 'max') }).optional().or(z.literal('')),
   coverUrl: z.string({ error: vendorRegisterKey('coverUrl', 'invalid') }).url({ error: vendorRegisterKey('coverUrl', 'format') }).max(2000, { error: vendorRegisterKey('coverUrl', 'max') }).optional().or(z.literal('')),
@@ -88,6 +102,8 @@ export const vendorSuspendSchema = z.object({
 }).strict();
 
 // ── Outlet ─────────────────────────────────────────────────
+
+export const FOOD_SERVICE_MODES = ["dine_in", "takeaway"] as const;
 
 export const outletCreateSchema = z.object({
   name: z.string().trim().min(2).max(255),
@@ -112,6 +128,9 @@ export const outletCreateSchema = z.object({
   // §11.1.5 accessibility — null/undefined = not specified (the day-1 default).
   wheelchairAccessible: z.boolean().nullable().optional(),
   petFriendly: z.boolean().nullable().optional(),
+  foodServiceModes: z.array(z.enum(FOOD_SERVICE_MODES)).min(1).max(2)
+    .refine((modes) => new Set(modes).size === modes.length)
+    .default(["dine_in", "takeaway"]),
 }).strict();
 
 export const outletUpdateSchema = outletCreateSchema.partial();

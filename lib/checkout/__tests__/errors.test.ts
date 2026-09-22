@@ -12,6 +12,11 @@ describe("checkout error handling", () => {
     expect(getCheckoutErrorMessage({ code: "INVENTORY_UNAVAILABLE" })).toContain("requested quantity");
   });
 
+  it("explains how to recover when a cart item is no longer available", () => {
+    expect(getCheckoutErrorCode({ code: "CART_ITEM_UNAVAILABLE" })).toBe("CART_ITEM_UNAVAILABLE");
+    expect(getCheckoutErrorMessage({ code: "CART_ITEM_UNAVAILABLE" })).toContain("Refresh your cart");
+  });
+
   it("does not expose database error text for unknown failures", () => {
     expect(getCheckoutErrorMessage("some_internal_postgres_error")).toBe("We could not start checkout right now. Please try again.");
   });

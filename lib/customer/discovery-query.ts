@@ -23,7 +23,7 @@ export type DiscoveryQuery = {
   coupleFriendlyOnly: boolean;
 };
 
-const PRICE_MAX = 10_000;
+export const PRICE_MAX = 10_000;
 
 function readTrimmed(params: URLSearchParams, key: string): string | null {
   const value = params.get(key)?.trim() ?? "";

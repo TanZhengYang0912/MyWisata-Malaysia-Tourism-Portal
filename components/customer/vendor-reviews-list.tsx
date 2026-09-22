@@ -199,7 +199,7 @@ export function VendorReviewsList({ reviews, vendorId, initialVisibleCount = 6 }
 
       {/* Show All / Show Less Button */}
       {hasMore && (
-        <div className="text-center pt-2">
+        <div className="flex justify-end pt-2">
           <button
             type="button"
             onClick={() => setShowAll(!showAll)}

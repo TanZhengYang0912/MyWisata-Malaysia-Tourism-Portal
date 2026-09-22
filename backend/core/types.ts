@@ -57,7 +57,14 @@ export interface VendorSummary {
   status: string; // "pending" | "approved" | "rejected"
   logoUrl: string | null;
   coverUrl: string | null;
-  outlets: { id: string; name: string; city: string; state: string }[];
+  outlets: {
+    id: string;
+    name: string;
+    city: string;
+    state: string;
+    operatingHours?: OperatingHours | null;
+    currentlyOpen?: boolean;
+  }[];
 }
 
 export interface Outlet {
@@ -67,6 +74,8 @@ export interface Outlet {
   name: string;
   /** Published outlet shop image; absent when the shop has not added one. */
   coverUrl?: string | null;
+  /** Curated logo for the outlet's vendor, when available. */
+  vendorLogoUrl?: string | null;
   category: string;
   state: string;
   city: string;
@@ -83,6 +92,7 @@ export interface Outlet {
   reviews: number;
   wheelchairAccessible?: boolean | null; // null = vendor hasn't specified
   petFriendly?: boolean | null;
+  foodServiceModes?: ("dine_in" | "takeaway")[];
 }
 
 export const OPERATING_HOUR_WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
@@ -323,6 +333,8 @@ export interface CartItem {
 
 export interface Voucher {
   id: string;
+  vendorId?: string;
+  outletId?: string;
   code: string;
   name?: string;
   type: "percent" | "fixed" | "bogo";
@@ -376,6 +388,8 @@ export interface Booking {
   policy?: "single_entry" | "multi_entry" | "group_entry";
   entryLimit?: number;
   entriesUsed?: number;
+  validFrom?: string;
+  validUntil?: string;
 }
 
 export type KycSubmissionStatus = "draft" | "pending" | "info_requested" | "approved" | "rejected" | "superseded";

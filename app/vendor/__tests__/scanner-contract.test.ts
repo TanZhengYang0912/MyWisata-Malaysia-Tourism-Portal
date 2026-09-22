@@ -16,6 +16,14 @@ describe("Vendor camera scanner contract", () => {
     expect(scanner).toContain("BarcodeFormat.CODE_128");
   });
 
+  it("shows auth and outlet loading failures instead of a blank scanner page", () => {
+    const page = read("app/vendor/scanner/page.tsx");
+    expect(page).toContain("authLoading");
+    expect(page).toContain('role="status"');
+    expect(page).toContain('role="alert"');
+    expect(page).not.toContain("if (!vendorId) return null;");
+  });
+
   it("requires resolve before redeem and keeps the scanner only in outlet manager navigation", () => {
     const scanner = read("components/vendor/redemption-scanner.tsx");
     const sidebar = read("components/layout/vendor-sidebar.tsx");

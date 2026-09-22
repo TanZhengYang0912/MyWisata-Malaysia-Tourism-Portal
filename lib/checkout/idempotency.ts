@@ -6,6 +6,7 @@ export type CheckoutRequest = {
   claimId?: string | null;
   paymentMethod: string;
   paymentProvider?: string | null;
+  foodServiceModes?: { outletId: string; mode: "dine_in" | "takeaway" }[];
 };
 
 export type NormalizedCheckoutRequest = {
@@ -14,6 +15,7 @@ export type NormalizedCheckoutRequest = {
   claimId: string | null;
   paymentMethod: string;
   paymentProvider: string | null;
+  foodServiceModes: { outletId: string; mode: "dine_in" | "takeaway" }[];
 };
 
 export function normalizeCheckoutRequest(input: CheckoutRequest): NormalizedCheckoutRequest {
@@ -27,6 +29,9 @@ export function normalizeCheckoutRequest(input: CheckoutRequest): NormalizedChec
     claimId: input.claimId?.trim() || null,
     paymentMethod: input.paymentMethod.trim().toLowerCase(),
     paymentProvider: input.paymentProvider?.trim().toLowerCase() || null,
+    foodServiceModes: [...(input.foodServiceModes ?? [])]
+      .map(({ outletId, mode }) => ({ outletId: outletId.trim().toLowerCase(), mode }))
+      .sort((a, b) => a.outletId.localeCompare(b.outletId)),
   };
 }
 
