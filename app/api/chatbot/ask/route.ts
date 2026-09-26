@@ -25,20 +25,24 @@ export async function POST(request: Request) {
 
   const service = createServiceClient();
 
-  let session: { id: string; session_key: string } | null = null;
+  let session: { id: string; session_key: string; user_id: string | null } | null = null;
   if (sessionKey) {
-    const { data } = await service
+    const { data, error } = await service
       .from('chatbot_sessions')
-      .select('id, session_key')
+      .select('id, session_key, user_id')
       .eq('session_key', sessionKey)
       .maybeSingle();
+    if (error) return apiFail('DB_ERROR', 'Unable to verify the chat session.', 503);
+    if (data && data.user_id !== (user?.id ?? null)) {
+      return apiFail('FORBIDDEN', 'This chat session does not belong to you.', 403);
+    }
     session = data ?? null;
   }
   if (!session) {
     const { data: created, error: createErr } = await service
       .from('chatbot_sessions')
       .insert({ user_id: user?.id ?? null, session_key: sessionKey ?? crypto.randomUUID() })
-      .select('id, session_key')
+      .select('id, session_key, user_id')
       .single();
     if (createErr) return apiFail('DB_ERROR', createErr.message, 500);
     session = created;

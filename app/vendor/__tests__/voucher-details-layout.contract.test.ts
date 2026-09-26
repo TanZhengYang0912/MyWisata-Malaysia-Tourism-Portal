@@ -22,4 +22,13 @@ describe("vendor voucher details layout", () => {
     expect(detailSource).not.toContain("bg-amber-600 px-4 py-2.5");
     expect(detailSource).not.toContain("mt-6 space-y-3 text-sm");
   });
+
+  it("uses real outlet photos in the voucher preview instead of outlet initials", () => {
+    expect(source).toContain("coverUrl?: string | null");
+    expect(source).toContain("coverUrl: outlet.coverUrl");
+    expect(detailSource).toContain("images:");
+    expect(source).toContain("selectedVoucher.outlets?.id");
+    expect(source).toContain("outlet.coverUrl");
+    expect(detailSource).not.toContain("initials: (selectedVoucher.outlets?.name || selectedVoucher.name)");
+  });
 });

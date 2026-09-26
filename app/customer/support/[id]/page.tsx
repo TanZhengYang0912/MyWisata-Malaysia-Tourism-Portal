@@ -239,7 +239,7 @@ export default function CustomerTicketDetailPage() {
           {pendingFile && (
             <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-secondary/60 px-3 py-2 text-xs">
               <FileText size={18} className="shrink-0 text-primary" />
-              <span className="min-w-0 flex-1 truncate text-foreground">{pendingFile.name}</span>
+              <span className="min-w-0 flex-1 break-words whitespace-normal text-foreground">{pendingFile.name}</span>
               <button type="button" onClick={() => setPendingFile(null)} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={tCustomer("ui.support.removeAttachment")}>
                 <X size={14} />
               </button>

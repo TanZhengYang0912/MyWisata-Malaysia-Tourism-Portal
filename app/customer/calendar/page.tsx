@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Filter, MapPin, ReceiptText, Search, X } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
-import { getBookingsForUser } from "@/backend/domains/commerce";
+import { getSettledBookingsForUser } from "@/backend/domains/commerce";
 import { getOutlets } from "@/backend/domains/catalogue";
 import { supabase } from "@/backend/supabase";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -65,7 +65,7 @@ export default function CustomerCalendarPage() {
     let active = true;
     const load = async () => {
       try {
-        const [nextBookings, nextOutlets] = await Promise.all([getBookingsForUser(currentUser.id), getOutlets()]);
+        const [nextBookings, nextOutlets] = await Promise.all([getSettledBookingsForUser(currentUser.id), getOutlets()]);
         if (active) { setSelectedDayKey(null); setBookings(nextBookings); setOutlets(nextOutlets); setNow(Date.now()); setError(""); setLoadedUserId(currentUser.id); }
       } catch {
         if (active) { setError(tCustomer("ui.states.loadingError")); setBookings([]); setLoadedUserId(currentUser.id); }
@@ -75,6 +75,7 @@ export default function CustomerCalendarPage() {
     const channel = supabase
       .channel(`customer-calendar-${currentUser.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings", filter: `customer_id=eq.${currentUser.id}` }, () => { void load(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `user_id=eq.${currentUser.id}` }, () => { void load(); })
       .on("postgres_changes", { event: "*", schema: "public", table: "booking_slots" }, () => { void load(); })
       .subscribe();
     return () => { active = false; void supabase.removeChannel(channel); };
@@ -197,7 +198,7 @@ export default function CustomerCalendarPage() {
                 const dayGroups = bookingsByDay[key] || [];
                 const inMonth = day.getMonth() === monthStart.getMonth() && day.getFullYear() === monthStart.getFullYear();
                 const hiddenCount = getHiddenItineraryGroupCount(dayGroups);
-                return <div key={key} className={`min-h-[104px] border-b border-r border-border p-2 ${inMonth ? "bg-card" : "bg-secondary/20"}`}><p className={`mb-1.5 text-xs font-bold ${inMonth ? "text-foreground" : "text-muted-foreground/50"}`}>{day.getDate()}</p><div className="space-y-1">{dayGroups.slice(0, 3).map((group) => <button key={group.key} type="button" onClick={() => setSelectedDayKey(key)} className="block w-full rounded-lg border-l-2 border-primary bg-secondary px-2 py-1 text-left transition hover:bg-secondary/70 focus:outline-none focus:ring-2 focus:ring-primary/30" aria-label={tCustomer("ui.calendar.showItinerary", { activity: group.activityName })}><p className="truncate text-[11px] font-bold text-primary">{group.activityName}</p><p className="mt-0.5 text-[10px] text-primary">{bookingTime(group.slotStartsAt)} · {tCustomer("ui.calendar.paxCount", { count: group.totalQty })}</p></button>)}{hiddenCount > 0 && <button type="button" onClick={() => setSelectedDayKey(key)} aria-label={tCustomer("ui.calendar.showMore", { count: hiddenCount, date: formatDate(day, locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) })} className="px-2 text-left text-[10px] font-bold text-primary underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-primary/30">{tCustomer("ui.calendar.more", { count: hiddenCount })}</button>}</div></div>;
+                return <div key={key} className={`min-h-[104px] border-b border-r border-border p-2 ${inMonth ? "bg-card" : "bg-secondary/20"}`}><p className={`mb-1.5 text-xs font-bold ${inMonth ? "text-foreground" : "text-muted-foreground/50"}`}>{day.getDate()}</p><div className="space-y-1">{dayGroups.slice(0, 3).map((group) => <button key={group.key} type="button" onClick={() => setSelectedDayKey(key)} className="block w-full rounded-lg border-l-2 border-primary bg-secondary px-2 py-1 text-left transition hover:bg-secondary/70 focus:outline-none focus:ring-2 focus:ring-primary/30" aria-label={tCustomer("ui.calendar.showItinerary", { activity: group.activityName })}><p className="break-words whitespace-normal text-[11px] font-bold text-primary">{group.activityName}</p><p className="mt-0.5 text-[10px] text-primary">{bookingTime(group.slotStartsAt)} · {tCustomer("ui.calendar.paxCount", { count: group.totalQty })}</p></button>)}{hiddenCount > 0 && <button type="button" onClick={() => setSelectedDayKey(key)} aria-label={tCustomer("ui.calendar.showMore", { count: hiddenCount, date: formatDate(day, locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) })} className="px-2 text-left text-[10px] font-bold text-primary underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-primary/30">{tCustomer("ui.calendar.more", { count: hiddenCount })}</button>}</div></div>;
               })}
             </div>
           </div>

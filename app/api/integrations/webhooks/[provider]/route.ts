@@ -1,6 +1,11 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { apiFail, apiOk } from "@/lib/validation/schemas";
-import { parseExternalWebhookBody, verifyWebhookSignature } from "@/lib/integrations/webhook-verifier";
+import {
+  parseExternalWebhookBody,
+  parseExternalWebhookSourceIdentifier,
+  readBoundedWebhookBody,
+  verifyWebhookSignature,
+} from "@/lib/integrations/webhook-verifier";
 
 const ALLOWED_PROVIDERS = new Set([
   "generic_webhook",
@@ -27,20 +32,27 @@ export async function POST(request: Request, { params }: Props) {
     request.headers.get("x-signature") ||
     request.headers.get("x-hub-signature-256");
 
+  if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") {
+    return apiFail("UNSUPPORTED_CONTENT_TYPE", "Webhook body must be JSON", 415);
+  }
+
   let rawBodyText: string;
   let parsedJson: unknown;
   try {
-    rawBodyText = await request.text();
+    rawBodyText = await readBoundedWebhookBody(request);
     parsedJson = JSON.parse(rawBodyText);
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "Webhook body is too large") {
+      return apiFail("PAYLOAD_TOO_LARGE", "Webhook body exceeds the 64 KB limit", 413);
+    }
     return apiFail("INVALID_JSON", "Body is not valid JSON", 400);
   }
 
-  let eventPayload;
+  let sourceIdentifier: string;
   try {
-    eventPayload = parseExternalWebhookBody(parsedJson);
-  } catch (err) {
-    return apiFail("VALIDATION_FAILED", err instanceof Error ? err.message : "Validation failed", 422);
+    sourceIdentifier = parseExternalWebhookSourceIdentifier(parsedJson);
+  } catch {
+    return apiFail("VALIDATION_FAILED", "Invalid source identifier", 422);
   }
 
   const supabase = createServiceClient();
@@ -50,7 +62,7 @@ export async function POST(request: Request, { params }: Props) {
     .from("external_booking_sources")
     .select("id, vendor_id, outlet_id, product_id, webhook_secret, sync_enabled")
     .eq("provider", provider)
-    .eq("external_source_identifier", eventPayload.sourceIdentifier)
+    .eq("external_source_identifier", sourceIdentifier)
     .maybeSingle();
 
   if (sourceError) {
@@ -67,6 +79,13 @@ export async function POST(request: Request, { params }: Props) {
   const isValidSignature = verifyWebhookSignature(rawBodyText, signature, source.webhook_secret);
   if (!isValidSignature) {
     return apiFail("UNAUTHORIZED", "Invalid or missing webhook signature", 401);
+  }
+
+  let eventPayload;
+  try {
+    eventPayload = parseExternalWebhookBody(parsedJson);
+  } catch (err) {
+    return apiFail("VALIDATION_FAILED", err instanceof Error ? err.message : "Validation failed", 422);
   }
 
   // Invoke atomic capacity check RPC

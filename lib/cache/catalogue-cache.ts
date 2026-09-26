@@ -14,7 +14,7 @@
  */
 import { unstable_cache } from 'next/cache';
 import { createServiceClient } from '@/lib/supabase/service';
-import { getActivities, getOutlets, searchActivities } from '@/backend/domains/catalogue';
+import { getActivities, getDiscoveryActivities, getOutlets } from '@/backend/domains/catalogue';
 import type { Activity, ComputedActivity, Outlet } from '@/backend/core/types';
 
 /**
@@ -31,14 +31,14 @@ export const getCachedActivities: () => Promise<Activity[]> = unstable_cache(
 );
 
 /**
- * Cached searchActivities with no filters (All Malaysia, all categories).
- * Returns ComputedActivity[] with outlet resolved — suitable for home page, explore, etc.
+ * Cached narrow discovery catalogue with each product's representative outlet.
+ * Checkout/detail consumers keep using the complete catalogue selectors.
  * Revalidates every 60 seconds.
  */
 export const getCachedComputedActivities: () => Promise<ComputedActivity[]> = unstable_cache(
   async () => {
     const db = createServiceClient();
-    return searchActivities({ state: 'All Malaysia', category: null }, db);
+    return getDiscoveryActivities(db);
   },
   ['catalogue-computed-activities'],
   { revalidate: 60, tags: ['activities'] },

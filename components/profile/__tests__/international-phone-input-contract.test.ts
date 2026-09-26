@@ -14,5 +14,10 @@ describe("InternationalPhoneInput", () => {
     expect(source).toContain('autoComplete="tel"');
     expect(source).toContain('placeholder={t("ui.phone.searchCountry")}');
     expect(source).toContain("usePhoneInput");
+    expect(source).toContain("disableFormatting: true");
+    expect(source).toContain("allowMaskOverflow: true");
+    expect(source).toContain("new AsYouType().input");
+    expect(source).toContain("aria-describedby={ariaDescribedBy}");
+    expect(source).toContain("onBlur={onBlur}");
   });
 });

@@ -53,6 +53,7 @@ vi.mock("@/lib/supabase/client", () => ({
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
 import { AdminSegmentedFilter } from "@/components/admin/segmented-filter";
 import { ChatbotWidget, createBotMessage, resolveTicketSubject } from "@/components/shared/chatbot-widget";
+import { NotificationBell } from "@/components/shared/notification-bell";
 import { NotificationCenter } from "@/components/shared/notification-center";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { SupportChatProvider } from "@/components/providers/support-chat";
@@ -76,10 +77,12 @@ const translations: Record<string, string> = {
   "common:filters.filter": "Translated filter",
   "common:notifications.categories.wallet": "Wallet translated",
   "common:notifications.loadError": "Translated notification fallback",
+  "common:notifications.loadMore": "Load more translated",
   "common:notifications.markAllAsRead": "Mark all translated",
   "common:notifications.noNotificationsFound": "No notifications translated",
   "common:notifications.open": "Open translated",
   "common:notifications.unread": "Unread translated",
+  "common:notifications.viewAll": "View all notifications",
   "common:pagination.page": "Page {{current}} of {{total}}",
   "common:statuses.completed": "Completed translated",
   "admin:actions.cancel": "Cancel translated",
@@ -215,6 +218,31 @@ describe("Task 5 shared runtime behavior", () => {
     await click(findButton("Wallet translated"));
     const requestUrls = mocks.fetch.mock.calls.map(([url]) => String(url));
     expect(requestUrls.some((url) => url.includes("category=wallet") && url.includes("page=1"))).toBe(true);
+  });
+
+  it("loads the next vendor notification page inside the bell without linking to a separate page", async () => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    mocks.fetch.mockImplementation(async (url: string) => {
+      const params = new URL(url, "http://localhost").searchParams;
+      const page = Number(params.get("page") ?? "1");
+      const read = params.get("read");
+      const items = read === "unread" ? [] : Array.from({ length: page === 1 ? 15 : 5 }, (_, index) => {
+        const number = (page - 1) * 15 + index + 1;
+        return { id: `vendor-${number}`, title: `Vendor notice ${number}`, body: `Update ${number}`, link: null, category: "vendor_orders", readAt: null, createdAt: "2026-03-05T14:06:00.000Z" };
+      });
+      return response({ data: { items, page, pageSize: 15, total: 20, totalPages: 2 } });
+    });
+
+    await render(<NotificationBell scope="vendor" vendorId="vendor-1" />);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "accessibility.notifications"));
+
+    expect(container.textContent).toContain("Vendor notice 15");
+    expect(container.textContent).not.toContain("Vendor notice 16");
+    expect(container.textContent).not.toContain("View all notifications");
+    await click(findButton("Load more translated"));
+
+    expect(container.textContent).toContain("Vendor notice 20");
+    expect(mocks.fetch.mock.calls.some(([url]) => String(url).includes("page=2") && String(url).includes("scope=vendor"))).toBe(true);
   });
 
   it("keeps ChatLanguage/answer metadata and dynamic ticket subjects independent from UI translation", () => {

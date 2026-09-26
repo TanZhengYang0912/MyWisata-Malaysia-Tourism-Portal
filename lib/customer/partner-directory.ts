@@ -4,11 +4,32 @@ import type {
   SponsoredPlacement,
   VendorSummary,
 } from "@/backend/core/types";
+import { selectEntityGallery, type EntityMediaRow } from "@/lib/customer/entity-media";
 import { canonicalCategorySlug } from "@/lib/customer/discovery-categories";
 import { rankDiscoveryResults } from "@/lib/customer/discovery-ranking";
 
 export type PartnerView = "all" | "featured";
 export type PartnerSort = "featured" | "name" | "outlets";
+
+export function attachSponsoredOutletGalleryCovers(
+  activities: ComputedActivity[],
+  sponsoredProductIds: ReadonlySet<string>,
+  mediaRows: ({ outletId: string } & EntityMediaRow)[],
+): ComputedActivity[] {
+  const mediaByOutlet = new Map<string, EntityMediaRow[]>();
+  for (const { outletId, ...media } of mediaRows) {
+    const outletMedia = mediaByOutlet.get(outletId) ?? [];
+    outletMedia.push(media);
+    mediaByOutlet.set(outletId, outletMedia);
+  }
+
+  return activities.map((activity) => {
+    if (!sponsoredProductIds.has(activity.id)) return activity;
+
+    const coverUrl = selectEntityGallery(mediaByOutlet.get(activity.outlet.id) ?? [], 1)[0]?.url;
+    return coverUrl ? { ...activity, outlet: { ...activity.outlet, coverUrl } } : activity;
+  });
+}
 
 type RankablePartner = Pick<VendorSummary, "id" | "name" | "outlets">;
 

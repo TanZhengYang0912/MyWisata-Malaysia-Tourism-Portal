@@ -7,13 +7,13 @@ import Link from "next/link";
 import { AlertCircle, CalendarClock, CreditCard, ImageOff, ShieldCheck, Smartphone, Ticket, Wallet } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
-import { getActivities, getBookingSlots, getOutlets, getVoucherByCode } from "@/backend/domains/catalogue";
+import { getBookingSlots, getOutlets, getVoucherByCode } from "@/backend/domains/catalogue";
 import { unitPrice } from "@/backend/core/helpers";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { Button } from "@/components/ui/button";
 import { getCheckoutErrorMessage, type CheckoutErrorPayload } from "@/lib/checkout/errors";
-import type { Activity, BookingSlot, Outlet, Voucher } from "@/backend/core/types";
+import type { BookingSlot, Outlet, Voucher } from "@/backend/core/types";
 import { formatMYRFromSen } from "@/lib/i18n/format";
 import { useReferenceCurrency } from "@/components/providers/reference-currency";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
@@ -67,7 +67,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { currentUser, capabilities } = useAuth();
   const gate = useCustomerCapabilityGate();
-  const { selectedItems, selectedKeys, totals } = useCart();
+  const { selectedItems, selectedKeys, activities = [], totals } = useCart();
   const [voucherCode, setVoucherCode] = useState<string | null>(null);
   const [claimId, setClaimId] = useState<string | null>(null);
   const [voucher, setVoucher] = useState<Voucher | undefined>(undefined);
@@ -77,14 +77,12 @@ export default function CheckoutPage() {
   const [toyyibPayReturned, setToyyibPayReturned] = useState(false);
   const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
   const [walletSummaryLoaded, setWalletSummaryLoaded] = useState(false);
-  const [activities, setActivities] = useState<Activity[]>([]);
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [slotsById, setSlotsById] = useState<Map<string, BookingSlot>>(new Map());
   const [foodModeByOutlet, setFoodModeByOutlet] = useState<Record<string, "dine_in" | "takeaway">>({});
   const checkoutAllowed = capabilities.checkout.allowed;
 
   useEffect(() => {
-    getActivities().then(setActivities).catch(() => setActivities([]));
     getOutlets().then(setOutlets).catch(() => setOutlets([]));
   }, []);
 
@@ -319,6 +317,38 @@ export default function CheckoutPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Main Column */}
         <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+          {foodOutletGroups.length > 0 && (
+            <section className="rounded-2xl border border-primary/25 bg-primary/5 p-5 shadow-sm sm:p-6" aria-labelledby="food-service-mode-heading">
+              <h2 id="food-service-mode-heading" className="text-base font-bold text-foreground">{tCustomer("ui.checkout.foodServiceModeTitle")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{tCustomer("ui.checkout.foodServiceModeDescription")}</p>
+              <div className="mt-4 space-y-4">
+                {foodOutletGroups.map(({ outletId, outlet }) => {
+                  const supportedModes = outlet?.foodServiceModes ?? [];
+                  return (
+                    <fieldset key={outletId} className="rounded-xl border border-border bg-card p-4">
+                      <legend className="px-1 text-sm font-semibold text-foreground">{outlet?.name ?? tCustomer("ui.checkout.foodServiceOutletUnavailable")}</legend>
+                      <div className="mt-1 flex flex-wrap gap-4">
+                        {supportedModes.map((mode) => (
+                          <label key={mode} className="inline-flex min-h-10 items-center gap-2 text-sm text-foreground">
+                            <input
+                              type="radio"
+                              name={`food-mode-${outletId}`}
+                              value={mode}
+                              checked={foodModeByOutlet[outletId] === mode}
+                              onChange={() => setFoodModeByOutlet((current) => ({ ...current, [outletId]: mode }))}
+                              className="h-4 w-4 accent-primary"
+                            />
+                            {mode === "dine_in" ? tCustomer("ui.checkout.foodModes.dine_in") : tCustomer("ui.checkout.foodModes.takeaway")}
+                          </label>
+                        ))}
+                      </div>
+                      {supportedModes.length === 0 && <p className="mt-2 text-xs text-destructive">{tCustomer("ui.checkout.foodServiceModeUnavailable")}</p>}
+                    </fieldset>
+                  );
+                })}
+              </div>
+            </section>
+          )}
           {/* Reservation Items Card */}
           <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
             <h2 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
@@ -345,7 +375,7 @@ export default function CheckoutPage() {
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="text-sm font-bold text-foreground truncate">{activity?.name ?? tCustomer("ui.states.loading")}</h3>
+                        <h3 className="break-words whitespace-normal text-sm font-bold text-foreground">{activity?.name ?? tCustomer("ui.states.loading")}</h3>
                         <span className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)] shrink-0">
                           {lineTotal === 0 ? "RM0.00" : <ReferencePrice amountMYR={lineTotal} />}
                         </span>
@@ -373,39 +403,6 @@ export default function CheckoutPage() {
               })}
             </div>
           </section>
-
-          {foodOutletGroups.length > 0 && (
-            <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6" aria-labelledby="food-service-mode-heading">
-              <h2 id="food-service-mode-heading" className="text-base font-bold text-foreground">{tCustomer("ui.checkout.foodServiceModeTitle")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{tCustomer("ui.checkout.foodServiceModeDescription")}</p>
-              <div className="mt-4 space-y-4">
-                {foodOutletGroups.map(({ outletId, outlet }) => {
-                  const supportedModes = outlet?.foodServiceModes ?? [];
-                  return (
-                    <fieldset key={outletId} className="rounded-xl border border-border p-4">
-                      <legend className="px-1 text-sm font-semibold text-foreground">{outlet?.name ?? tCustomer("ui.checkout.foodServiceOutletUnavailable")}</legend>
-                      <div className="mt-1 flex flex-wrap gap-4">
-                        {supportedModes.map((mode) => (
-                          <label key={mode} className="inline-flex min-h-10 items-center gap-2 text-sm text-foreground">
-                            <input
-                              type="radio"
-                              name={`food-mode-${outletId}`}
-                              value={mode}
-                              checked={foodModeByOutlet[outletId] === mode}
-                              onChange={() => setFoodModeByOutlet((current) => ({ ...current, [outletId]: mode }))}
-                              className="h-4 w-4 accent-primary"
-                            />
-                            {mode === "dine_in" ? tCustomer("ui.checkout.foodModes.dine_in") : tCustomer("ui.checkout.foodModes.takeaway")}
-                          </label>
-                        ))}
-                      </div>
-                      {supportedModes.length === 0 && <p className="mt-2 text-xs text-destructive">{tCustomer("ui.checkout.foodServiceModeUnavailable")}</p>}
-                    </fieldset>
-                  );
-                })}
-              </div>
-            </section>
-          )}
 
           {/* Payment or Free Reservation Card */}
           <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">

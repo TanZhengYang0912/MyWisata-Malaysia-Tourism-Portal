@@ -50,6 +50,7 @@ function toPrefs(row: PrefRow): UserPrefs {
 export interface FeedOptions {
   near?: { lat: number; lng: number };
   limit?: number;
+  candidates?: ComputedActivity[];
 }
 
 /**
@@ -62,7 +63,9 @@ export async function getRecommendedFeed(
   db: SupabaseClient = supabase,
 ): Promise<FeedItem[]> {
   const limit = opts.limit ?? 12;
-  const candidates = await searchActivities({ near: opts.near, sort: "recommended" }, db);
+  const candidates = opts.candidates && !opts.near
+    ? opts.candidates
+    : await searchActivities({ near: opts.near, sort: "recommended" }, db);
 
   if (!userId) return coldStart(candidates, limit);
 

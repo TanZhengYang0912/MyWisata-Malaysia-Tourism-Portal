@@ -125,6 +125,7 @@
     "noNotificationsYet": "Belum ada pemberitahuan.",
     "noNotificationsFound": "Tiada pemberitahuan ditemui.",
     "viewAll": "Lihat semua pemberitahuan",
+    "loadMore": "Muatkan lagi",
     "open": "Buka",
     "loadError": "Tidak dapat memuatkan pemberitahuan.",
     "categories": {
@@ -283,6 +284,8 @@
     "navigation": "Navigasi",
     "queue": "Barisan Gilir Semakan",
     "actions": "Tindakan Pantas",
+    "pendingQueue": "Menunggu {{name}}",
+    "unreadQueue": "Belum dibaca {{name}}",
     "admin": "Pentadbiran",
     "preferences": "Keutamaan",
     "navigate": "untuk navigasi",

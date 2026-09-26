@@ -16,6 +16,12 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
+  const { data: rpcCount, error: countError } = await supabase.rpc('get_chat_unread_count');
+  if (!countError && typeof rpcCount === 'number') return apiOk({ count: rpcCount });
+
+  // Keep the established read path during staged deployments before the
+  // aggregate RPC migration has reached the database.
+
   const { data: threads, error: threadError } = await supabase.from('chat_threads').select('id,customer_id,outlet_id');
   if (threadError) return apiFail('DB_ERROR', 'Unable to load conversations', 500);
   const threadIds = [...await accessibleChatThreadIds(supabase, user.id, threads ?? [])];

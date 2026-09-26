@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
   CalendarDays,
@@ -254,6 +255,9 @@ export default function VendorBookingsPage() {
   const { t, i18n } = useTranslation("vendor");
   const locale = i18n.resolvedLanguage || i18n.language;
   const { user, isOutletManager } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { showFeedback } = useActionFeedback();
   const { confirm } = useAppDialog();
   const vendorId = user?.activeVendorId;
@@ -287,6 +291,16 @@ export default function VendorBookingsPage() {
   const [allFilteredSelected, setAllFilteredSelected] = useState(false);
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchMessage, setBatchMessage] = useState("");
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "1" || !user) return;
+
+    setShowSlotForm(true);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("create");
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams, user]);
 
   function primeDateRange() {
     const defaults = getMalaysiaDateRangeDefaults();

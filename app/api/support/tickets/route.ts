@@ -77,11 +77,14 @@ export async function POST(request: Request) {
 
   let sessionId: string | null = null;
   if (sessionKey) {
-    const { data: session } = await supabase
+    const { data: session, error: sessionError } = await supabase
       .from('chatbot_sessions')
-      .select('id')
+      .select('id,user_id,session_key')
       .eq('session_key', sessionKey)
       .maybeSingle();
+    if (sessionError) return apiFail('DB_ERROR', 'Unable to verify the chat session.', 503);
+    if (!session) return apiFail('SESSION_NOT_FOUND', 'Chat session not found. Start a new conversation and try again.', 404);
+    if (session.user_id !== (user?.id ?? null)) return apiFail('FORBIDDEN', 'This chat session does not belong to you.', 403);
     sessionId = session?.id ?? null;
   }
 

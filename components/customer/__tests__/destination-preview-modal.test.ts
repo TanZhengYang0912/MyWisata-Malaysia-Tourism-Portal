@@ -6,6 +6,10 @@ const modalSource = readFileSync(
   resolve(process.cwd(), "components/customer/destination-preview-modal.tsx"),
   "utf8",
 );
+const saveToggleSource = readFileSync(
+  resolve(process.cwd(), "components/customer/save-toggle-button.tsx"),
+  "utf8",
+);
 
 describe("Destination preview modal", () => {
   it("provides an accessible destination summary and exploration CTA", () => {
@@ -18,7 +22,7 @@ describe("Destination preview modal", () => {
     expect(modalSource).toContain('t("ui.map.saveToAtlas")');
     expect(modalSource).toContain("useSavedDestinations");
     expect(modalSource).toContain("useCustomerCapabilityGate");
-    expect(modalSource).toContain("aria-pressed");
+    expect(saveToggleSource).toContain("aria-pressed={saved}");
     expect(modalSource).toContain("onClose");
     expect(modalSource).not.toContain("All states");
     expect(modalSource).not.toContain("<form");

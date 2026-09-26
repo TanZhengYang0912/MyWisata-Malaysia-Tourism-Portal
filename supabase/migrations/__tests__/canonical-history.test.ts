@@ -65,6 +65,17 @@ const approvedForwardMigrations = [
   "20260921170400_restrict_ticket_food_rpc_execute.sql",
   "20260921214000_allow_partial_booking_checkins.sql",
   "20260921215000_restrict_ticket_admission_rpc_execute.sql",
+  "20260924224000_scope_online_voucher_checkout.sql",
+  "20260925081000_harden_checkout_prices_and_wallet_settlement.sql",
+  "20260925081100_harden_external_booking_reservations.sql",
+  "20260925081200_reserve_phone_otp_send.sql",
+  "20260925081300_add_admin_order_read_module.sql",
+  "20260925081400_require_food_qr_before_fulfilment.sql",
+  "20260925143000_promotion_campaigns.sql",
+  "20260925191006_campaign_product_media_lookup_index.sql",
+  "20260926020403_add_review_and_variant_product_indexes.sql",
+  "20260926062706_optimize_unread_counts_and_auth.sql",
+  "20260926063036_use_invoker_for_unread_counts.sql",
 ];
 
 function migrationFiles() {

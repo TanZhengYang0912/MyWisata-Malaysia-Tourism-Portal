@@ -117,7 +117,7 @@ export function CustomerTransactionHistory({ userId, refreshKey }: { userId: str
                     {debit ? <ArrowUpRight size={15} aria-hidden="true" /> : <ArrowDownLeft size={15} aria-hidden="true" />}
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-foreground">{label}</p>
+                    <p className="break-words whitespace-normal text-sm font-semibold text-foreground">{label}</p>
                     <p className="text-xs text-muted-foreground">{new Date(transaction.createdAt).toLocaleDateString(locale, { timeZone: "Asia/Kuala_Lumpur" })}</p>
                   </div>
                 </div>

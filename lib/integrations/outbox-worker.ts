@@ -18,9 +18,11 @@ export type OutboxDispatcher = (event: OutboxEventRow) => Promise<void>;
 const DEFAULT_MAX_RETRIES = 5;
 
 export async function processOutboxBatch(
-  dispatcher?: OutboxDispatcher,
+  dispatcher: OutboxDispatcher,
   limit = 20,
 ): Promise<{ processed: number; delivered: number; failed: number }> {
+  if (typeof dispatcher !== "function") throw new Error("outbox_dispatcher_required");
+
   const supabase = createServiceClient();
   const now = new Date().toISOString();
 
@@ -38,22 +40,51 @@ export async function processOutboxBatch(
 
   let deliveredCount = 0;
   let failedCount = 0;
+  let claimedCount = 0;
 
   for (const event of events as OutboxEventRow[]) {
-    await supabase.from("sync_outbox").update({ status: "processing" }).eq("id", event.id);
+    const { data: claimed, error: claimError } = await supabase
+      .from("sync_outbox")
+      .update({ status: "processing" })
+      .eq("id", event.id)
+      .in("status", ["pending", "failed"])
+      .select("id")
+      .maybeSingle();
+    if (claimError) {
+      failedCount++;
+      continue;
+    }
+    if (!claimed) continue;
+    claimedCount++;
 
     try {
-      if (dispatcher) {
-        await dispatcher(event);
-      }
-      // Successfully dispatched
-      await supabase
+      await dispatcher(event);
+      const { error: deliveryStateError } = await supabase
         .from("sync_outbox")
         .update({
           status: "delivered",
           last_error: null,
         })
         .eq("id", event.id);
+      if (deliveryStateError) {
+        const retryCount = event.retry_count + 1;
+        const retryDelaySeconds = Math.min(3600, Math.pow(2, retryCount) * 10);
+        const { error: retryStateError } = await supabase
+          .from("sync_outbox")
+          .update({
+            status: "pending",
+            retry_count: retryCount,
+            next_retry_at: new Date(Date.now() + retryDelaySeconds * 1000).toISOString(),
+            last_error: "delivery_state_update_failed",
+          })
+          .eq("id", event.id)
+          .eq("status", "processing");
+        if (retryStateError) {
+          console.error("[sync-outbox] delivery state and retry state updates failed", event.id);
+        }
+        failedCount++;
+        continue;
+      }
       deliveredCount++;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Dispatch failed";
@@ -86,7 +117,7 @@ export async function processOutboxBatch(
   }
 
   return {
-    processed: events.length,
+    processed: claimedCount,
     delivered: deliveredCount,
     failed: failedCount,
   };

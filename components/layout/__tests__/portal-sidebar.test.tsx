@@ -45,4 +45,19 @@ describe("PortalSidebar", () => {
     expect(markup).toContain('aria-label="3 pending orders"');
     expect(markup).toContain("focus-visible:ring-2");
   });
+
+  it("wraps the full active outlet name instead of truncating it", () => {
+    const markup = renderToStaticMarkup(
+      <PortalSidebar
+        portalName="Vendor Portal"
+        brandName="Malaysia Tourism"
+        navigationLabel="Portal navigation"
+        contextLabel="Outlet Manager"
+        contextDetail="Heritage Hotel Cameron Highlands"
+        sections={[]}
+      />,
+    );
+
+    expect(markup).toContain('class="mt-0.5 whitespace-normal break-words text-xs text-slate-400">Heritage Hotel Cameron Highlands</p>');
+  });
 });

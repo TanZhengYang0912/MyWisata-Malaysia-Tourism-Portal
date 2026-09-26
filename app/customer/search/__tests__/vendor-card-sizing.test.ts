@@ -10,7 +10,8 @@ describe("partner vendor card sizing contract", () => {
     expect(source).toContain("flex h-full flex-col");
     expect(source).toContain("shrink-0");
     expect(source).toContain("flex min-h-[220px] flex-1 flex-col");
-    expect(source).toContain("line-clamp-2 min-h-10");
+    expect(source).toContain("min-h-10 break-words whitespace-normal");
+    expect(source).not.toContain("line-clamp-2");
     expect(source).toContain("mt-auto");
   });
 

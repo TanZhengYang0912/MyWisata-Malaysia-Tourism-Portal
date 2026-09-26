@@ -42,3 +42,10 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      - name: Production build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-build-placeholder
+          STRIPE_SECRET_KEY: sk_test_ci_placeholder

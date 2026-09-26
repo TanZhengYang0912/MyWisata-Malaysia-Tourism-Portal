@@ -20,6 +20,45 @@ import { MyWisataExploreMap } from "./mywisata-explore-map";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { HIDDEN_GEM_SYMBOL } from "@/lib/i18n/invariant-tokens";
 import { ReferencePrice } from "@/components/shared/reference-price";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const STATE_FLAG_CODES: Record<string, string> = {
+  perlis: "pls",
+  kedah: "kdh",
+  penang: "png",
+  perak: "prk",
+  selangor: "sgr",
+  "kuala-lumpur": "kul",
+  putrajaya: "pjy",
+  "negeri-sembilan": "nsn",
+  melaka: "mlk",
+  johor: "jhr",
+  kelantan: "ktn",
+  terengganu: "trg",
+  pahang: "phg",
+  sarawak: "swk",
+  sabah: "sbh",
+  labuan: "lbn",
+};
+
+function StateOptionContent({ stateId, label }: { stateId: string | null; label: string }) {
+  const flagSrc = stateId ? `/flags/states/${STATE_FLAG_CODES[stateId]}.svg` : "/flags/my.svg";
+
+  return (
+    <span className="flex min-w-0 items-center gap-3">
+      <Image
+        src={flagSrc}
+        alt=""
+        aria-hidden="true"
+        width={40}
+        height={20}
+        unoptimized
+        className="h-5 w-10 shrink-0 rounded-[3px] border border-border/70 bg-white object-contain"
+      />
+      <span className="truncate">{label}</span>
+    </span>
+  );
+}
 
 // Display metadata for the 4 real categories — Hidden Gem is a collection
 // filter backed by the listing flag and is rendered separately below.
@@ -116,7 +155,23 @@ function StateDetailPanel({
                 <div className="mt-2 space-y-2">
                   {highlights.map((activity) => (
                     <button key={activity.id} type="button" onClick={() => onSelectPlace(activity.id)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-border px-3 py-2 text-left transition hover:border-primary hover:bg-secondary">
-                      <span className="min-w-0"><span className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground">{activity.name}{activity.sponsorship && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">{t("ui.labels.sponsored")}</span>}</span>{activity.outlet.hours && <span className="mt-1 block truncate text-[10px] text-muted-foreground">{t("ui.labels.operatingHours")}: {activity.outlet.hours}</span>}</span>
+                      <span className="flex min-w-0 flex-1 items-center gap-2.5">
+                        {activity.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- catalogue product image
+                          <img src={activity.image} alt="" loading="lazy" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                        ) : (
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
+                            <ImageOff size={16} strokeWidth={1.5} aria-hidden="true" />
+                          </span>
+                        )}
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-1.5 truncate text-sm font-bold text-foreground">
+                            {activity.name}
+                            {activity.sponsorship && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">{t("ui.labels.sponsored")}</span>}
+                          </span>
+                          {activity.outlet.hours && <span className="mt-1 block truncate text-[10px] text-muted-foreground">{t("ui.labels.operatingHours")}: {activity.outlet.hours}</span>}
+                        </span>
+                      </span>
                       <ArrowRight size={14} className="shrink-0 text-primary" aria-hidden="true" />
                     </button>
                   ))}
@@ -142,16 +197,30 @@ function StateDetailPanel({
 
         <label htmlFor="explore-state-picker" className="mt-5 block">
           <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">{t("ui.map.chooseStateLabel")}</span>
-          <select
-            id="explore-state-picker"
-            aria-label={t("ui.map.chooseStateLabel")}
-            value={selectedStateId ?? ""}
-            onChange={(event) => onSelectState(event.target.value || null)}
-            className="mt-2 w-full appearance-none rounded-xl border border-border bg-background px-3 py-3 text-sm font-bold text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-          >
-            <option value="">{t("ui.map.allStatesTerritories")}</option>
-            {DEMO_STATES.map((state) => <option key={state.id} value={state.id}>{state.name}</option>)}
-          </select>
+          <Select value={selectedStateId ?? "all"} onValueChange={(value) => onSelectState(value === "all" ? null : value)}>
+            <SelectTrigger
+              id="explore-state-picker"
+              aria-label={t("ui.map.chooseStateLabel")}
+              className="mt-2 h-12 rounded-2xl border-border bg-background px-3 text-sm font-semibold shadow-sm hover:border-primary/50 focus-visible:border-primary focus-visible:ring-primary/20"
+            >
+              <SelectValue placeholder={t("ui.map.allStatesTerritories")} />
+            </SelectTrigger>
+            <SelectContent
+              position="popper"
+              align="start"
+              sideOffset={8}
+              className="max-h-[min(24rem,var(--radix-select-content-available-height))] rounded-2xl border-border bg-popover p-1.5 shadow-xl"
+            >
+              <SelectItem value="all" className="min-h-11 rounded-xl px-3 py-2 font-medium data-[highlighted]:bg-secondary data-[highlighted]:text-primary">
+                <StateOptionContent stateId={null} label={t("ui.map.allStatesTerritories")} />
+              </SelectItem>
+              {DEMO_STATES.map((state) => (
+                <SelectItem key={state.id} value={state.id} className="min-h-11 rounded-xl px-3 py-2 font-medium data-[highlighted]:bg-secondary data-[highlighted]:text-primary">
+                  <StateOptionContent stateId={state.id} label={state.name} />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
       </div>
 
@@ -331,7 +400,7 @@ export function StoryMap({
                   <h2 className="mt-2 truncate font-[family-name:var(--font-display)] text-xl font-bold text-foreground">{selectedActivity.name}</h2>
                   <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><MapPin size={12} />{selectedActivity.outlet.city} · {selectedActivity.outlet.state}</p>
                 </div>
-                <SaveToggleButton saved={saved} iconSize={17} aria-label={t(saved ? "ui.map.removeSavedPlace" : "ui.map.savePlace")} onClick={() => { if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return; void toggleSaved(selectedActivity.id); }} className={`rounded-xl p-2 ${saved ? "bg-accent text-accent-foreground" : "bg-secondary text-primary"}`} />
+                <SaveToggleButton appearance="icon" saved={saved} iconSize={17} aria-label={t(saved ? "ui.map.removeSavedPlace" : "ui.map.savePlace")} onClick={() => { if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return; void toggleSaved(selectedActivity.id); }} className="p-2" />
                 <button type="button" aria-label={t("ui.actions.cancel")} onClick={() => setSelectedPlaceId(null)} className="rounded-xl bg-secondary p-2 text-primary hover:bg-muted"><X size={17} /></button>
               </div>
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
@@ -390,7 +459,7 @@ export function StoryMap({
               {activities.length === 0 ? (
                 <div className="rounded-2xl border border-border bg-secondary/50 p-8 text-center text-sm text-muted-foreground">{t("ui.states.loadingError")}</div>
               ) : (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {activities.slice(0, 8).map((activity) => (
                     <button
                       key={activity.id}
@@ -410,9 +479,9 @@ export function StoryMap({
                           </div>
                         )}
                          <div className="min-w-0 flex-1">
-                           <p className="line-clamp-2 text-xs font-bold leading-tight text-foreground 2xl:text-base">{activity.name}</p>
+                           <p className="break-words whitespace-normal text-xs font-bold leading-tight text-foreground 2xl:text-base">{activity.name}</p>
                            {activity.sponsorship && <span className="mt-1 inline-flex rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-900">{t("ui.labels.sponsored")}</span>}
-                           <p className="mt-0.5 truncate text-[9px] text-muted-foreground 2xl:text-xs">{activity.outlet.city} · {t(`categories.${activity.categorySlug ?? "activity"}`)}{activity.outlet.hours ? ` · ${activity.outlet.hours}` : ""}</p>
+                           <p className="mt-0.5 break-words whitespace-normal text-[9px] text-muted-foreground 2xl:text-xs">{activity.outlet.city} · {t(`categories.${activity.categorySlug ?? "activity"}`)}{activity.outlet.hours ? ` · ${activity.outlet.hours}` : ""}</p>
                          </div>
                         <ReferencePrice amountMYR={Number(activity.price)} className="shrink-0 self-start font-[family-name:var(--font-mono)] text-[11px] font-bold text-primary 2xl:text-sm" />
                        </div>

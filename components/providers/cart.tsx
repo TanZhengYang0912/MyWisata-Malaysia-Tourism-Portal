@@ -1,11 +1,10 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import * as commerce from "@/backend/domains/commerce";
-import { getActivities } from "@/backend/domains/catalogue";
+import { getActivitiesByIds } from "@/backend/domains/catalogue";
 import { cartItemKey, cartTotals } from "@/backend/core/helpers";
 import { useAuth } from "@/components/providers/auth";
-import { supabase } from "@/backend/supabase";
 import type { Activity, CartItem, Voucher } from "@/backend/core/types";
 
 // Single source of truth lives in backend/core/helpers so the client, the cart
@@ -16,6 +15,7 @@ export { cartItemKey } from "@/backend/core/helpers";
 interface CartContextValue {
   items: CartItem[];
   count: number;
+  activities: Activity[];
   selectedKeys: Set<string>;
   selectedItems: CartItem[];
   toggleSelected: (key: string) => void;
@@ -33,18 +33,20 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activityData, setActivityData] = useState<{ key: string; activities: Activity[] }>({ key: "[]", activities: [] });
   const [mounted, setMounted] = useState(false);
   const [selectedKeys, setSelectedKeysState] = useState<Set<string>>(new Set());
   const { currentUser } = useAuth();
+  const activityIdsKey = JSON.stringify([...new Set(items.map((item) => item.activityId))].sort());
+  const activities = useMemo(
+    () => activityData.key === activityIdsKey ? activityData.activities : [],
+    [activityData, activityIdsKey],
+  );
 
   useEffect(() => {
     let active = true;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(false);
-    getActivities()
-      .then((nextActivities) => { if (active) setActivities(nextActivities); })
-      .catch(() => { if (active) setActivities([]); });
     if (currentUser) {
       commerce.getCart(currentUser.id)
         .then((nextItems) => {
@@ -68,6 +70,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     else { setItems([]); setMounted(true); }
     return () => { active = false; };
   }, [currentUser]);
+
+  useEffect(() => {
+    const activityIds = JSON.parse(activityIdsKey) as string[];
+    if (activityIds.length === 0) return;
+
+    let active = true;
+    getActivitiesByIds(activityIds)
+      .then((nextActivities) => {
+        if (active) setActivityData({ key: activityIdsKey, activities: nextActivities });
+      })
+      .catch(() => {
+        if (active) setActivityData({ key: activityIdsKey, activities: [] });
+      });
+
+    return () => { active = false; };
+  }, [activityIdsKey]);
 
   useEffect(() => {
     if (!currentUser || !mounted || items.length === 0) return;
@@ -122,16 +140,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   }, [items]);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel("customer-inventory-refresh")
-      .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, () => {
-        getActivities().then(setActivities).catch(() => undefined);
-      })
-      .subscribe();
-    return () => { void supabase.removeChannel(channel); };
-  }, []);
-
   const addItem = useCallback(async (item: CartItem) => {
     if (!currentUser) return;
     setItems(await commerce.addToCart(currentUser.id, item));
@@ -164,7 +172,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <CartContext.Provider
-      value={{ items, count, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, setSelectedKeys: replaceSelectedKeys, addItem, updateQty, removeItem, clear, totals }}
+      value={{ items, count, activities, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, setSelectedKeys: replaceSelectedKeys, addItem, updateQty, removeItem, clear, totals }}
     >
       {children}
     </CartContext.Provider>

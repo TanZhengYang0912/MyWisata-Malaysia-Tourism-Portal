@@ -1,8 +1,8 @@
 /// <reference types="vite/client" />
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), service: vi.fn(), serviceFrom: vi.fn(), storage: vi.fn() }));
-vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { getUser: mocks.getUser }, from: mocks.from }) }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), rpc: vi.fn(), service: vi.fn(), serviceFrom: vi.fn(), storage: vi.fn() }));
+vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { getUser: mocks.getUser }, from: mocks.from, rpc: mocks.rpc }) }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: mocks.service }));
 const routes = import.meta.glob('../**/route.ts');
 const id = '11111111-1111-4111-8111-111111111111';
@@ -24,6 +24,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   customerId = 'someone-else'; superAdmin = false; ownsOutlet = false; managesOutlet = false;
   mocks.getUser.mockResolvedValue({ data: { user: { id: 'actor' } }, error: null });
+  mocks.rpc.mockResolvedValue({ data: 0, error: null });
   mocks.from.mockImplementation((table: string) => {
     if (table === 'user_roles') return query([{ roles: { name: superAdmin ? 'super_admin' : 'approver' } }]);
     // Emulate legacy RLS returning an unrelated thread to Wallet Approver.
@@ -72,6 +73,7 @@ describe('chat API explicit participant boundary', () => {
     const response = await call('unread-count', 'GET');
     expect(response).toMatchObject({ status: 200 });
     expect(await (response as Response).json()).toMatchObject({ data: { count: 0 } });
+    expect(mocks.rpc).toHaveBeenCalledWith('get_chat_unread_count');
     expect(mocks.from.mock.calls.map(([table]) => table)).not.toContain('chat_messages');
   });
 

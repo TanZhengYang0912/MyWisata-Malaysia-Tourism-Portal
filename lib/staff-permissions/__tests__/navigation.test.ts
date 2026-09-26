@@ -39,4 +39,29 @@ describe("database-driven Staff navigation", () => {
   it("returns no navigation for zero effective Modules", () => {
     expect(staffNavigationSections([])).toEqual([]);
   });
+
+  it("projects a permission-filtered promotion campaign module without a fixed route catalogue", () => {
+    const sections = staffNavigationSections([
+      moduleRecord({
+        id: "campaigns",
+        key: "promotion_campaigns",
+        label: "Promotion Campaigns",
+        labelKey: "navigation.Promotion Campaigns",
+        sectionKey: "governance",
+        sectionLabel: "Governance",
+        sectionLabelKey: "navigationSections.governance",
+        sectionSortOrder: 20,
+        href: "/admin/promotion-campaigns",
+        iconKey: "megaphone",
+        sortOrder: 35,
+        permissionKeys: ["admin.promotion_campaign.manage"],
+      }),
+    ]);
+
+    expect(sections).toHaveLength(1);
+    expect(sections[0].items[0]).toMatchObject({
+      href: "/admin/promotion-campaigns",
+      permissionKeys: ["admin.promotion_campaign.manage"],
+    });
+  });
 });

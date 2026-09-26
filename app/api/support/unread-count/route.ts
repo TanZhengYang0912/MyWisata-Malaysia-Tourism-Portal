@@ -15,6 +15,12 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
+  const { data: rpcCount, error: countError } = await supabase.rpc('get_support_unread_count');
+  if (!countError && typeof rpcCount === 'number') return apiOk({ count: rpcCount });
+
+  // Retain the existing compatibility path until the aggregate RPC migration
+  // has been applied in every environment.
+
   const service = createServiceClient();
   const isAdmin = await isSuperAdmin(supabase, user.id);
 

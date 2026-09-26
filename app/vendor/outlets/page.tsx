@@ -60,6 +60,7 @@ interface OutletData {
   welcome_message?: string | null;
   welcome_enabled?: boolean;
   food_service_modes?: ("dine_in" | "takeaway")[] | null;
+  operating_hours?: unknown;
   manager?: { id: string; fullName: string; email: string } | null;
   pendingInvitation?: { email: string; expiresAt: string } | null;
 }
@@ -198,6 +199,7 @@ export default function VendorOutletsPage() {
           address: outlets[0].address,
           city: outlets[0].city,
           state: outlets[0].state,
+          operating_hours: outlets[0].operating_hours,
         }}
         onEdit={() => router.push(getOutletManagerEditorDestination(true))}
         onCreateVoucher={() =>

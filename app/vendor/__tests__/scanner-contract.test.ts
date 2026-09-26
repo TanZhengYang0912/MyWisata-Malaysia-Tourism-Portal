@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { getVendorNavigationSections } from "@/lib/vendor/navigation";
 
 function read(path: string) {
   return readFileSync(resolve(process.cwd(), path), "utf8");
@@ -26,15 +27,21 @@ describe("Vendor camera scanner contract", () => {
 
   it("requires resolve before redeem and keeps the scanner only in outlet manager navigation", () => {
     const scanner = read("components/vendor/redemption-scanner.tsx");
-    const sidebar = read("components/layout/vendor-sidebar.tsx");
     expect(scanner).toContain("/scanner/resolve");
     expect(scanner).toContain("/scanner/redeem-voucher");
     expect(scanner).toContain('ui.scanner.confirm');
-    expect(sidebar).toContain("/vendor/scanner");
-    expect(sidebar).toContain("OUTLET_MANAGER_SECTIONS");
+    expect(getVendorNavigationSections(true).flatMap((section) => section.items.map((item) => item.href))).toContain("/vendor/scanner");
+    expect(getVendorNavigationSections(false).flatMap((section) => section.items.map((item) => item.href))).not.toContain("/vendor/scanner");
     expect(scanner).toContain("outlets.length > 1");
     expect(scanner).toContain("result.pass?.policy === 'group_entry'");
     expect(scanner).toContain("oneEntryPerScan");
+  });
+
+  it("clears stale ticket results and caps group admissions at the current remaining guest count", () => {
+    const scanner = read("components/vendor/redemption-scanner.tsx");
+    expect(scanner).toContain("setResult(null);\n    setScanError(\"\");");
+    expect(scanner).toContain("const ticketRemaining = result?.kind === \"ticket\"");
+    expect(scanner).toContain("Math.min(ticketRemaining ?? 1");
   });
 
   it("places recent activity beside the live scanner and keeps manual entry in the toolbar modes", () => {

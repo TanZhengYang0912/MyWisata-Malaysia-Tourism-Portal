@@ -57,7 +57,7 @@ export default function VendorHeader() {
           <LanguageSwitcher compact className="hidden w-28 sm:flex" />
           <AppearanceControl />
           {!loading && vendorId ? (
-            <NotificationBell scope="vendor" vendorId={vendorId} allHref="/vendor/notifications" />
+            <NotificationBell scope="vendor" vendorId={vendorId} />
           ) : (
             <span aria-hidden="true" className="rounded-lg p-1.5 text-gray-300"><Bell size={18} /></span>
           )}
@@ -75,6 +75,7 @@ export default function VendorHeader() {
 
       <GlobalCommandPalette
         scope="vendor"
+        isOutletManager={isOutletManager}
         triggerOpen={commandPaletteOpen}
         onOpenChange={setCommandPaletteOpen}
       />

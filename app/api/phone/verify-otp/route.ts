@@ -13,6 +13,20 @@ export async function POST(request: Request) {
   if (!parsed.ok) return parsed.response;
   const { phone, code } = parsed.data;
 
+  const service = createServiceClient();
+  const { data: reservation, error: reservationError } = await service
+    .from('phone_verifications')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('phone', phone)
+    .is('verified_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (reservationError) return apiFail('DB_ERROR', 'Unable to load the OTP request. Please try again.', 503);
+  if (!reservation) return apiFail('OTP_NOT_REQUESTED', 'Request a new verification code for this phone number.', 422);
+
   // Verify OTP via Twilio
   const result = await verifyOtp(phone, code);
   if (!result.ok) {
@@ -26,7 +40,6 @@ export async function POST(request: Request) {
   }
 
   // Post-verify: advance tier + record verified phone (atomic, with advisory lock in RPC)
-  const service = createServiceClient();
   const { error } = await service.rpc('promote_to_phone_verified', {
     p_user_id: user.id,
     p_phone:   phone,
@@ -42,12 +55,18 @@ export async function POST(request: Request) {
   }
 
   // Mark the phone_verifications row as verified
-  await supabase
+  const { data: auditRow, error: auditError } = await service
     .from('phone_verifications')
     .update({ verified_at: new Date().toISOString() })
+    .eq('id', reservation.id)
     .eq('user_id', user.id)
     .eq('phone', phone)
-    .is('verified_at', null);
+    .is('verified_at', null)
+    .select('id')
+    .maybeSingle();
 
-  return apiOk({ verified: true, phone, tier: 'phone_verified' });
+  if (auditError || !auditRow) {
+    console.error('[phone/verify-otp] verified identity audit update failed');
+  }
+  return apiOk({ verified: true, phone, tier: 'phone_verified', auditRecorded: Boolean(auditRow) && !auditError });
 }

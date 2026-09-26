@@ -35,6 +35,14 @@ describe("customer voucher API contracts", () => {
     expect(browse).toContain("redemptionMode: row.redemption_mode");
   });
 
+  it("keeps vendor-wide vouchers visible without requiring an outlet relation", () => {
+    const browse = read("app/api/customer/vouchers/route.ts");
+    expect(browse).not.toContain("outlets!inner");
+    expect(browse).toContain("!row.outlet_id");
+    expect(browse).toContain('status === "active"');
+    expect(browse).toContain('review_status === "approved"');
+  });
+
   it("resolves voucher imagery from the outlet before falling back to vendor branding", () => {
     const browse = read("app/api/customer/vouchers/route.ts");
     expect(browse).toContain("outlet_pages(hero_url)");

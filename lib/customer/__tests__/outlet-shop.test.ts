@@ -7,6 +7,7 @@ import {
   getOutletNavigationModel,
   getPublicOutletEmptyState,
   selectPublicOutletProductIds,
+  selectPublicOutletPreviewProducts,
 } from '@/lib/customer/outlet-shop';
 
 describe('professional outlet product cards', () => {
@@ -86,6 +87,18 @@ describe('outlet detail CTA labels', () => {
 });
 
 describe('public outlet shop content', () => {
+  it('shows only active products approved for public sale in the customer preview', () => {
+    const products = [
+      { id: 'public', status: 'active', review_status: 'approved' },
+      { id: 'archived', status: 'archived', review_status: 'approved' },
+      { id: 'inactive', status: 'inactive', review_status: 'approved' },
+      { id: 'pending-review', status: 'active', review_status: 'pending_review' },
+      { id: 'rejected-review', status: 'active', review_status: 'rejected' },
+    ];
+
+    expect(selectPublicOutletPreviewProducts(products).map((product) => product.id)).toEqual(['public']);
+  });
+
   it('shows every sellable product when the page has no featured selection', () => {
     expect(selectPublicOutletProductIds([], ['product-a', 'product-b'])).toEqual(['product-a', 'product-b']);
   });

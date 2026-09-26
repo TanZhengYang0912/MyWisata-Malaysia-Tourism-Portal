@@ -207,6 +207,13 @@ export function selectPublicOutletProductIds(featuredIds: string[], sellableIds:
   return selected.length > 0 ? selected : sellableIds;
 }
 
+export function selectPublicOutletPreviewProducts<T extends {
+  status?: string | null;
+  review_status?: string | null;
+}>(products: readonly T[]): T[] {
+  return products.filter((product) => product.status === 'active' && product.review_status === 'approved');
+}
+
 export function getPublicOutletEmptyState(kind: 'products' | 'gallery'): PublicOutletEmptyState {
   if (kind === 'gallery') {
     return {

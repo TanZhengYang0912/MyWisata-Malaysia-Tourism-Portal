@@ -32,4 +32,16 @@ describe("customer booking QR enlarge interaction", () => {
       expect(copy.ui.booking.qrEnlargeDescription).toBeTruthy();
     }
   });
+
+  it("provides translated merchant and outlet copy for the live ticket identity", () => {
+    for (const locale of locales) {
+      const copy = JSON.parse(readFileSync(
+        resolve(process.cwd(), `app/i18n/locales/${locale}/customer.json`),
+        "utf8",
+      )) as { ui: { labels: Record<string, string> } };
+
+      expect(copy.ui.labels.providedBy).toBeTruthy();
+      expect(copy.ui.labels.outlet).toBeTruthy();
+    }
+  });
 });

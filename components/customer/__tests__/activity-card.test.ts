@@ -6,6 +6,9 @@ const workspace = process.cwd();
 const cardSource = readFileSync(resolve(workspace, "components/customer/activity-card.tsx"), "utf8");
 const saveToggleSource = readFileSync(resolve(workspace, "components/customer/save-toggle-button.tsx"), "utf8");
 const storyMapSource = readFileSync(resolve(workspace, "components/demo-map/story-map.tsx"), "utf8");
+const customerHomeSource = readFileSync(resolve(workspace, "app/customer/customer-home-client.tsx"), "utf8");
+const designDemoSource = readFileSync(resolve(workspace, "app/customer/design-demo/design-demo-client.tsx"), "utf8");
+const destinationPreviewSource = readFileSync(resolve(workspace, "components/customer/destination-preview-modal.tsx"), "utf8");
 
 describe("customer activity image handling", () => {
   it("shows a visible fallback when a cover is missing or fails to load", () => {
@@ -50,5 +53,15 @@ describe("customer activity image handling", () => {
     expect(saveToggleSource).toContain("children");
     expect(storyMapSource).toContain('import { SaveToggleButton } from "@/components/customer/save-toggle-button"');
     expect(storyMapSource).toContain("<SaveToggleButton");
+  });
+
+  it("uses the saved-places navy bookmark style across customer save controls", () => {
+    expect(saveToggleSource).toContain('appearance?: "icon" | "pill"');
+    expect(saveToggleSource).toContain("bg-white text-primary");
+    expect(cardSource).toContain('appearance="icon"');
+    expect(storyMapSource).toContain('appearance="icon"');
+    expect(customerHomeSource).toContain('appearance="pill"');
+    expect(designDemoSource).toContain('appearance="pill"');
+    expect(destinationPreviewSource).toContain('appearance="pill"');
   });
 });

@@ -5,6 +5,7 @@ import { getVendors, searchActivities } from "@/backend/domains/catalogue";
 import { getRecommendedFeed } from "@/backend/domains/recommend";
 import { rankFeaturedVendors, rankVendorsByPersonalizedFeed } from "@/backend/domains/vendor-recommend";
 import type { SponsoredPlacement } from "@/backend/core/types";
+import { attachSponsoredOutletGalleryCovers } from "@/lib/customer/partner-directory";
 import { SearchClient } from "../search/search-client";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 
@@ -53,11 +54,37 @@ export default async function PartnersPage({ searchParams }: Props) {
     priority: placement.priority,
     status: placement.status,
   }));
+  const sponsoredProductIds = new Set(sponsoredPlacements.map((placement) => placement.productId));
+  const sponsoredOutletIds = [...new Set(results
+    .filter((activity) => sponsoredProductIds.has(activity.id))
+    .map((activity) => activity.outlet.id))];
+  let partnerResults = results;
+  if (sponsoredOutletIds.length > 0) {
+    const { data: outletMediaRows, error: outletMediaError } = await db
+      .from("media_assets")
+      .select("outlet_id,url,alt_text,media_type,sort_order")
+      .in("outlet_id", sponsoredOutletIds)
+      .is("product_id", null)
+      .order("sort_order");
+    if (!outletMediaError) {
+      partnerResults = attachSponsoredOutletGalleryCovers(
+        results,
+        sponsoredProductIds,
+        (outletMediaRows ?? []).map((media) => ({
+          outletId: media.outlet_id,
+          url: media.url,
+          altText: media.alt_text,
+          mediaType: media.media_type,
+          sortOrder: media.sort_order,
+        })),
+      );
+    }
+  }
 
   return (
     <SearchClient
       initialQuery={q ?? ""}
-      initialResults={results}
+      initialResults={partnerResults}
       initialVendors={approvedVendors}
       recommendedVendors={recommendedVendors}
       sponsoredPlacements={sponsoredPlacements}

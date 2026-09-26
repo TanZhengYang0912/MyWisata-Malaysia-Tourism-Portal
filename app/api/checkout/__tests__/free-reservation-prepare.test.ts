@@ -101,6 +101,7 @@ describe('POST /api/checkout/prepare with free_reservation', () => {
             vendor_id: VENDOR_ID,
             name: 'Merdeka Square Free Heritage Tour',
             cover_url: null,
+            base_price: 0,
             requires_booking: true,
           },
         ]);
@@ -172,6 +173,7 @@ describe('POST /api/checkout/prepare with free_reservation', () => {
         vendor_id: VENDOR_ID,
         name: "Food tour",
         cover_url: null,
+        base_price: 0,
         requires_booking: true,
         categories: { slug: "food" },
       }]);
@@ -215,6 +217,7 @@ describe('POST /api/checkout/prepare with free_reservation', () => {
         vendor_id: VENDOR_ID,
         name: "Food tour",
         cover_url: null,
+        base_price: 0,
         requires_booking: true,
         categories: { slug: "food" },
       }]);

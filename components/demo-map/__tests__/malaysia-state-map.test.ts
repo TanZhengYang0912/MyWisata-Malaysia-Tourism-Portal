@@ -101,7 +101,8 @@ describe("Malaysia state discovery map", () => {
     expect(storySource).toContain('aria-label={t("ui.map.selectedStateDetails")}');
     expect(storySource).toContain("id=\"explore-experiences\"");
     expect(storySource).toContain("lg:grid-cols-4");
-    expect(storySource).toContain("line-clamp-2");
+    expect(storySource).toContain("break-words whitespace-normal");
+    expect(storySource).not.toContain("line-clamp-2");
     expect(storySource).toContain('h-8 w-8 shrink-0 rounded-lg object-cover');
     expect(storySource).toContain("aria-pressed={activity.id === selectedPlaceId}");
   });

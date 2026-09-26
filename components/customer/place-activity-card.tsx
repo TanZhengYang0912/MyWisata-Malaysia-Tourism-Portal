@@ -60,20 +60,20 @@ export function PlaceActivityCard({
           <div className="min-w-0">
             {href ? (
               <Link href={href} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
-                <h3 className="line-clamp-2 text-lg font-bold leading-tight text-foreground transition-colors group-hover:text-primary">{title}</h3>
+                <h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground transition-colors group-hover:text-primary">{title}</h3>
               </Link>
             ) : (
-              <h3 className="line-clamp-2 text-lg font-bold leading-tight text-foreground">{title}</h3>
+              <h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground">{title}</h3>
             )}
-            {supportingText && <p className="mt-1 text-xs font-semibold text-primary">{supportingText}</p>}
+            {supportingText && <p className="mt-1 break-words whitespace-normal text-xs font-semibold text-primary">{supportingText}</p>}
           </div>
           <div className="shrink-0 text-right text-sm font-bold text-foreground">{price}</div>
         </div>
 
-        <p className="mb-5 mt-3 line-clamp-2 text-xs leading-5 text-muted-foreground">{description}</p>
+        <p className="mb-5 mt-3 break-words whitespace-normal text-xs leading-5 text-muted-foreground">{description}</p>
 
         <div className="mt-auto flex items-center justify-between gap-4 border-t border-border pt-4">
-          <span className="text-xs font-semibold text-muted-foreground">{footer}</span>
+          <span className="break-words whitespace-normal text-xs font-semibold text-muted-foreground">{footer}</span>
           {action}
         </div>
       </div>

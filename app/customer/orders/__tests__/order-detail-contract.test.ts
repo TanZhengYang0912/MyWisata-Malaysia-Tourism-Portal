@@ -23,12 +23,29 @@ describe("customer order detail actions", () => {
   });
 
   it("presents each entry pass in a spacious responsive card with readable booking details", () => {
-    expect(pageSource).toContain("sm:grid-cols-[minmax(0,1fr)_220px]");
-    expect(pageSource).toContain("sm:col-start-2");
-    expect(pageSource).toContain("size={176}");
-    expect(pageSource).toContain('className="flex min-w-0 flex-col gap-1 border-t border-border pt-4"');
+    const sharedCard = readFileSync(
+      resolve(process.cwd(), "components/customer/customer-qr-pass-card.tsx"),
+      "utf8",
+    );
+    expect(pageSource).toContain("CustomerQrPassCard");
+    expect(sharedCard).toContain("sm:grid-cols-[minmax(0,1fr)_11rem]");
+    expect(sharedCard).toContain("sm:w-44");
+    expect(sharedCard.indexOf('data-qr-pass-details="true"')).toBeLessThan(
+      sharedCard.indexOf('data-qr-pass-code="true"'),
+    );
     expect(pageSource).toContain("dateTimeLabel(b.slotStartsAt, locale)");
     expect(pageSource).toContain('tCustomer("ui.labels.bookingReference")');
-    expect(pageSource).not.toContain("min-h-24 w-24");
+  });
+
+  it("explains pending payment and only renders provider resume actions after server verification", () => {
+    expect(pageSource).toContain('data-payment-resume-panel="true"');
+    expect(pageSource).toContain('tCustomer("ui.orders.pendingPaymentExplanation")');
+    expect(pageSource).toContain('tCustomer("ui.orders.continuePayment")');
+    expect(pageSource).toContain("handleContinuePayment");
+    expect(pageSource).toContain("isTrustedPaymentRedirect(result.url)");
+    expect(pageSource).toContain('tCustomer("ui.orders.paymentLinkExpired")');
+    expect(pageSource).toContain('tCustomer("ui.orders.reviewCart")');
+    expect(pageSource).toContain("handleReviewCart");
+    expect(pageSource).not.toContain('text-foreground uppercase">{order.status}');
   });
 });

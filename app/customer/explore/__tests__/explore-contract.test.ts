@@ -34,6 +34,13 @@ describe("customer discovery filter contract", () => {
     expect(exploreSource).toContain('placeholder={t("ui.map.searchExperience")}');
   });
 
+  it("clips document-level horizontal overflow without breaking sticky navigation", () => {
+    expect(exploreSource).toContain('html.style.overflowX = "clip";');
+    expect(exploreSource).toContain('body.style.overflowX = "clip";');
+    expect(exploreSource).not.toContain('html.style.overflowX = "hidden";');
+    expect(exploreSource).not.toContain('body.style.overflowX = "hidden";');
+  });
+
   it("shares the complete weekly-hours filter surface with Partners", () => {
     expect(exploreSource).toContain("<CustomerDiscoveryFilterPanel");
     expect(exploreSource).toContain("operatingDays");
@@ -43,6 +50,11 @@ describe("customer discovery filter contract", () => {
 
   it("aligns the More filters action to the right on Explore", () => {
     expect(exploreSource).toContain('filterButtonAlignment="end"');
+  });
+
+  it("aligns the Show all action to the right beneath the Explore activity grid", () => {
+    const showAllAction = exploreSource.match(/<div className="mt-6 flex justify-end">([\s\S]*?)<\/div>/)?.[1] ?? "";
+    expect(showAllAction).toContain("onClick={() => setVisibleLimit(activities.length)}");
   });
 
   it("keeps sponsored analytics metadata and labels sponsored places in the customer UI", () => {

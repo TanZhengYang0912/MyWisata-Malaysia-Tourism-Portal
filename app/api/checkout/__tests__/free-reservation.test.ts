@@ -84,6 +84,7 @@ describe("POST /api/checkout/prepare (Free Activity Reservations)", () => {
             vendor_id: vendorId,
             name: "Merdeka Square Heritage Walk",
             cover_url: "https://example.com/walk.jpg",
+            base_price: 0,
             requires_booking: true,
           },
         ],

@@ -347,7 +347,7 @@ export default function AffiliateDashboardPage() {
           <div className="flex items-center gap-2 min-w-0">
             <Link2 size={16} className="text-teal shrink-0" />
             {stats.affiliateCode ? (
-              <span className="text-sm font-semibold text-foreground font-[family-name:var(--font-mono)] truncate">
+              <span className="break-all whitespace-normal text-sm font-semibold text-foreground font-[family-name:var(--font-mono)]">
                 {stats.affiliateUrl}
               </span>
             ) : (
@@ -527,7 +527,7 @@ export default function AffiliateDashboardPage() {
             stats.commissions.map((c) => (
               <div key={c.id} className="px-4 py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{c.productName ?? "Referral"}</p>
+                  <p className="break-words whitespace-normal text-sm font-medium text-foreground">{c.productName ?? "Referral"}</p>
                   <p className="text-xs text-muted-foreground">
                     {new Date(c.createdAt).toLocaleDateString()}
                     {c.orderAmount !== null && ` · order ${formatMYR(c.orderAmount)}`} · {tCustomer("strictMigration.affiliate.rate", { percent: (c.rate * 100).toFixed(0) })}

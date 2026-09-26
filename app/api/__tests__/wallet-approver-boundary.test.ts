@@ -90,6 +90,7 @@ beforeEach(() => {
     }
     if (name === 'is_admin' || name === 'is_approver') return Promise.resolve({ data: roles.some((r) => ['super_admin', 'approver'].includes(r)), error: null });
     if (name === 'is_super_admin') return Promise.resolve({ data: roles.includes('super_admin'), error: null });
+    if (name === 'get_support_unread_count') return Promise.resolve({ data: 0, error: null });
     throw reachedBusinessData;
   });
   mocks.service.mockImplementation(() => { throw reachedBusinessData; });
@@ -173,9 +174,10 @@ describe('shared APIs do not give approver a staff override', () => {
   });
 
   it('scopes unread count to the caller rather than the staff queue', async () => {
-    const tickets = query([]);
-    mocks.serviceFrom.mockReturnValue(tickets);
-    expect(await call('support/unread-count', 'GET')).toMatchObject({ status: 200 });
-    expect(tickets.eq).toHaveBeenCalledWith('user_id', 'actor');
+    const response = await call('support/unread-count', 'GET');
+    expect(response).toMatchObject({ status: 200 });
+    expect(await (response as Response).json()).toMatchObject({ data: { count: 0 } });
+    expect(mocks.rpc).toHaveBeenCalledWith('get_support_unread_count');
+    expect(mocks.service).not.toHaveBeenCalled();
   });
 });

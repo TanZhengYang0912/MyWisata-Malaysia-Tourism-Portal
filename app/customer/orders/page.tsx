@@ -188,8 +188,8 @@ export default function OrdersPage() {
                       {order.items.slice(0, 2).map((item) => `${item.qty}× ${item.activityName}`).join(" · ")}
                       {order.items.length > 2 ? <span className="text-muted-foreground">{tCustomer("ui.orders.moreItems", { count: order.items.length - 2 })}</span> : ""}
                     </p>
-                    <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                      <span className="truncate">{orderOutlets.join(" · ") || tCustomer("ui.orders.marketplace")}</span>
+                    <p className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-muted-foreground">
+                      <span className="break-words whitespace-normal">{orderOutlets.join(" · ") || tCustomer("ui.orders.marketplace")}</span>
                     </p>
                   </div>
                   

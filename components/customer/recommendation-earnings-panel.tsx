@@ -104,11 +104,11 @@ export function RecommendationEarningsPanel({ recommendationId, showEmpty = fals
             <div key={c.id} className="flex items-center justify-between gap-3 px-5 py-3">
               <div className="min-w-0">
                 {c.recommendationId ? (
-                  <Link href={`/customer/recommendations/${c.recommendationId}`} className="truncate text-sm font-medium text-foreground hover:text-primary hover:underline">
+                  <Link href={`/customer/recommendations/${c.recommendationId}`} className="break-words whitespace-normal text-sm font-medium text-foreground hover:text-primary hover:underline">
                     {name}
                   </Link>
                 ) : (
-                  <p className="truncate text-sm font-medium text-foreground">{name}</p>
+                  <p className="break-words whitespace-normal text-sm font-medium text-foreground">{name}</p>
                 )}
                 <p className="text-xs text-muted-foreground">
                   {label}

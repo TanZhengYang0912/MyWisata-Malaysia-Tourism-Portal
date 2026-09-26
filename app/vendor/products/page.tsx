@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { Archive, CirclePlus, Copy, Download, Eye, MapPin, PackageCheck, Pencil, RotateCcw, SlidersHorizontal, Star, Store, Utensils, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -80,6 +81,9 @@ function imageKind(value: string): 'food' | 'experience' | 'product' { return va
 export default function VendorProductsPage() {
   const { t } = useTranslation('vendor');
   const { user } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { showFeedback } = useActionFeedback();
   const { confirm } = useAppDialog();
   const supabase = useMemo(() => createClient(), []);
@@ -116,6 +120,22 @@ export default function VendorProductsPage() {
     ...(isOwner ? [{ value: filters.outletId, placeholder: 'ui.products.allOutlets', options: outlets.map((outlet) => ({ value: outlet.id, label: `${outletShortName(outlet.name)} · ${outlet.city || outlet.state || 'Malaysia'}` })), onChange: (value: string) => setFilters((current) => ({ ...current, outletId: value })) }] : []),
     { value: filters.sort, placeholder: 'ui.products.sortBy', options: SORT_OPTIONS, onChange: (value: string) => setFilters((current) => ({ ...current, sort: value })) },
   ];
+
+  useEffect(() => {
+    if (searchParams.get('create') !== '1' || !user) return;
+
+    if (canManageOutlet) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedProduct(null);
+      setEditingProduct(null);
+      setShowForm(true);
+    }
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete('create');
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  }, [canManageOutlet, pathname, router, searchParams, user]);
 
   const loadFeaturedIds = useCallback(async () => {
     if (!vendorId) return;

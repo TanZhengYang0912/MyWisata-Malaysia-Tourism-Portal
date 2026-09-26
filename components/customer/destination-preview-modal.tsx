@@ -2,9 +2,10 @@
 
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, Bookmark, MapPin, X } from "lucide-react";
+import { ArrowRight, MapPin, X } from "lucide-react";
 import { useSavedDestinations } from "@/components/providers/saved-destinations";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
+import { SaveToggleButton } from "@/components/customer/save-toggle-button";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import type { MalaysiaDestination } from "@/lib/customer/malaysia-destinations";
 
@@ -83,18 +84,17 @@ export function DestinationPreviewModal({ destination, onClose, onExplore }: Des
           </div>
 
           <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <button
-              type="button"
+            <SaveToggleButton
               onClick={() => {
                 if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return;
                 void toggleSaved(destination.state);
               }}
-              aria-pressed={savedStates.has(destination.state)}
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/20 px-4 py-2.5 text-sm font-semibold text-primary transition hover:border-primary hover:bg-[#f4f6ff] focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
+              appearance="pill"
+              saved={savedStates.has(destination.state)}
+              aria-label={savedStates.has(destination.state) ? t("ui.map.savedToAtlas") : t("ui.map.saveToAtlas")}
             >
-              <Bookmark size={15} fill={savedStates.has(destination.state) ? "currentColor" : "none"} />
               {savedStates.has(destination.state) ? t("ui.map.savedToAtlas") : t("ui.map.saveToAtlas")}
-            </button>
+            </SaveToggleButton>
             <button type="button" onClick={() => onExplore(destination.state)} className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#101b66] focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2">
               <span>{t("ui.map.exploreState", { state: destination.state })}</span>
               <ArrowRight size={15} />

@@ -28,9 +28,9 @@ import { useTranslation } from "react-i18next";
 
 type OutletOption = { id: string; name: string };
 type ResolvedScan =
-  | { kind: "ticket"; bookingId: string; passToken: string | null; outletId: string; status: string; productName: string; quantity: number; pass: { policy?: string; entry_limit?: number; entries_used?: number; status?: string; valid_until?: string | null } | null }
-  | { kind: "food_order"; orderId: string; foodToken: string; outletId: string; mode: "dine_in" | "takeaway"; items: { id: string; name: string; variant: string | null; quantity: number }[] }
-  | { kind: "voucher"; claimId: string; voucherId: string; outletId: string; code: string; name: string; voucherType: string; discountValue: number; validUntil: string | null; redemptionMode: string; outletName: string };
+  | { kind: "ticket"; bookingId: string; passToken: string | null; outletId: string; outletName: string; vendorName: string; status: string; productName: string; quantity: number; pass: { policy?: string; entry_limit?: number; entries_used?: number; remaining?: number; status?: string; valid_until?: string | null } | null }
+  | { kind: "food_order"; orderId: string; foodToken: string; outletId: string; outletName: string; vendorName: string; mode: "dine_in" | "takeaway"; items: { id: string; name: string; variant: string | null; quantity: number }[] }
+  | { kind: "voucher"; claimId: string; voucherId: string; outletId: string; code: string; name: string; voucherType: string; discountValue: number; validUntil: string | null; redemptionMode: string; vendorName: string; outletName: string };
 
 interface RecentScanItem {
   id: string;
@@ -171,6 +171,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
 
   const resolve = useCallback(async (rawValue: string) => {
     setBusy(true);
+    setResult(null);
     setScanError("");
     setMessage("");
     try {
@@ -184,7 +185,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
       setResult(payload.data);
       if (soundEnabled) playBeep(true);
       if (payload.data.kind === "ticket") {
-        setEntriesToAdmit(Math.min(1, Math.max(1, (payload.data.pass?.entry_limit ?? payload.data.quantity) - (payload.data.pass?.entries_used ?? 0))));
+        setEntriesToAdmit(Math.min(1, Math.max(1, payload.data.pass?.remaining ?? (payload.data.pass?.entry_limit ?? payload.data.quantity) - (payload.data.pass?.entries_used ?? 0))));
       }
     } catch (error) {
       if (soundEnabled) playBeep(false);
@@ -291,6 +292,9 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
 
   const assignedOutlet = outlets.find((o) => o.id === outletId) ?? outlets[0];
   const assignedOutletName = assignedOutlet?.name || t("ui.scanner.assignedOutlet", "Assigned outlet");
+  const ticketRemaining = result?.kind === "ticket"
+    ? result.pass?.remaining ?? Math.max(0, (result.pass?.entry_limit ?? result.quantity) - (result.pass?.entries_used ?? 0))
+    : null;
 
   return (
     <div className="space-y-5">
@@ -608,6 +612,8 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                       {result.kind === "food_order" ? (
                         <div className="mt-3">
                           <h2 className="text-lg font-bold text-gray-950">{t("ui.scanner.foodOrderTitle", { order: result.orderId.slice(0, 8).toUpperCase() })}</h2>
+                          <p className="mt-1 text-xs text-gray-600">{t("ui.scanner.vendor")}: <span className="font-semibold text-gray-900">{result.vendorName}</span></p>
+                          <p className="text-xs text-gray-600">{t("ui.scanner.outlet")}: <span className="font-semibold text-gray-900">{result.outletName}</span></p>
                           <p className="mt-1 text-sm font-semibold text-primary">{result.mode === "dine_in" ? t("ui.scanner.customerFoodMode.dine_in") : t("ui.scanner.customerFoodMode.takeaway")}</p>
                           <ul className="mt-3 space-y-1 text-sm text-gray-700">
                             {result.items.map((item) => <li key={item.id}>{item.quantity} × {item.name}{item.variant ? " · " + item.variant : ""}</li>)}
@@ -623,6 +629,10 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                           </div>
                           <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-primary/10 pt-3 text-xs">
                             <div>
+                              <dt className="text-gray-500">{t("ui.scanner.vendor")}</dt>
+                              <dd className="mt-0.5 font-semibold text-gray-900">{result.vendorName}</dd>
+                            </div>
+                            <div>
                               <dt className="text-gray-500">{t("ui.scanner.outlet")}</dt>
                               <dd className="mt-0.5 font-semibold text-gray-900">{result.outletName}</dd>
                             </div>
@@ -635,12 +645,14 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                       ) : (
                         <div className="mt-3">
                           <h2 className="text-lg font-bold text-gray-950">{result.productName}</h2>
+                          <p className="mt-1 text-xs text-gray-600">{t("ui.scanner.vendor")}: <span className="font-semibold text-gray-900">{result.vendorName}</span></p>
+                          <p className="text-xs text-gray-600">{t("ui.scanner.outlet")}: <span className="font-semibold text-gray-900">{result.outletName}</span></p>
                           <p className="mt-1 font-mono text-xs text-gray-500">{result.bookingId}</p>
                           <div className="mt-4 grid grid-cols-2 gap-3 border-t border-primary/10 pt-3 text-xs">
                             <div>
                               <p className="text-gray-500">{t("ui.scanner.remaining")}</p>
                               <p className="mt-0.5 text-base font-bold text-primary">
-                                {Math.max(0, (result.pass?.entry_limit ?? result.quantity) - (result.pass?.entries_used ?? 0))}
+                                {ticketRemaining ?? 0}
                               </p>
                               <p className="mt-1 text-[11px] text-gray-500">
                                 {t("ui.scanner.ticketProgress", { used: result.pass?.entries_used ?? 0, total: result.pass?.entry_limit ?? result.quantity })}
@@ -652,9 +664,9 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                                 <input
                                   type="number"
                                   min={1}
-                                  max={Math.max(1, (result.pass?.entry_limit ?? result.quantity) - (result.pass?.entries_used ?? 0))}
+                                  max={ticketRemaining ?? 1}
                                   value={entriesToAdmit}
-                                  onChange={(event) => setEntriesToAdmit(Math.max(1, Number(event.target.value) || 1))}
+                                  onChange={(event) => setEntriesToAdmit(Math.min(ticketRemaining ?? 1, Math.max(1, Number(event.target.value) || 1)))}
                                   className="mt-1 h-9 w-full rounded-lg border border-gray-200 bg-white px-2 font-semibold text-gray-900"
                                 />
                               </label>

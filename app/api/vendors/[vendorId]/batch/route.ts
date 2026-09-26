@@ -3,6 +3,7 @@ import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { vendorBatchSchema, type VendorBatch } from '@/lib/validation/vendor-schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
+import { canUseGenericFoodFulfilment } from '@/lib/food/generic-fulfil-policy';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -165,13 +166,19 @@ export async function POST(request: Request, { params }: Props) {
     updatedIds = (data || []).map((item: { id: string }) => item.id);
   } else if (input.entity === 'orders') {
     if (!['ready', 'fulfilled'].includes(input.action)) return apiFail('INVALID_ACTION', 'Orders support ready or fulfilled only', 400);
-    let itemQuery = db.from('order_items').select('id,order_id,fulfil_status,orders!inner(status)').eq('vendor_id', vendorId).in('id', targetIds);
+    let itemQuery = db.from('order_items').select('id,order_id,fulfil_status,food_qr_scanned_at,products(categories(slug)),orders!inner(status)').eq('vendor_id', vendorId).in('id', targetIds);
     if (scopedOutletIds) itemQuery = itemQuery.in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
     const { data: items, error } = await itemQuery;
     if (error) return apiFail('DB_ERROR', error.message, 500);
-    const valid = (items || []).filter((item: { id: string; orders: unknown; fulfil_status: string }) => {
+    const valid = (items || []).filter((item: { id: string; orders: unknown; fulfil_status: string; food_qr_scanned_at: string | null; products: unknown }) => {
       const orderStatus = (relation(item.orders) as { status: string } | null)?.status;
-      return ['paid', 'completed'].includes(orderStatus || '') && (input.action === 'ready' ? ['pending'].includes(item.fulfil_status) : ['pending', 'ready'].includes(item.fulfil_status));
+      const product = relation(item.products as { categories: unknown } | { categories: unknown }[] | null);
+      const category = relation(product?.categories as { slug: string } | { slug: string }[] | null);
+      const allowedByFulfilmentPath = input.action !== 'fulfilled' || canUseGenericFoodFulfilment({
+        categorySlug: category?.slug,
+        scannedAt: item.food_qr_scanned_at,
+      });
+      return allowedByFulfilmentPath && ['paid', 'completed'].includes(orderStatus || '') && (input.action === 'ready' ? ['pending'].includes(item.fulfil_status) : ['pending', 'ready'].includes(item.fulfil_status));
     }).map((item: { id: string }) => item.id);
     skippedIds = targetIds.filter((id: string) => !valid.includes(id));
     const updateData: Record<string, unknown> = { fulfil_status: input.action };
@@ -179,6 +186,7 @@ export async function POST(request: Request, { params }: Props) {
     if (valid.length) {
       let updateQuery = db.from('order_items').update(updateData).in('id', valid);
       if (scopedOutletIds) updateQuery = updateQuery.in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
+      updateQuery = updateQuery.in('fulfil_status', input.action === 'ready' ? ['pending'] : ['pending', 'ready']);
       const { data, error: updateError } = await updateQuery.select('id');
       if (updateError) return apiFail('DB_ERROR', updateError.message, 500);
       updatedIds = (data || []).map((item: { id: string }) => item.id);

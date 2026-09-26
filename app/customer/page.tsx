@@ -6,21 +6,38 @@ import { selectEntityLogo, type EntityMediaRow } from "@/lib/customer/entity-med
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import type { ComputedActivity } from "@/backend/core/types";
 import { CustomerHomeClient } from "./customer-home-client";
+import { selectFeaturedPublicCampaign } from "@/lib/customer/promotion-campaigns";
+import { resolvePromotionCampaignImages } from "@/lib/promotion-campaigns/images";
+import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 
 export default async function CustomerHomePage() {
   const db = await createClient();
-  const { data: { user } } = await db.auth.getUser();
-
-  const [activities, feed, vendorRows] = await Promise.all([
+  const [{ data: { user } }, activities, vendorRows, campaignResult] = await Promise.all([
+    db.auth.getUser(),
     // Cached for 60 s — same data for all visitors, no user-specific filtering
     getCachedComputedActivities(),
-    getRecommendedFeed(user?.id ?? null, { limit: 8 }, db),
     db
       .from("vendors")
       .select("id,name,description,logo_url,cover_url,business_type,outlets(id,name,city,state,status,review_status)")
       .eq("status", "approved")
       .order("name")
       .limit(24),
+    db.rpc("get_public_promotion_campaigns", { p_slug: null }),
+  ]);
+
+  const vendorIds = (vendorRows.data ?? []).map((vendor) => vendor.id);
+  const [feed, vendorMediaRows] = await Promise.all([
+    getRecommendedFeed(user?.id ?? null, { limit: 8, candidates: activities }, db),
+    vendorIds.length
+      ? db
+        .from("media_assets")
+        .select("vendor_id,url,alt_text,media_type,sort_order")
+        .in("vendor_id", vendorIds)
+        .is("outlet_id", null)
+        .is("product_id", null)
+        .order("sort_order")
+        .then(({ data }) => data ?? [])
+      : Promise.resolve([]),
   ]);
 
   const recommended = feed.map((item) => ({
@@ -28,16 +45,6 @@ export default async function CustomerHomePage() {
     aiTag: item.reasonLabel ?? undefined,
   })) as ComputedActivity[];
 
-  const vendorIds = (vendorRows.data ?? []).map((vendor) => vendor.id);
-  const vendorMediaRows = vendorIds.length
-    ? (await db
-      .from("media_assets")
-      .select("vendor_id,url,alt_text,media_type,sort_order")
-      .in("vendor_id", vendorIds)
-      .is("outlet_id", null)
-      .is("product_id", null)
-      .order("sort_order")).data ?? []
-    : [];
   const mediaByVendorId = new Map<string, EntityMediaRow[]>();
   for (const row of vendorMediaRows) {
     const rows = mediaByVendorId.get(row.vendor_id) ?? [];
@@ -61,6 +68,8 @@ export default async function CustomerHomePage() {
     .filter((vendor) => vendor.outlets.length > 0);
 
   const featuredVendors = rankFeaturedVendors(vendors, activities, 24);
+  const publicCampaigns = resolvePromotionCampaignImages(Array.isArray(campaignResult.data) ? campaignResult.data as unknown as PromotionCampaignPublic[] : []);
+  const featuredCampaign = selectFeaturedPublicCampaign(publicCampaigns);
 
-  return <CustomerHomeClient popular={activities} recommended={recommended} vendors={featuredVendors} />;
+  return <CustomerHomeClient popular={activities} recommended={recommended} vendors={featuredVendors} campaign={featuredCampaign} campaignUnavailable={Boolean(campaignResult.error)} />;
 }

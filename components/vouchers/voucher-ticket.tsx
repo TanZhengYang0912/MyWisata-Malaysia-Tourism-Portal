@@ -27,6 +27,7 @@ export type VoucherTicketOffer = {
   identityLabel?: ReactNode;
   status?: ReactNode;
   image?: { src: string; alt: string } | null;
+  images?: Array<{ src: string; alt: string }>;
   fallback?: { logoUrl: string | null; logoAlt: string; initials: string } | null;
 };
 
@@ -84,19 +85,28 @@ export function VoucherTicket({ offer, children, className }: VoucherTicketProps
   return (
     <article data-voucher-ticket className={cn("group relative flex overflow-hidden rounded-[1.75rem] border border-border bg-card shadow-[0_12px_32px_rgba(1,0,102,0.08)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(1,0,102,0.14)] max-sm:flex-col", className)}>
       <div className="relative flex min-h-48 shrink-0 overflow-hidden bg-gradient-to-br from-primary via-[#15158a] to-[#31537b] text-white sm:w-[34%] sm:max-w-72">
-        {offer.image ? (
+        {offer.images !== undefined ? (
+          offer.images.length > 0 ? (
+            <div className={`absolute inset-0 grid gap-px ${offer.images.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+              {offer.images.slice(0, 4).map((image, index, images) => (
+                <div key={`${image.src}-${index}`} className={`relative min-h-0 overflow-hidden ${images.length === 3 && index === 2 ? "col-span-2" : ""}`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={image.src} alt={image.alt} width={640} height={480} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                </div>
+              ))}
+            </div>
+          ) : null
+        ) : offer.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={offer.image.src} alt={offer.image.alt} width={640} height={480} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
         ) : offer.fallback?.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={offer.fallback.logoUrl} alt={offer.fallback.logoAlt} width={112} height={112} loading="lazy" className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-3xl bg-white/95 object-contain p-3 shadow-xl" />
+          <img src={offer.fallback.logoUrl} alt={offer.fallback.logoAlt} width={640} height={480} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
         ) : (
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/25 bg-white/15 shadow-inner backdrop-blur-md">
-              <span className="font-mono text-2xl font-black tracking-wider text-white">
-                {offer.fallback?.initials ?? offer.brandName.slice(0, 2).toUpperCase()}
-              </span>
-            </div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="font-mono text-5xl font-black tracking-wider text-white/90">
+              {offer.fallback?.initials ?? offer.brandName.slice(0, 2).toUpperCase()}
+            </span>
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#01003f]/90 via-[#01003f]/10 to-[#01003f]/15" />

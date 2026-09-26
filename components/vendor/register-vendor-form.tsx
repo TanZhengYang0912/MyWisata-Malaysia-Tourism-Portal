@@ -3,19 +3,36 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, Building2, Image as ImageIcon, Loader2, Store } from 'lucide-react';
+import { ArrowRight, Building2, CircleHelp, Image as ImageIcon, Loader2, Store } from 'lucide-react';
+import { Controller, useForm } from 'react-hook-form';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import VendorRegistrationImageField from '@/components/vendor/vendor-registration-image-field';
 import VendorRegistrationGalleryField from '@/components/vendor/vendor-registration-gallery-field';
-import { useForm } from 'react-hook-form';
+import { InternationalPhoneInput } from '@/components/profile/international-phone-input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { isVendorRegisterValidationKey, vendorRegisterSchema, type VendorRegister } from '@/lib/validation/vendor-schemas';
 
 interface Props {
   onClose?: () => void;
+}
+
+function SectionHelp({ label, children }: { label: string; children: string }) {
+  return (
+    <details className="group relative shrink-0">
+      <summary
+        aria-label={label}
+        className="flex size-8 cursor-pointer list-none items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 [&::-webkit-details-marker]:hidden"
+      >
+        <CircleHelp size={17} aria-hidden="true" />
+      </summary>
+      <div role="note" className="absolute left-0 top-full z-30 mt-2 w-[min(18rem,calc(100vw-3rem))] rounded-xl border border-border bg-popover p-3.5 text-xs leading-5 text-popover-foreground shadow-lg sm:left-auto sm:right-0">
+        {children}
+      </div>
+    </details>
+  );
 }
 
 export default function RegisterVendorForm({ onClose }: Props) {
@@ -31,6 +48,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
   const [galleryFilesError, setGalleryFilesError] = useState<string | null>(null);
 
   const {
+    control,
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
@@ -109,18 +127,18 @@ export default function RegisterVendorForm({ onClose }: Props) {
       )}
 
       <section aria-labelledby="business-profile-heading" className="space-y-5">
-        <div className="flex items-start gap-3.5">
+        <div className="flex items-start justify-between gap-3.5">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent/25 text-primary">
             <Store size={19} aria-hidden="true" />
           </span>
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 id="business-profile-heading" className="text-base font-bold tracking-tight text-foreground">
               {t('registration.sections.businessProfile')}
             </h2>
-            <p className="mt-1 text-sm leading-5 text-muted-foreground">
-              {t('registration.sections.businessProfileDescription')}
-            </p>
           </div>
+          <SectionHelp label={t('registration.sections.businessProfileHelpLabel')}>
+            {t('registration.sections.businessProfileDescription')}
+          </SectionHelp>
         </div>
 
         <div>
@@ -186,18 +204,18 @@ export default function RegisterVendorForm({ onClose }: Props) {
       <div aria-hidden="true" className="border-t border-border" />
 
       <section aria-labelledby="legal-contact-heading" className="space-y-5">
-        <div className="flex items-start gap-3.5">
+        <div className="flex items-start justify-between gap-3.5">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
             <Building2 size={19} aria-hidden="true" />
           </span>
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 id="legal-contact-heading" className="text-base font-bold tracking-tight text-foreground">
               {t('registration.sections.legalContact')}
             </h2>
-            <p className="mt-1 text-sm leading-5 text-muted-foreground">
-              {t('registration.sections.legalContactDescription')}
-            </p>
           </div>
+          <SectionHelp label={t('registration.sections.legalContactHelpLabel')}>
+            {t('registration.sections.legalContactDescription')}
+          </SectionHelp>
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">
@@ -254,15 +272,24 @@ export default function RegisterVendorForm({ onClose }: Props) {
               <span>{t('registration.fields.contactPhone')}</span>
               <span className={optionalClass}>{t('registration.optional')}</span>
             </label>
-            <Input
-              id="contact-phone"
-              {...register('contactPhone')}
-              type="tel"
-              aria-invalid={Boolean(errors.contactPhone)}
-              aria-describedby={errors.contactPhone ? 'contact-phone-error' : undefined}
-              placeholder={t('registration.placeholders.contactPhone')}
-              className={inputClass}
+            <Controller
+              control={control}
+              name="contactPhone"
+              render={({ field }) => (
+                <InternationalPhoneInput
+                  id="contact-phone"
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  disabled={isSubmitting}
+                  error={Boolean(errors.contactPhone)}
+                  ariaDescribedBy={`contact-phone-hint${errors.contactPhone ? ' contact-phone-error' : ''}`}
+                />
+              )}
             />
+            <p id="contact-phone-hint" className="mt-2 text-xs leading-5 text-muted-foreground">
+              {t('registration.phoneHint')}
+            </p>
             {renderFieldError('contact-phone-error', errors.contactPhone?.message)}
           </div>
         </div>
@@ -305,18 +332,18 @@ export default function RegisterVendorForm({ onClose }: Props) {
       <div aria-hidden="true" className="border-t border-border" />
 
       <section aria-labelledby="brand-assets-heading" className="space-y-5">
-        <div className="flex items-start gap-3.5">
+        <div className="flex items-start justify-between gap-3.5">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
             <ImageIcon size={19} aria-hidden="true" />
           </span>
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 id="brand-assets-heading" className="text-base font-bold tracking-tight text-foreground">
               {t('registration.sections.brandAssets')}
             </h2>
-            <p className="mt-1 text-sm leading-5 text-muted-foreground">
-              {t('registration.sections.brandAssetsDescription')}
-            </p>
           </div>
+          <SectionHelp label={t('registration.sections.brandAssetsHelpLabel')}>
+            {t('registration.sections.brandAssetsDescription')}
+          </SectionHelp>
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">

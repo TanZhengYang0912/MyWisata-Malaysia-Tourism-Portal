@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { useTranslation } from "react-i18next";
+import { CustomerQrPassCard } from "@/components/customer/customer-qr-pass-card";
 
 type FoodOrderPass = {
   outletId: string;
   outletName: string;
+  vendorName: string;
   mode: "dine_in" | "takeaway";
   status: "pending" | "checked_in" | "fulfilled";
   items: { name: string; variant: string | null; quantity: number }[];
@@ -67,20 +69,24 @@ export function FoodOrderQrCodes({ orderId }: { orderId: string }) {
           {t("ui.booking.refreshPass")}
         </button>
       </div>
-      <div className="divide-y divide-border">
+      <div>
         {passes.map((pass) => (
-          <div key={pass.outletId} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-6">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={pass.qr} alt={t("ui.booking.foodOrderQrAlt", { outlet: pass.outletName })} className="h-36 w-36 rounded-xl border border-border bg-white p-2" />
-            <div className="min-w-0 flex-1">
-              <h3 className="font-bold text-foreground">{pass.outletName}</h3>
-              <p className="mt-1 text-sm font-semibold text-primary">{pass.mode === "dine_in" ? t("ui.checkout.foodModes.dine_in") : t("ui.checkout.foodModes.takeaway")}</p>
-              <p className="mt-1 text-xs font-medium text-muted-foreground">{pass.status === "fulfilled" ? t("ui.booking.foodOrderStatus.fulfilled") : pass.status === "checked_in" ? t("ui.booking.foodOrderStatus.checked_in") : t("ui.booking.foodOrderStatus.pending")}</p>
-              <ul className="mt-3 space-y-1 text-sm text-foreground">
-                {pass.items.map((item, index) => <li key={item.name + index}>{item.quantity} × {item.name}{item.variant ? " · " + item.variant : ""}</li>)}
-              </ul>
-            </div>
-          </div>
+          <CustomerQrPassCard
+            key={pass.outletId}
+            title={pass.outletName}
+            merchantLabel={t("ui.labels.providedBy", { vendor: pass.vendorName })}
+            qr={
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={pass.qr} alt={t("ui.booking.foodOrderQrAlt", { outlet: pass.outletName })} className="aspect-square w-full rounded-lg bg-white object-contain" />
+            }
+          >
+            <p className="mt-1 text-sm font-semibold text-primary">{pass.mode === "dine_in" ? t("ui.checkout.foodModes.dine_in") : t("ui.checkout.foodModes.takeaway")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t(pass.mode === "takeaway" ? "ui.booking.takeawayScanHint" : "ui.booking.dineInScanHint")}</p>
+            <p className="mt-1 text-xs font-medium text-muted-foreground">{pass.status === "fulfilled" ? t("ui.booking.foodOrderStatus.fulfilled") : pass.status === "checked_in" ? t("ui.booking.foodOrderStatus.checked_in") : t("ui.booking.foodOrderStatus.pending")}</p>
+            <ul className="mt-3 space-y-1 text-sm text-foreground">
+              {pass.items.map((item, index) => <li key={item.name + index}>{item.quantity} × {item.name}{item.variant ? " · " + item.variant : ""}</li>)}
+            </ul>
+          </CustomerQrPassCard>
         ))}
       </div>
     </section>

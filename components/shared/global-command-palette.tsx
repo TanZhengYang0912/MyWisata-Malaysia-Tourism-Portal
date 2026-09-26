@@ -4,23 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import {
-  CalendarDays,
   CirclePlus,
   CornerDownLeft,
-  LayoutDashboard,
-  MapPinned,
   Moon,
   Search,
-  ShoppingBag,
   Sun,
-  TicketPercent,
-  UtensilsCrossed,
-  Wallet,
   type LucideIcon,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useCommandShortcutLabel } from '@/components/shared/command-shortcut';
+import { getVendorNavigationSections } from '@/lib/vendor/navigation';
 
 export interface CommandItem {
   id: string;
@@ -35,12 +29,13 @@ export interface CommandItem {
 
 interface Props {
   scope: 'admin' | 'vendor';
+  isOutletManager?: boolean;
   navigationItems?: CommandItem[];
   triggerOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
-export function GlobalCommandPalette({ scope, navigationItems = [], triggerOpen, onOpenChange }: Props) {
+export function GlobalCommandPalette({ scope, isOutletManager = false, navigationItems = [], triggerOpen, onOpenChange }: Props) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -82,7 +77,22 @@ export function GlobalCommandPalette({ scope, navigationItems = [], triggerOpen,
 
   const items = useMemo<CommandItem[]>(() => {
     if (scope === 'admin') {
-      const adminItems = [...navigationItems];
+      const adminQueueActions = [
+        { href: '/admin/kyc', titleKey: 'command.pendingQueue', keywords: ['pending', 'kyc'] },
+        { href: '/admin/withdrawals', titleKey: 'command.pendingQueue', keywords: ['pending', 'withdrawal'] },
+        { href: '/admin/support', titleKey: 'command.unreadQueue', keywords: ['unread', 'support', 'tickets'] },
+      ].flatMap((shortcut) => {
+        const queueItem = navigationItems.find((item) => item.href === shortcut.href && typeof item.badge === 'number' && item.badge > 0);
+        if (!queueItem) return [];
+        return [{
+          ...queueItem,
+          id: `admin-quick-${shortcut.href}`,
+          title: tCommon(shortcut.titleKey, { name: queueItem.title }),
+          category: tCommon('command.actions'),
+          keywords: [...(queueItem.keywords ?? []), ...shortcut.keywords],
+        }];
+      });
+      const adminItems = [...navigationItems, ...adminQueueActions];
       adminItems.push({
         id: 'toggle-theme',
         title: theme === 'dark' ? tCommon('theme.light') : tCommon('theme.dark'),
@@ -95,80 +105,44 @@ export function GlobalCommandPalette({ scope, navigationItems = [], triggerOpen,
       return adminItems;
     }
 
-    // Vendor Scope
-    return [
-      {
-        id: 'vendor-dashboard',
-        title: tVendor('navigation.Dashboard'),
-        category: tCommon('command.navigation'),
-        href: '/vendor/dashboard',
-        icon: LayoutDashboard,
-        keywords: ['home', 'overview', 'stats', 'analytics'],
-      },
-      {
+    const vendorNavigationItems = getVendorNavigationSections(isOutletManager).flatMap((section) => section.items.map((item) => ({
+      id: `vendor-navigation-${item.href}`,
+      title: tVendor(`navigation.${item.label}`),
+      category: tVendor(`navigationSections.${section.labelKey}`),
+      href: item.href,
+      icon: item.icon,
+      keywords: [item.label, section.labelKey],
+    })));
+    const vendorActions: CommandItem[] = [
+      ...(isOutletManager ? [{
         id: 'vendor-action-product',
         title: tVendor('ui.products.addProduct'),
         category: tCommon('command.actions'),
-        href: '/vendor/products',
+        href: '/vendor/products?create=1',
         icon: CirclePlus,
         keywords: ['new product', 'create listing', 'add item'],
-      },
+      }] : []),
       {
         id: 'vendor-action-slot',
         title: tVendor('ui.bookings.addSlot'),
         category: tCommon('command.actions'),
-        href: '/vendor/bookings',
+        href: '/vendor/bookings?create=1',
         icon: CirclePlus,
         keywords: ['new slot', 'operating hours', 'schedule', 'capacity'],
       },
       {
-        id: 'vendor-bookings',
-        title: tVendor('navigation.Bookings'),
-        category: tCommon('command.navigation'),
-        href: '/vendor/bookings',
-        icon: CalendarDays,
-        keywords: ['booking', 'reservation', 'slot', 'check-in'],
+        id: 'vendor-action-voucher',
+        title: tVendor('ui.vouchers.createVoucher'),
+        category: tCommon('command.actions'),
+        href: '/vendor/vouchers?create=1',
+        icon: CirclePlus,
+        keywords: ['new voucher', 'discount', 'promotion', 'coupon'],
       },
-      {
-        id: 'vendor-orders',
-        title: tVendor('navigation.Orders'),
-        category: tCommon('command.navigation'),
-        href: '/vendor/orders',
-        icon: ShoppingBag,
-        keywords: ['order', 'fulfillment', 'sales'],
-      },
-      {
-        id: 'vendor-products',
-        title: tVendor('navigation.Products'),
-        category: tCommon('command.navigation'),
-        href: '/vendor/products',
-        icon: UtensilsCrossed,
-        keywords: ['product', 'food', 'experience', 'listing'],
-      },
-      {
-        id: 'vendor-outlets',
-        title: tVendor('navigation.Outlets'),
-        category: tCommon('command.navigation'),
-        href: '/vendor/outlets',
-        icon: MapPinned,
-        keywords: ['outlet', 'branch', 'store', 'shop'],
-      },
-      {
-        id: 'vendor-vouchers',
-        title: tVendor('navigation.Vouchers'),
-        category: tCommon('command.navigation'),
-        href: '/vendor/vouchers',
-        icon: TicketPercent,
-        keywords: ['voucher', 'discount', 'promotion', 'coupon'],
-      },
-      {
-        id: 'vendor-wallet',
-        title: tVendor('navigation.Wallet'),
-        category: tCommon('command.navigation'),
-        href: '/vendor/wallet',
-        icon: Wallet,
-        keywords: ['wallet', 'balance', 'withdraw', 'payout', 'finance'],
-      },
+    ];
+
+    return [
+      ...vendorNavigationItems,
+      ...vendorActions,
       {
         id: 'toggle-theme',
         title: theme === 'dark' ? tCommon('theme.light') : tCommon('theme.dark'),
@@ -178,7 +152,7 @@ export function GlobalCommandPalette({ scope, navigationItems = [], triggerOpen,
         keywords: ['theme', 'dark', 'light', 'mode'],
       },
     ];
-  }, [scope, navigationItems, tVendor, tCommon, theme, setTheme]);
+  }, [scope, isOutletManager, navigationItems, tVendor, tCommon, theme, setTheme]);
 
   // Filtered items
   const filtered = useMemo(() => {

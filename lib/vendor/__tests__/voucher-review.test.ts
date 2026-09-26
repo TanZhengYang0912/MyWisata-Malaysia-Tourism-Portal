@@ -35,4 +35,13 @@ describe("vendor voucher approval", () => {
       is_active: true,
     });
   });
+
+  it("stores the accepted rejected status after Super Admin rejection", () => {
+    expect(getSuperAdminReviewUpdate({ action: "reject", reviewerId: "admin-1", note: "Missing terms" })).toEqual({
+      review_status: "rejected",
+      review_note: "Missing terms",
+      reviewed_by: "admin-1",
+      is_active: false,
+    });
+  });
 });

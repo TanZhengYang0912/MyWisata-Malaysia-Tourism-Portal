@@ -4,16 +4,29 @@ import { CAPABILITY_KEYS } from "@/lib/entitlements/types";
 
 const mocks = vi.hoisted(() => ({
   resolveEffectiveCapability: vi.fn(),
+  resolveEffectiveCapabilities: vi.fn(),
 }));
 
 vi.mock("@/lib/entitlements/server", () => ({
   resolveEffectiveCapability: mocks.resolveEffectiveCapability,
+  resolveEffectiveCapabilities: mocks.resolveEffectiveCapabilities,
 }));
 import {
   customerCapabilityFailure,
   resolveServerCustomerCapabilities,
   resolveServerCustomerCapability,
 } from "@/lib/auth/customer-capabilities.server";
+
+function decisionsFor(generationFor: (capability: (typeof CAPABILITY_KEYS)[number]) => number) {
+  return new Map(CAPABILITY_KEYS.map((capability) => [capability, {
+    capability,
+    allowed: true,
+    blockerCode: null,
+    qualificationPaths: [],
+    entitlementGeneration: generationFor(capability),
+    source: "policy",
+  }]));
+}
 
 describe("server customer capability resolver", () => {
   it("uses the governed resolver rather than a browser or legacy tier state", async () => {
@@ -46,52 +59,29 @@ describe("server customer capability resolver", () => {
   });
 
   it("collects a snapshot from the governed resolver", async () => {
-    mocks.resolveEffectiveCapability.mockResolvedValue({
-      capability: "commerce.checkout",
-      allowed: true,
-      blockerCode: null,
-      qualificationPaths: [],
-      entitlementGeneration: 12,
-      source: "policy",
-    });
+    mocks.resolveEffectiveCapabilities.mockResolvedValue(decisionsFor(() => 12));
     const snapshot = await resolveServerCustomerCapabilities("user-1");
     expect(snapshot["commerce.checkout"]).toMatchObject({ allowed: true, entitlementGeneration: 12 });
+    expect(mocks.resolveEffectiveCapabilities).toHaveBeenCalledWith("user-1", CAPABILITY_KEYS);
   });
 
   it("retries a mixed-generation snapshot and only returns coherent canonical decisions", async () => {
-    mocks.resolveEffectiveCapability.mockClear();
-    let call = 0;
-    mocks.resolveEffectiveCapability.mockImplementation(async (_userId: string, capability: string) => {
-      const pass = Math.floor(call++ / CAPABILITY_KEYS.length);
-      const generation = pass === 0 && capability === "commerce.checkout" ? 2 : pass === 0 ? 1 : 3;
-      return {
-        capability,
-        allowed: true,
-        blockerCode: null,
-        qualificationPaths: [],
-        entitlementGeneration: generation,
-        source: "policy",
-      };
-    });
+    mocks.resolveEffectiveCapabilities.mockClear();
+    mocks.resolveEffectiveCapabilities
+      .mockResolvedValueOnce(decisionsFor((capability) => capability === "commerce.checkout" ? 2 : 1))
+      .mockResolvedValueOnce(decisionsFor(() => 3));
 
     const snapshot = await resolveServerCustomerCapabilities("user-1");
 
     expect(CAPABILITY_KEYS.map((capability) => snapshot[capability]?.entitlementGeneration))
       .toEqual(Array(CAPABILITY_KEYS.length).fill(3));
     expect(snapshot.checkout).toBe(snapshot["commerce.checkout"]);
-    expect(mocks.resolveEffectiveCapability).toHaveBeenCalledTimes(CAPABILITY_KEYS.length * 2);
+    expect(mocks.resolveEffectiveCapabilities).toHaveBeenCalledTimes(2);
   });
 
   it("fails the whole snapshot closed when a retry remains mixed", async () => {
-    let call = 0;
-    mocks.resolveEffectiveCapability.mockImplementation(async (_userId: string, capability: string) => ({
-      capability,
-      allowed: true,
-      blockerCode: null,
-      qualificationPaths: [],
-      entitlementGeneration: (++call % 2) + 4,
-      source: "policy",
-    }));
+    const mixedSnapshot = () => decisionsFor((capability) => CAPABILITY_KEYS.indexOf(capability) % 2 + 4);
+    mocks.resolveEffectiveCapabilities.mockResolvedValueOnce(mixedSnapshot()).mockResolvedValueOnce(mixedSnapshot());
 
     const snapshot = await resolveServerCustomerCapabilities("user-1");
 

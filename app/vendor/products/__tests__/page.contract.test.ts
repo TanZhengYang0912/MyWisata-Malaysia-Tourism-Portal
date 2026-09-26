@@ -17,4 +17,11 @@ describe('vendor products save contract', () => {
   it('uses locale keys instead of inline translation defaults', () => {
     expect(pageSource).not.toContain('defaultValue');
   });
+
+  it('opens the product form from the Outlet Manager create shortcut', () => {
+    expect(pageSource).toContain('useSearchParams');
+    expect(pageSource).toMatch(/searchParams\.get\(["']create["']\)/);
+    expect(pageSource).toContain('canManageOutlet');
+    expect(pageSource).toContain('setShowForm(true)');
+  });
 });

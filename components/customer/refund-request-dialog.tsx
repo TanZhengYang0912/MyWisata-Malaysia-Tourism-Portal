@@ -97,7 +97,7 @@ export function RefundRequestDialog({
             </p>
             <div className="mt-2 space-y-1">
               {items.map((item, index) => (
-                <p key={`${item.label}-${index}`} className="truncate text-xs font-medium text-foreground">
+                <p key={`${item.label}-${index}`} className="break-words whitespace-normal text-xs font-medium text-foreground">
                   {item.qty}× {item.label}
                 </p>
               ))}

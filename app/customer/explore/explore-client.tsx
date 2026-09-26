@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Compass, Map } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { searchActivities } from "@/backend/domains/catalogue";
+import * as catalogueDomain from "@/backend/domains/catalogue";
 import { ActivityCard } from "@/components/customer/activity-card";
 import { CustomerDiscoveryFilterPanel } from "@/components/customer/discovery-filters";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
@@ -51,14 +52,15 @@ export function ExploreClient({
   const [debouncedQuery, setDebouncedQuery] = useState(filters.q);
   const [activities, setActivities] = useState<DiscoveryResult[]>(() => initialActivities.map((activity) => ({ ...activity, sponsorship: null })));
   const [visibleLimit, setVisibleLimit] = useState(8);
+  const initialCandidatesExpireAt = useRef<number | null>(null);
 
   useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
     const previousOverflowX = html.style.overflowX;
     const previousBodyOverflowX = body.style.overflowX;
-    html.style.overflowX = "hidden";
-    body.style.overflowX = "hidden";
+    html.style.overflowX = "clip";
+    body.style.overflowX = "clip";
     return () => {
       html.style.overflowX = previousOverflowX;
       body.style.overflowX = previousBodyOverflowX;
@@ -107,16 +109,43 @@ export function ExploreClient({
     filters.familyFriendlyOnly,
     filters.coupleFriendlyOnly,
   ]);
+  const hasSearchCriteria = Boolean(
+    searchQuery.q ||
+    (searchQuery.state && searchQuery.state !== "All Malaysia") ||
+    searchQuery.categories.length ||
+    searchQuery.types.length ||
+    searchQuery.priceMax !== null ||
+    searchQuery.operatingDays.length ||
+    searchQuery.hoursMode !== "during" ||
+    searchQuery.timeAt ||
+    searchQuery.timeFrom ||
+    searchQuery.timeTo ||
+    searchQuery.overnight ||
+    searchQuery.openNow ||
+    searchQuery.freeOnly ||
+    searchQuery.bookableOnly ||
+    searchQuery.hiddenGemOnly ||
+    searchQuery.familyFriendlyOnly ||
+    searchQuery.coupleFriendlyOnly,
+  );
 
   useEffect(() => {
+    if (initialCandidatesExpireAt.current === null) {
+      initialCandidatesExpireAt.current = Date.now() + 60_000;
+    }
     let cancelled = false;
     const requestedAt = new Date().toISOString();
     const placementsRequest = db
       ? db
         .rpc("list_active_sponsored_discovery_placements")
       : Promise.resolve({ data: [], error: null });
+    const activitiesRequest = hasSearchCriteria
+      ? Date.now() < initialCandidatesExpireAt.current && typeof catalogueDomain.filterComputedActivities === "function"
+        ? Promise.resolve().then(() => catalogueDomain.filterComputedActivities(searchQuery, initialActivities))
+        : searchActivities(searchQuery)
+      : Promise.resolve(initialActivities);
     Promise.all([
-      searchActivities(searchQuery),
+      activitiesRequest,
       placementsRequest,
     ]).then(([nextActivities, placementsResult]) => {
       if (cancelled) return;
@@ -149,7 +178,7 @@ export function ExploreClient({
       if (!cancelled) setActivities([]);
     });
     return () => { cancelled = true; };
-  }, [db, searchQuery]);
+  }, [db, hasSearchCriteria, initialActivities, searchQuery]);
 
   const recordSponsoredEvent = useCallback((activity: DiscoveryResult, eventType: "impression" | "click") => {
     if (!activity.sponsorship) return;
@@ -349,9 +378,11 @@ export function ExploreClient({
               </div>
             )}
             {activities.length > 8 && visibleLimit < activities.length && (
-              <button type="button" onClick={() => setVisibleLimit(activities.length)} className="mt-6 rounded-full border border-border px-5 py-2 text-sm font-bold text-primary hover:bg-secondary">
-                {t("ui.discovery.showAll", { count: activities.length })}
-              </button>
+              <div className="mt-6 flex justify-end">
+                <button type="button" onClick={() => setVisibleLimit(activities.length)} className="rounded-full border border-border px-5 py-2 text-sm font-bold text-primary hover:bg-secondary">
+                  {t("ui.discovery.showAll", { count: activities.length })}
+                </button>
+              </div>
             )}
           </section>
         </div>

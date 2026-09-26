@@ -142,7 +142,7 @@ export function VendorReviewsList({ reviews, vendorId, initialVisibleCount = 6 }
 
                   {/* Review Body */}
                   {review.body && (
-                    <p className="mt-1.5 text-xs leading-5 text-muted-foreground line-clamp-4">
+                    <p className="mt-1.5 break-words whitespace-normal text-xs leading-5 text-muted-foreground">
                       “{review.body}”
                     </p>
                   )}
@@ -168,12 +168,12 @@ export function VendorReviewsList({ reviews, vendorId, initialVisibleCount = 6 }
                             className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-primary transition hover:bg-primary hover:text-white"
                           >
                             <Tag size={10} />
-                            <span className="line-clamp-1 max-w-[200px]">{review.productName}</span>
+                            <span className="break-words whitespace-normal">{review.productName}</span>
                           </Link>
                         ) : (
                           <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-[11px] font-semibold text-foreground/75">
                             <Tag size={10} />
-                            <span className="line-clamp-1 max-w-[200px]">{review.productName}</span>
+                            <span className="break-words whitespace-normal">{review.productName}</span>
                           </span>
                         )
                       )}
@@ -181,7 +181,7 @@ export function VendorReviewsList({ reviews, vendorId, initialVisibleCount = 6 }
                       {review.outletName && (
                         <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                           <MapPin size={10} />
-                          <span className="line-clamp-1 max-w-[180px]">{review.outletName}</span>
+                          <span className="break-words whitespace-normal">{review.outletName}</span>
                         </span>
                       )}
                     </div>

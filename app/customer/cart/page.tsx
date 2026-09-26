@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { CalendarClock, Check, ChevronDown, ImageOff, Search, ShoppingCart, Tag, Trash2, X } from "lucide-react";
 import { cartItemKey, useCart } from "@/components/providers/cart";
-import { getActivities, getBookingSlots, getOutlets, getVoucherByCode, getVouchers } from "@/backend/domains/catalogue";
+import { getBookingSlots, getOutlets, getVoucherByCode, getVouchers } from "@/backend/domains/catalogue";
 import { unitPrice } from "@/backend/core/helpers";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ReferencePrice } from "@/components/shared/reference-price";
@@ -18,47 +18,67 @@ import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 type VoucherOption = {
   voucher: Voucher;
   discountAmount: number;
+  scopeLabel?: string;
 };
 
-function voucherDiscountLabel(voucher: Voucher, t: ReturnType<typeof useTranslation>["t"]) {
+type CustomerTranslator = ReturnType<typeof useTranslation>["t"];
+
+function voucherDiscountLabel(voucher: Voucher, t: CustomerTranslator) {
   if (voucher.type === "percent") return t("ui.cart.discountPercent", { value: voucher.value, ns: "customer" });
   if (voucher.type === "fixed") return t("ui.cart.discountFixed", { value: formatMYRNumber(voucher.value), ns: "customer" });
   return t("ui.cart.buyOneGetOne", { ns: "customer" });
 }
 
-function VoucherOptionCard({ option, applied, onApply }: { option: VoucherOption; applied: boolean; onApply: () => void }) {
+function resolveVoucherScopeLabel(voucher: Voucher, outlets: Map<string, Outlet>, activities: Activity[], t: CustomerTranslator) {
+  const outletName = voucher.outletId ? outlets.get(voucher.outletId)?.name : undefined;
+  const partnerName = voucher.vendorId
+    ? [...outlets.values()].find((outlet) => outlet.vendorId === voucher.vendorId)?.vendorName
+    : undefined;
+  const productName = voucher.productId ? activities.find((activity) => activity.id === voucher.productId)?.name : undefined;
+
+  if (productName && outletName) return t("ui.cart.scopeProductOutlet", { product: productName, outlet: outletName, ns: "customer" });
+  if (productName && partnerName) return t("ui.cart.scopeProductPartner", { product: productName, partner: partnerName, ns: "customer" });
+  if (productName) return t("ui.cart.scopeProduct", { product: productName, ns: "customer" });
+  if (outletName) return t("ui.cart.scopeOutlet", { outlet: outletName, ns: "customer" });
+  if (partnerName) return t("ui.cart.scopePartner", { partner: partnerName, ns: "customer" });
+  return t("ui.cart.scopeEligible", { ns: "customer" });
+}
+
+function VoucherOptionCard({ option, applied, hasAppliedVoucher = false, onApply, hideAction = false }: { option: VoucherOption; applied: boolean; hasAppliedVoucher?: boolean; onApply: () => void; hideAction?: boolean }) {
   const { t: tCustomer, i18n } = useTranslation("customer");
   const { voucher, discountAmount } = option;
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-3">
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-foreground">{voucher.name ?? voucher.code}</p>
+        <p className="break-words whitespace-normal text-sm font-semibold text-foreground">{voucher.name ?? voucher.code}</p>
+        {option.scopeLabel && <p className="mt-0.5 break-words whitespace-normal text-xs font-medium text-muted-foreground">{option.scopeLabel}</p>}
         <p className="mt-0.5 text-xs text-muted-foreground">
           {voucherDiscountLabel(voucher, tCustomer)}
           {voucher.minSpend > 0 ? ` · ${tCustomer("ui.cart.minimumSpend", { value: formatMYRNumber(voucher.minSpend) })}` : ""}
         </p>
-        <p className="mt-0.5 text-[11px] text-primary">
+        <p className="mt-1 text-xs font-semibold text-primary">
           {tCustomer("ui.cart.saveEnds", { amount: formatMYRNumber(discountAmount), date: formatDate(voucher.expiresAt, locale, { day: "numeric", month: "short" }) })}
         </p>
       </div>
-      <Button type="button" variant="outline" onClick={onApply} disabled={applied} className="shrink-0 rounded-full px-3 text-xs">
-        {applied ? tCustomer("ui.actions.applied") : tCustomer("ui.actions.apply")}
-      </Button>
+      {!hideAction && (
+        <Button type="button" variant="outline" onClick={onApply} disabled={applied || hasAppliedVoucher} title={hasAppliedVoucher ? tCustomer("ui.cart.removeCurrentBeforeSwitch") : undefined} className="shrink-0 rounded-full px-3 text-xs">
+          {applied ? tCustomer("ui.actions.applied") : tCustomer("ui.actions.apply")}
+        </Button>
+      )}
     </div>
   );
 }
 
 export default function CartPage() {
   const { t: tCustomer } = useTranslation("customer");
-  const { items, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, updateQty, removeItem, totals } = useCart();
+  const { items, activities = [], selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, updateQty, removeItem, totals } = useCart();
   const { showFeedback } = useActionFeedback();
   const [code, setCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
   const [appliedClaimId, setAppliedClaimId] = useState<string | null>(null);
   const [deepLinkedVoucher, setDeepLinkedVoucher] = useState<{ code: string; claimId: string | null } | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
-  const [activities, setActivities] = useState<Activity[]>([]);
   const [outlets, setOutlets] = useState<Map<string, Outlet>>(new Map());
   const [slotsById, setSlotsById] = useState<Map<string, BookingSlot>>(new Map());
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
@@ -70,7 +90,6 @@ export default function CartPage() {
   const [voucherTypeFilter, setVoucherTypeFilter] = useState<"all" | Voucher["type"]>("all");
 
   useEffect(() => {
-    getActivities().then(setActivities);
     getOutlets().then((list) => setOutlets(new Map(list.map((o) => [o.id, o]))));
     getVouchers().then(setVouchers).catch(() => setVouchers([]));
   }, []);
@@ -230,21 +249,35 @@ export default function CartPage() {
     return () => { active = false; };
   }, [candidateVouchers, selectedVendorIds, subtotal, voucherValidationItems]);
 
+  const appliedVoucherOption = useMemo(() => appliedVoucher ? {
+    voucher: appliedVoucher,
+    discountAmount: discount,
+    scopeLabel: resolveVoucherScopeLabel(appliedVoucher, outlets, activities, tCustomer),
+  } : null, [activities, appliedVoucher, discount, outlets, tCustomer]);
+
+  const availableVoucherOptions = useMemo(() => voucherOptions
+    .filter((option) => appliedVoucher?.id !== option.voucher.id)
+    .map((option) => ({
+      ...option,
+      scopeLabel: resolveVoucherScopeLabel(option.voucher, outlets, activities, tCustomer),
+    })), [activities, appliedVoucher?.id, outlets, tCustomer, voucherOptions]);
+
   const allVoucherOptions = useMemo(() => {
     const needle = voucherSearch.trim().toLowerCase();
-    return voucherOptions.filter(({ voucher }) => {
+    return availableVoucherOptions.filter(({ voucher }) => {
       const matchesType = voucherTypeFilter === "all" || voucher.type === voucherTypeFilter;
       const searchable = `${voucher.name ?? ""} ${voucher.code}`.toLowerCase();
       return matchesType && (!needle || searchable.includes(needle));
     });
-  }, [voucherOptions, voucherSearch, voucherTypeFilter]);
+  }, [availableVoucherOptions, voucherSearch, voucherTypeFilter]);
 
-  const topVoucherOptions = voucherOptions.slice(0, 3);
+  const topVoucherOptions = availableVoucherOptions.slice(0, 3);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   async function applyVoucherCode(rawCode: string, knownVoucher?: Voucher, claimId?: string | null) {
     const normalizedCode = rawCode.trim().toUpperCase();
     if (!normalizedCode) return;
+    if (appliedVoucher) return;
     setCode(normalizedCode);
     setVoucherError(null);
     const selectedVendorId = selectedVendorIds.size === 1 ? [...selectedVendorIds][0] : undefined;
@@ -345,7 +378,7 @@ export default function CartPage() {
                   aria-label={`Select all items from ${group.outlet?.name ?? "this outlet"}`}
                   className="h-4 w-4 shrink-0 accent-primary disabled:cursor-not-allowed disabled:opacity-50"
                 />
-                <span className="truncate text-sm font-semibold text-foreground">{group.outlet?.name ?? "Outlet"}</span>
+                <span className="break-words whitespace-normal text-sm font-semibold text-foreground">{group.outlet?.name ?? "Outlet"}</span>
               </label>
               <Link
                 href={`/customer/outlet/${group.outletId}`}
@@ -395,8 +428,8 @@ export default function CartPage() {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground truncate">{activity.name}</p>
-                <p className="text-xs text-muted-foreground">{outlet?.name} · {variant?.label}</p>
+                <p className="break-words whitespace-normal text-sm font-semibold text-foreground">{activity.name}</p>
+                <p className="break-words whitespace-normal text-xs text-muted-foreground">{outlet?.name} · {variant?.label}</p>
                 {slot && (
                   <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                     <CalendarClock size={11} />
@@ -449,38 +482,45 @@ export default function CartPage() {
             <span className="text-sm font-semibold text-foreground">{tCustomer("ui.cart.availableVouchers")}</span>
           </div>
           <span className="text-xs text-muted-foreground">
-            {selectedItems.length === 0 ? tCustomer("ui.cart.selectItemsOffers") : tCustomer("ui.cart.availableCount", { count: voucherOptions.length })}
+            {selectedItems.length === 0 ? tCustomer("ui.cart.selectItemsOffers") : tCustomer("ui.cart.availableCount", { count: availableVoucherOptions.length })}
           </span>
         </div>
 
-        {appliedVoucher && !voucherError && (
-          <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-primary/5 px-3 py-2 text-xs">
-            <span className="flex items-center gap-2 font-semibold text-primary"><Check size={14} /> {tCustomer("ui.cart.applied", { code: appliedVoucher.code })}</span>
-            <button type="button" onClick={() => { setAppliedVoucher(null); setAppliedClaimId(null); }} className="font-semibold text-muted-foreground hover:text-foreground">{tCustomer("ui.cart.remove")}</button>
+        {appliedVoucher && !voucherError && appliedVoucherOption && (
+          <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <span className="flex min-w-0 items-center gap-2 font-semibold text-primary"><Check size={14} className="shrink-0" /> <span className="break-words">{tCustomer("ui.cart.applied", { code: appliedVoucher.code })}</span></span>
+              <button type="button" onClick={() => { setAppliedVoucher(null); setAppliedClaimId(null); }} className="shrink-0 font-semibold text-muted-foreground hover:text-foreground">{tCustomer("ui.cart.remove")}</button>
+            </div>
+            <div className="mt-2">
+              <VoucherOptionCard option={appliedVoucherOption} applied onApply={() => {}} hideAction />
+            </div>
           </div>
         )}
+        {appliedVoucher && <p className="mt-3 text-xs text-muted-foreground">{tCustomer("ui.cart.removeCurrentBeforeSwitch")}</p>}
 
         {selectedItems.length > 0 && (
           <div className="mt-3">
             {loadingVouchers ? (
               <p className="rounded-lg bg-secondary px-3 py-3 text-xs text-muted-foreground">{tCustomer("ui.cart.checkEligible")}</p>
-            ) : voucherOptions.length > 0 ? (
+            ) : availableVoucherOptions.length > 0 ? (
               <div className="grid gap-2 sm:grid-cols-2">
                 {topVoucherOptions.map((option) => (
                   <VoucherOptionCard
                     key={option.voucher.id}
                     option={option}
-                    applied={appliedVoucher?.id === option.voucher.id}
+                    applied={false}
+                    hasAppliedVoucher={Boolean(appliedVoucher)}
                     onApply={() => void applyVoucherCode(option.voucher.code, option.voucher)}
                   />
                 ))}
               </div>
             ) : (
-              <p className="rounded-lg bg-secondary px-3 py-3 text-xs text-muted-foreground">{tCustomer("ui.cart.noEligible")}</p>
+              <p className="rounded-lg bg-secondary px-3 py-3 text-xs text-muted-foreground">{tCustomer(appliedVoucher ? "ui.cart.noOtherEligible" : "ui.cart.noEligible")}</p>
             )}
-            {voucherOptions.length > 3 && (
+            {availableVoucherOptions.length > 3 && (
               <button type="button" onClick={() => setShowAllVouchers(true)} className="mt-3 inline-flex items-center text-xs font-semibold text-primary hover:underline">
-                {tCustomer("ui.cart.viewAll", { count: voucherOptions.length })}
+                {tCustomer("ui.cart.viewAll", { count: availableVoucherOptions.length })}
               </button>
             )}
           </div>
@@ -493,7 +533,7 @@ export default function CartPage() {
           <div className="mt-3 flex gap-2">
             <label className="sr-only" htmlFor="voucher-code">{tCustomer("ui.cart.voucherCode")}</label>
             <input id="voucher-code" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder={tCustomer("strictMigration.cart.voucherCodePlaceholder")} className="min-w-0 flex-1 rounded-lg border border-border bg-input-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary" />
-            <Button type="button" variant="outline" onClick={() => void applyVoucherCode(code)} disabled={!code.trim()}>{tCustomer("ui.actions.apply")}</Button>
+            <Button type="button" variant="outline" onClick={() => void applyVoucherCode(code)} disabled={!code.trim() || Boolean(appliedVoucher)}>{tCustomer("ui.actions.apply")}</Button>
           </div>
         )}
         {voucherError && <p className="mt-2 text-xs text-destructive">{voucherError}</p>}
@@ -505,12 +545,13 @@ export default function CartPage() {
             <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{tCustomer("ui.cart.availableVouchers")}</p>
-                <h2 id="all-vouchers-title" className="mt-1 text-lg font-bold text-foreground">{tCustomer("ui.cart.viewAll", { count: voucherOptions.length })}</h2>
+                <h2 id="all-vouchers-title" className="mt-1 text-lg font-bold text-foreground">{tCustomer("ui.cart.viewAll", { count: availableVoucherOptions.length })}</h2>
               </div>
               <button type="button" onClick={() => setShowAllVouchers(false)} className="rounded-full p-2 text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label={tCustomer("ui.cart.closeVouchers")}>
                 <X size={18} />
               </button>
             </div>
+            {appliedVoucher && <p className="border-b border-border px-5 py-3 text-xs text-muted-foreground">{tCustomer("ui.cart.removeCurrentBeforeSwitch")}</p>}
             <div className="grid gap-2 border-b border-border px-5 py-4 sm:grid-cols-[minmax(0,1fr)_160px]">
               <label className="relative">
                 <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -532,7 +573,8 @@ export default function CartPage() {
                   <VoucherOptionCard
                     key={option.voucher.id}
                     option={option}
-                    applied={appliedVoucher?.id === option.voucher.id}
+                    applied={false}
+                    hasAppliedVoucher={Boolean(appliedVoucher)}
                     onApply={() => void applyVoucherCode(option.voucher.code, option.voucher)}
                   />
                 ))

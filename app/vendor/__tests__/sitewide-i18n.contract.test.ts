@@ -12,7 +12,6 @@ export const VENDOR_I18N_FILES = [
   'app/vendor/dashboard/page.tsx',
   'app/vendor/inbox/page.tsx',
   'app/vendor/listings/page.tsx',
-  'app/vendor/notifications/page.tsx',
   'app/vendor/orders/page.tsx',
   'app/vendor/outlets/page.tsx',
   'app/vendor/products/page.tsx',

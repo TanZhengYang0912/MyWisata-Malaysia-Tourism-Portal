@@ -218,6 +218,24 @@ describe("staff role management API", () => {
     ]);
   });
 
+  it("accepts the seeded staff account's canonical PostgreSQL UUID", async () => {
+    const seededUserId = "aaaaaaaa-0000-0000-0000-000000000002";
+    const reason = "Grant campaign management access";
+    mocks.rpc.mockResolvedValue({ data: ASSIGNMENT_ID, error: null });
+
+    const response = await assignmentsRoute.POST(request("POST", {
+      userId: seededUserId,
+      reason,
+    }), { params: Promise.resolve({ roleId: ROLE_ID }) });
+
+    expect(response.status).toBe(201);
+    expect(mocks.rpc).toHaveBeenCalledWith("assign_staff_role", {
+      p_role_id: ROLE_ID,
+      p_user_id: seededUserId,
+      p_reason: reason,
+    });
+  });
+
   it.each([
     ["create", () => rolesRoute.POST(request("POST", { ...createBody, actorId: ACTOR_ID }))],
     ["update", () => roleRoute.PATCH(request("PATCH", { ...updateBody, isSystem: false }), { params: Promise.resolve({ roleId: ROLE_ID }) })],

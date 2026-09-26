@@ -10,8 +10,10 @@ import {
   type TestDocument,
 } from '@/components/shared/__tests__/render-test-dom';
 
+const routerPush = vi.hoisted(() => vi.fn());
+
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: routerPush }),
 }));
 
 vi.mock('next-themes', () => ({
@@ -20,11 +22,13 @@ vi.mock('next-themes', () => ({
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => ({
+    t: (key: string, options?: { name?: string }) => ({
       'command.title': 'Command Palette',
       'command.navigation': 'Navigation',
       'command.actions': 'Quick Actions',
       'command.preferences': 'Preferences',
+      'command.pendingQueue': 'Pending {{name}}',
+      'command.unreadQueue': 'Unread {{name}}',
       'command.noResults': 'No results',
       'command.navigate': 'to navigate',
       'command.select': 'to select',
@@ -38,10 +42,18 @@ vi.mock('react-i18next', () => ({
       'navigation.Outlets': 'Outlets',
       'navigation.Vouchers': 'Vouchers',
       'navigation.Wallet': 'Wallet',
+      'navigation.Business profile': 'Profile',
+      'navigation.Redemptions': 'Redemptions',
+      'navigation.Scanner': 'Scanner',
+      'navigation.Operations': 'Operations',
+      'navigation.Shop page': 'Shop page',
+      'navigation.Inbox': 'Inbox',
+      'navigation.Analytics': 'Analytics',
       'ui.products.addProduct': 'Add Product',
       'ui.bookings.addSlot': 'Add Booking Slot',
+      'ui.vouchers.createVoucher': 'Create Voucher',
       'theme.dark': 'Dark mode',
-    } as Record<string, string>)[key] ?? key,
+    } as Record<string, string>)[key]?.replace('{{name}}', options?.name ?? '') ?? key,
   }),
 }));
 
@@ -53,6 +65,7 @@ vi.mock('@/components/ui/dialog', () => ({
 
 import { GlobalCommandPalette } from '../global-command-palette';
 import { getCommandShortcutLabel } from '../command-shortcut';
+import { LayoutDashboard } from 'lucide-react';
 
 let createRoot: typeof import('react-dom/client').createRoot;
 let document: TestDocument;
@@ -97,6 +110,83 @@ describe('GlobalCommandPalette contract', () => {
     expect(getCommandShortcutLabel('MacIntel')).toBe('⌘K');
     expect(getCommandShortcutLabel('Win32')).toBe('Ctrl K');
     expect(getCommandShortcutLabel('Linux x86_64')).toBe('Ctrl K');
+  });
+
+  it('lists Vendor Owner sidebar destinations and opens supported create actions', async () => {
+    routerPush.mockClear();
+    await render(React.createElement(GlobalCommandPalette, {
+      scope: 'vendor',
+      isOutletManager: false,
+      triggerOpen: true,
+      onOpenChange: vi.fn(),
+    }));
+
+    for (const title of ['Dashboard', 'Outlets', 'Profile', 'Products', 'Bookings', 'Redemptions', 'Vouchers', 'Orders', 'Wallet', 'Inbox', 'Analytics']) {
+      expect(container.textContent).toContain(title);
+    }
+    expect(container.textContent).not.toContain('Scanner');
+    expect(container.textContent).not.toContain('Shop page');
+    expect(container.textContent).not.toContain('Add Product');
+
+    const addSlot = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes('Add Booking Slot'));
+    await act(async () => {
+      addSlot.dispatchEvent(new TestEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(routerPush).toHaveBeenCalledWith('/vendor/bookings?create=1');
+
+    const createVoucher = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes('Create Voucher'));
+    await act(async () => {
+      createVoucher.dispatchEvent(new TestEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(routerPush).toHaveBeenCalledWith('/vendor/vouchers?create=1');
+  });
+
+  it('lists Outlet Manager sidebar destinations and only its allowed create actions', async () => {
+    routerPush.mockClear();
+    await render(React.createElement(GlobalCommandPalette, {
+      scope: 'vendor',
+      isOutletManager: true,
+      triggerOpen: true,
+      onOpenChange: vi.fn(),
+    }));
+
+    for (const title of ['Operations', 'Shop page', 'Products', 'Bookings', 'Scanner', 'Vouchers', 'Orders', 'Inbox', 'Analytics', 'Add Product']) {
+      expect(container.textContent).toContain(title);
+    }
+    expect(container.textContent).not.toContain('Outlets');
+    expect(container.textContent).not.toContain('Wallet');
+    expect(container.textContent).not.toContain('Profile');
+
+    const shopPage = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes('Shop page'));
+    await act(async () => {
+      shopPage.dispatchEvent(new TestEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(routerPush).toHaveBeenCalledWith('/vendor/outlets?mode=shop');
+
+    const addProduct = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes('Add Product'));
+    await act(async () => {
+      addProduct.dispatchEvent(new TestEvent('click', { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(routerPush).toHaveBeenCalledWith('/vendor/products?create=1');
+  });
+
+  it('adds Admin queue shortcuts only for authorized visible queues with pending items', async () => {
+    await render(React.createElement(GlobalCommandPalette, {
+      scope: 'admin',
+      triggerOpen: true,
+      onOpenChange: vi.fn(),
+      navigationItems: [
+        { id: 'kyc', title: 'KYC', category: 'Compliance', href: '/admin/kyc', icon: LayoutDashboard, badge: 3 },
+        { id: 'support', title: 'Support', category: 'Communication', href: '/admin/support', icon: LayoutDashboard, badge: 0 },
+      ],
+    }));
+
+    expect(container.textContent).toContain('Pending KYC');
+    expect(container.textContent).not.toContain('Unread Support');
   });
 
   it('scrolls the newly selected result into view while using arrow navigation', async () => {

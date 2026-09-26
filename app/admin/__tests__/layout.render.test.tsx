@@ -97,4 +97,14 @@ describe("admin navigation role rendering", () => {
     expect(navigationHrefs(markup)).toEqual(["/admin/vendors", "/admin/kyc"]);
     expect(markup).not.toContain("command.searchAdminPlaceholder");
   });
+
+  it("shows Promotion Campaigns only when the dynamic module is granted", () => {
+    mocks.role = "staff";
+    mocks.pathname = "/admin/promotion-campaigns";
+    mocks.staffModules = [moduleFor("/admin/promotion-campaigns", 0)];
+    expect(navigationHrefs(renderLayout())).toEqual(["/admin/promotion-campaigns"]);
+
+    mocks.staffModules = [moduleFor("/admin/vendors", 0)];
+    expect(renderLayout()).not.toContain("Protected page content");
+  });
 });

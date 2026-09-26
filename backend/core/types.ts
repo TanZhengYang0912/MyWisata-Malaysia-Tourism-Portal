@@ -156,6 +156,7 @@ export interface PlaceLocation {
 // ─── Contract #2: Catalogue DTO ────────────────────────────────────────────
 export interface Activity {
   id: string;
+  vendorId?: string;
   /**
    * Representative outlet. For a product sold at several outlets this is the
    * one chosen for the card (nearest, else cheapest) — `offers` holds them all.

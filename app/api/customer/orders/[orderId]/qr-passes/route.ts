@@ -44,18 +44,25 @@ export async function GET(_request: Request, { params }: Props) {
 
   const { data: bookings, error: bookingError } = await db
     .from("bookings")
-    .select("id,order_items!inner(outlet_id),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)")
+    .select("id,order_items!inner(outlet_id,vendor_id,outlets(id,name,vendor_id,vendors(id,name))),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)")
     .eq("order_items.order_id", orderId);
   if (bookingError) return apiFail("DB_ERROR", bookingError.message, 500);
 
+  let missingTicketIdentity = false;
   const tickets = (bookings ?? []).flatMap((booking: {
     id: string;
-    order_items: { outlet_id: string } | { outlet_id: string }[] | null;
+    order_items: { outlet_id: string; vendor_id: string; outlets: { id: string; name: string; vendor_id: string; vendors: { id: string; name: string } | { id: string; name: string }[] | null } | { id: string; name: string; vendor_id: string; vendors: { id: string; name: string } | { id: string; name: string }[] | null }[] | null } | { outlet_id: string; vendor_id: string; outlets: { id: string; name: string; vendor_id: string; vendors: { id: string; name: string } | { id: string; name: string }[] | null } | { id: string; name: string; vendor_id: string; vendors: { id: string; name: string } | { id: string; name: string }[] | null }[] | null }[] | null;
     ticket_passes: TicketPassProjection | TicketPassProjection[] | null;
   }) => {
     const item = Array.isArray(booking.order_items) ? booking.order_items[0] : booking.order_items;
     const pass = Array.isArray(booking.ticket_passes) ? booking.ticket_passes[0] : booking.ticket_passes;
     if (!item?.outlet_id || !pass?.id) return [];
+    const outlet = Array.isArray(item.outlets) ? item.outlets[0] : item.outlets;
+    const vendor = Array.isArray(outlet?.vendors) ? outlet.vendors[0] : outlet?.vendors;
+    if (!outlet?.name || !vendor?.name || outlet.id !== item.outlet_id || outlet.vendor_id !== item.vendor_id || vendor.id !== item.vendor_id) {
+      missingTicketIdentity = true;
+      return [];
+    }
     const passToken = signTicketPassToken({
       passId: pass.id,
       bookingId: booking.id,
@@ -67,6 +74,8 @@ export async function GET(_request: Request, { params }: Props) {
     });
     return [{
       bookingId: booking.id,
+      outletName: outlet.name,
+      vendorName: vendor.name,
       passToken,
       policy: pass.policy,
       entryLimit: pass.entry_limit,
@@ -76,10 +85,11 @@ export async function GET(_request: Request, { params }: Props) {
       validUntil: pass.valid_until,
     }];
   });
+  if (missingTicketIdentity) return apiFail("MERCHANT_IDENTITY_UNAVAILABLE", "Ticket merchant identity is unavailable", 409);
 
   const { data: orderItems, error: itemError } = await db
     .from("order_items")
-    .select("id,outlet_id,product_name,variant_name,quantity,food_fulfilment_mode,food_qr_scanned_at,fulfil_status,products(categories(slug)),outlets(name)")
+    .select("id,vendor_id,outlet_id,product_name,variant_name,quantity,food_fulfilment_mode,food_qr_scanned_at,fulfil_status,products(categories(slug)),outlets(id,name,vendor_id,vendors(id,name))")
     .eq("order_id", orderId);
   if (isMissingFoodFulfilmentColumn(itemError)) {
     // Ticket QR passes are independent of the optional food fulfilment schema.
@@ -91,6 +101,7 @@ export async function GET(_request: Request, { params }: Props) {
   const foodGroups = new Map<string, {
     outletId: string;
     outletName: string;
+    vendorName: string;
     mode: "dine_in" | "takeaway";
     allFulfilled: boolean;
     allScanned: boolean;
@@ -105,15 +116,18 @@ export async function GET(_request: Request, { params }: Props) {
     food_qr_scanned_at: string | null;
     fulfil_status: string;
     products: { categories: { slug: string } | { slug: string }[] | null } | { categories: { slug: string } | { slug: string }[] | null }[] | null;
-    outlets: { name: string } | { name: string }[] | null;
+    vendor_id: string;
+    outlets: { id: string; name: string; vendor_id: string; vendors: { id: string; name: string } | { id: string; name: string }[] | null } | { id: string; name: string; vendor_id: string; vendors: { id: string; name: string } | { id: string; name: string }[] | null }[] | null;
   }>) {
     const product = Array.isArray(row.products) ? row.products[0] : row.products;
     const category = Array.isArray(product?.categories) ? product.categories[0] : product?.categories;
     if (category?.slug !== "food" || !row.outlet_id || !row.food_fulfilment_mode || row.fulfil_status === "cancelled") continue;
     const outlet = Array.isArray(row.outlets) ? row.outlets[0] : row.outlets;
+    const vendor = Array.isArray(outlet?.vendors) ? outlet.vendors[0] : outlet?.vendors;
+    if (!outlet?.name || !vendor?.name || outlet.id !== row.outlet_id || outlet.vendor_id !== row.vendor_id || vendor.id !== row.vendor_id) return apiFail("MERCHANT_IDENTITY_UNAVAILABLE", "Food outlet merchant identity is unavailable", 409);
     let group = foodGroups.get(row.outlet_id);
     if (!group) {
-      group = { outletId: row.outlet_id, outletName: outlet?.name ?? "Outlet", mode: row.food_fulfilment_mode, allFulfilled: true, allScanned: true, items: [] };
+      group = { outletId: row.outlet_id, outletName: outlet.name, vendorName: vendor.name, mode: row.food_fulfilment_mode, allFulfilled: true, allScanned: true, items: [] };
       foodGroups.set(row.outlet_id, group);
     }
     if (group.mode !== row.food_fulfilment_mode) return apiFail("FOOD_ORDER_INCONSISTENT", "Food items at one outlet have inconsistent service modes", 409);

@@ -19,6 +19,10 @@
     {
       "path": "/api/cron/reconcile-toyyibpay-checkouts",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/expire-checkout-sessions",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

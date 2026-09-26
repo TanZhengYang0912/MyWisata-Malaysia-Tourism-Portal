@@ -5,7 +5,7 @@ import { resolveOutletImage, type ManagedPlaceImage } from "@/lib/outlet-images"
 import { signVoucherStoreToken } from "@/lib/vouchers/store-token";
 
 type Relation<T> = T | T[] | null;
-type OutletSummary = { id: string; name: string; city: string | null; state: string | null; outlet_pages: Relation<{ hero_url: string | null }> };
+type OutletSummary = { id: string; name: string; city: string | null; state: string | null; status?: string; review_status?: string; outlet_pages: Relation<{ hero_url: string | null }> };
 type ProductOffer = { outlet_id: string; status: string | null; outlets: Relation<OutletSummary> };
 type EligibleProduct = { id: string; name: string; status: string | null; review_status: string | null };
 type EligibleOfferRow = { outlet_id: string; product_id: string; status: string | null; products: Relation<EligibleProduct> };
@@ -108,9 +108,7 @@ export async function GET(request: Request) {
   const tab = rawTab as CustomerVoucherTab;
 
   const voucherQuery = db.from("vouchers")
-    .select("id,vendor_id,outlet_id,product_id,code,name,voucher_type,discount_value,min_spend,valid_from,valid_until,max_uses,uses_count,redemption_mode,vendors(id,name,logo_url),outlets!inner(id,name,city,state,status,review_status,outlet_pages(hero_url)),products(id,name,status,review_status,outlet_offers(outlet_id,status,outlets(id,name,city,state,outlet_pages(hero_url))))")
-    .eq("outlets.status", "active")
-    .eq("outlets.review_status", "approved");
+    .select("id,vendor_id,outlet_id,product_id,code,name,voucher_type,discount_value,min_spend,valid_from,valid_until,max_uses,uses_count,redemption_mode,vendors(id,name,logo_url),outlets(id,name,city,state,status,review_status,outlet_pages(hero_url)),products(id,name,status,review_status,outlet_offers(outlet_id,status,outlets(id,name,city,state,outlet_pages(hero_url))))");
   const filteredVoucherQuery = tab === "deals"
     ? voucherQuery.eq("is_active", true).eq("review_status", "approved").eq("is_claimable", true).in("redemption_mode", ["online", "in_store", "both"])
     : voucherQuery.eq("review_status", "approved");
@@ -158,7 +156,9 @@ export async function GET(request: Request) {
 
   const claimByVoucher = new Map((claims ?? []).map((claim) => [claim.voucher_id, claim as ClaimRow]));
   const claimedVoucherIds = new Set(claimByVoucher.keys());
-  const vouchers = (rows ?? []).map((row) => mapVoucher(row as unknown as VoucherRow, claimByVoucher.get(row.id), eligibleProductsByOutlet, managedPlaceImagesByVendor.get(row.vendor_id) ?? []));
+  const vouchers = (rows ?? [])
+    .filter((row) => !row.outlet_id || (relation((row as unknown as VoucherRow).outlets)?.status === "active" && relation((row as unknown as VoucherRow).outlets)?.review_status === "approved"))
+    .map((row) => mapVoucher(row as unknown as VoucherRow, claimByVoucher.get(row.id), eligibleProductsByOutlet, managedPlaceImagesByVendor.get(row.vendor_id) ?? []));
   return apiOk({
     tab,
     vouchers: tab === "mine"

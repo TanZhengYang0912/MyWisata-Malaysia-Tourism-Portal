@@ -154,7 +154,7 @@ describe('POST /api/checkout/prepare with ToyyibPay', () => {
       }]);
       if (table === 'products') return queryResult([{
         id: PRODUCT_ID, outlet_id: OUTLET_ID, vendor_id: VENDOR_ID,
-        name: 'Test activity', cover_url: null, requires_booking: false,
+        name: 'Test activity', cover_url: null, base_price: 50, requires_booking: false,
       }]);
       throw new Error(`unexpected table ${table}`);
     });

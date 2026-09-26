@@ -30,6 +30,7 @@ export async function GET(request: Request, { params }: Props) {
   const outletId = url.searchParams.get('outlet_id');
   const categoryId = url.searchParams.get('category_id');
   const status = url.searchParams.get('status');
+  const reviewStatus = url.searchParams.get('review_status');
   const productType = url.searchParams.get('product_type');
   const q = url.searchParams.get('q')?.trim() || '';
   const sort = url.searchParams.get('sort') || 'newest';
@@ -75,6 +76,7 @@ export async function GET(request: Request, { params }: Props) {
     }
     if (categoryId) query = query.eq('category_id', categoryId);
     if (status) query = query.eq('status', status);
+    if (reviewStatus) query = query.eq('review_status', reviewStatus);
     if (productType) query = query.eq('product_type', productType);
     if (featured === 'true') query = query.contains('tags', ['featured']);
     if (q) {

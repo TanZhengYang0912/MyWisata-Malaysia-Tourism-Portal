@@ -48,16 +48,36 @@ export function validateVoucher(
   return { ok: true };
 }
 
+function voucherEligibleLines(voucher: Voucher, items: CartItem[], activities: Activity[], now = new Date()) {
+  return items.flatMap((cartItem) => {
+    const activity = activities.find((candidate) => candidate.id === cartItem.activityId);
+    if (!activity) return [];
+    const outletId = cartItem.outletId ?? activity.outletId;
+    if (voucher.vendorId && activity.vendorId !== voucher.vendorId) return [];
+    if (voucher.outletId && outletId !== voucher.outletId) return [];
+    if (voucher.productId && activity.id !== voucher.productId) return [];
+    const linePrice = cartItem.priceOverride ?? unitPrice(activity, cartItem.variantId, cartItem.qty, now, items.map((item) => item.activityId));
+    return [{ cartItem, activity, linePrice }];
+  });
+}
+
 export function voucherDiscount(voucher: Voucher, subtotal: number, items: CartItem[] = [], activities: Activity[] = []): number {
+  const eligibleLines = voucherEligibleLines(voucher, items, activities);
+  const hasScopedRule = Boolean(voucher.vendorId || voucher.outletId || voucher.productId);
+  const eligibleSubtotal = hasScopedRule
+    ? round2(eligibleLines.reduce((sum, line) => sum + line.linePrice * line.cartItem.qty, 0))
+    : subtotal;
+  if (hasScopedRule && eligibleLines.length === 0) return 0;
+
   if (voucher.type === "bogo") {
-    const product = activities.find((activity) => activity.id === voucher.productId);
-    const item = items.find((cartItem) => cartItem.activityId === voucher.productId);
-    if (!product || !item || !voucher.buyQuantity || !voucher.freeQuantity) return 0;
-    const freeUnits = Math.floor(item.qty / voucher.buyQuantity) * voucher.freeQuantity;
-    return round2(Math.min(freeUnits * unitPrice(product, item.variantId), subtotal));
+    if (!voucher.buyQuantity || !voucher.freeQuantity) return 0;
+    const rawDiscount = eligibleLines.reduce((sum, { cartItem, linePrice }) => (
+      sum + Math.floor(cartItem.qty / voucher.buyQuantity!) * voucher.freeQuantity! * linePrice
+    ), 0);
+    return round2(Math.min(rawDiscount, eligibleSubtotal));
   }
-  const raw = voucher.type === "percent" ? (subtotal * voucher.value) / 100 : voucher.value;
-  return round2(Math.min(raw, subtotal));
+  const raw = voucher.type === "percent" ? (eligibleSubtotal * voucher.value) / 100 : voucher.value;
+  return round2(Math.min(raw, eligibleSubtotal));
 }
 
 // ─── Cart totals ────────────────────────────────────────────────────────────
@@ -103,7 +123,14 @@ export function cartTotals(
   let discount = 0;
   let voucherError: string | undefined;
   if (voucher) {
-    const validation = validateVoucher(voucher, subtotal, now);
+    const scopedLines = voucherEligibleLines(voucher, items, activities, now);
+    const hasScopedRule = Boolean(voucher.vendorId || voucher.outletId || voucher.productId);
+    const eligibleSubtotal = hasScopedRule
+      ? round2(scopedLines.reduce((sum, line) => sum + line.linePrice * line.cartItem.qty, 0))
+      : subtotal;
+    const validation = hasScopedRule && scopedLines.length === 0
+      ? { ok: false as const, reason: "Voucher is not valid for the selected items." }
+      : validateVoucher(voucher, eligibleSubtotal, now);
     if (validation.ok) {
       discount = voucherDiscount(voucher, subtotal, items, activities);
     } else {

@@ -35,8 +35,8 @@ function ReviewCard({ review }: { review: ProductReview }) {
     <article className="rounded-xl bg-muted/70 px-3 py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-foreground">{review.title || t("ui.reviews.guestReview")}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{review.authorName} · {formatDate(review.createdAt, locale)}</p>
+          <p className="break-words whitespace-normal text-sm font-semibold text-foreground">{review.title || t("ui.reviews.guestReview")}</p>
+          <p className="mt-1 break-words whitespace-normal text-xs text-muted-foreground">{review.authorName} · {formatDate(review.createdAt, locale)}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1" aria-label={t("ui.reviews.ratingOutOfFive", { rating: review.rating })}>
           <Star size={12} fill="var(--highlight-yellow)" stroke="none" />

@@ -59,6 +59,7 @@ function advertisement(id: string, placementId = "11111111-1111-4111-8111-111111
       vendorId: `vendor-${id}`,
       vendorName: "George Town Walks",
       name: "Armenian Street",
+      coverUrl: `/outlet-images/${id}.jpg`,
       category: "Activity",
       state: "Penang",
       city: "George Town",
@@ -203,6 +204,23 @@ describe("SponsoredPartnerRail", () => {
     expect(viewport.className).not.toContain("overflow-x-auto");
     expect(viewport.className).not.toContain("snap-x");
     expect(findElements(container, (element) => element.tagName === "ARTICLE")[0].className).not.toContain("snap-start");
+  });
+
+  it("uses the selected outlet photo and its name as the image alternative", async () => {
+    const item = advertisement("activity-1");
+    await render(root, <SponsoredPartnerRail advertisements={[item]} />);
+
+    const image = findOne(container, (element) => element.tagName === "IMG");
+    expect(image.getAttribute("src")).toBe("/outlet-images/activity-1.jpg");
+    expect(image.getAttribute("alt")).toBe("Armenian Street");
+  });
+
+  it("does not render an activity photo when the outlet has no photo", async () => {
+    const item = advertisement("activity-1");
+    item.outlet.coverUrl = null;
+    await render(root, <SponsoredPartnerRail advertisements={[item]} />);
+
+    expect(findElements(container, (element) => element.tagName === "IMG").length).toBe(0);
   });
 
   it("advances every three seconds and loops from the last advertisement to the first", async () => {

@@ -52,8 +52,9 @@ const CATEGORY_LABEL_KEYS: Record<string, string> = {
   vendor_account: "notifications.categories.vendor_account",
 };
 
-function paramsFor(props: NotificationBellProps, category = "all", read = "all", pageSize = 15) {
-  const params = new URLSearchParams({ page: "1", pageSize: String(pageSize) });
+function paramsFor(props: NotificationBellProps, category = "all", read = "all", pageSize = 15, page = 1, countOnly = false) {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (countOnly) params.set("countOnly", "1");
   if (props.scope === "vendor") {
     params.set("scope", "vendor");
     if (props.vendorId) params.set("vendorId", props.vendorId);
@@ -72,22 +73,71 @@ export function NotificationBell({ scope = "customer", vendorId = null, allHref,
   const [unread, setUnread] = useState(0);
   const [category, setCategory] = useState("all");
   const [readFilter, setReadFilter] = useState("all");
+  const [total, setTotal] = useState(0);
+  const [nextPage, setNextPage] = useState(2);
+  const [loadingMore, setLoadingMore] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  async function load() {
-    try {
-      const response = await fetch(`/api/notifications?${paramsFor(props, category, readFilter)}`);
-      const body = await response.json() as ApiBody;
-      if (response.ok && body.data) setItems(body.data.items);
-      const unreadResponse = await fetch(`/api/notifications?${paramsFor(props, "all", "unread", 1)}`);
-      const unreadBody = await unreadResponse.json() as ApiBody;
-      if (unreadResponse.ok && unreadBody.data) setUnread(unreadBody.data.total);
-    } catch {
-      // Keep the last known notification state when the poll is temporarily unavailable.
+  useEffect(() => {
+    let cancelled = false;
+    let inFlight = false;
+    async function refreshUnread() {
+      if (document.visibilityState !== "visible" || inFlight) return;
+      inFlight = true;
+      try {
+        const response = await fetch(`/api/notifications?${paramsFor({ scope, vendorId }, "all", "unread", 1, 1, true)}`);
+        const body = await response.json() as ApiBody;
+        if (!cancelled && response.ok && body.data) setUnread(body.data.total);
+      } catch {
+        // Keep the last known badge count when the poll is temporarily unavailable.
+      } finally {
+        inFlight = false;
+      }
     }
-  }
-  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
-  useEffect(() => { void load(); const timer = setInterval(() => void load(), 30_000); return () => clearInterval(timer); }, [scope, vendorId, category, readFilter]);
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") void refreshUnread();
+    }
+    void refreshUnread();
+    const timer = window.setInterval(() => void refreshUnread(), 30_000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [scope, vendorId]);
+  useEffect(() => {
+    let cancelled = false;
+    let inFlight = false;
+    async function refreshFeed() {
+      if (!open || document.visibilityState !== "visible" || inFlight) return;
+      inFlight = true;
+      try {
+        const response = await fetch(`/api/notifications?${paramsFor({ scope, vendorId }, category, readFilter)}`);
+        const body = await response.json() as ApiBody;
+        if (!cancelled && response.ok && body.data) {
+          setItems(body.data.items);
+          setTotal(body.data.total);
+          setNextPage(2);
+        }
+      } catch {
+        // Keep the last loaded notification feed when the request is unavailable.
+      } finally {
+        inFlight = false;
+      }
+    }
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") void refreshFeed();
+    }
+    if (open) void refreshFeed();
+    const timer = open ? window.setInterval(() => void refreshFeed(), 30_000) : null;
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [open, scope, vendorId, category, readFilter]);
   useEffect(() => {
     if (!open) return;
     const close = (event: PointerEvent) => { if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false); };
@@ -107,6 +157,27 @@ export function NotificationBell({ scope = "customer", vendorId = null, allHref,
     setItems((current) => current.map((item) => ({ ...item, readAt: item.readAt ?? new Date().toISOString() })));
     setUnread(0);
   }
+  async function loadMore() {
+    if (loadingMore || items.length >= total) return;
+    setLoadingMore(true);
+    const page = nextPage;
+    try {
+      const response = await fetch(`/api/notifications?${paramsFor(props, category, readFilter, 15, page)}`);
+      const body = await response.json() as ApiBody;
+      if (response.ok && body.data) {
+        setItems((current) => {
+          const knownIds = new Set(current.map((item) => item.id));
+          return [...current, ...body.data!.items.filter((item) => !knownIds.has(item.id))];
+        });
+        setTotal(body.data.total);
+        setNextPage(page + 1);
+      }
+    } catch {
+      // The existing notifications remain available if the next page cannot load.
+    } finally {
+      setLoadingMore(false);
+    }
+  }
   return <div ref={ref} className="relative shrink-0">
     <button type="button" aria-label={t("accessibility.notifications")} aria-expanded={open} onClick={() => setOpen((value) => !value)} className={HEADER_ICON_BUTTON_CLASS}>
       <Bell size={18} />{unread > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{unread > 99 ? "99+" : unread}</span>}
@@ -115,7 +186,7 @@ export function NotificationBell({ scope = "customer", vendorId = null, allHref,
       <div className="flex items-center justify-between border-b border-border px-4 py-3"><p className="font-semibold">{t("notifications.title")}</p><button type="button" onClick={() => void markAll()} className="flex items-center gap-1 text-xs text-primary"><CheckCheck size={14} /> {t("notifications.markAllAsRead")}</button></div>
       <div className="flex gap-1 overflow-x-auto border-b border-border px-3 py-2"><button type="button" onClick={() => { setCategory("all"); setReadFilter("unread"); }} className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[0.6875rem] font-semibold ${readFilter === "unread" ? "border-primary bg-primary text-white" : "border-border text-muted-foreground"}`}>{t("notifications.unread")}</button>{props.categories.filter((option) => option.value !== "unread").map((option) => <button key={option.value} type="button" onClick={() => { setCategory(option.value); setReadFilter("all"); }} className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[0.6875rem] font-semibold ${readFilter === "all" && category === option.value ? "border-primary bg-primary text-white" : "border-border text-muted-foreground"}`}>{t(option.labelKey ?? CATEGORY_LABEL_KEYS[option.value] ?? option.label)}</button>)}</div>
       <div className="max-h-96 overflow-y-auto">{items.length === 0 ? <p className="p-5 text-sm text-muted-foreground">{t("notifications.noNotificationsYet")}</p> : items.map((item) => { const localized = localizeNotification(item, (key, options) => t(key, options)); return <div key={item.id} className={`border-b border-border px-4 py-3 ${item.readAt ? "" : "bg-primary/5"}`}><button type="button" onClick={() => void markRead(item.id)} className="w-full text-left"><p className="text-sm font-semibold">{localized.title}</p><p className="mt-1 text-xs text-muted-foreground">{localized.body}</p><p className="mt-1 text-[0.6875rem] text-muted-foreground">{formatDateTime(item.createdAt, locale)}</p></button>{item.link && <Link href={item.link} onClick={() => { if (!item.readAt) void markRead(item.id); setOpen(false); }} className="mt-1 inline-block text-xs font-semibold text-primary">{t("notifications.open")}</Link>}</div>; })}</div>
-      <div className="border-t border-border px-4 py-3 text-center"><Link href={props.allHref} onClick={() => setOpen(false)} className="text-sm font-semibold text-primary">{t("notifications.viewAll")}</Link></div>
+      {scope === "vendor" ? (items.length < total && <div className="border-t border-border px-4 py-3 text-center"><button type="button" onClick={() => void loadMore()} disabled={loadingMore} className="text-sm font-semibold text-primary disabled:opacity-60">{loadingMore ? t("states.loading") : t("notifications.loadMore")}</button></div>) : <div className="border-t border-border px-4 py-3 text-center"><Link href={props.allHref} onClick={() => setOpen(false)} className="text-sm font-semibold text-primary">{t("notifications.viewAll")}</Link></div>}
     </div>}
   </div>;
 }

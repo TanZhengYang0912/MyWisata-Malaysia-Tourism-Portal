@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Bookmark, CalendarDays, ChevronLeft, ChevronRight, Compass, MapPin, Search, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Compass, MapPin, Search, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import type { ComputedActivity } from "@/backend/core/types";
 import { ActivityCard } from "@/components/customer/activity-card";
+import { SaveToggleButton } from "@/components/customer/save-toggle-button";
 import { VendorCard, type CustomerVendorCardVendor } from "@/components/customer/vendor-card";
 import { destinationHref, MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { useSavedDestinations } from "@/components/providers/saved-destinations";
@@ -16,12 +17,17 @@ const DestinationPreviewModal = dynamic(
   () => import("@/components/customer/destination-preview-modal").then((m) => m.DestinationPreviewModal),
   { ssr: false, loading: () => null },
 );
+const EventCalendarDialog = dynamic(
+  () => import("@/components/customer/event-calendar-dialog").then((m) => m.EventCalendarDialog),
+  { ssr: false, loading: () => null },
+);
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ATLAS_BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { useAuth } from "@/components/providers/auth";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
-import { EventCalendarDialog } from "@/components/customer/event-calendar-dialog";
+import { PromotionCampaignSpotlight } from "@/components/customer/promotion-campaign-spotlight";
+import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 
 const PLACEHOLDER_TEXTS = [
   "Where should we wander?",
@@ -69,10 +75,14 @@ export function CustomerHomeClient({
   recommended,
   popular,
   vendors,
+  campaign,
+  campaignUnavailable = false,
 }: {
   recommended: ComputedActivity[];
   popular: ComputedActivity[];
   vendors: DemoVendor[];
+  campaign: PromotionCampaignPublic | null;
+  campaignUnavailable?: boolean;
 }) {
   const { t } = useTranslation("customer");
   const { currentUser } = useAuth();
@@ -168,7 +178,7 @@ export function CustomerHomeClient({
                     <p className="mt-1 font-[family-name:var(--font-display)] text-base font-bold leading-tight">{t("ui.home.keepClose")}</p>
                   </div>
                   <div className="atlas-desktop-spotlight absolute right-5 top-5 z-30 hidden rounded-2xl border border-white/20 bg-[#00004d]/90 px-4 py-3 text-right shadow-lg backdrop-blur lg:block"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">{t("ui.home.spotlight")}</p><p className="mt-1 text-sm font-bold text-white">{activeDestination.state}</p><p className="mt-1 text-[11px] text-[#ffcc00]">{t("ui.home.islandMood")}</p></div>
-                  <div className="absolute inset-x-5 bottom-5 sm:inset-x-7 sm:bottom-7"><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffcc00]">{activeDestination.zone}</p><h2 className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold leading-none text-white sm:text-6xl">{activeDestination.state}</h2><p className="mt-3 text-sm font-semibold text-white/85">{activeDestination.attraction}</p><p className="mt-1 text-xs leading-5 text-white/60">{activeDestination.tagline}</p><div className="mt-5 flex flex-wrap items-center gap-2"><button type="button" onClick={() => setPreviewDestination(activeDestination)} className="atlas-press inline-flex items-center gap-2 rounded-full bg-[#ffcc00] px-4 py-2.5 text-xs font-bold text-[#010066] transition hover:bg-[#ffcc00] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40">{t("ui.home.viewDestination")} <ArrowUpRight size={14} /></button><button type="button" onClick={() => { if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return; void toggleSaved(activeDestination.state); }} aria-pressed={savedStates.has(activeDestination.state)} className="atlas-press inline-flex items-center gap-2 rounded-full border border-white/30 bg-[#00004d]/35 px-3.5 py-2.5 text-xs font-bold text-white backdrop-blur transition hover:border-[#ffcc00] hover:bg-[#00004d]/55 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40"><Bookmark size={14} fill={savedStates.has(activeDestination.state) ? "currentColor" : "none"} /> {savedStates.has(activeDestination.state) ? t("ui.home.savedToAtlas") : t("ui.home.saveFeeling")}</button></div></div>
+                  <div className="absolute inset-x-5 bottom-5 sm:inset-x-7 sm:bottom-7"><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffcc00]">{activeDestination.zone}</p><h2 className="mt-2 font-[family-name:var(--font-display)] text-4xl font-bold leading-none text-white sm:text-6xl">{activeDestination.state}</h2><p className="mt-3 text-sm font-semibold text-white/85">{activeDestination.attraction}</p><p className="mt-1 text-xs leading-5 text-white/60">{activeDestination.tagline}</p><div className="mt-5 flex flex-wrap items-center gap-2"><button type="button" onClick={() => setPreviewDestination(activeDestination)} className="atlas-press inline-flex items-center gap-2 rounded-full bg-[#ffcc00] px-4 py-2.5 text-xs font-bold text-[#010066] transition hover:bg-[#ffcc00] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ffcc00]/40">{t("ui.home.viewDestination")} <ArrowUpRight size={14} /></button><SaveToggleButton onClick={() => { if (!gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) return; void toggleSaved(activeDestination.state); }} appearance="pill" saved={savedStates.has(activeDestination.state)} aria-label={savedStates.has(activeDestination.state) ? t("ui.home.savedToAtlas") : t("ui.home.saveFeeling")} className="atlas-press">{savedStates.has(activeDestination.state) ? t("ui.home.savedToAtlas") : t("ui.home.saveFeeling")}</SaveToggleButton></div></div>
                 </div>
               </div>
             </div>
@@ -221,7 +231,7 @@ export function CustomerHomeClient({
       </section>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-
+        <PromotionCampaignSpotlight campaign={campaign} unavailable={campaignUnavailable} />
 
         {/* 3. Recommended Experiences */}
         {recommendationItems.length > 0 && (
@@ -321,7 +331,7 @@ export function CustomerHomeClient({
           onClose={() => setPreviewDestination(null)}
         />
       )}
-      <EventCalendarDialog open={eventCalendarOpen} onOpenChange={setEventCalendarOpen} />
+      {eventCalendarOpen && <EventCalendarDialog open onOpenChange={setEventCalendarOpen} />}
 
       {/* Hero motion. The markup above was copied from the design-demo prototype
           without this block, so every atlas-* class below had no rule and the hero

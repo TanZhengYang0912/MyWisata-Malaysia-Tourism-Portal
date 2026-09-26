@@ -71,26 +71,30 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!currentUser) return;
     let cancelled = false;
+    let inFlight = false;
     async function poll() {
+      if (cancelled || document.visibilityState !== "visible" || inFlight) return;
+      inFlight = true;
       try {
         const res = await fetch("/api/support/unread-count");
         const body = (await res.json()) as { data: { count: number } | null };
         if (!cancelled && res.ok && body.data) setUnreadTickets(body.data.count);
       } catch {
         // best-effort — a failed poll just leaves the last-known count showing
+      } finally {
+        inFlight = false;
       }
     }
-    (async () => {
-      await poll();
-    })();
-    const interval = setInterval(() => {
-      (async () => {
-        await poll();
-      })();
-    }, UNREAD_POLL_MS);
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") void poll();
+    }
+    void poll();
+    const interval = window.setInterval(() => void poll(), UNREAD_POLL_MS);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [currentUser]);
 
@@ -367,7 +371,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                                     </span>
                                   )}
                                 </span>
-                                <span className="block truncate text-[0.6875rem] text-muted-foreground">{tCustomer(`${item.labelKey}.description`)}</span>
+                                <span className="block whitespace-normal break-words text-[0.6875rem] leading-5 text-muted-foreground">{tCustomer(`${item.labelKey}.description`)}</span>
                               </span>
                             </Link>
                           );

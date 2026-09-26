@@ -14,6 +14,8 @@ describe("isPublicCustomerPath", () => {
       "/customer/affiliate",
       "/customer/for-you",
       "/customer/outlet/outlet-1",
+      "/customer/events",
+      "/customer/events/real-campaign",
     ]) {
       expect(isPublicCustomerPath(path)).toBe(true);
     }

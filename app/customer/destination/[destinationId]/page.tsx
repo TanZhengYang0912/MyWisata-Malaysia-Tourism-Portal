@@ -214,7 +214,7 @@ export default async function DestinationPage({ params }: Props) {
                       )}
                     </div>
                     <div className="flex flex-1 flex-col p-3">
-                      <h3 className="text-sm font-bold text-foreground line-clamp-2">{product.name}</h3>
+                      <h3 className="break-words whitespace-normal text-sm font-bold text-foreground">{product.name}</h3>
                       <ReferencePrice amountMYR={price} className="mt-auto pt-2 text-sm font-bold text-primary" />
                     </div>
                   </Link>
@@ -267,10 +267,10 @@ export default async function DestinationPage({ params }: Props) {
                         {(vendor?.name ?? outlet.name).charAt(0)}
                       </span>
                     )}
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-foreground">{outlet.name}</p>
+                    <div className="min-w-0 break-words whitespace-normal">
+                      <p className="break-words whitespace-normal text-sm font-bold text-foreground">{outlet.name}</p>
                       {vendor && (
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{vendor.name}</p>
+                        <p className="mt-0.5 break-words whitespace-normal text-xs text-muted-foreground">{vendor.name}</p>
                       )}
                       {vendor?.status === "approved" && (
                         <p className="mt-0.5 flex items-center gap-1 text-[10px] font-bold text-primary">
