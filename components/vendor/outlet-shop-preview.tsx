@@ -4,6 +4,8 @@ import { ExternalLink, Pencil, Store, TicketPercent } from "lucide-react";
 import { useEffect, useState } from "react";
 import { OutletPageRenderer } from "@/components/outlet/outlet-page-renderer";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
+import { selectPublicOutletPreviewProducts } from "@/lib/customer/outlet-shop";
+import { loadOutletPreviewProductPages } from "@/lib/vendor/outlet-preview-products";
 import { useTranslation } from "react-i18next";
 import { isAppLocale } from "@/lib/i18n/locale";
 import { formatDateTime } from "@/lib/i18n/format";
@@ -22,6 +24,8 @@ interface Product {
   id: string;
   name: string;
   base_price: number;
+  status: string;
+  review_status: string;
   cover_url?: string | null;
 }
 
@@ -33,6 +37,7 @@ interface Props {
     address: string | null;
     city: string | null;
     state: string | null;
+    operating_hours?: unknown;
   };
   onEdit: () => void;
   onCreateVoucher: () => void;
@@ -61,14 +66,25 @@ export default function OutletShopPreview({ vendorId, outlet, onEdit, onCreateVo
           throw new Error(payload.error?.message || t("shopPreview.loadPageFailed"));
         return payload.data;
       }),
-      fetch(
-        `/api/vendors/${vendorId}/products?outlet_id=${outlet.id}&page=1&pageSize=24`,
-        { cache: "no-store" },
-      ).then(async (response) => {
+      loadOutletPreviewProductPages<Product>(async (page) => {
+        const query = new URLSearchParams({
+          outlet_id: outlet.id,
+          status: "active",
+          review_status: "approved",
+          page: String(page),
+          pageSize: "24",
+        });
+        const response = await fetch(
+          `/api/vendors/${vendorId}/products?${query.toString()}`,
+          { cache: "no-store" },
+        );
         const payload = await response.json();
         if (!response.ok)
           throw new Error(payload.error?.message || t("shopPreview.loadProductsFailed"));
-        return payload.data?.items || [];
+        return {
+          items: payload.data?.items || [],
+          totalPages: Number(payload.data?.pagination?.totalPages),
+        };
       }),
     ])
       .then(([page, productItems]) => {
@@ -82,7 +98,7 @@ export default function OutletShopPreview({ vendorId, outlet, onEdit, onCreateVo
           publishedAt: page?.publishedAt || null,
         });
         setProducts(
-          productItems.map((product: Product) => ({
+          selectPublicOutletPreviewProducts(productItems).map((product) => ({
             ...product,
             base_price: Number(product.base_price),
           })),

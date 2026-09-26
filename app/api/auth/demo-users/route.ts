@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { pickDemoAssignment, pickDemoRole } from '@/lib/auth/demo-user-role';
+import { isDemoToolRuntimeEnabled } from '@/lib/demo/runtime';
 import type { Role, User } from '@/backend/core/types';
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,7 @@ type DemoUserRow = {
  * seeded vendor-owner rows are data-only and cannot sign in.
  */
 export async function GET() {
+  if (!isDemoToolRuntimeEnabled()) return NextResponse.json([]);
   try {
     const db = createServiceClient();
     const [{ data, error }, { data: authData, error: authError }] = await Promise.all([

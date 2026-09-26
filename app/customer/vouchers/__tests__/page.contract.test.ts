@@ -55,6 +55,12 @@ describe("customer voucher hub UI contract", () => {
     expect(ticket).toContain("loading=\"lazy\"");
   });
 
+  it("uses a fallback photo as a full-bleed cover instead of a square logo tile", () => {
+    const ticket = read("components/vouchers/voucher-ticket.tsx");
+    expect(ticket).toContain('<img src={offer.fallback.logoUrl} alt={offer.fallback.logoAlt} width={640} height={480} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />');
+    expect(ticket).not.toContain("h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-3xl bg-white/95 object-contain p-3");
+  });
+
   it("uses one shared ticket treatment for customer vouchers and vendor previews", () => {
     const customer = read("app/customer/vouchers/voucher-hub-client.tsx");
     const vendor = read("app/vendor/vouchers/page.tsx");

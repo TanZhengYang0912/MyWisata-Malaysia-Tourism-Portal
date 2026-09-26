@@ -46,4 +46,9 @@ describe("calendar-first My Activity flow", () => {
     expect(calendarSource).toContain('isActivityHistory(searchParams.get("history"))');
     expect(activitySource).not.toContain("initialScope=");
   });
+
+  it("shows bookings only after their order settles and refreshes when payment status changes", () => {
+    expect(calendarSource).toContain("getSettledBookingsForUser(currentUser.id)");
+    expect(calendarSource).toContain('table: "orders", filter: `user_id=eq.${currentUser.id}`');
+  });
 });

@@ -7,6 +7,7 @@ import { outletCreateSchema } from '@/lib/validation/vendor-schemas';
 import { slugify } from '@/lib/utils';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { resolveOutletImage, type ManagedPlaceImage } from '@/lib/outlet-images';
+import { selectEntityGallery, type EntityMediaRow } from '@/lib/customer/entity-media';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -56,14 +57,40 @@ export async function GET(request: Request, { params }: Props) {
     supabase.from('places').select('name,image_url').eq('managed_by_vendor_id', vendorId).eq('level', 'poi').eq('status', 'active'),
   ]);
   if (error || stateError || managedPlacesError) return apiFail('DB_ERROR', (error || stateError || managedPlacesError)?.message || 'Unknown error', 500);
+
+  const outletIds = ((data ?? []) as unknown as Array<{ id: string }>).map((outlet) => outlet.id);
+  const { data: outletMedia, error: outletMediaError } = outletIds.length
+    ? await supabase
+      .from('media_assets')
+      .select('outlet_id,url,alt_text,media_type,sort_order')
+      .in('outlet_id', outletIds)
+      .is('product_id', null)
+      .in('media_type', ['gallery', 'image'])
+      .order('sort_order')
+    : { data: [], error: null };
+  if (outletMediaError) return apiFail('DB_ERROR', outletMediaError.message, 500);
+
+  const outletMediaById = new Map<string, EntityMediaRow[]>();
+  for (const media of outletMedia ?? []) {
+    const rows = outletMediaById.get(media.outlet_id) ?? [];
+    rows.push({
+      url: media.url,
+      altText: media.alt_text,
+      mediaType: media.media_type,
+      sortOrder: media.sort_order,
+    });
+    outletMediaById.set(media.outlet_id, rows);
+  }
+
   const managedPlaceImages = (managedPlaces ?? []).map((place: { name: string; image_url: string | null }) => ({ name: place.name, imageUrl: place.image_url })) as ManagedPlaceImage[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const items = (data ?? []).map((outlet: any) => {
     const outletPage = Array.isArray(outlet.outlet_pages) ? outlet.outlet_pages[0] : outlet.outlet_pages;
+    const outletGalleryUrl = selectEntityGallery(outletMediaById.get(outlet.id) ?? [])[0]?.url;
     const assignment = Array.isArray(outlet.outlet_managers) ? outlet.outlet_managers[0] : outlet.outlet_managers;
     const manager = Array.isArray(assignment?.users) ? assignment.users[0] : assignment?.users;
     const pendingInvite = (Array.isArray(outlet.outlet_manager_invitations) ? outlet.outlet_manager_invitations : []).find((invite: { invited_email: string; status: string; expires_at: string }) => invite.status === 'pending' && new Date(invite.expires_at).getTime() > Date.now());
-    return { ...outlet, coverUrl: resolveOutletImage({ outletName: outlet.name, outletHeroUrl: outletPage?.hero_url, managedPlaceImages }), productsCount: outlet.products?.[0]?.count ?? 0, manager: manager ? { id: manager.id, fullName: manager.full_name, email: manager.email } : null, pendingInvitation: pendingInvite ? { email: pendingInvite.invited_email, expiresAt: pendingInvite.expires_at } : null };
+    return { ...outlet, coverUrl: resolveOutletImage({ outletName: outlet.name, outletGalleryUrl, outletHeroUrl: outletPage?.hero_url, managedPlaceImages }), productsCount: outlet.products?.[0]?.count ?? 0, manager: manager ? { id: manager.id, fullName: manager.full_name, email: manager.email } : null, pendingInvitation: pendingInvite ? { email: pendingInvite.invited_email, expiresAt: pendingInvite.expires_at } : null };
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return apiOk({ items, availableStates: [...new Set((stateRows || []).map((row: any) => row.state))], pagination: { page, pageSize, total: count || 0, totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)) } });

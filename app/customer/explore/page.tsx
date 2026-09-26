@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { searchActivities } from "@/backend/domains/catalogue";
+import { getCachedComputedActivities } from "@/lib/cache/catalogue-cache";
 import { getStatesWithPlaces } from "@/backend/domains/places";
 import { ExploreClient } from "./explore-client";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default async function ExplorePage() {
   const db = await createClient();
   const [activities, statesWithPlaces, placeRows] = await Promise.all([
-    searchActivities({ state: "All Malaysia", category: null }, db),
+    getCachedComputedActivities(),
     getStatesWithPlaces(db),
     db.from("places").select("state").eq("level", "poi").eq("status", "active"),
   ]);

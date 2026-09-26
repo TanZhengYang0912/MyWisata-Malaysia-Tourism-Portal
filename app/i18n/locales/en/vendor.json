@@ -24,7 +24,6 @@
     "Orders": "Orders",
     "Wallet": "Wallet",
     "Inbox": "Inbox",
-    "Notifications": "Notifications",
     "Analytics": "Analytics",
     "Operations": "Operations",
     "Shop page": "Shop"
@@ -217,13 +216,17 @@
     "uploadAndSubmitting": "Uploading images and submitting…",
     "required": "Required",
     "optional": "Optional",
+    "phoneHint": "Choose a country; its calling code stays beside the field. Enter only the number after that code. For Malaysia (+60), omit the leading 0 from a local number: 012 345 6789 becomes 12 345 6789. Number grouping follows the selected country.",
     "sections": {
       "businessProfile": "Business profile",
-      "businessProfileDescription": "Start with the name and category customers will recognise.",
+      "businessProfileDescription": "Business name is how customers see you on MyLawatan. Legal business name below is the name on your registration documents; the two can be the same or different. Choose the closest business type and describe what customers can book or visit.",
+      "businessProfileHelpLabel": "About your business profile",
       "legalContact": "Legal and contact details",
-      "legalContactDescription": "Share registration details if available and tell us who to contact.",
+      "legalContactDescription": "Enter your registered business name and SSM or company registration number if available. These are optional. Your contact details help us follow up about your application.",
+      "legalContactHelpLabel": "About legal and contact details",
       "brandAssets": "Brand assets",
-      "brandAssetsDescription": "Upload an optional logo and cover image, then add three photos to introduce your business. JPG, PNG, or WebP files up to 2 MB each."
+      "brandAssetsDescription": "Logo, cover image, and gallery are optional. If you add gallery photos, upload exactly three or leave the gallery empty. Use JPG, PNG, or WebP files up to 2 MB each.",
+      "brandAssetsHelpLabel": "About brand images"
     },
     "images": {
       "emptyTitle": "Choose an image or drop it here",
@@ -334,7 +337,6 @@
       "legalBusinessName": "Registered business name",
       "registrationNumber": "Enter if available",
       "contactPerson": "Owner or authorised person",
-      "contactPhone": "+60...",
       "businessEmail": "business@example.com",
       "businessAddress": "Registered business address"
     },
@@ -765,6 +767,7 @@
       "voucherRedeemed": "Voucher redeemed successfully.",
       "foodOrderKind": "Food order",
       "foodOrderTitle": "Food order #{{order}}",
+      "vendor": "Vendor",
       "foodOrderFulfilled": "Food order fulfilled successfully.",
       "foodDineInCheckedIn": "Dine-in arrival confirmed. The order is still awaiting service.",
       "voucherKind": "Voucher",
@@ -841,21 +844,6 @@
       "category": "Category",
       "bookingRequired": "Booking Required",
       "price": "Price"
-    },
-    "notifications": {
-      "all": "All",
-      "unread": "Unread",
-      "orders": "Orders",
-      "bookings": "Bookings",
-      "products": "Products",
-      "wallet": "Wallet",
-      "account": "Account",
-      "loading": "Loading notifications…",
-      "unavailableTitle": "Vendor notifications unavailable",
-      "unavailableDescription": "We could not resolve an approved vendor workspace for this account.",
-      "workspace": "Vendor workspace",
-      "title": "Notifications",
-      "description": "Latest orders, bookings, product, wallet and account updates for your authorised vendor scope."
     },
     "orders": {
       "loadFailed": "Could not load orders.",

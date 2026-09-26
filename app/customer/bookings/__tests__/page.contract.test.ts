@@ -49,8 +49,15 @@ describe("customer booking details", () => {
     }
   });
 
-  it("lets the entry pass container grow to fit the QR status controls", () => {
-    expect(pageSource).toContain("min-h-32 w-32");
-    expect(pageSource).not.toMatch(/className="flex h-32 w-32\b/);
+  it("uses the shared card with a right-side QR column that can grow with its controls", () => {
+    const sharedCard = readFileSync(
+      resolve(process.cwd(), "components/customer/customer-qr-pass-card.tsx"),
+      "utf8",
+    );
+    expect(pageSource).toContain("CustomerQrPassCard");
+    expect(sharedCard).toContain("grid-cols-[minmax(0,1fr)_8rem]");
+    expect(sharedCard).toContain("sm:grid-cols-[minmax(0,1fr)_11rem]");
+    expect(sharedCard).toContain("justify-self-end");
+    expect(sharedCard).not.toContain("h-32 w-32");
   });
 });

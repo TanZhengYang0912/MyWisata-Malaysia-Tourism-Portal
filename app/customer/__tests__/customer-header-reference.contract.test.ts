@@ -22,6 +22,10 @@ describe("customer header reference contract", () => {
     expect(customerLayoutSource).not.toContain("markSize={56}");
   });
 
+  it("keeps the shared Customer header fixed at the top while routes scroll", () => {
+    expect(customerLayoutSource).toMatch(/<nav className="sticky top-0 z-40\b/);
+  });
+
   it("uses the supplied logo asset without changing the header row geometry", () => {
     expect(customerLayoutSource).toContain('src="/branding/mywisata-logo-transparent.png?v=2"');
     expect(customerLayoutSource).toContain("width={758}");
@@ -45,5 +49,11 @@ describe("customer header reference contract", () => {
     expect(customerLayoutSource).toContain('className="hidden md:flex w-28"');
     expect(customerLayoutSource).not.toContain('className="hidden md:block"');
     expect(customerLayoutSource).not.toContain("max-md:hidden");
+  });
+
+  it("wraps account-menu descriptions instead of clipping them with an ellipsis", () => {
+    expect(customerLayoutSource).toContain(
+      '<span className="block whitespace-normal break-words text-[0.6875rem] leading-5 text-muted-foreground">{tCustomer(`${item.labelKey}.description`)}</span>',
+    );
   });
 });

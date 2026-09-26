@@ -457,8 +457,8 @@ export function ChatThreadPanel({
                           </span>
                         )}
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-xs font-semibold text-foreground">{message.context.title}</span>
-                          {message.context.subtitle && <span className="block truncate text-[0.6875rem] text-muted-foreground">{message.context.subtitle}</span>}
+                          <span className="block break-words whitespace-normal text-xs font-semibold text-foreground">{message.context.title}</span>
+                          {message.context.subtitle && <span className="block break-words whitespace-normal text-[0.6875rem] text-muted-foreground">{message.context.subtitle}</span>}
                           <span className="mt-0.5 block text-[0.625rem] font-semibold text-primary">{t("ui.chat.contextCard.view")}</span>
                         </span>
                       </Link>
@@ -535,8 +535,8 @@ export function ChatThreadPanel({
               )}
               <div className="min-w-0 flex-1">
                 <p className="text-[0.6875rem] font-semibold text-muted-foreground">{t("ui.chat.inquiryBanner.title")}</p>
-                <p className="truncate text-xs font-semibold text-foreground">{pendingContext.title}</p>
-                {pendingContext.subtitle && <p className="truncate text-[0.6875rem] text-muted-foreground">{pendingContext.subtitle}</p>}
+                <p className="break-words whitespace-normal text-xs font-semibold text-foreground">{pendingContext.title}</p>
+                {pendingContext.subtitle && <p className="break-words whitespace-normal text-[0.6875rem] text-muted-foreground">{pendingContext.subtitle}</p>}
               </div>
               {onDismissContext && (
                 <button type="button" onClick={onDismissContext} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={t("ui.chat.inquiryBanner.dismiss")}>

@@ -118,3 +118,37 @@ export async function resolveEffectiveCapability(
     return unavailableDecision(capability);
   }
 }
+
+/** Resolve a capability snapshot with one database round trip, falling back to
+ * the established per-capability RPC while older database deployments roll
+ * forward. Each returned decision is still validated by the same parser. */
+export async function resolveEffectiveCapabilities(
+  userId: string,
+  capabilities: readonly CapabilityKey[],
+): Promise<Map<CapabilityKey, EntitlementDecision>> {
+  try {
+    const db = await createClient();
+    const { data, error } = await db.rpc("resolve_user_capabilities", {
+      p_user_id: userId,
+      p_capability_keys: [...capabilities],
+    });
+
+    if (!error && isRecord(data)) {
+      const parsed = new Map<CapabilityKey, EntitlementDecision>();
+      for (const capability of capabilities) {
+        const decision = parseEntitlementDecision(data[capability], capability);
+        if (!decision) break;
+        parsed.set(capability, decision);
+      }
+      if (parsed.size === new Set(capabilities).size) return parsed;
+    }
+  } catch {
+    // The compatibility path below also covers a not-yet-applied migration.
+  }
+
+  const decisions = await Promise.all(capabilities.map(async (capability) => [
+    capability,
+    await resolveEffectiveCapability(userId, capability),
+  ] as const));
+  return new Map(decisions);
+}

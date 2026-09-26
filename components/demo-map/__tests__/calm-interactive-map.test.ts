@@ -26,7 +26,10 @@ describe("calm interactive Explore map", () => {
     expect(storySource).toContain("lg:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.75fr)]");
     expect(storySource).toContain("selectedStateId ?");
     expect(storySource).toContain('aria-label={t("ui.map.chooseStateLabel")}');
-    expect(storySource).toContain('onChange={(event) => onSelectState(event.target.value || null)}');
+    expect(storySource).toContain('value={selectedStateId ?? "all"}');
+    expect(storySource).toContain('value === "all" ? null : value');
+    expect(storySource).toContain("<SelectItem key={state.id} value={state.id}");
+    expect(storySource).toContain("/flags/states/${STATE_FLAG_CODES[stateId]}.svg");
   });
 
   it("keeps map and detail panels at a fixed desktop height while preserving mobile sizing", () => {

@@ -20,21 +20,22 @@ const record = (overrides: Partial<CustomerCalendarRecord> = {}): CustomerCalend
   outletId: "outlet-1",
   outletName: "Armenian Street Outlet",
   vendorName: "George Town Walks",
+  categorySlug: "activity",
   startsAt: "2026-09-14T06:00:00.000Z",
   endsAt: "2026-09-14T07:00:00.000Z",
   capacity: 10,
   booked: 3,
   status: "available",
-  operatingHours: weekdayHours,
   ...overrides,
 });
 
 describe("customer event calendar", () => {
-  it("only publishes future available slots that fit the outlet operating hours", () => {
+  it("only publishes future available slots with remaining capacity", () => {
     const events = toCustomerCalendarEvents([
       record(),
       record({ id: "full", booked: 10 }),
-      record({ id: "outside", startsAt: "2026-09-14T11:00:00.000Z", endsAt: "2026-09-14T12:00:00.000Z" }),
+      record({ id: "cancelled", status: "cancelled" }),
+      record({ id: "past", startsAt: "2026-09-11T06:00:00.000Z", endsAt: "2026-09-11T07:00:00.000Z" }),
     ], new Date("2026-09-12T00:00:00.000Z"));
 
     expect(events).toHaveLength(1);
@@ -44,6 +45,50 @@ describe("customer event calendar", () => {
       start: "2026-09-14T06:00:00.000Z",
       end: "2026-09-14T07:00:00.000Z",
       extendedProps: { activityId: "activity-1", outletId: "outlet-1", remainingCapacity: 7 },
+    });
+  });
+
+  it("keeps a future available booking slot even when it falls outside outlet hours", () => {
+    const events = toCustomerCalendarEvents([
+      record({
+        id: "evening-slot",
+        startsAt: "2026-09-14T14:00:00.000Z",
+        endsAt: "2026-09-14T16:00:00.000Z",
+      }),
+    ], new Date("2026-09-12T00:00:00.000Z"));
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      id: "evening-slot",
+      start: "2026-09-14T14:00:00.000Z",
+      end: "2026-09-14T16:00:00.000Z",
+    });
+  });
+
+  it("shows accommodation on its Malaysia-local stay date without inventing a time or duration", () => {
+    const [event] = toCustomerCalendarEvents([
+      record({
+        id: "room-check-in",
+        activityName: "Deluxe Room",
+        categorySlug: "accommodation",
+        startsAt: "2026-09-13T18:00:00.000Z",
+        endsAt: "2026-09-13T20:00:00.000Z",
+      }),
+    ], new Date("2026-09-12T00:00:00.000Z"));
+
+    expect(event.start).toBe("2026-09-14");
+    expect(event.allDay).toBe(true);
+    expect(event).not.toHaveProperty("end");
+    expect(event.extendedProps.isAccommodation).toBe(true);
+  });
+
+  it("retains both ends of a scheduled activity session", () => {
+    const [event] = toCustomerCalendarEvents([record()], new Date("2026-09-12T00:00:00.000Z"));
+
+    expect(event).toMatchObject({
+      start: "2026-09-14T06:00:00.000Z",
+      end: "2026-09-14T07:00:00.000Z",
+      extendedProps: { isAccommodation: false },
     });
   });
 

@@ -30,6 +30,14 @@ describe('contentReviewSchema', () => {
 });
 
 describe('vendorRegisterSchema', () => {
+  it('accepts an international contact number for the selected country', () => {
+    const results = ['+12025550142', '+60177143951', '+601123456789', '0177143951'].map((contactPhone) => (
+      vendorRegisterSchema.safeParse({ name: 'Valid Vendor', contactPhone })
+    ));
+
+    expect(results.every((result) => result.success)).toBe(true);
+  });
+
   it('emits stable translation keys for client-side field validation', () => {
     const required = vendorRegisterSchema.safeParse({});
     expect(required.success).toBe(false);

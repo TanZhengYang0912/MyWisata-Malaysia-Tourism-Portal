@@ -2,18 +2,17 @@ import { z } from "zod";
 
 import { mutationReceipt } from "@/app/api/admin/access-control/_shared";
 import { requireStaffRoleManagementSuperAdmin } from "@/lib/staff-permissions/server";
-import { apiFail, parseBody } from "@/lib/validation/schemas";
+import { apiFail, databaseUuidSchema, parseBody } from "@/lib/validation/schemas";
 
 type Context = { params: Promise<{ roleId: string }> };
 
-const uuidSchema = z.string().uuid();
 const reasonSchema = z.string().trim().min(10).max(500);
 const assignStaffRoleSchema = z.object({
-  userId: uuidSchema,
+  userId: databaseUuidSchema,
   reason: reasonSchema,
 }).strict();
 const revokeStaffRoleSchema = z.object({
-  assignmentId: uuidSchema,
+  assignmentId: databaseUuidSchema,
   reason: reasonSchema,
 }).strict();
 
@@ -44,7 +43,7 @@ function staffAssignmentFailure(message: string) {
 
 async function validatedRoleId(context: Context) {
   const { roleId } = await context.params;
-  return uuidSchema.safeParse(roleId).success ? roleId : null;
+  return databaseUuidSchema.safeParse(roleId).success ? roleId : null;
 }
 
 export async function POST(request: Request, context: Context) {

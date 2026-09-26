@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { mutationReceipt } from "@/app/api/admin/access-control/_shared";
-import { moduleFailure, staffModuleCreateSchema } from "@/app/api/admin/access-control/staff-modules/route";
+import { moduleFailure, staffModuleCreateSchema } from "@/app/api/admin/access-control/staff-modules/_shared";
 import { requireStaffRoleManagementSuperAdmin } from "@/lib/staff-permissions/server";
 import { apiFail, parseBody } from "@/lib/validation/schemas";
 

@@ -38,14 +38,17 @@
     "AI Assistant": "AI 助手",
     "Staff Conduct": "员工行为",
     "Access Control": "访问控制",
-    "Sponsored Placements": "赞助"
+    "Sponsored Placements": "赞助",
+    "Promotion Campaigns": "活动",
+    "Orders": "订单"
   },
   "navigationSections": {
     "workspace": "工作区",
     "governance": "治理",
     "finance": "财务",
     "support": "支持",
-    "administration": "管理"
+    "administration": "管理",
+    "operations": "运营"
   },
   "sponsoredPlacements": {
     "eyebrow": "探索推广活动",
@@ -2997,6 +3000,32 @@
     "recommendationEvidence": "{{label}}：{{evidence}}",
     "recommendationPhotoStatus": "{{photo}} · {{status}}"
   },
+  "orderOperations": {
+    "eyebrow": "订单运营",
+    "title": "客户订单",
+    "description": "查看来自客户结账流程的实时订单、付款和门店履约信息。",
+    "refresh": "刷新",
+    "searchLabel": "订单 ID",
+    "searchPlaceholder": "粘贴完整订单 ID",
+    "search": "搜索",
+    "status": "状态",
+    "statuses": { "all": "全部状态", "pending_payment": "待付款", "paid": "已付款", "completed": "已完成", "cancelled": "已取消", "failed": "失败", "refunded": "已退款" },
+    "loading": "正在加载实时订单…",
+    "empty": "没有符合筛选条件的订单。",
+    "order": "订单",
+    "customer": "客户",
+    "items": "商品和门店",
+    "payment": "付款",
+    "total": "总计",
+    "created": "创建时间",
+    "unknownCustomer": "无法获取客户信息",
+    "fulfilment": "履约",
+    "paymentPending": "无法获取付款记录",
+    "count": "{{total}} 个订单",
+    "previous": "上一页",
+    "next": "下一页",
+    "errors": { "load": "无法加载订单，请重试。" }
+  },
   "moderationWords": {
     "eyebrow": "内容审核",
     "title": "审核词库",
@@ -3035,6 +3064,89 @@
       "add": "无法添加词语",
       "update": "无法更新词语",
       "remove": "无法移除词语"
+    }
+  },
+  "promotionCampaigns": {
+    "eyebrow": "顾客活动",
+    "title": "快闪活动管理",
+    "description": "安排真实商家优惠券和门店商品，并提交给另一位管理员审批。",
+    "refresh": "刷新",
+    "form": {
+      "title": "创建活动草稿",
+      "editTitle": "编辑活动草稿",
+      "guidance": "活动文案和时间应与关联优惠一致；这里不会创建折扣或虚构库存。",
+      "name": "活动标题",
+      "slug": "页面地址",
+      "summary": "简短介绍",
+      "description": "详细介绍",
+      "startsAt": "开始时间",
+      "endsAt": "结束时间",
+      "timezone": "所有时间均为马来西亚时间（UTC+08:00）。",
+      "invalidRange": "结束时间必须晚于开始时间。",
+      "offers": "参与优惠",
+      "offerGuidance": "选择现有且已审核的优惠。商品选项会明确显示所属门店。",
+      "offerCount": "已选择 {{count}} 项",
+      "offerCount_one": "已选择 {{count}} 项",
+      "offerCount_other": "已选择 {{count}} 项",
+      "offerType": "优惠类型",
+      "product": "门店商品",
+      "voucher": "优惠券",
+      "source": "优惠项目",
+      "chooseSource": "选择符合条件的优惠",
+      "vendorWide": "所有符合条件的门店",
+      "addOffer": "添加优惠",
+      "noSources": "当前没有符合条件的此类优惠。",
+      "unavailableVoucher": "此优惠券已不符合条件，请移除并选择其他优惠。",
+      "unavailableProduct": "此商品或门店已不符合条件，请移除并选择其他优惠。",
+      "removeOffer": "移除 {{name}}",
+      "saveChanges": "保存草稿更改",
+      "saveDraft": "保存为草稿",
+      "cancelEdit": "取消编辑"
+    },
+    "list": {
+      "title": "活动工作流",
+      "description": "当前列表有 {{count}} 个活动",
+      "description_one": "当前列表有 {{count}} 个活动",
+      "description_other": "当前列表有 {{count}} 个活动",
+      "linkedOffers": "项关联优惠",
+      "rejection": "审核备注"
+    },
+    "states": {
+      "loading": "正在加载活动和符合条件的优惠…",
+      "empty": "还没有活动",
+      "emptyDescription": "创建草稿，添加真实商家优惠，然后提交审核。"
+    },
+    "status": {
+      "draft": "草稿",
+      "pending_approval": "待审批",
+      "approved": "已批准",
+      "rejected": "需要修改",
+      "paused": "已暂停",
+      "archived": "已归档"
+    },
+    "actions": {
+      "edit": "编辑草稿",
+      "submit": "提交审核",
+      "approve": "批准",
+      "reject": "要求修改",
+      "pause": "暂停",
+      "resume": "恢复",
+      "archive": "归档"
+    },
+    "prompts": {
+      "rejectReason": "请说明需要修改的内容（至少10个字符）。",
+      "confirm": {
+        "submit": "确定提交此活动进行审批吗？",
+        "approve": "确定批准发布此活动吗？",
+        "pause": "确定立即暂停此活动吗？",
+        "archive": "确定归档此活动吗？"
+      }
+    },
+    "errors": {
+      "load": "无法加载活动和符合条件的优惠。",
+      "forbidden": "你没有管理促销活动的权限。",
+      "save": "无法保存活动草稿。",
+      "transition": "无法更新此活动。"
     }
   }
 }

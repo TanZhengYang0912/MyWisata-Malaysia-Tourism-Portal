@@ -88,12 +88,13 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
           {!(activity.outlet.currentlyOpen ?? activity.outlet.open) && <div className="absolute bottom-3 right-3 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white" style={{ backgroundColor: "rgba(36,49,58,0.8)" }}>{t("ui.labels.closed")}</div>}
         </Link>
         <SaveToggleButton
+          appearance="icon"
           onClick={handleSave}
           disabled={saving}
           saved={saved}
           aria-label={saved ? t("ui.activity.removeSaved", { name: activity.name }) : t("ui.activity.save", { name: activity.name })}
           title={saved ? t("ui.activity.removeSavedShort") : t("ui.activity.saveShort")}
-          className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full transition ${saved ? "bg-amber-100 text-primary" : "bg-white/90 text-slate-700"} disabled:cursor-wait disabled:opacity-70`}
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center disabled:cursor-wait disabled:opacity-70"
         />
         <div className="absolute right-3 top-12">
           <ShareButton compact shareType="product" contentId={activity.id} title={activity.name} />
@@ -102,10 +103,10 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
       <div className="mw-card-body space-y-2 p-4">
         <Link href={activityHref} onClick={onSponsoredClick} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30">
           <h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={activity.name}>{activity.name}</h3>
-          <div className="mw-card-meta mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin size={11} aria-hidden="true" /> {activity.outlet.city}, {activity.outlet.state}</div>
+          <div className="mw-card-meta mt-2 flex items-start gap-1.5 text-xs text-muted-foreground"><MapPin size={11} className="mt-0.5 shrink-0" aria-hidden="true" /> <span className="break-words whitespace-normal">{activity.outlet.city}, {activity.outlet.state}</span></div>
         </Link>
-        <Link href={getOutletShopHref(activity.outlet.id)} className="mw-card-meta flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-primary" title={t("ui.activity.visitShop", { vendor: activity.outlet.vendorName ?? t("ui.labels.localVendor") })}>
-          <Store size={11} aria-hidden="true" /> <span className="truncate">{t("ui.activity.visitShop", { vendor: activity.outlet.vendorName ?? t("ui.labels.localVendor") })}</span>
+        <Link href={getOutletShopHref(activity.outlet.id)} className="mw-card-meta flex items-start gap-1.5 text-xs text-muted-foreground transition hover:text-primary" title={t("ui.activity.visitShop", { vendor: activity.outlet.vendorName ?? t("ui.labels.localVendor") })}>
+          <Store size={11} className="mt-0.5 shrink-0" aria-hidden="true" /> <span className="break-words whitespace-normal">{t("ui.activity.visitShop", { vendor: activity.outlet.vendorName ?? t("ui.labels.localVendor") })}</span>
         </Link>
         {activity.outlet.operatingHours ? <OperatingHoursSummary hours={activity.outlet.operatingHours} currentlyOpen={activity.outlet.currentlyOpen ?? activity.outlet.open} compact /> : activity.outlet.hours && <div className="mw-card-meta text-xs text-muted-foreground"><span className="font-semibold text-foreground">{t("ui.labels.operatingHours")}:</span> {activity.outlet.hours}</div>}
         <div className="flex min-h-5 items-center gap-3">

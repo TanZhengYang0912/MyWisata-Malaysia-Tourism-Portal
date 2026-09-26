@@ -18,7 +18,8 @@ describe("place discovery section layout", () => {
     expect(source).toContain('searchParams.getAll("area")');
     expect(source).toContain("items-stretch");
     expect(card).toContain("group-hover:scale-105");
-    expect(card).toContain("line-clamp-2");
+    expect(card).toContain("break-words whitespace-normal");
+    expect(card).not.toContain("line-clamp-2");
     expect(card).toContain("min-h-[390px]");
   });
 

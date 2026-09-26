@@ -11,12 +11,19 @@ const catalogueSource = read("backend/domains/catalogue.ts");
 const filterSource = read("components/customer/discovery-filters.tsx");
 
 describe("customer vendor search contract", () => {
+  it("loads outlet-owned gallery photos for sponsored outlets even when a Hero exists", () => {
+    expect(pageSource).toContain("attachSponsoredOutletGalleryCovers");
+    expect(pageSource).toContain('.from("media_assets")');
+    expect(pageSource).toContain('.in("outlet_id", sponsoredOutletIds)');
+    expect(pageSource).toContain('.is("product_id", null)');
+  });
+
   it("provides approved vendors with a safe sponsored placement projection", () => {
     expect(pageSource).toContain("getVendors(db)");
     expect(pageSource).toContain("getRecommendedFeed");
     expect(pageSource).toContain("rankVendorsByPersonalizedFeed");
     expect(pageSource).toContain('rpc("list_active_sponsored_discovery_placements")');
-    expect(pageSource).toContain("initialResults={results}");
+    expect(pageSource).toContain("initialResults={partnerResults}");
     expect(pageSource).toContain("initialVendors=");
     expect(pageSource).toContain("recommendedVendors=");
     expect(pageSource).toContain("sponsoredPlacements=");

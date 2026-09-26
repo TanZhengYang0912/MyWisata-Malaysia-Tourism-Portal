@@ -76,6 +76,16 @@ describe("requireStaffPermission", () => {
     });
   });
 
+  it("resolves campaign governance through its dedicated permission key", async () => {
+    const result = await requireStaffPermission("admin.promotion_campaign.manage");
+
+    expect(result.response).toBeNull();
+    expect(mocks.rpc).toHaveBeenCalledWith("has_staff_permission", {
+      p_user_id: "staff-1",
+      p_permission_key: "admin.promotion_campaign.manage",
+    });
+  });
+
   it("accepts the Super Admin grant returned by the governed RPC", async () => {
     const result = await requireStaffPermission("admin.kyc.review");
 

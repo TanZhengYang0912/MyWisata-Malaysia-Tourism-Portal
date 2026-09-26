@@ -10,6 +10,7 @@ const PUBLIC_CUSTOMER_PREFIXES = [
   "/customer/explore",
   "/customer/partners",
   "/customer/search",
+  "/customer/events",
   "/customer/activity/",
   "/customer/vendor/",
   "/customer/destination/",

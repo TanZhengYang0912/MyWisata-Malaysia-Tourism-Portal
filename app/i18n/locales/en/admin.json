@@ -38,14 +38,17 @@
     "AI Assistant": "AI Assistant",
     "Staff Conduct": "Staff Conduct",
     "Access Control": "Access Control",
-    "Sponsored Placements": "Sponsored"
+    "Sponsored Placements": "Sponsored",
+    "Promotion Campaigns": "Campaigns",
+    "Orders": "Orders"
   },
   "navigationSections": {
     "workspace": "Workspace",
     "governance": "Governance",
     "finance": "Finance",
     "support": "Support",
-    "administration": "Administration"
+    "administration": "Administration",
+    "operations": "Operations"
   },
   "sponsoredPlacements": {
     "eyebrow": "Discovery campaigns",
@@ -2997,6 +3000,32 @@
     "recommendationEvidence": "{{label}}: {{evidence}}",
     "recommendationPhotoStatus": "{{photo}} · {{status}}"
   },
+  "orderOperations": {
+    "eyebrow": "Order operations",
+    "title": "Customer orders",
+    "description": "Review live order, payment and outlet fulfilment details from the customer checkout flow.",
+    "refresh": "Refresh",
+    "searchLabel": "Order ID",
+    "searchPlaceholder": "Paste a complete order ID",
+    "search": "Search",
+    "status": "Status",
+    "statuses": { "all": "All statuses", "pending_payment": "Pending payment", "paid": "Paid", "completed": "Completed", "cancelled": "Cancelled", "failed": "Failed", "refunded": "Refunded" },
+    "loading": "Loading current orders…",
+    "empty": "No orders match these filters.",
+    "order": "Order",
+    "customer": "Customer",
+    "items": "Items and outlet",
+    "payment": "Payment",
+    "total": "Total",
+    "created": "Created",
+    "unknownCustomer": "Customer details unavailable",
+    "fulfilment": "Fulfilment",
+    "paymentPending": "Payment record unavailable",
+    "count": "{{total}} orders",
+    "previous": "Previous",
+    "next": "Next",
+    "errors": { "load": "Could not load orders. Try again." }
+  },
   "moderationWords": {
     "eyebrow": "Moderation",
     "title": "Moderation Words",
@@ -3035,6 +3064,89 @@
       "add": "Could not add word",
       "update": "Could not update word",
       "remove": "Could not remove word"
+    }
+  },
+  "promotionCampaigns": {
+    "eyebrow": "Customer events",
+    "title": "Pop-up campaign manager",
+    "description": "Schedule real partner vouchers and outlet offers, then submit them for independent approval.",
+    "refresh": "Refresh",
+    "form": {
+      "title": "Create a campaign draft",
+      "editTitle": "Edit campaign draft",
+      "guidance": "Use campaign copy and dates that match the linked offers. No discounts or quantities are created here.",
+      "name": "Campaign title",
+      "slug": "Page address",
+      "summary": "Short description",
+      "description": "Full description",
+      "startsAt": "Starts",
+      "endsAt": "Ends",
+      "timezone": "All times use Malaysia time (UTC+08:00).",
+      "invalidRange": "The end time must be after the start time.",
+      "offers": "Participating offers",
+      "offerGuidance": "Choose existing, approved offers. Product choices always include their exact outlet.",
+      "offerCount": "{{count}} selected",
+      "offerCount_one": "{{count}} selected",
+      "offerCount_other": "{{count}} selected",
+      "offerType": "Offer type",
+      "product": "Outlet product",
+      "voucher": "Voucher",
+      "source": "Offer",
+      "chooseSource": "Choose an eligible offer",
+      "vendorWide": "All eligible outlets",
+      "addOffer": "Add offer",
+      "noSources": "No eligible offers of this type are available.",
+      "unavailableVoucher": "This voucher is no longer eligible. Remove it and choose another.",
+      "unavailableProduct": "This product and outlet are no longer eligible. Remove it and choose another.",
+      "removeOffer": "Remove {{name}}",
+      "saveChanges": "Save draft changes",
+      "saveDraft": "Save as draft",
+      "cancelEdit": "Cancel editing"
+    },
+    "list": {
+      "title": "Campaign workflow",
+      "description": "{{count}} campaigns in the current list",
+      "description_one": "{{count}} campaign in the current list",
+      "description_other": "{{count}} campaigns in the current list",
+      "linkedOffers": "linked offers",
+      "rejection": "Review note"
+    },
+    "states": {
+      "loading": "Loading campaigns and eligible offers…",
+      "empty": "No campaigns yet",
+      "emptyDescription": "Create a draft, add real partner offers, and submit it for review."
+    },
+    "status": {
+      "draft": "Draft",
+      "pending_approval": "Waiting for approval",
+      "approved": "Approved",
+      "rejected": "Changes requested",
+      "paused": "Paused",
+      "archived": "Archived"
+    },
+    "actions": {
+      "edit": "Edit draft",
+      "submit": "Submit for review",
+      "approve": "Approve",
+      "reject": "Request changes",
+      "pause": "Pause",
+      "resume": "Resume",
+      "archive": "Archive"
+    },
+    "prompts": {
+      "rejectReason": "Explain the required changes in at least 10 characters.",
+      "confirm": {
+        "submit": "Submit this campaign for approval?",
+        "approve": "Approve this campaign for publication?",
+        "pause": "Pause this campaign now?",
+        "archive": "Archive this campaign?"
+      }
+    },
+    "errors": {
+      "load": "Could not load campaigns and eligible offers.",
+      "forbidden": "You do not have permission to manage promotion campaigns.",
+      "save": "Could not save this campaign draft.",
+      "transition": "Could not update this campaign."
     }
   }
 }

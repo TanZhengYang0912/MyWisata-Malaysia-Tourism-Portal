@@ -79,23 +79,58 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!currentUser) return;
     let cancelled = false;
+    let inFlight = false;
+    let refreshPending = false;
+    let refreshTimer: number | null = null;
     async function load() {
+      if (cancelled) return;
+      if (document.visibilityState !== "visible") {
+        refreshPending = true;
+        return;
+      }
+      if (inFlight) {
+        refreshPending = true;
+        return;
+      }
+      inFlight = true;
       try {
         const res = await fetch("/api/chat/unread-count");
         const body = (await res.json()) as { data: { count: number } | null };
         if (!cancelled && res.ok && body.data) setUnreadChatCount(body.data.count);
       } catch {
         // best-effort — a failed refresh just leaves the last-known count showing
+      } finally {
+        inFlight = false;
+        if (!cancelled && refreshPending && document.visibilityState === "visible") {
+          refreshPending = false;
+          scheduleLoad();
+        }
+      }
+    }
+    function scheduleLoad() {
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        refreshTimer = null;
+        void load();
+      }, 250);
+    }
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible" && refreshPending) {
+        refreshPending = false;
+        void load();
       }
     }
     void load();
     const channel = supabase
       .channel(`nav-chat-unread-${currentUser.id}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages" }, () => void load())
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_message_reads" }, () => void load())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages" }, scheduleLoad)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_message_reads", filter: `user_id=eq.${currentUser.id}` }, scheduleLoad)
       .subscribe();
+    document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       cancelled = true;
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
       void supabase.removeChannel(channel);
     };
   }, [currentUser]);

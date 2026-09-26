@@ -24,20 +24,21 @@ export interface CustomerCalendarRecord {
   outletId: string;
   outletName: string;
   vendorName?: string | null;
+  categorySlug?: string | null;
   startsAt: string;
   endsAt: string;
   capacity: number;
   booked: number;
   status?: string | null;
   requiresBooking?: boolean;
-  operatingHours: OperatingHours | null;
 }
 
 export interface CustomerCalendarEvent {
   id: string;
   title: string;
   start: string;
-  end: string;
+  end?: string;
+  allDay?: boolean;
   extendedProps: {
     activityId: string;
     outletId: string;
@@ -46,7 +47,19 @@ export interface CustomerCalendarEvent {
     image?: string | null;
     remainingCapacity: number;
     requiresBooking: boolean;
+    isAccommodation: boolean;
   };
+}
+
+function malaysiaCalendarDate(value: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kuala_Lumpur",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(value));
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
 }
 
 function parseClock(value: string | undefined): number | null {
@@ -115,22 +128,26 @@ export function toCustomerCalendarEvents(records: CustomerCalendarRecord[], now 
         && start > now
         && end > start
         && record.capacity > record.booked
-        && (!record.status || record.status === "available")
-        && isOperatingHoursRangeAvailable(record.startsAt, record.endsAt, record.operatingHours);
+        && (!record.status || record.status === "available");
     })
-    .map((record) => ({
-      id: record.id,
-      title: record.activityName,
-      start: record.startsAt,
-      end: record.endsAt,
-      extendedProps: {
-        activityId: record.activityId,
-        outletId: record.outletId,
-        outletName: record.outletName,
-        vendorName: record.vendorName,
-        image: record.image,
-        remainingCapacity: Math.max(0, record.capacity - record.booked),
-        requiresBooking: record.requiresBooking ?? true,
-      },
-    }));
+    .map((record) => {
+      const isAccommodation = record.categorySlug === "accommodation";
+      return {
+        id: record.id,
+        title: record.activityName,
+        start: isAccommodation ? malaysiaCalendarDate(record.startsAt) : record.startsAt,
+        ...(isAccommodation ? { allDay: true } : {}),
+        ...(isAccommodation ? {} : { end: record.endsAt }),
+        extendedProps: {
+          activityId: record.activityId,
+          outletId: record.outletId,
+          outletName: record.outletName,
+          vendorName: record.vendorName,
+          image: record.image,
+          remainingCapacity: Math.max(0, record.capacity - record.booked),
+          requiresBooking: record.requiresBooking ?? true,
+          isAccommodation,
+        },
+      };
+    });
 }

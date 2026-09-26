@@ -237,19 +237,18 @@ body {
 }
 
 .mw-card-title {
-  display: -webkit-box;
+  display: block;
+  min-width: 0;
   min-height: 2.75rem;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .mw-card-meta {
   min-width: 0;
   min-height: 1.25rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .mw-card-footer {
@@ -365,6 +364,19 @@ body {
   font-family: inherit;
 }
 
+.mw-customer-calendar--status .fc .fc-view-harness {
+  display: none;
+}
+
+.mw-customer-calendar .fc {
+  min-width: 0;
+}
+
+.mw-customer-calendar--status {
+  min-width: 0;
+  overflow: hidden;
+}
+
 .mw-customer-calendar .fc .fc-toolbar {
   gap: 0.75rem;
   flex-wrap: wrap;
@@ -398,6 +410,7 @@ body {
 }
 
 .mw-customer-calendar .fc .fc-event {
+  --fc-event-text-color: var(--foreground);
   background: color-mix(in srgb, var(--primary) 10%, var(--card));
   border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
   border-radius: 0.65rem;
@@ -405,6 +418,16 @@ body {
   cursor: pointer;
   margin: 0.15rem;
   padding: 0.15rem 0.35rem;
+}
+
+.mw-customer-calendar .fc .fc-daygrid-event.mw-calendar-event--selected,
+.mw-customer-calendar .fc .fc-timegrid-event.mw-calendar-event--selected {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.mw-customer-calendar .fc .fc-list-event.mw-calendar-event--selected > td {
+  background: color-mix(in srgb, var(--primary) 12%, var(--card));
 }
 
 .mw-calendar-event-content {
@@ -418,6 +441,22 @@ body {
   color: var(--primary);
   font-size: 0.65rem;
   font-weight: 700;
+}
+
+.mw-customer-calendar .fc .fc-list-event .mw-calendar-event-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.65rem;
+  padding: 0.15rem 0;
+}
+
+.mw-customer-calendar .fc .fc-list-event .mw-calendar-event-title {
+  font-size: 0.85rem;
+}
+
+.mw-customer-calendar .fc .fc-list-event .mw-calendar-event-outlet {
+  font-size: 0.75rem;
 }
 
 .mw-calendar-event-title {
@@ -455,6 +494,47 @@ body {
   .mw-customer-calendar .fc .fc-daygrid-day-number,
 .mw-customer-calendar .fc .fc-col-header-cell-cushion {
     padding: 0.35rem 0.2rem;
+  }
+
+  .mw-customer-calendar .fc .fc-list-table {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  .mw-customer-calendar .fc .fc-list-table tr:first-child > *:first-child {
+    width: 7rem;
+  }
+
+  .mw-customer-calendar .fc .fc-list-table tr:first-child > *:nth-child(2) {
+    width: 1.5rem;
+  }
+
+  .mw-customer-calendar .fc .fc-list-event-time {
+    white-space: normal;
+  }
+
+  .mw-customer-calendar .fc .fc-list-event-title {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .mw-customer-calendar .fc .fc-list-event-title .mw-calendar-event-content {
+    display: grid;
+    min-width: 0;
+    gap: 0.1rem;
+  }
+
+  .mw-customer-calendar .fc .fc-list-event-title .mw-calendar-event-title {
+    display: -webkit-box;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .mw-customer-calendar .fc .fc-list-event-title .mw-calendar-event-outlet {
+    max-width: 100%;
   }
 }
 

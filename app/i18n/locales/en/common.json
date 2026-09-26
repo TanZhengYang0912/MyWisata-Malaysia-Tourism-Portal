@@ -125,6 +125,7 @@
     "noNotificationsYet": "No notifications yet.",
     "noNotificationsFound": "No notifications found.",
     "viewAll": "View all notifications",
+    "loadMore": "Load more",
     "open": "Open",
     "loadError": "Unable to load notifications.",
     "categories": {
@@ -283,6 +284,8 @@
     "navigation": "Navigation",
     "queue": "Review Queues",
     "actions": "Quick Actions",
+    "pendingQueue": "Pending {{name}}",
+    "unreadQueue": "Unread {{name}}",
     "admin": "Administration",
     "preferences": "Preferences",
     "navigate": "to navigate",

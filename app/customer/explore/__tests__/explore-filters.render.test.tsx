@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   params: new URLSearchParams(),
   replace: vi.fn(),
   searchActivities: vi.fn(),
+  filterComputedActivities: vi.fn((_filters: unknown, candidates: unknown[]) => candidates),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -43,7 +44,12 @@ vi.mock("react-i18next", () => ({
     } as Record<string, string>)[key] ?? key,
   }),
 }));
-vi.mock("@/backend/domains/catalogue", () => ({ CATEGORIES: [{ id: "activity", labelKey: "categories.activity" }, { id: "hidden_gem", labelKey: "categories.hiddenGem" }], STATES_MY: ["All Malaysia", "Sabah"], searchActivities: mocks.searchActivities }));
+vi.mock("@/backend/domains/catalogue", () => ({
+  CATEGORIES: [{ id: "activity", labelKey: "categories.activity" }, { id: "hidden_gem", labelKey: "categories.hiddenGem" }],
+  STATES_MY: ["All Malaysia", "Sabah"],
+  searchActivities: mocks.searchActivities,
+  filterComputedActivities: mocks.filterComputedActivities,
+}));
 vi.mock("@/components/customer/activity-card", () => ({ ActivityCard: ({ activity }: { activity: { id: string; name: string } }) => <article data-testid={`activity-${activity.id}`}>{activity.name}</article> }));
 vi.mock("@/components/demo-map/story-map", () => ({ StoryMap: ({ activities }: { activities: { id: string }[] }) => <output data-testid="story-map-ids">{activities.map((activity) => activity.id).join(",")}</output> }));
 
@@ -117,6 +123,7 @@ describe("ExploreClient URL-backed advanced filters", () => {
     mocks.params = new URLSearchParams("state=Sabah&category=activity&type=activity%3Anature&priceMax=100&free=1&bookable=1&hiddenGem=1&family=1&couple=1");
     mocks.replace.mockReset();
     mocks.searchActivities.mockReset().mockResolvedValue(activities);
+    mocks.filterComputedActivities.mockReset().mockImplementation((_filters, candidates) => candidates);
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container as unknown as Element);
@@ -128,15 +135,16 @@ describe("ExploreClient URL-backed advanced filters", () => {
     document.body.removeChild(container);
   });
 
-  it("restores URL filters, requests matching results, and progressively reveals the shared map order", async () => {
+  it("restores URL filters against server-provided candidates and progressively reveals the shared map order", async () => {
     await render(root, <ExploreClient initialActivities={activities} />);
-    expect(mocks.searchActivities).toHaveBeenCalledWith({
+    expect(mocks.filterComputedActivities).toHaveBeenCalledWith({
       q: "", state: "Sabah", categories: ["activity"], types: ["activity:nature"], priceMax: 100,
       operatingDays: [], hoursMode: "during", timeAt: null,
       timeFrom: null, timeTo: null,
       overnight: false, openNow: false,
       freeOnly: true, bookableOnly: true, hiddenGemOnly: true, familyFriendlyOnly: true, coupleFriendlyOnly: true,
-    });
+    }, activities);
+    expect(mocks.searchActivities).not.toHaveBeenCalled();
 
     expect(findOne(container, (element) => element.getAttribute("data-testid") === "story-map-ids").textContent).toBe(Array.from({ length: 10 }, (_, index) => `result-${index + 1}`).join(","));
     await click(button(container, "Experiences"));
@@ -198,17 +206,17 @@ describe("ExploreClient URL-backed advanced filters", () => {
     await setInputValue(priceInput, "-100");
     expect(priceInput.getAttribute("aria-invalid")).toBe("true");
     expect(findOne(container, (element) => element.getAttribute("role") === "alert").textContent).toBe("Enter a value between 0 and 10,000.");
-    expect(mocks.searchActivities).toHaveBeenLastCalledWith(expect.objectContaining({ priceMax: null }));
+    expect(mocks.searchActivities).not.toHaveBeenCalled();
     expect(mocks.searchActivities.mock.calls.some(([query]) => query.priceMax === -100)).toBe(false);
 
     await setInputValue(priceInput, "10001");
     expect(priceInput.getAttribute("aria-invalid")).toBe("true");
     expect(mocks.searchActivities.mock.calls.some(([query]) => query.priceMax === 10001)).toBe(false);
 
-    await setInputValue(priceInput, "100");
+    await setInputValue(priceInput, "200");
     expect(priceInput.getAttribute("aria-invalid")).toBe("false");
     expect(findElements(container, (element) => element.getAttribute("role") === "alert")).toHaveLength(0);
-    expect(mocks.searchActivities).toHaveBeenLastCalledWith(expect.objectContaining({ priceMax: 100 }));
+    expect(mocks.filterComputedActivities).toHaveBeenLastCalledWith(expect.objectContaining({ priceMax: 200 }), activities);
   });
 
   it("maps the Hidden Gem category card to the badge flag instead of an invalid category branch", async () => {
@@ -230,8 +238,10 @@ describe("ExploreClient URL-backed advanced filters", () => {
     mocks.params = new URLSearchParams();
     await render(root, <ExploreClient initialActivities={activities} />);
     mocks.searchActivities.mockClear();
+    mocks.filterComputedActivities.mockClear();
     await click(button(container, "Experiences"));
     vi.useFakeTimers();
+    vi.setSystemTime(Date.now() + 60_001);
 
     await setInputValue(labelled(container, "Search"), "  rain forest  ");
     expect(mocks.searchActivities).not.toHaveBeenCalled();
@@ -240,5 +250,6 @@ describe("ExploreClient URL-backed advanced filters", () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(1); });
     expect(mocks.searchActivities).toHaveBeenCalledTimes(1);
     expect(mocks.searchActivities).toHaveBeenLastCalledWith(expect.objectContaining({ q: "rain forest" }));
+    expect(mocks.filterComputedActivities).not.toHaveBeenCalled();
   });
 });

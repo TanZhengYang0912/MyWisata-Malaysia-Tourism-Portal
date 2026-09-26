@@ -26,7 +26,7 @@ import { VoucherMetricCard } from '@/components/vendor/voucher-metric-card';
 
 interface VoucherData { id: string; code: string; name: string; voucher_type: string; discount_value: number; min_spend: number; max_uses: number | null; uses_count: number; valid_from: string | null; valid_until: string | null; is_active: boolean; status: string; vendor_review_status?: string | null; buy_quantity?: number | null; free_quantity?: number | null; product_id?: string | null; outlets?: { id?: string; name?: string; city?: string; state?: string } | null }
 interface VoucherAnalytics { voucherId: string; code: string; name: string; outletName: string; views: number; entries: number; applies: number; redemptions: number; uniqueCustomers: number; redemptionRate: number | null; discount: number; revenue: number; revenueImpact: number }
-interface OutletOption { id: string; name: string }
+interface OutletOption { id: string; name: string; coverUrl?: string | null }
 interface ProductOption { id: string; name: string }
 interface Pagination { page: number; pageSize: number; total: number; totalPages: number }
 const statuses = ['all', 'pending_review', 'active', 'scheduled', 'inactive', 'expired'];
@@ -132,7 +132,7 @@ export default function VendorVouchersPage() {
         const [outletPayload, productPayload] = await Promise.all([outletResponse.json(), productResponse.json()]);
         if (!outletResponse.ok) throw new Error(outletPayload.error?.message || t('ui.vouchers.loadOutletsFailed'));
         if (!productResponse.ok) throw new Error(productPayload.error?.message || t('ui.vouchers.loadProductsFailed'));
-        setOutlets((outletPayload.data?.items || []).map((outlet: OutletOption) => ({ id: outlet.id, name: outlet.name })));
+        setOutlets((outletPayload.data?.items || []).map((outlet: OutletOption) => ({ id: outlet.id, name: outlet.name, coverUrl: outlet.coverUrl ?? null })));
         setProducts((productPayload.data?.items || []).map((product: ProductOption) => ({ id: product.id, name: product.name })));
       })
       .catch((requestError) => setError(requestError instanceof Error ? requestError.message : t('ui.vouchers.loadOptionsFailed')));
@@ -409,6 +409,12 @@ export default function VendorVouchersPage() {
     { label: t('ui.vouchers.netRevenueImpact'), value: formatMYR(analyticsTotals.revenueImpact), tone: 'navy' as const },
   ];
   const bestVoucher = analytics[0];
+  const selectedVoucherOutletImages = selectedVoucher
+    ? outlets
+      .filter((outlet) => (!selectedVoucher.outlets?.id || outlet.id === selectedVoucher.outlets.id) && Boolean(outlet.coverUrl))
+      .slice(0, 4)
+      .map((outlet) => ({ src: outlet.coverUrl!, alt: outlet.name }))
+    : [];
 
   return (
     <div className="space-y-8 text-foreground">
@@ -451,7 +457,7 @@ export default function VendorVouchersPage() {
       {showForm && vendorId && <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><VoucherForm vendorId={vendorId} initialOutletId={isOutletManager ? user?.activeOutletIds?.[0] : requestedOutletId} isOutletManager={isOutletManager} onSuccess={() => { setShowForm(false); void Promise.all([loadVouchers(1), loadAnalytics()]); }} onClose={() => setShowForm(false)} /></div></div>}
       {selectedVoucher && <CenteredDetailModal eyebrow={t('ui.vouchers.voucherDetails')} title={selectedVoucher.name} subtitle={selectedVoucher.outlets?.name || t('ui.vouchers.allOutlets')} closeLabel={t('ui.vouchers.closeDetails')} onClose={() => setSelectedVoucher(null)} size="xl">
         <div className="mt-6">
-          <VoucherTicket offer={{ brandName: selectedVoucher.outlets?.name || t('ui.vouchers.allOutlets'), name: selectedVoucher.name, code: selectedVoucher.code, codeLabel: t('ui.vouchers.code'), codeCopyLabels: { copy: t('ui.vouchers.copyCode'), copied: t('ui.vouchers.copied') }, discountLabel: discountLabel(selectedVoucher), minSpendLabel: t('ui.vouchers.minimumSpend', { amount: formatMYRNumber(Number(selectedVoucher.min_spend)) }), expiryLabel: t('ui.vouchers.validRange', { from: dateLabel(selectedVoucher.valid_from, locale, t('ui.vouchers.noEndDate')), until: dateLabel(selectedVoucher.valid_until, locale, t('ui.vouchers.noEndDate')) }), availabilityLabel: `${selectedVoucher.uses_count} ${selectedVoucher.max_uses ? `/ ${selectedVoucher.max_uses}` : t('ui.vouchers.uses')}`, scopeLabel: t('ui.vouchers.outletValue', { outlet: selectedVoucher.outlets?.name || t('ui.vouchers.allOutlets') }), identityLabel: t('ui.vouchers.campaignControl'), status: <StatusBadge status={selectedVoucher.status} />, fallback: { logoUrl: null, logoAlt: '', initials: (selectedVoucher.outlets?.name || selectedVoucher.name).slice(0, 2).toUpperCase() } }}>
+          <VoucherTicket offer={{ brandName: selectedVoucher.outlets?.name || t('ui.vouchers.allOutlets'), name: selectedVoucher.name, code: selectedVoucher.code, codeLabel: t('ui.vouchers.code'), codeCopyLabels: { copy: t('ui.vouchers.copyCode'), copied: t('ui.vouchers.copied') }, discountLabel: discountLabel(selectedVoucher), minSpendLabel: t('ui.vouchers.minimumSpend', { amount: formatMYRNumber(Number(selectedVoucher.min_spend)) }), expiryLabel: t('ui.vouchers.validRange', { from: dateLabel(selectedVoucher.valid_from, locale, t('ui.vouchers.noEndDate')), until: dateLabel(selectedVoucher.valid_until, locale, t('ui.vouchers.noEndDate')) }), availabilityLabel: `${selectedVoucher.uses_count} ${selectedVoucher.max_uses ? `/ ${selectedVoucher.max_uses}` : t('ui.vouchers.uses')}`, scopeLabel: t('ui.vouchers.outletValue', { outlet: selectedVoucher.outlets?.name || t('ui.vouchers.allOutlets') }), identityLabel: t('ui.vouchers.campaignControl'), status: <StatusBadge status={selectedVoucher.status} />, images: selectedVoucherOutletImages, fallback: null }}>
             {null}
           </VoucherTicket>
         </div>

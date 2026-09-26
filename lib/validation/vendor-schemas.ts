@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import { TICKET_ENTRY_POLICIES } from '@/lib/tickets/product-ticket-policy';
 import { validateMalaysianPhone } from '@/lib/phone/normalize';
+import { parseInternationalPhone } from '@/lib/phone/international';
 
 // ── Common building blocks ─────────────────────────────────
 
@@ -78,7 +79,9 @@ export const vendorRegisterSchema = z.object({
   contactName: z.string({ error: vendorRegisterKey('contactName', 'invalid') }).trim().max(255, { error: vendorRegisterKey('contactName', 'max') }).optional(),
   contactEmail: z.string({ error: vendorRegisterKey('contactEmail', 'invalid') }).trim().email({ error: vendorRegisterKey('contactEmail', 'format') }).max(255, { error: vendorRegisterKey('contactEmail', 'max') }).optional().or(z.literal('')),
   contactPhone: z.string({ error: vendorRegisterKey('contactPhone', 'invalid') }).trim().max(50, { error: vendorRegisterKey('contactPhone', 'max') }).refine(
-    (phone) => phone === '' || (/^[+()\d.\-\s]+$/.test(phone) && validateMalaysianPhone(phone)),
+    (phone) => phone === '' || (/^[+()\d.\-\s]+$/.test(phone) && (
+      phone.startsWith('+') ? parseInternationalPhone(phone).ok : validateMalaysianPhone(phone)
+    )),
     { error: vendorRegisterKey('contactPhone', 'invalid') },
   ).optional(),
   businessAddress: z.string({ error: vendorRegisterKey('businessAddress', 'invalid') }).trim().max(500, { error: vendorRegisterKey('businessAddress', 'max') }).optional(),

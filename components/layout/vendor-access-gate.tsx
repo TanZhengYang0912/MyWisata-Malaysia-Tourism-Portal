@@ -13,7 +13,6 @@ const OUTLET_MANAGER_PATHS = [
   '/vendor/vouchers',
   '/vendor/orders',
   '/vendor/inbox',
-  '/vendor/notifications',
   '/vendor/analytics',
 ];
 

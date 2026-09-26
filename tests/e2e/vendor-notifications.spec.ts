@@ -95,19 +95,17 @@ async function mockVendorNotifications(page: Page, options?: { total?: number; m
 }
 
 test.describe('Vendor notification journeys', () => {
-  test('owner sees the bell, latest 15, filters, pagination, and read actions', async ({ page }) => {
+  test('owner manages the notification history from the bell', async ({ page }) => {
     const mock = await mockVendorNotifications(page);
     await signInAsVendor(page, OWNER_EMAIL);
-    await page.goto('/vendor/notifications');
+    await page.goto('/vendor/dashboard');
 
     await expect(page.getByRole('button', { name: 'Notifications' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Notifications' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Notifications', exact: true })).toHaveCount(0);
     const bell = page.getByRole('button', { name: 'Notifications' });
     await bell.click();
-    const notificationCenter = page.getByText('Filter', { exact: true }).locator('..');
-    await expect(notificationCenter.getByRole('button', { name: 'Mark all as read', exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'View all notifications' })).toHaveAttribute('href', '/vendor/notifications');
-    await bell.click();
+    await expect(page.getByRole('button', { name: 'Mark all as read', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'View all notifications' })).toHaveCount(0);
     await expect(page.getByText('Vendor notification 1', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /Vendor notification \d+/ })).toHaveCount(15);
 
@@ -120,21 +118,23 @@ test.describe('Vendor notification journeys', () => {
     await page.getByRole('button', { name: /^Vendor notification 1\b/ }).click();
     await expect.poll(() => mock.readIds).toContain('vendor-notification-1');
 
-    await notificationCenter.getByRole('button', { name: 'Mark all as read', exact: true }).click();
+    await page.getByRole('button', { name: 'Mark all as read', exact: true }).click();
     await expect.poll(() => mock.readAllCalls).toBe(1);
 
-    await page.getByRole('button', { name: 'Next', exact: true }).click();
-    await expect(page.getByText('Page 2 of 2')).toBeVisible();
+    await page.getByRole('button', { name: 'Load more', exact: true }).click();
     await expect(page.getByText('Vendor notification 16')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Vendor notification \d+/ })).toHaveCount(20);
     await expect.poll(() => mock.requests.some((url) => url.searchParams.get('page') === '2')).toBe(true);
   });
 
-  test('outlet manager sees only the vendor-scoped notification workspace', async ({ page }) => {
+  test('outlet manager receives only assigned-outlet notices in the bell', async ({ page }) => {
     const mock = await mockVendorNotifications(page, { total: 1, manager: true });
     await signInAsVendor(page, MANAGER_EMAIL);
-    await page.goto('/vendor/notifications');
+    await page.goto('/vendor/dashboard');
 
     await expect(page.getByRole('button', { name: 'Notifications' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Notifications', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Notifications' }).click();
     await expect(page.getByText('Vendor notification 1')).toBeVisible();
     await expect(page.getByText('Vendor wallet balance changed')).toBeHidden();
     await expect(page.getByText('Vendor account review')).toBeHidden();

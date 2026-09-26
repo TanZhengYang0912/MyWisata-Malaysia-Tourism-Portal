@@ -35,7 +35,7 @@ export function getSuperAdminReviewUpdate(input: {
   note?: string | null;
 }) {
   return {
-    review_status: input.action === "approve" ? "approved" : input.action,
+    review_status: input.action === "approve" ? "approved" : input.action === "reject" ? "rejected" : input.action,
     review_note: input.note?.trim() || null,
     reviewed_by: input.reviewerId,
     is_active: input.action === "approve",

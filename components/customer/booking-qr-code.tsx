@@ -18,6 +18,7 @@ interface BookingQrCodeProps {
   entryLimit?: number;
   entriesUsed?: number;
   validUntil?: string;
+  className?: string;
 }
 
 export function BookingQrCode({
@@ -29,6 +30,7 @@ export function BookingQrCode({
   entryLimit,
   entriesUsed,
   validUntil,
+  className,
 }: BookingQrCodeProps) {
   const { t } = useTranslation("customer");
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -141,7 +143,7 @@ export function BookingQrCode({
 
   return (
     <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
-      <div className="flex flex-col items-center gap-1.5">
+      <div className={`flex min-w-0 flex-col items-center gap-1.5 ${className ?? ""}`}>
         {liveToken ? (
           <button
             type="button"

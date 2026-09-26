@@ -18,6 +18,7 @@ export async function GET(request: Request) {
   const pageSize = Math.min(PAGE_SIZE_MAX, Math.max(1, Number(url.searchParams.get('pageSize') ?? 15) || 15));
   const read = url.searchParams.get('read') ?? 'all';
   const category = url.searchParams.get('category') ?? 'all';
+  const countOnly = url.searchParams.get('countOnly') === '1';
   if (!['all', 'unread', 'read'].includes(read)) return apiFail('INVALID_READ_FILTER', 'Unknown read filter', 400);
   if (scope === 'vendor' && category !== 'all' && !VENDOR_CATEGORIES.has(category)) return apiFail('INVALID_CATEGORY', 'Unknown notification category', 400);
 
@@ -32,7 +33,8 @@ export async function GET(request: Request) {
     queryDb = authorization.access.serviceDb as typeof db;
   }
 
-  let query = queryDb.from('notifications').select('id,type,title,body,link,category,metadata,read_at,created_at', { count: 'exact' }).eq('user_id', user.id).order('created_at', { ascending: false });
+  let query = queryDb.from('notifications').select('id,type,title,body,link,category,metadata,read_at,created_at', { count: 'exact', head: countOnly }).eq('user_id', user.id);
+  if (!countOnly) query = query.order('created_at', { ascending: false });
   if (scope === 'vendor' && scopedVendor) {
     query = query.eq('vendor_id', scopedVendor.vendorId);
     if (scopedVendor.isOutletManager) {
@@ -47,5 +49,5 @@ export async function GET(request: Request) {
   const from = (page - 1) * pageSize;
   const { data, count, error } = await query.range(from, from + pageSize - 1);
   if (error) return apiFail('DB_ERROR', error.message, 500);
-  return apiOk({ items: (data ?? []).map((row) => ({ id: row.id, type: row.type, title: row.title, body: row.body, link: row.link, category: row.category ?? 'account_security', metadata: row.metadata ?? {}, readAt: row.read_at, createdAt: row.created_at })), page, pageSize, total: count ?? 0, totalPages: Math.max(1, Math.ceil((count ?? 0) / pageSize)) });
+  return apiOk({ items: countOnly ? [] : (data ?? []).map((row) => ({ id: row.id, type: row.type, title: row.title, body: row.body, link: row.link, category: row.category ?? 'account_security', metadata: row.metadata ?? {}, readAt: row.read_at, createdAt: row.created_at })), page, pageSize, total: count ?? 0, totalPages: Math.max(1, Math.ceil((count ?? 0) / pageSize)) });
 }

@@ -74,14 +74,14 @@ function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; in
       <div className="space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <Link href={`/customer/activity/${activity.id}`} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#010066]/40"><h3 className="line-clamp-2 text-sm font-bold leading-5 text-[#122b3a]">{activity.name}</h3></Link>
+            <Link href={`/customer/activity/${activity.id}`} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#010066]/40"><h3 className="break-words whitespace-normal text-sm font-bold leading-5 text-[#122b3a]">{activity.name}</h3></Link>
             <p className="mt-1 text-xs capitalize text-[#6d7e83]">{typeLabel} · {vendorBacked && activity.requiresBooking ? t("ui.search.guidedBookable") : vendorBacked ? t("ui.search.vendorExperience") : t("ui.labels.publicPlace")}</p>
           </div>
           <span className="shrink-0 text-right font-[family-name:var(--font-mono)] text-sm font-bold text-[#010066]">{vendorBacked ? <ReferencePrice amountMYR={Number(activity.price)} /> : t("ui.labels.freeToExplore")}</span>
         </div>
-        <p className="line-clamp-2 text-xs leading-5 text-[#6d7e83]">{activity.description}</p>
-        <div className="flex items-center justify-between gap-3 text-[11px] text-[#6d7e83]">
-          <span className="truncate">{vendorBacked ? t("ui.search.providedBy", { vendor: provider }) : t("ui.search.noVendorRequired")}</span>
+        <p className="break-words whitespace-normal text-xs leading-5 text-[#6d7e83]">{activity.description}</p>
+        <div className="flex flex-wrap items-start justify-between gap-3 text-[11px] text-[#6d7e83]">
+          <span className="min-w-0 flex-1 break-words whitespace-normal">{vendorBacked ? t("ui.search.providedBy", { vendor: provider }) : t("ui.search.noVendorRequired")}</span>
           <Link href={`/customer/activity/${activity.id}`} className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-[#122b3a] transition hover:text-[#010066]">{t("ui.actions.viewDetails")} <ArrowRight size={13} /></Link>
         </div>
       </div>

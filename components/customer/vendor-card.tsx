@@ -72,8 +72,8 @@ export function VendorCard({
       <div className="flex min-h-[220px] flex-1 flex-col space-y-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <Link href={`/customer/vendor/${vendor.id}`} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"><h2 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-foreground">{vendor.name}</h2></Link>
-            <p className="mt-1 line-clamp-2 min-h-10 text-xs leading-5 text-muted-foreground">{cardDescription}</p>
+            <Link href={`/customer/vendor/${vendor.id}`} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"><h2 className="min-h-10 break-words whitespace-normal text-sm font-bold leading-5 text-foreground">{vendor.name}</h2></Link>
+            <p className="mt-1 min-h-10 break-words whitespace-normal text-xs leading-5 text-muted-foreground">{cardDescription}</p>
           </div>
           <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#eef2ff] text-xs font-bold text-[#010066]" title={vendor.name}>
             {visual.logoUrl ? <>
@@ -85,7 +85,7 @@ export function VendorCard({
             </> : visual.initials}
           </span>
         </div>
-        <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground"><span className="inline-flex items-center gap-1.5"><Building2 size={13} /> {t("ui.search.outletCount", { count: vendor.outlets.length })}</span><span className="truncate">{categoryLabel}</span></div>
+        <div className="flex flex-wrap items-start justify-between gap-2 text-[11px] text-muted-foreground"><span className="inline-flex items-center gap-1.5"><Building2 size={13} /> {t("ui.search.outletCount", { count: vendor.outlets.length })}</span><span className="min-w-0 flex-1 break-words whitespace-normal text-right">{categoryLabel}</span></div>
         {showExploreAction && <Link href={`/customer/vendor/${vendor.id}`} className="mt-auto inline-flex items-center gap-1 text-xs font-bold text-foreground transition hover:text-primary">{t("ui.actions.exploreVendor")} <ArrowRight size={13} /></Link>}
       </div>
       <span className="sr-only">{t("ui.search.vendorCard", { index: index + 1 })}</span>

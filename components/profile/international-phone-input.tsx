@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState, type KeyboardEventHandler } from "react";
+import { useMemo, useState, type FocusEventHandler, type KeyboardEventHandler } from "react";
 import { useTranslation } from "react-i18next";
+import { AsYouType } from "libphonenumber-js";
 import {
   defaultCountries,
   FlagImage,
@@ -16,7 +17,9 @@ interface InternationalPhoneInputProps {
   onChange: (value: string) => void;
   disabled?: boolean;
   error?: boolean;
+  ariaDescribedBy?: string;
   autoFocus?: boolean;
+  onBlur?: FocusEventHandler<HTMLInputElement>;
   onKeyDown?: KeyboardEventHandler<HTMLInputElement>;
 }
 
@@ -26,7 +29,9 @@ export function InternationalPhoneInput({
   onChange,
   disabled,
   error,
+  ariaDescribedBy,
   autoFocus,
+  onBlur,
   onKeyDown,
 }: InternationalPhoneInputProps) {
   const { t } = useTranslation("customer");
@@ -51,9 +56,22 @@ export function InternationalPhoneInput({
   } = usePhoneInput({
     defaultCountry: "my",
     value,
+    disableFormatting: true,
+    allowMaskOverflow: true,
     disableDialCodeAndPrefix: true,
     onChange: ({ phone }) => onChange(phone),
   });
+  const formattedInputValue = useMemo(() => {
+    const nationalDigits = inputValue.replace(/\D/g, "");
+    if (!nationalDigits) return inputValue;
+
+    const dialCode = `+${country.dialCode}`;
+    const formattedInternationalNumber = new AsYouType().input(`${dialCode}${nationalDigits}`);
+
+    return formattedInternationalNumber.startsWith(dialCode)
+      ? formattedInternationalNumber.slice(dialCode.length).trimStart()
+      : inputValue;
+  }, [country.dialCode, inputValue]);
 
   return (
     <div className="relative flex w-full overflow-visible rounded-xl border border-border bg-background text-foreground focus-within:ring-2 focus-within:ring-primary/30">
@@ -72,13 +90,15 @@ export function InternationalPhoneInput({
         id={id}
         name={id}
         type="tel"
-        value={inputValue}
+        value={formattedInputValue}
         onChange={handlePhoneValueChange}
         disabled={disabled}
         autoComplete="tel"
         autoFocus={autoFocus}
+        onBlur={onBlur}
         onKeyDown={onKeyDown}
         aria-invalid={error || undefined}
+        aria-describedby={ariaDescribedBy}
         className="min-w-0 flex-1 rounded-r-xl bg-transparent px-3 py-2.5 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-60"
       />
       {countryMenuOpen && (

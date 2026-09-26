@@ -183,7 +183,7 @@ export function PlaceCommunitySection({ placeId, placeName }: { placeId: string;
           >
             <span className="flex min-w-0 items-center gap-2">
               <MessageCircle size={16} className="shrink-0 text-primary" aria-hidden="true" />
-              <span className="truncate">{t("ui.place.localNotes.shareLabel")}</span>
+              <span className="break-words whitespace-normal">{t("ui.place.localNotes.shareLabel")}</span>
             </span>
             <ArrowDown size={15} className="shrink-0 text-muted-foreground" aria-hidden="true" />
           </button>
@@ -319,7 +319,7 @@ export function PlaceCommunitySection({ placeId, placeName }: { placeId: string;
 
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate text-sm font-bold text-foreground">{displayName}</p>
+                      <p className="break-words whitespace-normal text-sm font-bold text-foreground">{displayName}</p>
                       {comment.isAnonymous && (
                         <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                           {t("ui.place.localNotes.anonymousBadge")}

@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ArrowRight, Building2, MapPin } from "lucide-react";
 import type { DiscoveryResult } from "@/backend/core/types";
-import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { OperatingHoursSummary } from "@/components/customer/operating-hours-summary";
@@ -155,7 +154,7 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
 
   const placementId = placementIdFor(activeAdvertisement);
   if (!placementId) return null;
-  const image = getPlaceActivityImage(activeAdvertisement);
+  const image = activeAdvertisement.outlet.coverUrl?.trim() || null;
   const location = [activeAdvertisement.outlet.city, activeAdvertisement.outlet.state].filter(Boolean).join(", ");
   const categoryKey = getOptionalDiscoveryCategoryLabelKey(activeAdvertisement.categorySlug);
   const hasMultipleAdvertisements = eligibleAdvertisements.length > 1;
@@ -199,14 +198,16 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
               className="grid min-h-[320px] w-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-primary/20 md:grid-cols-[52%_48%]"
             >
               <div className="relative min-h-60 overflow-hidden bg-secondary md:min-h-[340px]">
-                {/* Product images come from the existing trusted activity image presenter. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={image} alt={activeAdvertisement.name} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                {image && <>
+                  {/* Outlet photos come from its published Hero or curated outlet gallery. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={image} alt={activeAdvertisement.outlet.name} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                </>}
                 <span className="absolute left-5 top-5 rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-950 shadow-sm">
                   {t("ui.labels.featured")}
                 </span>
-                <span className="absolute bottom-5 left-5 inline-flex items-center gap-1.5 text-sm font-semibold text-white">
+                <span className={`absolute bottom-5 left-5 inline-flex max-w-[calc(100%-2.5rem)] items-start gap-1.5 break-words whitespace-normal text-sm font-semibold ${image ? "text-white" : "text-muted-foreground"}`}>
                   <MapPin size={15} aria-hidden="true" /> {location}
                 </span>
               </div>
@@ -214,12 +215,12 @@ export function SponsoredPartnerRail({ advertisements }: { advertisements: Disco
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
                   {categoryKey ? t(categoryKey) : activeAdvertisement.category}
                 </p>
-                <h3 className="mt-3 line-clamp-2 font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-foreground lg:text-4xl">
+                <h3 className="mt-3 break-words whitespace-normal font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-foreground lg:text-4xl">
                   {activeAdvertisement.name}
                 </h3>
-                <p className="mt-4 line-clamp-3 max-w-xl text-base leading-7 text-muted-foreground">{activeAdvertisement.description}</p>
+                <p className="mt-4 max-w-xl break-words whitespace-normal text-base leading-7 text-muted-foreground">{activeAdvertisement.description}</p>
                 <div className="mt-6 flex flex-wrap items-center justify-between gap-4 text-sm text-muted-foreground">
-                  <span className="inline-flex min-w-0 items-center gap-2 truncate">
+                  <span className="inline-flex min-w-0 items-start gap-2 break-words whitespace-normal">
                     <Building2 size={16} className="shrink-0" aria-hidden="true" />
                     {t("ui.search.providedBy", { vendor: activeAdvertisement.outlet.vendorName })}
                   </span>

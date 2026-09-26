@@ -29,6 +29,21 @@ describe('public outlet menu', () => {
     expect(source).toContain('t("ui.outletMenu.availableAt"');
   });
 
+  it('shows complete product and outlet text on public menu cards', async () => {
+    const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
+    const card = source.slice(
+      source.indexOf('export function OutletProductCard'),
+      source.indexOf('export function OutletMenu'),
+    );
+
+    expect(card).not.toContain('line-clamp-2');
+    expect(card).not.toContain('truncate');
+    expect(card).toContain('break-words text-base font-bold leading-snug text-foreground');
+    expect(card).toContain('mt-3 min-h-10 break-words text-sm leading-5 text-muted-foreground');
+    expect(card).toContain('inline-flex min-w-0 flex-1 items-start gap-1.5 break-words');
+    expect(card).toContain('{product.description || descriptionFallback}');
+  });
+
   it('keeps short menus from leaving a wide empty panel', async () => {
     const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
     expect(source).toContain('products.length <= 2');

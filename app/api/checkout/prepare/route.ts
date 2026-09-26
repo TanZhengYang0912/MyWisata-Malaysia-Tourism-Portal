@@ -93,6 +93,7 @@ export async function POST(request: Request) {
     }, { status: 422 });
   }
   const walletSplit = normalized.paymentMethod === 'wallet_split';
+  const walletReservation = walletSplit || normalized.paymentMethod === 'wallet';
   const requestHash = buildCheckoutRequestHash(normalized);
 
   const { data: cart, error: cartError } = await db.from('carts').select('id').eq('user_id', user.id).maybeSingle();
@@ -128,10 +129,11 @@ export async function POST(request: Request) {
   let voucher: Voucher | undefined;
   if (body.voucherCode) {
     const { data: voucherRow, error: voucherError } = await db.from('vouchers')
-      .select('id,code,name,voucher_type,discount_value,min_spend,max_uses,uses_count,valid_until,product_id,buy_quantity,free_quantity')
+      .select('id,code,name,voucher_type,discount_value,min_spend,max_uses,uses_count,valid_until,vendor_id,outlet_id,product_id,buy_quantity,free_quantity')
       .ilike('code', body.voucherCode)
       .eq('is_active', true)
       .eq('review_status', 'approved')
+      .in('redemption_mode', ['online', 'both'])
       .maybeSingle();
     if (voucherError) return NextResponse.json({ error: voucherError.message }, { status: 500 });
     if (!voucherRow) return NextResponse.json({ error: 'Voucher is not available' }, { status: 422 });
@@ -145,30 +147,22 @@ export async function POST(request: Request) {
       usageCap: voucherRow.max_uses ?? Infinity,
       usageCount: Number(voucherRow.uses_count ?? 0),
       expiresAt: voucherRow.valid_until ?? '',
+      vendorId: voucherRow.vendor_id ?? undefined,
+      outletId: voucherRow.outlet_id ?? undefined,
       productId: voucherRow.product_id ?? undefined,
       buyQuantity: voucherRow.buy_quantity ?? undefined,
       freeQuantity: voucherRow.free_quantity ?? undefined,
     };
   }
 
-  const cartItems: CartItem[] = selectedRows.map((row) => {
+  const productIds = [...new Set(selectedRows.flatMap((row) => {
     const variant = relation(row.product_variants);
     const slot = relation(row.booking_slots);
     const productId = variant?.product_id ?? slot?.product_id ?? '';
-    return {
-      activityId: productId,
-      variantId: row.variant_id ?? '',
-      slotId: row.slot_id ?? undefined,
-      qty: row.quantity,
-      priceOverride: slot?.price_override === null || slot?.price_override === undefined ? undefined : Number(slot.price_override),
-    };
-  });
-  const totals = cartTotals(cartItems, activities, voucher);
-  if (voucher && totals.voucherError) return NextResponse.json({ error: totals.voucherError }, { status: 422 });
-
-  const productIds = [...new Set(cartItems.map((item) => item.activityId))];
+    return productId ? [productId] : [];
+  }))];
   const { data: productRows, error: productRowsError } = await db.from('products')
-    .select('id,outlet_id,vendor_id,name,cover_url,requires_booking,categories(slug)')
+    .select('id,outlet_id,vendor_id,name,cover_url,base_price,requires_booking,categories(slug)')
     .in('id', productIds);
   if (productRowsError) return NextResponse.json({
     error: {
@@ -177,6 +171,36 @@ export async function POST(request: Request) {
     },
   }, { status: 503 });
   const productMap = new Map((productRows ?? []).map((row) => [row.id, row]));
+
+  const sharedOutletProductIds = [...new Set(selectedRows.flatMap((row) => {
+    const variant = relation(row.product_variants);
+    const slot = relation(row.booking_slots);
+    const productId = variant?.product_id ?? slot?.product_id ?? '';
+    const product = productMap.get(productId);
+    return product?.outlet_id === null && row.outlet_id ? [productId] : [];
+  }))];
+  const sharedOutletIds = [...new Set(selectedRows.flatMap((row) => {
+    const variant = relation(row.product_variants);
+    const slot = relation(row.booking_slots);
+    const productId = variant?.product_id ?? slot?.product_id ?? '';
+    return sharedOutletProductIds.includes(productId) && row.outlet_id ? [row.outlet_id] : [];
+  }))];
+  let outletOffers: { product_id: string; outlet_id: string; price: number | string }[] = [];
+  if (sharedOutletProductIds.length > 0 && sharedOutletIds.length > 0) {
+    const { data, error } = await db.from('outlet_offers')
+      .select('product_id,outlet_id,price')
+      .in('product_id', sharedOutletProductIds)
+      .in('outlet_id', sharedOutletIds)
+      .eq('status', 'active');
+    if (error) return NextResponse.json({
+      error: {
+        code: 'PRODUCT_LOOKUP_FAILED',
+        message: 'We could not verify cart items right now. Please try again shortly.',
+      },
+    }, { status: 503 });
+    outletOffers = data ?? [];
+  }
+  const outletOfferMap = new Map(outletOffers.map((offer) => [`${offer.product_id}|${offer.outlet_id}`, Number(offer.price)]));
 
   const candidateLines = selectedRows.map((row) => {
     const variant = relation(row.product_variants);
@@ -190,24 +214,44 @@ export async function POST(request: Request) {
       || (!variant && (!product.requires_booking || row.variant_id !== null))
       || (product.requires_booking && !slot)
     ) return null;
+    const isSharedProduct = product.outlet_id === null;
+    if (!isSharedProduct && product.outlet_id !== row.outlet_id) return null;
+    const offerPrice = isSharedProduct && row.outlet_id
+      ? outletOfferMap.get(`${productId}|${row.outlet_id}`)
+      : undefined;
+    if (isSharedProduct && row.outlet_id && offerPrice === undefined) return null;
+    const basePrice = offerPrice ?? Number(product.base_price);
+    if (!Number.isFinite(basePrice) || basePrice < 0) return null;
     const linePrice = slot?.price_override !== null && slot?.price_override !== undefined
       ? Number(slot.price_override)
-      : unitPrice(activity, variant?.id ?? '', row.quantity, new Date(), productIds);
+      : unitPrice({ ...activity, price: basePrice }, variant?.id ?? '', row.quantity, new Date(), productIds);
+    if (!Number.isFinite(linePrice) || linePrice < 0) return null;
     return {
-      cart_item_id: row.id,
-      product_id: productId,
-      variant_id: variant?.id ?? null,
-      slot_id: row.slot_id,
-      vendor_id: product.vendor_id,
-      outlet_id: row.outlet_id,
-      product_name: product.name,
-      image_url: product.cover_url,
-      variant_name: variant?.name ?? null,
-      slot_starts_at: slot?.starts_at ?? null,
-      unit_price: linePrice,
-      quantity: row.quantity,
-      line_total: Number((linePrice * row.quantity).toFixed(2)),
-      requires_booking: product.requires_booking,
+      cartItem: {
+        activityId: productId,
+        variantId: row.variant_id ?? '',
+        slotId: row.slot_id ?? undefined,
+        qty: row.quantity,
+        outletId: row.outlet_id ?? undefined,
+        // cartTotals must use the same outlet-resolved price sent to the DB RPC.
+        priceOverride: linePrice,
+      } satisfies CartItem,
+      line: {
+        cart_item_id: row.id,
+        product_id: productId,
+        variant_id: variant?.id ?? null,
+        slot_id: row.slot_id,
+        vendor_id: product.vendor_id,
+        outlet_id: row.outlet_id,
+        product_name: product.name,
+        image_url: product.cover_url,
+        variant_name: variant?.name ?? null,
+        slot_starts_at: slot?.starts_at ?? null,
+        unit_price: linePrice,
+        quantity: row.quantity,
+        line_total: Number((linePrice * row.quantity).toFixed(2)),
+        requires_booking: product.requires_booking,
+      },
     };
   });
   if (candidateLines.some((line) => line === null)) return NextResponse.json({
@@ -216,7 +260,10 @@ export async function POST(request: Request) {
       message: 'One or more cart items are no longer available. Refresh your cart and try again.',
     },
   }, { status: 409 });
-  const lines = candidateLines.filter((line) => line !== null);
+  const pricedLines = candidateLines.filter((line) => line !== null);
+  const lines = pricedLines.map(({ line }) => line);
+  const totals = cartTotals(pricedLines.map(({ cartItem }) => cartItem), activities, voucher);
+  if (voucher && totals.voucherError) return NextResponse.json({ error: totals.voucherError }, { status: 422 });
 
   const selectedFoodOutlets = [...new Set(lines.flatMap((line) => {
     const product = productMap.get(line.product_id) as { categories?: { slug?: string } | { slug?: string }[] | null } | undefined;
@@ -272,20 +319,51 @@ export async function POST(request: Request) {
   }
 
   let response: Record<string, unknown> = { ...(prepared as Record<string, unknown>), total: totals.total };
-  if (walletSplit) {
+  if (walletReservation) {
     const { data: split, error: splitError } = await db.rpc('reserve_wallet_split_checkout', {
       p_checkout_session_id: prepared.checkout_session_id,
     });
-    if (splitError) {
+    if (splitError || !split || typeof split !== 'object') {
       await createServiceClient().rpc('finalize_checkout', {
         p_checkout_session_id: prepared.checkout_session_id,
         p_outcome: 'failed',
         p_provider_payment_id: null,
         p_provider_event_id: null,
       });
-      return NextResponse.json({ error: { code: 'WALLET_SPLIT_FAILED', message: splitError.message } }, { status: 409 });
+      return NextResponse.json({ error: { code: 'WALLET_RESERVATION_FAILED', message: 'Your wallet reservation could not be completed. Please try again.' } }, { status: 409 });
     }
-    response = { ...response, walletAmountSen: Number(split.wallet_amount_sen), externalAmountSen: Number(split.external_amount_sen) };
+    const walletAmountSen = Number(split.wallet_amount_sen);
+    const reservedExternalAmountSen = Number(split.external_amount_sen);
+    const expectedReservationState = prepared.status === 'paid' ? 'committed' : 'reserved';
+    const reservationIsValid = Number.isSafeInteger(walletAmountSen)
+      && Number.isSafeInteger(reservedExternalAmountSen)
+      && walletAmountSen >= 0
+      && reservedExternalAmountSen >= 0
+      && walletAmountSen + reservedExternalAmountSen === Math.round(totals.total * 100)
+      && split.status === expectedReservationState;
+    if (!reservationIsValid) {
+      if (prepared.status !== 'paid') {
+        await createServiceClient().rpc('finalize_checkout', {
+          p_checkout_session_id: prepared.checkout_session_id,
+          p_outcome: 'failed',
+          p_provider_payment_id: null,
+          p_provider_event_id: null,
+        });
+      }
+      return NextResponse.json({ error: { code: 'WALLET_RESERVATION_INVALID', message: 'The wallet reservation could not be verified. Please refresh checkout.' } }, { status: 409 });
+    }
+    if (!walletSplit && reservedExternalAmountSen !== 0) {
+      await createServiceClient().rpc('finalize_checkout', {
+        p_checkout_session_id: prepared.checkout_session_id,
+        p_outcome: 'failed',
+        p_provider_payment_id: null,
+        p_provider_event_id: null,
+      });
+      return NextResponse.json({
+        error: { code: 'WALLET_INSUFFICIENT', message: 'Your wallet balance is not enough for this order.' },
+      }, { status: 409 });
+    }
+    response = { ...response, walletAmountSen, externalAmountSen: reservedExternalAmountSen };
   }
   const externalAmountSen = walletSplit ? Number(response.externalAmountSen) : Math.round(totals.total * 100);
   if (isToyyibPay && prepared?.status !== 'paid') {

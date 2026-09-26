@@ -50,7 +50,7 @@ function OutletRow({ outlet, km }: { outlet: Outlet; km: number }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="line-clamp-2 text-base font-bold leading-tight text-foreground">{outlet.name}</p>
+              <p className="break-words whitespace-normal text-base font-bold leading-tight text-foreground">{outlet.name}</p>
               {outlet.category && (
                 <span className="mt-2 inline-flex rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold text-primary">
                   {categoryKey ? t(categoryKey) : outlet.category}
@@ -59,12 +59,12 @@ function OutletRow({ outlet, km }: { outlet: Outlet; km: number }) {
             </div>
             <p className="shrink-0 text-sm font-bold text-foreground">{km.toFixed(1)} {DISTANCE_UNIT_KM}</p>
           </div>
-          <p className="mt-2 line-clamp-1 text-xs text-muted-foreground">{outlet.vendorName || outlet.address || t("ui.search.localPartner")}</p>
-          {outlet.operatingHours ? <div className="mt-1"><OperatingHoursSummary hours={outlet.operatingHours} currentlyOpen={outlet.currentlyOpen ?? outlet.open} compact /></div> : outlet.hours && <p className="mt-1 truncate text-xs text-muted-foreground"><span className="font-semibold text-foreground">{t("ui.labels.operatingHours")}:</span> {outlet.hours}</p>}
+          <p className="mt-2 break-words whitespace-normal text-xs text-muted-foreground">{outlet.vendorName || outlet.address || t("ui.search.localPartner")}</p>
+          {outlet.operatingHours ? <div className="mt-1"><OperatingHoursSummary hours={outlet.operatingHours} currentlyOpen={outlet.currentlyOpen ?? outlet.open} compact /></div> : outlet.hours && <p className="mt-1 break-words whitespace-normal text-xs text-muted-foreground"><span className="font-semibold text-foreground">{t("ui.labels.operatingHours")}:</span> {outlet.hours}</p>}
         </div>
       </div>
-      <div className="flex items-center justify-between gap-3 border-t border-border bg-secondary/25 px-4 py-3 sm:px-5">
-        <span className="min-w-0 truncate text-xs font-bold text-primary">{t("ui.nearbyOutlets.viewShop", { name: outlet.name })}</span>
+      <div className="flex items-start justify-between gap-3 border-t border-border bg-secondary/25 px-4 py-3 sm:px-5">
+        <span className="min-w-0 break-words whitespace-normal text-xs font-bold text-primary">{t("ui.nearbyOutlets.viewShop", { name: outlet.name })}</span>
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-sm transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true">
           <ArrowUpRight size={15} strokeWidth={2.4} />
         </span>

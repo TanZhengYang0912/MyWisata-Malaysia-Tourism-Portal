@@ -4,7 +4,7 @@ import {
   type CapabilityKey,
   type EntitlementDecision,
 } from "@/lib/entitlements/types";
-import { resolveEffectiveCapability } from "@/lib/entitlements/server";
+import { resolveEffectiveCapabilities, resolveEffectiveCapability } from "@/lib/entitlements/server";
 import {
   type CustomerCapability,
   type CustomerCapabilityDecision,
@@ -95,12 +95,18 @@ export function resolveServerCustomerCapability(
 }
 
 async function resolveCanonicalSnapshot(userId: string): Promise<CustomerCapabilitySnapshot> {
-  const decisions = await Promise.all(CAPABILITY_KEYS.map(async (capability) => [
+  const decisions = await resolveEffectiveCapabilities(userId, CAPABILITY_KEYS);
+  return Object.fromEntries(CAPABILITY_KEYS.map((capability) => [
     capability,
-    await resolveServerCustomerCapability(userId, capability),
-  ] as const));
-
-  return Object.fromEntries(decisions) as CustomerCapabilitySnapshot;
+    customerDecision(decisions.get(capability) ?? {
+      capability,
+      allowed: false,
+      blockerCode: "POLICY_UNAVAILABLE",
+      qualificationPaths: [],
+      entitlementGeneration: 0,
+      source: "default_deny",
+    }),
+  ])) as CustomerCapabilitySnapshot;
 }
 
 function isValidGeneration(value: unknown): value is number {

@@ -22,9 +22,10 @@ describe("GET customer order QR passes", () => {
     mocks.getUser.mockResolvedValue({ data: { user: { id: "customer-1" } }, error: null });
     mocks.from.mockImplementation((table: string) => {
       if (table === "orders") return query({ id: "order-1", status: "paid", user_id: "customer-1" });
-      if (table === "bookings") return query([{ id: "booking-1", order_items: { outlet_id: "outlet-1" }, ticket_passes: { id: "pass-1", policy: "multi_entry", entry_limit: 3, entries_used: 1, status: "active", valid_from: "2026-09-21T10:00:00Z", valid_until: "2026-10-21T10:00:00Z" } }]);
+      if (table === "bookings") return query([{ id: "booking-1", order_items: { outlet_id: "outlet-1", vendor_id: "vendor-a", outlets: { id: "outlet-1", name: "North Outlet", vendor_id: "vendor-a", vendors: { id: "vendor-a", name: "Vendor A" } } }, ticket_passes: { id: "pass-1", policy: "multi_entry", entry_limit: 3, entries_used: 1, status: "active", valid_from: "2026-09-21T10:00:00Z", valid_until: "2026-10-21T10:00:00Z" } }]);
       return query([{
         outlet_id: "food-outlet",
+        vendor_id: "vendor-b",
         product_name: "Nasi Lemak",
         variant_name: "Regular",
         quantity: 2,
@@ -32,7 +33,7 @@ describe("GET customer order QR passes", () => {
         food_qr_scanned_at: null,
         fulfil_status: "pending",
         products: { categories: { slug: "food" } },
-        outlets: { name: "Kedai Makan" },
+        outlets: { id: "food-outlet", name: "Kedai Makan", vendor_id: "vendor-b", vendors: { id: "vendor-b", name: "Vendor B" } },
       }]);
     });
   });
@@ -46,8 +47,29 @@ describe("GET customer order QR passes", () => {
       bookingId: "booking-1", passId: "pass-1", outletId: "outlet-1", policy: "multi_entry", entryLimit: 3,
     });
     expect(json.data.tickets[0]).toMatchObject({ entriesUsed: 1, validUntil: "2026-10-21T10:00:00Z" });
-    expect(json.data.foodOrders[0]).toMatchObject({ outletId: "food-outlet", mode: "takeaway", status: "pending", outletName: "Kedai Makan" });
+    expect(json.data.tickets[0]).toMatchObject({ vendorName: "Vendor A", outletName: "North Outlet" });
+    expect(json.data.foodOrders[0]).toMatchObject({ outletId: "food-outlet", mode: "takeaway", status: "pending", vendorName: "Vendor B", outletName: "Kedai Makan" });
     expect(verifyFoodFulfilmentToken(json.data.foodOrders[0].foodToken).claims).toMatchObject({ orderId: "order-1", outletId: "food-outlet" });
+  });
+
+  it("issues a group-ticket QR with the database guest limit and the matching merchant", async () => {
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "orders") return query({ id: "order-1", status: "paid", user_id: "customer-1" });
+      if (table === "bookings") return query([{
+        id: "booking-1",
+        order_items: { outlet_id: "outlet-a", vendor_id: "vendor-a", outlets: { id: "outlet-a", name: "Outlet A", vendor_id: "vendor-a", vendors: { id: "vendor-a", name: "Vendor A" } } },
+        ticket_passes: { id: "pass-group", policy: "group_entry", entry_limit: 5, entries_used: 2, status: "active", valid_from: null, valid_until: null },
+      }]);
+      return query([]);
+    });
+
+    const response = await GET(new Request("http://localhost"), { params: Promise.resolve({ orderId: "order-1" }) });
+    const json = await response.json();
+    expect(response.status).toBe(200);
+    expect(verifyTicketPassToken(json.data.tickets[0].passToken).claims).toMatchObject({
+      bookingId: "booking-1", passId: "pass-group", outletId: "outlet-a", policy: "group_entry", entryLimit: 5,
+    });
+    expect(json.data.tickets[0]).toMatchObject({ vendorName: "Vendor A", outletName: "Outlet A", entriesUsed: 2 });
   });
 
   it.each(["food_fulfilment_mode", "food_qr_scanned_at"])("still returns booking passes when optional food column %s is not migrated", async (column) => {
@@ -55,7 +77,7 @@ describe("GET customer order QR passes", () => {
       if (table === "orders") return query({ id: "order-1", status: "paid", user_id: "customer-1" });
       if (table === "bookings") return query([{
         id: "booking-1",
-        order_items: { outlet_id: "outlet-1" },
+        order_items: { outlet_id: "outlet-1", vendor_id: "vendor-a", outlets: { id: "outlet-1", name: "North Outlet", vendor_id: "vendor-a", vendors: { id: "vendor-a", name: "Vendor A" } } },
         ticket_passes: [{ id: "pass-1", policy: "single_entry", entry_limit: 1, entries_used: 0, status: "active", valid_from: null, valid_until: null }],
       }]);
       return query(null, {
@@ -98,9 +120,9 @@ describe("GET customer order QR passes", () => {
       if (table === "orders") return query({ id: "order-1", status: "paid", user_id: "customer-1" });
       if (table === "bookings") return query([]);
       return query([{
-        outlet_id: "food-outlet", product_name: "Nasi Lemak", variant_name: null, quantity: 1,
+        outlet_id: "food-outlet", vendor_id: "vendor-b", product_name: "Nasi Lemak", variant_name: null, quantity: 1,
         food_fulfilment_mode: "dine_in", food_qr_scanned_at: "2026-09-21T10:00:00Z", fulfil_status: "pending",
-        products: { categories: { slug: "food" } }, outlets: { name: "Kedai Makan" },
+        products: { categories: { slug: "food" } }, outlets: { id: "food-outlet", name: "Kedai Makan", vendor_id: "vendor-b", vendors: { id: "vendor-b", name: "Vendor B" } },
       }]);
     });
     const response = await GET(new Request("http://localhost"), { params: Promise.resolve({ orderId: "order-1" }) });
@@ -112,9 +134,9 @@ describe("GET customer order QR passes", () => {
       if (table === "orders") return query({ id: "order-1", status: "paid", user_id: "customer-1" });
       if (table === "bookings") return query([]);
       return query([{
-        outlet_id: "food-outlet", product_name: "Nasi Lemak", variant_name: null, quantity: 1,
+        outlet_id: "food-outlet", vendor_id: "vendor-b", product_name: "Nasi Lemak", variant_name: null, quantity: 1,
         food_fulfilment_mode: "takeaway", food_qr_scanned_at: "2026-09-21T10:00:00Z", fulfil_status: "fulfilled",
-        products: { categories: { slug: "food" } }, outlets: { name: "Kedai Makan" },
+        products: { categories: { slug: "food" } }, outlets: { id: "food-outlet", name: "Kedai Makan", vendor_id: "vendor-b", vendors: { id: "vendor-b", name: "Vendor B" } },
       }]);
     });
     const response = await GET(new Request("http://localhost"), { params: Promise.resolve({ orderId: "order-1" }) });

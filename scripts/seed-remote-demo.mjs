@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { buildDemoBookingReference, buildDemoReviewCopy } from './lib/demo-content.mjs';
+import { remoteDemoSeedBlockReason } from './lib/demo-seed-guard.mjs';
 
 // WARNING: this script encodes the older all-vendors-share-3-owners demo
 // model, which conflicts with the per-vendor-owner model established in
@@ -37,8 +38,9 @@ function loadEnv() {
 
 loadEnv();
 
-if (process.env.REMOTE_DEMO_SEED !== '1') {
-  console.error('Refusing to seed a remote database without REMOTE_DEMO_SEED=1.');
+const seedBlockReason = remoteDemoSeedBlockReason(process.env);
+if (seedBlockReason) {
+  console.error(seedBlockReason);
   process.exit(1);
 }
 

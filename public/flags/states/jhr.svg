@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Creator: CorelDRAW -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xml:space="preserve"
+   width="648.00616"
+   height="324.00308"
+   style="fill-rule:evenodd"
+   viewBox="0 0 648.00616 325.00001"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.48.1 "
+   sodipodi:docname="AJAX.svg"><metadata
+   id="metadata17"><rdf:RDF><cc:Work
+       rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
+         rdf:resource="http://purl.org/dc/dcmitype/StillImage" /></cc:Work></rdf:RDF></metadata><defs
+   id="defs15" /><sodipodi:namedview
+   pagecolor="#ffffff"
+   bordercolor="#666666"
+   borderopacity="1"
+   objecttolerance="10"
+   gridtolerance="10"
+   guidetolerance="10"
+   inkscape:pageopacity="0"
+   inkscape:pageshadow="2"
+   inkscape:window-width="1280"
+   inkscape:window-height="1004"
+   id="namedview13"
+   showgrid="false"
+   fit-margin-top="0"
+   fit-margin-left="0"
+   fit-margin-right="0"
+   fit-margin-bottom="0"
+   inkscape:zoom="2.2477416"
+   inkscape:cx="190.68398"
+   inkscape:cy="224.02646"
+   inkscape:window-x="-8"
+   inkscape:window-y="-8"
+   inkscape:window-maximized="1"
+   inkscape:current-layer="Layer 1" />
+ <g
+   id="Layer 1"
+   transform="translate(-0.99693,0)">
+  <rect
+   x="0"
+   y="0"
+   width="650"
+   height="325"
+   id="rect5"
+   style="fill:#002b7f;fill-opacity:1" />
+  <rect
+   x="-1.3387797"
+   y="-1.7850395"
+   width="326.33878"
+   height="218.78503"
+   id="rect7"
+   style="fill:#ce1126;fill-opacity:1" />
+  <path
+   d="m 156,197 c -37,-7 -66,-40 -66,-80 0,-45 37,-81 82,-81 22,0 42,9 57,23 -16,-26 -45,-43 -78,-43 -50,0 -91,40 -91,91 0,50 41,91 91,91 2,0 4,0 5,-1 z"
+   id="path9"
+   inkscape:connector-curvature="0"
+   style="fill:#ffffff" />
+  <path
+   d="m 177,98 32,23 32,-23 -12,37 31,23 -39,0 -12,38 -12,-38 -39,0 31,-23 -12,-37 z m 16,12 m 32,0 m 10,7 m 10,30 m -4,11 m -26,19 m -12,0 m -26,-19 m -3,-11 m 9,-30"
+   id="path11"
+   inkscape:connector-curvature="0"
+   style="fill:#ffffff" />
+ </g>
+</svg>

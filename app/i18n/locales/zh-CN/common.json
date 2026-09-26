@@ -125,6 +125,7 @@
     "noNotificationsYet": "暂无通知。",
     "noNotificationsFound": "未找到通知。",
     "viewAll": "查看所有通知",
+    "loadMore": "加载更多",
     "open": "打开",
     "loadError": "无法加载通知。",
     "categories": {
@@ -283,6 +284,8 @@
     "navigation": "导航直达",
     "queue": "待审队列",
     "actions": "快捷操作",
+    "pendingQueue": "{{name}}待处理",
+    "unreadQueue": "{{name}}未读",
     "admin": "系统管理",
     "preferences": "偏好设置",
     "navigate": "切换项",

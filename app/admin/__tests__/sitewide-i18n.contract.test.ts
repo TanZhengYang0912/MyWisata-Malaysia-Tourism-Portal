@@ -75,6 +75,7 @@ export const ADMIN_ROUTE_I18N_FILES = [
   "app/admin/chatbot/page.tsx",
   "app/admin/dashboard/page.tsx",
   "app/admin/kyc/page.tsx",
+  "app/admin/promotion-campaigns/page.tsx",
   "app/admin/recommendations/[id]/page.tsx",
   "app/admin/recommendations/page.tsx",
   "app/admin/refunds/page.tsx",

@@ -175,9 +175,42 @@ function mapOrder(row: OrderRow): Order {
 }
 
 export async function getOrdersForUser(userId: string): Promise<Order[]> {
-  const { data, error } = await supabase.from("orders").select(ORDER_SELECT).eq("user_id", userId).order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data as unknown as OrderRow[]).map(mapOrder);
+  const pageSize = 1000;
+  const orders: Order[] = [];
+  const seenOrderIds = new Set<string>();
+  let cursor: Pick<OrderRow, "created_at" | "id"> | undefined;
+
+  while (true) {
+    let query = supabase
+      .from("orders")
+      .select(ORDER_SELECT)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false });
+
+    if (cursor) {
+      query = query.or(`created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`);
+    }
+
+    const { data, error } = await query.range(0, pageSize - 1);
+    if (error) throw error;
+
+    const rows = (data ?? []) as unknown as OrderRow[];
+    for (const row of rows) {
+      if (seenOrderIds.has(row.id)) continue;
+      seenOrderIds.add(row.id);
+      orders.push(mapOrder(row));
+    }
+
+    const lastRow = rows.at(-1);
+    if (!lastRow || rows.length < pageSize) break;
+    if (cursor?.created_at === lastRow.created_at && cursor.id === lastRow.id) {
+      throw new Error("Customer order pagination did not advance past its previous cursor.");
+    }
+    cursor = { created_at: lastRow.created_at, id: lastRow.id };
+  }
+
+  return orders;
 }
 
 export async function getOrder(id: string): Promise<Order | undefined> {
@@ -253,6 +286,7 @@ function mapBooking(row: BookingRow): Booking | null {
 }
 
 const BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)";
+const SETTLED_BOOKING_SELECT = "id,status,order_items!inner(order_id,product_id,product_name,outlet_id,slot_starts_at,quantity,orders!inner(status)),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)";
 
 export async function getBookingsForOrder(orderId: string): Promise<Booking[]> {
   const { data, error } = await supabase.from("bookings").select(BOOKING_SELECT).eq("order_items.order_id", orderId);
@@ -281,6 +315,18 @@ export async function getBookingsForOutlets(outletIds: string[]): Promise<Bookin
 
 export async function getBookingsForUser(userId: string): Promise<Booking[]> {
   const { data, error } = await supabase.from("bookings").select(BOOKING_SELECT).eq("customer_id", userId).order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as unknown as BookingRow[]).map(mapBooking).filter((b): b is Booking => b !== null);
+}
+
+/** My Activity only shows bookings backed by a settled customer order. */
+export async function getSettledBookingsForUser(userId: string): Promise<Booking[]> {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(SETTLED_BOOKING_SELECT)
+    .eq("customer_id", userId)
+    .in("order_items.orders.status", ["paid", "completed"])
+    .order("created_at", { ascending: true });
   if (error) throw error;
   return (data as unknown as BookingRow[]).map(mapBooking).filter((b): b is Booking => b !== null);
 }

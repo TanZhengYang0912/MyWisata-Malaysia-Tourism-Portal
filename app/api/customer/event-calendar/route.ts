@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   const db = await createClient();
   const { data, error } = await db
     .from("booking_slots")
-    .select("id,product_id,outlet_id,starts_at,ends_at,capacity,booked,status,products!inner(id,name,cover_url,requires_booking,status,review_status),outlets!inner(id,name,operating_hours,status,review_status,vendors!inner(name,status))")
+    .select("id,product_id,outlet_id,starts_at,ends_at,capacity,booked,status,products!inner(id,name,cover_url,requires_booking,status,review_status,categories(slug)),outlets!inner(id,name,status,review_status,vendors!inner(name,status))")
     .gte("starts_at", from.toISOString())
     .lt("starts_at", to.toISOString())
     .eq("products.status", "active")
@@ -36,6 +36,7 @@ export async function GET(request: Request) {
 
   const records = (data ?? []).map((row) => {
     const product = Array.isArray(row.products) ? row.products[0] : row.products;
+    const category = Array.isArray(product?.categories) ? product.categories[0] : product?.categories;
     const outlet = Array.isArray(row.outlets) ? row.outlets[0] : row.outlets;
     const vendor = outlet?.vendors
       ? (Array.isArray(outlet.vendors) ? outlet.vendors[0] : outlet.vendors)
@@ -48,15 +49,17 @@ export async function GET(request: Request) {
       outletId: row.outlet_id,
       outletName: outlet?.name ?? "",
       vendorName: vendor?.name ?? null,
+      categorySlug: category?.slug ?? null,
       startsAt: row.starts_at,
       endsAt: row.ends_at,
       capacity: Number(row.capacity),
       booked: Number(row.booked),
       status: row.status,
       requiresBooking: product?.requires_booking ?? true,
-      operatingHours: (outlet?.operating_hours ?? null) as CustomerCalendarRecord["operatingHours"],
     } satisfies CustomerCalendarRecord;
   });
 
-  return apiOk({ events: toCustomerCalendarEvents(records, now), range: { from: from.toISOString(), to: to.toISOString() } });
+  const events = toCustomerCalendarEvents(records, now);
+
+  return apiOk({ events, range: { from: from.toISOString(), to: to.toISOString() } });
 }

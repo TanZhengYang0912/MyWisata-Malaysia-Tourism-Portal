@@ -80,8 +80,8 @@ export function PortalSidebar({
         <div className="flex items-start gap-2.5">
           <ShieldCheck size={16} className="mt-0.5 shrink-0 text-slate-400" aria-hidden="true" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-white">{contextLabel}</p>
-            {contextDetail && <p className="mt-0.5 truncate text-xs text-slate-400">{contextDetail}</p>}
+            <p className="whitespace-normal break-words text-sm font-semibold text-white">{contextLabel}</p>
+            {contextDetail && <p className="mt-0.5 whitespace-normal break-words text-xs text-slate-400">{contextDetail}</p>}
           </div>
         </div>
       </div>

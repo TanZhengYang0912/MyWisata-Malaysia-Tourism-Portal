@@ -76,6 +76,51 @@ describe("POST /api/integrations/webhooks/[provider]", () => {
     expect(json.error.code).toBe("UNAUTHORIZED");
   });
 
+  it("authenticates the raw body before rejecting malformed event semantics", async () => {
+    const body = {
+      sourceIdentifier,
+      externalBookingId: "ext-invalid-action",
+      slotId,
+      quantity: 1,
+      action: "refund",
+    };
+    const mockSelect = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          maybeSingle: vi.fn().mockResolvedValue({
+            data: { id: "src-1", webhook_secret: secret, sync_enabled: true },
+            error: null,
+          }),
+        }),
+      }),
+    });
+    const mockRpc = vi.fn();
+    vi.mocked(createServiceClient).mockReturnValue({
+      from: vi.fn().mockReturnValue({ select: mockSelect }),
+      rpc: mockRpc,
+    } as any);
+
+    const response = await POST(createSignedRequest("klook", body), { params: Promise.resolve({ provider: "klook" }) });
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: "VALIDATION_FAILED" } });
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it("rejects oversized unsigned bodies before source lookup", async () => {
+    vi.mocked(createServiceClient).mockClear();
+    const request = new Request("http://localhost:3000/api/integrations/webhooks/klook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Content-Length": "70000" },
+      body: "{}",
+    });
+
+    const response = await POST(request, { params: Promise.resolve({ provider: "klook" }) });
+
+    expect(response.status).toBe(413);
+    expect(createServiceClient).not.toHaveBeenCalled();
+  });
+
   it("successfully confirms booking and respects database capacity", async () => {
     const body = {
       sourceIdentifier,

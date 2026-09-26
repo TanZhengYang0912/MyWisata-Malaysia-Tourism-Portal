@@ -84,7 +84,7 @@ export function BookingDayDrawer({
             {groups.map((group) => {
               const outletName = outletMap.get(group.outletId)?.name || t("ui.labels.mywisataOutlet");
               return <div key={group.key} className="rounded-2xl border border-border bg-secondary/50 p-4 transition hover:border-primary/30 hover:bg-secondary">
-                <div className="flex items-start justify-between gap-3"><p className="min-w-0 truncate text-sm font-bold text-foreground">{group.activityName}</p><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${statusClass(group.status)}`}>{t(`ui.calendar.statuses.${group.status}`)}</span></div>
+                <div className="flex items-start justify-between gap-3"><p className="min-w-0 break-words whitespace-normal text-sm font-bold text-foreground">{group.activityName}</p><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${statusClass(group.status)}`}>{t(`ui.calendar.statuses.${group.status}`)}</span></div>
                 <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2"><span className="inline-flex items-center gap-1.5"><Clock3 size={14} className="text-primary" /> {formatBookingTime(group.slotStartsAt)}</span><span className="inline-flex items-center gap-1.5"><Users size={14} className="text-primary" /> {t("strictMigration.bookingDay.guestBookingCount", { guests: group.totalQty, bookings: group.bookings.length })}</span><span className="inline-flex items-center gap-1.5 sm:col-span-2"><MapPin size={14} className="text-primary" /> {outletName}</span></div>
                 <div className="mt-5 border-t border-border pt-4">
                   <div className="flex items-center justify-between gap-3">
@@ -106,7 +106,7 @@ export function BookingDayDrawer({
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{t("ui.labels.booking")}</span>
-                          <span className="block truncate text-xs font-bold text-foreground">{t("ui.labels.booking")} {String(index + 1).padStart(2, "0")}</span>
+                          <span className="block break-words whitespace-normal text-xs font-bold text-foreground">{t("ui.labels.booking")} {String(index + 1).padStart(2, "0")}</span>
                         </span>
                          <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-primary">{t("ui.actions.viewBooking")} <ArrowUpRight size={13} aria-hidden="true" /></span>
                       </Link>

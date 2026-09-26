@@ -49,14 +49,18 @@ export async function POST(request: Request) {
   if (entity.review_status !== 'pending_review') return apiFail('INVALID_STATE', 'This item is no longer waiting for review', 409);
   if (entityType === 'voucher' && entity.vendor_review_status !== 'approved') return apiFail('INVALID_STATE', 'This voucher must be approved by the Vendor Owner first', 409);
 
-  const reviewStatus = action === 'approve' ? 'approved' : action;
+  const reviewStatus = action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : action;
   const update = entityType === 'voucher'
     ? { ...getSuperAdminReviewUpdate({ action, reviewerId: user.id, note }), reviewed_at: new Date().toISOString() }
     : { review_status: reviewStatus, review_note: note ?? null, reviewed_by: user.id, reviewed_at: new Date().toISOString(), status: action === 'approve' ? 'active' : 'inactive' };
   const { data: updated, error: updateError } = await db.from(table).update(update).eq('id', entityId).select().single();
   if (updateError) return apiFail('DB_ERROR', updateError.message, 500);
 
-  await db.from('content_reviews').insert({ entity_type: entityType, entity_id: entityId, vendor_id: entity.vendor_id, reviewer_id: user.id, action, note: note ?? null });
+  const { error: reviewHistoryError } = await db.from('content_reviews').insert({ entity_type: entityType, entity_id: entityId, vendor_id: entity.vendor_id, reviewer_id: user.id, action: reviewStatus, note: note ?? null });
+  if (reviewHistoryError) {
+    console.error('[catalogue-review] failed to record review history', reviewHistoryError);
+    return apiFail('DB_ERROR', 'The review state changed, but the review history could not be recorded', 500);
+  }
   await auditAndNotify({ action: `content.${action}`, entityType, entityId, beforeData: { review_status: entity.review_status }, afterData: { review_status: reviewStatus }, note });
   if (entity.vendor_id) {
     void emitVendorNotification({

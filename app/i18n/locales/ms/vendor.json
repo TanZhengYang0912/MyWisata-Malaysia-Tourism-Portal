@@ -24,7 +24,6 @@
     "Orders": "Pesanan",
     "Wallet": "Dompet",
     "Inbox": "Peti masuk",
-    "Notifications": "Pemberitahuan",
     "Analytics": "Analitik",
     "Operations": "Operasi",
     "Shop page": "Kedai"
@@ -217,13 +216,17 @@
     "uploadAndSubmitting": "Memuat naik imej dan menghantar…",
     "required": "Wajib",
     "optional": "Pilihan",
+    "phoneHint": "Pilih negara; kod negaranya akan kekal di sebelah medan. Masukkan nombor sahaja selepas kod tersebut. Untuk Malaysia (+60), buang 0 di hadapan nombor tempatan: 012 345 6789 menjadi 12 345 6789. Pengumpulan nombor mengikut negara yang dipilih.",
     "sections": {
       "businessProfile": "Profil perniagaan",
-      "businessProfileDescription": "Mulakan dengan nama dan kategori yang mudah dikenal oleh pelanggan.",
+      "businessProfileDescription": "Nama perniagaan ialah nama yang dilihat pelanggan di MyLawatan. Nama perniagaan sah di bawah ialah nama pada dokumen pendaftaran; kedua-duanya boleh sama atau berbeza. Pilih jenis perniagaan yang paling sesuai dan terangkan perkara yang boleh ditempah atau dikunjungi pelanggan.",
+      "businessProfileHelpLabel": "Tentang profil perniagaan",
       "legalContact": "Maklumat undang-undang dan perhubungan",
-      "legalContactDescription": "Sertakan butiran pendaftaran jika tersedia dan maklumat untuk dihubungi.",
+      "legalContactDescription": "Isi nama perniagaan berdaftar dan nombor pendaftaran SSM atau syarikat jika ada. Kedua-duanya pilihan. Maklumat hubungan membantu kami membuat susulan tentang permohonan anda.",
+      "legalContactHelpLabel": "Tentang maklumat undang-undang dan hubungan",
       "brandAssets": "Bahan jenama",
-      "brandAssetsDescription": "Muat naik logo dan imej muka depan jika ada, kemudian tambah tiga foto untuk memperkenalkan perniagaan anda. Fail JPG, PNG atau WebP sehingga 2 MB setiap satu."
+      "brandAssetsDescription": "Logo, imej muka depan dan galeri foto semuanya pilihan. Jika menambah foto galeri, muat naik tepat tiga foto atau biarkan galeri kosong. Gunakan fail JPG, PNG atau WebP sehingga 2 MB setiap satu.",
+      "brandAssetsHelpLabel": "Tentang imej jenama"
     },
     "images": {
       "emptyTitle": "Pilih imej atau lepaskannya di sini",
@@ -334,7 +337,6 @@
       "legalBusinessName": "Nama perniagaan berdaftar",
       "registrationNumber": "Isi jika tersedia",
       "contactPerson": "Pemilik atau orang yang diberi kuasa",
-      "contactPhone": "+60...",
       "businessEmail": "business@example.com",
       "businessAddress": "Alamat perniagaan berdaftar"
     },
@@ -765,6 +767,7 @@
       "voucherRedeemed": "Baucar berjaya ditebus.",
       "foodOrderKind": "Pesanan makanan",
       "foodOrderTitle": "Pesanan makanan #{{order}}",
+      "vendor": "Vendor",
       "foodOrderFulfilled": "Pesanan makanan berjaya diserahkan.",
       "foodDineInCheckedIn": "Ketibaan pelanggan makan di sini disahkan. Pesanan masih menunggu hidangan.",
       "voucherKind": "Baucar",
@@ -841,21 +844,6 @@
       "category": "Kategori",
       "bookingRequired": "Tempahan diperlukan",
       "price": "Harga"
-    },
-    "notifications": {
-      "all": "Semua",
-      "unread": "Belum dibaca",
-      "orders": "Pesanan",
-      "bookings": "Tempahan",
-      "products": "Produk",
-      "wallet": "Dompet",
-      "account": "Akaun",
-      "loading": "Memuatkan pemberitahuan…",
-      "unavailableTitle": "Pemberitahuan vendor tidak tersedia",
-      "unavailableDescription": "Kami tidak dapat menyelesaikan ruang kerja vendor yang diluluskan untuk akaun ini.",
-      "workspace": "Ruang kerja vendor",
-      "title": "Pemberitahuan",
-      "description": "Kemas kini pesanan, tempahan, produk, dompet dan akaun terkini untuk skop vendor anda yang dibenarkan."
     },
     "orders": {
       "loadFailed": "Tidak dapat memuatkan pesanan.",

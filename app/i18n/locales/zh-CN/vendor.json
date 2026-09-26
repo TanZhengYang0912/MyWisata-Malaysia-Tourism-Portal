@@ -24,7 +24,6 @@
     "Orders": "订单",
     "Wallet": "钱包",
     "Inbox": "收件箱",
-    "Notifications": "通知",
     "Analytics": "分析",
     "Operations": "运营",
     "Shop page": "店铺"
@@ -217,13 +216,17 @@
     "uploadAndSubmitting": "正在上传图片并提交申请…",
     "required": "必填",
     "optional": "选填",
+    "phoneHint": "先选择国家，区号会固定显示在号码栏旁，号码栏只填区号后面的部分。马来西亚（+60）号码需省略本地号码开头的 0：例如 012 345 6789，选择 +60 后输入 12 345 6789。号码分组会按所选国家调整。",
     "sections": {
       "businessProfile": "商家资料",
-      "businessProfileDescription": "先填写顾客容易识别的商家名称和类别。",
+      "businessProfileDescription": "商家名称是顾客在 MyLawatan 上看到的名称；下方的法定商家名称应填写注册文件上的主体名称，两者可以相同或不同。请选择最符合的商家类别，并说明顾客可以预订或体验的内容。",
+      "businessProfileHelpLabel": "商家资料说明",
       "legalContact": "法律与联系信息",
-      "legalContactDescription": "如有注册资料请一并填写，并留下联系人信息。",
+      "legalContactDescription": "如有，请填写注册商家名称及 SSM 或公司注册号码。这些资料为选填。联系人信息用于跟进您的申请。",
+      "legalContactHelpLabel": "法律与联系信息说明",
       "brandAssets": "品牌素材",
-      "brandAssetsDescription": "可选上传商家标志和封面图片，再添加三张照片介绍您的商家。支持 JPG、PNG 或 WebP，每张不超过 2 MB。"
+      "brandAssetsDescription": "标志、封面图和照片库均为选填。如要上传照片库，请上传三张，或留空不上传。支持 JPG、PNG 或 WebP，每张不超过 2 MB。",
+      "brandAssetsHelpLabel": "品牌图片说明"
     },
     "images": {
       "emptyTitle": "选择图片或将图片拖到这里",
@@ -334,7 +337,6 @@
       "legalBusinessName": "注册商家名称",
       "registrationNumber": "如有请填写",
       "contactPerson": "所有者或授权人员",
-      "contactPhone": "+60…",
       "businessEmail": "business@example.com",
       "businessAddress": "注册商家地址"
     },
@@ -765,6 +767,7 @@
       "voucherRedeemed": "优惠券已成功兑换。",
       "foodOrderKind": "餐食订单",
       "foodOrderTitle": "餐食订单 #{{order}}",
+      "vendor": "商家",
       "foodOrderFulfilled": "餐食订单已完成交付。",
       "foodDineInCheckedIn": "已确认顾客堂食到店，订单仍待上餐。",
       "voucherKind": "优惠券",
@@ -841,21 +844,6 @@
       "category": "类别",
       "bookingRequired": "需要预订",
       "price": "价格"
-    },
-    "notifications": {
-      "all": "全部",
-      "unread": "未读",
-      "orders": "订单",
-      "bookings": "预订",
-      "products": "产品",
-      "wallet": "钱包",
-      "account": "账户",
-      "loading": "正在加载通知…",
-      "unavailableTitle": "商家通知不可用",
-      "unavailableDescription": "无法为此账户解析已批准的商家工作区。",
-      "workspace": "商家工作区",
-      "title": "通知",
-      "description": "您授权商家范围内的最新订单、预订、产品、钱包和账户更新。"
     },
     "orders": {
       "loadFailed": "无法加载订单。",

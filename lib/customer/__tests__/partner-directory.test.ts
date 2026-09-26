@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ComputedActivity, SponsoredPlacement, VendorSummary } from "@/backend/core/types";
 import {
+  attachSponsoredOutletGalleryCovers,
   rankPartnerDirectory,
   selectPartnerAdvertisements,
 } from "@/lib/customer/partner-directory";
@@ -198,5 +199,46 @@ describe("selectPartnerAdvertisements", () => {
       category: "hidden_gem",
       now,
     }).map((item) => item.id)).toEqual(["hidden"]);
+  });
+});
+
+describe("attachSponsoredOutletGalleryCovers", () => {
+  it("uses the first curated photo for a sponsored outlet with no published Hero", () => {
+    const sponsored = activity("sponsored");
+    const organic = activity("organic");
+    const result = attachSponsoredOutletGalleryCovers(
+      [sponsored, organic],
+      new Set(["sponsored"]),
+      [
+        { outletId: "outlet-sponsored", url: "later.jpg", mediaType: "gallery", sortOrder: 2 },
+        { outletId: "outlet-sponsored", url: "first.jpg", mediaType: "gallery", sortOrder: 1 },
+        { outletId: "outlet-sponsored", url: "logo.png", mediaType: "logo", sortOrder: -1 },
+        { outletId: "outlet-organic", url: "organic.jpg", mediaType: "gallery", sortOrder: 1 },
+      ],
+    );
+
+    expect(result[0].outlet.coverUrl).toContain("vendor-images/first.jpg");
+    expect(result[1]).toBe(organic);
+  });
+
+  it("prefers an outlet gallery photo over its Hero and keeps the Hero when no gallery photo exists", () => {
+    const withHero = activity("hero", {
+      outlet: { ...activity("hero").outlet, coverUrl: "hero.jpg" },
+    });
+    const noPhoto = activity("empty", {
+      outlet: { ...activity("empty").outlet, coverUrl: null },
+    });
+    const heroFallback = activity("hero-fallback", {
+      outlet: { ...activity("hero-fallback").outlet, coverUrl: "fallback-hero.jpg" },
+    });
+    const result = attachSponsoredOutletGalleryCovers(
+      [withHero, noPhoto, heroFallback],
+      new Set(["hero", "empty", "hero-fallback"]),
+      [{ outletId: "outlet-hero", url: "gallery.jpg", mediaType: "gallery", sortOrder: 1 }],
+    );
+
+    expect(result[0].outlet.coverUrl).toContain("vendor-images/gallery.jpg");
+    expect(result[1].outlet.coverUrl).toBeNull();
+    expect(result[2].outlet.coverUrl).toBe("fallback-hero.jpg");
   });
 });

@@ -70,6 +70,7 @@ export async function GET() {
   if (roles.length === 0) {
     return NextResponse.json({ error: 'Role assignment pending' }, { status: 403 });
   }
+  const capabilitiesPromise = resolveServerCustomerCapabilities(authUser.id);
   let staffRoleNames: string[] = [];
   let staffPermissionKeys: StaffPermissionKey[] = [];
   let staffModules: StaffModule[] = [];
@@ -119,7 +120,7 @@ export async function GET() {
       : 'suspended',
     roles,
   };
-  const capabilities = await resolveServerCustomerCapabilities(authUser.id);
+  const capabilities = await capabilitiesPromise;
   const entitlementGeneration = Math.max(
     0,
     ...Object.values(capabilities).map((decision) => decision.entitlementGeneration ?? 0),

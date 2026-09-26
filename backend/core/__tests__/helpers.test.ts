@@ -65,6 +65,58 @@ describe("cartTotals", () => {
     expect(totals.voucherError).toBeUndefined();
   });
 
+  it("limits vendor and outlet voucher discounts to matching cart lines", () => {
+    const vendorA = Object.assign({}, activity, { vendorId: "vendor-a" }) as Activity;
+    const vendorB = Object.assign({}, activity, { id: "b1", outletId: "outlet-b", vendorId: "vendor-b" }) as Activity;
+    const voucher = Object.assign({
+      id: "v-scope", code: "A10", type: "percent", value: 10, minSpend: 0,
+      usageCap: 10, usageCount: 0, expiresAt: "2026-12-31",
+    }, { vendorId: "vendor-a", outletId: "o1" }) as Voucher;
+
+    const totals = cartTotals([
+      { activityId: "a1", variantId: "adult", outletId: "o1", qty: 1 },
+      { activityId: "b1", variantId: "adult", outletId: "outlet-b", qty: 1 },
+    ], [vendorA, vendorB], voucher, now);
+
+    expect(totals.subtotal).toBe(200);
+    expect(totals.discount).toBe(10);
+    expect(totals.total).toBe(190);
+  });
+
+  it("applies a product voucher only to that product's eligible subtotal", () => {
+    const eligible = Object.assign({}, activity, { vendorId: "vendor-a" }) as Activity;
+    const other = Object.assign({}, activity, { id: "b1", outletId: "o1", vendorId: "vendor-a" }) as Activity;
+    const voucher = Object.assign({
+      id: "v-product", code: "P10", type: "percent", value: 10, minSpend: 0,
+      usageCap: 10, usageCount: 0, expiresAt: "2026-12-31",
+    }, { vendorId: "vendor-a", productId: "a1" }) as Voucher;
+
+    const totals = cartTotals([
+      { activityId: "a1", variantId: "adult", outletId: "o1", qty: 1 },
+      { activityId: "b1", variantId: "adult", outletId: "o1", qty: 1 },
+    ], [eligible, other], voucher, now);
+
+    expect(totals.discount).toBe(10);
+    expect(totals.total).toBe(190);
+  });
+
+  it("checks minimum spend against the voucher-eligible subtotal", () => {
+    const vendorA = Object.assign({}, activity, { vendorId: "vendor-a" }) as Activity;
+    const vendorB = Object.assign({}, activity, { id: "b1", outletId: "outlet-b", vendorId: "vendor-b" }) as Activity;
+    const voucher = Object.assign({
+      id: "v-min", code: "A10", type: "fixed", value: 10, minSpend: 150,
+      usageCap: 10, usageCount: 0, expiresAt: "2026-12-31",
+    }, { vendorId: "vendor-a" }) as Voucher;
+
+    const totals = cartTotals([
+      { activityId: "a1", variantId: "adult", outletId: "o1", qty: 1 },
+      { activityId: "b1", variantId: "adult", outletId: "outlet-b", qty: 1 },
+    ], [vendorA, vendorB], voucher, now);
+
+    expect(totals.voucherError).toBeDefined();
+    expect(totals.discount).toBe(0);
+  });
+
   it("surfaces an error and skips discount for an invalid voucher", () => {
     const voucher: Voucher = { id: "v2", code: "EXP", type: "fixed", value: 5, minSpend: 0, usageCap: 10, usageCount: 0, expiresAt: "2026-01-01" };
     const totals = cartTotals([{ activityId: "a1", variantId: "adult", qty: 1 }], [activity], voucher, now);

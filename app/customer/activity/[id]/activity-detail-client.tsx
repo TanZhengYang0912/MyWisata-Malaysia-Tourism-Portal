@@ -284,8 +284,8 @@ export function ActivityDetailClient({
             </div>
           </div>
 
-           <div className="mb-4 flex items-center justify-between gap-2 border-b border-border pb-4 text-xs">
-             <span className="min-w-0 truncate text-muted-foreground">
+           <div className="mb-4 flex flex-wrap items-start justify-between gap-2 border-b border-border pb-4 text-xs">
+             <span className="min-w-0 break-words whitespace-normal text-muted-foreground">
                {placeBound ? <MapPin size={12} className="mr-1 inline align-[-1px]" /> : <Store size={12} className="mr-1 inline align-[-1px]" />}
                {publicPlace ? t("strictMigration.activityDetail.noVendorRequired") : placeBound ? t("strictMigration.activityDetail.placeDetails") : (selectedOutlet!.vendorName ?? t("strictMigration.activityDetail.localVendor"))}
              </span>
@@ -297,8 +297,8 @@ export function ActivityDetailClient({
             <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("ui.activity.outletBookingDetails")}</p>
             <div className="mt-4 flex flex-col gap-2">
               {outletChoices.length > 0 ? outletChoices.map((choice) => (
-                <Link key={choice.outletId} href={`${getOutletShopHref(choice.outletId)}#full-menu`} className="flex items-center justify-between gap-3 rounded-xl border border-primary/15 bg-card px-3 py-2.5 text-left transition hover:border-primary/40 hover:bg-primary/5">
-                  <span className="min-w-0"><span className="block truncate text-sm font-semibold text-foreground">{t("strictMigration.activityDetail.viewOutlet", { name: outletShortName(choice.outletName, choice.vendorName) })}</span><span className="text-xs text-muted-foreground">{choice.city}{!choice.open && ` · ${t("ui.labels.currentlyClosed")}`}</span></span>
+                <Link key={choice.outletId} href={`${getOutletShopHref(choice.outletId)}#full-menu`} className="flex items-start justify-between gap-3 rounded-xl border border-primary/15 bg-card px-3 py-2.5 text-left transition hover:border-primary/40 hover:bg-primary/5">
+                  <span className="min-w-0"><span className="block break-words whitespace-normal text-sm font-semibold text-foreground">{t("strictMigration.activityDetail.viewOutlet", { name: outletShortName(choice.outletName, choice.vendorName) })}</span><span className="break-words whitespace-normal text-xs text-muted-foreground">{choice.city}{!choice.open && ` · ${t("ui.labels.currentlyClosed")}`}</span></span>
                   <span className="shrink-0 text-primary" aria-hidden="true">→</span>
                 </Link>
               )) : <Link href={`${getOutletShopHref(activity.outletId)}#full-menu`} className="inline-flex items-center justify-between rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-white hover:bg-primary/90">{t("ui.cart.viewOutlet")} <span aria-hidden="true">→</span></Link>}
@@ -325,7 +325,7 @@ export function ActivityDetailClient({
                       }}
                     >
                       <span className="min-w-0">
-                        <span className="block truncate text-sm font-semibold text-foreground">{outletShortName(choice.outletName, choice.vendorName)}</span>
+                        <span className="block break-words whitespace-normal text-sm font-semibold text-foreground">{outletShortName(choice.outletName, choice.vendorName)}</span>
                         <span className="text-xs text-muted-foreground">
                           {choice.city}
                           {!choice.open && ` · ${t("ui.labels.currentlyClosed")}`}
@@ -496,7 +496,7 @@ export function ActivityDetailClient({
        {!publicPlace && !outletSelectionRequired && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 p-3 shadow-[0_-8px_24px_rgba(1,0,102,0.12)] backdrop-blur-md md:hidden">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
           <div className="min-w-0">
-            <p className="truncate text-xs text-muted-foreground">{t(body.quantityLabelKey, { count: qty })}</p>
+            <p className="break-words whitespace-normal text-xs text-muted-foreground">{t(body.quantityLabelKey, { count: qty })}</p>
             <ReferencePrice amountMYR={price * qty} className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary" />
           </div>
           {added ? (

@@ -41,14 +41,14 @@ export function PlaceCard({ place, productCount }: { place: Place; productCount:
         </div>
       </div>
       <div className="flex flex-1 flex-col p-5">
-        <h3 className="line-clamp-2 min-h-[3.5rem] font-[family-name:var(--font-display)] text-2xl font-bold leading-tight tracking-tight text-foreground">
+        <h3 className="min-h-[3.5rem] break-words whitespace-normal font-[family-name:var(--font-display)] text-2xl font-bold leading-tight tracking-tight text-foreground">
           {place.name}
         </h3>
-        <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+        <p className="mt-2 flex items-start gap-1.5 break-words whitespace-normal text-xs font-semibold text-muted-foreground">
           <MapPin size={13} className="shrink-0 text-primary" aria-hidden="true" />
-          <span className="truncate">{location}</span>
+          <span className="break-words whitespace-normal">{location}</span>
         </p>
-        <p className="mt-3 line-clamp-2 min-h-[2.75rem] text-sm leading-6 text-muted-foreground">
+        <p className="mt-3 min-h-[2.75rem] break-words whitespace-normal text-sm leading-6 text-muted-foreground">
           {place.tagline || t("ui.place.cardFallback")}
         </p>
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-border pt-5">

@@ -8,6 +8,7 @@ import { useParams } from "next/navigation";
 import { getBookingForUser, getBookingsForOrder } from "@/backend/domains/commerce";
 import { getOutlets } from "@/backend/domains/catalogue";
 import { useAuth } from "@/components/providers/auth";
+import { CustomerQrPassCard } from "@/components/customer/customer-qr-pass-card";
 import { BookingQrCode } from "@/components/customer/booking-qr-code";
 import { RefundRequestDialog } from "@/components/customer/refund-request-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -83,7 +84,8 @@ export default function CustomerBookingDetailsPage() {
     return <main className="min-h-full bg-background"><CustomerPageShell wide className="py-16 sm:py-16"><EmptyState title={tCustomer("ui.booking.notFound")} description={tCustomer("ui.booking.unavailable")} /></CustomerPageShell></main>;
   }
 
-  const outletName = outlets.find((outlet) => outlet.id === booking.outletId)?.name ?? tCustomer("ui.labels.mywisataOutlet");
+  const bookingOutlet = outlets.find((outlet) => outlet.id === booking.outletId);
+  const outletName = bookingOutlet?.name ?? tCustomer("ui.labels.mywisataOutlet");
 
   return (
     <main className="min-h-full bg-background">
@@ -128,24 +130,30 @@ export default function CustomerBookingDetailsPage() {
           </div>
         </section>
 
-        <section className="mt-4 flex flex-col gap-5 rounded-3xl border border-border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:p-7" aria-labelledby="entry-heading">
-          <div className="flex min-h-32 w-32 shrink-0 items-center justify-center rounded-2xl bg-secondary p-2 text-primary">
-            <BookingQrCode
-              bookingId={booking.id}
-              orderId={booking.orderId}
-              size={112}
-              passToken={booking.passToken}
-              policy={booking.policy}
-              entryLimit={booking.entryLimit}
-              entriesUsed={booking.entriesUsed}
-              validUntil={booking.validUntil}
-            />
-          </div>
-          <div className="min-w-0">
-            <h2 id="entry-heading" className="text-base font-bold text-foreground">{tCustomer("ui.booking.entryPass")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{tCustomer("ui.booking.scanAtOutlet")}</p>
-            <p className="mt-2 truncate text-xs font-semibold text-primary">{tCustomer("strictMigration.bookingReceipt.reference", { reference: booking.id })}</p>
-          </div>
+        <section className="mt-4 overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-label={tCustomer("ui.booking.entryPass")}>
+          <CustomerQrPassCard
+            title={tCustomer("ui.booking.entryPass")}
+            merchantLabel={bookingOutlet?.vendorName
+              ? tCustomer("ui.labels.providedBy", { vendor: bookingOutlet.vendorName })
+              : undefined}
+            outletLabel={`${tCustomer("ui.labels.outlet")}: ${outletName}`}
+            qr={
+              <BookingQrCode
+                className="w-full"
+                bookingId={booking.id}
+                orderId={booking.orderId}
+                size={144}
+                passToken={booking.passToken}
+                policy={booking.policy}
+                entryLimit={booking.entryLimit}
+                entriesUsed={booking.entriesUsed}
+                validUntil={booking.validUntil}
+              />
+            }
+          >
+            <p className="text-sm text-muted-foreground">{tCustomer("ui.booking.scanAtOutlet")}</p>
+            <p className="mt-2 break-all text-xs font-semibold text-primary">{tCustomer("strictMigration.bookingReceipt.reference", { reference: booking.id })}</p>
+          </CustomerQrPassCard>
         </section>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 print:hidden">

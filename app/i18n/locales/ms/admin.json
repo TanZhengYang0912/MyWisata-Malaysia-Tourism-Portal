@@ -38,14 +38,17 @@
     "AI Assistant": "Pembantu AI",
     "Staff Conduct": "Tatakelakuan",
     "Access Control": "Kawalan akses",
-    "Sponsored Placements": "Ditaja"
+    "Sponsored Placements": "Ditaja",
+    "Promotion Campaigns": "Kempen",
+    "Orders": "Pesanan"
   },
   "navigationSections": {
     "workspace": "Ruang kerja",
     "governance": "Tadbir urus",
     "finance": "Kewangan",
     "support": "Sokongan",
-    "administration": "Pentadbiran"
+    "administration": "Pentadbiran",
+    "operations": "Operasi"
   },
   "sponsoredPlacements": {
     "eyebrow": "Kempen penemuan",
@@ -2997,6 +3000,32 @@
     "recommendationEvidence": "{{label}}: {{evidence}}",
     "recommendationPhotoStatus": "{{photo}} · {{status}}"
   },
+  "orderOperations": {
+    "eyebrow": "Operasi pesanan",
+    "title": "Pesanan pelanggan",
+    "description": "Semak butiran pesanan, pembayaran dan pemenuhan outlet semasa daripada aliran pembayaran pelanggan.",
+    "refresh": "Muat semula",
+    "searchLabel": "ID pesanan",
+    "searchPlaceholder": "Tampal ID pesanan penuh",
+    "search": "Cari",
+    "status": "Status pesanan",
+    "statuses": { "all": "Semua status", "pending_payment": "Menunggu pembayaran", "paid": "Dibayar", "completed": "Selesai", "cancelled": "Dibatalkan", "failed": "Gagal", "refunded": "Dibayar balik" },
+    "loading": "Memuatkan pesanan semasa…",
+    "empty": "Tiada pesanan sepadan dengan penapis ini.",
+    "order": "Pesanan",
+    "customer": "Pelanggan",
+    "items": "Item dan outlet",
+    "payment": "Pembayaran",
+    "total": "Jumlah",
+    "created": "Dicipta",
+    "unknownCustomer": "Butiran pelanggan tidak tersedia",
+    "fulfilment": "Pemenuhan",
+    "paymentPending": "Rekod pembayaran tidak tersedia",
+    "count": "{{total}} pesanan",
+    "previous": "Sebelumnya",
+    "next": "Seterusnya",
+    "errors": { "load": "Tidak dapat memuatkan pesanan. Cuba lagi." }
+  },
   "moderationWords": {
     "eyebrow": "Moderasi",
     "title": "Perkataan Moderasi",
@@ -3035,6 +3064,89 @@
       "add": "Tidak dapat menambah perkataan",
       "update": "Tidak dapat mengemas kini perkataan",
       "remove": "Tidak dapat membuang perkataan"
+    }
+  },
+  "promotionCampaigns": {
+    "eyebrow": "Acara pelanggan",
+    "title": "Pengurus kempen pop-up",
+    "description": "Jadualkan baucar rakan niaga dan tawaran cawangan sebenar, kemudian hantar untuk kelulusan bebas.",
+    "refresh": "Muat semula",
+    "form": {
+      "title": "Cipta draf kempen",
+      "editTitle": "Edit draf kempen",
+      "guidance": "Pastikan kandungan dan tarikh kempen sepadan dengan tawaran yang dipautkan. Tiada diskaun atau kuantiti dicipta di sini.",
+      "name": "Nama kempen",
+      "slug": "Alamat halaman",
+      "summary": "Penerangan ringkas",
+      "description": "Penerangan penuh",
+      "startsAt": "Bermula",
+      "endsAt": "Berakhir",
+      "timezone": "Semua waktu menggunakan waktu Malaysia (UTC+08:00).",
+      "invalidRange": "Waktu tamat mesti selepas waktu mula.",
+      "offers": "Tawaran yang mengambil bahagian",
+      "offerGuidance": "Pilih tawaran sedia ada yang diluluskan. Pilihan produk sentiasa merangkumi cawangan yang tepat.",
+      "offerCount": "{{count}} dipilih",
+      "offerCount_one": "{{count}} dipilih",
+      "offerCount_other": "{{count}} dipilih",
+      "offerType": "Jenis tawaran",
+      "product": "Produk cawangan",
+      "voucher": "Baucar",
+      "source": "Tawaran",
+      "chooseSource": "Pilih tawaran yang layak",
+      "vendorWide": "Semua cawangan yang layak",
+      "addOffer": "Tambah tawaran",
+      "noSources": "Tiada tawaran jenis ini yang layak.",
+      "unavailableVoucher": "Baucar ini tidak lagi layak. Buang dan pilih yang lain.",
+      "unavailableProduct": "Produk dan cawangan ini tidak lagi layak. Buang dan pilih yang lain.",
+      "removeOffer": "Buang {{name}}",
+      "saveChanges": "Simpan perubahan draf",
+      "saveDraft": "Simpan sebagai draf",
+      "cancelEdit": "Batal edit"
+    },
+    "list": {
+      "title": "Aliran kerja kempen",
+      "description": "{{count}} kempen dalam senarai semasa",
+      "description_one": "{{count}} kempen dalam senarai semasa",
+      "description_other": "{{count}} kempen dalam senarai semasa",
+      "linkedOffers": "tawaran dipautkan",
+      "rejection": "Nota semakan"
+    },
+    "states": {
+      "loading": "Memuatkan kempen dan tawaran yang layak…",
+      "empty": "Belum ada kempen",
+      "emptyDescription": "Cipta draf, tambah tawaran rakan niaga sebenar dan hantar untuk semakan."
+    },
+    "status": {
+      "draft": "Draf",
+      "pending_approval": "Menunggu kelulusan",
+      "approved": "Diluluskan",
+      "rejected": "Perubahan diperlukan",
+      "paused": "Dijeda",
+      "archived": "Diarkibkan"
+    },
+    "actions": {
+      "edit": "Edit draf",
+      "submit": "Hantar untuk semakan",
+      "approve": "Luluskan",
+      "reject": "Minta perubahan",
+      "pause": "Jeda",
+      "resume": "Sambung semula",
+      "archive": "Arkibkan"
+    },
+    "prompts": {
+      "rejectReason": "Terangkan perubahan yang diperlukan dalam sekurang-kurangnya 10 aksara.",
+      "confirm": {
+        "submit": "Hantar kempen ini untuk kelulusan?",
+        "approve": "Luluskan kempen ini untuk diterbitkan?",
+        "pause": "Jeda kempen ini sekarang?",
+        "archive": "Arkibkan kempen ini?"
+      }
+    },
+    "errors": {
+      "load": "Tidak dapat memuatkan kempen dan tawaran yang layak.",
+      "forbidden": "Anda tiada kebenaran untuk mengurus kempen promosi.",
+      "save": "Tidak dapat menyimpan draf kempen.",
+      "transition": "Tidak dapat mengemas kini kempen ini."
     }
   }
 }

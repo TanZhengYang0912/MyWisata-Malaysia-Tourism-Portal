@@ -258,6 +258,23 @@ export default async function PlacePage({ params }: Props) {
               ticketLabel={t("ui.placeActivity.ticketRequired")}
               informationLabel={t("ui.placeActivity.venueInformation")}
               venueDetailsLabel={t("ui.placeActivity.venueDetails")}
+              venueDetailsHint={t("ui.placeActivity.venueDetailsHint")}
+              venue={{
+                name: place.name,
+                location: place.district ? `${place.district}, ${stateLabel}` : stateLabel,
+                entry: entry.text,
+                detail: place.detail,
+              }}
+              detailsLabels={{
+                venue: t("ui.placeActivity.venue"),
+                location: t("ui.labels.location"),
+                entry: t("strictMigration.place.entry"),
+                source: t("ui.placeActivity.informationSource"),
+                difficulty: t("ui.place.difficulty"),
+                duration: t("ui.place.duration"),
+                bestTime: t("ui.place.bestTime"),
+                gettingThere: t("ui.place.gettingThere"),
+              }}
             />
             {products.length > 0 && <PlaceActivitySection products={products} returnTo={`/customer/place/${slug}`} />}
           </>

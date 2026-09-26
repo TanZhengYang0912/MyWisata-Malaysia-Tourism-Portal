@@ -6,6 +6,7 @@ import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { fulfilSchema } from '@/lib/validation/vendor-schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
+import { canUseGenericFoodFulfilment } from '@/lib/food/generic-fulfil-policy';
 
 interface Props { params: Promise<{ vendorId: string; orderItemId: string }> }
 
@@ -22,12 +23,21 @@ export async function POST(request: Request, { params }: Props) {
   // Get current order item
   const { data: item } = await supabase
     .from('order_items')
-    .select('*, orders(status)')
+    .select('*, orders(status), products(categories(slug))')
     .eq('id', orderItemId)
     .in('outlet_id', outletIds)
     .single();
 
   if (!item) return apiFail('NOT_FOUND', 'Order item not found or not in your outlets', 404);
+
+  const product = Array.isArray(item.products) ? item.products[0] : item.products;
+  const category = Array.isArray(product?.categories) ? product.categories[0] : product?.categories;
+  if (newStatus === 'fulfilled' && !canUseGenericFoodFulfilment({
+    categorySlug: category?.slug,
+    scannedAt: item.food_qr_scanned_at,
+  })) {
+    return apiFail('FOOD_QR_REQUIRED', 'Food orders must be scanned at the correct outlet before fulfilment', 409);
+  }
 
   // Validate state transition
   const order = item.orders as Record<string, unknown>;
@@ -47,12 +57,19 @@ export async function POST(request: Request, { params }: Props) {
     updateData.fulfilled_at = new Date().toISOString();
   }
 
-  const { error } = await supabase
+  const allowedCurrentStatuses = newStatus === 'ready' ? ['pending'] : ['pending', 'ready'];
+  const { data: updated, error } = await supabase
     .from('order_items')
     .update(updateData)
-    .eq('id', orderItemId);
+    .eq('id', orderItemId)
+    .eq('vendor_id', vendorId)
+    .in('outlet_id', outletIds)
+    .in('fulfil_status', allowedCurrentStatuses)
+    .select('id')
+    .maybeSingle();
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (!updated) return apiFail('INVALID_STATE', 'This order item changed. Refresh and try again.', 409);
 
   void emitVendorNotification({
     eventKey: `order:fulfil:${orderItemId}:${newStatus}`,
