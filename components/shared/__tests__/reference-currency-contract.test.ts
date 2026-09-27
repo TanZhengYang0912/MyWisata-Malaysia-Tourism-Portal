@@ -42,6 +42,14 @@ describe("reference currency UI contract", () => {
     expect(switcher).toContain('t("currency.label")');
   });
 
+  it("does not silently present a foreign selection when its rate is unavailable", () => {
+    const switcher = read("components/shared/currency-switcher.tsx");
+
+    expect(switcher).toContain("isReferenceRateUnavailable(currency, snapshot)");
+    expect(switcher).toContain('t("currency.rateUnavailable", { currency })');
+    expect(switcher).toContain('role="status"');
+  });
+
   it("exposes the switcher in both customer and guest headers", () => {
     const customer = read("app/customer/layout.tsx");
     const guest = read("app/guest/layout.tsx");

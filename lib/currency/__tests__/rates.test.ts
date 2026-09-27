@@ -38,6 +38,31 @@ describe("BNM reference rate reader", () => {
     );
   });
 
+  it("retries once when the first provider request fails transiently", async () => {
+    const fetcher = vi.fn()
+      .mockRejectedValueOnce(new Error("temporary network failure"))
+      .mockResolvedValueOnce(response([
+        { date: "2026-09-21", base: "MYR", quote: "SGD", rate: 0.31289 },
+      ]));
+
+    await expect(getReferenceRate("SGD", fetcher as typeof fetch)).resolves.toEqual({
+      date: "2026-09-21",
+      base: "MYR",
+      quote: "SGD",
+      rate: 0.31289,
+      provider: "BNM",
+    });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher).toHaveBeenNthCalledWith(
+      2,
+      "https://api.frankfurter.dev/v2/rates?base=MYR&quotes=SGD&providers=BNM",
+      expect.objectContaining({
+        cache: "no-store",
+        signal: expect.any(AbortSignal),
+      }),
+    );
+  });
+
   it.each([
     { body: null, label: "null payload" },
     { body: [], label: "empty payload" },
@@ -59,5 +84,7 @@ describe("BNM reference rate reader", () => {
 
     await expect(getReferenceRate("USD", rejected as typeof fetch)).resolves.toBeNull();
     await expect(getReferenceRate("USD", httpFailure as typeof fetch)).resolves.toBeNull();
+    expect(rejected).toHaveBeenCalledTimes(2);
+    expect(httpFailure).toHaveBeenCalledTimes(2);
   });
 });

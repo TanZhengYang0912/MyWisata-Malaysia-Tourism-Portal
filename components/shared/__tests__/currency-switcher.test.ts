@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { REFERENCE_CURRENCIES } from "@/lib/currency/reference";
-import { saveCurrencyPreference } from "../currency-switcher";
+import {
+  isReferenceRateUnavailable,
+  saveCurrencyPreference,
+  shouldNotifyRateUnavailable,
+} from "../currency-switcher";
 
 describe("currency switcher preference save", () => {
   it("posts one of the exact approved currency codes", async () => {
@@ -20,5 +24,24 @@ describe("currency switcher preference save", () => {
     const fetcher = vi.fn().mockResolvedValue({ status: 500 });
 
     await expect(saveCurrencyPreference("EUR", fetcher)).rejects.toThrow("Unable to save display currency");
+  });
+
+  it("detects a saved foreign currency whose rate is unavailable", () => {
+    expect(isReferenceRateUnavailable("SGD", null)).toBe(true);
+    expect(isReferenceRateUnavailable("MYR", null)).toBe(false);
+    expect(isReferenceRateUnavailable("SGD", {
+      base: "MYR",
+      quote: "SGD",
+      rate: 0.31289,
+      date: "2026-09-21",
+      provider: "BNM",
+    })).toBe(false);
+  });
+
+  it("notifies only once for the same unavailable currency", () => {
+    expect(shouldNotifyRateUnavailable(null, "SGD", true)).toBe(true);
+    expect(shouldNotifyRateUnavailable("SGD", "SGD", true)).toBe(false);
+    expect(shouldNotifyRateUnavailable("SGD", "USD", true)).toBe(true);
+    expect(shouldNotifyRateUnavailable(null, "SGD", false)).toBe(false);
   });
 });

@@ -4,6 +4,7 @@ import type { ForeignReferenceCurrency, ReferenceCurrency } from "./reference";
 
 const RATE_REVALIDATE_SECONDS = 60 * 60 * 24;
 const RATE_TIMEOUT_MS = 5_000;
+const RATE_ATTEMPT_TIMEOUT_MS = RATE_TIMEOUT_MS / 2;
 const RATE_API_URL = "https://api.frankfurter.dev/v2/rates";
 
 export type ReferenceRateSnapshot = {
@@ -50,21 +51,31 @@ export async function getReferenceRate(
 ): Promise<ReferenceRateSnapshot | null> {
   if (currency === "MYR") return null;
 
-  const url = `${RATE_API_URL}?base=MYR&quotes=${currency}&providers=BNM`;
+  const quote = currency;
+  const url = `${RATE_API_URL}?base=MYR&quotes=${quote}&providers=BNM`;
 
-  try {
-    const response = await fetcher(url, {
-      cache: "force-cache",
-      next: { revalidate: RATE_REVALIDATE_SECONDS },
-      signal: AbortSignal.timeout(RATE_TIMEOUT_MS),
-    });
-    if (!response.ok) return null;
+  async function fetchSnapshot(cache: "force-cache" | "no-store") {
+    const requestInit: RequestInit & { next?: { revalidate: number } } = {
+      cache,
+      signal: AbortSignal.timeout(RATE_ATTEMPT_TIMEOUT_MS),
+    };
+    if (cache === "force-cache") {
+      requestInit.next = { revalidate: RATE_REVALIDATE_SECONDS };
+    }
 
-    const payload: unknown = await response.json();
-    if (!Array.isArray(payload) || payload.length !== 1) return null;
+    try {
+      const response = await fetcher(url, requestInit);
+      if (!response.ok) return null;
 
-    return normalizeRateRow(payload[0], currency);
-  } catch {
-    return null;
+      const payload: unknown = await response.json();
+      if (!Array.isArray(payload) || payload.length !== 1) return null;
+
+      return normalizeRateRow(payload[0], quote);
+    } catch {
+      return null;
+    }
   }
+
+  const cachedSnapshot = await fetchSnapshot("force-cache");
+  return cachedSnapshot ?? fetchSnapshot("no-store");
 }

@@ -13,6 +13,7 @@
     "label": "参考币种",
     "saved": "参考币种已更新。",
     "saveError": "无法保存参考币种，请重试。",
+    "rateUnavailable": "{{currency}} 参考汇率暂时不可用，当前价格以 MYR 显示。",
     "referenceOnly": "换算金额仅为估算，供参考使用。",
     "rateDate": "参考汇率日期：{{date}}。",
     "settlementAmount": "实际以 {{amount}} 结算",

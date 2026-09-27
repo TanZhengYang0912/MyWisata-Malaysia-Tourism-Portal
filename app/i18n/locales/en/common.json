@@ -13,6 +13,7 @@
     "label": "Display currency",
     "saved": "Display currency updated.",
     "saveError": "Unable to save display currency. Please try again.",
+    "rateUnavailable": "The {{currency}} reference rate is temporarily unavailable. Prices are shown in MYR.",
     "referenceOnly": "Converted amounts are estimates for reference only.",
     "rateDate": "Reference rate dated {{date}}.",
     "settlementAmount": "Charged as {{amount}}",

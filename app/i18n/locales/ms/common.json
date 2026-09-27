@@ -13,6 +13,7 @@
     "label": "Mata wang paparan",
     "saved": "Mata wang paparan telah dikemas kini.",
     "saveError": "Mata wang paparan tidak dapat disimpan. Sila cuba lagi.",
+    "rateUnavailable": "Kadar rujukan {{currency}} tidak tersedia buat sementara waktu. Harga dipaparkan dalam MYR.",
     "referenceOnly": "Jumlah tukaran ialah anggaran untuk rujukan sahaja.",
     "rateDate": "Kadar rujukan bertarikh {{date}}.",
     "settlementAmount": "Dicaj sebagai {{amount}}",
