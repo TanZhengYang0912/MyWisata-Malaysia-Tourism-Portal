@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   exchangeCodeForSession: vi.fn(),
@@ -22,10 +22,34 @@ import { GET } from "../route";
 
 describe("GET /auth/callback", () => {
   beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "");
     vi.clearAllMocks();
     mocks.exchangeCodeForSession.mockResolvedValue({ error: null });
     mocks.getUser.mockResolvedValue({ data: { user: { id: "customer-1" } }, error: null });
     mocks.rpc.mockResolvedValue({ data: [{ role_name: "customer" }], error: null });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("uses the configured public site origin behind a reverse proxy", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://mylawatan.my");
+
+    const response = await GET(new Request("https://0.0.0.0:3000/auth/callback?code=oauth-code&next=%2Fcustomer"));
+
+    expect(response.headers.get("location")).toBe("https://mylawatan.my/customer");
+  });
+
+  it.each([
+    "https://mylawatan.my/unexpected-path",
+    "http://mylawatan.my",
+    "https://user:password@mylawatan.my",
+  ])("rejects an unsafe configured public site origin: %s", async (configuredOrigin) => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", configuredOrigin);
+
+    await expect(GET(new Request("https://0.0.0.0:3000/auth/callback?code=oauth-code")))
+      .rejects.toThrow("NEXT_PUBLIC_SITE_URL must be a valid application origin");
   });
 
   it("sends a customer to the customer home instead of a requested admin page", async () => {
