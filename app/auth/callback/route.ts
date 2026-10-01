@@ -6,7 +6,11 @@ import { postLoginDestination } from "@/lib/auth/post-login-destination";
 
 function resolveRedirectOrigin(requestUrl: URL): string {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (!configured) return requestUrl.origin;
+  if (!configured) {
+    return process.env.NODE_ENV === "production"
+      ? "https://mylawatan.my"
+      : requestUrl.origin;
+  }
 
   let siteUrl: URL;
   try {
