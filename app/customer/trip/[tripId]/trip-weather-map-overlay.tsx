@@ -210,7 +210,7 @@ export function TripWeatherMapOverlay({
         )}
 
         {enabled && (
-          <div className="pointer-events-auto absolute bottom-5 left-1/2 w-[min(520px,calc(100%-32px))] -translate-x-1/2 rounded-2xl border border-white/70 bg-white/92 px-4 py-3 shadow-[0_14px_45px_rgba(15,23,42,0.18)] backdrop-blur-xl">
+          <div className="pointer-events-auto absolute left-4 top-20 w-[min(360px,calc(100%-32px))] max-h-[calc(100%-5rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/70 bg-white/92 px-4 py-3 shadow-[0_14px_45px_rgba(15,23,42,0.18)] backdrop-blur-xl">
             <div className="mb-3 flex gap-1 rounded-xl bg-muted p-1 text-[11px] font-bold">
               <button type="button" disabled={!liveRadarAvailable || simulationEnabled} aria-pressed={mode === "now"} onClick={() => onModeChange("now")} className={"flex-1 rounded-lg px-3 py-1.5 transition disabled:cursor-not-allowed disabled:opacity-40 " + (mode === "now" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-card")}>{t("strictMigration.tripPlanner.weather.now")}</button>
               <button type="button" aria-pressed={mode === "forecast"} onClick={() => onModeChange("forecast")} className={"flex-1 rounded-lg px-3 py-1.5 transition " + (mode === "forecast" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-card")}>{t("strictMigration.tripPlanner.weather.forecast")}</button>
