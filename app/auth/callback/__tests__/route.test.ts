@@ -41,6 +41,14 @@ describe("GET /auth/callback", () => {
     expect(response.headers.get("location")).toBe("https://mylawatan.my/customer");
   });
 
+  it("uses the canonical public origin in production when the site URL is missing", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+
+    const response = await GET(new Request("https://0.0.0.0:3000/auth/callback?code=oauth-code&next=%2Fcustomer"));
+
+    expect(response.headers.get("location")).toBe("https://mylawatan.my/customer");
+  });
+
   it.each([
     "https://mylawatan.my/unexpected-path",
     "http://mylawatan.my",
