@@ -51,6 +51,19 @@ it('keeps unavailable references and changed outputs distinct without reporting 
   expect(report.totals.pair).toMatchObject({ planned: 6, available: 3, unknown: 1, notRun: 2 });
   expect(JSON.stringify(report)).not.toMatch(/FICTIONAL|990101|holderNameValue|correct|accuracyRate/);
 });
+it('counts whole-row and individual-channel not-run states without turning them into unknown fields', () => {
+  const fields = { holderName: 'FICTIONAL PERSON', documentNumber: '990101140001' };
+  const report = summarizeStudy([
+    { scenario: 'provided', pair: fields, crop: fields, outcome: 'ready', pairOutcome: 'ready', cropOutcome: 'ready', elapsedMs: 1 },
+    { scenario: 'reference', pair: null, crop: fields, outcome: 'ready', pairOutcome: 'not-run', cropOutcome: 'ready', elapsedMs: 0 },
+    { scenario: 'blur-1', pair: null, crop: null, outcome: 'not-run', pairOutcome: 'not-run', cropOutcome: 'not-run', elapsedMs: 0 },
+  ]);
+  expect(report.conditions[1].pair.holderName).toEqual({ available: false, comparison: 'not-run' });
+  expect(report.conditions[1].crop.holderName).toEqual({ available: true, comparison: 'same' });
+  expect(report.totals.pair).toMatchObject({ planned: 6, available: 2, notRun: 4, unknown: 0 });
+  expect(report.totals.crop).toMatchObject({ planned: 6, available: 4, notRun: 2, unknown: 0 });
+  expect(JSON.stringify(report)).not.toMatch(/FICTIONAL|990101/);
+});
 it('projects the fixed tuning matrix to exact field denominators and uses consistency-only without verified truth', () => {
   const rows: Array<{ condition: string; input: string; outcome: 'ready'; elapsedMs: number; fields: { holderName: string | null; documentNumber: string | null } }> = fieldTuningConditions.flatMap(condition => fieldTuningInputs.map(input => ({ condition, input, outcome: 'ready', elapsedMs: 0, fields: {
     holderName: condition === 'C1' ? 'FICTIONAL PERSON' : null,

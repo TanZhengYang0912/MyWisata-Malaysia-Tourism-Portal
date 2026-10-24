@@ -174,6 +174,90 @@ it('loads only a private manually checked truth after explicit local opt-in', as
     await expect(loadPrivateStudyTruth(env)).rejects.toThrow('private_study_truth_invalid');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+async function privateTruthFile(run: (context: { root: string; filename: string; env: Record<string, string>; truth: { schemaVersion: number; truthStatus: string; holderName: string; documentNumber: string } }) => Promise<void>) {
+  const root = await realpath(await mkdtemp(path.join(tmpdir(), 'kyc-truth-boundary-')));
+  const filename = path.join(root, 'truth.json');
+  const truth = { schemaVersion: 1, truthStatus: 'single-checked', holderName: 'FICTIONAL PRIVATE NAME', documentNumber: '990101140001' };
+  try {
+    await chmod(root, 0o700);
+    await writeFile(filename, JSON.stringify(truth), { mode: 0o600 });
+    await run({ root, filename, truth, env: { KYC_NODE_OCR_EVALUATION: '1', KYC_NODE_OCR_TRUTH_MANIFEST: filename } });
+  } finally { await rm(root, { recursive: true, force: true }); }
+}
+
+it.each([{}, { KYC_NODE_OCR_EVALUATION: '1' }, { KYC_NODE_OCR_TRUTH_MANIFEST: '/unreadable/truth.json' }])('rejects incomplete truth opt-in before accessing the filesystem: %j', async env => {
+  const stated = vi.spyOn(fs, 'lstat');
+  const opened = vi.spyOn(fs, 'open');
+  await expect(loadPrivateStudyTruth(env)).rejects.toThrow(/^private_study_truth_authorization_required$/);
+  expect(stated).not.toHaveBeenCalled();
+  expect(opened).not.toHaveBeenCalled();
+});
+
+it.each(['directory-mode', 'file-mode', 'directory-owner', 'file-owner', 'directory-link', 'file-link', 'directory-file', 'missing', 'oversized'])('rejects unsafe truth storage before opening it: %s', async scenario => {
+  await privateTruthFile(async ({ root, filename, env }) => {
+    if (scenario === 'directory-mode') await chmod(root, 0o750);
+    if (scenario === 'file-mode') await chmod(filename, 0o640);
+    if (scenario === 'directory-owner' || scenario === 'file-owner') {
+      const directory = await fs.lstat(root);
+      const file = await fs.lstat(filename);
+      if (scenario === 'directory-owner') directory.uid += 1;
+      else file.uid += 1;
+      vi.spyOn(fs, 'lstat').mockResolvedValueOnce(directory).mockResolvedValueOnce(file);
+    }
+    if (scenario === 'directory-link') {
+      await fs.symlink(root, path.join(root, 'link'), 'dir');
+      env.KYC_NODE_OCR_TRUTH_MANIFEST = path.join(root, 'link', 'truth.json');
+    }
+    if (scenario === 'file-link') {
+      await fs.symlink(filename, path.join(root, 'link.json'));
+      env.KYC_NODE_OCR_TRUTH_MANIFEST = path.join(root, 'link.json');
+    }
+    if (scenario === 'directory-file') env.KYC_NODE_OCR_TRUTH_MANIFEST = root;
+    if (scenario === 'missing') await rm(filename);
+    if (scenario === 'oversized') await writeFile(filename, 'X'.repeat(4097));
+    const opened = vi.spyOn(fs, 'open');
+    await expect(loadPrivateStudyTruth(env)).rejects.toThrow(/^private_study_truth_invalid$/);
+    expect(opened).not.toHaveBeenCalled();
+  });
+});
+
+it.each([
+  ['schema', { schemaVersion: 2 }], ['status', { truthStatus: 'unchecked' }],
+  ['empty-name', { holderName: '' }], ['blank-name', { holderName: '   ' }],
+  ['long-name', { holderName: 'X'.repeat(161) }], ['invalid-name', { holderName: 'NAME 123' }],
+  ['empty-number', { documentNumber: '' }], ['long-number', { documentNumber: '1'.repeat(41) }],
+  ['short-number', { documentNumber: '99010114000' }], ['invalid-number', { documentNumber: '99010114000A' }],
+  ['unknown-key', { privatePayload: 'SYNTHETIC CONTENT' }],
+] as const)('rejects invalid truth fields without exposing their values: %s', async (_scenario, changes) => {
+  await privateTruthFile(async ({ filename, env, truth }) => {
+    await writeFile(filename, JSON.stringify({ ...truth, ...changes }));
+    const opened = vi.spyOn(fs, 'open');
+    await expect(loadPrivateStudyTruth(env)).rejects.toThrow(/^private_study_truth_invalid$/);
+    expect(opened.mock.calls.every(([file]) => file === filename)).toBe(true);
+  });
+});
+
+it.each(['{', 'null', '[]', '{"schemaVersion":1}'])('rejects malformed or incomplete truth JSON with a fixed error', async content => {
+  await privateTruthFile(async ({ filename, env }) => {
+    await writeFile(filename, content);
+    await expect(loadPrivateStudyTruth(env)).rejects.toThrow(/^private_study_truth_invalid$/);
+  });
+});
+
+it('rejects a truth file replaced by a symlink between validation and open', async () => {
+  await privateTruthFile(async ({ root, filename, env, truth }) => {
+    const target = path.join(root, 'target.json');
+    await writeFile(target, JSON.stringify(truth), { mode: 0o600 });
+    const originalOpen = fs.open.bind(fs);
+    vi.spyOn(fs, 'open').mockImplementationOnce(async (file, flags, mode) => {
+      await rm(filename);
+      await fs.symlink(target, filename);
+      return originalOpen(file, flags, mode);
+    });
+    await expect(loadPrivateStudyTruth(env)).rejects.toThrow(/^private_study_truth_invalid$/);
+  });
+});
 it('rejects samples outside the private root before opening images', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'kyc-eval-test-'));
   try {

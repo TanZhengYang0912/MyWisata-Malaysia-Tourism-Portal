@@ -98,7 +98,7 @@ export function summarizeStudy(rows) {
       for (const field of fields) {
         const value = row[channel]?.[field], reference = baseline[channel]?.[field];
         let comparison;
-        if (row.outcome === 'transform-error') { comparison = 'not-run'; totals[channel].notRun += 1; }
+        if (row.outcome === 'transform-error' || row.outcome === 'not-run' || row[`${channel}Outcome`] === 'not-run') { comparison = 'not-run'; totals[channel].notRun += 1; }
         else if ((row[`${channel}Outcome`] ?? row.outcome) === 'engine-error') { comparison = 'error'; totals[channel].engineErrors += 1; }
         else if (typeof value !== 'string' || !value.trim()) { comparison = 'unknown'; totals[channel].unknown += 1; }
         else {
