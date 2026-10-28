@@ -356,7 +356,7 @@ export function ChatbotWidget() {
           </div>
 
           <div className="flex min-h-0 flex-1">
-            <div className={`min-h-0 ${selected ? "hidden sm:flex sm:flex-none" : "flex flex-1 sm:flex-none"}`}>
+            <div className={`min-h-0 min-w-0 ${selected ? "hidden sm:flex sm:flex-none" : "flex flex-1 sm:flex-none"}`}>
               <ChatWidgetInbox currentUserId={currentUser?.id ?? null} selected={selected} onSelect={selectChat} widthPx={expanded ? sidebarWidth : undefined} />
             </div>
 

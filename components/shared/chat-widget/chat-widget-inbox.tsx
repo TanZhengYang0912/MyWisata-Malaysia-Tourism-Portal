@@ -170,7 +170,7 @@ export function ChatWidgetInbox({ currentUserId, selected, onSelect, widthPx }: 
 
   return (
     <div
-      className={`flex min-h-0 w-full flex-col sm:shrink-0 sm:border-r sm:border-border ${widthPx ? "" : "sm:w-64"}`}
+      className={`flex min-h-0 w-full min-w-0 flex-col sm:shrink-0 sm:border-r sm:border-border ${widthPx ? "" : "sm:w-64"}`}
       style={widthPx ? { width: widthPx } : undefined}
     >
       <button
