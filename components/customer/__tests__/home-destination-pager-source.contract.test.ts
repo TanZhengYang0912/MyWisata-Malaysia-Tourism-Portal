@@ -9,7 +9,13 @@ describe("home destination pager hook", () => {
     const sync = hook.slice(hook.indexOf("const sync = useCallback"), hook.indexOf("const goToPage = useCallback"));
     // sync() runs on every scroll; it must not pin pendingPageRef, or wheel turns after a touch/trackpad scroll start from a stale page.
     expect(sync).not.toContain("pendingPageRef.current =");
-    expect(hook).toContain("pendingPageRef.current ?? Math.round(viewport.scrollLeft / metricsRef.current.pageStep)");
+    expect(hook).toContain("pendingPageRef.current ?? currentPage()");
+  });
+
+  it("reads page count and position from railPagePosition so a part-full last page gets its own dot", () => {
+    expect(hook).toContain('import { railPagePosition } from "@/lib/customer/rail-pages"');
+    expect(hook).not.toContain("Math.round(viewport.scrollWidth / pageStep)");
+    expect(hook).not.toContain("Math.round(viewport.scrollLeft /");
   });
 
   it("lets the browser scroll touch swipes and only pulls an overshooting fling back to one page", () => {

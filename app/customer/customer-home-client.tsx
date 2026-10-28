@@ -204,7 +204,7 @@ export function CustomerHomeClient({
   const forYouItems = groupAccommodationByProperty(recommended).filter((activity) => !highlightIds.has(activity.id)).slice(0, 4);
   return (
     <div className={`${titleFontClassName} bg-background min-h-screen text-foreground pb-20`}>
-      <section className="atlas-hero-section relative isolate min-h-[calc(100svh-96px)] overflow-hidden bg-[#061326] text-white lg:min-h-[calc(100svh-64px)]">
+      <section className="atlas-hero-section relative isolate min-h-[calc(100svh-var(--customer-header-h,6.3125rem))] overflow-hidden bg-[#061326] text-white xl:min-h-[calc(100svh-var(--customer-header-h,4.3125rem))]">
         <div className="absolute inset-0 z-0 overflow-hidden bg-[#061326]">
           <Image key={`${activeDestination.state}-placeholder`} src={activeHeroImage} alt="" aria-hidden="true" fill quality={75} sizes="(max-width: 639px) 44vw, (max-width: 1023px) 45vw, 340px" className={`atlas-hero-placeholder object-cover ${activeDestination.state === "Kuala Lumpur" ? "object-[60%_center] sm:object-center" : "object-[56%_48%]"}`} />
           {outgoingHeroDestination && (
@@ -235,9 +235,9 @@ export function CustomerHomeClient({
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(4,15,36,0.27)_0%,rgba(4,15,36,0.16)_27%,rgba(4,15,36,0.04)_64%,rgba(4,15,36,0.01)_100%),linear-gradient(0deg,rgba(4,17,39,0.36)_0%,rgba(4,17,39,0.16)_22%,rgba(4,17,39,0.02)_59%),linear-gradient(180deg,rgba(4,17,39,0.05)_0%,rgba(4,17,39,0)_52%)]" />
         </div>
 
-        <div className="relative z-10 mx-auto flex min-h-[calc(100svh-96px)] w-full max-w-[1420px] flex-col px-5 pb-8 pt-[12svh] sm:px-9 lg:min-h-[calc(100svh-64px)] lg:px-0 lg:pb-9 lg:pt-[14.5svh]">
+        <div className="relative z-10 mx-auto flex min-h-[calc(100svh-var(--customer-header-h,6.3125rem))] w-full max-w-[1420px] flex-col px-5 pb-8 pt-[12svh] sm:px-9 xl:min-h-[calc(100svh-var(--customer-header-h,4.3125rem))] lg:px-0 lg:pb-9 lg:pt-[14.5svh]">
           <header className="atlas-enter atlas-delay-1 mb-auto pl-0 sm:pl-4 lg:pl-[3.4%]">
-            <h1 className="atlas-discover-title max-w-[760px] font-[family-name:var(--font-discover-title)] text-[clamp(4.2rem,9vw,9.2rem)] font-normal leading-[1.05] tracking-[-0.025em]">
+            <h1 className="atlas-discover-title max-w-[760px] font-[family-name:var(--font-discover-title)] text-[clamp(4.2rem,min(9vw,14svh),9.2rem)] font-normal leading-[1.05] tracking-[-0.025em]">
               {t("ui.guest.discoverMalaysia")}
             </h1>
             <svg
@@ -258,7 +258,7 @@ export function CustomerHomeClient({
             </svg>
           </header>
 
-          <nav aria-label={t("ui.home.destinationCarousel")} className="atlas-enter atlas-delay-2 mt-10 w-full">
+          <nav aria-label={t("ui.home.destinationCarousel")} className="atlas-destination-rail atlas-enter atlas-delay-2 mt-10 w-full">
             <div className="mb-3 flex items-center gap-3 sm:mb-1">
               <div className="flex items-center gap-3">
                 <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f4bd00] sm:text-xs">{t("ui.home.exploreDestinations")}</h2>
@@ -284,9 +284,9 @@ export function CustomerHomeClient({
                       type="button"
                       onClick={() => selectDestination(destination.state)}
                       aria-pressed={isSelected}
-                      className={`group relative block h-[108px] w-full overflow-hidden rounded-[14px] border text-left transition duration-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/40 sm:h-[138px] lg:h-[168px] ${isSelected ? "border-2 border-[#f4bd00]" : "border-white/70 hover:border-white"}`}
+                      className={`group relative block h-[clamp(108px,22svh,220px)] w-full overflow-hidden rounded-[14px] border text-left transition duration-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/40 ${isSelected ? "border-2 border-[#f4bd00]" : "border-white/70 hover:border-white"}`}
                     >
-                      <Image src={destination.image} alt="" fill sizes="(min-width: 1024px) 25vw, 50vw" className="object-cover transition duration-700 group-hover:scale-[1.045]" />
+                      <Image src={destination.image} alt="" fill sizes="(min-width: 1200px) 20vw, (min-width: 740px) 34vw, 50vw" className="object-cover transition duration-700 group-hover:scale-[1.045]" />
                       <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
                       <span className="absolute inset-x-3 bottom-2 truncate font-[family-name:var(--font-display)] text-[15px] font-semibold leading-tight text-white sm:inset-x-4 sm:bottom-3 sm:text-xl lg:text-[25px]">{destination.state}</span>
                     </button>
@@ -308,7 +308,7 @@ export function CustomerHomeClient({
             </div>
             <div className="mt-2 lg:hidden">
               <HomeDestinationWormIndicator
-                count={8}
+                count={destinationPager.pageCount}
                 progress={destinationPager.progress}
                 current={destinationPager.page}
                 sizes={{ dot: 11, pill: 36, gap: 8 }}
@@ -319,7 +319,7 @@ export function CustomerHomeClient({
             </div>
             <div className="mt-2 hidden lg:block">
               <HomeDestinationWormIndicator
-                count={4}
+                count={destinationPager.pageCount}
                 progress={destinationPager.progress}
                 current={destinationPager.page}
                 sizes={{ dot: 14, pill: 50, gap: 10 }}
@@ -494,6 +494,9 @@ export function CustomerHomeClient({
           stroke-dashoffset: 1;
           animation: atlas-accent-draw 800ms var(--atlas-ease-out) 460ms both;
         }
+        /* Cards per page follow the rail's own width: about 220px minimum per card, 2 to 5 per page. */
+        .atlas-destination-rail { container: destination-rail / inline-size; }
+
         .atlas-destination-pager {
           --per-page: 2;
           --destination-gap: 0.75rem;
@@ -514,9 +517,23 @@ export function CustomerHomeClient({
           animation: atlas-enter 480ms var(--atlas-ease-out) both;
         }
 
-        .atlas-destination-card:nth-child(2n + 1) {
-          scroll-snap-align: start;
-          scroll-snap-stop: always;
+        @container destination-rail (width < 692px) {
+          .atlas-destination-card:nth-child(2n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
+        }
+
+        @container destination-rail (692px <= width < 928px) {
+          .atlas-destination-pager { --per-page: 3; }
+          .atlas-destination-card:nth-child(3n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
+        }
+
+        @container destination-rail (928px <= width < 1164px) {
+          .atlas-destination-pager { --per-page: 4; --destination-gap: 1rem; }
+          .atlas-destination-card:nth-child(4n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
+        }
+
+        @container destination-rail (width >= 1164px) {
+          .atlas-destination-pager { --per-page: 5; --destination-gap: 1rem; }
+          .atlas-destination-card:nth-child(5n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
         }
 
         .atlas-discover-title {
@@ -577,23 +594,6 @@ export function CustomerHomeClient({
           .atlas-title-accent__stroke {
             stroke-dashoffset: 0;
             animation: none;
-          }
-        }
-
-        @media (min-width: 1024px) {
-          .atlas-destination-pager {
-            --per-page: 4;
-            --destination-gap: 1rem;
-          }
-
-          .atlas-destination-card:nth-child(2n + 1) {
-            scroll-snap-align: none;
-            scroll-snap-stop: normal;
-          }
-
-          .atlas-destination-card:nth-child(4n + 1) {
-            scroll-snap-align: start;
-            scroll-snap-stop: always;
           }
         }
       `}</style>

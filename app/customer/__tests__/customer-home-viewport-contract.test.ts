@@ -22,7 +22,11 @@ const nextConfigSource = readFileSync(resolve(process.cwd(), "next.config.ts"), 
 
 describe("customer home first viewport", () => {
   it("uses a full-bleed photo hero and the existing localized Discover Malaysia title", () => {
-    expect(homeSource).toContain("min-h-[calc(100svh-64px)]");
+    // The hero is one screen below the header's real height (published by useCustomerHeaderLayout), not a guess.
+    expect(homeSource).toContain("min-h-[calc(100svh-var(--customer-header-h,");
+    expect(homeSource).not.toContain("100svh-96px");
+    expect(homeSource).not.toContain("100svh-64px");
+    expect(homeSource).toContain("text-[clamp(4.2rem,min(9vw,14svh),9.2rem)]");
     expect(homeSource).toContain('t("ui.guest.discoverMalaysia")');
     expect(homeSource).toContain("atlas-hero-photo");
     expect(homeSource).toContain("object-cover");
@@ -72,11 +76,21 @@ describe("customer home first viewport", () => {
     expect(pagerRule).not.toMatch(/touch-action/);
     expect(homeSource).not.toContain("onClickCapture={destinationPager.suppressClickAfterTouch}");
     expect(homeSource).toContain("scroll-snap-align: none");
-    expect(homeSource).toContain("nth-child(2n + 1)");
-    expect(homeSource).toContain("nth-child(4n + 1)");
+    // Cards per page follow the rail's own width (about 220px minimum per card), not fixed breakpoints.
+    expect(homeSource).toContain("container: destination-rail / inline-size;");
+    expect(homeSource).toContain("@container destination-rail (width < 692px)");
+    expect(homeSource).toContain("@container destination-rail (692px <= width < 928px)");
+    expect(homeSource).toContain("@container destination-rail (928px <= width < 1164px)");
+    expect(homeSource).toContain("@container destination-rail (width >= 1164px)");
+    for (const perPage of [2, 3, 4, 5]) {
+      expect(homeSource).toContain(`--per-page: ${perPage}`);
+      expect(homeSource).toContain(`nth-child(${perPage}n + 1)`);
+    }
+    expect(homeSource).not.toMatch(/@media \(min-width: 1024px\) \{\s*\.atlas-destination-pager/);
     expect(homeSource).toContain("scroll-snap-stop: always");
-    expect(homeSource).toContain("--per-page: 2");
-    expect(homeSource).toContain("--per-page: 4");
+    // Card height comes from the screen height so the hero fits one screen at any width.
+    expect(homeSource).toContain("h-[clamp(108px,22svh,220px)]");
+    expect(homeSource).not.toContain("h-[108px]");
     // The trailing padding shrinks the content box by one gap, so a page of N cards plus N gaps equals the viewport only
     // when each card subtracts (N - 1) gaps.
     expect(homeSource).toContain("flex: 0 0 calc((100% - ((var(--per-page) - 1) * var(--destination-gap))) / var(--per-page));");
@@ -99,6 +113,9 @@ describe("customer home first viewport", () => {
     expect(cardMapping).toMatch(/<\/button>\s*<SaveToggleButton/);
     expect(homeSource).toContain("sizes={{ dot: 11, pill: 36, gap: 8 }}");
     expect(homeSource).toContain("sizes={{ dot: 14, pill: 50, gap: 10 }}");
+    // Dots follow the real page count.
+    expect(homeSource.match(/count=\{destinationPager\.pageCount\}/g)).toHaveLength(2);
+    expect(homeSource).not.toMatch(/count=\{[48]\}/);
   });
 
   it("keeps the hero photo animation while limiting its zoom", () => {

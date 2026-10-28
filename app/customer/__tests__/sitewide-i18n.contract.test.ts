@@ -152,6 +152,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/sponsored-partner-rail.tsx",
   "components/customer/stay-guest-details-dialog.tsx",
   "components/customer/use-customer-capability-gate.ts",
+  "components/customer/use-customer-header-layout.ts",
   "components/customer/use-home-destination-pager.ts",
   "components/customer/vendor-card.tsx",
   "components/customer/vendor-reviews-list.tsx",
@@ -279,6 +280,8 @@ const delegatingFiles = new Set([
   "components/customer/use-customer-capability-gate.ts",
   // Pager hook and Worm indicator render no copy of their own; the home client passes translated labels.
   "components/customer/use-home-destination-pager.ts",
+  // Header layout hook only measures; it renders no copy.
+  "components/customer/use-customer-header-layout.ts",
   "components/customer/home-destination-worm-indicator.tsx",
   "components/customer/voucher-barcode.tsx",
   "app/customer/trip/[tripId]/use-itinerary-weather.ts",

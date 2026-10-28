@@ -20,6 +20,7 @@ import { CustomerSiteFooter } from "@/components/customer/customer-site-footer";
 import { customerFooterVariant } from "@/lib/customer/footer-navigation";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { CurrencySwitcher } from "@/components/shared/currency-switcher";
+import { useCustomerHeaderLayout } from "@/components/customer/use-customer-header-layout";
 import { useTranslation } from "react-i18next";
 import { WishlistProvider, useWishlist } from "@/components/providers/wishlist";
 import { SavedDestinationsProvider, useSavedDestinations } from "@/components/providers/saved-destinations";
@@ -64,6 +65,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const partnerMenuRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const headerLinksRef = useRef<HTMLDivElement>(null);
   const [partnerMenuOpen, setPartnerMenuOpen] = useState(false);
   // CLAUDE-FIXES-2.md item 1: a dot on the Support account item when there's an
   // unread admin reply anywhere in my tickets. Polled — no realtime chat
@@ -147,7 +150,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   }, [partnerMenuOpen]);
 
   const { t: tCommon } = useTranslation("common");
-  const { t: tCustomer } = useTranslation("customer");
+  const { t: tCustomer, i18n } = useTranslation("customer");
+  useCustomerHeaderLayout(headerRef, headerLinksRef, `${i18n.language}:${currentUser?.id ?? ""}:${loading}`);
 
   async function switchAccount() {
     setAccountMenuOpen(false);
@@ -184,7 +188,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }} onClickCapture={confirmGuestNavigation} onAuxClickCapture={confirmGuestNavigation}>
-      <nav className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden">
+      {/* One row only when it fits, else the phone's two rows: useCustomerHeaderLayout sets data-layout on this nav. */}
+      <nav ref={headerRef} className="group/header sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden">
         <div className="max-w-7xl mx-auto px-2 sm:px-6 flex items-center gap-1 sm:gap-8 h-17">
           <Link href="/customer" className="group flex items-center gap-2.5 shrink-0">
               <Image
@@ -197,7 +202,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               />
           </Link>
 
-          <div className="hidden flex-1 items-center gap-5 md:flex xl:gap-6">
+          <div ref={headerLinksRef} className="hidden min-w-0 flex-1 items-center gap-5 overflow-hidden xl:flex xl:gap-6 group-data-[layout=single]/header:flex group-data-[layout=stacked]/header:hidden">
               {CUSTOMER_NAV.map((item) => (
                 <Link
                   key={item.href}
@@ -212,7 +217,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               ))}
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-0 sm:gap-1">
-            <LanguageSwitcher compact className="hidden md:flex w-28" />
+            <LanguageSwitcher compact className="hidden w-28 xl:flex group-data-[layout=single]/header:flex group-data-[layout=stacked]/header:hidden" />
             <CurrencySwitcher compact codeHiddenOnMobile className="w-14 md:w-24" />
             <AppearanceControl />
             {currentUser ? <NotificationBell key={currentUser.id} /> : (
@@ -379,7 +384,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Responsive secondary row: the same navigation scrolls horizontally on mobile */}
-        <div className="flex items-center gap-4 overflow-x-auto px-4 py-2 hide-scrollbar md:hidden">
+        <div className="flex items-center gap-4 overflow-x-auto px-4 py-2 hide-scrollbar xl:hidden group-data-[layout=single]/header:hidden group-data-[layout=stacked]/header:flex">
           {CUSTOMER_NAV.map((item) => (
             <Link
               key={item.href}

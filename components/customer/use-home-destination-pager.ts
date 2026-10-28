@@ -6,6 +6,7 @@ import {
   INITIAL_WHEEL_TURN_STATE,
 } from "@/lib/customer/wheel-page-turn";
 import { limitSwipeToOnePage } from "@/lib/customer/touch-page-turn";
+import { railPagePosition } from "@/lib/customer/rail-pages";
 
 // A touch swipe counts as finished once the rail has stopped scrolling for this long (momentum included).
 const TOUCH_SETTLE_MS = 140;
@@ -17,6 +18,16 @@ type PagerState = {
 };
 
 const INITIAL_PAGER_STATE: PagerState = { page: 0, pageCount: 1, progress: 0 };
+
+// The rail's trailing padding makes one page of cards exactly one viewport wide, so the page step is clientWidth.
+function railPosition(viewport: HTMLElement) {
+  return railPagePosition({
+    scrollLeft: viewport.scrollLeft,
+    pageStep: viewport.clientWidth,
+    scrollWidth: viewport.scrollWidth,
+    clientWidth: viewport.clientWidth,
+  });
+}
 
 export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement | null>) {
   const [pager, setPager] = useState<PagerState>(INITIAL_PAGER_STATE);
@@ -36,10 +47,7 @@ export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement
     if (!viewport || viewport.clientWidth === 0) return;
 
     const pageStep = viewport.clientWidth;
-    const pageCount = Math.max(1, Math.round(viewport.scrollWidth / pageStep));
-    const maxPage = pageCount - 1;
-    const progress = Math.min(Math.max(viewport.scrollLeft / pageStep, 0), maxPage);
-    const page = Math.round(progress);
+    const { pageCount, progress, page } = railPosition(viewport);
     metricsRef.current = { pageStep, pageCount };
 
     setPager((previous) => (
@@ -70,13 +78,14 @@ export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement
     const viewport = viewportRef.current;
     if (!viewport) return;
 
+    const currentPage = () => railPosition(viewport).page;
     const settleTouchSwipe = () => {
       touchSettleTimerRef.current = null;
       const startPage = touchStartPageRef.current;
       const { pageStep, pageCount } = metricsRef.current;
       if (touchingRef.current || startPage === null || pageStep === 0) return;
       touchStartPageRef.current = null;
-      const settledPage = Math.round(viewport.scrollLeft / pageStep);
+      const settledPage = currentPage();
       const limitedPage = limitSwipeToOnePage({ startPage, settledPage, pageCount });
       if (limitedPage !== settledPage) goToPage(limitedPage);
     };
@@ -104,9 +113,9 @@ export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement
       wheelTurnRef.current = result.state;
       if (result.turn === 0) return;
 
-      const currentPage = pendingPageRef.current ?? Math.round(viewport.scrollLeft / metricsRef.current.pageStep);
-      const targetPage = Math.min(Math.max(currentPage + result.turn, 0), metricsRef.current.pageCount - 1);
-      if (targetPage === currentPage) return;
+      const startPage = pendingPageRef.current ?? currentPage();
+      const targetPage = Math.min(Math.max(startPage + result.turn, 0), metricsRef.current.pageCount - 1);
+      if (targetPage === startPage) return;
 
       event.preventDefault();
       goToPage(targetPage);
@@ -118,7 +127,7 @@ export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement
       if (pageStep === 0) return;
       touchingRef.current = true;
       touchScrolledRef.current = false;
-      touchStartPageRef.current = pendingPageRef.current ?? Math.round(viewport.scrollLeft / pageStep);
+      touchStartPageRef.current = pendingPageRef.current ?? currentPage();
       if (touchSettleTimerRef.current !== null) window.clearTimeout(touchSettleTimerRef.current);
     };
     const onTouchEnd = () => {

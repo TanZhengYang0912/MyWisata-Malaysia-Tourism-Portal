@@ -31,7 +31,7 @@ describe("shared language entry points", () => {
     expect(login).toMatch(/<LanguageSwitcher compact \/>[\s\S]*?<Card/);
 
     const customer = source("app/customer/layout.tsx");
-    expect(customer).toMatch(/<LanguageSwitcher compact className="hidden md:flex w-28" \/>[\s\S]*?<AppearanceControl \/>/);
+    expect(customer).toMatch(/<LanguageSwitcher compact className="hidden w-28 xl:flex group-data-\[layout=single\]\/header:flex group-data-\[layout=stacked\]\/header:hidden" \/>[\s\S]*?<AppearanceControl \/>/);
     expect(customer).not.toMatch(/<div className="mt-2 border-t border-border pt-2">\s*<LanguageSwitcher compact/);
 
     const guest = source("app/guest/layout.tsx");
