@@ -42,7 +42,7 @@ import * as rollbackRoute from "@/app/api/admin/access-control/policies/[policyI
 import * as assignmentsRoute from "@/app/api/admin/access-control/assignments/route";
 import * as revokeRoute from "@/app/api/admin/access-control/assignments/[assignmentId]/revoke/route";
 import * as auditRoute from "@/app/api/admin/access-control/audit-log/route";
-import { sanitizeAuditPayload } from "@/app/api/admin/access-control/_audit-sanitizer";
+import { sanitizeAuditPayload, sanitizeGovernanceReason } from "@/app/api/admin/access-control/_audit-sanitizer";
 import {
   auditLogFiltersSchema,
   capabilityMetadataSchema,
@@ -175,6 +175,7 @@ describe("Access Control route authorization", () => {
     mocks.setAssignment.mockResolvedValue(ASSIGNMENT_ID);
     mocks.revokeAssignment.mockResolvedValue(undefined);
     mocks.updateCapability.mockResolvedValue("66666666-6666-4666-8666-666666666666");
+    mocks.createServiceClient.mockReturnValue({ from: vi.fn(() => queryBuilder([])) });
   });
 
   for (const route of routeCases) {
@@ -216,6 +217,7 @@ describe("Access Control validation and governed mutations", () => {
     mocks.setAssignment.mockResolvedValue(ASSIGNMENT_ID);
     mocks.revokeAssignment.mockResolvedValue(undefined);
     mocks.updateCapability.mockResolvedValue("66666666-6666-4666-8666-666666666666");
+    mocks.createServiceClient.mockReturnValue({ from: vi.fn(() => queryBuilder([])) });
   });
 
   it("rejects unknown facts and operators before the policy RPC", async () => {
@@ -349,6 +351,7 @@ describe("Access Control Audit Log", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     allowSuperAdmin();
+    mocks.createServiceClient.mockReturnValue({ from: vi.fn(() => queryBuilder([])) });
   });
 
   it("is GET-only", () => {
@@ -395,6 +398,58 @@ describe("Access Control Audit Log", () => {
     });
     expect(sanitizeAuditPayload({ moduleKeys: [{ nested: "secret" }], permissionKeys: ["bad key"] })).toEqual({});
     expect(sanitizeAuditPayload({ roleName: "x".repeat(101), isActive: "false" })).toEqual({});
+  });
+
+  it("keeps role assignment identifiers typed and scoped to the matching staff event", () => {
+    const assignment = { action: "staff.role.assigned", entityType: "staff_role_assignment" };
+    expect(sanitizeAuditPayload({ assignmentId: ASSIGNMENT_ID, roleId: POLICY_ID, userId: ACTOR_ID, revoked: "true" }, assignment)).toEqual({
+      assignmentId: ASSIGNMENT_ID, roleId: POLICY_ID, userId: ACTOR_ID,
+    });
+    expect(sanitizeAuditPayload({ roleId: "not-a-uuid", userId: ACTOR_ID, revoked: false }, assignment)).toEqual({ userId: ACTOR_ID });
+    expect(sanitizeAuditPayload({ revoked: false }, { action: "staff.role.revoked", entityType: "staff_role_assignment" })).toEqual({ revoked: false });
+    expect(sanitizeAuditPayload({ roleId: POLICY_ID, userId: ACTOR_ID, revoked: true }, {
+      action: "entitlement.assignment.set", entityType: "entitlement_assignment",
+    })).toEqual({});
+  });
+
+  it("exposes only bounded staff governance notes and redacts common sensitive values", () => {
+    expect(sanitizeGovernanceReason("staff.role.assigned", "staff_role_assignment", " Grant review to approver; contact jane@example.com, whsec_private, IC 900101-14-1234 "))
+      .toBe("Grant review to approver; contact [redacted-email], [redacted-secret], IC [redacted-id]");
+    expect(sanitizeGovernanceReason("staff.role.assigned", "staff_role_assignment", "Grant access to the home address 12 Jalan Example"))
+      .toBeNull();
+    expect(sanitizeGovernanceReason("staff.role.assigned", "staff_role_assignment", "请为这个员工开放权限，身份证 900101-14-1234"))
+      .toBeNull();
+    expect(sanitizeGovernanceReason("staff.role.assigned", "staff_role_assignment", "Semak akses akaun bank dan kad pengenalan pekerja"))
+      .toBeNull();
+    expect(sanitizeGovernanceReason("staff.role.assigned", "staff_role_assignment", "Call staff at 012-3456789 about access handover"))
+      .toBe("Call staff at [redacted-phone] about access handover");
+    expect(sanitizeGovernanceReason("staff.role.assigned", "staff_role", "A sufficiently long reason"))
+      .toBeNull();
+    expect(sanitizeGovernanceReason("passkey.registered", "staff_passkey", "A sufficiently long reason"))
+      .toBeNull();
+    expect(sanitizeGovernanceReason("staff.role.assigned", "staff_role_assignment", "x".repeat(501)))
+      .toBeNull();
+  });
+
+  it("exposes only a strict expiry in the exact invitation audit context", () => {
+    const context = { action: "staff.invitation.resent", entityType: "staff_invitation" };
+    expect(sanitizeAuditPayload({
+      invitationId: ASSIGNMENT_ID,
+      roleId: POLICY_ID,
+      expiresAt: "2026-10-27T12:34:56.000Z",
+      attempt: 2,
+      invitedEmail: "staff@example.com",
+      tokenHash: "secret-hash",
+    }, context)).toEqual({
+      invitationId: ASSIGNMENT_ID,
+      roleId: POLICY_ID,
+      expiresAt: "2026-10-27T12:34:56.000Z",
+      attempt: 2,
+    });
+    expect(sanitizeAuditPayload({ expiresAt: "2026-10-27 12:34:56+00", attempt: 0 }, context)).toEqual({});
+    expect(sanitizeAuditPayload({ expiresAt: "2026-10-27T12:34:56.000Z" }, {
+      action: "staff.role.updated", entityType: "staff_role",
+    })).toEqual({});
   });
 
   it("returns only sanitized payloads from the Audit Log route", async () => {
@@ -526,6 +581,42 @@ describe("Access Control Audit Log", () => {
     const body = await response.json();
     expect(body.data.items[0].reason).toBeNull();
     expect(JSON.stringify(body)).not.toMatch(/012-3456789|whsec_provider_secret|kyc_documents/);
+  });
+
+  it("returns assignment target, role, and safe governance reason from the real staff audit event", async () => {
+    const builder = queryBuilder([{
+      id: AUDIT_ID, actor_id: ACTOR_ID, action: "staff.role.assigned", entity_type: "staff_role_assignment",
+      entity_id: ASSIGNMENT_ID, before_data: null,
+      after_data: { assignmentId: ASSIGNMENT_ID, roleId: POLICY_ID, userId: ACTOR_ID },
+      note: "Grant least-privilege Event Promos access", created_at: "2026-09-09T00:00:00.000Z",
+    }]);
+    mocks.requireSuperAdmin.mockResolvedValue({ db: { from: vi.fn(() => builder) }, user: { id: ACTOR_ID }, response: null });
+    const body = await (await auditRoute.GET(new Request("http://localhost/api/admin/access-control/audit-log"))).json();
+    expect(body.data.items[0]).toMatchObject({
+      after: { assignmentId: ASSIGNMENT_ID, roleId: POLICY_ID, userId: ACTOR_ID },
+      reason: "Grant least-privilege Event Promos access",
+    });
+  });
+
+  it("looks up display names for only the current page's distinct actors and never selects email", async () => {
+    const builder = queryBuilder([{
+      id: AUDIT_ID, actor_id: ACTOR_ID, action: "staff.role.assigned", entity_type: "staff_role_assignment",
+      entity_id: ASSIGNMENT_ID, before_data: null, after_data: null, note: null,
+      created_at: "2026-09-09T00:00:00.000Z",
+    }]);
+    const actorQuery = queryBuilder([{ id: ACTOR_ID, full_name: "Admin Example", display_name: "A. Example", email: "private@example.com" }]);
+    const from = vi.fn((table: string) => table === "users" ? actorQuery : queryBuilder([]));
+    mocks.requireSuperAdmin.mockResolvedValue({ db: { from: vi.fn(() => builder) }, user: { id: ACTOR_ID }, response: null });
+    mocks.createServiceClient.mockReturnValue({ from });
+
+    const response = await auditRoute.GET(new Request("http://localhost/api/admin/access-control/audit-log"));
+    const body = await response.json();
+
+    expect(from).toHaveBeenCalledWith("users");
+    expect(actorQuery.select).toHaveBeenCalledWith("id,full_name,display_name");
+    expect(actorQuery.in).toHaveBeenCalledWith("id", [ACTOR_ID]);
+    expect(body.data.items[0].actorName).toBe("A. Example");
+    expect(JSON.stringify(body)).not.toContain("private@example.com");
   });
 
   it("exposes only the governed capability metadata allowlist", async () => {

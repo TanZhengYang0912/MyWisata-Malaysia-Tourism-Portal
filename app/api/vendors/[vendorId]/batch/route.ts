@@ -116,7 +116,7 @@ async function findFilteredIds(db: SupabaseClient, vendorId: string, input: Vend
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendor(vendorId, undefined, { requireApproved: true });
   if (!access.ok) return access.response;
 
   const parsed = await parseBody(request, vendorBatchSchema);
@@ -170,17 +170,21 @@ export async function POST(request: Request, { params }: Props) {
     updatedIds = (data || []).map((item: { id: string }) => item.id);
   } else if (input.entity === 'orders') {
     if (!['ready', 'fulfilled'].includes(input.action)) return apiFail('INVALID_ACTION', 'Orders support ready or fulfilled only', 400);
-    let itemQuery = db.from('order_items').select('id,order_id,fulfil_status,food_qr_scanned_at,products(categories(slug)),orders!inner(status)').eq('vendor_id', vendorId).in('id', targetIds);
+    let itemQuery = db.from('order_items').select('id,order_id,fulfil_status,food_qr_scanned_at,retail_qr_scanned_at,event_location_id,event_listing_id,slot_starts_at,products(requires_booking,product_type,categories(slug)),orders!inner(status)').eq('vendor_id', vendorId).in('id', targetIds);
     if (scopedOutletIds) itemQuery = itemQuery.in('outlet_id', scopedOutletIds.length ? scopedOutletIds : ['none']);
     const { data: items, error } = await itemQuery;
     if (error) return apiFail('DB_ERROR', error.message, 500);
-    const valid = (items || []).filter((item: { id: string; orders: unknown; fulfil_status: string; food_qr_scanned_at: string | null; products: unknown }) => {
+    const valid = (items || []).filter((item: { id: string; orders: unknown; fulfil_status: string; food_qr_scanned_at: string | null; retail_qr_scanned_at: string | null; event_location_id: string | null; event_listing_id: string | null; slot_starts_at: string | null; products: unknown }) => {
       const orderStatus = (relation(item.orders) as { status: string } | null)?.status;
-      const product = relation(item.products as { categories: unknown } | { categories: unknown }[] | null);
+      const product = relation(item.products as { requires_booking: boolean | null; product_type: string | null; categories: unknown } | { requires_booking: boolean | null; product_type: string | null; categories: unknown }[] | null);
       const category = relation(product?.categories as { slug: string } | { slug: string }[] | null);
       const allowedByFulfilmentPath = input.action !== 'fulfilled' || canUseGenericFoodFulfilment({
         categorySlug: category?.slug,
         scannedAt: item.food_qr_scanned_at,
+        retailScannedAt: item.retail_qr_scanned_at,
+        requiresBooking: product?.requires_booking,
+        productType: product?.product_type,
+        isEventPickup: Boolean(item.event_location_id || item.event_listing_id || item.slot_starts_at),
       });
       return allowedByFulfilmentPath && ['paid', 'completed'].includes(orderStatus || '') && (input.action === 'ready' ? ['pending'].includes(item.fulfil_status) : ['pending', 'ready'].includes(item.fulfil_status));
     }).map((item: { id: string }) => item.id);

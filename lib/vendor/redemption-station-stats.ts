@@ -3,6 +3,7 @@ export interface RedemptionApiStats {
   todayCount?: number;
   voucherCount?: number;
   ticketCount?: number;
+  retailCount?: number;
   activeOutletsCount?: number;
 }
 
@@ -10,6 +11,7 @@ export interface RedemptionStationStats {
   todayScans: number;
   ticketAdmissions: number;
   voucherRedemptions: number;
+  retailPickups: number;
 }
 
 export function mapRedemptionStationStats(stats?: RedemptionApiStats): RedemptionStationStats {
@@ -17,5 +19,6 @@ export function mapRedemptionStationStats(stats?: RedemptionApiStats): Redemptio
     todayScans: stats?.todayCount ?? 0,
     ticketAdmissions: stats?.ticketCount ?? 0,
     voucherRedemptions: stats?.voucherCount ?? 0,
+    retailPickups: stats?.retailCount ?? 0,
   };
 }

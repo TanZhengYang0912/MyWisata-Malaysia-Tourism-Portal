@@ -27,19 +27,16 @@ describe('vendor registration section help', () => {
     }
   });
 
-  it('uses the searchable country-code phone input and associates its instructions', () => {
+  it('uses the shared country-code phone input and associates its errors', () => {
     const phoneField = form.slice(form.indexOf('htmlFor="contact-phone"'), form.indexOf('htmlFor="business-email"'));
     expect(phoneField).toContain('<Controller');
     expect(phoneField).toContain('<InternationalPhoneInput');
     expect(phoneField).toContain('onBlur={field.onBlur}');
     expect(phoneField).toContain('ariaDescribedBy');
-    expect(phoneField).toContain("t('registration.phoneHint'");
+    expect(phoneField).toContain("errors.contactPhone ? 'contact-phone-error' : undefined");
 
     for (const locale of ['en', 'ms', 'zh-CN']) {
       const translations = JSON.parse(readFileSync(`app/i18n/locales/${locale}/vendor.json`, 'utf8'));
-      expect(translations.registration.phoneHint).toContain('12 345 6789');
-      expect(translations.registration.phoneHint).toContain('012 345 6789');
-      expect(translations.registration.phoneHint).toContain('+60');
       expect(translations.registration.placeholders.contactPhone).toBeUndefined();
     }
   });

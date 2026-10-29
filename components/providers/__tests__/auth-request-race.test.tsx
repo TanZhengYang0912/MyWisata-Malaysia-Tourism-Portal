@@ -1,6 +1,6 @@
 import React, { act } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { installTestDom, type TestDocument, type TestNode } from "@/components/shared/__tests__/render-test-dom";
+import { findOne, installTestDom, TestEvent, type TestDocument, type TestNode } from "@/components/shared/__tests__/render-test-dom";
 
 const authMocks = vi.hoisted(() => ({
   listener: null,
@@ -43,12 +43,13 @@ function deferred<T>(): Deferred<T> {
   return { promise, resolve };
 }
 
-function profile(id: string, email = `${id}@example.test`) {
+function profile(id: string, email = `${id}@example.test`, avatarUrl: string | null = `https://avatars.example.test/${id}.webp`) {
   return {
     user: {
       id,
       email,
       fullName: id,
+      avatarUrl,
       tier: "verified",
       roles: ["customer"],
       activeVendorId: null,
@@ -69,9 +70,25 @@ function profile(id: string, email = `${id}@example.test`) {
   };
 }
 
+let latestAuth: ReturnType<typeof useAuth>;
+
 function AuthSnapshot() {
   const auth = useAuth();
-  return <output>{JSON.stringify({ id: auth.currentUser?.id ?? null, permissions: auth.staffPermissionKeys, outlet: auth.activeOutletName, loading: auth.loading })}</output>;
+  React.useLayoutEffect(() => { latestAuth = auth; });
+  return <output>{JSON.stringify({ id: auth.currentUser?.id ?? null, avatarUrl: auth.currentUser?.avatarUrl ?? null, permissions: auth.staffPermissionKeys, outlet: auth.activeOutletName, loading: auth.loading })}</output>;
+}
+
+function DraftContent() {
+  const [step, setStep] = React.useState("Preferences");
+  const [draft, setDraft] = React.useState("");
+  return <button onClick={() => { setStep("Identity"); setDraft("unsaved"); }}>{step}: {draft}</button>;
+}
+
+function CustomerDraftGate() {
+  const { currentUser, loading } = useAuth();
+  // Mirrors the customer layout's loading boundary, which unmounts its children.
+  if (loading || !currentUser) return <output>Blocked</output>;
+  return <DraftContent key={currentUser.id} />;
 }
 
 let createRoot: typeof import("react-dom/client").createRoot;
@@ -85,6 +102,17 @@ async function settle() {
   await Promise.resolve();
   await Promise.resolve();
   await Promise.resolve();
+}
+
+async function renderEditedDraft() {
+  fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(profile("user-a")), { status: 200 }));
+  await act(async () => {
+    root?.render(<AuthProvider><AuthSnapshot /><CustomerDraftGate /></AuthProvider>);
+    await settle();
+  });
+  const button = findOne(container as unknown as TestNode, (element) => element.nodeName === "BUTTON");
+  act(() => { button.dispatchEvent(new TestEvent("click", { bubbles: true })); });
+  expect(container?.textContent).toContain("Identity: unsaved");
 }
 
 describe("AuthProvider request ownership", () => {
@@ -118,6 +146,54 @@ describe("AuthProvider request ownership", () => {
     vi.unstubAllGlobals();
   });
 
+  it.each(["SIGNED_IN", "TOKEN_REFRESHED", "USER_UPDATED"])("keeps the current step and draft mounted during same-account %s", async (event) => {
+    await renderEditedDraft();
+    const pending = deferred<Response>();
+    fetchMock.mockReturnValueOnce(pending.promise);
+    await act(async () => { sharedAuthMocks.listener?.(event, { user: { id: "user-a" } }); await settle(); });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(latestAuth.loading).toBe(false);
+    expect(container?.textContent).toContain("Identity: unsaved");
+    await act(async () => { pending.resolve(new Response(JSON.stringify(profile("user-a")), { status: 200 })); await settle(); });
+    expect(container?.textContent).toContain("Identity: unsaved");
+  });
+
+  it("keeps the current step and draft during an explicit same-account refresh", async () => {
+    await renderEditedDraft();
+    const pending = deferred<Response>();
+    fetchMock.mockReturnValueOnce(pending.promise);
+    let refresh!: Promise<void>;
+    await act(async () => { refresh = latestAuth.refreshUser(); await settle(); });
+    expect(latestAuth.loading).toBe(false);
+    expect(container?.textContent).toContain("Identity: unsaved");
+    await act(async () => { pending.resolve(new Response(JSON.stringify(profile("user-a")), { status: 200 })); await refresh; });
+    expect(container?.textContent).toContain("Identity: unsaved");
+  });
+
+  it("still blocks and discards the previous account draft while a new identity loads", async () => {
+    await renderEditedDraft();
+    const pending = deferred<Response>();
+    fetchMock.mockReturnValueOnce(pending.promise);
+    await act(async () => { sharedAuthMocks.listener?.("SIGNED_IN", { user: { id: "user-b" } }); await settle(); });
+    expect(latestAuth.currentUser).toBeNull();
+    expect(latestAuth.loading).toBe(true);
+    expect(container?.textContent).not.toContain("Identity: unsaved");
+    await act(async () => { pending.resolve(new Response(JSON.stringify(profile("user-b")), { status: 200 })); await settle(); });
+    expect(latestAuth.currentUser?.id).toBe("user-b");
+    expect(container?.textContent).toContain("Preferences:");
+  });
+
+  it.each(["failure", "mismatched identity"])("clears identity if a background refresh returns %s", async (kind) => {
+    await renderEditedDraft();
+    fetchMock.mockResolvedValueOnce(kind === "failure"
+      ? new Response(null, { status: 500 })
+      : new Response(JSON.stringify(profile("user-b")), { status: 200 }));
+    await act(async () => { sharedAuthMocks.listener?.("TOKEN_REFRESHED", { user: { id: "user-a" } }); await settle(); });
+    expect(latestAuth.currentUser).toBeNull();
+    expect(container?.textContent).not.toContain("Identity: unsaved");
+    expect(container?.textContent).toContain("Blocked");
+  });
+
   it("does not let an older account response overwrite the newer auth session", async () => {
     const requestA = deferred<Response>();
     const requestB = deferred<Response>();
@@ -141,6 +217,7 @@ describe("AuthProvider request ownership", () => {
     });
     expect(container?.textContent).toContain('"id":"user-b"');
     expect(container?.textContent).toContain("user-b.permission");
+    expect(container?.textContent).toContain("https://avatars.example.test/user-b.webp");
     expect(storedValues.get("tp_current_user_id")).toBe("user-b");
     expect(JSON.parse(storedValues.get("tp_current_user_data") ?? "null")).toMatchObject({
       id: "user-b",
@@ -154,11 +231,43 @@ describe("AuthProvider request ownership", () => {
     expect(container?.textContent).toContain('"id":"user-b"');
     expect(container?.textContent).toContain("user-b.permission");
     expect(container?.textContent).not.toContain("user-a.permission");
+    expect(container?.textContent).not.toContain("https://avatars.example.test/user-a.webp");
     expect(storedValues.get("tp_current_user_id")).toBe("user-b");
     expect(JSON.parse(storedValues.get("tp_current_user_data") ?? "null")).toMatchObject({
       id: "user-b",
       email: "user-b@example.test",
     });
+  });
+
+  it("publishes the saved avatar when the current account is refreshed", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(profile("user-a", undefined, null)), { status: 200 }));
+
+    await act(async () => {
+      root?.render(<AuthProvider><AuthSnapshot /></AuthProvider>);
+      await settle();
+    });
+    expect(container?.textContent).toContain('"avatarUrl":null');
+
+    const savedAvatarUrl = "https://avatars.example.test/user-a-saved.webp";
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(profile("user-a", undefined, savedAvatarUrl)), { status: 200 }));
+    await act(async () => {
+      await latestAuth.refreshUser();
+      await settle();
+    });
+
+    expect(container?.textContent).toContain(savedAvatarUrl);
+    expect(JSON.parse(storedValues.get("tp_current_user_data") ?? "null")).toMatchObject({
+      id: "user-a",
+      avatarUrl: savedAvatarUrl,
+    });
+
+    await act(async () => {
+      sharedAuthMocks.listener?.("SIGNED_OUT", null);
+      await settle();
+    });
+    expect(container?.textContent).toContain('"avatarUrl":null');
+    expect(container?.textContent).not.toContain(savedAvatarUrl);
+    expect(storedValues.has("tp_current_user_data")).toBe(false);
   });
 
   it("does not restore a signed-out account when its profile request resolves late", async () => {
@@ -182,6 +291,7 @@ describe("AuthProvider request ownership", () => {
     });
     expect(container?.textContent).toContain('"id":null');
     expect(container?.textContent).not.toContain("user-a.permission");
+    expect(container?.textContent).toContain('"avatarUrl":null');
     expect(storedValues.has("tp_current_user_id")).toBe(false);
     expect(storedValues.has("tp_current_user_data")).toBe(false);
   });

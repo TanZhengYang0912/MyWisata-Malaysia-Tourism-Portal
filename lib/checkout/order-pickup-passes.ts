@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { signEventPickupToken } from "@/lib/events/event-pickup-token";
 import { signFoodFulfilmentToken } from "@/lib/food/food-fulfilment-token";
+import { signRetailPickupToken } from "@/lib/orders/retail-pickup-token";
 
 type FoodOrderPass = {
   outletId: string;
@@ -21,6 +22,17 @@ type EventPickupPass = {
   eventToken: string;
 };
 
+type RetailPickupPass = {
+  orderItemId: string;
+  vendorName: string;
+  outletName: string;
+  status: "pending" | "collected" | "legacy_completed" | "refund_paused" | "unavailable";
+  quantity: number;
+  name: string;
+  variant: string | null;
+  retailToken: string | null;
+};
+
 export class OrderPickupPassError extends Error {
   constructor(readonly code: "DB_ERROR" | "MERCHANT_IDENTITY_UNAVAILABLE" | "FOOD_ORDER_INCONSISTENT", message: string) {
     super(message);
@@ -32,6 +44,7 @@ function isMissingFoodFulfilmentColumn(error: { code?: string; message?: string 
   return error?.code === "42703" && (
     error.message?.includes("order_items.food_fulfilment_mode") === true
     || error.message?.includes("order_items.food_qr_scanned_at") === true
+    || error.message?.includes("order_items.retail_qr_scanned_at") === true
   );
 }
 
@@ -116,13 +129,13 @@ async function loadEventPickups(db: SupabaseClient, orderId: string): Promise<Ev
   }));
 }
 
-export async function loadOrderPickupPasses(db: SupabaseClient, orderId: string): Promise<{ foodOrders: FoodOrderPass[]; eventPickups: EventPickupPass[] }> {
+export async function loadOrderPickupPasses(db: SupabaseClient, orderId: string): Promise<{ foodOrders: FoodOrderPass[]; eventPickups: EventPickupPass[]; retailPickups: RetailPickupPass[] }> {
   const { data: orderItems, error } = await db
     .from("order_items")
-    .select("id,vendor_id,outlet_id,product_name,variant_name,quantity,food_fulfilment_mode,food_qr_scanned_at,fulfil_status,products(categories(slug)),outlets(id,name,vendor_id,vendors(id,name))")
+    .select("id,vendor_id,outlet_id,product_name,variant_name,quantity,food_fulfilment_mode,food_qr_scanned_at,retail_qr_scanned_at,fulfil_status,event_location_id,event_listing_id,slot_starts_at,products(requires_booking,product_type,categories(slug)),outlets(id,name,status,vendor_id,vendors(id,name,status))")
     .eq("order_id", orderId);
   if (isMissingFoodFulfilmentColumn(error)) {
-    return { foodOrders: [], eventPickups: await loadEventPickups(db, orderId) };
+    return { foodOrders: [], eventPickups: await loadEventPickups(db, orderId), retailPickups: [] };
   }
   if (error) throw new OrderPickupPassError("DB_ERROR", error.message);
 
@@ -143,9 +156,13 @@ export async function loadOrderPickupPasses(db: SupabaseClient, orderId: string)
     food_fulfilment_mode: "dine_in" | "takeaway" | null;
     food_qr_scanned_at: string | null;
     fulfil_status: string;
-    products: { categories: { slug: string } | { slug: string }[] | null } | { categories: { slug: string } | { slug: string }[] | null }[] | null;
+    products: { requires_booking: boolean | null; product_type: string | null; categories: { slug: string } | { slug: string }[] | null } | { requires_booking: boolean | null; product_type: string | null; categories: { slug: string } | { slug: string }[] | null }[] | null;
     vendor_id: string;
-    outlets: { id: string; name: string; vendor_id: string; vendors: { id: string; name: string } | { id: string; name: string }[] | null } | { id: string; name: string; vendor_id: string; vendors: { id: string; name: string } | { id: string; name: string }[] | null }[] | null;
+    retail_qr_scanned_at: string | null;
+    event_location_id: string | null;
+    event_listing_id: string | null;
+    slot_starts_at: string | null;
+    outlets: { id: string; name: string; status: string; vendor_id: string; vendors: { id: string; name: string; status: string } | { id: string; name: string; status: string }[] | null } | { id: string; name: string; status: string; vendor_id: string; vendors: { id: string; name: string; status: string } | { id: string; name: string; status: string }[] | null }[] | null;
   }>) {
     const product = Array.isArray(row.products) ? row.products[0] : row.products;
     const category = Array.isArray(product?.categories) ? product.categories[0] : product?.categories;
@@ -171,5 +188,53 @@ export async function loadOrderPickupPasses(db: SupabaseClient, orderId: string)
     status: allFulfilled ? "fulfilled" as const : group.mode === "dine_in" && allScanned ? "checked_in" as const : "pending" as const,
     foodToken: signFoodFulfilmentToken({ orderId, outletId: group.outletId, issuedAt: Date.now() }),
   }));
-  return { foodOrders, eventPickups: await loadEventPickups(db, orderId) };
+
+  const retailRows = ((orderItems ?? []) as Array<{
+    id: string; vendor_id: string; outlet_id: string | null; product_name: string; variant_name: string | null; quantity: number;
+    retail_qr_scanned_at: string | null; fulfil_status: string; event_location_id: string | null; event_listing_id: string | null; slot_starts_at: string | null;
+    products: { requires_booking: boolean | null; product_type: string | null; categories: { slug: string } | { slug: string }[] | null } | { requires_booking: boolean | null; product_type: string | null; categories: { slug: string } | { slug: string }[] | null }[] | null;
+    outlets: { id: string; name: string; status: string; vendor_id: string; vendors: { id: string; name: string; status: string } | { id: string; name: string; status: string }[] | null } | { id: string; name: string; status: string; vendor_id: string; vendors: { id: string; name: string; status: string } | { id: string; name: string; status: string }[] | null }[] | null;
+  }>).filter((row) => {
+    const product = Array.isArray(row.products) ? row.products[0] : row.products;
+    const category = Array.isArray(product?.categories) ? product.categories[0] : product?.categories;
+    return category?.slug === "retail" && product?.requires_booking === false && product.product_type === "product"
+      && !row.event_location_id && !row.event_listing_id && !row.slot_starts_at && row.fulfil_status !== "cancelled";
+  });
+  let refunds: Array<{ status: string; provider_refund_id: string | null; provider_failure_code: string | null; provider_failure_message: string | null }> = [];
+  if (retailRows.length) {
+    const { data, error: refundError } = await db.from("refunds")
+      .select("status,provider_refund_id,provider_failure_code,provider_failure_message")
+      .eq("order_id", orderId);
+    if (refundError) throw new OrderPickupPassError("DB_ERROR", "Unable to verify refund status for retail pickup");
+    refunds = (data ?? []) as typeof refunds;
+  }
+  const refundPaused = refunds.some((refund) => {
+    const status = refund.status.toLowerCase();
+    return ["pending", "approved", "processed"].includes(status)
+      || !["failed", "rejected"].includes(status)
+      || Boolean(refund.provider_refund_id || refund.provider_failure_code || refund.provider_failure_message);
+  });
+  const retailPickups: RetailPickupPass[] = retailRows.map((row) => {
+    const outlet = Array.isArray(row.outlets) ? row.outlets[0] : row.outlets;
+    const vendor = Array.isArray(outlet?.vendors) ? outlet.vendors[0] : outlet?.vendors;
+    if (!row.outlet_id || !outlet?.name || outlet.id !== row.outlet_id || outlet.vendor_id !== row.vendor_id
+      || outlet.status !== "active" || vendor?.id !== row.vendor_id || vendor.status !== "approved") {
+      throw new OrderPickupPassError("MERCHANT_IDENTITY_UNAVAILABLE", "Retail pickup merchant identity is unavailable");
+    }
+    const legacyCompleted = row.fulfil_status === "fulfilled" && !row.retail_qr_scanned_at;
+    const status: RetailPickupPass["status"] = legacyCompleted
+      ? "legacy_completed"
+      : row.retail_qr_scanned_at || row.fulfil_status === "fulfilled"
+        ? "collected"
+        : refundPaused
+          ? "refund_paused"
+          : ["pending", "ready"].includes(row.fulfil_status)
+            ? "pending"
+            : "unavailable";
+    const retailToken = status === "pending"
+      ? signRetailPickupToken({ orderId, orderItemId: row.id, vendorId: row.vendor_id, outletId: row.outlet_id as string, issuedAt: Math.floor(Date.now() / 1000) })
+      : null;
+    return { orderItemId: row.id, vendorName: vendor?.name ?? "", outletName: outlet.name, status, quantity: row.quantity, name: row.product_name, variant: row.variant_name, retailToken };
+  });
+  return { foodOrders, eventPickups: await loadEventPickups(db, orderId), retailPickups };
 }

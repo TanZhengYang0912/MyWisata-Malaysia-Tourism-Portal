@@ -70,6 +70,7 @@ export function mapProfileSummary(profile: ProfileRow, preference: PreferenceRow
     fullName: profile.full_name,
     avatarUrl: profile.avatar_url,
     bio: profile.bio,
+    profileCompletedAt: profile.profile_completed_at,
     city: profile.city,
     country: profile.country,
   });
@@ -77,6 +78,7 @@ export function mapProfileSummary(profile: ProfileRow, preference: PreferenceRow
     fullName: profile.full_name,
     avatarUrl: profile.avatar_url,
     bio: profile.bio,
+    profileCompletedAt: profile.profile_completed_at,
     city: profile.city,
     country: profile.country,
     surveyComplete: Boolean(preference?.interests?.length),

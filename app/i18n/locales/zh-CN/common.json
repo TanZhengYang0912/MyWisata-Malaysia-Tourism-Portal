@@ -295,6 +295,7 @@
     "viewMyTickets": "查看我的工单",
     "ticketError": "暂时无法创建工单，请重试。",
     "somethingWrong": "抱歉，出了点问题，请重试。",
+    "privacyBlocked": "这条完整消息可能含有电话号码、邮箱、身份证件、银行资料或私人地址，因此没有发送给 AI。请删除这些资料后重新提问；也可以继续使用本地常见问题，不调用 AI。",
     "supportRequest": "支持请求",
     "faq": {
       "browse": "浏览常见问题",
@@ -309,7 +310,7 @@
       "stop": "停止聆听"
     },
     "list": {
-      "supportLabel": "MyLawatan 客服",
+      "supportLabel": "MYLawatan 客服",
       "signInPrompt": "登录后即可与商家聊天。"
     },
     "expandChat": "展开为全屏",
@@ -368,8 +369,8 @@
     "cmdK": "⌘K"
   },
   "brand": {
-    "speed": "MyLawatan Speed",
-    "copyright": "© {{year}} MyLawatan。版权所有。"
+    "speed": "MYLawatan Speed",
+    "copyright": "© {{year}} MYLawatan。版权所有。"
   },
   "ui": {
     "vendor": {

@@ -179,7 +179,7 @@ function extractJson(text: string): unknown {
 }
 
 function buildTripCopilotSystemPrompt(lang: ChatLanguage): string {
-  return `You are a trip-planning assistant for a Malaysian tourism platform, MyLawatan, helping a traveller build their itinerary.
+  return `You are a trip-planning assistant for a Malaysian tourism platform, MYLawatan, helping a traveller build their itinerary.
 
 Below is the trip's basic info, a REAL weather forecast signal, and a REAL list of candidate catalogue listings (already queried — treat every listing, forecast day, and reason as fact, never change or invent a name, price, rating, date, or id not present in it).
 

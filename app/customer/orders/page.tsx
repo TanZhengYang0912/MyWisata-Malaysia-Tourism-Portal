@@ -18,6 +18,7 @@ import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/cust
 import { formatMYR } from "@/lib/i18n/format";
 import { getMalaysiaDateRangeDefaults } from "@/lib/datetime/date-input";
 import { formatOrderReference } from "@/lib/checkout/order-reference";
+import { isInvalidMalaysiaDateRange, malaysiaCalendarDateToIso } from "@/lib/datetime/malaysia";
 
 type OrderFilterStatus = "all" | "PAID" | "COMPLETED" | "CANCELLED" | "REFUNDED" | "PENDING_PAYMENT";
 type OrderFilterType = "all" | "booking" | "product" | "mixed";
@@ -41,12 +42,16 @@ function typeLabelKey(type: Exclude<OrderFilterType, "all">) {
   return type === "mixed" ? "ui.orders.mixedOrder" : type === "booking" ? "ui.orders.bookingOrder" : "ui.orders.productOrder";
 }
 function dateLabel(value: string, locale: string) {
-  return new Date(value).toLocaleDateString(locale === "en" ? "en-MY" : locale, { day: "numeric", month: "short", year: "numeric" });
+  return new Date(value).toLocaleDateString(locale === "en" ? "en-MY" : locale, { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kuala_Lumpur" });
 }
 function matchesDate(value: string, from: string, to: string) {
   const time = new Date(value).getTime();
-  if (from && time < new Date(`${from}T00:00:00`).getTime()) return false;
-  if (to && time > new Date(`${to}T23:59:59`).getTime()) return false;
+  try {
+    if (from && time < new Date(malaysiaCalendarDateToIso(from, "start")).getTime()) return false;
+    if (to && time > new Date(malaysiaCalendarDateToIso(to, "end")).getTime()) return false;
+  } catch {
+    return false;
+  }
   return true;
 }
 
@@ -119,9 +124,10 @@ export default function OrdersPage() {
     bookings: (orders ?? []).filter((order) => orderType(order) !== "product").length,
   }), [orders]);
 
-  function clearFilters() { setQuery(""); setStatus("all"); setType("all"); setOutletId("all"); setFrom(""); setTo(""); }
+  function clearFilters() { setPage(1); setQuery(""); setStatus("all"); setType("all"); setOutletId("all"); setFrom(""); setTo(""); }
   const hasFilters = Boolean(query || status !== "all" || type !== "all" || outletId !== "all" || from || to);
   const activeFilterCount = [status !== "all", type !== "all", outletId !== "all", Boolean(from), Boolean(to)].filter(Boolean).length;
+  const invalidDateRange = Boolean(from && to && isInvalidMalaysiaDateRange(from, to));
 
   if (orders === null) return <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground">{tCustomer("ui.states.loading")}</div>;
 
@@ -130,7 +136,6 @@ export default function OrdersPage() {
       <CustomerPageTitle
         eyebrow={tCustomer("ui.labels.history")}
         title={tCustomer("ui.orders.title")}
-        description={tCustomer("ui.orders.description")}
         icon={<ReceiptText size={14} />}
         actions={<>
           <Link href={activityHref("itinerary")}><Button variant="outline" className="rounded-full border-primary/20 text-primary hover:bg-secondary">{tCustomer("ui.calendar.viewItinerary")}</Button></Link>
@@ -143,13 +148,14 @@ export default function OrdersPage() {
         <p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-muted-foreground"><span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.total}</span> {tCustomer("ui.orders.summaryOrders")} <span className="text-muted-foreground/50">·</span> <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.paid}</span> {tCustomer("ui.orders.summaryPaid")} <span className="text-muted-foreground/50">·</span> <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.bookings}</span> {tCustomer("ui.orders.summaryBookings")}</p>
 
         <section className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center"><label className="relative min-w-0 flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tCustomer("ui.orders.search")} aria-label={tCustomer("ui.orders.search")} className="h-11 w-full rounded-xl border border-border bg-secondary/50 pl-10 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-[rgba(1,0,102,0.12)]" /></label><button type="button" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} aria-controls="order-filters" className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-primary/20 ${filtersOpen || hasFilters ? "border-primary bg-secondary text-primary" : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-primary"}`}><SlidersHorizontal size={15} /> {tCustomer("ui.orders.filters")} {activeFilterCount > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] text-white">{activeFilterCount}</span>}</button></div>
-          {filtersOpen && <div id="order-filters" className="mt-3 grid gap-2 border-t border-border pt-3 sm:grid-cols-2 lg:grid-cols-5"><select value={status} onChange={(event) => setStatus(event.target.value as OrderFilterStatus)} aria-label={tCustomer("ui.labels.status")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary">{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{tCustomer(option.key)}</option>)}</select><select value={type} onChange={(event) => setType(event.target.value as OrderFilterType)} aria-label={tCustomer("ui.orders.allTypes")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.orders.allTypes")}</option><option value="booking">{tCustomer("ui.orders.bookingOrder")}</option><option value="product">{tCustomer("ui.orders.productOrder")}</option><option value="mixed">{tCustomer("ui.orders.mixedOrder")}</option></select><select value={outletId} onChange={(event) => setOutletId(event.target.value)} aria-label={tCustomer("ui.orders.allOutlets")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.orders.allOutlets")}</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}</select><input type="date" value={from} onFocus={primeDateRange} onChange={(event) => setFrom(event.target.value)} aria-label={tCustomer("ui.orders.fromDate")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /><input type="date" value={to} onFocus={primeDateRange} onChange={(event) => setTo(event.target.value)} aria-label={tCustomer("ui.orders.toDate")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /></div>}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center"><label className="relative min-w-0 flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={tCustomer("ui.orders.search")} aria-label={tCustomer("ui.orders.search")} className="h-11 w-full rounded-xl border border-border bg-secondary/50 pl-10 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-[rgba(1,0,102,0.12)]" /></label><button type="button" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} aria-controls="order-filters" className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-primary/20 ${filtersOpen || hasFilters ? "border-primary bg-secondary text-primary" : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-primary"}`}><SlidersHorizontal size={15} /> {tCustomer("ui.orders.filters")} {activeFilterCount > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] text-white">{activeFilterCount}</span>}</button></div>
+          {filtersOpen && <div id="order-filters" className="mt-3 grid gap-2 border-t border-border pt-3 sm:grid-cols-2 lg:grid-cols-5"><select value={status} onChange={(event) => { setStatus(event.target.value as OrderFilterStatus); setPage(1); }} aria-label={tCustomer("ui.labels.status")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary">{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{tCustomer(option.key)}</option>)}</select><select value={type} onChange={(event) => { setType(event.target.value as OrderFilterType); setPage(1); }} aria-label={tCustomer("ui.orders.allTypes")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.orders.allTypes")}</option><option value="booking">{tCustomer("ui.orders.bookingOrder")}</option><option value="product">{tCustomer("ui.orders.productOrder")}</option><option value="mixed">{tCustomer("ui.orders.mixedOrder")}</option></select><select value={outletId} onChange={(event) => { setOutletId(event.target.value); setPage(1); }} aria-label={tCustomer("ui.orders.allOutlets")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.orders.allOutlets")}</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}</select><input type="date" value={from} onFocus={primeDateRange} onChange={(event) => { setFrom(event.target.value); setPage(1); }} aria-label={tCustomer("ui.orders.fromDate")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /><input type="date" value={to} onFocus={primeDateRange} onChange={(event) => { setTo(event.target.value); setPage(1); }} aria-label={tCustomer("ui.orders.toDate")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /></div>}
           {hasFilters && <button type="button" onClick={clearFilters} className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><X size={13} /> {tCustomer("ui.actions.clearFilters")}</button>}
         </section>
+        {invalidDateRange && <p role="alert" className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{tCustomer("ui.orders.invalidDateRange")}</p>}
 
         {error && <div className="mt-5 rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">{error}</div>}
-        <div className="mt-7 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">{tCustomer("ui.labels.history")}</p><p className="mt-1 text-sm text-muted-foreground">{tCustomer("ui.orders.found", { count: filteredOrders.length })}</p></div><span className="hidden items-center gap-1 text-xs text-muted-foreground sm:inline-flex"><Clock3 size={14} /> {tCustomer("ui.labels.newestFirst")}</span></div>
+        <div className="mt-7 flex items-center justify-between"><p className="text-sm text-muted-foreground">{tCustomer("ui.orders.found", { count: filteredOrders.length })}</p><span className="hidden items-center gap-1 text-xs text-muted-foreground sm:inline-flex"><Clock3 size={14} /> {tCustomer("ui.labels.newestFirst")}</span></div>
 
         {filteredOrders.length === 0 ? <div className="mt-5"><EmptyState icon={<Package size={40} />} title={hasFilters ? tCustomer("ui.orders.noMatch") : tCustomer("ui.states.noOrders")} description={hasFilters ? tCustomer("ui.orders.tryFilters") : tCustomer("ui.orders.emptyDescription")} action={hasFilters ? <Button variant="outline" onClick={clearFilters}>{tCustomer("ui.actions.clearFilters")}</Button> : <Link href="/customer"><Button>{tCustomer("ui.actions.viewExperiences")}</Button></Link>} /></div> : <>
           <div className="mt-4 space-y-4">{pagedOrders.map((order) => { 

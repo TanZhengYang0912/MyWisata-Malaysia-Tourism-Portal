@@ -23,7 +23,7 @@ describe('durable PDF receipt dispatch', () => {
     const query = { select: vi.fn(() => query), eq: vi.fn((key, value) => { filters.push(['eq', key, value]); return query; }), is: vi.fn((key, value) => { filters.push(['is', key, value]); return query; }), single: vi.fn(async () => ({ data: result, error: null })) };
     mocks.from.mockReturnValue(query);
     mocks.rpc.mockImplementation(async (name) => ({ data: name.startsWith('claim_email_outbox_delivery_v2') ? { rows: [claimed], reviewRequired: 0 } : true, error: null }));
-    mocks.pickup.mockResolvedValue({ foodOrders: [], eventPickups: [] });
+    mocks.pickup.mockResolvedValue({ foodOrders: [], eventPickups: [], retailPickups: [] });
     mocks.receipt.mockImplementation(async (input) => { await input.delivery.beforeSend(); return { id: 'accepted-test' }; });
   });
   it('sends a paid registered order as a PDF through the receipt-aware lease', async () => {
@@ -64,5 +64,44 @@ describe('durable PDF receipt dispatch', () => {
     result = null;
     expect((await processEmailOutbox()).sent).toBe(0);
     expect(mocks.receipt).not.toHaveBeenCalled();
+  });
+  it.each([false, true])('includes pending retail lines with their exact quantities for Guest=%s', async guest => {
+    if (guest) {
+      claimed = { ...claimed, user_id: null, payload: { ...claimed.payload, guestAccessToken: 'synthetic-only' } };
+      result = { ...order, user_id: null, guest_subject_id: 'guest-test' };
+    }
+    mocks.pickup.mockResolvedValue({ foodOrders: [], eventPickups: [], retailPickups: [
+      { status: 'pending', retailToken: 'synthetic-retail-one', orderItemId: 'line-one', outletName: 'Outlet One', vendorName: 'Vendor One', quantity: 2, name: 'Retail One', variant: 'Box' },
+      { status: 'pending', retailToken: 'synthetic-retail-two', orderItemId: 'line-two', outletName: 'Outlet Two', vendorName: 'Vendor Two', quantity: 1, name: 'Retail Two', variant: null },
+    ] });
+    expect((await processEmailOutbox()).sent).toBe(1);
+    const input = mocks.receipt.mock.calls.at(-1)![0];
+    expect(input.pickupPasses).toEqual([
+      { kind: 'retail', title: 'Outlet One', subtitle: 'Vendor One', details: ['2 × Retail One · Box'], qrUrl: `https://portal.example.test/customer/orders/${orderId}?retail_t=synthetic-retail-one` },
+      { kind: 'retail', title: 'Outlet Two', subtitle: 'Vendor Two', details: ['1 × Retail Two'], qrUrl: `https://portal.example.test/customer/orders/${orderId}?retail_t=synthetic-retail-two` },
+    ]);
+    expect(input.accessUrl).not.toContain('retail_t=');
+  });
+  it.each(['collected', 'legacy_completed', 'refund_paused', 'unavailable', 'pending'])('does not email an active retail QR for %s without a usable pending pass', async status => {
+    mocks.pickup.mockResolvedValue({ foodOrders: [], eventPickups: [], retailPickups: [
+      { status, retailToken: status === 'pending' ? null : 'unexpected-token', quantity: 2, name: 'Retail', outletName: 'Outlet', vendorName: 'Vendor' },
+    ] });
+    expect((await processEmailOutbox()).sent).toBe(1);
+    expect(mocks.receipt.mock.calls.at(-1)![0].pickupPasses).toEqual([]);
+  });
+  it('preserves separate food, event and retail codes in one mixed order receipt', async () => {
+    mocks.pickup.mockResolvedValue({
+      foodOrders: [{ outletName: 'Cafe', vendorName: 'Food vendor', mode: 'dine_in', foodToken: 'synthetic-food', items: [{ quantity: 1, name: 'Lunch', variant: null }] }],
+      eventPickups: [{ vendorName: 'Event vendor', pickupLabels: ['Morning'], pickupDate: '2030-01-01', eventToken: 'synthetic-event', items: [{ quantity: 1, name: 'Event pack' }] }],
+      retailPickups: [{ status: 'pending', retailToken: 'synthetic-retail', outletName: 'Shop', vendorName: 'Retail vendor', quantity: 2, name: 'Retail box', variant: null }],
+    });
+    expect((await processEmailOutbox()).sent).toBe(1);
+    const passes = mocks.receipt.mock.calls.at(-1)![0].pickupPasses;
+    expect(passes.map((pass: { kind: string }) => pass.kind)).toEqual(['food', 'event', 'retail']);
+    for (const [index, parameter, token] of [[0, 'food_t', 'synthetic-food'], [1, 'event_t', 'synthetic-event'], [2, 'retail_t', 'synthetic-retail']] as const) {
+      const url = new URL(passes[index].qrUrl);
+      expect(url.searchParams.get(parameter)).toBe(token);
+      expect([...url.searchParams.keys()]).toEqual([parameter]);
+    }
   });
 });

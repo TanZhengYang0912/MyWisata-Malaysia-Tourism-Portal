@@ -1,7 +1,7 @@
 import React, { act } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { TestEvent, findOne, installTestDom, type TestDocument, type TestElement } from "@/components/shared/__tests__/render-test-dom";
-const mocks = vi.hoisted(() => ({ fetch: vi.fn(), changed: vi.fn(), t: (key: string) => key }));
+const mocks = vi.hoisted(() => ({ fetch: vi.fn(), changed: vi.fn(), mutation: vi.fn(), t: (key: string) => key }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: mocks.t }) }));
 vi.mock("lucide-react", () => ({ ChevronLeft: () => <svg />, ChevronRight: () => <svg />, RefreshCw: () => <svg />, UserMinus: () => <svg /> }));
 vi.mock("@/components/ui/button", () => ({ Button: (props: React.ComponentProps<"button">) => <button {...props} /> }));
@@ -18,7 +18,7 @@ function response(data: unknown) { return { ok: true, json: async () => ({ data 
 const click = async (element: TestElement) => act(async () => { element.dispatchEvent(new TestEvent("click", { bubbles: true })); await new Promise((resolve) => setTimeout(resolve, 5)); });
 function button(label: string) { return findOne(container, (element) => element.tagName === "BUTTON" && element.textContent === label); }
 async function openPreview() {
-  await act(async () => { root.render(<StaffEmployeesPanel generation={0} permissions={[{ id: "p", key: "admin.withdrawal.approve", module: "withdrawal", action: "approve", description: "Approve withdrawals" }]} onViewAudit={vi.fn()} onChanged={mocks.changed} />); });
+  await act(async () => { root.render(<StaffEmployeesPanel generation={0} permissions={[{ id: "p", key: "admin.withdrawal.approve", module: "withdrawal", action: "approve", description: "Approve withdrawals" }]} onMutation={mocks.mutation} onChanged={mocks.changed} />); });
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 5)); });
   await click(button("accessControl.staffEmployees.viewAccess"));
   await click(button("accessControl.staffEmployees.revoke"));
@@ -54,7 +54,7 @@ describe("individual employee role revocation", () => {
     expect(mutation?.[0]).toBe(`/api/admin/access-control/staff-roles/${role}/assignments`);
     expect(JSON.parse(mutation?.[1].body)).toEqual({ assignmentId: assignment, reason: "Employee transferred to another team" });
     expect(mocks.changed).toHaveBeenCalledTimes(1);
-    expect(container.textContent).toContain("accessControl.staffEmployees.revoked");
+    expect(mocks.mutation).toHaveBeenCalledWith(expect.objectContaining({ assignmentId: assignment, auditEventId: "audit-1" }), "accessControl.staffEmployees.revoked");
     expect(container.textContent).toContain("roles.approver");
   });
 });

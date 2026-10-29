@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { INTEREST_SLUGS } from '@/backend/domains/preferences';
 import { isCountryCode } from '@/lib/location/countries';
+import { PROFILE_BIO_MIN_LENGTH, PROFILE_BIO_MAX_LENGTH } from '@/lib/verification/eligibility';
 
 // ── Identity (name + location) ────────────────────────────────────────────────
 export const identitySchema = z.object({
@@ -25,7 +26,7 @@ export const avatarConfirmSchema = z.object({
 
 // ── Bio ───────────────────────────────────────────────────────────────────────
 export const bioSchema = z.object({
-  bio: z.string().trim().min(30).max(200),
+  bio: z.string().trim().min(PROFILE_BIO_MIN_LENGTH).max(PROFILE_BIO_MAX_LENGTH),
 }).strict();
 
 // ── Preference survey ─────────────────────────────────────────────────────────

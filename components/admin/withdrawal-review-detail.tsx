@@ -73,6 +73,7 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
   const [detail, setDetail] = useState<WithdrawalReviewDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actionOutcomeUnknown, setActionOutcomeUnknown] = useState(false);
   const [selectedDecision, setSelectedDecision] = useState<WithdrawalAvailableAction | null>(null);
   const [reason, setReason] = useState("");
   const [reasonCategory, setReasonCategory] = useState("");
@@ -92,7 +93,8 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
       const version = JSON.stringify([body.data.authorizationVersion, body.data.status, body.data.availableActions]);
       if (signal && snapshot.current && snapshot.current !== version) setPendingConfirmation(null);
       snapshot.current = version;
-      setDetail({ ...body.data, reviewSources: body.data.reviewSources ?? { rewardSources: [], affiliateSources: [], walletTransactions: [], fraudFlags: [] }, payoutFailure: body.data.payoutFailure ?? { provider: null, eventId: null, code: null, message: null, category: null, occurredAt: null, retryable: null }, settlementProof: body.data.settlementProof ?? null, availableActions: body.data.availableActions ?? [] });
+      setDetail({ ...body.data, reviewSourcesStatus: body.data.reviewSourcesStatus ?? "unavailable", reviewSources: body.data.reviewSources ?? { rewardSources: [], affiliateSources: [], walletTransactions: [], fraudFlags: [] }, payoutFailure: body.data.payoutFailure ?? { provider: null, eventId: null, code: null, message: null, category: null, occurredAt: null, retryable: null }, settlementProof: body.data.settlementProof ?? null, availableActions: body.data.availableActions ?? [] });
+      setActionOutcomeUnknown(false);
       setError("");
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t("withdrawals.errors.loadReviewDetails"));
@@ -114,6 +116,7 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
   const decisionReason = (action: WalletReasonAction, category: string) => t(DECISION_REASON_COPY[action][category] ?? "withdrawals.reasons.other");
 
   function chooseDecision(action: WithdrawalAvailableAction) {
+    if (actionOutcomeUnknown) return;
     setSelectedDecision(action); setReason(""); setReasonCategory(""); setPendingConfirmation(null); setAssistantReview(null); setError("");
   }
 
@@ -173,11 +176,13 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
   }
 
   async function confirmAction(proofId?: string | null) {
-    if (!pendingConfirmation || !detail?.availableActions.includes(pendingConfirmation.action)) return;
+    if (actionOutcomeUnknown || !pendingConfirmation || !detail?.availableActions.includes(pendingConfirmation.action)) return;
     const { action: nextAction, reason: pendingReason, reasonCategory: pendingCategory } = pendingConfirmation;
+    let actionOutcomeMayBeUnknown = false;
     setLoading(true);
     try {
       const response = await fetch(`/api/admin/withdrawals/${withdrawalId}/${nextAction}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...(nextAction === "approve" ? { note: pendingReason, reasonCategory: pendingCategory } : nextAction === "reject" ? { reason: pendingReason, reasonCategory: pendingCategory, moderationCredential: pendingConfirmation.moderationCredential, advisoryAccepted: pendingConfirmation.advisoryAccepted ?? false } : { reason: pendingReason, reasonCategory: pendingCategory }), ...(proofId ? { proofId } : {}) }) });
+      actionOutcomeMayBeUnknown = response.ok || response.status >= 500;
       const body = await response.json() as { error?: { code?: string; message?: string } };
       if (response.status === 409) await loadDetail(true);
       if (!response.ok) throw new Error(body.error?.message ?? t("withdrawals.errors.actionFailed"));
@@ -185,7 +190,14 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
       setSelectedDecision(null); setReason(""); setReasonCategory(""); setPendingConfirmation(null); setAssistantReview(null);
       await loadDetail(true);
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : t("withdrawals.errors.actionFailed"));
+      if (actionOutcomeMayBeUnknown) {
+        setActionOutcomeUnknown(true);
+        setPendingConfirmation(null);
+        setError(t("withdrawals.errors.actionOutcomeUnknown"));
+        try { await loadDetail(true); } catch { /* Keep the duplicate-action guard until the user can verify status. */ }
+      } else {
+        setError(actionError instanceof Error ? actionError.message : t("withdrawals.errors.actionFailed"));
+      }
     } finally {
       setLoading(false);
     }
@@ -201,15 +213,16 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
       <div className="col-span-full flex flex-wrap items-center gap-3 py-2 text-xs text-muted-foreground"><Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>{t("actions.refresh")}</Button><span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {reviewRefresh.lastSuccessAt ? new Date(reviewRefresh.lastSuccessAt).toLocaleTimeString() : "—"}</span></div>
     <div className="space-y-4">
       <section className="grid grid-cols-2 gap-3 text-sm"><div className="rounded-xl border border-border bg-card p-3"><p className="text-xs text-muted-foreground">{t("withdrawals.detail.amount")}</p><p className="font-mono font-bold">{formatMYRFromSen(detail.amountSen)}</p></div><div className="rounded-xl border border-border bg-card p-3"><p className="text-xs text-muted-foreground">{t("withdrawals.detail.status")}</p><StatusBadge status={detail.status} /></div><div className="rounded-xl border border-border bg-card p-3"><p className="text-xs text-muted-foreground">{t("withdrawals.detail.appKyc")}</p><p>{displayStatus(detail.customer.kycStatus)}</p></div><div className="rounded-xl border border-border bg-card p-3"><p className="text-xs text-muted-foreground">{t("withdrawals.detail.risk")}</p><p className={detail.riskLevel === "high" ? "font-semibold text-red-600 dark:text-red-300" : ""}>{displayStatus(detail.riskLevel)}{detail.riskOverridden ? ` · ${t("withdrawals.detail.overridden")}` : ""}</p></div></section>
+      {actionOutcomeUnknown && <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"><p>{t("withdrawals.errors.actionOutcomeUnknown")}</p><Button className="mt-3" size="sm" variant="outline" onClick={() => void loadDetail(true)}>{t("withdrawals.detail.retry")}</Button></div>}
       <section className="rounded-xl border border-border bg-card p-4 text-sm"><h2 className="font-semibold">{t("withdrawals.readiness.title")}</h2><div className="mt-3 grid gap-2 sm:grid-cols-2">{[
         { key: "appKyc", label: t("withdrawals.detail.appKyc"), value: displayStatus(detail.customer.kycStatus), ready: detail.customer.kycStatus === "approved" },
-        { key: "walletEvidence", label: t("withdrawals.readiness.walletEvidence"), value: hasReviewEvidence ? t("withdrawals.readiness.available") : t("withdrawals.readiness.unavailable"), ready: hasReviewEvidence },
+        { key: "walletEvidence", label: t("withdrawals.readiness.walletEvidence"), value: detail.reviewSourcesStatus === "unavailable" ? t("withdrawals.readiness.unavailable") : hasReviewEvidence ? t("withdrawals.readiness.available") : t("withdrawals.readiness.noRelatedTransactions"), ready: detail.reviewSourcesStatus === "ready" },
         { key: "payoutDestination", label: t("withdrawals.readiness.payoutDestination"), value: detail.destinationLabel, ready: Boolean(detail.destinationLabel) },
         { key: "approvalProgress", label: t("withdrawals.table.approvalProgress"), value: detail.requiresDualApproval ? t("withdrawals.table.dualApprovals", { count: Math.min(detail.approvalCount, 2) }) : t("withdrawals.readiness.singleApproval"), ready: !detail.requiresDualApproval || detail.approvalCount >= 2 },
       ].map((check) => <div key={check.key} className="flex items-start gap-2 rounded-lg bg-muted/40 px-3 py-2.5"><span className={check.ready ? "text-emerald-600 dark:text-emerald-300" : "text-amber-600 dark:text-amber-300"}>{check.ready ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}</span><div><p className="text-xs font-semibold">{check.label}</p><p className="text-[11px] text-muted-foreground">{check.value}</p></div></div>)}</div></section>
       <section className="rounded-xl border border-border bg-card p-4 text-sm"><h2 className="font-semibold">{t("withdrawals.balances.title")}</h2><div className="mt-2 grid gap-1 sm:grid-cols-2"><p>{t("withdrawals.balances.topUp")}: {formatMYRFromSen(detail.wallet.topupSen)}</p><p>{t("withdrawals.balances.earnings")}: {formatMYRFromSen(detail.wallet.earningsSen)}</p><p>{t("withdrawals.balances.pendingRewards")}: {formatMYRFromSen(detail.wallet.pendingEarningsSen)}</p><p>{t("withdrawals.balances.reserved")}: {formatMYRFromSen(detail.wallet.reservedSen)}</p><p>{t("withdrawals.balances.withdrawn")}: {formatMYRFromSen(detail.wallet.withdrawnSen)}</p><p>{t("withdrawals.readiness.payoutDestination")}: {detail.destinationLabel}</p></div></section>
       {detail.settlementProof && <SettlementProofSection proof={detail.settlementProof} locale={locale} formatAmount={formatMYRFromSen} />}
-      {!hasReviewEvidence && <div className="rounded-xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-sm text-amber-950 dark:text-amber-200"><p className="font-semibold">{t("withdrawals.evidence.unavailable")}</p><p>{t("withdrawals.evidence.doNotApprove")}</p></div>}
+      {detail.reviewSourcesStatus === "unavailable" && <div role="alert" className="rounded-xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-sm text-amber-950 dark:text-amber-200"><p className="font-semibold">{t("withdrawals.evidence.unavailable")}</p><p>{t("withdrawals.evidence.retrySources")}</p><Button className="mt-3" size="sm" variant="outline" onClick={() => void loadDetail(true)}>{t("withdrawals.detail.retry")}</Button></div>}
       <ReviewLedgerSection title={t("withdrawals.evidence.rewardSources")} rows={detail.reviewSources.rewardSources} emptyMessage={t("withdrawals.evidence.noRewardTransactions")} locale={locale} displayEnum={displayStatus} formatAmount={formatMYRFromSen} />
       <ReviewLedgerSection title={t("withdrawals.evidence.affiliateSources")} rows={detail.reviewSources.affiliateSources} emptyMessage={t("withdrawals.evidence.noAffiliateTransactions")} locale={locale} displayEnum={displayStatus} formatAmount={formatMYRFromSen} />
       <ReviewLedgerSection title={t("withdrawals.evidence.walletTransactions")} rows={detail.reviewSources.walletTransactions} emptyMessage={t("withdrawals.evidence.noWalletTransactions")} locale={locale} displayEnum={displayStatus} formatAmount={formatMYRFromSen} />
@@ -226,7 +239,7 @@ export function WithdrawalReviewDetail({ withdrawalId }: { withdrawalId: string 
           <p className="mt-1 text-xs text-muted-foreground">{t("withdrawals.decision.description")}</p>
           <div className="mt-3 grid gap-2">
             {detail.availableActions.map((decision) => (
-              <Button key={decision} variant={decision === "approve" ? "default" : decision === "reject" ? "destructive" : "outline"} onClick={() => chooseDecision(decision)} aria-pressed={selectedDecision === decision}>
+              <Button key={decision} disabled={loading || actionOutcomeUnknown} variant={decision === "approve" ? "default" : decision === "reject" ? "destructive" : "outline"} onClick={() => chooseDecision(decision)} aria-pressed={selectedDecision === decision}>
                 {decisionLabel(decision)}
               </Button>
             ))}

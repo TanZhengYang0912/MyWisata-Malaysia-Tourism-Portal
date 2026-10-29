@@ -20,7 +20,7 @@ export async function notifyWithdrawalApprovers(input: ApproverNotificationInput
 }
 
 const jobSchema = z.object({
-  withdrawalId: z.string().uuid(), cycle: z.number().int().positive(), stage: z.enum(['pending', 'pending_second_approval']), cursor: z.string().uuid().nullable(),
+  withdrawalId: z.string().uuid(), cycle: z.number().int().positive(), stage: z.enum(['pending', 'pending_second_approval', 'overdue']), cursor: z.string().uuid().nullable(),
   token: z.string().uuid(), customerUserId: z.string().uuid(),
 });
 const recipientsSchema = z.array(z.object({
@@ -56,11 +56,15 @@ export async function processWithdrawalApproverNotifications() {
     if (users.some((user) => user.id === job.customerUserId)) throw new Error('notification_recipient_invalid');
     if (users.length) {
       const stageSuffix = job.stage === 'pending_second_approval' ? ':stage:second' : '';
-      const eventKey = (id: string) => `withdrawal_submitted:${job.withdrawalId}:cycle:${job.cycle}:approver:${id}${stageSuffix}`;
+      const eventPrefix = job.stage === 'overdue' ? 'withdrawal_overdue' : 'withdrawal_submitted';
+      const eventKey = (id: string) => `${eventPrefix}:${job.withdrawalId}:cycle:${job.cycle}:approver:${id}${stageSuffix}`;
       const emails = await Promise.allSettled(users.filter((user) => user.email?.trim()).map((user) => enqueueEmail({
         eventKey: eventKey(user.id), userId: user.id, toEmail: user.email!.trim(),
         locale: emailLocale(user.preferred_locale), eventType: 'staff_withdrawal_approval', recipientName: user.full_name,
-        reason: 'A withdrawal approval task is waiting in the protected Admin workspace.', occurredAt: new Date().toISOString(),
+        reason: job.stage === 'overdue'
+          ? 'An overdue withdrawal needs Super Admin attention in the protected Admin workspace.'
+          : 'A withdrawal approval task is waiting in the protected Admin workspace.',
+        occurredAt: new Date().toISOString(),
       }, db)));
       if (emails.some((result) => result.status === 'rejected')) throw new Error('notification_email_unavailable');
       cursor = users[users.length - 1].id;

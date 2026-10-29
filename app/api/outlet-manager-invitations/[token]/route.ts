@@ -25,8 +25,8 @@ export async function GET(_request: Request, { params }: Props) {
     email: data.invited_email,
     status: expired ? "expired" : data.status,
     expiresAt: data.expires_at,
-    vendorName: vendor?.name ?? "MyLawatan vendor",
-    outletName: outlet?.name ?? "MyLawatan outlet",
+    vendorName: vendor?.name ?? "MYLawatan vendor",
+    outletName: outlet?.name ?? "MYLawatan outlet",
     city: outlet?.city ?? null,
     state: outlet?.state ?? null,
   });

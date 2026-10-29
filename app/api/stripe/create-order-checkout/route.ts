@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       price_data: {
         currency: 'myr',
         unit_amount: Math.round(amount * 100),
-        product_data: { name: 'MyLawatan demo order' },
+        product_data: { name: 'MYLawatan demo order' },
       },
       quantity: 1,
     }],

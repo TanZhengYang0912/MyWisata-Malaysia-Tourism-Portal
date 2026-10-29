@@ -30,9 +30,12 @@ export async function GET() {
       .limit(5),
   ]);
 
-  if (profileResult.error) return NextResponse.json({ error: profileResult.error.message }, { status: 500 });
-  if (preferenceResult.error) return NextResponse.json({ error: preferenceResult.error.message }, { status: 500 });
-  if (kycResult.error) return NextResponse.json({ error: kycResult.error.message }, { status: 500 });
+  if (profileResult.error || preferenceResult.error || kycResult.error) {
+    console.error("[profile] profile summary query failed", {
+      profile: Boolean(profileResult.error), preferences: Boolean(preferenceResult.error), kyc: Boolean(kycResult.error),
+    });
+    return NextResponse.json({ error: "Unable to load your profile right now. Please retry." }, { status: 503 });
+  }
   if (!profileResult.data) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
   const data = mapProfileSummary(

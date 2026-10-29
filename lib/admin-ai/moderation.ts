@@ -7,7 +7,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { redactPII } from '@/lib/chatbot/pii';
+import { prepareExternalText, redactPII } from '@/lib/chatbot/pii';
 import { callGemini, type GeminiInlineImage } from './gemini';
 
 export const RECOMMENDATION_PHOTO_TIMEOUT_MS = 10_000;
@@ -18,7 +18,7 @@ const REQUEST_CHANGES_FEEDBACK = 'Please review the submitted evidence and provi
 const REJECT_FEEDBACK = 'This recommendation requires rejection based on the reviewed moderation evidence.';
 const MANUAL_PHOTO_FEEDBACK = 'Please have a human reviewer assess the submitted photos before deciding this recommendation.';
 
-const SYSTEM_PROMPT = `You are an advisory moderation assistant for MyLawatan's admin team.
+const SYSTEM_PROMPT = `You are an advisory moderation assistant for MYLawatan's admin team.
 Review the supplied safe evidence summary and the submitted photos. A human administrator makes
 the final decision; you never execute or claim to execute approval, rejection, or changes.
 
@@ -592,8 +592,9 @@ export async function loadRecommendationImages(
 }
 
 function safeSummaryValue(value: string | null | undefined): string {
-  const { clean } = redactPII(value ?? '(not provided)');
-  return clean
+  const prepared = prepareExternalText(value ?? '(not provided)');
+  if (!prepared.allowed) throw new Error('sensitive_data_detected');
+  return prepared.clean
     .replace(/https?:\/\/\S+/gi, '[URL]')
     .replace(/(?:storage_path|staged|private|recommendation-images)\/\S+/gi, '[PATH]');
 }
@@ -616,7 +617,7 @@ export function buildSafeSubmissionText(
     `Recommendation reason: ${safeSummaryValue(rec.why_recommend)}`,
     `Category: ${safeSummaryValue(categoryName || null)}`,
     `Google place name: ${safeSummaryValue(rec.location_name)}`,
-    `Formatted address: ${safeSummaryValue(rec.formatted_address)}`,
+    `Formatted business address provided: ${rec.formatted_address?.trim() ? 'yes' : 'no'}`,
     `Coordinates present: ${Number.isFinite(rec.latitude) && Number.isFinite(rec.longitude) ? 'yes' : 'no'}`,
     `Contact methods present: ${contactKinds.join(', ') || 'none'}`,
     `Photo count: ${imageCount}`,
@@ -830,7 +831,8 @@ export async function reviewRecommendation(service: SupabaseClient, recommendati
       photoAssessments,
       aiAvailable: true,
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && ['sensitive_data_detected', 'image_privacy_review_required'].includes(error.message)) throw error;
     return unavailable();
   }
 }

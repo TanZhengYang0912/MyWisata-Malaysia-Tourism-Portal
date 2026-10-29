@@ -11,4 +11,12 @@ describe("generic vendor fulfilment policy", () => {
     expect(canUseGenericFoodFulfilment({ categorySlug: "ticket", scannedAt: null })).toBe(true);
     expect(canUseGenericFoodFulfilment({ categorySlug: null, scannedAt: null })).toBe(true);
   });
+
+  it("requires the separate signed retail pickup proof for retail goods", () => {
+    const ordinaryRetail = { categorySlug: "retail", productType: "product", requiresBooking: false, isEventPickup: false, scannedAt: null };
+    expect(canUseGenericFoodFulfilment(ordinaryRetail)).toBe(false);
+    expect(canUseGenericFoodFulfilment({ ...ordinaryRetail, retailScannedAt: null })).toBe(false);
+    expect(canUseGenericFoodFulfilment({ ...ordinaryRetail, retailScannedAt: "2026-10-27T00:00:00Z" })).toBe(true);
+    expect(canUseGenericFoodFulfilment({ ...ordinaryRetail, productType: "activity", retailScannedAt: null })).toBe(true);
+  });
 });

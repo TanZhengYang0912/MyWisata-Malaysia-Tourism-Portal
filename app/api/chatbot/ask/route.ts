@@ -15,6 +15,7 @@ import { answerQuestion } from '@/lib/chatbot/answer';
 import { cleanUserContent } from '@/lib/moderation/clean';
 import { logModerationFlag } from '@/lib/moderation/flags';
 import { reserveAiQuota } from '@/lib/rate-limit/ai';
+import { prepareExternalText } from '@/lib/chatbot/pii';
 
 export async function POST(request: Request) {
   const parsed = await parseBody(request, chatbotAskSchema);
@@ -58,7 +59,9 @@ export async function POST(request: Request) {
   // storage + off external APIs"). The user's own message now displays
   // masked, same as everyone else's view of it.
   const cleaned = await cleanUserContent(question, service);
-  const result = await answerQuestion(cleaned.display, await reserveAiQuota(request, 'chatbot', user?.id ?? null));
+  const privacyBlocked = !prepareExternalText(question).allowed;
+  const useAi = !privacyBlocked && await reserveAiQuota(request, 'chatbot', user?.id ?? null);
+  const result = await answerQuestion(cleaned.display, useAi);
 
   const { data: userMsg, error: userMsgErr } = await service
     .from('chatbot_messages')
@@ -105,5 +108,5 @@ export async function POST(request: Request) {
   // lets the widget attach feedback/ticket state to this specific reply.
   // CLAUDE-P4-EXTRAS.md Extra 1: language lets the widget localize that
   // feedback-flow chrome (see lib/chatbot/strings.ts) to match this reply.
-  return apiOk({ sessionKey: session.session_key, answer: result.answer, botAnswered: result.kbMatched, messageId: botMsg.id, language: result.language });
+  return apiOk({ sessionKey: session.session_key, answer: result.answer, botAnswered: result.kbMatched, messageId: botMsg.id, language: result.language, privacyBlocked });
 }

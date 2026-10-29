@@ -13,12 +13,12 @@
 // guarantee — it's what stops the model from inventing a number/policy
 // instead of admitting it doesn't know one, not a UI label.
 
-import { redactPII } from './pii';
+import { prepareExternalText } from './pii';
 
 const DRAFT_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 const DRAFT_TIMEOUT_MS = 15_000;
 
-const SYSTEM_PROMPT = `You are drafting a knowledge-base entry for MyLawatan, a Malaysian tourism
+const SYSTEM_PROMPT = `You are drafting a knowledge-base entry for MYLawatan, a Malaysian tourism
 booking platform's customer support bot.
 
 A customer asked a question the bot could not answer well — either it had
@@ -71,10 +71,12 @@ export async function draftKbEntry(question: string, existingWeakAnswer: string 
   // Same redaction boundary as generate.ts/embed.ts — the raw question may
   // contain PII (CLAUDE-ADMIN-AI.md Part 1, §7.3); nothing user-typed
   // reaches Gemini unredacted.
-  const { clean: cleanQuestion } = redactPII(question);
+  const prepared = prepareExternalText(`QUESTION: ${question}${existingWeakAnswer ? `\nEXISTING ANSWER: ${existingWeakAnswer}` : ''}`);
+  if (!prepared.allowed) return null;
+  const cleanQuestion = prepared.clean;
   const userText = existingWeakAnswer
-    ? `QUESTION: ${cleanQuestion}\n\nEXISTING (WEAK) ANSWER — the customer said this did not help, improve on it:\n${existingWeakAnswer}`
-    : `QUESTION: ${cleanQuestion}\n\n(The bot had no answer at all for this one.)`;
+    ? `${cleanQuestion}\n\n(The customer said this did not help; improve on it.)`
+    : `${cleanQuestion}\n\n(The bot had no answer at all for this one.)`;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DRAFT_TIMEOUT_MS);

@@ -10,4 +10,17 @@ describe('customer order list references', () => {
     expect(pageSource).toContain('order.displayId');
     expect(pageSource).not.toContain('shortOrderId(order.id)');
   });
+
+  it('returns to the first page when the order filters change or clear', () => {
+    expect(pageSource).toContain('setStatus(event.target.value as OrderFilterStatus); setPage(1);');
+    expect(pageSource).toContain('setQuery(event.target.value); setPage(1);');
+    expect(pageSource).toContain('function clearFilters() { setPage(1);');
+  });
+
+  it('uses Malaysia calendar boundaries and renders order dates in MYT', () => {
+    expect(pageSource).toContain('malaysiaCalendarDateToIso(from, "start")');
+    expect(pageSource).toContain('malaysiaCalendarDateToIso(to, "end")');
+    expect(pageSource).toContain('timeZone: "Asia/Kuala_Lumpur"');
+    expect(pageSource).toContain('ui.orders.invalidDateRange');
+  });
 });

@@ -149,7 +149,7 @@
   "accessControl": {
     "eyebrow": "Security governance",
     "title": "Access Control",
-    "description": "Manage capability metadata, versioned policies, targeted assignments, and the linked global audit history.",
+    "description": "Manage staff roles, permissions and audit records.",
     "capabilityNames": {
       "platform_browse": "Authenticated browsing",
       "commerce_booking": "Customer booking",
@@ -223,7 +223,8 @@
       "loadStaffCandidates": "Unable to search eligible staff.",
       "saveStaffRole": "Unable to save the staff role.",
       "assignStaffRole": "Unable to assign the staff role.",
-      "loadAudit": "Unable to load the Audit Log."
+      "loadAudit": "Unable to load the Audit Log.",
+      "invalidAuditDateRange": "Enter a valid date range. Audit dates use Malaysia Time (MYT)."
     },
     "feedback": {
       "capabilityUpdated": "Capability governance metadata updated.",
@@ -232,6 +233,7 @@
       "staffRoleUpdated": "Staff role action completed.",
       "staffModuleUpdated": "Staff module settings saved.",
       "staffRoleGranted": "{{role}} was granted to {{employee}}.",
+      "previousMutationReceipt": "A recent access change is ready for audit review.",
       "committedReceiptUnavailable": "The change was saved, but its audit receipt or refreshed status is temporarily unavailable. Refresh this page before making another change."
     },
     "filters": {
@@ -408,9 +410,12 @@
       "invitationSent": "Invitation email sent.",
       "invitationResent": "Invitation email resent with a new link.",
       "invitationRevoked": "Invitation revoked.",
+      "invitationCommittedDeliveryFailed": "The invitation was recorded, but its email could not be sent. Check the invitation status before retrying.",
+      "invitationCommittedDeliveryPending": "The invitation was recorded. Email delivery is still being confirmed; check its status before retrying.",
       "invitationError": "Unable to process the staff invitation.",
       "joinedEmployees": "Joined employees",
       "invitationListEntry": "{{roleName}} · {{status}} · {{delivery}}",
+      "expiresAt": "Expires {{value}}",
       "delivery": {
         "pending": "Waiting",
         "sending": "Sending",
@@ -560,11 +565,13 @@
       "revokeTitle": "Revoke assignment"
     },
     "audit": {
-      "readOnlyTitle": "Read-only evidence.",
-      "readOnlyDescription": "This global Audit Log includes Access Control and linked platform governance events; Catalogue Review remains a separate workflow.",
+      "readOnlyTitle": "Read-only records.",
+      "readOnlyDescription": "Access Control and related administration activity.",
       "focusedEvent": "Selected audit event: {{id}}",
+      "focusedEntity": "Showing audit events for {{id}}",
       "focusNotOnPage": "The selected event is outside the current result page.",
       "when": "When",
+      "whenMyt": "When (MYT)",
       "actor": "Actor",
       "action": "Action",
       "target": "Target",
@@ -572,6 +579,7 @@
       "trace": "Trace reference",
       "details": "Details",
       "systemActor": "System",
+      "unknownActor": "Unknown account",
       "before": "Before",
       "after": "After",
       "changeSummary": "Key changes",
@@ -607,6 +615,17 @@
         "staffInvitationDeliverySucceeded": "Delivered a staff invitation",
         "staffInvitationResent": "Resent a staff invitation",
         "staffInvitationRevoked": "Revoked a staff invitation",
+        "staffModuleCreated": "Created a staff module",
+        "staffModuleUpdated": "Updated a staff module",
+        "staffPasskeyApprove": "Verified a Passkey for an approval",
+        "staffPasskeyEnrollmentGrant": "Granted Passkey enrollment",
+        "staffPasskeyFraudOverride": "Verified a Passkey for a fraud override",
+        "staffPasskeyLogin": "Signed in with a Passkey",
+        "staffPasskeyManage": "Verified a Passkey for staff security management",
+        "staffPasskeyRecoveryGrant": "Granted Passkey recovery",
+        "staffPasskeyRegister": "Registered a Passkey",
+        "staffPasskeyRetryPayout": "Verified a Passkey to retry a payout",
+        "staffPasskeyRevoked": "Revoked a Passkey",
         "staffRoleAssigned": "Assigned a staff role",
         "staffRoleCreated": "Created a staff role",
         "staffRoleRevoked": "Revoked a staff role assignment",
@@ -645,6 +664,10 @@
         "customerVisible": "Customer visible",
         "manuallyAssignable": "Manually assignable",
         "generation": "Generation",
+        "assignmentId": "Assignment ID",
+        "roleId": "Role ID",
+        "userId": "User ID",
+        "revoked": "Revoked",
         "roleName": "Role name",
         "moduleKeys": "Modules",
         "permissionKeys": "Permissions",
@@ -1105,6 +1128,7 @@
       "batchFailed": "Batch knowledge document update failed.",
       "batchUpdate": "One or more knowledge documents could not be updated.",
       "draft": "Could not draft a KB entry right now.",
+      "privacyBlocked": "The full request was not sent to AI because it may contain personal details. Remove phone, email, identity, bank, or private-address details, or write the KB entry manually. Keyword answers remain available.",
       "loadDescription": "Something went wrong loading the chatbot overview. Try refreshing the page.",
       "loadTitle": "Couldn't load chatbot stats",
       "reindex": "Reindex failed.",
@@ -1927,7 +1951,7 @@
       "contributorLine": "Customer recommendation · {{category}} · {{state}} · by {{author}}",
       "description": "Review community recommendations before vendor outreach.",
       "duplicate": "Duplicate",
-      "member": "MyLawatan member",
+      "member": "MYLawatan member",
       "noPending": "No pending recommendations",
       "pending": "Pending ({{count}})",
       "pendingLabel": "pending recommendations",
@@ -2736,7 +2760,9 @@
       "analysisUnavailable": "AI analysis unavailable. Deterministic evidence checks are still shown below.",
       "confidence": "{{value}} confidence",
       "errors": {
-        "unavailable": "AI review unavailable right now."
+        "unavailable": "AI review unavailable right now.",
+        "privacyBlocked": "The full recommendation was not sent to AI because it may contain phone, email, ID, bank, or private-address details. Remove those details and try again, or continue the review manually without AI.",
+        "imagesWithheld": "Recommendation photos were not sent to AI because they may contain private information. Continue the review manually, or remove the photos and try again."
       },
       "evidence": "Evidence",
       "kind": "Kind",
@@ -3095,6 +3121,7 @@
     },
     "errors": {
       "actionFailed": "Action failed",
+      "actionOutcomeUnknown": "We could not confirm whether this review action was saved. Check the current withdrawal status before taking another action.",
       "batchActionFailed": "One or more withdrawal actions failed.",
       "chooseDecisionReason": "Choose a reason for this decision.",
       "invalidReasonCategory": "Choose a valid reason category for this withdrawal action.",
@@ -3131,6 +3158,7 @@
     "evidence": {
       "affiliateSources": "Affiliate sources",
       "doNotApprove": "Do not approve until the data is available.",
+      "retrySources": "Source history did not load. Retry to check it again.",
       "fraudFlags": "Fraud flags",
       "noAffiliateTransactions": "No affiliate transactions were found.",
       "noFraudFlags": "No fraud flags recorded.",
@@ -3211,7 +3239,7 @@
       "eventStatus": "Provider status",
       "amount": "Amount",
       "providerTime": "Provider time",
-      "receivedTime": "MyLawatan received",
+      "receivedTime": "MYLawatan received",
       "signatureVerified": "Signature verified",
       "payloadHash": "Payload SHA-256",
       "deliveryStatus": "Callback delivery",
@@ -3251,6 +3279,7 @@
       "singleApproval": "Single approval",
       "title": "Decision readiness",
       "unavailable": "Unavailable",
+      "noRelatedTransactions": "No related transactions found",
       "walletEvidence": "Wallet evidence"
     },
     "reasons": {
@@ -3386,7 +3415,7 @@
     "providers": {
       "bankTransferSimulator": "Bank transfer — Simulator",
       "grabpaySimulator": "GrabPay — Simulator",
-      "mylawatanWallet": "MyLawatan Wallet",
+      "mylawatanWallet": "MYLawatan Wallet",
       "stripeSandbox": "Stripe Sandbox",
       "tngSimulator": "Touch ’n Go eWallet — Simulator",
       "unknown": "Unknown provider"

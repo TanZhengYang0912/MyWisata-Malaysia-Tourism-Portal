@@ -27,9 +27,16 @@ describe('preferenceSurveySchema', () => {
 });
 
 describe('bioSchema', () => {
-  it('requires the teacher-approved 30 to 200 character range', () => {
-    expect(() => bioSchema.parse({ bio: 'Too short bio' })).toThrow();
-    expect(bioSchema.parse({ bio: 'A local guide who enjoys sharing practical travel tips and authentic food discoveries.' }).bio).toHaveLength(86);
-    expect(() => bioSchema.parse({ bio: 'x'.repeat(201) })).toThrow();
+  it.each([0, 2, 31, 200])('rejects a new or edited bio of %i characters', (length) => {
+    expect(bioSchema.safeParse({ bio: 'x'.repeat(length) }).success).toBe(false);
+  });
+
+  it.each([3, 30])('accepts a required bio of %i characters', (length) => {
+    expect(bioSchema.parse({ bio: 'x'.repeat(length) }).bio).toHaveLength(length);
+  });
+
+  it('trims whitespace and accepts a three-character Chinese bio', () => {
+    expect(bioSchema.parse({ bio: '  爱旅行  ' }).bio).toBe('爱旅行');
+    expect(bioSchema.safeParse({ bio: '    ' }).success).toBe(false);
   });
 });

@@ -30,6 +30,8 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown_error';
     if (message === 'recommendation_not_found') return apiFail('NOT_FOUND', 'Recommendation not found', 404);
+    if (message === 'sensitive_data_detected') return apiFail('PERSONAL_DATA_WITHHELD', 'Recommendation text was not sent to AI because it may contain phone, email, identity, bank, or private-address details. Remove those details and try again, or continue the review manually without AI.', 422);
+    if (message === 'image_privacy_review_required') return apiFail('IMAGES_WITHHELD', 'Recommendation photos were not sent to AI because they may contain identity or other private information. Continue the review manually, or remove the photos and try again.', 422);
     console.error('[admin-ai] moderation review failed', message);
     return apiFail('ASSISTANT_UNAVAILABLE', 'The AI assistant is unavailable right now — try again shortly.', 503);
   }

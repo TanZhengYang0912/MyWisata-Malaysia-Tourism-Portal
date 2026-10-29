@@ -51,6 +51,14 @@ describe("journey canvas integration contract", () => {
     expect(hookSource).toContain("commit(stored(await reorderTripItemsAction");
   });
 
+  it("exposes keyboard-accessible move controls for itinerary stops", () => {
+    expect(source).toContain('trip.move(itemIndex, earlierIndex)');
+    expect(source).toContain('trip.move(itemIndex, laterIndex)');
+    expect(source).toContain('trip.schedule(item.id, event.target.value === "__unscheduled" ? null : event.target.value, item.scheduled_time)');
+    expect(source).toContain('strictMigration.tripPlanner.moveEarlier');
+    expect(source).toContain('strictMigration.tripPlanner.moveLater');
+  });
+
   it("projects only public sponsored fields and vendor suggestion timestamps into the canvas", () => {
     expect(pageSource).toContain('rpc("list_active_sponsored_discovery_placements")');
     expect(pageSource).toContain('.from("vendor_recommendations")');

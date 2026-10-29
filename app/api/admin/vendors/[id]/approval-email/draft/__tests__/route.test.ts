@@ -96,6 +96,16 @@ describe('POST /api/admin/vendors/[id]/approval-email/draft', () => {
     expect(response.status).toBe(502);
   });
 
+  it('explains when vendor details were withheld from AI', async () => {
+    mockVendorRow();
+    draftVendorApprovalEmail.mockResolvedValue({ error: 'sensitive_data_detected' });
+    const response = await callRoute();
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'PERSONAL_DATA_WITHHELD', message: expect.stringContaining('write the email manually') },
+    });
+  });
+
   it('drafts using the vendor\'s real details and returns subject/body', async () => {
     mockVendorRow();
     draftVendorApprovalEmail.mockResolvedValue({ subject: 'Congratulations!', body: 'Welcome aboard.' });

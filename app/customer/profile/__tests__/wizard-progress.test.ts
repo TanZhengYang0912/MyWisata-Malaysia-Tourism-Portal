@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { getWizardProgress, WIZARD_STEPS } from '../wizard-progress';
+import { canVisitWizardStep, getWizardProgress, WIZARD_STEPS } from '../wizard-progress';
 
 describe('verification wizard progress', () => {
+  it('can show an earlier saved step without reducing server completion progress', () => {
+    const verification = { complete: false, percentage: 75, completedSteps: ['identity', 'avatar', 'bio'], currentStep: 'survey' } as const;
+    const input = { ...verification, completedSteps: [...verification.completedSteps] };
+    expect(getWizardProgress(input, 'identity')).toMatchObject({ currentStep: 1, currentLabel: 'Identity', percentage: 75 });
+    expect(canVisitWizardStep(input, 'identity')).toBe(true);
+    expect(canVisitWizardStep(input, 'survey')).toBe(true);
+    expect(canVisitWizardStep({ ...input, completedSteps: ['identity'], currentStep: 'avatar' }, 'survey')).toBe(false);
+  });
   it('uses the server-derived verification contract', () => {
     expect(getWizardProgress({
       complete: false,

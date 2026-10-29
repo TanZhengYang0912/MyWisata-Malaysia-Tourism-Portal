@@ -30,11 +30,16 @@ export function summarizeDurations(values) {
 
 export async function loadExistingEvidencePreparation() {
   // Reuse the exact server implementation. Only remove the server-only bundler
-  // marker for this Node harness, and resolve its installed sharp import.
+  // marker and resolve its bundler alias and installed sharp import for Node.
   const source = await fs.readFile(path.join(repo, 'lib/kyc/evidence-image.ts'), 'utf8');
-  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
+  const compilerOptions = { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 };
+  const tokenSource = await fs.readFile(path.join(repo, 'lib/i18n/invariant-tokens.ts'), 'utf8');
+  const tokenModule = ts.transpileModule(tokenSource, { compilerOptions }).outputText;
+  const tokenUrl = `data:text/javascript;base64,${Buffer.from(tokenModule).toString('base64')}`;
+  const compiled = ts.transpileModule(source, { compilerOptions }).outputText
     .replace(/import ['"]server-only['"];?\s*/, '')
-    .replace(/from ['"]sharp['"]/, `from ${JSON.stringify(pathToFileURL(require.resolve('sharp')).href)}`);
+    .replace(/from ['"]sharp['"]/, `from ${JSON.stringify(pathToFileURL(require.resolve('sharp')).href)}`)
+    .replace(/from ['"]@\/lib\/i18n\/invariant-tokens['"]/, `from ${JSON.stringify(tokenUrl)}`);
   return (await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)).prepareKycEvidenceImage;
 }
 

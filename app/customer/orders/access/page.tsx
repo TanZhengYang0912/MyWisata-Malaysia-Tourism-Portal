@@ -35,7 +35,7 @@ export default function GuestOrderAccessPage() {
   async function recover(event:React.FormEvent) {
     event.preventDefault();setSending(true);
     try {
-      const response=await fetch('/api/guest/orders/recover',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderReference:orderId,email})});
+      const response=await fetch('/api/guest/orders/recover',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...(orderId.trim() ? { orderReference: orderId.trim() } : {}),email})});
       setMessage(response.ok ? t("guestCheckout.requested") : t("guestCheckout.requestFailed"));
     } catch {setMessage(t("guestCheckout.requestFailed"));}
     finally {setSending(false);}
@@ -44,7 +44,7 @@ export default function GuestOrderAccessPage() {
     {!failed ? <p>{t("guestCheckout.opening")}</p> : <form onSubmit={recover} className="space-y-4 rounded-2xl border border-border bg-card p-6">
       <h1 className="text-xl font-semibold">{t("guestCheckout.accessTitle")}</h1>
       <p className="text-sm text-muted-foreground">{t("guestCheckout.recoveryHint")}</p>
-      <label className="block text-sm">{t("guestCheckout.orderNumber")}<Input required value={orderId} onChange={event=>setOrderId(event.target.value)} /></label>
+      <label className="block text-sm">{t("guestCheckout.orderNumber")}<Input value={orderId} onChange={event=>setOrderId(event.target.value)} /></label>
       <label className="block text-sm">{t("guestCheckout.email")}<Input required type="email" autoComplete="email" value={email} onChange={event=>setEmail(event.target.value)} /></label>
       <Button type="submit" disabled={sending}>{t("guestCheckout.emailLink")}</Button>
       {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}

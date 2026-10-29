@@ -1,15 +1,10 @@
-import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
-import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { readReviewQueue, reviewQueueQuery } from '@/lib/admin/review-queue';
+import { requireStaffRoleManagementSuperAdmin } from '@/lib/staff-permissions/server';
 import type { Json } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
-
-type UserRoleRecord = {
-  roles: { name: string | null } | Array<{ name: string | null }> | null;
-};
 
 type RefundQueryRow = {
   id: string;
@@ -33,19 +28,8 @@ type RefundQueryRow = {
 };
 
 export async function GET(request: Request) {
-  const db = await createClient();
-  const { data: { user } } = await db.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  const assuranceResponse = await requireStaffAssurance(db);
-  if (assuranceResponse) return assuranceResponse;
-  const { data: roles } = await db.from('user_roles').select('roles(name)').eq('user_id', user.id);
-  const roleNames = (roles ?? []).map((row: UserRoleRecord) => {
-    const role = Array.isArray(row.roles) ? row.roles[0] : row.roles;
-    return role?.name;
-  });
-  if (!roleNames.includes('super_admin')) {
-    return apiFail('FORBIDDEN', 'Admin role required', 403);
-  }
+  const { response } = await requireStaffRoleManagementSuperAdmin();
+  if (response) return response;
 
   const filters = reviewQueueQuery(request, 'refunds');
   if (!filters.success) return apiFail('VALIDATION_FAILED', 'Invalid refund queue filters', 422);

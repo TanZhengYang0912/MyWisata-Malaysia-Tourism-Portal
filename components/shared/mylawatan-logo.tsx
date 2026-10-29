@@ -48,7 +48,7 @@ export function MyLawatanLogo({
       role="img"
     >
       <Image
-        src="/branding/mylawatan-logo-transparent.png?v=2"
+        src="/branding/mylawatan-logo-transparent.png?v=3"
         alt={LOGO_BRAND_NAME}
         width={758}
         height={306}

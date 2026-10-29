@@ -17,7 +17,7 @@ import { emailLocale } from '@/lib/email/copy';
 // time), for the same reason: nothing should depend on the model getting a
 // link right.
 
-import { redactPII } from '@/lib/chatbot/pii';
+import { prepareExternalText } from '@/lib/chatbot/pii';
 
 const DRAFT_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 const DRAFT_TIMEOUT_MS = 15_000;
@@ -27,7 +27,7 @@ const DRAFT_TIMEOUT_MS = 15_000;
 // should placeholder.
 const SUPPORT_EMAIL = 'support@mylawatan.my';
 
-const SYSTEM_PROMPT = `You are drafting a warm, congratulatory email for MyLawatan, a Malaysian
+const SYSTEM_PROMPT = `You are drafting a warm, congratulatory email for MYLawatan, a Malaysian
 tourism booking platform, welcoming a vendor whose application has just
 been APPROVED.
 
@@ -74,6 +74,8 @@ export interface VendorApprovalDraftContext {
   address: string | null;
 }
 
+export type VendorApprovalDraftResult = VendorApprovalDraft | { error: 'sensitive_data_detected' } | null;
+
 /**
  * Drafts a subject + body for a vendor approval/welcome email. Never
  * throws: returns null on any failure (missing key, network, timeout,
@@ -81,13 +83,10 @@ export interface VendorApprovalDraftContext {
  * one" instead of a 500 — this is a nice-to-have admin tool, not a money or
  * accuracy path.
  */
-export async function draftVendorApprovalEmail(context: VendorApprovalDraftContext): Promise<VendorApprovalDraft | null> {
+export async function draftVendorApprovalEmail(context: VendorApprovalDraftContext): Promise<VendorApprovalDraftResult> {
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) return null;
 
-  // Same redaction boundary as invite-draft.ts/kb-draft.ts — the vendor's
-  // free-text description may contain PII; nothing goes to Gemini unredacted.
-  const { clean: cleanDescription } = redactPII(context.description ?? '');
   const language = {
     en: 'English',
     'zh-CN': 'Simplified Chinese',
@@ -97,12 +96,12 @@ export async function draftVendorApprovalEmail(context: VendorApprovalDraftConte
   const userText = [
     `BUSINESS NAME: ${context.vendorName}`,
     context.businessType ? `BUSINESS TYPE: ${context.businessType}` : null,
-    context.address ? `LOCATION: ${context.address}` : null,
-    context.contactName ? `CONTACT NAME: ${context.contactName}` : null,
-    cleanDescription ? `DESCRIPTION: ${cleanDescription}` : null,
+    context.description ? `DESCRIPTION: ${context.description}` : null,
   ]
     .filter(Boolean)
     .join('\n');
+  const preparedText = prepareExternalText(userText);
+  if (!preparedText.allowed) return { error: 'sensitive_data_detected' };
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DRAFT_TIMEOUT_MS);
@@ -113,7 +112,7 @@ export async function draftVendorApprovalEmail(context: VendorApprovalDraftConte
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT}\nWrite the subject and body in ${language}. Keep the SUBJECT: and BODY: parser labels unchanged.` }] },
-        contents: [{ role: 'user', parts: [{ text: userText }] }],
+        contents: [{ role: 'user', parts: [{ text: preparedText.clean }] }],
         generationConfig: { temperature: 0.3, maxOutputTokens: 400 },
       }),
       signal: controller.signal,

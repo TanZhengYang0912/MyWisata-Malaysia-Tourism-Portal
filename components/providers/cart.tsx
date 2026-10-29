@@ -16,9 +16,14 @@ export { cartItemKey } from "@/backend/core/helpers";
 
 interface CartContextValue {
   items: CartItem[];
+  itemsLoading: boolean;
+  itemsLoadError: boolean;
+  reloadItems: () => void;
   count: number;
   activities: Activity[];
   activitiesReady: boolean;
+  activitiesFailed: boolean;
+  reloadActivities: () => void;
   selectedKeys: Set<string>;
   selectedItems: CartItem[];
   toggleSelected: (key: string) => void;
@@ -37,14 +42,20 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [activityData, setActivityData] = useState<{ key: string; activities: Activity[] }>({ key: "[]", activities: [] });
+  const [activityData, setActivityData] = useState<{ key: string; activities: Activity[]; failed: boolean }>({ key: "[]", activities: [], failed: false });
+  const [activityReloadVersion, setActivityReloadVersion] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [itemsLoading, setItemsLoading] = useState(true);
+  const [itemsLoadError, setItemsLoadError] = useState(false);
+  const [reloadVersion, setReloadVersion] = useState(0);
   const [selectedKeys, setSelectedKeysState] = useState<Set<string>>(new Set());
   const { currentUser } = useAuth();
   const pathname = usePathname();
   const previousPathname = useRef(pathname);
   const ownerKey = currentUser?.id ?? "guest";
   const activeOwner = useRef(ownerKey);
+  const loadedOwner = useRef(ownerKey);
+  const cartHasLoaded = useRef(false);
   useEffect(() => { activeOwner.current = ownerKey; }, [ownerKey]);
   const activityIdsKey = JSON.stringify([...new Set(items.map((item) => item.activityId))].sort());
   const activities = useMemo(
@@ -52,13 +63,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     [activityData, activityIdsKey],
   );
   const activitiesReady = activityData.key === activityIdsKey;
+  const activitiesFailed = activitiesReady && activityData.failed;
 
   useEffect(() => {
     let active = true;
+    const ownerChanged = loadedOwner.current !== ownerKey;
+    loadedOwner.current = ownerKey;
+    if (ownerChanged || !cartHasLoaded.current) {
+      cartHasLoaded.current = false;
+      // A switch of owner must not leave the previous cart visible.
+      setMounted(false);
+      setItems([]);
+      setSelectedKeysState(new Set());
+    }
+    // This is async loading status for the request initiated by this effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMounted(false);
-    setItems([]);
-    setSelectedKeysState(new Set());
+    setItemsLoading(true);
+    setItemsLoadError(false);
     const userId=ownerKey === "guest" ? null : ownerKey;
     if (userId) {
       commerce.getCart(userId)
@@ -67,27 +88,39 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           setItems(nextItems);
           try {
             const saved = sessionStorage.getItem(`customer-cart-selection-${userId}`);
-            setSelectedKeysState(saved ? new Set(JSON.parse(saved) as string[]) : new Set());
+            setSelectedKeysState(saved ? new Set((JSON.parse(saved) as string[]).filter((key) => nextItems.some((item) => cartItemKey(item) === key))) : new Set(nextItems.map(cartItemKey)));
           } catch {
-            setSelectedKeysState(new Set());
+            setSelectedKeysState(new Set(nextItems.map(cartItemKey)));
           }
           setMounted(true);
+          setItemsLoading(false);
+          cartHasLoaded.current = true;
         })
         .catch(() => {
           if (!active) return;
-          setItems([]);
-          setSelectedKeysState(new Set());
+          setItemsLoadError(true);
           setMounted(true);
+          setItemsLoading(false);
+          cartHasLoaded.current = true;
         });
     }
     else {
       guestCart.getGuestCart().then((nextItems) => {
         if (!active) return;
-        setItems(nextItems); setSelectedKeysState(new Set(nextItems.map(cartItemKey))); setMounted(true);
-      }).catch(() => { if (active) { setItems([]); setSelectedKeysState(new Set()); setMounted(true); } });
+        setItems(nextItems);
+        try {
+          const saved = sessionStorage.getItem("customer-cart-selection-guest");
+          setSelectedKeysState(saved ? new Set((JSON.parse(saved) as string[]).filter((key) => nextItems.some((item) => cartItemKey(item) === key))) : new Set(nextItems.map(cartItemKey)));
+        } catch {
+          setSelectedKeysState(new Set(nextItems.map(cartItemKey)));
+        }
+        setMounted(true);
+        setItemsLoading(false);
+        cartHasLoaded.current = true;
+      }).catch(() => { if (active) { setItemsLoadError(true); setMounted(true); setItemsLoading(false); cartHasLoaded.current = true; } });
     }
     return () => { active = false; };
-  }, [ownerKey]);
+  }, [ownerKey, reloadVersion]);
 
   useEffect(() => {
     const previous = previousPathname.current;
@@ -110,23 +143,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     let active = true;
     getActivitiesByIds(activityIds)
       .then((nextActivities) => {
-        if (active) setActivityData({ key: activityIdsKey, activities: nextActivities });
+        if (active) setActivityData({ key: activityIdsKey, activities: nextActivities, failed: false });
       })
       .catch(() => {
-        if (active) setActivityData({ key: activityIdsKey, activities: [] });
+        if (active) setActivityData({ key: activityIdsKey, activities: [], failed: true });
       });
 
     return () => { active = false; };
-  }, [activityIdsKey]);
+  }, [activityIdsKey, activityReloadVersion]);
 
   useEffect(() => {
-    if (!currentUser || !mounted || items.length === 0) return;
+    if (!mounted) return;
     try {
-      sessionStorage.setItem(`customer-cart-selection-${currentUser.id}`, JSON.stringify([...selectedKeys]));
+      sessionStorage.setItem(`customer-cart-selection-${currentUser?.id ?? "guest"}`, JSON.stringify([...selectedKeys]));
     } catch {
       // Selection persistence is best-effort; checkout still works in-memory.
     }
-  }, [currentUser, items.length, mounted, selectedKeys]);
+  }, [currentUser?.id, mounted, selectedKeys]);
 
   useEffect(() => {
     const validKeys = new Set(items.map(cartItemKey));
@@ -166,9 +199,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const replaceSelectedKeys = useCallback((keys: string[]) => {
     setSelectedKeysState(new Set(keys));
-    if (!currentUser) return;
     try {
-      sessionStorage.setItem(`customer-cart-selection-${currentUser.id}`, JSON.stringify(keys));
+      sessionStorage.setItem(`customer-cart-selection-${currentUser?.id ?? "guest"}`, JSON.stringify(keys));
     } catch {
       // Selection persistence is best-effort; checkout still works in-memory.
     }
@@ -181,8 +213,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const nextItems = result.items;
     const savedLine = nextItems.find((candidate) => canMergeCartItemLines(candidate, item));
     if (!savedLine?.cartItemId) throw new Error("cart_line_not_saved");
-    if (activeOwner.current === ownerKey) setItems(nextItems);
-    return cartItemKey(savedLine);
+    const key = cartItemKey(savedLine);
+    if (activeOwner.current === ownerKey) {
+      setItems(nextItems);
+      setSelectedKeysState((previous) => new Set([...previous, key]));
+    }
+    return key;
   }, [currentUser, ownerKey]);
 
   const updateQty = useCallback(async (index: number, qty: number) => {
@@ -216,6 +252,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (activeOwner.current === ownerKey) setItems([]);
   }, [currentUser, ownerKey]);
 
+  const reloadItems = useCallback(() => setReloadVersion((version) => version + 1), []);
+  const reloadActivities = useCallback(() => setActivityReloadVersion((version) => version + 1), []);
+
   const selectedItems = items.filter((item) => selectedKeys.has(cartItemKey(item)));
 
   const totals = useCallback(
@@ -227,7 +266,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <CartContext.Provider
-      value={{ items, count, activities, activitiesReady, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, setSelectedKeys: replaceSelectedKeys, addItem, updateQty, removeItem, updateStayDetails, clear, totals }}
+      value={{ items, itemsLoading, itemsLoadError, reloadItems, count, activities, activitiesReady, activitiesFailed, reloadActivities, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, setSelectedKeys: replaceSelectedKeys, addItem, updateQty, removeItem, updateStayDetails, clear, totals }}
     >
       {children}
     </CartContext.Provider>

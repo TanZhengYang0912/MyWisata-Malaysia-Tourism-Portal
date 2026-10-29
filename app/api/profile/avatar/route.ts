@@ -23,7 +23,10 @@ export async function PUT(request: Request) {
     .from('avatars')
     .createSignedUploadUrl(path, { upsert: true });
 
-  if (error) return apiFail('STORAGE_ERROR', error.message, 500);
+  if (error) {
+    console.error('[profile/avatar] signed upload URL creation failed', error);
+    return apiFail('AVATAR_UPLOAD_UNAVAILABLE', 'Unable to prepare the profile photo upload. Please try again.', 503);
+  }
 
   return apiOk({
     uploadUrl: data.signedUrl,

@@ -48,3 +48,57 @@ describe('visible reviewer refresh behavior',()=>{
     expect(run).toHaveBeenCalledTimes(1);
   });
 });
+
+function CustomerProbe({ run, owner = 'A', revision = 1 }: { run: (signal: AbortSignal) => Promise<void>; owner?: string; revision?: number }) {
+  useVisibleReviewRefresh({ enabled: true, onRefresh: run, intervalMs: null, identityKey: owner, refreshKey: revision, initialRefresh: true, coalesceMs: 250 });
+  return null;
+}
+
+describe('event-driven customer refresh', () => {
+  it('merges visible return and verified auth triggers without polling', async () => {
+    const run = vi.fn(async () => {});
+    await act(async () => root.render(React.createElement(CustomerProbe, { run })));
+    await advance(250);
+    expect(run).toHaveBeenCalledTimes(1);
+    await advance(120_000);
+    expect(run).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      document.dispatchEvent(new TestEvent('visibilitychange'));
+      root.render(React.createElement(CustomerProbe, { run, revision: 2 }));
+    });
+    await advance(250);
+    expect(run).toHaveBeenCalledTimes(2);
+  });
+
+  it('queues only one trailing read and releases an abort-ignoring timeout', async () => {
+    const run = vi.fn().mockImplementationOnce(() => new Promise<void>(() => {})).mockResolvedValue(undefined);
+    await act(async () => root.render(React.createElement(CustomerProbe, { run })));
+    await advance(250);
+    for (let index = 0; index < 20; index += 1) {
+      await act(async () => document.dispatchEvent(new TestEvent('visibilitychange')));
+    }
+    await advance(15_000);
+    expect((run.mock.calls[0][0] as AbortSignal).aborted).toBe(true);
+    await advance(250);
+    expect(run).toHaveBeenCalledTimes(2);
+    await advance(120_000);
+    expect(run).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops on denial until a verified auth change, and aborts replaced owners', async () => {
+    const run = vi.fn().mockRejectedValueOnce(Object.assign(new Error('denied'), { status: 403 })).mockImplementation(() => new Promise<void>(() => {}));
+    await act(async () => root.render(React.createElement(CustomerProbe, { run })));
+    await advance(250);
+    await act(async () => document.dispatchEvent(new TestEvent('visibilitychange')));
+    await advance(250);
+    expect(run).toHaveBeenCalledTimes(1);
+    await act(async () => root.render(React.createElement(CustomerProbe, { run, revision: 2 })));
+    await advance(250);
+    expect(run).toHaveBeenCalledTimes(2);
+    const oldSignal = run.mock.calls[1][0] as AbortSignal;
+    await act(async () => root.render(React.createElement(CustomerProbe, { run, owner: "B" })));
+    expect(oldSignal.aborted).toBe(true);
+    await advance(250);
+    expect(run).toHaveBeenCalledTimes(3);
+  });
+});

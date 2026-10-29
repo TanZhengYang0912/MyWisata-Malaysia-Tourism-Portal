@@ -42,7 +42,7 @@ export async function buyProduct(page: Page, productId: string, quantity: number
   await expect(page.getByText('1 selected').first()).toBeVisible();
   await page.getByText('Proceed to Checkout').first().click();
   await page.waitForURL(/\/customer\/checkout$/, { timeout: 120_000 });
-  await page.getByRole('button', { name: pay === 'wallet' ? /MyLawatan wallet balance/ : 'Bank transfer — Demo simulator' }).click();
+  await page.getByRole('button', { name: pay === 'wallet' ? /MYLawatan wallet balance/ : 'Bank transfer — Demo simulator' }).click();
   await shot(page, `${shotName}_checkout`);
 
   // The page navigates away the moment this call returns, so read the body inside an intercept.

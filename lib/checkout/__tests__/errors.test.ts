@@ -1,7 +1,40 @@
 import { describe, expect, it } from "vitest";
-import { activeCheckoutOrderId, getCheckoutErrorCode, getCheckoutErrorMessage } from "../errors";
+import { activeCheckoutOrderId, getCheckoutErrorCode, getCheckoutErrorMessage, getCheckoutErrorRecovery, getCheckoutErrorTranslationKey } from "../errors";
+import { checkoutContactSchema } from "../contact";
 
 describe("checkout error handling", () => {
+  it.each([
+    [{ email: '' }, 'CONTACT_EMAIL_REQUIRED'],
+    [{ email: 'not-an-email' }, 'CONTACT_EMAIL_INVALID'],
+    [{ email: 'a@example.com', phone: '123' }, 'CONTACT_PHONE_INVALID'],
+  ])('maps actual contact schema failures to the field that needs correction', (contact, expected) => {
+    const result = checkoutContactSchema.safeParse(contact);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(getCheckoutErrorCode({ code: 'VALIDATION_FAILED', details: result.error.flatten() })).toBe(expected);
+      expect(getCheckoutErrorCode({ code: 'VALIDATION_FAILED', details: { fieldErrors: { contact: result.error.issues.map(issue => issue.message) } } })).toBe(expected);
+    }
+  });
+
+  it.each(['TOYYIBPAY_UNAVAILABLE', 'PAYMENT_SIMULATOR_UNAVAILABLE', 'PAYMENT_SIMULATOR_PREPARE_FAILED', 'PAYMENT_APP_URL_INVALID'])('provides a safe payment-service explanation for %s', code => {
+    expect(getCheckoutErrorCode({ code, message: 'secret provider configuration' })).toBe('PAYMENT_SERVICE_UNAVAILABLE');
+    expect(getCheckoutErrorMessage({ code })).toContain('Payment service is temporarily unavailable');
+  });
+
+  it.each(['TOYYIBPAY_CREATE_INDETERMINATE', 'TOYYIBPAY_PREPARE_FAILED', 'PAYMENT_SESSION_PERSIST_FAILED'])('does not recommend blindly retrying an uncertain payment setup: %s', code => {
+    expect(getCheckoutErrorCode({ code })).toBe('PAYMENT_STATUS_UNCERTAIN');
+    expect(getCheckoutErrorRecovery('PAYMENT_STATUS_UNCERTAIN')).toBe('orders');
+    expect(getCheckoutErrorMessage('PAYMENT_STATUS_UNCERTAIN')).not.toContain('try again');
+  });
+
+  it('keeps translated recovery driven by codes instead of English text', () => {
+    expect(getCheckoutErrorTranslationKey('INVENTORY_UNAVAILABLE')).toBe('checkoutErrors.INVENTORY_UNAVAILABLE');
+    expect(getCheckoutErrorRecovery('CONTACT_EMAIL_REQUIRED')).toBe('email');
+    expect(getCheckoutErrorRecovery('INVENTORY_UNAVAILABLE')).toBe('cart');
+    expect(getCheckoutErrorRecovery('PAYMENT_SERVICE_UNAVAILABLE')).toBe('retry');
+    expect(getCheckoutErrorCode({ code: 'CONTACT_REQUIRED' })).toBe('CONTACT_EMAIL_REQUIRED');
+    expect(getCheckoutErrorCode({ code: 'VALIDATION_FAILED', details: 'private data' })).toBe('CHECKOUT_DETAILS_INVALID');
+  });
   it('provides pending-order recovery without exposing arbitrary SQL detail', () => {
     expect(getCheckoutErrorCode('active_checkout_exists')).toBe('ACTIVE_CHECKOUT_EXISTS');
     expect(getCheckoutErrorMessage('ACTIVE_CHECKOUT_EXISTS')).toContain('cancel');

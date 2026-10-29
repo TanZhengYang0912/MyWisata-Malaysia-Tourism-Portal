@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { redactPII } from "../pii";
+import { prepareExternalText, redactPII } from "../pii";
 
 describe("redactPII", () => {
   it("redacts a dashed Malaysian IC", () => {
@@ -54,5 +54,41 @@ describe("redactPII", () => {
     const second = redactPII("how do I book a tour");
     expect(second.clean).toBe("how do I book a tour");
     expect(second.found).toBe(false);
+  });
+
+  it("blocks explicit Chinese identity/address details and address-like postal blocks", () => {
+    expect(prepareExternalText("我的地址是槟城乔治市12号")).toEqual({ allowed: false });
+    expect(prepareExternalText("我住在槟城乔治市12号")).toEqual({ allowed: false });
+    expect(prepareExternalText("我叫张三")).toEqual({ allowed: false });
+    expect(prepareExternalText("我的名字是张三")).toEqual({ allowed: false });
+    expect(prepareExternalText("我叫John")).toEqual({ allowed: false });
+    expect(prepareExternalText("我的名字是John Smith")).toEqual({ allowed: false });
+    expect(prepareExternalText("身份证990101-14-5678")).toEqual({ allowed: false });
+    expect(prepareExternalText("12 George Town, Penang 10250")).toEqual({ allowed: false });
+    expect(prepareExternalText("Flat 3, George Town, Penang")).toEqual({ allowed: false });
+    expect(prepareExternalText("槟城乔治市12号")).toEqual({ allowed: false });
+    expect(prepareExternalText("George Town, Penang 10250")).toEqual({ allowed: false });
+    expect(prepareExternalText("1234567")).toEqual({ allowed: false });
+    expect(prepareExternalText("Is Flat White Cafe open in Kuala Lumpur?").allowed).toBe(true);
+    expect(prepareExternalText("Visit Suite 101 at the mall").allowed).toBe(true);
+    expect(prepareExternalText("Block 3 of the heritage museum").allowed).toBe(true);
+    expect(prepareExternalText("Kuala Lumpur 50000 attractions").allowed).toBe(true);
+  });
+
+  it("does not send identified phone or bank data to an external model", () => {
+    expect(prepareExternalText("The payout bank information does not match the review record.").allowed).toBe(true);
+    expect(prepareExternalText("My bank account is 123456789012.")).toEqual({ allowed: false });
+    expect(prepareExternalText("Call me at 012-3456789")).toEqual({ allowed: false });
+    expect(prepareExternalText("Call me at +60123456789")).toEqual({ allowed: false });
+    expect(prepareExternalText("Call me at 555-1234")).toEqual({ allowed: false });
+    expect(prepareExternalText("Reach me at alice@example.com")).toEqual({ allowed: false });
+    expect(prepareExternalText("Bank account: 123456")).toEqual({ allowed: false });
+  });
+
+  it("allows ordinary travel questions with prices, dates, people, and public places", () => {
+    expect(prepareExternalText("Plan 3 days in Kuala Lumpur for 2 adults, 12–14 Nov 2026, with RM 800 for food and attractions.").allowed).toBe(true);
+    expect(prepareExternalText("Family of 4, RM 1,200 for 5 days in Penang and Kuala Lumpur, 20–24 Dec 2026.").allowed).toBe(true);
+    expect(prepareExternalText("Plan a 2-day trip to Penang from 2026-11-12 to 2026-11-14 for RM 600.").allowed).toBe(true);
+    expect(prepareExternalText("Is Jalan Alor worth visiting during a 2-night Kuala Lumpur trip?").allowed).toBe(true);
   });
 });

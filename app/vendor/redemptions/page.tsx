@@ -8,6 +8,7 @@ import {
   Copy,
   Download,
   MapPin,
+  PackageCheck,
   RefreshCw,
   Search,
   Store,
@@ -35,6 +36,7 @@ export default function VendorRedemptionsPage() {
     todayCount: 0,
     voucherCount: 0,
     ticketCount: 0,
+    retailCount: 0,
     activeOutletsCount: 0,
   });
 
@@ -42,8 +44,9 @@ export default function VendorRedemptionsPage() {
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
   const [outletFilter, setOutletFilter] = useState('');
-  const [kindFilter, setKindFilter] = useState<'all' | 'voucher' | 'ticket'>('all');
+  const [kindFilter, setKindFilter] = useState<'all' | 'voucher' | 'ticket' | 'event_pickup' | 'retail_pickup'>('all');
   const [search, setSearch] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -85,6 +88,7 @@ export default function VendorRedemptionsPage() {
         if (payload.data?.pagination) {
           setPage(payload.data.pagination.page);
           setTotalPages(payload.data.pagination.totalPages);
+          setTotalRecords(payload.data.pagination.total);
         }
         if (payload.data?.stats) {
           setStats(payload.data.stats);
@@ -183,7 +187,7 @@ export default function VendorRedemptionsPage() {
       </header>
 
       {/* KPI Cards */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
         <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
           <p className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.totalRedemptions', 'Total Redemptions')}</p>
           <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">{stats.totalCount}</p>
@@ -204,6 +208,11 @@ export default function VendorRedemptionsPage() {
           <p className="mt-1 text-2xl font-bold text-[#b45309]">{stats.ticketCount}</p>
           <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.checkedInGuests', 'Guest check-ins')}</p>
         </div>
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+          <p className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.retailPickups', 'Retail pickups')}</p>
+          <p className="mt-1 text-2xl font-bold text-primary">{stats.retailCount}</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.retailItemsHandedOver', 'Order lines handed over')}</p>
+        </div>
       </section>
 
       {/* Filter and Search Bar */}
@@ -216,6 +225,7 @@ export default function VendorRedemptionsPage() {
                 { value: 'all', label: t('ui.redemptions.filters.all', 'All Activity') },
                 { value: 'voucher', label: t('ui.redemptions.filters.vouchers', 'Vouchers') },
                 { value: 'ticket', label: t('ui.redemptions.filters.tickets', 'Tickets') },
+                { value: 'retail_pickup', label: t('ui.redemptions.filters.retail', 'Retail pickups') },
               ] as const
             ).map((item) => (
               <button
@@ -233,6 +243,7 @@ export default function VendorRedemptionsPage() {
               </button>
             ))}
           </div>
+          <span className="text-xs text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.filteredCount', { count: totalRecords })}</span>
 
           {/* Outlet Filter */}
           {outlets.length > 1 && (
@@ -321,6 +332,16 @@ export default function VendorRedemptionsPage() {
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-200">
                           <TicketPercent size={13} />
                           <span>{t('ui.redemptions.kindVoucher', 'Voucher')}</span>
+                        </span>
+                      ) : r.kind === 'retail_pickup' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                          <PackageCheck size={13} />
+                          <span>{t('ui.redemptions.kindRetailPickup', 'Retail pickup')}</span>
+                        </span>
+                      ) : r.kind === 'event_pickup' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 dark:bg-violet-500/10 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:text-violet-200">
+                          <Store size={13} />
+                          <span>{t('ui.redemptions.kindEventPickup', 'Event pickup')}</span>
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-200">

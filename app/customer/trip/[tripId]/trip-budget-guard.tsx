@@ -16,7 +16,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, MapPin as MapPinIcon, PiggyBank } from "lucide-react";
+import { AlertTriangle, MapPin as MapPinIcon } from "lucide-react";
 import { formatMYR } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale, type AppLocale } from "@/lib/i18n/locale";
 import type { ComputedActivity } from "@/backend/core/types";
@@ -83,16 +83,28 @@ export function TripBudgetGuard({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<BudgetGuardApiResult | null>(null);
+  const [dataKey, setDataKey] = useState("");
 
   const {total,unknownCount}=useMemo(()=>getTripBudgetEstimate(items,new Map((activities ?? []).map(activity=>[activity.id,activity]))),[items,activities]);
   const overBudgetByRM = budget !== null ? Math.max(0, total - budget) : 0;
   const isOverBudget = overBudgetByRM > 0;
+  const lines = items.filter((item) => item.experience_id).map((item) => ({ productId: item.experience_id as string, qty: 1 }));
+  const currentDataKey = JSON.stringify({ tripId, budget, lines });
+  const currentData = dataKey === currentDataKey ? data : null;
 
   function saveBudget() {
     const parsed = Number(budgetInput);
-    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setError(t("ui.tripBudget.invalidBudget"));
+      return;
+    }
     setBudget(parsed);
-    if (typeof window !== "undefined") window.localStorage.setItem(storageKey(tripId), String(parsed));
+    setError(null);
+    try {
+      if (typeof window !== "undefined") window.localStorage.setItem(storageKey(tripId), String(parsed));
+    } catch {
+      setError(t("ui.tripBudget.storageUnavailable"));
+    }
     setEditing(false);
   }
 
@@ -106,32 +118,33 @@ export function TripBudgetGuard({
     // cascading-render risk. A manual click is cheap to just re-run for real.
     setLoading(true);
     setError(null);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 25_000);
     try {
-      const lines = items.filter((item) => item.experience_id).map((item) => ({ productId: item.experience_id as string, qty: 1 }));
       const res = await fetch("/api/customer/budget-guard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({ lines, budgetRM: budget, lang }),
       });
-      const body = (await res.json()) as { data: BudgetGuardApiResult | null; error: { message: string } | null };
+      const body = (await res.json()) as { data: BudgetGuardApiResult | null; error: { code?: string; message: string } | null };
       if (!res.ok || !body.data) {
-        setError(body.error?.message ?? t("ui.tripBudget.checkFailed"));
+        setError(res.status === 429 ? t("ui.tripBudget.tryLater") : t("ui.tripBudget.checkFailed"));
         return;
       }
       setData(body.data);
+      setDataKey(currentDataKey);
     } catch {
-      setError(t("ui.tripBudget.checkFailed"));
+      setError(controller.signal.aborted ? t("ui.tripBudget.timedOut") : t("ui.tripBudget.checkFailed"));
     } finally {
+      window.clearTimeout(timeout);
       setLoading(false);
     }
   }
 
   return (
     <div className="mb-3 rounded-2xl border border-border bg-secondary/40 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-          <PiggyBank size={14} className="text-primary" /> {t("ui.tripBudget.title")}
-        </div>
+      <div className="flex items-center justify-end gap-2">
         {!editing && (
           <button
             type="button"
@@ -152,7 +165,7 @@ export function TripBudgetGuard({
             step="1"
             autoFocus
             value={budgetInput}
-            onChange={(event) => setBudgetInput(event.target.value)}
+            onChange={(event) => { setBudgetInput(event.target.value); setError(null); }}
             placeholder={t("ui.tripBudget.budgetPlaceholder")}
             className="w-24 rounded-lg border border-border bg-background px-2 py-1 text-xs outline-none focus:border-primary"
           />
@@ -180,11 +193,11 @@ export function TripBudgetGuard({
       {expanded && (
         <div className="mt-2">
           {loading && <p className="text-[11px] text-muted-foreground">{t("ui.tripBudget.checking")}</p>}
-          {error && !loading && <p className="text-[11px] text-destructive">{error}</p>}
-          {data && !loading && data.messages.length === 0 && <p className="text-[11px] text-muted-foreground">{t("ui.tripBudget.noAlternatives")}</p>}
-          {data && data.messages.length > 0 && (
+          {error && !loading && <p role="alert" className="text-[11px] text-destructive">{error}</p>}
+          {currentData && !loading && currentData.messages.length === 0 && <p className="text-[11px] text-muted-foreground">{t("ui.tripBudget.noAlternatives")}</p>}
+          {currentData && currentData.messages.length > 0 && (
             <ul className="flex flex-col gap-1.5">
-              {data.messages.map((message) => (
+              {currentData.messages.map((message) => (
                 <li key={`${message.originalProductId}-${message.alternativeProductId}`} className="rounded-lg border border-border bg-background p-2">
                   <p className="text-[11px] leading-relaxed text-foreground">{message.message}</p>
                   <div className="mt-1 flex items-center justify-between gap-2">

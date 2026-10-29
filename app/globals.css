@@ -453,7 +453,7 @@ body {
 }
 
 /* Customer event calendar: FullCalendar supplies behavior; these rules keep
-   its primitives in the MyLawatan visual system without changing its layout
+   its primitives in the MYLawatan visual system without changing its layout
    or accessibility semantics. */
 .mw-customer-calendar .fc {
   --fc-border-color: var(--border);
@@ -837,7 +837,7 @@ body {
 }
 
 /* Vendor event-promotion availability calendar: reuses .mw-customer-calendar's
-   theme (it's a generic FullCalendar/MyLawatan skin, not customer-specific)
+   theme (it's a generic FullCalendar/MYLawatan skin, not customer-specific)
    plus day states this booking-style picker needs that the read-only
    customer calendar doesn't: full/past days are visibly un-pickable, and the
    currently-chosen range is highlighted. */

@@ -149,7 +149,7 @@
   "accessControl": {
     "eyebrow": "Tadbir urus keselamatan",
     "title": "Kawalan akses",
-    "description": "Urus metadata keupayaan, polisi berversi, tugasan bersasar dan sejarah audit global yang dipautkan.",
+    "description": "Urus peranan kakitangan, kebenaran dan rekod audit.",
     "capabilityNames": {
       "platform_browse": "Pelayaran pengguna berdaftar",
       "commerce_booking": "Tempahan pelanggan",
@@ -223,7 +223,8 @@
       "loadStaffCandidates": "Kakitangan yang layak tidak dapat dicari.",
       "saveStaffRole": "Peranan kakitangan tidak dapat disimpan.",
       "assignStaffRole": "Peranan kakitangan tidak dapat diberikan.",
-      "loadAudit": "Log Audit tidak dapat dimuatkan."
+      "loadAudit": "Log Audit tidak dapat dimuatkan.",
+      "invalidAuditDateRange": "Masukkan julat tarikh yang sah. Tarikh audit menggunakan Waktu Malaysia (MYT)."
     },
     "feedback": {
       "capabilityUpdated": "Metadata tadbir urus keupayaan telah dikemas kini.",
@@ -232,6 +233,7 @@
       "staffRoleUpdated": "Tindakan peranan kakitangan telah selesai.",
       "staffModuleUpdated": "Tetapan modul kakitangan telah disimpan.",
       "staffRoleGranted": "Peranan {{role}} telah diberikan kepada {{employee}}.",
+      "previousMutationReceipt": "Perubahan akses terkini sedia untuk semakan audit.",
       "committedReceiptUnavailable": "Perubahan telah disimpan, tetapi resit audit atau status terkini buat sementara waktu tidak tersedia. Muat semula halaman ini sebelum membuat perubahan lain."
     },
     "filters": {
@@ -408,9 +410,12 @@
       "invitationSent": "E-mel jemputan dihantar.",
       "invitationResent": "E-mel jemputan dihantar semula dengan pautan baharu.",
       "invitationRevoked": "Jemputan dibatalkan.",
+      "invitationCommittedDeliveryFailed": "Jemputan telah direkodkan, tetapi e-melnya tidak dapat dihantar. Semak status sebelum mencuba semula.",
+      "invitationCommittedDeliveryPending": "Jemputan telah direkodkan. Penghantaran e-mel masih disahkan; semak status sebelum mencuba semula.",
       "invitationError": "Tidak dapat memproses jemputan kakitangan.",
       "joinedEmployees": "Kakitangan yang telah menyertai",
       "invitationListEntry": "{{roleName}} · {{status}} · {{delivery}}",
+      "expiresAt": "Tamat {{value}}",
       "delivery": {
         "pending": "Menunggu",
         "sending": "Menghantar",
@@ -560,11 +565,13 @@
       "revokeTitle": "Tarik balik tugasan"
     },
     "audit": {
-      "readOnlyTitle": "Bukti baca sahaja.",
-      "readOnlyDescription": "Log Audit global ini merangkumi Kawalan Akses dan peristiwa tadbir urus platform yang dipautkan; Semakan Katalog kekal sebagai aliran kerja berasingan.",
+      "readOnlyTitle": "Rekod baca sahaja.",
+      "readOnlyDescription": "Aktiviti Kawalan Akses dan pentadbiran berkaitan.",
       "focusedEvent": "Peristiwa audit dipilih: {{id}}",
+      "focusedEntity": "Memaparkan peristiwa audit untuk {{id}}",
       "focusNotOnPage": "Peristiwa dipilih berada di luar halaman hasil semasa.",
       "when": "Masa",
+      "whenMyt": "Masa (MYT)",
       "actor": "Pelaku",
       "action": "Tindakan",
       "target": "Sasaran",
@@ -572,6 +579,7 @@
       "trace": "Rujukan jejak",
       "details": "Butiran",
       "systemActor": "Sistem",
+      "unknownActor": "Akaun tidak diketahui",
       "before": "Sebelum",
       "after": "Selepas",
       "changeSummary": "Perubahan utama",
@@ -607,6 +615,17 @@
         "staffInvitationDeliverySucceeded": "Menghantar jemputan kakitangan",
         "staffInvitationResent": "Menghantar semula jemputan kakitangan",
         "staffInvitationRevoked": "Menarik balik jemputan kakitangan",
+        "staffModuleCreated": "Mencipta modul kakitangan",
+        "staffModuleUpdated": "Mengemas kini modul kakitangan",
+        "staffPasskeyApprove": "Mengesahkan Passkey untuk kelulusan",
+        "staffPasskeyEnrollmentGrant": "Memberikan kebenaran pendaftaran Passkey",
+        "staffPasskeyFraudOverride": "Mengesahkan Passkey untuk pengecualian penipuan",
+        "staffPasskeyLogin": "Log masuk menggunakan Passkey",
+        "staffPasskeyManage": "Mengesahkan Passkey untuk pengurusan keselamatan kakitangan",
+        "staffPasskeyRecoveryGrant": "Memberikan kebenaran pemulihan Passkey",
+        "staffPasskeyRegister": "Mendaftarkan Passkey",
+        "staffPasskeyRetryPayout": "Mengesahkan Passkey untuk mencuba semula pembayaran",
+        "staffPasskeyRevoked": "Membatalkan Passkey",
         "staffRoleAssigned": "Menetapkan peranan kakitangan",
         "staffRoleCreated": "Mencipta peranan kakitangan",
         "staffRoleRevoked": "Menarik balik tugasan peranan kakitangan",
@@ -645,6 +664,10 @@
         "customerVisible": "Kelihatan kepada pelanggan",
         "manuallyAssignable": "Boleh ditetapkan secara manual",
         "generation": "Generasi",
+        "assignmentId": "ID tugasan",
+        "roleId": "ID peranan",
+        "userId": "ID pengguna",
+        "revoked": "Ditarik balik",
         "roleName": "Nama peranan",
         "moduleKeys": "Modul",
         "permissionKeys": "Kebenaran",
@@ -1105,6 +1128,7 @@
       "batchFailed": "Kemas kini dokumen pengetahuan secara pukal gagal.",
       "batchUpdate": "Satu atau lebih dokumen pengetahuan tidak dapat dikemas kini.",
       "draft": "Tidak dapat merangka entri KB sekarang.",
+      "privacyBlocked": "Permintaan penuh tidak dihantar kepada AI kerana mungkin mengandungi maklumat peribadi. Buang nombor telefon, e-mel, ID, butiran bank atau alamat peribadi, atau tulis entri KB secara manual. Jawapan kata kunci masih tersedia.",
       "loadDescription": "Sesuatu tidak kena semasa memuatkan gambaran keseluruhan chatbot. Cuba muat semula halaman.",
       "loadTitle": "Tidak dapat memuatkan statistik chatbot",
       "reindex": "Pengindeksan semula gagal.",
@@ -1927,7 +1951,7 @@
       "contributorLine": "Cadangan pelanggan · {{category}} · {{state}} · oleh {{author}}",
       "description": "Semak cadangan komuniti sebelum menghubungi vendor.",
       "duplicate": "Pendua",
-      "member": "Ahli MyLawatan",
+      "member": "Ahli MYLawatan",
       "noPending": "Tiada cadangan belum selesai",
       "pending": "Belum selesai ({{count}})",
       "pendingLabel": "cadangan belum selesai",
@@ -2736,7 +2760,9 @@
       "analysisUnavailable": "Analisis AI tidak tersedia. Semakan bukti berasaskan peraturan masih dipaparkan di bawah.",
       "confidence": "keyakinan {{value}}",
       "errors": {
-        "unavailable": "Semakan AI tidak tersedia sekarang."
+        "unavailable": "Semakan AI tidak tersedia sekarang.",
+        "privacyBlocked": "Cadangan penuh tidak dihantar kepada AI kerana mungkin mengandungi telefon, e-mel, ID, butiran bank atau alamat peribadi. Buang butiran tersebut dan cuba lagi, atau teruskan semakan secara manual tanpa AI.",
+        "imagesWithheld": "Foto cadangan tidak dihantar kepada AI kerana mungkin mengandungi maklumat peribadi. Teruskan semakan secara manual atau buang foto dan cuba lagi."
       },
       "evidence": "Bukti",
       "kind": "Jenis",
@@ -3095,6 +3121,7 @@
     },
     "errors": {
       "actionFailed": "Tindakan gagal",
+      "actionOutcomeUnknown": "Kami tidak dapat mengesahkan sama ada tindakan semakan ini telah disimpan. Semak status pengeluaran semasa sebelum mengambil tindakan lain.",
       "batchActionFailed": "Satu atau lebih tindakan pengeluaran gagal.",
       "chooseDecisionReason": "Pilih sebab untuk keputusan ini.",
       "invalidReasonCategory": "Pilih kategori sebab yang sah untuk tindakan pengeluaran ini.",
@@ -3131,6 +3158,7 @@
     "evidence": {
       "affiliateSources": "Sumber afiliasi",
       "doNotApprove": "Jangan luluskan sehingga data tersedia.",
+      "retrySources": "Sejarah sumber tidak dapat dimuatkan. Cuba lagi untuk menyemaknya.",
       "fraudFlags": "Tanda penipuan",
       "noAffiliateTransactions": "Tiada transaksi afiliasi ditemui.",
       "noFraudFlags": "Tiada tanda penipuan direkodkan.",
@@ -3211,7 +3239,7 @@
       "eventStatus": "Status penyedia",
       "amount": "Amaun",
       "providerTime": "Masa penyedia",
-      "receivedTime": "Diterima MyLawatan",
+      "receivedTime": "Diterima MYLawatan",
       "signatureVerified": "Tandatangan disahkan",
       "payloadHash": "SHA-256 muatan",
       "deliveryStatus": "Penghantaran panggilan balik",
@@ -3251,6 +3279,7 @@
       "singleApproval": "Kelulusan tunggal",
       "title": "Kesediaan keputusan",
       "unavailable": "Tidak tersedia",
+      "noRelatedTransactions": "Tiada transaksi berkaitan ditemui",
       "walletEvidence": "Bukti dompet"
     },
     "reasons": {
@@ -3386,7 +3415,7 @@
     "providers": {
       "bankTransferSimulator": "Pindahan bank — Simulasi",
       "grabpaySimulator": "GrabPay — Simulasi",
-      "mylawatanWallet": "Dompet MyLawatan",
+      "mylawatanWallet": "Dompet MYLawatan",
       "stripeSandbox": "Stripe Sandbox",
       "tngSimulator": "eDompet Touch ’n Go — Simulasi",
       "unknown": "Penyedia tidak diketahui"

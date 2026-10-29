@@ -87,12 +87,14 @@ interface ChatMessage {
   question?: string;
   /** Bot messages only — answer language returned by the chatbot API. */
   language?: ChatLanguage;
+  /** The original question was withheld from AI; the reply used local FAQ matching. */
+  privacyBlocked?: boolean;
   feedbackStage?: FeedbackStage;
   ticketId?: string;
   ticketError?: string;
 }
 
-type ChatbotAnswerData = Pick<ChatMessage, "text" | "messageId" | "language"> & {
+type ChatbotAnswerData = Pick<ChatMessage, "text" | "messageId" | "language" | "privacyBlocked"> & {
   botAnswered: boolean;
 };
 
@@ -103,6 +105,7 @@ export function createBotMessage(data: ChatbotAnswerData, question: string): Cha
     messageId: data.messageId,
     question,
     language: data.language,
+    privacyBlocked: data.privacyBlocked,
     feedbackStage: data.botAnswered ? "awaiting_helpful" : "awaiting_ticket",
   };
 }
@@ -257,14 +260,14 @@ export function ChatbotWidget() {
         body: JSON.stringify({ sessionKey: sessionKey ?? undefined, question }),
       });
       const body = (await res.json()) as {
-        data: { sessionKey: string; answer: string; botAnswered: boolean; messageId: string; language: ChatLanguage } | null;
+        data: { sessionKey: string; answer: string; botAnswered: boolean; messageId: string; language: ChatLanguage; privacyBlocked: boolean } | null;
         error: { message: string } | null;
       };
       if (!res.ok || !body.data) {
         setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
         return;
       }
-      const { answer, botAnswered, messageId, language } = body.data;
+      const { answer, botAnswered, messageId, language, privacyBlocked } = body.data;
       let effectiveSessionKey = sessionKey;
       if (body.data.sessionKey && body.data.sessionKey !== sessionKey) {
         effectiveSessionKey = body.data.sessionKey;
@@ -272,7 +275,7 @@ export function ChatbotWidget() {
         window.localStorage.setItem(SESSION_STORAGE_KEY, body.data.sessionKey);
       }
 
-      setMessages((m) => [...m, createBotMessage({ text: answer, messageId, language, botAnswered }, question)]);
+      setMessages((m) => [...m, createBotMessage({ text: answer, messageId, language, privacyBlocked, botAnswered }, question)]);
 
       // Flow 2: the bot already knows it didn't help — there's no yes/no
       // helpfulness question to ask, so this is recorded automatically
@@ -405,6 +408,11 @@ export function ChatbotWidget() {
                       >
                         {m.text}
                       </div>
+                      {m.role === "bot" && m.privacyBlocked && (
+                        <p role="status" className="mt-1 max-w-[85%] rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-2 text-xs leading-5 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                          {t("chatbot.privacyBlocked")}
+                        </p>
+                      )}
                       {m.role === "bot" && m.feedbackStage && (
                         <div className="mt-1.5 max-w-[85%]">
                           {m.feedbackStage === "awaiting_helpful" && (

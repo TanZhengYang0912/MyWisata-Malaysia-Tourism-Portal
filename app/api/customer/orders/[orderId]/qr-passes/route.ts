@@ -3,6 +3,7 @@ import { authorizeOrder } from '@/lib/checkout/order-access';
 import { apiFail } from "@/lib/validation/schemas";
 import { signTicketPassToken } from "@/lib/tickets/tokens";
 import { loadOrderPickupPasses, OrderPickupPassError } from "@/lib/checkout/order-pickup-passes";
+import { createServiceClient } from "@/lib/supabase/service";
 
 interface Props { params: Promise<{ orderId: string }> }
 
@@ -76,7 +77,9 @@ export async function GET(request: Request, { params }: Props) {
   if (missingTicketIdentity) return apiFail("MERCHANT_IDENTITY_UNAVAILABLE", "Ticket merchant identity is unavailable", 409);
 
   try {
-    const passes = await loadOrderPickupPasses(db, orderId);
+    // Order ownership was established above. Use the server client for the
+    // exact order-scoped join and refund gate; never expose this client.
+    const passes = await loadOrderPickupPasses(createServiceClient(), orderId);
     return guestPrivateResponse({ tickets, ...passes });
   } catch (error) {
     if (error instanceof OrderPickupPassError) {

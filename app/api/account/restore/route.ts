@@ -8,8 +8,9 @@ export async function POST() {
 
   const { data: tier, error } = await supabase.rpc("restore_my_account");
   if (error) {
-    const status = error.message.includes("account_suspended") ? 403 : error.message.includes("account_not_deleted") ? 409 : 500;
-    return NextResponse.json({ error: error.message }, { status });
+    if (error.message.includes("account_suspended")) return NextResponse.json({ error: "This account is suspended and cannot be restored. Contact support for help." }, { status: 403 });
+    if (error.message.includes("account_not_deleted")) return NextResponse.json({ error: "This account is already active." }, { status: 409 });
+    return NextResponse.json({ error: "We could not restore your account right now. Please try again later." }, { status: 500 });
   }
   return NextResponse.json({ data: { restored: true, tier } });
 }

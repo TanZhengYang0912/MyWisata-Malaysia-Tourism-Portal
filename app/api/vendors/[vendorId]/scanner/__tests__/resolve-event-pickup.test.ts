@@ -54,7 +54,7 @@ function codeFor(pickupSlotId?: string) {
 function setupRows(rows: unknown[]) {
   mocks.from.mockImplementation((table: string) => {
     if (table === "orders") return query({ status: "paid" });
-    if (table === "vendors") return query({ name: "Event Vendor" });
+    if (table === "vendors") return query({ id: VENDOR_ID, name: "Event Vendor", status: "approved", kind: "event" });
     return query(rows);
   });
 }

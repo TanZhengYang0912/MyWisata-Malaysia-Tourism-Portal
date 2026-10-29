@@ -21,7 +21,7 @@ export async function POST() {
     return apiFail('FORBIDDEN', 'Only Super Admin can reindex the knowledge base', 403);
   }
   if (!process.env.LLM_API_KEY) {
-    return apiFail('NOT_CONFIGURED', 'LLM_API_KEY is not set — nothing to embed with', 400);
+    return apiFail('NOT_CONFIGURED', 'Knowledge-base indexing is temporarily unavailable. Please try again later.', 503);
   }
 
   const service = createServiceClient();
@@ -29,7 +29,10 @@ export async function POST() {
     .from('chatbot_kb_documents')
     .select('id, title, body, embedded_at, updated_at')
     .eq('is_active', true);
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error) {
+    console.error('[admin/chatbot/reindex] document lookup failed');
+    return apiFail('DB_ERROR', 'Knowledge-base entries could not be loaded. Please try again later.', 500);
+  }
 
   const stale = (docs ?? []).filter((d) => !d.embedded_at || new Date(d.embedded_at) < new Date(d.updated_at));
 
@@ -45,8 +48,8 @@ export async function POST() {
         .eq('id', doc.id);
       if (updateErr) throw updateErr;
       reindexed += 1;
-    } catch (err) {
-      errors.push({ id: doc.id, error: err instanceof Error ? err.message : String(err) });
+    } catch (_err) {
+      errors.push({ id: doc.id, error: 'This entry could not be indexed. Retry the indexing task later.' });
     }
   }
 

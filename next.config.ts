@@ -157,6 +157,7 @@ const nextConfig: NextConfig = {
     remotePatterns: supabaseStorageRemotePattern(),
     localPatterns: [
       { pathname: '/branding/mylawatan-logo-transparent.png', search: '?v=2' },
+      { pathname: '/branding/mylawatan-logo-transparent.png', search: '?v=3' },
       { pathname: '**', search: '' },
     ],
     minimumCacheTTL: 2592000,

@@ -156,10 +156,12 @@ export default function AdminChatbotPage() {
       });
       const body = (await res.json()) as {
         data: { title: string; body: string; keywords: string[]; category: string } | null;
-        error: { message: string } | null;
+        error: { code?: string; message: string } | null;
       };
       if (!res.ok || !body.data) {
-        showFeedback("error", body.error?.message ?? t("chatbot.errors.draft"));
+        showFeedback("error", body.error?.code === "PERSONAL_DATA_WITHHELD"
+          ? t("chatbot.errors.privacyBlocked")
+          : body.error?.message ?? t("chatbot.errors.draft"));
         return;
       }
       // category is classifyTicket(question) from the route — a pre-fill,

@@ -69,8 +69,8 @@ export async function GET(
     // The review-source projection is additive and may not exist yet on a
     // remote database that has not applied migration 088. It must not block
     // the approver from opening the withdrawal and using the governed action
-    // endpoints; the UI will show the source sections as empty until the
-    // projection is available.
+    // endpoints. Return an explicit status so the UI does not present a failed
+    // projection as a confirmed empty source history.
     console.warn('[admin/withdrawals] review sources unavailable', {
       withdrawalId,
       message: sourceError?.message ?? 'empty_response',
@@ -145,6 +145,7 @@ export async function GET(
     }),
     riskSnapshot: (risk?.snapshot as Record<string, unknown>) ?? {},
     reviewSources: sourceData as WithdrawalReviewDetail['reviewSources'] ?? EMPTY_REVIEW_SOURCES,
+    reviewSourcesStatus: sourceError || !sourceData ? 'unavailable' : 'ready',
     payoutFailure: {
       provider: r.payout_provider as string | null,
       eventId: r.payout_provider_event_id as string | null,

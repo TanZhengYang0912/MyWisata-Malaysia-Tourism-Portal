@@ -122,11 +122,15 @@ export function RecommendationAiReviewPanel({
       });
       const body = (await response.json()) as {
         data: ModerationAssessment | null;
-        error: { message: string } | null;
+        error: { code?: string; message: string } | null;
       };
       if (!response.ok || !body.data) {
         setResult(null);
-        setError(body.error?.message ?? t("recommendation.aiReview.errors.unavailable"));
+        setError(body.error?.code === "PERSONAL_DATA_WITHHELD"
+          ? t("recommendation.aiReview.errors.privacyBlocked")
+          : body.error?.code === "IMAGES_WITHHELD"
+            ? t("recommendation.aiReview.errors.imagesWithheld")
+          : body.error?.message ?? t("recommendation.aiReview.errors.unavailable"));
         return;
       }
       setResult(body.data);

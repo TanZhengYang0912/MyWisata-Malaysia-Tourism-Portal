@@ -148,7 +148,7 @@
     }
   },
   "profile": {
-    "languageDescription": "选择 MyLawatan 使用的语言。"
+    "languageDescription": "选择 MYLawatan 使用的语言。"
   },
   "accountLifecycle": {
     "restore": {
@@ -179,6 +179,9 @@
     }
   },
   "ui": {
+    "backgroundRefresh": {
+      "staleData": "暂时无法更新，当前显示上次的数据。"
+    },
     "loading": "加载中…",
     "contentTranslation": {
       "machineTranslated": "机器翻译",
@@ -205,7 +208,7 @@
         },
         "PHONE_VERIFICATION_REQUIRED": {
           "title": "验证手机号码",
-          "description": "预订、购买、结账和基础 AI 推荐需要手机验证。使用当前功能不需要先完成整份个人资料。",
+          "description": "请先验证手机号码。此操作无需完成其他个人资料步骤。",
           "cta": "验证手机"
         },
         "PROFILE_COMPLETION_REQUIRED": {
@@ -295,7 +298,7 @@
     },
     "phoneVerification": {
       "title": "验证手机",
-      "description": "独立完成手机验证，即可解锁预订、购买、结账和基础 AI 推荐。",
+      "description": "验证此手机号码属于你。",
       "guestTitle": "登录后验证手机",
       "guestDescription": "请先登录，再开始手机验证。",
       "completeTitle": "手机已验证",
@@ -470,7 +473,7 @@
       "orders": "订单",
       "newestFirst": "最新优先",
       "bookingReference": "预订编号",
-      "mylawatanOutlet": "MyLawatan 门店",
+      "mylawatanOutlet": "MYLawatan 门店",
       "localVendor": "本地商家",
       "contactViaChat": "通过聊天联系",
       "type": "类型",
@@ -518,17 +521,17 @@
       "viewOrders": "查看订单",
       "walletInsufficient": "钱包可用余额不足，无法使用钱包付款。待结算奖励和提现保留金额不能用于结账。",
       "continueSimulator": "继续使用付款模拟器",
-      "payWallet": "使用 MyLawatan 钱包付款",
+      "payWallet": "使用 MYLawatan 钱包付款",
       "continueStripe": "继续使用 Stripe 沙盒",
       "nothing": "没有可结账的内容",
       "selectItems": "请在购物车中至少选择一件商品。",
       "phoneRequired": "需要验证手机",
-      "verifyPhone": "验证手机号码以完成预订和付款。",
       "continueVerification": "继续验证",
       "reserveFreeSpot": "免费预订名额",
       "freeReservationTitle": "免费活动预订",
       "freeReservationNotice": "此活动完全免费，但需要预订时间段以控制场地容量。无需任何支付。",
       "itemsToReserve": "待预订项目",
+      "linePriceBreakdown": "单价 × 数量",
       "orderSummary": "订单总览",
       "instantAllocation": "名额即时锁定 · 无需任何支付",
       "foodServiceModeTitle": "您希望如何享用餐食？",
@@ -596,7 +599,7 @@
     "support": {
       "title": "客服支持",
       "myTickets": "我的工单",
-      "description": "跟踪您的问题并与 MyLawatan 支持团队跟进。",
+      "description": "跟踪您的问题并与 MYLawatan 支持团队跟进。",
       "contact": "为暂缓的提现提供信息",
       "subject": "工单主题",
       "message": "工单消息",
@@ -862,16 +865,16 @@
       "viewVendor": "查看商家",
       "discoverMalaysia": "探索马来西亚",
       "browseTitle": "浏览商家与项目",
-      "browseDescription": "您正以访客身份浏览。准备预订或购买时请登录。",
+      "browseDescription": "Guest 可直接浏览和购买符合条件的商品；账号功能需登录使用。",
       "unableToLoadListings": "无法加载项目",
       "noListings": "暂无可用项目",
       "checkBackLater": "请稍后再来查看。",
       "experience": "体验"
     },
     "profile": {
-      "languageDescription": "选择 MyLawatan 使用的语言。",
+      "languageDescription": "选择 MYLawatan 使用的语言。",
       "publicBioEmpty": "该贡献者尚未添加简介。",
-      "contributorProfile": "MyLawatan 贡献者资料",
+      "contributorProfile": "MYLawatan 贡献者资料",
       "backToProfile": "返回个人资料",
       "vendorApplication": "商家申请",
       "vendorApplicationDescription": "申请上架旅游、餐饮、住宿或本地体验。所有内容须经管理员批准后才会向旅客显示。",
@@ -990,7 +993,8 @@
         "action": "翻译",
         "showOriginal": "显示原文",
         "working": "翻译中…",
-        "failed": "无法翻译"
+        "failed": "无法翻译",
+        "privacyBlocked": "这条消息没有发送给 AI，因为可能包含个人资料。请移除电话、邮箱、证件、银行资料或私人地址后重试；也可以直接阅读原文，不使用翻译。"
       },
       "attachOrder": "附加订单",
       "underReview": "已举报——我们的团队正在审核此对话。"
@@ -1066,7 +1070,7 @@
       }
     },
     "outlet": {
-      "verifiedMyLawatan": "已认证 MyLawatan 门店",
+      "verifiedMyLawatan": "已认证 MYLawatan 门店",
       "dropImage": "将图片拖放到这里",
       "verifiedGuestsRecommend": "已认证访客推荐此门店。",
       "planVisit": "规划到访",
@@ -1236,8 +1240,17 @@
     },
     "cart": {
       "guestTitle": "您的购物车为空",
-      "guestDescription": "添加体验并结账前，请先登录或创建账户。",
       "emptyDescription": "浏览体验，添加预订或商品即可开始。",
+      "loadErrorTitle": "暂时无法读取购物车",
+      "loadErrorDescription": "已保存的购物车没有被更改。请重试读取，或继续浏览商品。",
+      "refreshError": "部分购物车更新可能未能加载。请重试后再继续结账。",
+      "refreshing": "正在刷新已保存的购物车…",
+      "actionError": "无法更新这件商品。请重新读取购物车，确认最新状态。",
+      "unavailableOutlet": "暂不可用的商品",
+      "unavailableProduct": "这件商品已不可购买",
+      "unavailableProductHelp": "移除这件商品后即可继续；其他商品和选择会保留。",
+      "availabilityLoadError": "暂时无法确认这件商品是否有货",
+      "availabilityLoadHelp": "购物车没有更改。请先重试库存检查，再决定是否移除。",
       "explore": "探索体验",
       "continueShopping": "继续购物",
       "title": "您的购物车",
@@ -1321,6 +1334,10 @@
       "overBudgetWarning": "超出预算 {{amount}} — 点击查看建议",
       "checking": "正在查找更便宜的替代选项…",
       "checkFailed": "暂时无法检查您的预算。",
+      "invalidBudget": "请输入大于零的预算金额。",
+      "storageUnavailable": "浏览器存储不可用，此预算仅在本次访问期间保留。",
+      "tryLater": "服务繁忙，请稍等片刻再试。",
+      "timedOut": "检查耗时过长，行程没有更改。网络稳定后请重试。",
       "noAlternatives": "暂时未找到更便宜的替代选项。",
       "viewAlternative": "查看详情",
       "showOnMap": "在地图上查看",
@@ -1349,10 +1366,12 @@
     "preferencesPage": {
       "eyebrow": "偏好",
       "title": "您的旅行偏好",
-      "description": "这些偏好会影响“为您推荐”内容。您可以随时更新；了解得越多，推荐就越好。"
+      "description": "用于调整为你推荐的内容。"
     },
     "preferencesEditor": {
       "loading": "正在加载偏好…",
+      "loadError": "暂时无法读取已保存的偏好设置，现有答案没有被更改。请重试后再编辑。",
+      "refreshError": "偏好设置已保存，但页面暂时无法刷新最新的个人资料状态。",
       "saved": "偏好已保存。",
       "saving": "保存中…",
       "save": "保存偏好",
@@ -1451,7 +1470,7 @@
       "submitted": "商家推荐已提交审核。",
       "community": "社区",
       "title": "推荐商家",
-      "description": "知道值得加入 MyLawatan 的本地体验吗？在这里推荐。管理员会先审核，之后商家才能加入或关联并上线。如果商家通过您的推荐加入，您可以获得佣金。",
+      "description": "商家须经管理员批准后上线。商家通过你的推荐加入后，你可能获得佣金。",
       "recommend": "推荐",
       "new": "新推荐",
       "vendorBusinessName": "商家 / 企业名称",
@@ -1492,7 +1511,7 @@
         "pending": "管理员正在审核推荐和商家资料。",
         "changes_requested": "管理员要求更新推荐资料。",
         "approved": "管理员已批准；商家加入或完成关联后才会上线。",
-        "invited": "已邀请商家加入 MyLawatan。",
+        "invited": "已邀请商家加入 MYLawatan。",
         "claimed": "商家已接受邀请并开始入驻。",
         "onboarding": "商家正在完成入驻流程。",
         "vendor_pending_review": "商家申请正在等待审核。",
@@ -1519,6 +1538,7 @@
       "lifetime": "已转入钱包",
       "convertedVendors": "已加入商家",
       "empty": "暂无推荐收益。当您推荐的商家加入并产生销售后，您即可获得收益。",
+      "loadError": "暂时无法读取推荐收益，记录没有被更改。请重试查看。",
       "bonusLabel": "首单奖励",
       "ongoingLabel": "持续佣金",
       "statusCleared": "已转入您的钱包",
@@ -1541,10 +1561,12 @@
       "current": "当前：{{label}}",
       "next": "下一步：{{label}}",
       "percentComplete": "已完成 {{percent}}%",
+      "previous": "上一步",
+      "saveStepFirst": "请先保存“{{label}}”的修改，再完成个人资料。",
       "businessPrompt": "有想分享的企业吗？",
       "businessDescription": "完成个人资料后开始商家申请",
       "verifyPhone": "验证您的电话号码",
-      "phoneDescription": "以国际格式输入电话号码。我们会发送 6 位 OTP。",
+      "phoneDescription": "我们会发送 6 位验证码以验证此号码。",
       "phoneNumber": "电话号码",
       "sending": "发送中…",
       "sendOtp": "发送 OTP",
@@ -1561,6 +1583,9 @@
       "profilePhoto": "个人资料照片",
       "photoDescription": "上传或拍摄一张清晰的个人照片。JPG、PNG 或 WebP · 最大 2 MB。",
       "choosePhoto": "选择照片",
+      "photoSourceTitle": "添加个人照片",
+      "photoSourceDescription": "从设备中选择照片，或直接拍摄。",
+      "cancelPhotoSelection": "取消",
       "uploadPhoto": "上传照片",
       "takePhoto": "拍摄照片",
       "savePhoto": "保存照片",
@@ -1578,21 +1603,27 @@
       "cameraCaptureFailed": "无法拍摄照片，请重试或改为上传照片。",
       "bio": "关于您",
       "saveDetails": "保存详情",
+      "privacyBlocked": "你的简介没有发送给 AI。请移除电话、邮箱、证件、银行资料或私人地址后重试；你可以继续在此编辑。",
+      "personalSaveBioPrivacyBlocked": "姓名和地点已保存，但简介没有发送给 AI。请移除电话、邮箱、证件、银行资料或私人地址，然后重新保存简介。",
       "invalidPhone": "请输入有效的国际电话号码。",
       "invalidOtp": "请输入完整的 6 位 OTP。",
       "fullNameValidation": "姓名必须至少包含 2 个字符。",
       "cityValidation": "请输入您的城市。",
       "countryValidation": "请输入您的国家或地区。",
       "photoTypeValidation": "请选择 JPG、PNG 或 WebP 图片。",
-      "photoSizeValidation": "个人资料照片不得超过 2 MB。",
-      "avatarUploadUrlError": "无法获取上传链接",
-      "avatarStorageError": "照片上传失败。",
-      "avatarConfirmError": "无法确认头像",
+      "photoSizeValidation": "这张照片大小为 {{size}} MB，超过 2 MB 上限。请压缩或选择较小的照片。",
+      "photoInvalidValidation": "此文件不是有效的 JPG、PNG 或 WebP 图片。请换一张照片。",
+      "avatarSessionExpired": "登录状态已过期。请重新登录后再选择照片。",
+      "avatarUploadUnavailable": "照片上传服务暂时不可用，请稍后重试。如果问题持续，请联系支持。",
+      "avatarUploadUrlError": "无法开始照片上传。请刷新此页面后重试；如果问题持续，请联系支持。",
+      "avatarStorageError": "照片上传失败，请检查网络连接后重试。",
+      "avatarConfirmError": "照片已上传，但无法保存到个人资料，请重试。",
       "bioValidation": "关于您的内容必须包含 {{min}}–{{max}} 个字符。",
+      "bioLegacyHint": "可以保留现有简介，修改后需为 {{min}}–{{max}} 个字符。",
       "fullNamePlaceholder": "例如：Ahmad Bin Ali",
       "cityPlaceholder": "例如：吉隆坡",
       "countryPlaceholder": "例如：马来西亚",
-      "bioPlaceholder": "例如：热爱探索隐藏景点与道地美食的马来西亚旅行爱好者…",
+      "bioPlaceholder": "例如：喜欢美食、文化与周末短途旅行。",
       "steps": {
         "phone": "电话",
         "identity": "身份",
@@ -1626,6 +1657,12 @@
       "increaseQuantity": "增加数量",
       "chatVendor": "与商家聊天",
       "viewCart": "查看购物车",
+      "outOfStock": "这家门店目前缺货。",
+      "chooseOtherOutlet": "请选择其他门店继续。",
+      "quantityExceedsStock": "请先将数量减至当前库存范围内，再加入购物车。",
+      "stockAvailable": "这家门店还可购买 {{count}} 件。",
+      "stockAvailable_one": "这家门店还可购买 {{count}} 件。",
+      "stockAvailable_other": "这家门店还可购买 {{count}} 件。",
       "addBooking": "添加预订",
       "addCart": "加入购物车",
       "priceUnits": {
@@ -1675,7 +1712,7 @@
       "exploreWithConfidence": "安心探索",
       "activeLocations": "营业地点",
       "publishedListings": "已发布项目",
-      "approvedOnMyLawatan": "已通过 MyLawatan 审核",
+      "approvedOnMyLawatan": "已通过 MYLawatan 审核",
       "acrossMalaysia": "遍布马来西亚",
       "readyToExplore": "随时可以探索",
       "newPartner": "新合作伙伴",
@@ -1695,7 +1732,7 @@
       "localPartnerTitle": "为你的马来西亚行程提供本地服务",
       "fallbackDescription": "{{vendor}} 汇集马来西亚各地的本地商品和体验。",
       "verifiedBusiness": "已验证商家",
-      "bookThrough": "通过 MyLawatan 预订",
+      "bookThrough": "通过 MYLawatan 预订",
       "policiesSupport": "政策与支持",
       "planDetails": "掌握详情，安心规划",
       "hoursVary": "营业时间因门店而异。",
@@ -1745,7 +1782,7 @@
       "emptyTitle": "你的钱包为空",
       "emptyDescription": "登录后查看钱包、充值并管理符合条件的收益提现。",
       "title": "我的钱包",
-      "description": "管理可消费余额、收益和提现。",
+      "description": "余额、收益与提现。",
       "topupSuccess": "充值已发起！支付完成后余额会更新（通常在一分钟内）。",
       "withdrawalSubmitted": "提现申请已成功提交，现正等待审核。",
       "bankSetupSubmitted": "银行账户设置已提交。Stripe 将核验你的资料，可能需要几分钟。",
@@ -1836,7 +1873,7 @@
       "stripeVerificationProgress": "Stripe 正在验证",
       "bankWithdrawalsRestricted": "银行提款暂时受限",
       "unableVerifyPayout": "无法验证收款账户",
-      "completeKycFirst": "请先完成 MyLawatan KYC",
+      "completeKycFirst": "请先完成 MYLawatan KYC",
       "checkingSetup": "正在检查提现设置",
       "setupEarningsOptional": "设置收益提现（可选）",
       "approvedBankDestination": "获批的银行提款将汇入 Stripe 保存的账户。",
@@ -1844,10 +1881,10 @@
       "stripeReviewing": "Stripe 正在审核你的收款资料，无需操作。",
       "bankRestrictedDescription": "银行提款暂时受限。",
       "retryStatus": "请重试状态检查。",
-      "setupAfterKyc": "通过 MyLawatan KYC 后即可设置 Stripe 收款。",
+      "setupAfterKyc": "通过 MYLawatan KYC 后即可设置 Stripe 收款。",
       "checkingStripeStatus": "正在通过 Stripe 安全检查最新状态。",
       "setupWhenWithdrawing": "仅在需要提取奖励收益时进行此设置。",
-      "stripePrivacy": "Stripe 会安全收集你的收款银行资料和验证文件；MyLawatan 不会存储这些由 Stripe 托管的资料。",
+      "stripePrivacy": "Stripe 会安全收集你的收款银行资料和验证文件；MYLawatan 不会存储这些由 Stripe 托管的资料。",
       "setupWithdrawals": "设置提现",
       "updateDetails": "更新资料",
       "retryStatusCheck": "重试状态检查",
@@ -1930,6 +1967,8 @@
     },
     "orders": {
       "loadError": "无法加载你的订单。",
+      "detailLoadError": "暂时无法加载此订单。订单资料仍然安全；请重试，或返回订单列表。",
+      "relatedDetailsUnavailable": "部分预订或门店信息暂时无法读取。订单仍然保留；请重试加载这些信息。",
       "search": "搜索订单 ID、商品或门店",
       "filters": "筛选",
       "allStatuses": "全部状态",
@@ -1944,6 +1983,19 @@
       "allOutlets": "全部门店",
       "fromDate": "订单起始日期",
       "toDate": "订单结束日期",
+      "invalidDateRange": "请确认起始日期不晚于结束日期（马来西亚时间）。",
+      "refundStatusTitle": "退款状态",
+      "refundStatusUnavailable": "暂时无法读取退款状态。刷新页面后可以重试。",
+      "refundStatusDetail": "{{amount}} · 申请时间 {{date}}（MYT）",
+      "refundProcessedAt": "处理时间 {{date}}（MYT）",
+      "refundStatuses": {
+        "pending": "审核中",
+        "approved": "已批准，处理中",
+        "processed": "退款已处理",
+        "rejected": "未获批准",
+        "failed": "处理失败",
+        "unknown": "状态暂不可用"
+      },
       "found": "找到 {{count}} 个订单",
       "noMatch": "没有符合这些筛选条件的订单",
       "tryFilters": "尝试清除一个筛选条件或搜索其他体验。",
@@ -1960,7 +2012,7 @@
       "paymentMethodWalletAndCard": "钱包与银行卡",
       "paymentMethodEWallet": "电子钱包",
       "paymentMethodBankTransfer": "银行转账",
-      "paymentMethodWallet": "MyLawatan 钱包",
+      "paymentMethodWallet": "MYLawatan 钱包",
       "paymentMethodDemoCard": "演示卡",
       "paymentMethodNoPayment": "无需付款",
       "checkingPayment": "正在检查付款链接…",
@@ -1971,18 +2023,18 @@
       "checkPaymentAgain": "重新检查",
       "orderItems": "已购买项目",
       "copyOrderId": "复制订单编号",
-      "brandName": "MyLawatan",
+      "brandName": "MYLawatan",
       "portalName": "马来西亚旅游门户",
       "paymentMethods": {
         "stripeCard": "Stripe 演示卡",
         "eWallet": "电子钱包",
         "bankTransfer": "银行转账",
-        "myLawatanWallet": "MyLawatan 钱包",
+        "myLawatanWallet": "MYLawatan 钱包",
         "demoCard": "演示卡",
         "demoPayment": "演示付款"
       },
       "moreItems": "，另有 {{count}} 项",
-      "marketplace": "MyLawatan 市集",
+      "marketplace": "MYLawatan 市集",
       "itemCount": "{{count}} 件商品",
       "paginationLabel": "订单记录分页",
       "showing": "显示第 {{from}}–{{to}} 个，共 {{total}} 个订单",
@@ -2010,6 +2062,7 @@
       "refundReasonOther": "其他原因",
       "refundDetailsLabel": "补充说明",
       "refundDetailsPlaceholder": "请提供更详细的退款原因说明（至少 5 个字符）...",
+      "refundDetailsRequired": "选择“其他原因”时，请至少填写 5 个字，方便我们审核。",
       "refundPolicyNotice": "退款申请受商家政策约束，平台与商家将在 1-3 个工作日内完成审核。",
       "submitRefund": "提交退款申请",
       "taxInvoice": "税务发票与官方收据",
@@ -2026,7 +2079,8 @@
       "found_one": "找到 {{count}} 个订单",
       "found_other": "找到 {{count}} 个订单",
       "moreItems_one": "，另有 {{count}} 项",
-      "moreItems_other": "，另有 {{count}} 项"
+      "moreItems_other": "，另有 {{count}} 项",
+      "details": "订单详情"
     },
     "outletMenu": {
       "from": "起",
@@ -2135,9 +2189,9 @@
     },
     "destination": {
       "notFound": "未找到目的地",
-      "metaTitle": "{{state}} — 在 MyLawatan 探索马来西亚",
+      "metaTitle": "{{state}} — 在 MYLawatan 探索马来西亚",
       "metaDescription": "探索 {{state}}（马来西亚）的体验、门店和景点。",
-      "metaExploreTitle": "探索 {{state}} | MyLawatan",
+      "metaExploreTitle": "探索 {{state}} | MYLawatan",
       "backToExplore": "返回探索",
       "viewOnMap": "在地图上查看",
       "findPartners": "查找合作伙伴",
@@ -2154,7 +2208,7 @@
     },
     "experience": {
       "notFound": "未找到体验",
-      "metaDescription": "在 MyLawatan 预订 {{name}} — 探索马来西亚各地的本地体验。",
+      "metaDescription": "在 MYLawatan 预订 {{name}} — 探索马来西亚各地的本地体验。",
       "backToExplore": "返回探索",
       "bookable": "可预订体验",
       "about": "关于此体验",
@@ -2225,7 +2279,7 @@
     },
     "place": {
       "notFound": "未找到地点",
-      "metaTitle": "{{name}} — 在 MyLawatan 探索马来西亚",
+      "metaTitle": "{{name}} — 在 MYLawatan 探索马来西亚",
       "metaDescription": "探索 {{state}} 的 {{name}}。",
       "all": "全部",
       "levels": {
@@ -2329,7 +2383,7 @@
       }
     },
     "saved": {
-      "metadataTitle": "已保存 — MyLawatan",
+      "metadataTitle": "已保存 — MYLawatan",
       "metadataDescription": "你在马来西亚各地收藏的目的地、美食、活动和商品。",
       "signInTitle": "登录以查看已收藏商品",
       "signInDescription": "收藏马来西亚各地的地点和商品，稍后可在这里找到。"
@@ -2345,6 +2399,7 @@
       "aiNameLoading": "正在推荐名称…",
       "aiNameAlternatives": "选择一个推荐名称，或继续自行修改",
       "aiNameFallback": "AI 暂时不可用，已根据行程日期在本地生成这些名称。",
+      "aiNamePrivacyFallback": "这条行程想法可能包含个人资料，因此没有发送给 AI。请删除电话、邮箱、证件、银行资料或私人地址后重试。这些名称已在本地生成，你也可以不使用 AI，继续自行编辑行程。",
       "aiNameError": "暂时无法推荐名称，你仍然可以正常创建行程。",
       "aiNamePhoneRequired": "验证手机后即可使用 AI 命名；你仍然可以使用自己的名称创建行程。",
       "startDate": "开始日期",
@@ -2406,7 +2461,7 @@
       "notFound": "未找到门店",
       "metaDescription": "探索 {{name}} 的商品和体验。",
       "heroTitle": "你的本地一天从这里开始",
-      "verified": "MyLawatan 已验证门店",
+      "verified": "MYLawatan 已验证门店",
       "by": "由",
       "introTitle": "难忘的在地一天",
       "introBody": "探索位于 {{city}} 的 {{vendor}}：品尝当地人气美食、认识热情主人，并体验为此地精心设计的活动。"
@@ -2516,7 +2571,7 @@
       "ticketRequired": "需要门票",
       "venueInformation": "场馆资讯",
       "venueDetails": "查看详情",
-      "venueDetailsHint": "在 MyLawatan 内打开",
+      "venueDetailsHint": "在 MYLawatan 内打开",
       "venue": "场馆",
       "informationSource": "资料来源",
       "price": "RM{{value}}",
@@ -2537,7 +2592,7 @@
       "title": "为你推荐",
       "heading": "用你的方式探索马来西亚",
       "personalisedDescription": "根据你的旅行偏好精心挑选的推荐。",
-      "genericDescription": "MyLawatan 的热门体验。",
+      "genericDescription": "MYLawatan 的热门体验。",
       "profileCityDistance": "距离以个人资料中的城市为起点。",
       "unlock": "完成个人资料和旅行问卷以解锁个性化建议。",
       "continueVerification": "继续验证 →",
@@ -2636,7 +2691,7 @@
       "approvedVendors_other": "{{count}} 家已批准商家"
     },
     "voucherHub": {
-      "eyebrow": "MyLawatan 优惠券",
+      "eyebrow": "MYLawatan 优惠券",
       "dealsTitle": "用更少预算探索更多",
       "mineTitle": "你的优惠券",
       "dealsDescription": "领取合作伙伴和门店优惠，为下一次马来西亚体验做好准备。",
@@ -2853,8 +2908,6 @@
       "ended": "已结束",
       "title": "预订 {{item}}",
       "description": "在 {{location}} 领取。请选择日期和领取时间。",
-      "signInHint": "登录后即可预订并支付活动商品。",
-      "signIn": "登录以预订",
       "date": "领取日期",
       "time": "领取时间",
       "loading": "正在查询余量…",
@@ -2889,6 +2942,24 @@
       "status": {
         "pending": "待领取",
         "collected": "已领取"
+      }
+    },
+    "pickupPasses": {
+      "loading": "正在确认领取码…",
+      "loadError": "暂时无法更新领取码，请重试。",
+      "retry": "重试",
+      "retailTitle": "零售商品领取码",
+      "retailDescription": "请在标示的门店出示领取码。扫描一次会领取所示的全部数量。",
+      "retailQrAlt": "{{product}}的领取二维码",
+      "noActiveQr": "当前没有可用的领取码",
+      "quantity_one": "数量：{{count}} 件",
+      "quantity_other": "数量：{{count}} 件",
+      "status": {
+        "pending": "可以领取",
+        "collected": "已领取",
+        "legacy_completed": "订单已完成",
+        "refund_paused": "退款处理中，暂不可领取",
+        "unavailable": "暂不可领取"
       }
     },
     "hotel": {
@@ -3013,7 +3084,7 @@
       "removeAttachment": "移除附件",
       "messagePerson": "发送消息给 {{name}}",
       "attachFile": "附加文件",
-      "safetyNotice": "为保障您在 MyLawatan 上的安全，电话号码、联系方式和链接将被隐藏。",
+      "safetyNotice": "为保障您在 MYLawatan 上的安全，电话号码、联系方式和链接将被隐藏。",
       "loadingConversations": "正在加载对话……",
       "conversationCount": "{{count}} 个对话",
       "unreadCount": "{{count}} 个未读",
@@ -3138,6 +3209,8 @@
       }
     },
     "tripPlanner": {
+      "itemRemoved": "已从行程中移除{{item}}。",
+      "itemAddedUnscheduled": "已将{{item}}加入行程。请在行程表中选择日期安排它。",
       "scheduledFor": "安排于 {{date}}",
       "plannerViews": "规划视图",
       "itinerary": "旅程行程表",
@@ -3164,6 +3237,7 @@
         "loading": "正在查找灵感…",
         "calculating": "正在计算路线…",
         "error": "暂时无法获取推荐，请重试。",
+        "timeout": "行程建议等待时间过长。请检查网络连接后重试。",
         "verifyPhone": "验证手机号后即可使用 AI 旅程规划。",
         "empty": "你的旅程灵感会显示在这里。",
         "suggestions": "旅程推荐",
@@ -3177,6 +3251,10 @@
         "basicSuggestions": "AI 暂时不可用或繁忙，目前显示基础建议。"
       },
       "timeFor": "{{item}}的时间",
+      "moveEarlier": "将 {{item}} 前移",
+      "moveLater": "将 {{item}} 后移",
+      "moveToDay": "将 {{item}} 移至某一天",
+      "toggleItemTitle": "展开或收起{{item}}名称",
       "editItem": "编辑{{item}}",
       "removeItem": "移除{{item}}",
       "showOnMap": "在地图上显示{{item}}",
@@ -3525,13 +3603,13 @@
     },
     "walletReceipt": {
       "backToWallet": "返回钱包",
-      "eyebrow": "MyLawatan 钱包",
+      "eyebrow": "MYLawatan 钱包",
       "title": "提款收据",
       "payoutDestination": "收款账户",
       "defaultDestination": "所选收款账户",
       "payoutReference": "付款编号：{{reference}}",
       "reviewNote": "审核备注",
-      "settlementNotice": "此收据记录了 MyLawatan 中的提款申请。到账时间取决于所选付款服务商（{{provider}}）。",
+      "settlementNotice": "此收据记录了 MYLawatan 中的提款申请。到账时间取决于所选付款服务商（{{provider}}）。",
       "moneyMovement": {
         "title": "资金流向",
         "reserved": "已预留收益",
@@ -3552,7 +3630,7 @@
         "eventId": "服务商事件",
         "amount": "金额",
         "providerTime": "服务商时间",
-        "receivedTime": "MyLawatan 接收时间",
+        "receivedTime": "MYLawatan 接收时间",
         "payloadHash": "载荷 SHA-256",
         "immutableNotice": "此不可篡改证明记录付款服务商报告的结果，客户和管理员均无法修改。"
       },
@@ -3590,11 +3668,9 @@
         "bankTransfer": "银行转账 — Demo 模拟器",
         "toyyibpay": "ToyyibPay 网上银行",
         "toyyibpaySandbox": "ToyyibPay — Sandbox",
-        "wallet": "MyLawatan 钱包余额",
+        "wallet": "MYLawatan 钱包余额",
         "walletSplit": "优先使用钱包，余额由银行卡支付"
-      },
-      "signInTitle": "登录后结账",
-      "signInDescription": "您选择的项目会保持私密；结账需要已验证的账户。"
+      }
     },
     "kyc": {
       "fileMeta": "{{size}} MB · {{type}}"
@@ -3604,15 +3680,11 @@
       "experience": "体验",
       "experienceFallback": "探索这项马来西亚体验。",
       "viewVendor": "查看商家",
-      "signInBook": "登录后预订",
-      "signInPurchase": "登录后购买",
       "upcomingAvailability": "即将开放的时段",
-      "availableSessions": "有 {{count}} 个可用时段。登录后选择时间。",
-      "availableSessions_other": "有 {{count}} 个可用时段。登录后选择时间。",
       "guestReviews": "宾客评价",
       "noReviews": "尚无公开评价。",
       "guestReview": "宾客评价",
-      "verifiedVendor": "已验证的 MyLawatan 商家",
+      "verifiedVendor": "已验证的 MYLawatan 商家",
       "browseListings": "浏览项目",
       "locations": "地点",
       "activeOutlets": "营业中的门店",
@@ -3620,8 +3692,7 @@
       "outletCount_other": "{{count}} 家门店",
       "noOutlets": "尚无公开门店。",
       "price": "价格",
-      "outletCount_one": "{{count}} 家门店",
-      "availableSessions_one": "有 {{count}} 个可用时段。登录后选择时间。"
+      "outletCount_one": "{{count}} 家门店"
     },
     "place": {
       "entry": "入场"
@@ -3688,7 +3759,7 @@
     },
     "privacy": {
       "title": "隐私政策",
-      "intro": "本政策说明 MyLawatan 收集哪些个人信息、为何收集，以及您拥有的选择。MyLawatan 是一个毕业设计项目，请将其视为原型而非商业服务。",
+      "intro": "本政策说明 MYLawatan 收集哪些个人信息、为何收集，以及您拥有的选择。MYLawatan 是一个毕业设计项目，请将其视为原型而非商业服务。",
       "collect": {
         "heading": "我们收集什么",
         "body": "您提供的账户信息：电子邮件、姓名、电话号码，以及可选的显示名称、简短介绍、头像和您的城市与国家。如果您选择进行验证，我们还会收集“数据与 KYC”页面所述的身份证件。我们会记录运行服务所需的活动，例如订单、预订、钱包交易、聊天消息、评价，以及联盟推广的点击和分享。"
@@ -3720,14 +3791,14 @@
     },
     "terms": {
       "title": "服务条款",
-      "intro": "本条款说明使用 MyLawatan 的规则。使用本平台即表示您同意这些条款。请先阅读原型声明。",
+      "intro": "本条款说明使用 MYLawatan 的规则。使用本平台即表示您同意这些条款。请先阅读原型声明。",
       "prototype": {
         "heading": "原型声明",
-        "body": "MyLawatan 是毕业学术项目，而非商业产品。部分功能为演示而模拟，不保证任何真实商品、服务或付款。请勿依赖它进行真实的旅行预订。"
+        "body": "MYLawatan 是毕业学术项目，而非商业产品。部分功能为演示而模拟，不保证任何真实商品、服务或付款。请勿依赖它进行真实的旅行预订。"
       },
       "accounts": {
         "heading": "账户与资格",
-        "body": "您需对所提供信息的准确性负责，并妥善保管您的登录凭据。浏览对所有人开放；结账和预订需要经过验证的电话号码，提取收益需要身份验证。"
+        "body": "您需对所提供信息的准确性负责，并妥善保管您的登录凭据。所有人均可浏览；Guest 可直接预订和购买符合条件的商品，无需登录或完成手机验证。提取收益需要身份验证。"
       },
       "acceptableUse": {
         "heading": "可接受的使用",
@@ -3756,7 +3827,7 @@
     },
     "data": {
       "title": "您的数据与 KYC",
-      "intro": "本页面以通俗的语言说明 MyLawatan 如何处理身份验证（KYC）及所涉及的敏感证件。它是隐私政策在这一特定领域的补充。",
+      "intro": "本页面以通俗的语言说明 MYLawatan 如何处理身份验证（KYC）及所涉及的敏感证件。它是隐私政策在这一特定领域的补充。",
       "when": {
         "heading": "何时需要验证",
         "body": "浏览、收藏项目或进行预订都无需上传任何身份证件。身份验证（KYC）仅在更高信任级别的操作时才需要，具体是从钱包提取收益。您可以自行掌控何时开始，或是否开始。"
@@ -3787,10 +3858,10 @@
       }
     },
     "about": {
-      "title": "关于 MyLawatan",
-      "intro": "MyLawatan 是一个专注马来西亚的旅游市场平台，作为毕业设计项目构建。它将发现、预订、支付和旅客支持整合在一处。",
+      "title": "关于 MYLawatan",
+      "intro": "MYLawatan 是一个专注马来西亚的旅游市场平台，作为毕业设计项目构建。它将发现、预订、支付和旅客支持整合在一处。",
       "what": {
-        "heading": "MyLawatan 是什么",
+        "heading": "MYLawatan 是什么",
         "body": "您可以探索马来西亚各地的活动、美食、住宿和隐藏景点，在一个购物车中预订并付款，与商家聊天，并在单一账户中管理一切。商家管理其门店、商品、预订和优惠券，而平台在幕后运行支付、验证和奖励。"
       },
       "prototype": {
@@ -3813,13 +3884,14 @@
     "phone": "付款联系电话（无需短信认证）",
     "unavailable": "游客结账暂时无法使用。",
     "accessTitle": "查看游客订单",
-    "recoveryHint": "使用下单时的订单编号和联系邮箱，申请新的私人订单链接。",
-    "orderNumber": "订单编号（例如 ORD-1000）",
+    "recoveryHint": "请输入结账时使用的邮箱；如果知道订单编号也可填写。资料匹配后，我们会发送私人订单链接。",
+    "orderNumber": "订单编号（选填）",
     "emailLink": "发送订单链接到邮箱",
     "requested": "如果资料与游客订单匹配，我们会发送订单访问链接到邮箱。",
     "requestFailed": "暂时无法申请链接，请稍后再试。",
     "opening": "正在打开订单…",
-    "eventHint": "确认前请检查邮箱。我们会发送收据和私人订单链接。"
+    "eventHint": "确认前请检查邮箱。我们会发送收据和私人订单链接。",
+    "cartHint": "可用邮箱直接结账；钱包及账号优惠券需登录。"
   },
   "footer": {
     "ariaLabel": "网站页脚",
@@ -3837,7 +3909,51 @@
       "vendorLogin": "商家登录",
       "privacyPolicy": "隐私政策",
       "termsOfService": "服务条款",
-      "aboutUs": "关于 MyLawatan"
+      "aboutUs": "关于 MYLawatan"
     }
+  },
+  "checkoutErrors": {
+    "CONTACT_EMAIL_REQUIRED": "请先填写联系邮箱，再继续结账。",
+    "CONTACT_EMAIL_INVALID": "请输入有效的邮箱地址，例如 name@example.com。",
+    "CONTACT_PHONE_REQUIRED": "此付款方式需要联系电话，请先填写。",
+    "CONTACT_PHONE_INVALID": "请检查国家区号，并填写有效的电话号码。",
+    "CONTACT_NAME_INVALID": "联系人姓名最多 100 个字符，也可以留空。",
+    "PAYMENT_SERVICE_UNAVAILABLE": "付款服务暂时不可用，请稍后再试，或选择其他可用的付款方式。",
+    "PAYMENT_METHOD_UNAVAILABLE": "此付款方式目前不可用，请选择其他付款方式。",
+    "PAYMENT_STATUS_UNCERTAIN": "暂时无法确认付款是否已建立。请先查看订单，再发起另一笔付款。",
+    "CHECKOUT_SERVICE_UNAVAILABLE": "暂时无法核实结账资料，请稍后再试。",
+    "CHECKOUT_DETAILS_INVALID": "请检查结账资料，并修正填写有误的字段。",
+    "CHECKOUT_CONNECTION_FAILED": "连接中断了。请检查网络和订单状态，再尝试付款。",
+    "CHECKOUT_RATE_LIMITED": "结账尝试次数过多，请等几分钟后再试。",
+    "GUEST_SESSION_UNAVAILABLE": "游客结账暂时不可用，请刷新页面后再试。",
+    "CHECKOUT_CLOSED": "此次结账已关闭，请先查看订单，再尝试付款。",
+    "CART_EMPTY": "购物车是空的，请先加入商品再结账。",
+    "CART_SELECTION_REQUIRED": "请先在购物车选择至少一件商品。",
+    "STAY_DETAILS_REQUIRED": "请返回购物车，补齐每项住宿预订的住客资料。",
+    "FOOD_SERVICE_MODE_REQUIRED": "请为每家餐饮门店选择堂食或外带。",
+    "FOOD_SERVICE_MODE_UNAVAILABLE": "所选堂食或外带方式目前不可用，请刷新结账页面后重新选择。",
+    "WALLET_RESERVATION_UNAVAILABLE": "暂时无法预留钱包付款金额，请刷新结账页面后再试。",
+    "ACTIVE_CHECKOUT_EXISTS": "你已有一笔未付款订单，请先完成或取消该订单，再重新结账。",
+    "CHECKOUT_COMMITMENT_UNAVAILABLE": "此次结账已过期，或购买资格已变更。请先查看订单，再尝试付款。",
+    "BOOKING_CAPACITY_UNAVAILABLE": "这个时段的名额已不足，请选择其他可用时段。",
+    "BOOKING_SLOT_INVALID": "这个预订时段已不可用，请返回购物车重新选择。",
+    "CART_ITEM_UNAVAILABLE": "部分商品或门店目前无法接受这笔订单，请返回购物车检查所选商品。",
+    "INVENTORY_UNAVAILABLE": "商品库存不足，无法提供所选数量。请返回购物车减少数量或选择其他商品。",
+    "WALLET_INSUFFICIENT": "钱包余额不足，请先充值或选择其他可用付款方式。",
+    "VOUCHER_NOT_AVAILABLE": "此优惠券目前不可用，请选择其他优惠券。",
+    "VOUCHER_NOT_STARTED": "此优惠券尚未开始生效。",
+    "VOUCHER_EXPIRED": "此优惠券已过期，请选择其他优惠券。",
+    "VOUCHER_LIMIT_REACHED": "此优惠券的使用次数已达上限。",
+    "VOUCHER_MINIMUM_SPEND": "订单金额尚未达到此优惠券的最低消费要求。",
+    "VOUCHER_OUTLET_NOT_APPLICABLE": "此优惠券不适用于所选门店。",
+    "VOUCHER_PRODUCT_NOT_APPLICABLE": "此优惠券不适用于所选商品。",
+    "VOUCHER_CUSTOMER_LIMIT_REACHED": "你已达到此优惠券的个人使用次数上限。",
+    "VOUCHER_DISCOUNT_MISMATCH": "暂时无法核实优惠金额，请重新选择优惠券后再试。",
+    "VOUCHER_CLAIM_EXPIRED": "你领取的优惠券已过期，请选择其他优惠券。",
+    "VOUCHER_CLAIM_MISMATCH": "所选优惠券与领取记录不符，请重新选择。",
+    "VOUCHER_CLAIM_UNAVAILABLE": "你领取的优惠券目前不可用，请选择其他优惠券。",
+    "NEW_ORDERS_PAUSED": "目前暂时停止接受新订单，请稍后再试。",
+    "CHECKOUT_FAILED": "暂时无法开始结账，请稍后再试。如问题持续，请联系支持。",
+    "reviewOrder": "查看订单"
   }
 }

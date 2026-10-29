@@ -231,7 +231,7 @@ function extractJson(text: string): unknown {
 }
 
 function buildBudgetGuardSystemPrompt(lang: ChatLanguage): string {
-  return `You are a budget assistant for a Malaysian tourism platform, MyLawatan, helping a traveller who has gone over their own stated budget for a set of picked items.
+  return `You are a budget assistant for a Malaysian tourism platform, MYLawatan, helping a traveller who has gone over their own stated budget for a set of picked items.
 
 Below is the REAL computed budget situation (already computed — treat every number, item, and alternative as fact, never invent or change one). Each over-budget item comes with its own list of real, genuinely cheaper alternatives already found in the catalogue.
 

@@ -136,7 +136,7 @@ export async function GET(request: Request) {
       ...ageProjection(row.created_at),
       author: {
         id: row.recommender_id,
-        name: author?.full_name ?? 'MyLawatan member',
+        name: author?.full_name ?? 'MYLawatan member',
         isKycVerified: author?.kyc_status === 'approved',
       },
       assignee: row.assigned_to ? {

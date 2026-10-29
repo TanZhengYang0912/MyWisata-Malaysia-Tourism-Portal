@@ -229,22 +229,19 @@ export default function RegisterVendorForm({ onClose }: Props) {
               {...register('legalBusinessName')}
               aria-invalid={Boolean(errors.legalBusinessName)}
               aria-describedby={errors.legalBusinessName ? 'legal-business-name-error' : undefined}
-              placeholder={t('registration.placeholders.legalBusinessName')}
               className={inputClass}
             />
             {renderFieldError('legal-business-name-error', errors.legalBusinessName?.message)}
           </div>
           <div>
             <label htmlFor="registration-number" className={labelClass}>
-              <span>{t('registration.fields.registrationNumber')}</span>
-              <span className={optionalClass}>{t('registration.optional')}</span>
+              <span>{t('registration.fields.registrationNumber')} <span className={optionalClass}>({t('registration.ifAvailable')})</span></span>
             </label>
             <Input
               id="registration-number"
               {...register('registrationNumber')}
               aria-invalid={Boolean(errors.registrationNumber)}
               aria-describedby={errors.registrationNumber ? 'registration-number-error' : undefined}
-              placeholder={t('registration.placeholders.registrationNumber')}
               className={inputClass}
             />
             {renderFieldError('registration-number-error', errors.registrationNumber?.message)}
@@ -262,7 +259,6 @@ export default function RegisterVendorForm({ onClose }: Props) {
               {...register('contactName')}
               aria-invalid={Boolean(errors.contactName)}
               aria-describedby={errors.contactName ? 'contact-person-error' : undefined}
-              placeholder={t('registration.placeholders.contactPerson')}
               className={inputClass}
             />
             {renderFieldError('contact-person-error', errors.contactName?.message)}
@@ -283,13 +279,10 @@ export default function RegisterVendorForm({ onClose }: Props) {
                   onBlur={field.onBlur}
                   disabled={isSubmitting}
                   error={Boolean(errors.contactPhone)}
-                  ariaDescribedBy={`contact-phone-hint${errors.contactPhone ? ' contact-phone-error' : ''}`}
+                  ariaDescribedBy={errors.contactPhone ? 'contact-phone-error' : undefined}
                 />
               )}
             />
-            <p id="contact-phone-hint" className="mt-2 text-xs leading-5 text-muted-foreground">
-              {t('registration.phoneHint')}
-            </p>
             {renderFieldError('contact-phone-error', errors.contactPhone?.message)}
           </div>
         </div>
@@ -322,7 +315,6 @@ export default function RegisterVendorForm({ onClose }: Props) {
             rows={3}
             aria-invalid={Boolean(errors.businessAddress)}
             aria-describedby={errors.businessAddress ? 'business-address-error' : undefined}
-            placeholder={t('registration.placeholders.businessAddress')}
             className={textareaClass}
           />
           {renderFieldError('business-address-error', errors.businessAddress?.message)}

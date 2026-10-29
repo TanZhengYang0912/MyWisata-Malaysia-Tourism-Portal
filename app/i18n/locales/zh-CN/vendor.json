@@ -153,7 +153,7 @@
       "google": "无法继续使用 Google。请重试。",
       "switchAccount": "无法切换账户。请重试。",
       "load": "无法加载此邀请。请重试或申请新的邀请。",
-      "phoneAlreadyClaimed": "此手机号码已关联其他 MyLawatan 账户。请使用其他号码。",
+      "phoneAlreadyClaimed": "此手机号码已关联其他 MYLawatan 账户。请使用其他号码。",
       "phoneRateLimited": "请求验证码次数过多。请 1 小时后重试。",
       "phoneInvalidCode": "验证码无效或已过期。请申请新验证码后重试。",
       "phoneInvalidNumber": "请输入有效的手机号码。",
@@ -186,7 +186,7 @@
     },
     "codes": {
       "INVITE_INVALID": "此邀请链接无效。",
-      "INVITE_EXPIRED": "此商家邀请已过期。请向 MyLawatan 申请新的邀请。",
+      "INVITE_EXPIRED": "此商家邀请已过期。请向 MYLawatan 申请新的邀请。",
       "INVITE_CANCELLED": "此商家邀请已取消。",
       "INVITE_ALREADY_CLAIMED": "此商家邀请已被领取。",
       "RECOMMENDATION_NOT_READY": "此推荐尚未准备好供商家领取。"
@@ -197,7 +197,7 @@
       "back": "返回",
       "retry": "重试",
       "requestNew": "申请新的邀请",
-      "contactSupport": "联系 MyLawatan 客服"
+      "contactSupport": "联系 MYLawatan 客服"
     },
     "account": {
       "useInvitedAccount": "使用受邀账户",
@@ -255,14 +255,14 @@
       "sendOtp": "发送手机 OTP",
       "finalReview": "最终审核",
       "reviewApplication": "审核您的申请",
-      "reviewDescription": "发送给 MyLawatan 审核前，请确认这些信息。",
+      "reviewDescription": "发送给 MYLawatan 审核前，请确认这些信息。",
       "ownerAccount": "所有者和账户",
       "signedInInvitationEmail": "使用邀请邮箱登录",
       "mobileVerified": "手机已验证",
       "vendor": "商家",
       "firstOutlet": "首个门店",
       "applicationStatus": "申请状态",
-      "pendingReview": "等待 MyLawatan 审核。商家和门店在批准前保持私密。",
+      "pendingReview": "等待 MYLawatan 审核。商家和门店在批准前保持私密。",
       "authorization": "我确认我获授权代表此商家并提交此商家申请。",
       "submitting": "提交中…",
       "submitApplication": "提交申请",
@@ -271,8 +271,8 @@
     },
     "recommendation": {
       "eyebrow": "推荐邀请",
-      "title": "您受邀加入 MyLawatan",
-      "description": "一位 MyLawatan 会员推荐了此商家。",
+      "title": "您受邀加入 MYLawatan",
+      "description": "一位 MYLawatan 会员推荐了此商家。",
       "details": "推荐详情",
       "why": "推荐原因",
       "photoAlt": "{{business}} 推荐照片 {{index}}",
@@ -288,11 +288,11 @@
     },
     "submitted": {
       "title": "商家申请已提交",
-      "description": "MyLawatan 审核期间，您的商家和首个门店保持私密。"
+      "description": "MYLawatan 审核期间，您的商家和首个门店保持私密。"
     },
     "inactive": {
       "title": "商家邀请已失效",
-      "description": "此商家邀请已不再有效。如需帮助，请联系 MyLawatan 客服。"
+      "description": "此商家邀请已不再有效。如需帮助，请联系 MYLawatan 客服。"
     },
     "setupLabel": "商家邀请设置",
     "step": "第 {{current}} 步，共 {{total}} 步",
@@ -322,10 +322,9 @@
     "uploadAndSubmitting": "正在上传图片并提交申请…",
     "required": "必填",
     "optional": "选填",
-    "phoneHint": "先选择国家，区号会固定显示在号码栏旁，号码栏只填区号后面的部分。马来西亚（+60）号码需省略本地号码开头的 0：例如 012 345 6789，选择 +60 后输入 12 345 6789。号码分组会按所选国家调整。",
     "sections": {
       "businessProfile": "商家资料",
-      "businessProfileDescription": "商家名称是顾客在 MyLawatan 上看到的名称；下方的法定商家名称应填写注册文件上的主体名称，两者可以相同或不同。请选择最符合的商家类别，并说明顾客可以预订或体验的内容。",
+      "businessProfileDescription": "商家名称是顾客在 MYLawatan 上看到的名称；下方的法定商家名称应填写注册文件上的主体名称，两者可以相同或不同。请选择最符合的商家类别，并说明顾客可以预订或体验的内容。",
       "businessProfileHelpLabel": "商家资料说明",
       "legalContact": "法律与联系信息",
       "legalContactDescription": "如有，请填写注册商家名称及 SSM 或公司注册号码。这些资料为选填。联系人信息用于跟进您的申请。",
@@ -440,11 +439,7 @@
     "placeholders": {
       "businessName": "例如：Rasa Malaysia Kitchen",
       "description": "描述您的商家……",
-      "legalBusinessName": "注册商家名称",
-      "registrationNumber": "如有请填写",
-      "contactPerson": "所有者或授权人员",
-      "businessEmail": "business@example.com",
-      "businessAddress": "注册商家地址"
+      "businessEmail": "business@example.com"
     },
     "options": {
       "selectType": "选择类型……",
@@ -455,7 +450,8 @@
       "wellness": "康体与水疗",
       "adventure": "探险与运动",
       "other": "其他"
-    }
+    },
+    "ifAvailable": "如有请填写"
   },
   "ui": {
     "common": {
@@ -870,7 +866,7 @@
       "noVendor": "此账号没有分配商家，请使用门店经理账号登录。",
       "outletsUnavailable": "无法加载获授权的扫描门店。请刷新页面或联系管理员。",
       "checkCode": "检查代码",
-      "invalidCode": "此代码不是有效的 MyLawatan 门票或优惠券。",
+      "invalidCode": "此代码不是有效的 MYLawatan 门票或优惠券。",
       "resolveFailed": "无法检查此代码。",
       "cameraUnsupported": "此浏览器不支持摄像头访问。",
       "cameraFailed": "无法打开摄像头，请检查浏览器权限后重试。",
@@ -921,7 +917,12 @@
       "eventPickupsOnly": "活动领取",
       "eventPickupKind": "活动领取",
       "eventPickupTitle": "预订 {{order}}",
-      "pickupDate": "领取日期"
+      "pickupDate": "领取日期",
+      "retailPickupKind": "零售商品领取",
+      "retailPickupCollected": "已成功交付 {{quantity}} 件商品。",
+      "retailPickupQuantity": "请一次交付此订单行的全部 {{quantity}} 件商品。",
+      "confirmRetailPickup": "确认交付",
+      "orderReference": "订单 #{{order}}"
     },
     "redemptions": {
       "eyebrow": "门店核销记录",
@@ -932,6 +933,12 @@
       "allTime": "所有记录的扫码次数",
       "todayScans": "今日扫码",
       "redeemedToday": "今日已核销",
+      "retailPickups": "零售商品领取",
+      "retailItemsHandedOver": "已交付订单商品行",
+      "kindRetailPickup": "零售商品领取",
+      "kindEventPickup": "活动领取",
+      "filteredCount_one": "{{count}} 条记录",
+      "filteredCount_other": "{{count}} 条记录",
       "vouchersUsed": "已核销优惠券",
       "storePromos": "门店优惠券",
       "ticketsAdmitted": "已签到门票",
@@ -947,7 +954,8 @@
       "filters": {
         "all": "全部动态",
         "vouchers": "优惠券",
-        "tickets": "门票"
+        "tickets": "门票",
+        "retail": "零售商品领取"
       },
       "table": {
         "type": "类型",
@@ -2112,7 +2120,7 @@
     "invite": "邀请",
     "inviteByEmail": "通过电子邮箱邀请",
     "inviteCreated": "门店经理邀请已创建。",
-    "inviteExisting": "已为此 MyLawatan 账户创建邀请。",
+    "inviteExisting": "已为此 MYLawatan 账户创建邀请。",
     "inviteFailed": "无法创建邀请。",
     "inviteHint": "经理需先使用此电子邮箱接受邀请，才能获得此门店的访问权限。",
     "inviting": "正在邀请…",
@@ -2457,7 +2465,7 @@
       "reviews_other": "{{count}} 条评价"
     }
   },
-    "transactions": {
+  "transactions": {
     "action": "操作",
     "close": "关闭",
     "empty": "此期间没有找到交易。",

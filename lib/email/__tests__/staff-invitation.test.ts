@@ -33,7 +33,7 @@ describe("staff invitation email", () => {
       expiresAt: "2026-09-13T04:30:00.000Z",
     });
 
-    expect(result.text).toContain("您受邀加入 MyLawatan 团队");
+    expect(result.text).toContain("您受邀加入 MYLawatan 团队");
     expect(result.text).toContain("确认无误后");
     expect(result.text).not.toContain("尊贵的用户");
   });

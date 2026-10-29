@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { TravelPreferences } from '@/lib/personalization/scorer';
+import { prepareExternalText } from '@/lib/chatbot/pii';
 
 export type PublicActivityForExplanation = {
   name: string;
@@ -54,13 +55,15 @@ export async function describeFit(input: DescribeFitInput): Promise<string> {
         priceRm: input.activity.price,
       },
     };
+    const preparedPayload = prepareExternalText(JSON.stringify(publicPayload));
+    if (!preparedPayload.allowed) return fallback;
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: `Write one friendly sentence (maximum 220 characters) explaining why this public tourism activity suits these non-identifying travel-preference labels. Do not invent facts, do not mention private data, and return plain text only.\n\n${JSON.stringify(publicPayload)}` }] }],
+          contents: [{ parts: [{ text: `Write one friendly sentence (maximum 220 characters) explaining why this public tourism activity suits these non-identifying travel-preference labels. Do not invent facts, do not mention private data, and return plain text only.\n\n${preparedPayload.clean}` }] }],
           generationConfig: { temperature: 0.2, maxOutputTokens: 80 },
         }),
         signal: AbortSignal.timeout(8000),

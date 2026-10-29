@@ -17,13 +17,14 @@
 // happens once the admin confirms the (possibly hand-edited) reason in the
 // admin UI and the existing approve/suspend routes run.
 
-import { redactPII } from '@/lib/chatbot/pii';
+import { prepareExternalText } from '@/lib/chatbot/pii';
 
 const DRAFT_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 const DRAFT_TIMEOUT_MS = 15_000;
 const SUPPORT_EMAIL = 'support@mylawatan.my';
 
 export type VendorReasonAction = 'reject' | 'suspend' | 'request_information';
+export type VendorActionDraftResult = string | { error: 'sensitive_data_detected' } | null;
 
 const ACTION_FRAMING: Record<VendorReasonAction, string> = {
   reject: `This vendor's application is being REJECTED. Draft the REASON text the admin will send —
@@ -37,7 +38,7 @@ proceed. Draft the REASON text the admin will send — it becomes the body of a 
 asking them to provide what's missing.`,
 };
 
-const SYSTEM_PROMPT_PREFIX = `You are drafting a short administrative message for MyLawatan, a Malaysian
+const SYSTEM_PROMPT_PREFIX = `You are drafting a short administrative message for MYLawatan, a Malaysian
 tourism booking platform, about a vendor account.
 
 Rules — these are strict:
@@ -67,19 +68,17 @@ export interface VendorActionDraftContext {
  * type a reason by hand — this is a nice-to-have, not a blocking dependency
  * of the action it feeds.
  */
-export async function draftVendorActionReason(action: VendorReasonAction, context: VendorActionDraftContext): Promise<string | null> {
+export async function draftVendorActionReason(action: VendorReasonAction, context: VendorActionDraftContext): Promise<VendorActionDraftResult> {
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) return null;
-
-  // Same redaction boundary as approval-draft.ts/invite-draft.ts.
-  const { clean: cleanDescription } = redactPII(context.description ?? '');
 
   const userText = [
     `BUSINESS NAME: ${context.vendorName}`,
     context.businessType ? `BUSINESS TYPE: ${context.businessType}` : null,
-    context.contactName ? `CONTACT NAME: ${context.contactName}` : null,
-    cleanDescription ? `DESCRIPTION: ${cleanDescription}` : null,
+    context.description ? `DESCRIPTION: ${context.description}` : null,
   ].filter(Boolean).join('\n');
+  const preparedText = prepareExternalText(userText);
+  if (!preparedText.allowed) return { error: 'sensitive_data_detected' };
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DRAFT_TIMEOUT_MS);
@@ -90,7 +89,7 @@ export async function draftVendorActionReason(action: VendorReasonAction, contex
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT_PREFIX}\n\n${ACTION_FRAMING[action]}` }] },
-        contents: [{ role: 'user', parts: [{ text: userText }] }],
+        contents: [{ role: 'user', parts: [{ text: preparedText.clean }] }],
         generationConfig: { temperature: 0.3, maxOutputTokens: 250 },
       }),
       signal: controller.signal,

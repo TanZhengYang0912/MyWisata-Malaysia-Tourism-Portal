@@ -50,7 +50,9 @@ describe("vendor scanner food order resolution", () => {
       ok: true,
       access: { outletIds: [ids.outlet], serviceDb: { from: mocks.from } },
     });
-    mocks.from.mockImplementation((table: string) => table === "orders"
+    mocks.from.mockImplementation((table: string) => table === "vendors"
+      ? query({ id: ids.vendor, status: "approved", kind: "standard" })
+      : table === "orders"
       ? query({ id: ids.order, status: "paid" })
       : table === "bookings"
       ? bookingQuery({
@@ -108,11 +110,13 @@ describe("vendor scanner food order resolution", () => {
       body: JSON.stringify({ outletId: ids.outlet, rawValue: "http://localhost/customer/orders/" + ids.order + "?food_t=" + token }),
     }), { params: Promise.resolve({ vendorId: ids.vendor }) });
     expect(response.status).toBe(400);
-    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.from.mock.calls.map(([table]) => table)).toEqual(["vendors"]);
   });
 
   it("rejects replay after a dine-in arrival scan", async () => {
-    mocks.from.mockImplementation((table: string) => table === "orders"
+    mocks.from.mockImplementation((table: string) => table === "vendors"
+      ? query({ id: ids.vendor, status: "approved", kind: "standard" })
+      : table === "orders"
       ? query({ id: ids.order, status: "paid" })
       : table === "bookings" ? query([]) : query([{
         id: "item-1", product_name: "Laksa", variant_name: null, quantity: 1,
@@ -219,7 +223,9 @@ describe("vendor scanner food order resolution", () => {
   });
 
   it("rejects inconsistent merchant relations instead of showing another vendor's name", async () => {
-    mocks.from.mockImplementation((table: string) => table === "orders"
+    mocks.from.mockImplementation((table: string) => table === "vendors"
+      ? query({ id: ids.vendor, status: "approved", kind: "standard" })
+      : table === "orders"
       ? query({ id: ids.order, status: "paid" })
       : table === "bookings"
       ? query({
@@ -249,7 +255,9 @@ describe("vendor scanner food order resolution", () => {
   });
 
   it("rejects a ticket whose order is pending payment", async () => {
-    mocks.from.mockImplementation((table: string) => table === "orders"
+    mocks.from.mockImplementation((table: string) => table === "vendors"
+      ? query({ id: ids.vendor, status: "approved", kind: "standard" })
+      : table === "orders"
       ? query({ id: ids.order, status: "pending_payment" })
       : query({
         id: "55555555-5555-4555-8555-555555555555",

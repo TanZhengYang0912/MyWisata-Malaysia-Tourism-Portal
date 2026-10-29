@@ -176,7 +176,7 @@ export async function executeApprovedWithdrawalPayout({
     const callback = startData as { outbox_id?: string; available_at?: string } | null;
     if (processingError || !callback?.outbox_id || !callback.available_at) {
       console.error('[payout-execution] start_tng_mock_payout:', processingError ? 'database_error' : 'invalid_result');
-      return persistFailure({ code: 'PROCESSING_STATE_FAILED', message: 'TNG created the payout, but MyLawatan could not record it. Do not retry; reconcile the provider payout first.', status: 502, retryable: false });
+      return persistFailure({ code: 'PROCESSING_STATE_FAILED', message: 'TNG created the payout, but MYLawatan could not record it. Do not retry; reconcile the provider payout first.', status: 502, retryable: false });
     }
 
     const { error: clearFailureError } = await db.rpc('clear_withdrawal_execution_failure', {
@@ -236,7 +236,7 @@ export async function executeApprovedWithdrawalPayout({
       });
       if (error) {
         console.error('[payout-execution] record_stripe_transfer:', error);
-      return persistFailure({ code: 'TRANSFER_STATE_FAILED', message: 'Stripe created the transfer, but MyLawatan could not record it. Do not retry; reconcile the Stripe transfer first.', status: 502, retryable: false });
+      return persistFailure({ code: 'TRANSFER_STATE_FAILED', message: 'Stripe created the transfer, but MYLawatan could not record it. Do not retry; reconcile the Stripe transfer first.', status: 502, retryable: false });
       }
     }
   } catch (error) {
@@ -259,7 +259,7 @@ export async function executeApprovedWithdrawalPayout({
       });
       if (error) {
         console.error('[payout-execution] record_stripe_payout:', error);
-      return persistFailure({ code: 'PAYOUT_STATE_FAILED', message: 'Stripe created the payout, but MyLawatan could not record its reference. Do not retry; reconcile the Stripe payout first.', status: 502, retryable: false });
+      return persistFailure({ code: 'PAYOUT_STATE_FAILED', message: 'Stripe created the payout, but MYLawatan could not record its reference. Do not retry; reconcile the Stripe payout first.', status: 502, retryable: false });
       }
     }
   } catch (error) {

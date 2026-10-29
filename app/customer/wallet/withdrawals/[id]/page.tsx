@@ -92,7 +92,7 @@ export default function WithdrawalReceiptPage() {
     ? `${proof.event.payloadSha256.slice(0, 12)}…${proof.event.payloadSha256.slice(-8)}`
     : null;
 
-  return <><CustomerPageTitle eyebrow={tCustomer("accountGroups.account")} title={tCustomer("strictMigration.walletReceipt.title")} description={receipt?.reference ?? tCustomer("strictMigration.walletReceipt.eyebrow")} icon={<ReceiptText size={14} />} /><CustomerPageShell className="max-w-2xl pt-0 sm:pt-0 print:px-0">
+  return <><CustomerPageTitle eyebrow={tCustomer("accountGroups.account")} title={tCustomer("strictMigration.walletReceipt.title")} icon={<ReceiptText size={14} />} /><CustomerPageShell className="max-w-2xl pt-0 sm:pt-0 print:px-0">
     <div className="mb-6 flex items-center justify-between print:hidden">
       <BackLink fallbackHref="/customer/wallet" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft size={16} /> {tCustomer("actions.back", { ns: "common" })}</BackLink>
       {receipt && <Button variant="outline" size="sm" onClick={() => window.print()}><Printer size={15} className="mr-2" /> {tCustomer("ui.actions.printReceipt")}</Button>}

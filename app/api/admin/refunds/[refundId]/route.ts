@@ -1,9 +1,8 @@
-import { requireStaffAssurance } from '@/lib/auth/staff-assurance';
-import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { z } from 'zod';
 import { processRefund } from '@/lib/refunds/process-refund';
+import { requireStaffRoleManagementSuperAdmin } from '@/lib/staff-permissions/server';
 
 const schema = z.object({
   evidenceVersion: z.string().length(32).optional(),
@@ -14,15 +13,8 @@ const schema = z.object({
 interface Props { params: Promise<{ refundId: string }> }
 
 export async function POST(request: Request, { params }: Props) {
-  const db = await createClient();
-  const { data: { user } } = await db.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  const assuranceResponse = await requireStaffAssurance(db);
-  if (assuranceResponse) return assuranceResponse;
-  const { data: roles } = await db.from('user_roles').select('roles(name)').eq('user_id', user.id);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const names = (roles ?? []).map((row: any) => row.roles?.name);
-  if (!names.includes('super_admin')) return apiFail('FORBIDDEN', 'Super Admin role required', 403);
+  const { db, user, response } = await requireStaffRoleManagementSuperAdmin();
+  if (response) return response;
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return apiFail('VALIDATION_FAILED', 'action is required', 422);
   const service = createServiceClient();

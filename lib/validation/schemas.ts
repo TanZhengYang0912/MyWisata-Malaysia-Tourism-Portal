@@ -257,7 +257,9 @@ export function apiOk<T>(data: T, init?: { status?: number }) {
 }
 
 export function apiFail(code: string, message: string, status = 400, details?: unknown) {
-  return Response.json({ data: null, error: { code, message, details } }, { status });
+  const exposesInternals = /(?:row.level security|\brls\b|postgres|postgrest|supabase|database|relation ["']|column ["']|constraint|sqlstate|\.env(?:\.|\b)|api key|secret key|storage bucket|permission denied|function\s+[^ ]+\s+does not exist|could not find the function|schema cache|does not exist|invalid input syntax for type)/i.test(message);
+  const safeMessage = exposesInternals ? 'The request could not be completed. Please try again, or contact support if the problem continues.' : message;
+  return Response.json({ data: null, error: { code, message: safeMessage, details: exposesInternals ? undefined : details } }, { status });
 }
 
 /**

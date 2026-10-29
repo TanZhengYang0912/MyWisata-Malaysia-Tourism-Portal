@@ -6,9 +6,9 @@
 // GET /api/profile/survey and saves via POST (which also promotes tier when
 // onboarding criteria are met).
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   INTEREST_OPTIONS, BUDGET_RANGES, MOBILITY_NEEDS, DISTANCE_OPTIONS,
@@ -25,7 +25,15 @@ type SurveyResponse = {
   learned_affinity: Record<string, number> | null;
 } | null;
 
-export function PreferencesEditor({ onSaved, submitLabel }: { onSaved?: () => void; submitLabel?: string }) {
+type PreferencesEditorProps = {
+  onSaved?: () => void | Promise<void>;
+  submitLabel?: string;
+  onBack?: () => void;
+  onBeforeSave?: () => boolean;
+  onBusyChange?: (busy: boolean) => void;
+};
+
+export function PreferencesEditor({ onSaved, submitLabel, onBack, onBeforeSave, onBusyChange }: PreferencesEditorProps) {
   const { t } = useTranslation("customer");
   const [interests, setInterests] = useState<string[]>([]);
   const [budgetRange, setBudgetRange] = useState("mid_range");
@@ -35,38 +43,56 @@ export function PreferencesEditor({ onSaved, submitLabel }: { onSaved?: () => vo
   const [notes, setNotes] = useState("");
   const [learned, setLearned] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [refreshError, setRefreshError] = useState(false);
+  const loadGeneration = useRef(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    fetch("/api/profile/survey", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((body: { data?: SurveyResponse }) => {
-        if (!active) return;
-        const s = body.data;
-        if (s) {
-          setInterests(normalizeCategorySlugs(s.interests));
-          setBudgetRange(s.budget_range ?? "mid_range");
-          setMobilityNeeds(s.mobility_needs ?? "none");
-          setPetFriendly(Boolean(s.pet_friendly));
-          setRadiusKm(s.preferred_radius_km ?? 20);
-          setNotes(s.notes ?? "");
-          setLearned(s.learned_affinity ?? {});
-        }
-      })
-      .catch(() => { /* first-time users have no row — defaults are fine */ })
-      .finally(() => active && setLoading(false));
-    return () => { active = false; };
+  const loadPreferences = useCallback(async (initial = false) => {
+    const generation = ++loadGeneration.current;
+    if (!initial) {
+      setLoading(true);
+      setLoadError(false);
+    }
+    try {
+      const response = await fetch("/api/profile/survey", { cache: "no-store" });
+      if (!response.ok) throw new Error("survey_load_failed");
+      const body = await response.json() as { data?: SurveyResponse };
+      if (generation !== loadGeneration.current) return;
+      const s = body.data;
+      if (s) {
+        setInterests(normalizeCategorySlugs(s.interests));
+        setBudgetRange(s.budget_range ?? "mid_range");
+        setMobilityNeeds(s.mobility_needs ?? "none");
+        setPetFriendly(Boolean(s.pet_friendly));
+        setRadiusKm(s.preferred_radius_km ?? 20);
+        setNotes(s.notes ?? "");
+        setLearned(s.learned_affinity ?? {});
+      }
+    } catch {
+      if (generation === loadGeneration.current) setLoadError(true);
+    } finally {
+      if (generation === loadGeneration.current) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    // Start the async read and expose its initial loading state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadPreferences(true);
+    return () => { loadGeneration.current += 1; };
+  }, [loadPreferences]);
 
   const toggle = (list: string[], set: (v: string[]) => void, value: string) =>
     set(list.includes(value) ? list.filter((x) => x !== value) : [...list, value]);
 
   async function save() {
     if (interests.length === 0) { setError(t("ui.preferencesEditor.selectInterest")); return; }
+    if (onBeforeSave?.() === false) return;
     setBusy(true); setError(null); setSaved(false);
+    onBusyChange?.(true);
     try {
       const res = await fetch("/api/profile/survey", {
         method: "POST",
@@ -81,15 +107,24 @@ export function PreferencesEditor({ onSaved, submitLabel }: { onSaved?: () => vo
         throw new Error(t("ui.preferencesEditor.saveError"));
       }
       setSaved(true);
-      onSaved?.();
+      try {
+        await onSaved?.();
+      } catch {
+        setRefreshError(true);
+      }
     } catch {
       setError(t("ui.preferencesEditor.saveError"));
     } finally {
       setBusy(false);
+      onBusyChange?.(false);
     }
   }
 
   if (loading) return <p className="py-8 text-center text-sm text-muted-foreground">{t("ui.preferencesEditor.loading")}</p>;
+  if (loadError) return <div role="alert" className="space-y-3 py-6 text-center">
+    <p className="text-sm text-destructive">{t("ui.preferencesEditor.loadError")}</p>
+    <Button type="button" variant="outline" onClick={() => void loadPreferences()}>{t("ui.actions.retry")}</Button>
+  </div>;
 
   const topLearned = Object.entries(learned).sort((a, b) => b[1] - a[1]).slice(0, 3);
 
@@ -155,10 +190,15 @@ export function PreferencesEditor({ onSaved, submitLabel }: { onSaved?: () => vo
 
       {error && <p className="text-xs text-destructive">{error}</p>}
       {saved && <p className="text-xs text-primary">{t("ui.preferencesEditor.saved")}</p>}
-      <Button onClick={save} disabled={busy || interests.length === 0} className="w-full">
-        {busy && <Loader2 size={14} className="mr-1.5 animate-spin" />}
-        {busy ? t("ui.preferencesEditor.saving") : (submitLabel ?? t("ui.preferencesEditor.save"))}
-      </Button>
+      {refreshError && <p role="status" className="text-xs text-muted-foreground">{t("ui.preferencesEditor.refreshError")}</p>}
+      <div className={onBack ? "grid grid-cols-2 gap-3" : "grid gap-3"}>
+        {onBack && <Button variant="outline" className="w-full min-w-0" onClick={onBack} disabled={busy}><ArrowLeft aria-hidden="true" />{t("ui.profileWizard.previous")}</Button>}
+        <Button onClick={save} disabled={busy || interests.length === 0} className="w-full min-w-0">
+          {busy && <Loader2 size={14} className="mr-1.5 animate-spin" />}
+          {busy ? t("ui.preferencesEditor.saving") : (submitLabel ?? t("ui.preferencesEditor.save"))}
+          {onBack && <ArrowRight aria-hidden="true" />}
+        </Button>
+      </div>
     </div>
   );
 }

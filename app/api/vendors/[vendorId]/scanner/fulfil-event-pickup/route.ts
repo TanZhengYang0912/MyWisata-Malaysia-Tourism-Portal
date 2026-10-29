@@ -10,7 +10,7 @@ const fulfilSchema = z.object({ eventToken: z.string().trim().min(1).max(2_000) 
 /** POST: mark an event reservation collected. Accepted only on its pickup date, by its vendor. */
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId, undefined, { allowEventVendor: true });
+  const access = await authorizeVendor(vendorId, undefined, { allowEventVendor: true, requireApproved: true });
   if (!access.ok) return access.response;
   const parsed = await parseBody(request, fulfilSchema);
   if (!parsed.ok) return parsed.response;

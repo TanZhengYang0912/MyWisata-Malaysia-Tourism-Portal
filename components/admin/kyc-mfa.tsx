@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client';
 import { safeKycReviewNext } from '@/lib/auth/safe-next';
 import { safeStaffVerificationNext } from '@/lib/auth/staff-route-boundaries';
 import { AuthPageShell } from '@/components/shared/auth-page-shell';
+import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
 
 // The real code field sits invisibly over the six display boxes. It must stay hidden while
 // disabled too, or Input's `disabled:opacity-50` shows the raw digits over the first box.
@@ -46,11 +47,11 @@ export function KycMfa({ next, available = true, scope = 'kyc' }: { next: string
         setEnrolling(false);
       } else {
         // Retry only this flow's abandoned, unverified factors.
-        for (const factor of data.all.filter(factor => factor.factor_type === 'totp' && factor.status === 'unverified' && factor.friendly_name === 'MyLawatan KYC')) {
+        for (const factor of data.all.filter(factor => factor.factor_type === 'totp' && factor.status === 'unverified' && [`${BRAND_NAME} KYC`, 'MyLawatan KYC'].includes(factor.friendly_name ?? ''))) {
           const { error: cleanupError } = await db.auth.mfa.unenroll({ factorId: factor.id });
           if (cleanupError) throw new Error();
         }
-        const { data: enrollment, error: enrollError } = await db.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'MyLawatan KYC', issuer: 'MyLawatan' });
+        const { data: enrollment, error: enrollError } = await db.auth.mfa.enroll({ factorType: 'totp', friendlyName: `${BRAND_NAME} KYC`, issuer: BRAND_NAME });
         if (enrollError || !enrollment || enrollment.type !== 'totp' || !enrollment.totp.qr_code.startsWith('data:image/svg+xml;')) throw new Error();
         setFactorId(enrollment.id);
         setQr(enrollment.totp.qr_code);

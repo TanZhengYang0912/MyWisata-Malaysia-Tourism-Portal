@@ -36,7 +36,10 @@ export async function POST(request: Request) {
     .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
     .eq('id', user.id);
 
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error) {
+    console.error('[profile/avatar] profile photo write failed', error);
+    return apiFail('AVATAR_SAVE_FAILED', 'Unable to save the profile photo. Please retry the confirmation.', 500);
+  }
 
   // Attempt tier promotion (non-fatal — other fields may still be missing)
   await supabase.rpc('promote_to_profile_complete', { p_user_id: user.id });

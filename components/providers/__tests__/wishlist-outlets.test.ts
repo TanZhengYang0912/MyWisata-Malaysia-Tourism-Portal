@@ -10,8 +10,8 @@ describe("saved hotels in the wishlist provider", () => {
   it("loads and toggles saved hotels through /api/saved-outlets", () => {
     expect(provider).toContain("savedOutletIds: ReadonlySet<string>");
     expect(provider).toContain("toggleSavedOutlet: (outletId: string) => Promise<boolean>");
-    expect(provider).toContain('fetch("/api/saved-outlets")');
-    expect(provider).toMatch(/fetch\("\/api\/saved-outlets", \{\s*method: nextSaved \? "POST" : "DELETE"/);
+    expect(provider).toContain('endpoint: "/api/saved-outlets", responseKey: "outletIds", inputKey: "outletId"');
+    expect(provider).toMatch(/fetch\(endpoint, \{\s*method: nextSaved \? "POST" : "DELETE"/);
   });
 
   it("saves the whole hotel from hotel cards and the hotel page", () => {

@@ -19,7 +19,8 @@ export async function POST() {
 
   if (error) {
     const status = error.message.includes('admin_required') ? 403 : 500;
-    return NextResponse.json({ error: error.message }, { status });
+    const message = status === 403 ? 'You do not have permission to clear earnings.' : 'Earnings could not be cleared right now. Please try again later.';
+    return NextResponse.json({ error: message }, { status });
   }
 
   return NextResponse.json({ confirmed: data });

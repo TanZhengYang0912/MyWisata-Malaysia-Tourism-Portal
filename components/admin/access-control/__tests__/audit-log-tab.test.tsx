@@ -2,7 +2,6 @@ import React, { act } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  TestEvent,
   findElements,
   findOne,
   installTestDom,
@@ -55,14 +54,6 @@ let container: TestElement;
 
 function response(body: unknown) {
   return { ok: true, status: 200, json: async () => body } as Response;
-}
-
-async function click(element: TestElement) {
-  await act(async () => {
-    element.dispatchEvent(new TestEvent("click", { bubbles: true }));
-    await Promise.resolve();
-    await Promise.resolve();
-  });
 }
 
 describe("AuditLogTab", () => {
@@ -121,7 +112,7 @@ describe("AuditLogTab", () => {
 
   it("shows human-readable actions, key changes, and collapsed technical JSON", async () => {
     await act(async () => {
-      root?.render(<AuditLogTab focus={null} onViewEntity={vi.fn()} />);
+      root?.render(<AuditLogTab focus={{ eventId: "audit-kyc" }} onViewEntity={vi.fn()} />);
     });
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -132,9 +123,6 @@ describe("AuditLogTab", () => {
     expect(container.textContent).toContain("kyc.approve");
     expect(container.textContent).toContain("Unknown audit action");
     expect(container.textContent).toContain("future.action.created");
-
-    await click(findOne(container, (element) =>
-      element.tagName === "BUTTON" && element.textContent === "Inspect"));
 
     expect(container.textContent).toContain("Key changes");
     expect(container.textContent).toContain("Status");

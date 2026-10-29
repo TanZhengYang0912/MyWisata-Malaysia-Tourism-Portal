@@ -58,10 +58,12 @@ export async function GET() {
     supabase.from('outlet_managers').select('outlet_id,outlets(vendor_id,name)').eq('user_id', authUser.id),
     supabase.from('preference_survey_responses').select('interests').eq('user_id', authUser.id).maybeSingle(),
   ]);
-  if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 });
-  if (rolesError) return NextResponse.json({ error: rolesError.message }, { status: 500 });
-  if (managerError) return NextResponse.json({ error: managerError.message }, { status: 500 });
-  if (preferenceError) return NextResponse.json({ error: preferenceError.message }, { status: 500 });
+  if (profileError || rolesError || managerError || preferenceError) {
+    console.error('[auth/me] account bootstrap query failed', {
+      profile: Boolean(profileError), roles: Boolean(rolesError), managers: Boolean(managerError), preferences: Boolean(preferenceError),
+    });
+    return NextResponse.json({ error: 'Unable to load account details right now. Please retry.' }, { status: 503 });
+  }
 
   const profileRow = profile as ProfileRow | null;
   if (!profileRow) return NextResponse.json({ error: 'Profile unavailable' }, { status: 500 });
@@ -116,6 +118,7 @@ export async function GET() {
     fullName: profileRow.full_name,
     avatarUrl: profileRow.avatar_url,
     bio: profileRow.bio,
+    profileCompletedAt: profileRow.profile_completed_at,
     city: profileRow.city,
     country: profileRow.country,
     surveyComplete: Boolean(preferenceRow?.interests?.length),

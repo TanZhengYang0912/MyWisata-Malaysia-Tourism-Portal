@@ -104,7 +104,7 @@ describe("POST /api/admin/users/[userId]", () => {
     const body = await response.json();
 
     expect(response.status).toBe(503);
-    expect(body.error.message).toContain("054_account_moderation_rpc.sql");
+    expect(body.error.message).not.toMatch(/supabase\/migrations|schema|database/i);
   });
 
   it("includes a sanitized unknown database reason for admin debugging", async () => {
@@ -117,7 +117,7 @@ describe("POST /api/admin/users/[userId]", () => {
     const body = await response.json();
 
     expect(response.status).toBe(500);
-    expect(body.error.message).toContain('Database response: column "closed_at" does not exist');
+    expect(body.error.message).not.toMatch(/closed_at|database response|column/i);
   });
 
   it("explains when the lifecycle-context migration has not been applied", async () => {
@@ -130,6 +130,6 @@ describe("POST /api/admin/users/[userId]", () => {
     const body = await response.json();
 
     expect(response.status).toBe(503);
-    expect(body.error.message).toContain("055_admin_account_lifecycle_context.sql");
+    expect(body.error.message).not.toMatch(/supabase\/migrations|schema|database/i);
   });
 });

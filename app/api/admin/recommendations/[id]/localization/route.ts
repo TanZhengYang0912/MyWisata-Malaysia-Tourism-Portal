@@ -6,6 +6,7 @@ import { generateAiText } from '@/lib/ai/provider';
 import { buildTranslationPrompt, sourceHash, type TranslationField, type TranslationLocale } from '@/lib/recommendations/content-localization';
 import { selectSuggestedPlace } from '@/lib/recommendations/place-resolution';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
+import { prepareExternalText } from '@/lib/chatbot/pii';
 
 const requestSchema = z.object({
   action: z.enum(['suggest_place', 'confirm_place', 'clear_place', 'generate']),
@@ -65,6 +66,9 @@ export async function POST(
       { field: 'name', sourceText: recommendation.vendor_name },
       ...(recommendation.description ? [{ field: 'description' as const, sourceText: recommendation.description }] : []),
     ];
+    if (fields.some(({ sourceText }) => !prepareExternalText(sourceText).allowed)) {
+      return apiFail('LOCALIZATION_PRIVACY_BLOCKED', 'This content was not sent to AI because it may contain personal details. Remove phone, email, identity, bank, or private-address details and try again, or write the translation manually.', 422);
+    }
     const locales: TranslationLocale[] = ['zh-CN', 'ms'];
     let generated = 0;
     let skipped = 0;
@@ -107,6 +111,9 @@ export async function POST(
           const result = await generateTranslation(prompt.system, prompt.user);
           if (!result.available) {
             await releaseLock();
+            if (result.reason === 'sensitive_input') {
+              return apiFail('LOCALIZATION_PRIVACY_BLOCKED', 'This content was not sent to AI because it may contain personal details. Remove phone, email, identity, bank, or private-address details and try again, or write the translation manually.', 422);
+            }
             return apiFail('LOCALIZATION_UNAVAILABLE', 'Translation generation is unavailable; retry later', 502);
           }
 

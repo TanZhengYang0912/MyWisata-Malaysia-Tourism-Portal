@@ -17,19 +17,19 @@ import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-c
 import { BUDGET_RANGES, MOBILITY_NEEDS } from "@/backend/domains/preferences";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 import { bioSchema, identitySchema } from "@/lib/validation/profile-schemas";
+import { PROFILE_BIO_MIN_LENGTH as MIN_BIO_LENGTH, PROFILE_BIO_MAX_LENGTH as MAX_BIO_LENGTH, LEGACY_PROFILE_BIO_MAX_LENGTH } from "@/lib/verification/eligibility";
 import { ProfileLocationFields } from "@/components/profile/profile-location-fields";
 import { ProfilePhotoPicker } from "@/components/profile/profile-photo-picker";
+import { AVATAR_MAX_BYTES, formatAvatarFileSize, getAvatarUploadStartFailure } from "@/lib/profile/avatar-validation";
 
 type SectionId = "personal" | "contact";
-const MIN_BIO_LENGTH = 30;
-const MAX_BIO_LENGTH = 200;
 
 function preferenceLabelKey(options: ReadonlyArray<{ value: string; labelKey: string }>, value: string | null | undefined) {
   return options.find((option) => option.value === value)?.labelKey;
 }
 
-function SectionCard({ id, title, description, children }: { id?: string; title: string; description: string; children: React.ReactNode }) {
-  return <section id={id} className="scroll-mt-24 rounded-2xl border border-border bg-card p-5 sm:p-6"><div className="mb-4"><h2 className="font-bold text-foreground">{title}</h2><p className="mt-1 text-xs text-muted-foreground">{description}</p></div>{children}</section>;
+function SectionCard({ id, title, description, children }: { id?: string; title: string; description?: string; children: React.ReactNode }) {
+  return <section id={id} className="scroll-mt-24 rounded-2xl border border-border bg-card p-5 sm:p-6"><div className="mb-4"><h2 className="font-bold text-foreground">{title}</h2>{description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}</div>{children}</section>;
 }
 
 function StatusBadge({ label, good = false }: { label: string; good?: boolean }) {
@@ -63,6 +63,10 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const canKeepSavedBio = bio.trim() === (summary?.bio ?? "").trim()
+    && Boolean(summary?.verification.completedSteps.includes("bio"));
+  const invalidBio = !canKeepSavedBio && !bioSchema.safeParse({ bio }).success;
+  const hasLegacyBio = canKeepSavedBio && bio.trim().length > MAX_BIO_LENGTH;
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -85,7 +89,7 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
   async function savePersonal() {
     const identity = identitySchema.safeParse({ fullName, city, country, cityId, countryCode });
     const profileBio = bioSchema.safeParse({ bio });
-    if (!identity.success || !profileBio.success) {
+    if (!identity.success || (!canKeepSavedBio && !profileBio.success)) {
       setError(tCustomer("ui.profileWizard.bioValidation", { min: MIN_BIO_LENGTH, max: MAX_BIO_LENGTH }));
       return;
     }
@@ -93,12 +97,17 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
     try {
       const response = await fetch("/api/profile/identity", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(identity.data) });
       if (!response.ok) throw new Error(tCustomer("ui.profileWizard.saveDetails"));
-      const bioResponse = await fetch("/api/profile/bio", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profileBio.data) });
-      if (!bioResponse.ok) {
-        throw new Error(tCustomer("ui.profileWizard.saveDetails"));
+      if (!canKeepSavedBio && profileBio.success) {
+        const bioResponse = await fetch("/api/profile/bio", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profileBio.data) });
+        if (!bioResponse.ok) {
+          const body = await bioResponse.json().catch(() => ({}));
+          throw new Error(body.error?.code === "PERSONAL_DATA_REMOVE"
+            ? tCustomer("ui.profileWizard.personalSaveBioPrivacyBlocked")
+            : tCustomer("ui.profileWizard.saveDetails"));
+        }
       }
       await loadProfile(); await refreshUser(); setEditing(null);
-    } catch { setError(tCustomer("ui.profileWizard.saveDetails")); }
+    } catch (cause) { setError(cause instanceof Error ? cause.message : tCustomer("ui.profileWizard.saveDetails")); }
     finally { setBusy(false); }
   }
 
@@ -148,16 +157,48 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
   async function uploadAvatar() {
     if (!avatarFile) return;
     setBusy(true); setError(null);
+    let failureMessage = tCustomer("ui.profileWizard.avatarUploadUrlError");
     try {
       const signed = await fetch(`/api/profile/avatar?type=${encodeURIComponent(avatarFile.type)}`, { method: "PUT" });
-      if (!signed.ok) throw new Error(tCustomer("ui.profileWizard.choosePhoto"));
+      if (!signed.ok) {
+        const failure = await getAvatarUploadStartFailure(signed);
+        const message = failure === "session-expired"
+          ? tCustomer("ui.profileWizard.avatarSessionExpired")
+          : failure === "unsupported-type"
+            ? tCustomer("ui.profileWizard.photoTypeValidation")
+            : failure === "service-unavailable"
+              ? tCustomer("ui.profileWizard.avatarUploadUnavailable")
+              : failureMessage;
+        setError(message);
+        return;
+      }
       const { data } = await signed.json() as { data: { uploadUrl: string; path: string } };
+      failureMessage = tCustomer("ui.profileWizard.avatarStorageError");
       const upload = await fetch(data.uploadUrl, { method: "PUT", headers: { "Content-Type": avatarFile.type }, body: avatarFile });
-      if (!upload.ok) throw new Error(tCustomer("ui.profileWizard.choosePhoto"));
+      if (!upload.ok) {
+        if (upload.status === 413 && avatarFile.size > AVATAR_MAX_BYTES) {
+          setError(tCustomer("ui.profileWizard.photoSizeValidation", { size: formatAvatarFileSize(avatarFile.size) }));
+          return;
+        }
+        setError(failureMessage);
+        return;
+      }
+      failureMessage = tCustomer("ui.profileWizard.avatarConfirmError");
       const confirmed = await fetch("/api/profile/avatar/confirm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: data.path }) });
-      if (!confirmed.ok) throw new Error(tCustomer("ui.profileWizard.savePhoto"));
+      if (!confirmed.ok) {
+        const body = await confirmed.json().catch(() => null) as { error?: { code?: string } } | null;
+        if (body?.error?.code === "INVALID_IMAGE") {
+          const message = avatarFile.size > AVATAR_MAX_BYTES
+            ? tCustomer("ui.profileWizard.photoSizeValidation", { size: formatAvatarFileSize(avatarFile.size) })
+            : tCustomer("ui.profileWizard.photoInvalidValidation");
+          setError(message);
+          return;
+        }
+        setError(failureMessage);
+        return;
+      }
       await loadProfile(); await refreshUser(); setAvatarFile(null); setAvatarPreview(null);
-    } catch { setError(tCustomer("ui.profileWizard.savePhoto")); }
+    } catch { setError(failureMessage); }
     finally { setBusy(false); }
   }
 
@@ -189,12 +230,11 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
       {showHeader && <CustomerPageHeader
         eyebrow={tCustomer("accountGroups.account")}
         title={summary.displayName || summary.fullName || currentUser?.email || tCustomer("ui.profileWizard.title")}
-        description={tCustomer("ui.profileWizard.description")}
         className="mb-2"
       />}
       {error && <p className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
 
-      <SectionCard title={tCustomer("ui.profileWizard.identity")} description={tCustomer("ui.profileWizard.description")}>
+      <SectionCard title={tCustomer("ui.profileWizard.identity")}>
         <ProfilePhotoPicker
           variant="compact"
           previewUrl={avatarPreview || summary.avatarUrl}
@@ -204,10 +244,10 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
           onError={setError}
         />
         {avatarFile && <Button size="sm" className="mt-3" onClick={uploadAvatar} disabled={busy}>{tCustomer("ui.profileWizard.savePhoto")}</Button>}
-        {editing === "personal" ? <div className="mt-5 space-y-3"><input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={tCustomer("ui.profileWizard.fullNamePlaceholder")} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><ProfileLocationFields compact value={{ city, country, cityId, countryCode }} disabled={busy} onChange={(location) => { setCity(location.city); setCountry(location.country); setCityId(location.cityId); setCountryCode(location.countryCode); setError(null); }} /><textarea value={bio} onChange={(e) => { setBio(e.target.value); setError(null); }} maxLength={MAX_BIO_LENGTH} rows={4} placeholder={tCustomer("ui.profileWizard.bioPlaceholder")} className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><div className="flex items-center justify-between text-xs"><span className={bio.trim().length < MIN_BIO_LENGTH ? "text-destructive" : "text-muted-foreground"}>{bio.trim().length < MIN_BIO_LENGTH ? tCustomer("ui.profileWizard.bioValidation", { min: MIN_BIO_LENGTH, max: MAX_BIO_LENGTH }) : tCustomer("ui.profileWizard.saveDetails")}</span><span className="text-muted-foreground">{bio.length}/{MAX_BIO_LENGTH}</span></div><div className="flex gap-2"><Button onClick={savePersonal} disabled={busy || bio.trim().length < MIN_BIO_LENGTH}>{busy ? <Loader2 className="animate-spin" /> : tCustomer("ui.profileWizard.saveDetails")}</Button><Button variant="outline" onClick={() => setEditing(null)}>{tCommon("actions.cancel")}</Button></div></div> : <div className="mt-5 space-y-2 text-sm"><p className="font-semibold text-foreground">{summary.fullName || tCustomer("ui.profileWizard.fullName")}</p><p className="text-muted-foreground">{[summary.city, summary.country].filter(Boolean).join(", ") || tCustomer("ui.profileWizard.city")}</p><p className="text-muted-foreground">{summary.bio || tCustomer("ui.profileWizard.bio")}</p><Button variant="outline" size="sm" className="mt-2" onClick={() => setEditing("personal")}>{tCustomer("ui.profileWizard.saveDetails")}</Button></div>}
+        {editing === "personal" ? <div className="mt-5 space-y-3"><input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={tCustomer("ui.profileWizard.fullNamePlaceholder")} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><ProfileLocationFields compact value={{ city, country, cityId, countryCode }} disabled={busy} onChange={(location) => { setCity(location.city); setCountry(location.country); setCityId(location.cityId); setCountryCode(location.countryCode); setError(null); }} /><textarea value={bio} onChange={(e) => { setBio(e.target.value); setError(null); }} maxLength={MAX_BIO_LENGTH} rows={4} placeholder={tCustomer("ui.profileWizard.bioPlaceholder")} className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><div className="flex items-center justify-between text-xs"><span className={invalidBio ? "text-destructive" : "text-muted-foreground"}>{invalidBio ? tCustomer("ui.profileWizard.bioValidation", { min: MIN_BIO_LENGTH, max: MAX_BIO_LENGTH }) : hasLegacyBio ? tCustomer("ui.profileWizard.bioLegacyHint", { min: MIN_BIO_LENGTH, max: MAX_BIO_LENGTH }) : tCustomer("ui.profileWizard.saveDetails")}</span><span className="text-muted-foreground">{bio.length}/{hasLegacyBio ? LEGACY_PROFILE_BIO_MAX_LENGTH : MAX_BIO_LENGTH}</span></div><div className="flex gap-2"><Button onClick={savePersonal} disabled={busy || invalidBio}>{busy ? <Loader2 className="animate-spin" /> : tCustomer("ui.profileWizard.saveDetails")}</Button><Button variant="outline" onClick={() => setEditing(null)}>{tCommon("actions.cancel")}</Button></div></div> : <div className="mt-5 space-y-2 text-sm"><p className="font-semibold text-foreground">{summary.fullName || tCustomer("ui.profileWizard.fullName")}</p><p className="text-muted-foreground">{[summary.city, summary.country].filter(Boolean).join(", ") || tCustomer("ui.profileWizard.city")}</p><p className="text-muted-foreground">{summary.bio || tCustomer("ui.profileWizard.bio")}</p><Button variant="outline" size="sm" className="mt-2" onClick={() => setEditing("personal")}>{tCustomer("ui.profileWizard.saveDetails")}</Button></div>}
       </SectionCard>
 
-      <SectionCard title={tCustomer("ui.profileSections.contact")} description={tCustomer("ui.profileWizard.description")}>
+      <SectionCard title={tCustomer("ui.profileSections.contact")}>
         <div className="space-y-3 text-sm"><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tCustomer("ui.profileSections.email")}</p><p className="mt-1 font-medium text-foreground">{summary.email}</p><p className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.profileSections.emailChangeHint")}</p></div><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tCustomer("ui.profileSections.phone")}</p>{editing === "contact" ? <div className="mt-2 space-y-3"><HumanVerification {...human} />{resend.seconds > 0 && <p role="status" className="text-xs text-muted-foreground">{tAuth("humanVerification.resendIn", { seconds: resend.seconds })}</p>}{phonePhase === "enter" ? <><InternationalPhoneInput id="settings-phone" value={phone} onChange={(value) => { setPhone(value); setError(null); }} disabled={busy} error={Boolean(error)} /><Button onClick={sendPhoneOtp} disabled={busy || resend.seconds > 0}>{tCustomer("ui.profileWizard.sendOtp")}</Button></> : <><p className="font-medium text-green-600">{tCustomer("ui.profileSections.otpSent")}</p><p className="text-muted-foreground">{tCustomer("ui.profileSections.otpInstruction")}</p><div className="flex gap-2">{Array.from({ length: 6 }, (_, index) => <input key={index} ref={(element) => { otpRefs.current[index] = element; }} value={phoneCode[index] ?? ""} onChange={(event) => updateOtpDigit(index, event.target.value)} onKeyDown={(event) => handleOtpKeyDown(index, event)} inputMode="numeric" maxLength={1} aria-label={tCustomer("ui.profileSections.otpDigit", { number: index + 1 })} className="h-12 w-11 rounded-xl border border-border bg-background text-center text-lg font-semibold text-foreground outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />)}</div><div className="flex items-center gap-3"><Button onClick={verifyPhone} disabled={busy || phoneCode.length !== 6}>{busy ? <Loader2 className="animate-spin" /> : tCustomer("ui.profileSections.verifyOtp")}</Button><button type="button" onClick={() => void sendPhoneOtp()} disabled={busy || resend.seconds > 0} className="text-sm font-medium text-primary hover:underline disabled:opacity-50">{tCustomer("ui.profileSections.resendOtp")}</button></div></>}</div> : <div className="mt-1 flex items-center gap-2"><span className="font-medium text-foreground">{summary.maskedPhone || tCustomer("ui.profileSections.notSet")}</span><StatusBadge label={summary.phoneVerified ? tCustomer("ui.profileSections.verified") : tCustomer("ui.profileSections.unverified")} good={summary.phoneVerified} /></div>}</div>{editing !== "contact" && <Button variant="outline" size="sm" onClick={() => setEditing("contact")}>{tCustomer("ui.profileSections.changePhone")}</Button>}</div>
       </SectionCard>
 
@@ -217,7 +257,7 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
         {summary.kycStatus !== "approved" && summary.kycStatus !== "rejected" && <Button variant="outline" size="sm" className="mt-4" onClick={() => router.push("/customer/kyc")}>{tCustomer("ui.kyc.submitDocuments")} <ChevronRight size={14} /></Button>}
       </SectionCard>
 
-      <SectionCard id="preferences" title={tCustomer("ui.preferencesPage.eyebrow")} description={tCustomer("ui.preferencesPage.description")}>
+      <SectionCard id="preferences" title={tCustomer("ui.preferencesPage.eyebrow")}>
         <div className="space-y-2 text-sm">
           <p className="text-foreground">{summary.survey?.interests?.length ? summary.survey.interests.map((slug) => { const key = getOptionalDiscoveryCategoryLabelKey(slug); return key ? tCustomer(key) : slug; }).join(", ") : tCustomer("ui.profileSections.noInterests")}</p>
           {summary.survey && <p className="text-muted-foreground">{preferenceLabelKey(BUDGET_RANGES, summary.survey.budgetRange) ? tCustomer(preferenceLabelKey(BUDGET_RANGES, summary.survey.budgetRange)!) : tCustomer("ui.profileSections.budgetNotSet")} · {preferenceLabelKey(MOBILITY_NEEDS, summary.survey.mobilityNeeds) ? tCustomer(preferenceLabelKey(MOBILITY_NEEDS, summary.survey.mobilityNeeds)!) : tCustomer("ui.profileSections.mobilityNotSet")}</p>}
@@ -225,7 +265,7 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
         </div>
       </SectionCard>
 
-      <SectionCard title={tCustomer("ui.profileSections.support")} description={tCustomer("ui.profileSections.supportDescription")}>
+      <SectionCard title={tCustomer("ui.profileSections.support")}>
         <Button variant="outline" size="sm" onClick={() => selectChat({ kind: "support" })}>
           <MessageCircle size={14} className="mr-1.5" /> {tCustomer("ui.profileSections.contactSupport")}
         </Button>

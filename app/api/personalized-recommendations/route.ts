@@ -47,6 +47,7 @@ export async function POST(request: Request) {
     fullName: profile.full_name,
     avatarUrl: profile.avatar_url,
     bio: profile.bio,
+    profileCompletedAt: profile.profile_completed_at,
     city: profile.city,
     country: profile.country,
     surveyComplete: Boolean(survey?.interests?.length),

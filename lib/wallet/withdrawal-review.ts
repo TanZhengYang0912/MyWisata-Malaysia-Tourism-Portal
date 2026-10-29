@@ -52,6 +52,7 @@ export type WithdrawalReviewDetail = {
   }>;
   riskSnapshot: Record<string, unknown>;
   reviewSources: WithdrawalReviewSources;
+  reviewSourcesStatus: 'ready' | 'unavailable';
   payoutFailure: {
     provider: string | null;
     eventId: string | null;

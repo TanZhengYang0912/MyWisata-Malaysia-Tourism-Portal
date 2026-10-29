@@ -15,6 +15,17 @@ beforeEach(() => {
   mocks.service.rpc.mockResolvedValue({ data: [], error: null });
 });
 describe('staff Passkey API', () => {
+  it('uses MYLawatan in new credential prompts without changing the relying-party ID', async () => {
+    mocks.service.rpc
+      .mockResolvedValueOnce({ data: [], error: null })
+      .mockResolvedValueOnce({ data: { id: '33333333-3333-4333-8333-333333333333', userHandle: 'A'.repeat(43) }, error: null });
+    const response = await challenge(request({ operation: 'register', grant: 'a'.repeat(43), label: 'Device' }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.options.rp).toEqual({ id: 'mylawatan.my', name: 'MYLawatan' });
+    expect(body.data.options.user.name).toBe('MYLawatan staff');
+  });
   it('denies cross-origin writes before accessing account or credential data', async () => {
     expect((await challenge(request({ operation: 'login' }, 'https://evil.example'))).status).toBe(403);
     expect(mocks.db.auth.getUser).not.toHaveBeenCalled(); expect(mocks.service.rpc).not.toHaveBeenCalled();

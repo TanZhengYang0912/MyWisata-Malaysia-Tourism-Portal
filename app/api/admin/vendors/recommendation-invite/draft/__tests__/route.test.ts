@@ -94,15 +94,25 @@ describe('POST /api/admin/vendors/recommendation-invite/draft', () => {
     expect(response.status).toBe(502);
   });
 
+  it('explains when recommendation details were withheld from AI', async () => {
+    mockRecommendationRow();
+    draftVendorInviteEmail.mockResolvedValue({ error: 'sensitive_data_detected' });
+    const response = await POST(request({ recommendationId: RECOMMENDATION_ID }));
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'PERSONAL_DATA_WITHHELD', message: expect.stringContaining('write the invite manually') },
+    });
+  });
+
   it('drafts using the recommendation\'s real details and returns subject/body', async () => {
     mockRecommendationRow();
-    draftVendorInviteEmail.mockResolvedValue({ subject: 'Join MyLawatan', body: 'We would love to have you.' });
+    draftVendorInviteEmail.mockResolvedValue({ subject: 'Join MYLawatan', body: 'We would love to have you.' });
 
     const response = await POST(request({ recommendationId: RECOMMENDATION_ID }));
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      data: { subject: 'Join MyLawatan', body: 'We would love to have you.' },
+      data: { subject: 'Join MYLawatan', body: 'We would love to have you.' },
     });
     expect(draftVendorInviteEmail).toHaveBeenCalledWith({
       locale: 'en',

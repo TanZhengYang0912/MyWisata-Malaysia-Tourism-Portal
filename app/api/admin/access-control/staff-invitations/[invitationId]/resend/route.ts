@@ -9,8 +9,9 @@ import {
   createStaffInvitationToken,
   hashStaffInvitationToken,
 } from "@/lib/staff-invitations/server";
+import { mutationReceipt } from "@/app/api/admin/access-control/_shared";
 import { requireStaffRoleManagementSuperAdmin } from "@/lib/staff-permissions/server";
-import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
+import { apiFail, parseBody } from "@/lib/validation/schemas";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +19,9 @@ const bodySchema = z.object({}).strict();
 const idSchema = z.string().uuid();
 
 export async function POST(request: Request, context: { params: Promise<{ invitationId: string }> }) {
-  const { db, response } = await requireStaffRoleManagementSuperAdmin();
+  const { db, user, response } = await requireStaffRoleManagementSuperAdmin();
   if (response) return response;
+  if (!user) return apiFail("UNAUTHORIZED", "Sign in required", 401);
 
   const { invitationId } = await context.params;
   if (!idSchema.safeParse(invitationId).success) return apiFail("VALIDATION_FAILED", "Invalid invitation id", 422);
@@ -39,9 +41,8 @@ export async function POST(request: Request, context: { params: Promise<{ invita
   const prepared = preparedInvitation(data);
   if (!prepared) return apiFail("STAFF_INVITATION_FAILED", "Unable to prepare the staff invitation", 500);
   const delivery = await deliverPreparedInvitation(db, prepared, token, tokenHash);
-  if (!delivery.sent || !delivery.finalized) {
-    return apiFail("STAFF_INVITATION_DELIVERY_FAILED", "Email delivery could not be confirmed", 503);
-  }
-
-  return apiOk({ id: prepared.id, status: prepared.status, deliveryStatus: "sent", expiresAt: prepared.expires_at });
+  const deliveryStatus = !delivery.finalized ? "sending" : delivery.sent ? "sent" : "failed";
+  return mutationReceipt(db, user.id, "staff.invitation.resent", prepared.id, {
+    id: prepared.id, status: prepared.status, deliveryStatus, expiresAt: prepared.expires_at,
+  }, delivery.sent && delivery.finalized ? 200 : 202);
 }

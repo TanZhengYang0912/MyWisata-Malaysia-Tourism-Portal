@@ -203,6 +203,18 @@ export async function processEmailOutbox(limit = 2): Promise<{ sent: number; fai
             qrUrl: url.toString(),
           };
         });
+        const retailPickupPasses = pickupPasses.retailPickups.flatMap((pass) => {
+          if (pass.status !== 'pending' || !pass.retailToken) return [];
+          const url = new URL(orderUrl);
+          url.searchParams.set('retail_t', pass.retailToken);
+          return [{
+            kind: 'retail' as const,
+            title: pass.outletName,
+            subtitle: pass.vendorName,
+            details: [`${pass.quantity} × ${pass.name}${pass.variant ? ` · ${pass.variant}` : ''}`],
+            qrUrl: url.toString(),
+          }];
+        });
         accepted = await sendOrderReceiptEmail({
           delivery, locale,
           recipientEmail:row.to_email,recipientName:order.contact_name ?? copy.guest,orderId:order.id,orderReference:order.display_id ?? order.id,createdAt:order.created_at,paymentMethod:order.payment_method ?? 'free_reservation',
@@ -210,7 +222,7 @@ export async function processEmailOutbox(limit = 2): Promise<{ sent: number; fai
           subtotal:Number(order.subtotal),discount:Number(order.discount_amount),total:Number(order.total_amount),
           accessUrl: isGuest ? `${resolvePaymentAppUrl()}/customer/orders/access#token=${row.payload.guestAccessToken}` : orderUrl.toString(),
           voucherCode: order.voucher_code ?? undefined,
-          pickupPasses: [...foodPickupPasses, ...eventPickupPasses],
+          pickupPasses: [...foodPickupPasses, ...eventPickupPasses, ...retailPickupPasses],
         });
       } else if (row.event_type === 'kyc_security_alert') {
         accepted = await sendKycSecurityEmail({

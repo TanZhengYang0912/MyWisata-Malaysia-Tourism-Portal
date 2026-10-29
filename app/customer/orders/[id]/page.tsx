@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { BackLink } from "@/components/shared/back-link";
@@ -27,8 +27,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CustomerQrPassCard } from "@/components/customer/customer-qr-pass-card";
 import { BookingQrCode } from "@/components/customer/booking-qr-code";
-import { FoodOrderQrCodes } from "@/components/customer/food-order-qr-codes";
-import { EventPickupQrCodes } from "@/components/customer/event-pickup-qr-codes";
+import { OrderPickupQrCodes } from "@/app/customer/orders/[id]/order-pickup-qr-codes";
 import { Button } from "@/components/ui/button";
 import type { Booking, Order, Outlet } from "@/backend/core/types";
 import { productImageUrl } from "@/lib/storage/product-image";
@@ -43,6 +42,7 @@ function dateLabel(value: string, locale: string) {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "Asia/Kuala_Lumpur",
   });
 }
 
@@ -53,8 +53,16 @@ function dateTimeLabel(value: string, locale: string) {
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "Asia/Kuala_Lumpur",
   });
 }
+
+type PublicRefundStatus = {
+  status: "pending" | "approved" | "processed" | "rejected" | "failed" | "unknown";
+  amount: number;
+  createdAt: string;
+  processedAt: string | null;
+};
 
 function orderType(order: Order): "booking" | "product" | "mixed" {
   const hasBooking = order.items.some((item) => Boolean(item.slotStartsAt));
@@ -123,6 +131,10 @@ export default function OrderDetailPage() {
   const { currentUser } = useAuth();
 
   const [order, setOrder] = useState<Order | null | undefined>(undefined);
+  const [orderLoadError, setOrderLoadError] = useState(false);
+  const [bookingsUnavailable, setBookingsUnavailable] = useState(false);
+  const [outletsUnavailable, setOutletsUnavailable] = useState(false);
+  const orderLoadGeneration = useRef(0);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [copiedId, setCopiedId] = useState(false);
@@ -135,6 +147,8 @@ export default function OrderDetailPage() {
   const [refundModalOpen, setRefundModalOpen] = useState(false);
   const [refundMessage, setRefundMessage] = useState<string | null>(null);
   const [requestingRefund, setRequestingRefund] = useState(false);
+  const [refundStatus, setRefundStatus] = useState<PublicRefundStatus | null>(null);
+  const [refundStatusUnavailable, setRefundStatusUnavailable] = useState(false);
 
   const locale = i18n.resolvedLanguage || i18n.language || "en";
   const hasLegacyStayDetails = order && order.stayDetails && order.items.some((item) => item.categorySlug === "accommodation");
@@ -154,29 +168,45 @@ export default function OrderDetailPage() {
     }
   }
 
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const [nextOrder, nextOutlets] = await Promise.all([fetch(`/api/customer/orders/${params.id}`, { cache: "no-store" }).then(async response => {
-          if (!response.ok) return null;
-          return (await response.json()).data as { order: Order; bookings: Booking[] };
-        }), getOutlets()]);
-        if (!active) return;
-        setOrder(nextOrder?.order ?? null);
-        setOutlets(nextOutlets);
-        if (nextOrder) {
-          const nextBookings = nextOrder.bookings;
-          if (active) setBookings(nextBookings);
-        }
-      } catch {
-        if (active) setOrder(null);
+  const loadOrder = useCallback(async () => {
+    const generation = ++orderLoadGeneration.current;
+    setOrder(undefined);
+    setOrderLoadError(false);
+    try {
+      const response = await fetch(`/api/customer/orders/${params.id}`, { cache: "no-store" });
+      if (response.status === 404) {
+        if (generation === orderLoadGeneration.current) setOrder(null);
+        return;
       }
-    })();
-    return () => {
-      active = false;
-    };
+      if (!response.ok) throw new Error("order_load_failed");
+      const payload = await response.json() as { data: { order: Order; bookings: Booking[]; bookingsUnavailable?: boolean; refundStatus: PublicRefundStatus | null; refundStatusUnavailable: boolean } };
+      if (generation !== orderLoadGeneration.current) return;
+      setOrder(payload.data.order);
+      setBookings(payload.data.bookings ?? []);
+      setBookingsUnavailable(Boolean(payload.data.bookingsUnavailable));
+      setRefundStatus(payload.data.refundStatus ?? null);
+      setRefundStatusUnavailable(payload.data.refundStatusUnavailable ?? false);
+      // The outlet directory is optional context. Its outage must not hide a valid order.
+      try {
+        setOutlets(await getOutlets());
+        setOutletsUnavailable(false);
+      } catch {
+        if (generation === orderLoadGeneration.current) { setOutlets([]); setOutletsUnavailable(true); }
+      }
+    } catch {
+      if (generation === orderLoadGeneration.current) {
+        setOrder(undefined);
+        setOrderLoadError(true);
+      }
+    }
   }, [params.id]);
+
+  useEffect(() => {
+    // Start the async request and show its loading state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadOrder();
+    return () => { orderLoadGeneration.current += 1; };
+  }, [loadOrder]);
 
   useEffect(() => {
     if (!order || order.status !== "PENDING_PAYMENT") return;
@@ -206,7 +236,8 @@ export default function OrderDetailPage() {
   async function handleRefundSubmit(reason: string, reasonCode?: string) {
     if (!order || requestingRefund) return;
     const fullReason = reason.trim();
-    if (fullReason.length < 5) return;
+    if (reasonCode !== "other" && fullReason.length < 1) return;
+    if (reasonCode === "other" && fullReason.length < 5) return;
 
     setRequestingRefund(true);
     setRefundMessage(null);
@@ -221,6 +252,11 @@ export default function OrderDetailPage() {
       if (response.ok) {
         setRefundMessage(tCustomer("ui.orders.refundSubmitted"));
         setRefundModalOpen(false);
+        const refreshed = await fetch(`/api/customer/orders/${order.id}`, { cache: "no-store" }).then(async (result) => result.ok ? (await result.json()).data as { refundStatus: PublicRefundStatus | null; refundStatusUnavailable: boolean } : null).catch(() => null);
+        if (refreshed) {
+          setRefundStatus(refreshed.refundStatus);
+          setRefundStatusUnavailable(refreshed.refundStatusUnavailable);
+        }
       } else {
         setRefundMessage(payload.error?.message ?? tCustomer("ui.orders.refundError"));
       }
@@ -277,6 +313,10 @@ export default function OrderDetailPage() {
     }
   }
 
+  if (order === undefined && orderLoadError) {
+    return <div className="mx-auto max-w-5xl px-4 py-16 text-center sm:px-6"><p role="alert" className="text-sm text-destructive">{tCustomer("ui.orders.detailLoadError")}</p><Button className="mt-4" variant="outline" onClick={() => void loadOrder()}>{tCustomer("ui.actions.retry")}</Button></div>;
+  }
+
   if (order === undefined) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-16 text-center text-sm text-muted-foreground sm:px-6">
@@ -307,8 +347,7 @@ export default function OrderDetailPage() {
       <div className="print:hidden">
         <CustomerPageTitle
           eyebrow={tCustomer("ui.labels.history")}
-          title={isPaid ? tCustomer("ui.booking.confirmedInfo") : tCustomer("ui.booking.details")}
-          description={tCustomer("ui.orders.description")}
+          title={tCustomer("ui.orders.details")}
           icon={<ReceiptText size={14} />}
           actions={
             <>
@@ -329,6 +368,7 @@ export default function OrderDetailPage() {
         />
 
         <CustomerPageShell wide className="pt-4 sm:pt-6">
+          {(bookingsUnavailable || outletsUnavailable) && <div role="status" className="mb-4 rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground"><p>{tCustomer("ui.orders.relatedDetailsUnavailable")}</p><Button className="mt-2" size="sm" variant="outline" onClick={() => void loadOrder()}>{tCustomer("ui.actions.retry")}</Button></div>}
           {refundMessage && (
             <div className="mb-6 flex items-center justify-between rounded-2xl border border-primary/20 bg-secondary/80 px-4 py-3 text-sm font-semibold text-primary shadow-sm">
               <span>{refundMessage}</span>
@@ -341,6 +381,12 @@ export default function OrderDetailPage() {
               </button>
             </div>
           )}
+          {refundStatusUnavailable && <p role="status" className="mb-4 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">{tCustomer("ui.orders.refundStatusUnavailable")}</p>}
+          {refundStatus && <section aria-label={tCustomer("ui.orders.refundStatusTitle")} className="mb-4 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
+            <h2 className="text-sm font-bold text-foreground">{tCustomer("ui.orders.refundStatusTitle")}: {tCustomer(`ui.orders.refundStatuses.${refundStatus.status}`)}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.orders.refundStatusDetail", { amount: formatMYR(refundStatus.amount), date: dateTimeLabel(refundStatus.createdAt, locale) })}</p>
+            {refundStatus.processedAt && <p className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.orders.refundProcessedAt", { date: dateTimeLabel(refundStatus.processedAt, locale) })}</p>}
+          </section>}
 
           {/* Top Order Metadata Banner Card (Consistent with Figure 1 styling) */}
           <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6">
@@ -541,8 +587,7 @@ export default function OrderDetailPage() {
                   </div>
                 </section>
               )}
-              {isPaid && <FoodOrderQrCodes orderId={order.id} />}
-              {isPaid && <EventPickupQrCodes orderId={order.id} />}
+              {isPaid && <OrderPickupQrCodes key={`${order.id}:${currentUser?.id ?? "guest-session"}`} orderId={order.id} />}
             </div>
 
             {/* Right Column: Order Summary & Quick Action Card (1 Col) */}
@@ -685,7 +730,7 @@ export default function OrderDetailPage() {
                     {tCustomer("ui.actions.printReceipt")}
                   </Button>
 
-                  {isPaid && (
+                  {isPaid && !["pending", "approved", "processed"].includes(refundStatus?.status ?? "") && (
                     <Button
                       type="button"
                       variant="outline"
@@ -762,7 +807,7 @@ export default function OrderDetailPage() {
               {tCustomer("ui.orders.merchant")}
             </p>
             <p className="mt-1 font-bold text-sm text-gray-900 dark:text-foreground">
-              {primaryOutlet?.name || "MyLawatan Marketplace Merchant"}
+              {primaryOutlet?.name || "MYLawatan Marketplace Merchant"}
             </p>
             {primaryOutlet?.city && (
               <p className="text-gray-600 dark:text-muted-foreground mt-0.5">

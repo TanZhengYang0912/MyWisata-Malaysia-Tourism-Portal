@@ -2,7 +2,9 @@
 
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/providers/auth";
 import { Bookmark, Compass, MapPin, PackageOpen } from "lucide-react";
 import type { ComputedActivity } from "@/backend/core/types";
 import { ActivityCard } from "@/components/customer/activity-card";
@@ -33,19 +35,30 @@ function EmptySavedState({ tab }: { tab: SavedTab }) {
   );
 }
 
-export function SavedHubClient({ activities, destinations, hotelRooms = [] }: { activities: ComputedActivity[]; destinations: SavedDestinationRow[]; hotelRooms?: ComputedActivity[] }) {
+export function SavedHubClient({ ownerId, activities, destinations, hotelRooms = [] }: { ownerId: string; activities: ComputedActivity[]; destinations: SavedDestinationRow[]; hotelRooms?: ComputedActivity[] }) {
   const { t: tCustomer } = useTranslation("customer");
-  const { savedStates, savedAt, loading } = useSavedDestinations();
-  const { savedIds, hydrated: productsHydrated, savedOutletIds, loading: wishlistLoading } = useWishlist();
+  const { currentUser, loading: authLoading } = useAuth();
+  const { savedStates, savedAt, hydrated: placesHydrated, denied: placesDenied } = useSavedDestinations();
+  const { savedIds, hydrated: productsHydrated, savedOutletIds, outletHydrated, denied, outletDenied, revision } = useWishlist();
+  const router = useRouter();
+  const [refreshingCards, startRefresh] = useTransition();
+  const attemptedRefresh = useRef('');
+  const owned = !authLoading && currentUser?.id === ownerId;
+  const needsOwnerSnapshot = !authLoading && Boolean(currentUser) && !owned;
+  useEffect(() => { attemptedRefresh.current = ''; }, [currentUser?.id, ownerId]);
   const [tab, setTab] = useState<SavedTab>("all");
-  // Unsaving a hotel hides its card at once; until the provider loads, trust the server list.
-  const hotels = groupAccommodationByProperty(hotelRooms).filter((hotel) => wishlistLoading || savedOutletIds.has(hotel.outlet.id));
+  // Server snapshots remain useful after an initial read failure, but never
+  // after denial or for a different authenticated owner.
+  const hotels = groupAccommodationByProperty(hotelRooms).filter((hotel) => !outletDenied && (!outletHydrated || savedOutletIds.has(hotel.outlet.id)));
   const initialStates = new Set(destinations.map((destination) => destination.state));
-  const effectiveSavedStates = loading ? initialStates : savedStates;
+  const effectiveSavedStates = placesDenied ? new Set<string>() : placesHydrated ? savedStates : initialStates;
   const initialProductIds = new Set(activities.map((activity) => activity.id));
-  const effectiveSavedIds = productsHydrated ? savedIds : initialProductIds;
+  const effectiveSavedIds = denied ? new Set<string>() : productsHydrated ? savedIds : initialProductIds;
   const savedProducts = activities.filter((activity) => effectiveSavedIds.has(activity.id));
-  const savedPlaces = destinations
+  const destinationRows = placesHydrated
+    ? [...savedStates].map(state => ({ state, savedAt: savedAt.get(state) ?? '' }))
+    : destinations;
+  const savedPlaces = destinationRows
     .filter((destination) => effectiveSavedStates.has(destination.state))
     .map((record) => ({
       record,
@@ -62,6 +75,40 @@ export function SavedHubClient({ activities, destinations, hotelRooms = [] }: { 
   const showPlaces = tab === "all" || tab === "places";
   const showExperiences = tab === "all" || tab === "experiences";
   const hasVisibleContent = (showPlaces && savedPlaces.length > 0) || (showExperiences && (hotels.length > 0 || savedProducts.length > 0));
+
+  const availableOutlets = new Set(hotelRooms.map(room => room.outlet.id));
+  const missingCards = owned ? [
+    ...(!denied && productsHydrated ? [...savedIds].filter(id => !initialProductIds.has(id)).map(id => `product:${id}`) : []),
+    ...(!outletDenied && outletHydrated ? [...savedOutletIds].filter(id => !availableOutlets.has(id)).map(id => `outlet:${id}`) : []),
+  ].sort().join('|') : '';
+  useEffect(() => {
+    if ((!missingCards && !needsOwnerSnapshot) || refreshingCards) return;
+    const signature = needsOwnerSnapshot
+      ? `owner:${currentUser?.id}:server:${ownerId}`
+      : `${ownerId}:${revision}:${missingCards}`;
+    if (attemptedRefresh.current === signature) return;
+    let timer: number | null = null;
+    const schedule = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      if (document.visibilityState !== 'visible' || attemptedRefresh.current === signature) return;
+      timer = window.setTimeout(() => {
+        if (document.visibilityState !== 'visible') return;
+        attemptedRefresh.current = signature;
+        // RSC merges preserve this page's tab and scroll; never reload Profile.
+        startRefresh(() => router.refresh());
+      }, 250);
+    };
+    schedule();
+    document.addEventListener('visibilitychange', schedule);
+    window.addEventListener('focus', schedule);
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      document.removeEventListener('visibilitychange', schedule);
+      window.removeEventListener('focus', schedule);
+    };
+  }, [currentUser?.id, missingCards, needsOwnerSnapshot, ownerId, refreshingCards, revision, router]);
+
+  if (!owned) return null;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-10">

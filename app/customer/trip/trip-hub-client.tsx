@@ -36,6 +36,7 @@ export function TripHubClient({ initialTrips, initialTripNameSequence, hasLegacy
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
   const [nameSuggestionsLoading, setNameSuggestionsLoading] = useState(false);
   const [nameSuggestionsFallback, setNameSuggestionsFallback] = useState(false);
+  const [nameSuggestionsPrivacyBlocked, setNameSuggestionsPrivacyBlocked] = useState(false);
   const [nameSuggestionError, setNameSuggestionError] = useState<"phone" | "generic" | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [tripFilters, setTripFilters] = useState<TripFilters>(DEFAULT_TRIP_FILTERS);
@@ -64,6 +65,7 @@ export function TripHubClient({ initialTrips, initialTripNameSequence, hasLegacy
     setCreateEndDate(dates.to);
     setNameSuggestions([]);
     setNameSuggestionsFallback(false);
+    setNameSuggestionsPrivacyBlocked(false);
     setNameSuggestionError(null);
     setIsCreating(true);
   };
@@ -110,7 +112,7 @@ export function TripHubClient({ initialTrips, initialTripNameSequence, hasLegacy
         }),
       });
       const body = await response.json() as {
-        data: { suggestions: string[]; aiAvailable: boolean } | null;
+        data: { suggestions: string[]; aiAvailable: boolean; privacyBlocked?: boolean } | null;
         error: { code?: string } | null;
       };
       if (!response.ok || !body.data?.suggestions.length) {
@@ -120,6 +122,7 @@ export function TripHubClient({ initialTrips, initialTripNameSequence, hasLegacy
       setNameSuggestions(body.data.suggestions);
       setTripName(body.data.suggestions[0]);
       setNameSuggestionsFallback(!body.data.aiAvailable);
+      setNameSuggestionsPrivacyBlocked(Boolean(body.data.privacyBlocked));
     } catch {
       setNameSuggestionError("generic");
     } finally {
@@ -196,7 +199,7 @@ export function TripHubClient({ initialTrips, initialTripNameSequence, hasLegacy
                   </div>
                 </div>
               )}
-              {nameSuggestionsFallback && <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">{t("ui.trip.aiNameFallback")}</p>}
+              {nameSuggestionsFallback && <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">{t(nameSuggestionsPrivacyBlocked ? "ui.trip.aiNamePrivacyFallback" : "ui.trip.aiNameFallback")}</p>}
               {nameSuggestionError && <p className="mt-2 text-xs text-destructive">{t(nameSuggestionError === "phone" ? "ui.trip.aiNamePhoneRequired" : "ui.trip.aiNameError")}</p>}
             </div>
             <div className="mt-5 flex justify-end gap-3">
@@ -267,7 +270,6 @@ export function TripHubClient({ initialTrips, initialTripNameSequence, hasLegacy
           <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-card px-6 py-24 text-center shadow-sm">
             <Navigation className="mb-4 h-12 w-12 text-primary opacity-50" />
             <h3 className="text-lg font-bold text-foreground">{t("ui.trip.emptyTitle")}</h3>
-            <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">{t("ui.trip.emptyDescription")}</p>
             <button onClick={openCreateForm} className="mt-6 rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-white transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/30">
               {t("ui.trip.createFirst")}
             </button>

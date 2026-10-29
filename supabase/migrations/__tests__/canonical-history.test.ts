@@ -7,6 +7,14 @@ const baselinePath = resolve(process.cwd(), "supabase/canonical-migration-baseli
 // Keep post-baseline migrations explicit; this is separate from the canonical baseline.
 const approvedForwardMigrations = [
   "20261025235303_platform_transfer_log.sql",
+  "20261027145912_retail_pickup_redemption.sql",
+  "20261027145914_enable_retail_pickup_guard.sql",
+  "20261028014800_filter_vendor_redemption_stats.sql",
+  "20261028045801_notify_super_admin_on_withdrawal_escalation.sql",
+  "20261027085814_required_short_bio_length.sql",
+  "20261027083144_avatar_signed_upload_metadata_policy.sql",
+  "20261027020606_normalize_mylawatan_brand_casing.sql",
+  "20261026170238_refresh_mylawatan_knowledge_base_brand.sql",
   "20261025175421_catalogue_review_delivery_source_guard.sql",
   "20261025102757_financial_operations_aggregate_scan_optimization.sql",
   "20261025102035_financial_operations_lifetime_totals.sql",

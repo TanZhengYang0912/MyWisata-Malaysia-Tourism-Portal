@@ -5,7 +5,8 @@ import { useTranslation } from "react-i18next";
 // CLAUDE-FIXES.md Fix 3. Now reachable from the main customer nav
 // (app/customer/layout.tsx's "Earn & Share" entry) — Fix 3a.
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useVisibleReviewRefresh } from "@/hooks/use-visible-review-refresh";
 import Link from "next/link";
 import { Copy, Gift, Link2, Megaphone, Share2, Wallet } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
@@ -44,6 +45,12 @@ interface StatsResponse {
 type SortKey = "shares" | "clicks" | "referrals" | "earnings";
 
 export default function AffiliateDashboardPage() {
+  const { currentUser, capabilities } = useAuth();
+  const eligible = capabilities.affiliate_full.allowed || capabilities.affiliate_limited.allowed;
+  return <AffiliateDashboardOwner key={`${currentUser?.id ?? 'guest'}:${eligible}`} />;
+}
+
+function AffiliateDashboardOwner() {
   const { t: tCustomer } = useTranslation("customer");
   const { currentUser, capabilities, loading: authLoading } = useAuth();
   const gate = useCustomerCapabilityGate();
@@ -61,33 +68,35 @@ export default function AffiliateDashboardPage() {
   // CLAUDE-CAMPAIGN-CLEARING-TRANSLATE.md Feature 1.
   const [campaignInput, setCampaignInput] = useState("");
   const [campaignCopied, setCampaignCopied] = useState(false);
+  const alive = useRef(true);
+  const linkEpoch = useRef(0);
+  const linkRequest = useRef<AbortController | null>(null);
+  useEffect(() => {
+    alive.current = true;
+    return () => { alive.current = false; linkRequest.current?.abort(); };
+  }, []);
 
-  async function loadStats() {
+  const loadStats = useCallback(async (signal: AbortSignal) => {
+    const epoch = linkEpoch.current;
     try {
-      const res = await fetch("/api/affiliate/stats");
+      const res = await fetch("/api/affiliate/stats", { cache: 'no-store', signal });
+      if (!alive.current || signal.aborted) return;
       if (!res.ok) {
-        setStats(null);
-        return;
+        if (res.status === 401 || res.status === 403) setStats(null);
+        throw Object.assign(new Error('Affiliate statistics unavailable'), { status: res.status });
       }
       const body = (await res.json()) as { data: StatsResponse | null };
-      setStats(body.data);
-    } catch {
-      setStats(null);
+      if (alive.current && !signal.aborted && epoch === linkEpoch.current) setStats(body.data);
+    } catch (error) {
+      if (alive.current && !signal.aborted) setStats(previous => previous === undefined ? null : previous);
+      throw error;
     }
-  }
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      if (!currentUser || !affiliateEligible) {
-        setStats(null);
-        return;
-      }
-      void loadStats();
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [affiliateEligible, currentUser?.id]);
+  }, []);
+  const statsRefresh = useVisibleReviewRefresh({
+    enabled: !authLoading && Boolean(currentUser) && affiliateEligible,
+    onRefresh: loadStats, intervalMs: null, identityKey: currentUser?.id,
+    refreshKey: currentUser, initialRefresh: true, coalesceMs: 250,
+  });
 
   const sortedProducts = useMemo(() => {
     if (!stats) return [];
@@ -114,20 +123,29 @@ export default function AffiliateDashboardPage() {
   }
 
   async function generateLink() {
-    if (generating) return;
+    if (generating || linkRequest.current || !alive.current) return;
     if (!gate(affiliateCapability, "/customer/affiliate")) return;
+    const controller = new AbortController();
+    linkRequest.current = controller;
+    linkEpoch.current += 1;
     setGenerating(true);
     try {
-      const response = await fetch("/api/affiliate/link", { method: "POST" });
+      const response = await fetch("/api/affiliate/link", { method: "POST", signal: controller.signal });
+      if (!alive.current || controller.signal.aborted) return;
       if (await gate.handleResponse(response, "/customer/affiliate")) return;
+      if (!alive.current || controller.signal.aborted) return;
       await response.json().catch(() => ({}));
+      if (!alive.current || controller.signal.aborted) return;
       if (!response.ok) { showFeedback("error", tCustomer("strictMigration.affiliate.createLinkFailed")); return; }
       showFeedback("success", tCustomer("strictMigration.affiliate.linkReady"));
     } catch {
-      showFeedback("error", tCustomer("strictMigration.affiliate.createLinkFailed"));
+      if (alive.current && !controller.signal.aborted) showFeedback("error", tCustomer("strictMigration.affiliate.createLinkFailed"));
     } finally {
-      setGenerating(false);
-      loadStats();
+      if (alive.current && linkRequest.current === controller) {
+        linkRequest.current = null;
+        setGenerating(false);
+        statsRefresh.refresh();
+      }
     }
   }
 
@@ -161,7 +179,7 @@ export default function AffiliateDashboardPage() {
     }
   }
 
-  if (authLoading || stats === undefined) {
+  if (authLoading || (currentUser && affiliateEligible && stats === undefined && !statsRefresh.hasRefreshError)) {
     return <CustomerPageShell><div className="py-8 text-sm text-muted-foreground">{tCustomer("ui.affiliate.loadingDashboard")}</div></CustomerPageShell>;
   }
 
@@ -170,7 +188,6 @@ export default function AffiliateDashboardPage() {
       <CustomerPageTitle
         eyebrow={tCustomer("ui.recommendations.community")}
         title={tCustomer("accountItems.earnShare.label")}
-        description={tCustomer("strictMigration.affiliate.description")}
         icon={<Gift size={14} />}
       />
       <CustomerPageShell>
@@ -207,11 +224,12 @@ export default function AffiliateDashboardPage() {
     );
   }
 
-  if (stats === null) {
+  if (stats == null) {
     return (
       <CustomerPageShell><EmptyState
         title={tCustomer("ui.states.noStats")}
         description={tCustomer("strictMigration.affiliate.loadFailed")}
+        action={<Button onClick={statsRefresh.refresh}>{tCustomer('ui.actions.retry')}</Button>}
       /></CustomerPageShell>
     );
   }
@@ -225,11 +243,15 @@ export default function AffiliateDashboardPage() {
       <CustomerPageTitle
         eyebrow={tCustomer("ui.recommendations.community")}
         title={tCustomer("accountItems.earnShare.label")}
-        description={tCustomer("strictMigration.affiliate.description")}
         icon={<Gift size={14} />}
       />
 
       <CustomerPageShell wide className="pt-0 sm:pt-0">
+
+      {statsRefresh.hasRefreshError && <div role="status" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+        <p>{tCustomer('ui.backgroundRefresh.staleData')}</p>
+        <Button variant="outline" onClick={statsRefresh.refresh}>{tCustomer('ui.actions.retry')}</Button>
+      </div>}
 
       {!capabilities.affiliate_full.allowed && (
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/20 bg-primary/[0.04] p-5">

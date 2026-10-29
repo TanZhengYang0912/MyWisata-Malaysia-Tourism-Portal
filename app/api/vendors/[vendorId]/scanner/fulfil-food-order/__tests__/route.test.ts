@@ -44,6 +44,7 @@ describe("vendor food order fulfilment", () => {
     }), { params: Promise.resolve({ vendorId: ids.vendor }) });
     expect(response.status).toBe(200);
     expect((await response.json()).data).toMatchObject({ mode: "takeaway", status: "fulfilled" });
+    expect(mocks.authorizeVendor).toHaveBeenCalledWith(ids.vendor, undefined, { requireApproved: true });
     expect(mocks.rpc).toHaveBeenCalledWith("fulfil_food_order_group", {
       p_order_id: ids.order,
       p_outlet_id: ids.outlet,

@@ -40,4 +40,19 @@ describe('durable approval notifications', () => {
     await expect(processWithdrawalApproverNotifications()).rejects.toThrow('notification_batch_unconfirmed');
     expect(mocks.rpc).toHaveBeenLastCalledWith('finish_withdrawal_approver_job', expect.objectContaining({ p_cursor: null, p_failed: true }));
   });
+  it('keeps overdue escalation email intents distinct from approval-stage intents', async () => {
+    mocks.rpc.mockImplementation((name: string) => {
+      const data = name === 'claim_withdrawal_approver_job' ? { withdrawalId: id(5), cycle: 1, stage: 'overdue', cursor: null, token: id(6), customerUserId: id(7) }
+        : name === 'deliver_withdrawal_approver_notifications' ? { stale: false, recipients: [{ id: id(8), email: 'superadmin@example.test', full_name: 'Admin', preferred_locale: 'en' }] }
+        : true;
+      const result = { data, error: null };
+      return Object.assign(Promise.resolve(result), { abortSignal: async () => result });
+    });
+    await expect(processWithdrawalApproverNotifications()).resolves.toEqual({ recipients: 1 });
+    expect(mocks.enqueue).toHaveBeenCalledWith(expect.objectContaining({
+      eventKey: `withdrawal_overdue:${id(5)}:cycle:1:approver:${id(8)}`,
+      reason: 'An overdue withdrawal needs Super Admin attention in the protected Admin workspace.',
+    }), expect.anything());
+    expect(mocks.rpc).toHaveBeenLastCalledWith('finish_withdrawal_approver_job', expect.objectContaining({ p_stage: 'overdue', p_complete: true }));
+  });
 });

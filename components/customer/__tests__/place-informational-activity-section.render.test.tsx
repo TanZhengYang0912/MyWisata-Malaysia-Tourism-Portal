@@ -58,7 +58,7 @@ async function render() {
         ticketLabel="Ticket required"
         informationLabel="Venue information"
         venueDetailsLabel="View details"
-        venueDetailsHint="Details open here in MyLawatan"
+        venueDetailsHint="Details open here in MYLawatan"
         venue={{ name: "Central Market Kuala Lumpur", location: "Kuala Lumpur, Kuala Lumpur", entry: "Free entry", detail: null }}
         detailsLabels={{
           venue: "Venue",

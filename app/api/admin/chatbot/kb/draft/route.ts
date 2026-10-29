@@ -20,6 +20,7 @@ import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { draftKbEntry } from '@/lib/chatbot/kb-draft';
 import { answerQuestion as matchKeyword, type KbDoc } from '@/lib/chatbot/match';
 import { classifyTicket } from '@/lib/chatbot/classify';
+import { prepareExternalText } from '@/lib/chatbot/pii';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -56,6 +57,10 @@ export async function POST(request: Request) {
     category: row.category,
   }));
   const existingMatch = matchKeyword(question, docs);
+  const privacyCheck = prepareExternalText(`QUESTION: ${question}${existingMatch?.body ? `\nEXISTING ANSWER: ${existingMatch.body}` : ''}`);
+  if (!privacyCheck.allowed) {
+    return apiFail('PERSONAL_DATA_WITHHELD', 'The draft request was not sent to AI because it may contain personal details. Remove phone, email, identity, bank, or private-address details, or write the knowledge-base entry manually.', 422);
+  }
 
   const draft = await draftKbEntry(question, existingMatch?.body ?? null);
   if (!draft) return apiFail('DRAFT_UNAVAILABLE', 'Could not draft a KB entry right now — try again, or write one manually.', 502);

@@ -1,5 +1,4 @@
 import 'server-only';
-import { redactPII } from '@/lib/chatbot/pii';
 import { generateAiText, type AiProvider, type AiUnavailableReason } from '@/lib/ai/provider';
 
 export type ContentSurface = 'business_profile' | 'outlet_page' | 'inbox_reply';
@@ -45,10 +44,9 @@ export function parseContentDraft(surface: ContentSurface, content: string): str
 
 export async function generateContentDraft(surface: ContentSurface, context: Record<string, unknown>): Promise<ContentDraftResult> {
   const prompt = buildContentPrompt(surface, context);
-  const safePrompt = redactPII(prompt).clean;
   const result = await generateAiText(
-    'You are a careful writing assistant for MyLawatan, a Malaysian tourism platform. Ground every output in the supplied facts and never fabricate operational details.',
-    safePrompt,
+    'You are a careful writing assistant for MYLawatan, a Malaysian tourism platform. Ground every output in the supplied facts and never fabricate operational details.',
+    prompt,
     { temperature: 0.35, maxTokens: surface === 'outlet_page' ? 350 : 450 },
   );
   if (!result.available) return result;

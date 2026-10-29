@@ -1,17 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, from: mocks.from })) }));
+vi.mock("@/lib/supabase/service", () => ({ createServiceClient: vi.fn(() => ({ from: mocks.from })) }));
 
 import { GET } from "../route";
 import { verifyTicketPassToken } from "@/lib/tickets/tokens";
 import { verifyFoodFulfilmentToken } from "@/lib/food/food-fulfilment-token";
 import { verifyEventPickupToken } from "@/lib/events/event-pickup-token";
+import { verifyRetailPickupToken } from "@/lib/orders/retail-pickup-token";
+import { hashGuestCredential } from "@/lib/checkout/guest-session";
 
 function query(data: unknown, error: { code: string; message: string } | null = null) {
   const result = Promise.resolve({ data, error });
   const builder: Record<string, unknown> = {};
-  for (const key of ["select", "eq"]) builder[key] = vi.fn(() => builder);
+  for (const key of ["select", "eq", "is", "gt"]) builder[key] = vi.fn(() => builder);
   builder.maybeSingle = vi.fn(() => result);
   builder.then = result.then.bind(result);
   return builder;
@@ -171,5 +174,104 @@ describe("GET customer order QR passes", () => {
     expect(verifiedMorning.valid).toBe(true);
     expect(verifiedMorning.claims).toMatchObject({ orderId: "1d4057cf-c821-4b05-a454-61dbdc42d32c", vendorId: "vendor-e", locationId: "loc-1", pickupDate: "2099-12-31", pickupSlotId: "44444444-4444-4444-8444-444444444444" });
     expect(verifyEventPickupToken(afternoon.eventToken).claims).toMatchObject({ pickupSlotId: "55555555-5555-4555-8555-555555555555" });
+  });
+});
+
+describe('retail pickup database UUID compatibility through real order authorization', () => {
+  const ids = { orderId: '10000000-0000-4000-8000-000000000001', orderItemId: '10000000-0000-4000-8000-000000000002', vendorId: 'bbbbbbbb-2222-accc-3ddd-000000000003', outletId: 'cccccccc-dddd-aeee-3fff-111111111111' };
+  const secret = 'synthetic-guest-uuid-regression-secret';
+  const credential = 'A'.repeat(43);
+  let subject: 'account' | 'guest';
+  let sessionAvailable: boolean;
+  let orderStatus: string;
+  let fulfilStatus: string;
+  let scannedAt: string | null;
+  let refundStatus: string | null;
+  let vendorStatus: string;
+  let outletStatus: string;
+  const reads: Array<{ table: string; builder: ReturnType<typeof query> }> = [];
+  function request(cookie: string | null = credential) {
+    return new Request(`https://portal.example.test/api/customer/orders/${ids.orderId}/qr-passes`, {
+      headers: cookie === null ? {} : { cookie: `__Host-mylawatan-order-access=${cookie}` },
+    });
+  }
+  async function load(cookie: string | null = credential) {
+    return GET(request(cookie), { params: Promise.resolve({ orderId: ids.orderId }) });
+  }
+  beforeEach(() => {
+    vi.clearAllMocks(); reads.length = 0;
+    subject = 'guest'; sessionAvailable = true; orderStatus = 'paid'; fulfilStatus = 'pending';
+    scannedAt = null; refundStatus = null; vendorStatus = 'approved'; outletStatus = 'active';
+    vi.stubEnv('RETAIL_PICKUP_QR_SECRET', secret);
+    mocks.getUser.mockImplementation(async () => ({ data: { user: subject === 'account' ? { id: 'customer-1' } : null }, error: null }));
+    mocks.from.mockImplementation((table: string) => {
+      let data: unknown = [];
+      if (table === 'guest_order_access_sessions') data = sessionAvailable ? { order_id: ids.orderId, created_at: '2020-01-01T00:00:00Z' } : null;
+      if (table === 'orders') data = { id: ids.orderId, status: orderStatus, user_id: subject === 'account' ? 'customer-1' : null, guest_subject_id: subject === 'guest' ? 'guest-fixture' : null, guest_session_revoked_at: null };
+      if (table === 'order_items') data = [{
+        id: ids.orderItemId, vendor_id: ids.vendorId, outlet_id: ids.outletId, product_name: 'Synthetic retail', variant_name: 'Box', quantity: 2,
+        food_fulfilment_mode: null, food_qr_scanned_at: null, retail_qr_scanned_at: scannedAt, fulfil_status: fulfilStatus,
+        event_location_id: null, event_listing_id: null, slot_starts_at: null,
+        products: { requires_booking: false, product_type: 'product', categories: { slug: 'retail' } },
+        outlets: { id: ids.outletId, name: 'Synthetic outlet', status: outletStatus, vendor_id: ids.vendorId, vendors: { id: ids.vendorId, name: 'Synthetic vendor', status: vendorStatus } },
+      }];
+      if (table === 'refunds') data = refundStatus ? [{ status: refundStatus, provider_refund_id: null, provider_failure_code: null, provider_failure_message: null }] : [];
+      const builder = query(data); reads.push({ table, builder }); return builder;
+    });
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it.each(['account', 'guest'] as const)('issues a verified legacy-ID retail token for a paid %s order', async kind => {
+    subject = kind;
+    const response = await load();
+    expect(response.status).toBe(200);
+    const pass = (await response.json()).data.retailPickups[0];
+    expect(pass).toMatchObject({ orderItemId: ids.orderItemId, quantity: 2, status: 'pending' });
+    expect(verifyRetailPickupToken(pass.retailToken, secret)).toMatchObject({ valid: true, claims: ids });
+    const orderRead = reads.find(read => read.table === 'orders')!.builder;
+    expect(orderRead.eq).toHaveBeenCalledWith('id', ids.orderId);
+    if (kind === 'guest') {
+      const sessionRead = reads.find(read => read.table === 'guest_order_access_sessions')!.builder;
+      expect(sessionRead.eq).toHaveBeenCalledWith('token_hash', hashGuestCredential(credential));
+      expect(sessionRead.eq).toHaveBeenCalledWith('order_id', ids.orderId);
+      expect(sessionRead.is).toHaveBeenCalledWith('revoked_at', null);
+      expect(sessionRead.gt).toHaveBeenCalledWith('expires_at', expect.any(String));
+      expect(orderRead.is).toHaveBeenCalledWith('user_id', null);
+    } else expect(orderRead.eq).toHaveBeenCalledWith('user_id', 'customer-1');
+  });
+
+  it.each([null, 'invalid-cookie'])('denies a Guest without a valid credential: %s', async cookie => {
+    expect((await load(cookie)).status).toBe(404);
+    expect(reads).toHaveLength(0);
+  });
+  it('denies a Guest session lookup with no exact unrevoked and unexpired match', async () => {
+    sessionAvailable = false;
+    expect((await load()).status).toBe(404);
+    expect(reads.map(read => read.table)).toEqual(['guest_order_access_sessions']);
+    const sessionRead = reads[0].builder;
+    expect(sessionRead.eq).toHaveBeenCalledWith('order_id', ids.orderId);
+    expect(sessionRead.is).toHaveBeenCalledWith('revoked_at', null);
+    expect(sessionRead.gt).toHaveBeenCalledWith('expires_at', expect.any(String));
+  });
+  it('does not issue a token before payment', async () => { orderStatus = 'pending_payment'; expect((await load()).status).toBe(409); });
+  it.each([
+    ['pending', null, 'pending', 'refund_paused'],
+    ['fulfilled', '2026-10-28T00:00:00Z', null, 'collected'],
+    ['fulfilled', null, null, 'legacy_completed'],
+  ])('does not issue an active token for %s / %s / refund=%s', async (fulfil, scanned, refund, expected) => {
+    fulfilStatus = fulfil!; scannedAt = scanned; refundStatus = refund;
+    const response = await load();
+    expect(response.status).toBe(200);
+    expect((await response.json()).data.retailPickups[0]).toMatchObject({ status: expected, retailToken: null });
+  });
+  it('excludes cancelled retail lines', async () => {
+    fulfilStatus = 'cancelled';
+    expect((await (await load()).json()).data.retailPickups).toEqual([]);
+  });
+  it.each(['vendor', 'outlet'])('refuses a code for unavailable %s identity', async kind => {
+    if (kind === 'vendor') vendorStatus = 'pending'; else outletStatus = 'inactive';
+    const response = await load();
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.code).toBe('MERCHANT_IDENTITY_UNAVAILABLE');
   });
 });

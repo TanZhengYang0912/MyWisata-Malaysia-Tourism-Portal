@@ -28,6 +28,7 @@ function queryFor(column: string, value: string) {
     eq: vi.fn((name: string, input: string) => { if (name === column && input === value) query.result = orders.filter((order) => order[name as 'id' | 'display_id'] === input); return query; }),
     is: vi.fn(() => query),
     not: vi.fn(() => query),
+    in: vi.fn(() => query),
     maybeSingle: vi.fn(async () => ({ data: query.result[0] ?? null, error: null })),
     result: [] as typeof orders,
   };
@@ -71,5 +72,6 @@ describe('Guest order recovery references', () => {
     }));
     expect(ambiguous.status).toBe(200);
     expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 });

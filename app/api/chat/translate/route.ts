@@ -18,6 +18,7 @@ import { z } from 'zod';
 import { translateMessage } from '@/lib/chat/translate';
 import { accessibleChatThreadIds } from '@/lib/chat/authorization';
 import { reserveAiQuota } from '@/lib/rate-limit/ai';
+import { prepareExternalText } from '@/lib/chatbot/pii';
 
 const chatTranslateSchema = z.object({
   messageId: z.string().uuid(),
@@ -68,6 +69,10 @@ export async function POST(request: Request) {
   if (cacheError) return apiFail('DB_ERROR', cacheError.message, 500);
   if (cached) return apiOk({ translatedText: cached.translated_text, cached: true });
 
+  if (!prepareExternalText(message.body).allowed) {
+    return apiFail('TRANSLATION_PRIVACY_BLOCKED', 'This message was kept from AI because it may contain personal details. The original remains available; remove phone, email, identity, bank, or private-address details and retry, or translate it manually.', 422);
+  }
+
   if (!(await reserveAiQuota(request, 'chat-translate', user.id, 60))) {
     return apiFail('RATE_LIMITED', 'Too many translations right now. Please try again in a few minutes.', 429);
   }
@@ -77,6 +82,9 @@ export async function POST(request: Request) {
     translatedText = await translateMessage(message.body, targetLang);
   } catch (err) {
     console.error('[chat/translate] translation failed', err instanceof Error ? err.message : err);
+    if (err instanceof Error && err.message === 'sensitive_data_detected') {
+      return apiFail('TRANSLATION_PRIVACY_BLOCKED', 'This message was kept from AI because it may contain personal details. The original remains available; remove phone, email, identity, bank, or private-address details and retry, or translate it manually.', 422);
+    }
     return apiFail('TRANSLATE_FAILED', "Couldn't translate this message. Please try again.", 502);
   }
 

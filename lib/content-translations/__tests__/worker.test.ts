@@ -28,15 +28,16 @@ describe('processClaimedTranslationJob', () => {
     expect(deps.supersede).toHaveBeenCalledOnce();
   });
 
-  it('redacts review PII and rejects provider output that removes redaction placeholders', async () => {
+  it('does not send review PII for translation and retires the unsafe job', async () => {
     const deps = dependencies({
       loadSource: vi.fn().mockResolvedValue({ entityType: 'review', entityId: 'review-1', field: 'body', sourceText: 'Call 012-3456789 for details' }),
       generate: vi.fn().mockResolvedValue({ available: true, provider: 'qwencloud', model: 'test', content: '请拨打0123456789' }),
     });
-    await processClaimedTranslationJob({ ...job, source_hash: sourceHash('Call 012-3456789 for details') }, deps);
-    expect(deps.generate).toHaveBeenCalledWith(expect.objectContaining({ sourceText: expect.stringContaining('[PHONE]') }), expect.any(AbortSignal));
+    await expect(processClaimedTranslationJob({ ...job, source_hash: sourceHash('Call 012-3456789 for details') }, deps)).resolves.toBe('sensitive_input');
+    expect(deps.generate).not.toHaveBeenCalled();
+    expect(deps.supersede).toHaveBeenCalledOnce();
     expect(deps.complete).not.toHaveBeenCalled();
-    expect(deps.defer).toHaveBeenCalledWith(expect.objectContaining({ source_hash: sourceHash('Call 012-3456789 for details') }), 'invalid_translation_output');
+    expect(deps.defer).not.toHaveBeenCalled();
   });
 
   it('translates valid content under the global provider budget and completes against the current hash', async () => {

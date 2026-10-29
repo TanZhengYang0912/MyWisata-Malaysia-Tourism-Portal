@@ -22,6 +22,7 @@ export interface User {
   email: string;
   role: Role;
   avatarInitial: string;
+  avatarUrl?: string | null;
   city?: string;
   country?: string;
   preferredLocale?: AppLocale;
@@ -294,7 +295,7 @@ export interface PlaceAccess {
   imageUrl: string | null;
 }
 
-/** A source-backed attraction activity with no MyLawatan vendor checkout path. */
+/** A source-backed attraction activity with no MYLawatan vendor checkout path. */
 export interface PlaceInformationalActivity {
   id: string;
   placeId: string;

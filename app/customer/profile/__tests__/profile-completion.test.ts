@@ -53,7 +53,7 @@ describe('profile completion display contract', () => {
       page.indexOf('async function handlePreferencesSaved'),
     );
     expect(submitBioSource).not.toContain('router.push(continuation)');
-    expect(page).toMatch(/handlePreferencesSaved[\s\S]*?if \(continuation\) router\.push\(continuation\)/);
+    expect(page).toMatch(/handlePreferencesSaved[\s\S]*?if \(savedProfile\.verification\.complete && continuation\) router\.push\(continuation\)/);
   });
 
   it('keeps KYC independent while offering optional navigation back to Profile', () => {

@@ -15,7 +15,7 @@
 // available models are not a stable target; if this 404s again later,
 // re-run ListModels (see the reindex route's error message, which surfaces
 // the raw Gemini error) rather than guessing a new name.
-import { redactPII } from './pii';
+import { prepareExternalText } from './pii';
 
 const EMBED_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent';
 const EMBED_TIMEOUT_MS = 10_000;
@@ -39,7 +39,9 @@ export async function embedText(text: string): Promise<number[]> {
   // APIs. This is the hard boundary — every caller's text is redacted here
   // unconditionally, regardless of whether the caller already redacted
   // upstream (redacting already-clean text is a safe no-op).
-  const { clean } = redactPII(text);
+  const preparedText = prepareExternalText(text);
+  if (!preparedText.allowed) throw new Error('sensitive_data_detected');
+  const { clean } = preparedText;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), EMBED_TIMEOUT_MS);
@@ -57,8 +59,7 @@ export async function embedText(text: string): Promise<number[]> {
     });
 
     if (!res.ok) {
-      const errBody = await res.text().catch(() => '');
-      throw new Error(`Gemini embedContent failed: ${res.status} ${errBody.slice(0, 200)}`);
+      throw new Error(`Gemini embedContent failed: HTTP ${res.status}`);
     }
 
     const body = (await res.json()) as GeminiEmbedResponse;

@@ -37,4 +37,25 @@ describe('POST /api/chatbot/ask session ownership', () => {
     expect(mocks.answer).not.toHaveBeenCalled();
     expect(mocks.clean).not.toHaveBeenCalled();
   });
+
+  it('uses local FAQ mode and reports when personal data is withheld from AI', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'victim' } } });
+    mocks.clean.mockResolvedValue({
+      display: 'Call me at [PHONE]', original: 'Call me at [PHONE]',
+      hadProfanity: false, hadSlur: false, hadPII: true, severity: 'low',
+    });
+    mocks.answer.mockResolvedValue({
+      answer: 'Here is a local FAQ match.', kbMatched: true, canEscalate: false,
+      usedKb: [], mode: 'keyword', piiDetected: true, language: 'en',
+    });
+
+    const response = await POST(new Request('http://localhost/api/chatbot/ask', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionKey: 'victim-session', question: 'Call me at 012-3456789' }),
+    }));
+    const body = await response.json();
+
+    expect(mocks.answer).toHaveBeenCalledWith('Call me at [PHONE]', false);
+    expect(body.data.privacyBlocked).toBe(true);
+  });
 });

@@ -21,7 +21,7 @@ describe("cart provider catalogue error handling", () => {
 
     expect(source).toContain("activitiesReady: boolean");
     expect(source).toContain("const activitiesReady = activityData.key === activityIdsKey;");
-    expect(source).toContain("activities, activitiesReady, selectedKeys");
+    expect(source).toContain("activities, activitiesReady, activitiesFailed, reloadActivities, selectedKeys");
   });
 
   it("handles a failed initial catalogue load without an unhandled rejection", () => {
@@ -32,7 +32,7 @@ describe("cart provider catalogue error handling", () => {
 
     expect(catalogueLoadStart).toBeGreaterThanOrEqual(0);
     expect(catalogueLoad).toMatch(/getActivitiesByIds\(activityIds\)[\s\S]+\.catch\(/);
-    expect(catalogueLoad).toContain("setActivityData({ key: activityIdsKey, activities: [] })");
+    expect(catalogueLoad).toContain("setActivityData({ key: activityIdsKey, activities: [], failed: true })");
   });
 
   it("handles a failed authenticated cart load without an unhandled rejection", () => {

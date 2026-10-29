@@ -6,6 +6,7 @@ import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import {
   Camera,
   CheckCircle2,
+  ClipboardCheck,
   Clock,
   History,
   Keyboard,
@@ -31,12 +32,13 @@ type OutletOption = { id: string; name: string };
 type ResolvedScan =
   | { kind: "ticket"; bookingId: string; passToken: string | null; outletId: string; outletName: string; vendorName: string; status: string; productName: string; quantity: number; pass: { policy?: string; entry_limit?: number; entries_used?: number; remaining?: number; status?: string; valid_until?: string | null } | null }
   | { kind: "food_order"; orderId: string; foodToken: string; outletId: string; outletName: string; vendorName: string; mode: "dine_in" | "takeaway"; items: { id: string; name: string; variant: string | null; quantity: number }[] }
+  | { kind: "retail_pickup"; orderId: string; orderItemId: string; retailToken: string; vendorId: string; outletId: string; vendorName: string; outletName: string; status: string; name: string; variant: string | null; quantity: number }
   | { kind: "voucher"; claimId: string; voucherId: string; outletId: string; code: string; name: string; voucherType: string; discountValue: number; validUntil: string | null; redemptionMode: string; vendorName: string; outletName: string }
   | { kind: "event_pickup"; orderId: string; eventToken: string; vendorName: string; pickupDate: string; items: { id: string; name: string; variant: string | null; quantity: number }[] };
 
 interface RecentScanItem {
   id: string;
-  kind: "voucher" | "ticket" | "event_pickup";
+  kind: "voucher" | "ticket" | "event_pickup" | "retail_pickup";
   redeemedAt: string;
   outlet: { id: string; name: string };
   item: { code?: string; name: string; details: string; discountValue?: number };
@@ -106,6 +108,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
     todayScans: 0,
     ticketAdmissions: 0,
     voucherRedemptions: 0,
+    retailPickups: 0,
   });
   const [recentLogs, setRecentLogs] = useState<RecentScanItem[]>([]);
 
@@ -262,6 +265,15 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
         successMessage = payload.data?.status === "checked_in"
           ? t("ui.scanner.foodDineInCheckedIn")
           : t("ui.scanner.foodOrderFulfilled");
+      } else if (result.kind === "retail_pickup") {
+        const response = await fetch(`/api/vendors/${vendorId}/scanner/fulfil-retail-pickup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ retailToken: result.retailToken, outletId }),
+        });
+        const payload = await response.json() as { error?: { message?: string } };
+        if (!response.ok) throw new Error(payload.error?.message ?? t("ui.scanner.commitFailed"));
+        successMessage = t("ui.scanner.retailPickupCollected", { quantity: result.quantity });
       } else {
         const response = await fetch(`/api/vendors/${vendorId}/scanner/redeem-voucher`, {
           method: "POST",
@@ -344,7 +356,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
       </header>
 
       {/* 2. KPI Summary Cards Row (Matching Fig 2) */}
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-5">
         <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
           <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.scanner.todayScans", "Today's Scans")}</p>
           <p className="mt-1 text-2xl font-bold text-primary">{stats.todayScans}</p>
@@ -356,6 +368,10 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
         <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
           <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.scanner.vouchersUsed", "Vouchers Redeemed")}</p>
           <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">{stats.voucherRedemptions}</p>
+        </div>
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.redemptions.retailPickups", "Retail pickups")}</p>
+          <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">{stats.retailPickups}</p>
         </div>
         <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
           <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.scanner.stationStatus", "Station Status")}</p>
@@ -570,7 +586,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                               className="flex min-w-0 items-start gap-2 rounded-xl border border-gray-100 dark:border-border bg-white dark:bg-card p-2.5 text-xs shadow-sm"
                             >
                               <div className="mt-0.5 rounded-lg bg-secondary p-1.5 text-primary">
-                                {item.kind === "voucher" ? <Tag size={13} /> : item.kind === "event_pickup" ? <Clock size={13} /> : <Ticket size={13} />}
+                                {item.kind === "voucher" ? <Tag size={13} /> : item.kind === "event_pickup" ? <Clock size={13} /> : item.kind === "retail_pickup" ? <ClipboardCheck size={13} /> : <Ticket size={13} />}
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="truncate font-semibold text-gray-900 dark:text-foreground">{item.item.name}</p>
@@ -608,7 +624,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                           {t("ui.scanner.reviewBeforeConfirm")}
                         </p>
                         <span className="rounded-md bg-white dark:bg-card px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
-                          {result.kind === "voucher" ? t("ui.scanner.voucherKind") : result.kind === "food_order" ? t("ui.scanner.foodOrderKind") : result.kind === "event_pickup" ? t("ui.scanner.eventPickupKind") : t("ui.scanner.ticketKind")}
+                          {result.kind === "voucher" ? t("ui.scanner.voucherKind") : result.kind === "food_order" ? t("ui.scanner.foodOrderKind") : result.kind === "event_pickup" ? t("ui.scanner.eventPickupKind") : result.kind === "retail_pickup" ? t("ui.scanner.retailPickupKind") : t("ui.scanner.ticketKind")}
                         </span>
                       </div>
 
@@ -630,6 +646,15 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                           <ul className="mt-3 space-y-1 text-sm text-gray-700 dark:text-foreground">
                             {result.items.map((item) => <li key={item.id}>{item.quantity} × {item.name}{item.variant ? " · " + item.variant : ""}</li>)}
                           </ul>
+                        </div>
+                      ) : result.kind === "retail_pickup" ? (
+                        <div className="mt-3">
+                          <h2 className="text-lg font-bold text-gray-950 dark:text-foreground">{result.name}</h2>
+                          <p className="mt-1 text-xs text-gray-600 dark:text-muted-foreground">{t("ui.scanner.vendor")}: <span className="font-semibold text-gray-900 dark:text-foreground">{result.vendorName}</span></p>
+                          <p className="text-xs text-gray-600 dark:text-muted-foreground">{t("ui.scanner.outlet")}: <span className="font-semibold text-gray-900 dark:text-foreground">{result.outletName}</span></p>
+                          <p className="mt-2 text-sm font-semibold text-primary">{t("ui.scanner.retailPickupQuantity", { quantity: result.quantity })}</p>
+                          {result.variant && <p className="text-xs text-gray-600 dark:text-muted-foreground">{result.variant}</p>}
+                          <p className="mt-1 font-mono text-xs text-gray-500 dark:text-muted-foreground">{t("ui.scanner.orderReference", { order: result.orderId.slice(0, 8).toUpperCase() })}</p>
                         </div>
                       ) : result.kind === "voucher" ? (
                         <div className="mt-3">
@@ -701,7 +726,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                           className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-primary/90 disabled:opacity-50"
                         >
                           {busy ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                          <span>{t("ui.scanner.confirm")}</span>
+                          <span>{result.kind === "retail_pickup" ? t("ui.scanner.confirmRetailPickup") : t("ui.scanner.confirm")}</span>
                         </button>
                         <button
                           type="button"
@@ -777,8 +802,8 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                                 : "bg-primary/10 text-primary"
                             }`}
                           >
-                            {item.kind === "voucher" ? <Tag size={10} /> : <Ticket size={10} />}
-                            <span className="capitalize">{item.kind}</span>
+                            {item.kind === "voucher" ? <Tag size={10} /> : item.kind === "retail_pickup" ? <ClipboardCheck size={10} /> : <Ticket size={10} />}
+                            <span>{item.kind === "retail_pickup" ? t("ui.scanner.retailPickupKind") : item.kind === "event_pickup" ? t("ui.scanner.eventPickupKind") : item.kind === "voucher" ? t("ui.scanner.voucherKind") : t("ui.scanner.ticketKind")}</span>
                           </span>
                         </td>
                         <td className="px-4 py-3 font-semibold text-gray-900 dark:text-foreground">

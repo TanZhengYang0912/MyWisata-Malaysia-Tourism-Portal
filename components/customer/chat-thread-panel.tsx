@@ -18,7 +18,7 @@ type TranslateTarget = "en" | "bm" | "zh";
 interface TranslationState {
   text: string;
   loading: boolean;
-  error: boolean;
+  error: "generic" | "privacy" | null;
 }
 
 // CLAUDE-VOICE-INPUT.md Part 3. Same friendly copy as the chatbot widget's
@@ -134,7 +134,7 @@ export function ChatThreadPanel({
       setShowTranslated((s) => ({ ...s, [message.id]: true }));
       return;
     }
-    setTranslations((t) => ({ ...t, [message.id]: { text: "", loading: true, error: false } }));
+    setTranslations((t) => ({ ...t, [message.id]: { text: "", loading: true, error: null } }));
     try {
       const response = await fetch("/api/chat/translate", {
         method: "POST",
@@ -142,11 +142,15 @@ export function ChatThreadPanel({
         body: JSON.stringify({ messageId: message.id, targetLang }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok || !payload.data) throw new Error("translate failed");
-      setTranslations((t) => ({ ...t, [message.id]: { text: payload.data.translatedText, loading: false, error: false } }));
+      if (!response.ok || !payload.data) {
+        const error = payload.error?.code === "TRANSLATION_PRIVACY_BLOCKED" ? "privacy" : "generic";
+        setTranslations((t) => ({ ...t, [message.id]: { text: "", loading: false, error } }));
+        return;
+      }
+      setTranslations((t) => ({ ...t, [message.id]: { text: payload.data.translatedText, loading: false, error: null } }));
       setShowTranslated((s) => ({ ...s, [message.id]: true }));
     } catch {
-      setTranslations((t) => ({ ...t, [message.id]: { text: "", loading: false, error: true } }));
+      setTranslations((t) => ({ ...t, [message.id]: { text: "", loading: false, error: "generic" } }));
     }
   }
 
@@ -485,7 +489,7 @@ export function ChatThreadPanel({
                             {translations[message.id]?.loading ? (
                               <span className="text-[11px] text-muted-foreground">{t("ui.chat.translate.working")}</span>
                             ) : translations[message.id]?.error ? (
-                              <span className="text-[11px] text-destructive">{t("ui.chat.translate.failed")}</span>
+                              <span className="max-w-sm text-[11px] text-destructive">{translations[message.id].error === "privacy" ? t("ui.chat.translate.privacyBlocked") : t("ui.chat.translate.failed")}</span>
                             ) : (
                               <button
                                 type="button"

@@ -103,5 +103,6 @@ describe('POST vendor booking check-in outlet scope', () => {
     expect(response.status).toBe(200);
     expect(mocks.from).toHaveBeenCalledWith('bookings');
     expect(mocks.emitVendorNotification).toHaveBeenCalledWith(expect.objectContaining({ outletId: assignedOutletId }));
+    expect(mocks.authorizeVendor).toHaveBeenCalledWith(vendorId, undefined, { requireApproved: true });
   });
 });

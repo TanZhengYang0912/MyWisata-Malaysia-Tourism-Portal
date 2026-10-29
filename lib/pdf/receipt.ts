@@ -41,7 +41,7 @@ export function generateReceiptPdf(data: ReceiptData): Promise<Buffer> {
     doc.on('error', reject);
 
     // Header
-    doc.fontSize(22).font(bold).text('MyLawatan Malaysia', { align: 'center' });
+    doc.fontSize(22).font(bold).text('MYLawatan Malaysia', { align: 'center' });
     doc.fontSize(11).font(regular).text(copy.receipt, { align: 'center' });
     doc.moveDown(0.5);
     doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();

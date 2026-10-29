@@ -96,7 +96,7 @@ describe("profile summary", () => {
         full_name: "Aisha Rahman",
         display_name: "Aisha",
         avatar_url: "https://cdn.example/default-avatar.svg?cache=1",
-        bio: "A traveller who enjoys local food and culture.",
+        bio: "I enjoy food and culture.",
         phone: null,
         city: "Kuala Lumpur",
         country: "Malaysia",

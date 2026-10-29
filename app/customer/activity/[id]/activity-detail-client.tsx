@@ -134,6 +134,7 @@ export function ActivityDetailClient({
   }, [activity, publicPlace, variantId, selectedChoice]);
   const selectedSlot = slots.find((s) => s.id === slotId);
   const seatsLeft = selectedSlot ? selectedSlot.capacity - selectedSlot.booked : undefined;
+  const quantityExceedsStock = activity !== null && !activity.requiresBooking && selectedStock !== undefined && qty > selectedStock;
 
   // A slot switch can leave qty above the new slot's remaining seats — clamp down.
   useEffect(() => {
@@ -159,6 +160,10 @@ export function ActivityDetailClient({
       return;
     }
     if (activity!.requiresBooking && !slotId) return;
+    if (!activity!.requiresBooking && selectedStock !== undefined && selectedStock < qty) {
+      setAddError(t(selectedStock === 0 ? "ui.activityDetail.outOfStock" : "ui.activityDetail.quantityExceedsStock"));
+      return;
+    }
     // Sold at several outlets → the customer must pick one; price and stock
     // belong to the outlet, not to the shared product.
     if (effectiveOutletCount > 1 && !outletId) return;
@@ -383,9 +388,9 @@ export function ActivityDetailClient({
               <span className="w-6 text-center text-sm font-bold text-foreground">{qty}</span>
               <button
                 type="button"
-                onClick={() => setQty((q) => (seatsLeft !== undefined ? Math.min(seatsLeft, q + 1) : q + 1))}
+                onClick={() => setQty((q) => Math.min(seatsLeft ?? Number.MAX_SAFE_INTEGER, selectedStock ?? Number.MAX_SAFE_INTEGER, q + 1))}
                 aria-label={t("ui.activityDetail.increaseQuantity")}
-                disabled={seatsLeft !== undefined && qty >= seatsLeft}
+                disabled={(seatsLeft !== undefined && qty >= seatsLeft) || (selectedStock !== undefined && qty >= selectedStock)}
                 className="h-8 w-8 rounded-lg border border-border bg-card text-foreground disabled:cursor-not-allowed disabled:opacity-40"
               >
                 +
@@ -397,11 +402,14 @@ export function ActivityDetailClient({
            <Button
             type="button"
             onClick={handleAddToCart}
-            disabled={adding || (activity.requiresBooking && !slotId) || (!activity.requiresBooking && selectedStock === 0)}
+            disabled={adding || (activity.requiresBooking && !slotId) || (!activity.requiresBooking && (selectedStock === 0 || quantityExceedsStock))}
             className="h-12 w-full rounded-full text-base"
            >
              {added ? t("ui.states.addedToCart") : activity.requiresBooking ? t("ui.actions.addBookingToCart") : t("ui.actions.addToCart")}
            </Button>
+
+           {!activity.requiresBooking && selectedStock === 0 && <p role="status" className="mt-2 text-center text-xs text-destructive">{t("ui.activityDetail.outOfStock")}{effectiveOutletCount > 1 ? ` ${t("ui.activityDetail.chooseOtherOutlet")}` : ""}</p>}
+           {!activity.requiresBooking && selectedStock !== undefined && selectedStock > 0 && <p role="status" className={`mt-2 text-center text-xs ${quantityExceedsStock ? "text-amber-700 dark:text-amber-200" : "text-muted-foreground"}`}>{quantityExceedsStock ? t("ui.activityDetail.quantityExceedsStock") : t("ui.activityDetail.stockAvailable", { count: selectedStock })}</p>}
 
            {addError && <p role="alert" className="mt-3 rounded-2xl bg-destructive/10 p-3 text-center text-xs font-semibold text-destructive">{addError}</p>}
 

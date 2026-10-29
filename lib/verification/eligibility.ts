@@ -1,4 +1,7 @@
 export const PROFILE_COMPLETION_FIELDS = ['full_name', 'avatar', 'bio', 'city', 'country'] as const;
+export const PROFILE_BIO_MIN_LENGTH = 3;
+export const PROFILE_BIO_MAX_LENGTH = 30;
+export const LEGACY_PROFILE_BIO_MAX_LENGTH = 200;
 
 export type ProfileField = typeof PROFILE_COMPLETION_FIELDS[number];
 export type ProfileCompletionPercentage = 0 | 20 | 40 | 60 | 80 | 100;
@@ -48,13 +51,16 @@ export function computeProfileCompletion(input: {
   bio?: string | null;
   city?: string | null;
   country?: string | null;
+  profileCompletedAt?: string | null;
 }): ProfileCompletion {
   const completed: Record<ProfileField, boolean> = {
     full_name: (input.fullName?.trim().length ?? 0) >= 2,
     avatar: hasUploadedAvatar(input.avatarUrl),
     bio: (() => {
       const length = input.bio?.trim().length ?? 0;
-      return length >= 30 && length <= 200;
+      // Previously completed profiles keep their accepted biography until edited.
+      const maximum = input.profileCompletedAt ? LEGACY_PROFILE_BIO_MAX_LENGTH : PROFILE_BIO_MAX_LENGTH;
+      return length >= PROFILE_BIO_MIN_LENGTH && length <= maximum;
     })(),
     city: Boolean(input.city?.trim()),
     country: Boolean(input.country?.trim()),
@@ -70,6 +76,7 @@ export function computeProfileVerification(input: {
   bio?: string | null;
   city?: string | null;
   country?: string | null;
+  profileCompletedAt?: string | null;
   surveyComplete: boolean;
 }): ProfileVerification {
   const richness = computeProfileCompletion(input);

@@ -19,6 +19,18 @@ export async function GET(request: Request) {
     p_search: query.data.search, p_status: query.data.status, p_page: query.data.page, p_page_size: query.data.pageSize,
   });
   const parsed = staffEmployeePageSchema.safeParse(data);
-  if (error || !parsed.success) return apiFail("STAFF_EMPLOYEES_UNAVAILABLE", "Unable to load employees", 503);
+  if (error) {
+    const databaseCode = typeof error.code === "string" && /^[A-Z0-9]+$/.test(error.code) ? error.code : undefined;
+    return apiFail("STAFF_EMPLOYEES_RPC_UNAVAILABLE", "Unable to load employees", 503, {
+      stage: "rpc",
+      ...(databaseCode ? { databaseCode } : {}),
+    });
+  }
+  if (!parsed.success) {
+    return apiFail("STAFF_EMPLOYEES_RESPONSE_INVALID", "Unable to load employees", 503, {
+      stage: "response_validation",
+      fields: [...new Set(parsed.error.issues.map((issue) => issue.path.join(".")).filter(Boolean))],
+    });
+  }
   return apiOk(parsed.data);
 }

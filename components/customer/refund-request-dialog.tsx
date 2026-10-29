@@ -27,6 +27,17 @@ const REFUND_REASON_OPTIONS = [
   { value: "other", key: "ui.orders.refundReasonOther" },
 ];
 
+export function createRefundReasonSubmission(
+  reasonType: string,
+  customReason: string,
+  translate: (key: string) => string,
+): { reason: string; reasonCode: string } | null {
+  const details = customReason.trim();
+  if (reasonType === "other") return details.length >= 5 ? { reason: details, reasonCode: "other" } : null;
+  const option = REFUND_REASON_OPTIONS.find((candidate) => candidate.value === reasonType) ?? REFUND_REASON_OPTIONS[0];
+  return { reason: translate(option.key), reasonCode: option.value };
+}
+
 export function RefundRequestDialog({
   open,
   summary,
@@ -38,26 +49,28 @@ export function RefundRequestDialog({
   const { t } = useTranslation("customer");
   const [reasonType, setReasonType] = useState("schedule_change");
   const [customReason, setCustomReason] = useState("");
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset form state when a new dialog opens
     setReasonType("schedule_change");
     setCustomReason("");
+    setValidationMessage(null);
   }, [open, summary]);
 
   if (!open) return null;
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const selectedReasonLabel = t(
-      REFUND_REASON_OPTIONS.find((option) => option.value === reasonType)?.key ?? "ui.orders.refundReasonOther",
-    );
-    const reason = customReason.trim()
-      ? `${selectedReasonLabel}: ${customReason.trim()}`
-      : selectedReasonLabel;
-    if (reason.length < 5 || submitting) return;
-    onConfirm(reason, reasonType);
+    if (submitting) return;
+    const submission = createRefundReasonSubmission(reasonType, customReason, t);
+    if (!submission) {
+      setValidationMessage(t("ui.orders.refundDetailsRequired"));
+      return;
+    }
+    setValidationMessage(null);
+    onConfirm(submission.reason, submission.reasonCode);
   }
 
   return (
@@ -143,10 +156,14 @@ export function RefundRequestDialog({
               id="refund-request-details"
               rows={3}
               value={customReason}
-              onChange={(event) => setCustomReason(event.target.value)}
+              onChange={(event) => {
+                setCustomReason(event.target.value);
+                if (validationMessage) setValidationMessage(null);
+              }}
               placeholder={t("ui.orders.refundDetailsPlaceholder")}
               className="mt-2 w-full rounded-xl border border-border bg-background p-3 text-xs text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
+            {validationMessage && <p role="alert" className="mt-2 text-sm text-destructive">{validationMessage}</p>}
           </div>
 
           <div className="flex gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 dark:bg-amber-500/10 p-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">

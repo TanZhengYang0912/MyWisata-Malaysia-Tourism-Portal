@@ -54,6 +54,7 @@ export async function POST(request: Request, { params }: Props) {
     contactName: onboarding?.contact_name ?? owner?.full_name ?? null,
     address: onboarding?.business_address ?? null,
   });
+  if (draft && 'error' in draft) return apiFail('PERSONAL_DATA_WITHHELD', 'The full draft request was not sent to AI because it may contain personal details. Remove phone, email, identity, bank, or private-address details, or write the email manually.', 422);
   if (!draft) return apiFail('DRAFT_UNAVAILABLE', 'Could not draft an approval email right now — try again, or write one manually.', 502);
 
   return apiOk({ ...draft, locale });

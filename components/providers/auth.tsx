@@ -46,6 +46,7 @@ type AuthMeUser = {
   id: string;
   email: string;
   fullName: string | null;
+  avatarUrl: string | null;
   tier: User["verificationTier"];
   roles: Role[];
   activeVendorId: string | null;
@@ -145,6 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: row.email,
       role,
       avatarInitial: name[0]?.toUpperCase() ?? "?",
+      avatarUrl: row.avatarUrl ?? null,
       city: row.city ?? undefined,
       country: row.country ?? undefined,
       preferredLocale: isAppLocale(row.preferredLocale) ? row.preferredLocale : undefined,
@@ -216,8 +218,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return;
       }
-      if (currentUserId.current !== session.user.id) clearIdentityState();
-      setLoading(true);
+      const identityChanged = currentUserId.current !== session.user.id;
+      if (identityChanged) clearIdentityState();
+      // Same-user focus/token refreshes must not unmount guarded page drafts.
+      setLoading(identityChanged);
       void loadSupabaseUser(session.user.id, authRequest)
         .catch(() => {
           if (!active || !isCurrentRequest(authRequest)) return;
@@ -286,8 +290,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return;
       }
-      if (currentUserId.current !== user.id) clearIdentityState();
-      setLoading(true);
+      const identityChanged = currentUserId.current !== user.id;
+      if (identityChanged) clearIdentityState();
+      setLoading(identityChanged);
       await loadSupabaseUser(user.id, request);
       if (isCurrentRequest(request)) setLoading(false);
     } catch {

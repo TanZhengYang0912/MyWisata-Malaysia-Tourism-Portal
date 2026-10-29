@@ -6,7 +6,7 @@ vi.mock('@/lib/auth/staff-assurance', async (importOriginal) => ({ ...(await imp
 const USER_ID = '7df122f8-afae-4249-8504-bdd465a78f31';
 const REFUND_ID = '33333333-3333-4333-8333-333333333333';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), authFrom: vi.fn(), serviceFrom: vi.fn(), serviceRpc: vi.fn(), processRefund: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), authFrom: vi.fn(), serviceFrom: vi.fn(), serviceRpc: vi.fn(), processRefund: vi.fn(), adminGuard: vi.fn() }));
 
 function queryResult(data: unknown, error: unknown = null) {
   const terminal = Promise.resolve({ data, error });
@@ -20,6 +20,7 @@ function queryResult(data: unknown, error: unknown = null) {
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, from: mocks.authFrom })),
 }));
+vi.mock('@/lib/staff-permissions/server', () => ({ requireStaffRoleManagementSuperAdmin: mocks.adminGuard }));
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: vi.fn(() => ({ from: mocks.serviceFrom, rpc: mocks.serviceRpc })),
 }));
@@ -33,6 +34,7 @@ describe('GET /api/admin/refunds', () => {
     vi.clearAllMocks();
     mocks.serviceRpc.mockImplementation(async (name: string) => ({ data: name === 'list_staff_review_queue' ? { items: [{ id: REFUND_ID }], page: 1, total: 1 } : { items: [], version: 'a'.repeat(32) }, error: null }));
     mocks.getUser.mockResolvedValue({ data: { user: { id: USER_ID } }, error: null });
+    mocks.adminGuard.mockResolvedValue({ db: {}, user: { id: USER_ID }, response: null });
     mocks.authFrom.mockReturnValue(queryResult([{ roles: { name: 'super_admin' } }]));
     mocks.serviceFrom.mockReturnValue(queryResult([{
       id: REFUND_ID,
@@ -90,7 +92,7 @@ describe('GET /api/admin/refunds', () => {
   });
 
   it('rejects non-admin users before using the service client', async () => {
-    mocks.authFrom.mockReturnValue(queryResult([]));
+    mocks.adminGuard.mockResolvedValue({ db: {}, user: null, response: new Response(null, { status: 403 }) });
     const response = await GET(new Request("http://localhost/api/admin/refunds"));
 
     expect(response.status).toBe(403);
@@ -103,6 +105,7 @@ describe('POST /api/admin/refunds/[refundId]', () => {
     vi.clearAllMocks();
     mocks.serviceRpc.mockImplementation(async (name: string) => ({ data: name === 'list_staff_review_queue' ? { items: [{ id: REFUND_ID }], page: 1, total: 1 } : { items: [], version: 'a'.repeat(32) }, error: null }));
     mocks.getUser.mockResolvedValue({ data: { user: { id: USER_ID } }, error: null });
+    mocks.adminGuard.mockResolvedValue({ db: {}, user: { id: USER_ID }, response: null });
     mocks.authFrom.mockReturnValue(queryResult([{ roles: { name: 'super_admin' } }]));
     mocks.serviceFrom.mockReturnValue(queryResult({ id: REFUND_ID, status: 'pending' }));
     mocks.processRefund.mockResolvedValue({ ok: true, data: { refundId: REFUND_ID, status: 'processed' } });

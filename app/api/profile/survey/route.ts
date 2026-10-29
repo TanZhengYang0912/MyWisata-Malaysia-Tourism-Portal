@@ -23,7 +23,10 @@ export async function POST(request: Request) {
     p_notes:               notes ?? null,
   });
 
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error) {
+    console.error('[profile/survey] survey submit failed', error);
+    return apiFail('SURVEY_SAVE_FAILED', 'Unable to save preferences. Try again.', 500);
+  }
 
   const { data: profile } = await supabase
     .from('users')
@@ -57,7 +60,10 @@ export async function PUT(request: Request) {
     })
     .eq('user_id', user.id);
 
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error) {
+    console.error('[profile/survey] survey update failed', error);
+    return apiFail('SURVEY_SAVE_FAILED', 'Unable to save preferences. Try again.', 500);
+  }
 
   return apiOk({ updated: true });
 }
@@ -75,7 +81,10 @@ export async function GET() {
     .single();
 
   if (error && error.code === 'PGRST116') return apiOk(null);
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error) {
+    console.error('[profile/survey] survey load failed', error);
+    return apiFail('SURVEY_LOAD_FAILED', 'Unable to load preferences. Try again.', 500);
+  }
 
   return apiOk(data ? { ...data, interests: normalizeCategorySlugs(data.interests) } : data);
 }

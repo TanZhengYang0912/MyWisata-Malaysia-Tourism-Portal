@@ -148,7 +148,7 @@
     }
   },
   "profile": {
-    "languageDescription": "Choose the language used throughout MyLawatan."
+    "languageDescription": "Choose the language used throughout MYLawatan."
   },
   "accountLifecycle": {
     "restore": {
@@ -179,6 +179,9 @@
     }
   },
   "ui": {
+    "backgroundRefresh": {
+      "staleData": "Unable to refresh. Showing the last update."
+    },
     "loading": "Loading…",
     "contentTranslation": {
       "machineTranslated": "Machine translated",
@@ -205,7 +208,7 @@
         },
         "PHONE_VERIFICATION_REQUIRED": {
           "title": "Verify your phone",
-          "description": "Phone verification is required for booking, purchasing, checkout, and basic AI recommendations. You do not need to complete the rest of your profile for this action.",
+          "description": "Verify your phone to continue. You do not need to complete the rest of your profile for this action.",
           "cta": "Verify phone"
         },
         "PROFILE_COMPLETION_REQUIRED": {
@@ -295,7 +298,7 @@
     },
     "phoneVerification": {
       "title": "Verify your phone",
-      "description": "Verify your phone independently to unlock booking, purchasing, checkout and basic AI recommendations.",
+      "description": "Verify ownership of your phone number.",
       "guestTitle": "Sign in to verify your phone",
       "guestDescription": "Sign in before starting phone verification.",
       "completeTitle": "Phone verified",
@@ -470,7 +473,7 @@
       "orders": "orders",
       "newestFirst": "Newest first",
       "bookingReference": "Booking reference",
-      "mylawatanOutlet": "MyLawatan outlet",
+      "mylawatanOutlet": "MYLawatan outlet",
       "localVendor": "Local vendor",
       "contactViaChat": "Contact via chat",
       "type": "Type",
@@ -518,17 +521,17 @@
       "viewOrders": "View orders",
       "walletInsufficient": "Wallet payment is unavailable for this order because your spendable balance is too low. Pending rewards and withdrawal reserves cannot be used for checkout.",
       "continueSimulator": "Continue to payment simulator",
-      "payWallet": "Pay with MyLawatan Wallet",
+      "payWallet": "Pay with MYLawatan Wallet",
       "continueStripe": "Continue to Stripe Sandbox",
       "nothing": "Nothing to check out",
       "selectItems": "Select at least one item in your cart to continue.",
       "phoneRequired": "Phone verification required",
-      "verifyPhone": "Verify your phone number to complete booking and payment.",
       "continueVerification": "Continue verification",
       "reserveFreeSpot": "Reserve Free Spot",
       "freeReservationTitle": "Free Activity Reservation",
       "freeReservationNotice": "This activity is free of charge, but requires a slot reservation for capacity control. No payment will be processed.",
       "itemsToReserve": "Items to Reserve",
+      "linePriceBreakdown": "Unit price × quantity",
       "orderSummary": "Order Summary",
       "instantAllocation": "Instant slot reservation · No payment required",
       "foodServiceModeTitle": "How would you like your food order?",
@@ -596,7 +599,7 @@
     "support": {
       "title": "Support",
       "myTickets": "My Tickets",
-      "description": "Track your questions and follow up with the MyLawatan support team.",
+      "description": "Track your questions and follow up with the MYLawatan support team.",
       "contact": "Provide information for your held withdrawal",
       "subject": "Ticket subject",
       "message": "Ticket message",
@@ -862,16 +865,16 @@
       "viewVendor": "View vendor",
       "discoverMalaysia": "Discover Malaysia",
       "browseTitle": "Browse vendors and listings",
-      "browseDescription": "You are browsing as a guest. Sign in when you are ready to book or purchase.",
+      "browseDescription": "Browse and buy eligible items as a guest. Sign in for account features.",
       "unableToLoadListings": "Unable to load listings",
       "noListings": "No listings available",
       "checkBackLater": "Please check back later.",
       "experience": "Experience"
     },
     "profile": {
-      "languageDescription": "Choose the language used throughout MyLawatan.",
+      "languageDescription": "Choose the language used throughout MYLawatan.",
       "publicBioEmpty": "This contributor has not added a bio yet.",
-      "contributorProfile": "MyLawatan contributor profile",
+      "contributorProfile": "MYLawatan contributor profile",
       "backToProfile": "Back to profile",
       "vendorApplication": "Vendor application",
       "vendorApplicationDescription": "Apply to list your tours, food, stays, or local experiences. Admin approval is required before anything is visible to travellers.",
@@ -990,7 +993,8 @@
         "action": "Translate",
         "showOriginal": "Show original",
         "working": "Translating…",
-        "failed": "Couldn't translate"
+        "failed": "Couldn't translate",
+        "privacyBlocked": "This message was not sent to AI because it may contain personal information. Remove phone, email, ID, bank, or private-address details, then try again. You can also read the original message without translation."
       },
       "attachOrder": "Attach an order",
       "underReview": "Reported — our team is reviewing this conversation."
@@ -1066,7 +1070,7 @@
       }
     },
     "outlet": {
-      "verifiedMyLawatan": "Verified MyLawatan outlet",
+      "verifiedMyLawatan": "Verified MYLawatan outlet",
       "dropImage": "Drop image here",
       "verifiedGuestsRecommend": "Verified guests recommend this outlet.",
       "planVisit": "Plan your visit",
@@ -1236,8 +1240,17 @@
     },
     "cart": {
       "guestTitle": "Your cart is empty",
-      "guestDescription": "Sign in or create an account before adding experiences and checking out.",
       "emptyDescription": "Browse experiences and add a booking or product to get started.",
+      "loadErrorTitle": "We couldn't load your cart",
+      "loadErrorDescription": "Your saved cart has not been changed. Retry to load it, or continue shopping.",
+      "refreshError": "Some cart changes may not have loaded. Retry before continuing to checkout.",
+      "refreshing": "Refreshing your saved cart…",
+      "actionError": "We couldn't update this cart item. Retry to load the latest saved cart.",
+      "unavailableOutlet": "Unavailable items",
+      "unavailableProduct": "This item is no longer available",
+      "unavailableProductHelp": "Remove it from your cart to continue. Your other cart items and selections are kept.",
+      "availabilityLoadError": "We couldn't check this item's availability",
+      "availabilityLoadHelp": "Your cart is unchanged. Retry the availability check before removing it.",
       "explore": "Explore experiences",
       "continueShopping": "Continue shopping",
       "title": "Your cart",
@@ -1321,6 +1334,10 @@
       "overBudgetWarning": "Over budget by {{amount}} — tap for suggestions",
       "checking": "Checking for cheaper alternatives…",
       "checkFailed": "Couldn't check your budget right now.",
+      "invalidBudget": "Enter a budget greater than zero.",
+      "storageUnavailable": "This budget is set for this visit only because browser storage is unavailable.",
+      "tryLater": "The service is busy. Wait a moment and try again.",
+      "timedOut": "The check took too long. Your trip is unchanged; retry when the connection is stable.",
       "noAlternatives": "No cheaper alternatives found for your priciest picks right now.",
       "viewAlternative": "View listing",
       "showOnMap": "Show on map",
@@ -1349,10 +1366,12 @@
     "preferencesPage": {
       "eyebrow": "Preferences",
       "title": "Your travel preferences",
-      "description": "These shape your “Recommended For You” feed. Update them anytime — the more we know, the better the suggestions."
+      "description": "Used to personalise your recommendations."
     },
     "preferencesEditor": {
       "loading": "Loading preferences…",
+      "loadError": "We couldn't load your saved preferences. Your answers have not been changed. Retry before editing.",
+      "refreshError": "Your preferences were saved, but the page could not refresh the updated profile status.",
       "saved": "Preferences saved.",
       "saving": "Saving…",
       "save": "Save preferences",
@@ -1451,7 +1470,7 @@
       "submitted": "Vendor recommendation submitted for review.",
       "community": "Community",
       "title": "Recommend a vendor",
-      "description": "Know a great local experience that deserves to be on MyLawatan? Nominate them here. Admin reviews it first, then the vendor can join or be linked before going live. You earn commission if they join through your recommendation.",
+      "description": "Vendors go live after admin approval. Commission may apply if they join through your recommendation.",
       "recommend": "Recommend",
       "new": "New recommendation",
       "vendorBusinessName": "Vendor / business name",
@@ -1492,7 +1511,7 @@
         "pending": "Admin is checking the recommendation and vendor details.",
         "changes_requested": "Admin requested updated recommendation details.",
         "approved": "Admin approved it; the vendor still needs to join or be linked before going live.",
-        "invited": "The vendor has been invited to join MyLawatan.",
+        "invited": "The vendor has been invited to join MYLawatan.",
         "claimed": "The vendor claimed the invitation and started onboarding.",
         "onboarding": "The vendor is completing onboarding.",
         "vendor_pending_review": "The vendor application is waiting for review.",
@@ -1519,6 +1538,7 @@
       "lifetime": "Cleared to wallet",
       "convertedVendors": "Vendors joined",
       "empty": "No recommendation earnings yet. You earn once a vendor you recommended joins and makes a sale.",
+      "loadError": "Recommendation earnings could not be loaded. Your records were not changed. Retry to check again.",
       "bonusLabel": "First-sale bonus",
       "ongoingLabel": "Ongoing commission",
       "statusCleared": "Cleared to your wallet",
@@ -1541,10 +1561,12 @@
       "current": "Current: {{label}}",
       "next": "Next: {{label}}",
       "percentComplete": "{{percent}}% complete",
+      "previous": "Back",
+      "saveStepFirst": "Save your changes to {{label}} before completing your profile.",
       "businessPrompt": "Have a business to share?",
       "businessDescription": "Start a vendor application after your profile setup",
       "verifyPhone": "Verify your phone number",
-      "phoneDescription": "Enter your phone number in international format. We'll send a 6-digit OTP.",
+      "phoneDescription": "We will send a 6-digit code to verify your number.",
       "phoneNumber": "Phone number",
       "sending": "Sending…",
       "sendOtp": "Send OTP",
@@ -1561,6 +1583,9 @@
       "profilePhoto": "Profile photo",
       "photoDescription": "Upload or take a clear photo of yourself. JPG, PNG, or WebP · max 2 MB.",
       "choosePhoto": "Choose a photo",
+      "photoSourceTitle": "Add a profile photo",
+      "photoSourceDescription": "Choose a photo from this device or take one.",
+      "cancelPhotoSelection": "Cancel",
       "uploadPhoto": "Upload photo",
       "takePhoto": "Take photo",
       "savePhoto": "Save photo",
@@ -1578,21 +1603,27 @@
       "cameraCaptureFailed": "The photo could not be captured. Please try again or upload a photo.",
       "bio": "About you",
       "saveDetails": "Save details",
+      "privacyBlocked": "Your bio was not sent to AI. Remove phone, email, ID, bank, or private-address details, then try again. You can keep editing it here.",
+      "personalSaveBioPrivacyBlocked": "Your name and location were saved, but your bio was not sent to AI. Remove phone, email, ID, bank, or private-address details, then save the bio again.",
       "invalidPhone": "Enter a valid international phone number.",
       "invalidOtp": "Enter the complete 6-digit OTP.",
       "fullNameValidation": "Full name must contain at least 2 characters.",
       "cityValidation": "Enter your city.",
       "countryValidation": "Enter your country or region.",
       "photoTypeValidation": "Choose a JPG, PNG or WebP image.",
-      "photoSizeValidation": "The profile photo must be 2 MB or smaller.",
-      "avatarUploadUrlError": "Failed to get upload URL",
-      "avatarStorageError": "Photo upload failed.",
-      "avatarConfirmError": "Failed to confirm avatar",
+      "photoSizeValidation": "This photo is {{size}} MB; the maximum is 2 MB. Choose a smaller photo.",
+      "photoInvalidValidation": "This file is not a valid JPG, PNG or WebP image. Try another photo.",
+      "avatarSessionExpired": "Your sign-in session has expired. Sign in again, then choose your photo.",
+      "avatarUploadUnavailable": "The photo upload service is temporarily unavailable. Please try again later. Contact support if the problem continues.",
+      "avatarUploadUrlError": "The photo upload could not be started. Refresh this page and try again. Contact support if the problem continues.",
+      "avatarStorageError": "The photo could not be uploaded. Check your connection and try again.",
+      "avatarConfirmError": "The photo uploaded, but could not be saved to your profile. Please try again.",
       "bioValidation": "About you must contain {{min}}–{{max}} characters.",
+      "bioLegacyHint": "You can keep your current bio. If you edit it, use {{min}}–{{max}} characters.",
       "fullNamePlaceholder": "e.g. Ahmad Bin Ali",
       "cityPlaceholder": "e.g. Kuala Lumpur",
       "countryPlaceholder": "e.g. Malaysia",
-      "bioPlaceholder": "e.g. Malaysian travel enthusiast who loves discovering hidden gems and authentic local food…",
+      "bioPlaceholder": "e.g. I enjoy food and culture.",
       "steps": {
         "phone": "Phone",
         "identity": "Identity",
@@ -1626,6 +1657,12 @@
       "increaseQuantity": "Increase quantity",
       "chatVendor": "Chat with vendor",
       "viewCart": "View cart",
+      "outOfStock": "This outlet is currently out of stock.",
+      "chooseOtherOutlet": "Choose another outlet to continue.",
+      "quantityExceedsStock": "Reduce the quantity to the available stock before adding this item.",
+      "stockAvailable": "{{count}} available at this outlet.",
+      "stockAvailable_one": "{{count}} available at this outlet.",
+      "stockAvailable_other": "{{count}} available at this outlet.",
       "addBooking": "Add booking",
       "addCart": "Add to cart",
       "priceUnits": {
@@ -1675,7 +1712,7 @@
       "exploreWithConfidence": "Explore with confidence",
       "activeLocations": "Active locations",
       "publishedListings": "Published listings",
-      "approvedOnMyLawatan": "Approved on MyLawatan",
+      "approvedOnMyLawatan": "Approved on MYLawatan",
       "acrossMalaysia": "Across Malaysia",
       "readyToExplore": "Ready to explore",
       "newPartner": "New partner",
@@ -1695,7 +1732,7 @@
       "localPartnerTitle": "A local partner for your Malaysia plans",
       "fallbackDescription": "{{vendor}} brings local products and experiences together across Malaysia.",
       "verifiedBusiness": "Verified business",
-      "bookThrough": "Book through MyLawatan",
+      "bookThrough": "Book through MYLawatan",
       "policiesSupport": "Policies & support",
       "planDetails": "Plan with the right details",
       "hoursVary": "Hours vary by outlet.",
@@ -1745,7 +1782,7 @@
       "emptyTitle": "Your wallet is empty",
       "emptyDescription": "Sign in to view your wallet, top up and manage eligible earnings withdrawals.",
       "title": "My Wallet",
-      "description": "Manage your spendable balance, earnings, and payout withdrawals.",
+      "description": "Balance, earnings and withdrawals.",
       "topupSuccess": "Top-up initiated! Your balance will update once the payment clears (usually within a minute).",
       "withdrawalSubmitted": "Withdrawal request submitted successfully. It is now pending review.",
       "bankSetupSubmitted": "Bank account setup submitted. Stripe will verify your details — this may take a few minutes.",
@@ -1836,7 +1873,7 @@
       "stripeVerificationProgress": "Stripe verification in progress",
       "bankWithdrawalsRestricted": "Bank withdrawals temporarily restricted",
       "unableVerifyPayout": "Unable to verify payout account",
-      "completeKycFirst": "Complete MyLawatan KYC first",
+      "completeKycFirst": "Complete MYLawatan KYC first",
       "checkingSetup": "Checking withdrawal setup",
       "setupEarningsOptional": "Set up earnings withdrawals (optional)",
       "approvedBankDestination": "Approved bank withdrawals will go to the account held by Stripe.",
@@ -1844,10 +1881,10 @@
       "stripeReviewing": "Stripe is reviewing your payout information. No action is needed.",
       "bankRestrictedDescription": "Bank withdrawals are temporarily restricted.",
       "retryStatus": "Please retry the status check.",
-      "setupAfterKyc": "Stripe payout setup becomes available after MyLawatan KYC approval.",
+      "setupAfterKyc": "Stripe payout setup becomes available after MYLawatan KYC approval.",
       "checkingStripeStatus": "Checking the latest status securely with Stripe.",
       "setupWhenWithdrawing": "Set this up only when you want to withdraw reward earnings.",
-      "stripePrivacy": "Stripe securely collects your payout bank details and Stripe verification files. MyLawatan does not store those Stripe-hosted details.",
+      "stripePrivacy": "Stripe securely collects your payout bank details and Stripe verification files. MYLawatan does not store those Stripe-hosted details.",
       "setupWithdrawals": "Set up withdrawals",
       "updateDetails": "Update details",
       "retryStatusCheck": "Retry status check",
@@ -1930,6 +1967,8 @@
     },
     "orders": {
       "loadError": "Could not load your orders.",
+      "detailLoadError": "We could not load this order. Your order details are still safe; try again, or return to your orders list.",
+      "relatedDetailsUnavailable": "Some booking or outlet details are temporarily unavailable. Your order is still here; retry to load them again.",
       "search": "Search order ID, product or outlet",
       "filters": "Filters",
       "allStatuses": "All statuses",
@@ -1944,6 +1983,19 @@
       "allOutlets": "All outlets",
       "fromDate": "Orders from date",
       "toDate": "Orders to date",
+      "invalidDateRange": "Check that the start date is on or before the end date (Malaysia time).",
+      "refundStatusTitle": "Refund status",
+      "refundStatusUnavailable": "Refund status could not be loaded. Refresh this page to check again.",
+      "refundStatusDetail": "{{amount}} · requested {{date}} (MYT)",
+      "refundProcessedAt": "Processed {{date}} (MYT)",
+      "refundStatuses": {
+        "pending": "Under review",
+        "approved": "Approved, processing",
+        "processed": "Refund processed",
+        "rejected": "Not approved",
+        "failed": "Processing failed",
+        "unknown": "Status unavailable"
+      },
       "found": "{{count}} orders found",
       "noMatch": "No orders match these filters",
       "tryFilters": "Try clearing one filter or searching for another activity.",
@@ -1960,7 +2012,7 @@
       "paymentMethodWalletAndCard": "Wallet and card",
       "paymentMethodEWallet": "E-wallet",
       "paymentMethodBankTransfer": "Bank transfer",
-      "paymentMethodWallet": "MyLawatan wallet",
+      "paymentMethodWallet": "MYLawatan wallet",
       "paymentMethodDemoCard": "Demo card",
       "paymentMethodNoPayment": "No payment required",
       "checkingPayment": "Checking the payment link…",
@@ -1971,18 +2023,18 @@
       "checkPaymentAgain": "Check again",
       "orderItems": "Purchased Items",
       "copyOrderId": "Copy order number",
-      "brandName": "MyLawatan",
+      "brandName": "MYLawatan",
       "portalName": "Malaysia Tourism Portal",
       "paymentMethods": {
         "stripeCard": "Stripe demo card",
         "eWallet": "E-wallet",
         "bankTransfer": "Bank transfer",
-        "myLawatanWallet": "MyLawatan wallet",
+        "myLawatanWallet": "MYLawatan wallet",
         "demoCard": "Demo card",
         "demoPayment": "Demo payment"
       },
       "moreItems": " +{{count}} more",
-      "marketplace": "MyLawatan marketplace",
+      "marketplace": "MYLawatan marketplace",
       "itemCount": "{{count}} items",
       "paginationLabel": "Order history pagination",
       "showing": "Showing {{from}}–{{to}} of {{total}} orders",
@@ -2010,6 +2062,7 @@
       "refundReasonOther": "Other reason",
       "refundDetailsLabel": "Additional explanation",
       "refundDetailsPlaceholder": "Please provide more details regarding your refund request (minimum 5 characters)...",
+      "refundDetailsRequired": "For “Other”, add at least 5 characters so the team can review your request.",
       "refundPolicyNotice": "Refund requests are subject to vendor policy and will be reviewed within 1-3 business days.",
       "submitRefund": "Submit Refund Request",
       "taxInvoice": "Tax Invoice & Official Receipt",
@@ -2026,7 +2079,8 @@
       "found_one": "{{count}} orders found",
       "found_other": "{{count}} orders found",
       "moreItems_one": " +{{count}} more",
-      "moreItems_other": " +{{count}} more"
+      "moreItems_other": " +{{count}} more",
+      "details": "Order details"
     },
     "outletMenu": {
       "from": "From",
@@ -2135,9 +2189,9 @@
     },
     "destination": {
       "notFound": "Destination not found",
-      "metaTitle": "{{state}} — Explore Malaysia on MyLawatan",
+      "metaTitle": "{{state}} — Explore Malaysia on MYLawatan",
       "metaDescription": "Discover experiences, outlets and attractions in {{state}}, Malaysia.",
-      "metaExploreTitle": "Explore {{state}} | MyLawatan",
+      "metaExploreTitle": "Explore {{state}} | MYLawatan",
       "backToExplore": "Back to Explore",
       "viewOnMap": "View on Map",
       "findPartners": "Find Partners",
@@ -2154,7 +2208,7 @@
     },
     "experience": {
       "notFound": "Experience not found",
-      "metaDescription": "Book {{name}} on MyLawatan — discover local experiences across Malaysia.",
+      "metaDescription": "Book {{name}} on MYLawatan — discover local experiences across Malaysia.",
       "backToExplore": "Back to Explore",
       "bookable": "Bookable experience",
       "about": "About this experience",
@@ -2225,7 +2279,7 @@
     },
     "place": {
       "notFound": "Place not found",
-      "metaTitle": "{{name}} — Explore Malaysia on MyLawatan",
+      "metaTitle": "{{name}} — Explore Malaysia on MYLawatan",
       "metaDescription": "Discover {{name}}, {{state}}.",
       "all": "All",
       "levels": {
@@ -2329,7 +2383,7 @@
       }
     },
     "saved": {
-      "metadataTitle": "Saved — MyLawatan",
+      "metadataTitle": "Saved — MYLawatan",
       "metadataDescription": "Your saved destinations, food, activities, and products across Malaysia.",
       "signInTitle": "Sign in to view your saved items",
       "signInDescription": "Save places and products across Malaysia and find them here later."
@@ -2345,6 +2399,7 @@
       "aiNameLoading": "Suggesting names…",
       "aiNameAlternatives": "Choose a suggested name or keep editing",
       "aiNameFallback": "AI is temporarily unavailable, so these date-matched names were created locally.",
+      "aiNamePrivacyFallback": "Your idea was not sent to AI because it may contain personal details. Remove phone, email, ID, bank, or private-address details and request again. These names were created locally, and you can keep editing your trip without AI.",
       "aiNameError": "Names could not be suggested right now. You can still create this trip.",
       "aiNamePhoneRequired": "Verify your phone to use AI naming. You can still create this trip with your own name.",
       "startDate": "Start Date",
@@ -2406,7 +2461,7 @@
       "notFound": "Outlet not found",
       "metaDescription": "Explore products and experiences at {{name}}.",
       "heroTitle": "Your local day starts here",
-      "verified": "Verified MyLawatan outlet",
+      "verified": "Verified MYLawatan outlet",
       "by": "by",
       "introTitle": "A local day, made memorable",
       "introBody": "Discover {{vendor}} in {{city}}: local favourites, thoughtful hosts and experiences designed around this place."
@@ -2516,7 +2571,7 @@
       "ticketRequired": "Ticket required",
       "venueInformation": "Venue information",
       "venueDetails": "View details",
-      "venueDetailsHint": "Opens inside MyLawatan",
+      "venueDetailsHint": "Opens inside MYLawatan",
       "venue": "Venue",
       "informationSource": "Information from",
       "price": "RM{{value}}",
@@ -2537,7 +2592,7 @@
       "title": "For you",
       "heading": "Your Malaysia, your way",
       "personalisedDescription": "Handpicked recommendations that match your travel preferences.",
-      "genericDescription": "Popular experiences from MyLawatan.",
+      "genericDescription": "Popular experiences from MYLawatan.",
       "profileCityDistance": "Showing distances from your profile city.",
       "unlock": "Complete your profile and travel survey to unlock personalised suggestions.",
       "continueVerification": "Continue verification →",
@@ -2636,7 +2691,7 @@
       "approvedVendors_other": "{{count}} approved vendors"
     },
     "voucherHub": {
-      "eyebrow": "MyLawatan vouchers",
+      "eyebrow": "MYLawatan vouchers",
       "dealsTitle": "Discover more for less",
       "mineTitle": "Your vouchers",
       "dealsDescription": "Claim partner and outlet offers for your next Malaysia experience.",
@@ -2853,8 +2908,6 @@
       "ended": "Ended",
       "title": "Reserve {{item}}",
       "description": "Pick up at {{location}}. Choose a date and a pickup time.",
-      "signInHint": "Sign in to reserve and pay for event items.",
-      "signIn": "Sign in to reserve",
       "date": "Pickup date",
       "time": "Pickup time",
       "loading": "Checking availability…",
@@ -2889,6 +2942,24 @@
       "status": {
         "pending": "Ready to collect",
         "collected": "Collected"
+      }
+    },
+    "pickupPasses": {
+      "loading": "Checking pickup codes…",
+      "loadError": "Pickup codes could not be refreshed. Try again.",
+      "retry": "Try again",
+      "retailTitle": "Retail collection codes",
+      "retailDescription": "Show the code at the named outlet. One scan collects the full quantity shown.",
+      "retailQrAlt": "Collection QR for {{product}}",
+      "noActiveQr": "No active collection code",
+      "quantity_one": "Quantity: {{count}} item",
+      "quantity_other": "Quantity: {{count}} items",
+      "status": {
+        "pending": "Ready to collect",
+        "collected": "Collected",
+        "legacy_completed": "Already completed",
+        "refund_paused": "Collection paused while refund is reviewed",
+        "unavailable": "Collection is unavailable"
       }
     },
     "hotel": {
@@ -3013,7 +3084,7 @@
       "removeAttachment": "Remove attachment",
       "messagePerson": "Message {{name}}",
       "attachFile": "Attach a file",
-      "safetyNotice": "Phone numbers, contact details and links are hidden to keep you safe on MyLawatan.",
+      "safetyNotice": "Phone numbers, contact details and links are hidden to keep you safe on MYLawatan.",
       "loadingConversations": "Loading conversations…",
       "conversationCount": "{{count}} conversations",
       "unreadCount": "{{count}} unread",
@@ -3138,6 +3209,8 @@
       }
     },
     "tripPlanner": {
+      "itemRemoved": "{{item}} was removed from your trip.",
+      "itemAddedUnscheduled": "{{item}} was added to your trip. Choose a day in the itinerary to schedule it.",
       "scheduledFor": "Scheduled for {{date}}",
       "plannerViews": "Planner views",
       "itinerary": "Trip itinerary",
@@ -3164,6 +3237,7 @@
         "loading": "Finding ideas…",
         "calculating": "Calculating route…",
         "error": "Suggestions are unavailable right now. Please try again.",
+        "timeout": "Trip suggestions took too long. Check your connection and try again.",
         "verifyPhone": "Verify your phone to use AI trip planning.",
         "empty": "Your trip ideas will appear here.",
         "suggestions": "Ideas for your trip",
@@ -3177,6 +3251,10 @@
         "basicSuggestions": "Showing basic suggestions while AI is unavailable or busy."
       },
       "timeFor": "Time for {{item}}",
+      "moveEarlier": "Move {{item}} earlier",
+      "moveLater": "Move {{item}} later",
+      "moveToDay": "Move {{item}} to a day",
+      "toggleItemTitle": "Expand or collapse {{item}}",
       "editItem": "Edit {{item}}",
       "removeItem": "Remove {{item}}",
       "showOnMap": "Show {{item}} on map",
@@ -3525,13 +3603,13 @@
     },
     "walletReceipt": {
       "backToWallet": "Back to wallet",
-      "eyebrow": "MyLawatan Wallet",
+      "eyebrow": "MYLawatan Wallet",
       "title": "Withdrawal receipt",
       "payoutDestination": "Payout destination",
       "defaultDestination": "Selected payout destination",
       "payoutReference": "Payout reference: {{reference}}",
       "reviewNote": "Review note",
-      "settlementNotice": "This receipt records the withdrawal request in MyLawatan. Settlement timing depends on the selected payout provider ({{provider}}).",
+      "settlementNotice": "This receipt records the withdrawal request in MYLawatan. Settlement timing depends on the selected payout provider ({{provider}}).",
       "moneyMovement": {
         "title": "Money movement",
         "reserved": "Reserved earnings",
@@ -3552,7 +3630,7 @@
         "eventId": "Provider event",
         "amount": "Amount",
         "providerTime": "Provider time",
-        "receivedTime": "MyLawatan received",
+        "receivedTime": "MYLawatan received",
         "payloadHash": "Payload SHA-256",
         "immutableNotice": "This immutable proof records the provider-reported result. Customers and administrators cannot edit it."
       },
@@ -3590,11 +3668,9 @@
         "bankTransfer": "Bank transfer — Demo simulator",
         "toyyibpay": "ToyyibPay online banking",
         "toyyibpaySandbox": "ToyyibPay — Sandbox",
-        "wallet": "MyLawatan wallet balance",
+        "wallet": "MYLawatan wallet balance",
         "walletSplit": "Wallet first + card remainder"
-      },
-      "signInTitle": "Sign in to check out",
-      "signInDescription": "Your selected items stay private and checkout requires a verified account."
+      }
     },
     "kyc": {
       "fileMeta": "{{size}} MB · {{type}}"
@@ -3604,15 +3680,11 @@
       "experience": "Experience",
       "experienceFallback": "Discover this Malaysian experience.",
       "viewVendor": "View vendor",
-      "signInBook": "Sign in to book",
-      "signInPurchase": "Sign in to purchase",
       "upcomingAvailability": "Upcoming availability",
-      "availableSessions": "{{count}} available session. Sign in to choose a time.",
-      "availableSessions_other": "{{count}} available sessions. Sign in to choose a time.",
       "guestReviews": "Guest reviews",
       "noReviews": "No public reviews yet.",
       "guestReview": "Guest review",
-      "verifiedVendor": "Verified MyLawatan vendor",
+      "verifiedVendor": "Verified MYLawatan vendor",
       "browseListings": "Browse listings",
       "locations": "Locations",
       "activeOutlets": "Active outlets",
@@ -3620,8 +3692,7 @@
       "outletCount_other": "{{count}} outlets",
       "noOutlets": "No public outlets yet.",
       "price": "Price",
-      "outletCount_one": "{{count}} outlet",
-      "availableSessions_one": "{{count}} available session. Sign in to choose a time."
+      "outletCount_one": "{{count}} outlet"
     },
     "place": {
       "entry": "Entry"
@@ -3688,7 +3759,7 @@
     },
     "privacy": {
       "title": "Privacy Policy",
-      "intro": "This policy explains what personal information MyLawatan collects, why we collect it, and the choices you have. MyLawatan is a final-year student project, so treat it as a prototype rather than a commercial service.",
+      "intro": "This policy explains what personal information MYLawatan collects, why we collect it, and the choices you have. MYLawatan is a final-year student project, so treat it as a prototype rather than a commercial service.",
       "collect": {
         "heading": "What we collect",
         "body": "Account details you provide: your email, name, phone number, and optionally a display name, short bio, profile photo, and your city and country. If you choose to get verified, we also collect the identity documents described on the Data & KYC page. We record activity needed to run the service, such as orders, bookings, wallet transactions, chat messages, reviews, and affiliate clicks and shares."
@@ -3720,14 +3791,14 @@
     },
     "terms": {
       "title": "Terms of Service",
-      "intro": "These terms explain the rules for using MyLawatan. By using the platform you agree to them. Please read the prototype notice first.",
+      "intro": "These terms explain the rules for using MYLawatan. By using the platform you agree to them. Please read the prototype notice first.",
       "prototype": {
         "heading": "Prototype notice",
-        "body": "MyLawatan is a final-year academic project, not a commercial product. Some features are simulated for demonstration and no real goods, services, or payouts are guaranteed. Do not rely on it for real travel bookings."
+        "body": "MYLawatan is a final-year academic project, not a commercial product. Some features are simulated for demonstration and no real goods, services, or payouts are guaranteed. Do not rely on it for real travel bookings."
       },
       "accounts": {
         "heading": "Accounts and eligibility",
-        "body": "You are responsible for the accuracy of the information you provide and for keeping your login secure. Browsing is open to everyone; checkout and booking require a verified phone number, and withdrawing earnings requires identity verification."
+        "body": "You are responsible for the accuracy of the information you provide and for keeping your login secure. Browsing is open to everyone. Guests can book and buy eligible items without signing in or verifying a phone number. Withdrawing earnings requires identity verification."
       },
       "acceptableUse": {
         "heading": "Acceptable use",
@@ -3756,7 +3827,7 @@
     },
     "data": {
       "title": "Your Data & KYC",
-      "intro": "This page explains, in plain language, how MyLawatan handles identity verification (KYC) and the sensitive documents involved. It expands on the Privacy Policy for this specific area.",
+      "intro": "This page explains, in plain language, how MYLawatan handles identity verification (KYC) and the sensitive documents involved. It expands on the Privacy Policy for this specific area.",
       "when": {
         "heading": "When verification is required",
         "body": "You do not need to upload any identity document to browse, save items, or make a booking. Identity verification (KYC) is only required for higher-trust actions, specifically withdrawing earnings from your wallet. You stay in control of when, or whether, you start it."
@@ -3787,10 +3858,10 @@
       }
     },
     "about": {
-      "title": "About MyLawatan",
-      "intro": "MyLawatan is a Malaysia-focused tourism marketplace built as a final-year project. It brings discovery, booking, payments, and traveller support together in one place.",
+      "title": "About MYLawatan",
+      "intro": "MYLawatan is a Malaysia-focused tourism marketplace built as a final-year project. It brings discovery, booking, payments, and traveller support together in one place.",
       "what": {
-        "heading": "What MyLawatan is",
+        "heading": "What MYLawatan is",
         "body": "You can explore activities, food, stays, and hidden gems across Malaysia, book and pay in one cart, chat with vendors, and manage everything from a single account. Vendors manage their outlets, listings, bookings, and vouchers, while the platform keeps payments, verification, and rewards running behind the scenes."
       },
       "prototype": {
@@ -3813,13 +3884,14 @@
     "phone": "Contact phone for payment (no SMS verification)",
     "unavailable": "Guest checkout is temporarily unavailable.",
     "accessTitle": "Access your guest order",
-    "recoveryHint": "Request a new private link using the order number and email provided at checkout.",
-    "orderNumber": "Order number (e.g. ORD-1000)",
+    "recoveryHint": "Enter your checkout email. Add the order number if you have it; we will email a private link if the details match.",
+    "orderNumber": "Order number (optional)",
     "emailLink": "Email me an order link",
     "requested": "If the details match a guest order, an access link will be emailed.",
     "requestFailed": "Unable to request a link. Please try again later.",
     "opening": "Opening your order…",
-    "eventHint": "Check your email before confirming. We will send your receipt and a private order link."
+    "eventHint": "Check your email before confirming. We will send your receipt and a private order link.",
+    "cartHint": "Check out with your email. Wallets and account vouchers require sign-in."
   },
   "footer": {
     "ariaLabel": "Site footer",
@@ -3837,7 +3909,51 @@
       "vendorLogin": "Vendor login",
       "privacyPolicy": "Privacy Policy",
       "termsOfService": "Terms of Service",
-      "aboutUs": "About MyLawatan"
+      "aboutUs": "About MYLawatan"
     }
+  },
+  "checkoutErrors": {
+    "CONTACT_EMAIL_REQUIRED": "Enter your contact email before continuing.",
+    "CONTACT_EMAIL_INVALID": "Enter a valid email address, for example name@example.com.",
+    "CONTACT_PHONE_REQUIRED": "Enter a contact phone number for the selected payment method.",
+    "CONTACT_PHONE_INVALID": "Check the country code and enter a valid phone number.",
+    "CONTACT_NAME_INVALID": "Enter a contact name of up to 100 characters, or leave it blank.",
+    "PAYMENT_SERVICE_UNAVAILABLE": "Payment service is temporarily unavailable. Try again later or choose another available payment method.",
+    "PAYMENT_METHOD_UNAVAILABLE": "This payment method is unavailable. Choose another payment method.",
+    "PAYMENT_STATUS_UNCERTAIN": "We could not confirm the payment setup. Check your order before starting another payment.",
+    "CHECKOUT_SERVICE_UNAVAILABLE": "We cannot verify your checkout right now. Please try again later.",
+    "CHECKOUT_DETAILS_INVALID": "Review your checkout details and correct any invalid fields before continuing.",
+    "CHECKOUT_CONNECTION_FAILED": "Your connection was interrupted. Check your connection and order before trying again.",
+    "CHECKOUT_RATE_LIMITED": "Too many checkout attempts. Wait a few minutes before trying again.",
+    "GUEST_SESSION_UNAVAILABLE": "Guest checkout is temporarily unavailable. Refresh the page and try again.",
+    "CHECKOUT_CLOSED": "This checkout has closed. Check your order before paying again.",
+    "CART_EMPTY": "Your cart is empty. Add an item before checking out.",
+    "CART_SELECTION_REQUIRED": "Select at least one item in your cart before checking out.",
+    "STAY_DETAILS_REQUIRED": "Return to your cart and complete the guest details for each accommodation booking.",
+    "FOOD_SERVICE_MODE_REQUIRED": "Choose dine-in or takeaway for each food outlet before continuing.",
+    "FOOD_SERVICE_MODE_UNAVAILABLE": "The selected dine-in or takeaway option is unavailable. Refresh checkout and choose an available option.",
+    "WALLET_RESERVATION_UNAVAILABLE": "Your Wallet payment could not be reserved. Refresh checkout and try again.",
+    "ACTIVE_CHECKOUT_EXISTS": "Complete or cancel your existing unpaid order before starting another checkout.",
+    "CHECKOUT_COMMITMENT_UNAVAILABLE": "Your checkout expired or purchase eligibility changed. Review your order before paying again.",
+    "BOOKING_CAPACITY_UNAVAILABLE": "This time slot was just booked by another customer. Please choose another available slot.",
+    "BOOKING_SLOT_INVALID": "This time slot is no longer valid. Please return to your cart and choose another slot.",
+    "CART_ITEM_UNAVAILABLE": "One or more items or outlets can no longer accept this order. Return to your cart to review your selection.",
+    "INVENTORY_UNAVAILABLE": "This item is no longer available in the requested quantity. Please return to your cart and adjust it.",
+    "WALLET_INSUFFICIENT": "Wallet balance is no longer sufficient. Top up your Wallet or choose another available payment method.",
+    "VOUCHER_NOT_AVAILABLE": "This voucher is no longer available.",
+    "VOUCHER_NOT_STARTED": "This voucher is not active yet.",
+    "VOUCHER_EXPIRED": "This voucher has expired.",
+    "VOUCHER_LIMIT_REACHED": "This voucher has reached its usage limit.",
+    "VOUCHER_MINIMUM_SPEND": "Your order has not reached this voucher's minimum spend.",
+    "VOUCHER_OUTLET_NOT_APPLICABLE": "This voucher is not valid for the selected outlet.",
+    "VOUCHER_PRODUCT_NOT_APPLICABLE": "This voucher is not valid for the selected product.",
+    "VOUCHER_CUSTOMER_LIMIT_REACHED": "You have reached this voucher's per-customer limit.",
+    "VOUCHER_DISCOUNT_MISMATCH": "The voucher discount could not be verified. Please try again.",
+    "VOUCHER_CLAIM_EXPIRED": "This claimed voucher has expired. Please choose another voucher.",
+    "VOUCHER_CLAIM_MISMATCH": "This voucher claim does not match the selected voucher.",
+    "VOUCHER_CLAIM_UNAVAILABLE": "This voucher claim is no longer available. Please choose another voucher.",
+    "NEW_ORDERS_PAUSED": "New orders are temporarily unavailable. Please try again later.",
+    "CHECKOUT_FAILED": "We could not start checkout right now. Please try again.",
+    "reviewOrder": "Check your order"
   }
 }

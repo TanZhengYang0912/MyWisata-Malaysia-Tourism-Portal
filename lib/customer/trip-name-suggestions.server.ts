@@ -36,7 +36,7 @@ export async function generateTripNameSuggestions(input: TripNameSuggestionInput
     const suggestions = parseTripNameSuggestions(raw, input.duration, input.locale);
     if (suggestions.length !== 3) return { suggestions: fallback, aiAvailable: false };
     return { suggestions, aiAvailable: true };
-  } catch {
-    return { suggestions: fallback, aiAvailable: false };
+  } catch (error) {
+    return { suggestions: fallback, aiAvailable: false, privacyBlocked: error instanceof Error && error.message === 'sensitive_data_detected' };
   }
 }

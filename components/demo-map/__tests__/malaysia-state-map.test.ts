@@ -79,7 +79,7 @@ describe("Malaysia state discovery map", () => {
     expect(mapSource).toContain('preserveAspectRatio="none"');
   });
 
-  it("uses the MyLawatan indigo palette and avoids the native map tooltip", () => {
+  it("uses the MYLawatan indigo palette and avoids the native map tooltip", () => {
     expect(mapSource).toContain("#c7d2fe");
     expect(mapSource).toContain("#dce4ff");
     expect(mapSource).toContain("#010066");

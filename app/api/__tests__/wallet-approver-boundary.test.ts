@@ -56,9 +56,10 @@ const staffRoutes: [string, string, Record<string, unknown>?][] = [
 
 function query(data: unknown) {
   const result = { data, error: null };
-  const chain = { select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn(), not: vi.fn(), update: vi.fn(() => { throw reachedBusinessData; }), then: Promise.resolve(result).then.bind(Promise.resolve(result)) };
+  const chain = { select: vi.fn(), eq: vi.fn(), is: vi.fn(), maybeSingle: vi.fn(), not: vi.fn(), update: vi.fn(() => { throw reachedBusinessData; }), then: Promise.resolve(result).then.bind(Promise.resolve(result)) };
   chain.select.mockReturnValue(chain);
   chain.eq.mockReturnValue(chain);
+  chain.is.mockReturnValue(chain);
   chain.not.mockReturnValue(chain);
   chain.maybeSingle.mockResolvedValue(result);
   return chain;
@@ -83,6 +84,7 @@ beforeEach(() => {
     grantedPermissions = [];
   mocks.getUser.mockResolvedValue({ data: { user: { id: 'actor' } }, error: null });
   mocks.from.mockImplementation((table: string) => {
+    if (table === 'users') return query({ id: 'actor', status: 'active' });
     if (table === 'user_roles') return query(roles.map((name) => ({ roles: { name } })));
     throw reachedBusinessData;
   });

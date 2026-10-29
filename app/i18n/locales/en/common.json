@@ -295,6 +295,7 @@
     "viewMyTickets": "View my tickets",
     "ticketError": "Couldn't create a ticket right now. Please try again.",
     "somethingWrong": "Sorry, something went wrong. Please try again.",
+    "privacyBlocked": "Your full message was kept from the AI because it may contain a phone number, email, ID, bank detail, or private address. Remove those details and send it again. You can also keep using the local FAQ without AI.",
     "supportRequest": "Support request",
     "faq": {
       "browse": "Browse common questions",
@@ -309,7 +310,7 @@
       "stop": "Stop listening"
     },
     "list": {
-      "supportLabel": "MyLawatan Support",
+      "supportLabel": "MYLawatan Support",
       "signInPrompt": "Sign in to chat with vendors."
     },
     "expandChat": "Expand to full screen",
@@ -368,8 +369,8 @@
     "cmdK": "⌘K"
   },
   "brand": {
-    "speed": "MyLawatan Speed",
-    "copyright": "© {{year}} MyLawatan. All rights reserved."
+    "speed": "MYLawatan Speed",
+    "copyright": "© {{year}} MYLawatan. All rights reserved."
   },
   "ui": {
     "vendor": {

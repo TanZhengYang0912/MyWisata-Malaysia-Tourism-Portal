@@ -29,7 +29,7 @@ describe("customer header reference contract", () => {
   });
 
   it("uses the supplied logo asset without changing the header row geometry", () => {
-    expect(customerLayoutSource).toContain('src="/branding/mylawatan-logo-transparent.png?v=2"');
+    expect(customerLayoutSource).toContain('src="/branding/mylawatan-logo-transparent.png?v=3"');
     expect(customerLayoutSource).toContain("width={758}");
     expect(customerLayoutSource).toContain("height={306}");
     expect(customerLayoutSource).toContain("h-17");
@@ -64,13 +64,7 @@ describe("customer header reference contract", () => {
   it("compresses the customer utility row at phone widths to keep account controls visible", () => {
     expect(customerLayoutSource).toContain("px-2 sm:px-6 flex items-center gap-1 sm:gap-8");
     expect(customerLayoutSource).toContain("w-[62px] min-[360px]:w-[84px] min-[420px]:w-[94px] sm:w-[118px]");
-    expect(customerLayoutSource).toContain("<CurrencySwitcher compact codeHiddenOnMobile className=\"w-14 md:w-24\" />");
-    expect(customerLayoutSource).toContain("text-muted-foreground transition-transform sm:inline");
+    expect(customerLayoutSource).toContain("<CurrencySwitcher compact codeHiddenOnMobile className=\"w-14 min-[360px]:w-16 min-[420px]:w-20 md:w-24\" />");
   });
 
-  it("wraps account-menu descriptions instead of clipping them with an ellipsis", () => {
-    expect(customerLayoutSource).toContain(
-      '<span className="block whitespace-normal break-words text-[0.6875rem] leading-5 text-muted-foreground">{tCustomer(`${item.labelKey}.description`)}</span>',
-    );
-  });
 });

@@ -68,7 +68,6 @@ describe("shared language entry points", () => {
     expect(customer).toContain("tCustomer(item.labelKey)");
     expect(customer).toContain("tCustomer(group.labelKey)");
     expect(customer).toContain('tCustomer(`${item.labelKey}.label`)');
-    expect(customer).toContain('tCustomer(`${item.labelKey}.description`)');
     expect(customer).toContain('tCustomer("accountItems.vouchers.label")');
     expect(customer).toContain('aria-label={item.href === "/customer/vouchers" ? tCustomer("accountItems.vouchers.label") : undefined}');
     expect(customer).not.toContain('aria-label="My Vouchers"');

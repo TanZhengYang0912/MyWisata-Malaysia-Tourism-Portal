@@ -27,7 +27,7 @@ export function generateOutletIcalFeed(outletName: string, slots: IcalSlotEvent[
     'PRODID:-//MyLawatan//Tourism Portal Booking Calendar//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    `X-WR-CALNAME:MyLawatan - ${outletName.replace(/[\r\n]/g, '')}`,
+    `X-WR-CALNAME:MYLawatan - ${outletName.replace(/[\r\n]/g, '')}`,
     'X-WR-TIMEZONE:Asia/Kuala_Lumpur',
   ];
 

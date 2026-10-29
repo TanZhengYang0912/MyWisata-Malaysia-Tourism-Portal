@@ -5,7 +5,7 @@
 // a reasoning-heavy one, and reusing the same call shape means any future
 // model-swap only has to happen in one place's worth of muscle memory.
 
-import { redactPII } from '@/lib/chatbot/pii';
+import { prepareExternalText } from '@/lib/chatbot/pii';
 import type { ChatLanguage } from '@/lib/chatbot/language';
 
 const TRANSLATE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
@@ -35,7 +35,9 @@ export async function translateMessage(text: string, targetLang: ChatLanguage): 
   // Same redaction boundary as every other outbound LLM call in this module
   // (lib/chatbot/pii.ts) — a chat message can contain a phone number or IC,
   // and this is the one place that text leaves the platform.
-  const { clean } = redactPII(text);
+  const prepared = prepareExternalText(text);
+  if (!prepared.allowed) throw new Error('sensitive_data_detected');
+  const { clean } = prepared;
 
   const prompt = `Translate the following chat message into ${LANGUAGE_NAMES[targetLang]}. Preserve the exact meaning and tone, and keep any numbers, prices, or dates exactly as written — do not convert or reinterpret them. Output ONLY the translation: no notes, no quotes, no explanation.\n\nMESSAGE:\n${clean}`;
 
@@ -54,8 +56,7 @@ export async function translateMessage(text: string, targetLang: ChatLanguage): 
     });
 
     if (!res.ok) {
-      const errBody = await res.text().catch(() => '');
-      throw new Error(`Gemini generateContent failed: ${res.status} ${errBody.slice(0, 200)}`);
+      throw new Error(`Gemini generateContent failed: HTTP ${res.status}`);
     }
 
     const body = (await res.json()) as GeminiGenerateResponse;

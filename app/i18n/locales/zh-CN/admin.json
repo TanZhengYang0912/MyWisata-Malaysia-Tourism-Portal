@@ -149,7 +149,7 @@
   "accessControl": {
     "eyebrow": "安全治理",
     "title": "访问控制",
-    "description": "管理能力元数据、版本化策略、定向分配以及关联的全平台审计历史。",
+    "description": "管理员工角色、权限和操作记录。",
     "capabilityNames": {
       "platform_browse": "登录后浏览",
       "commerce_booking": "顾客预订",
@@ -223,7 +223,8 @@
       "loadStaffCandidates": "无法搜索符合条件的员工。",
       "saveStaffRole": "无法保存员工角色。",
       "assignStaffRole": "无法分配员工角色。",
-      "loadAudit": "无法加载审计日志。"
+      "loadAudit": "无法加载审计日志。",
+      "invalidAuditDateRange": "请输入有效日期范围。审计日期按马来西亚时间（MYT）筛选。"
     },
     "feedback": {
       "capabilityUpdated": "能力治理元数据已更新。",
@@ -232,6 +233,7 @@
       "staffRoleUpdated": "员工角色操作已完成。",
       "staffModuleUpdated": "员工模块设置已保存。",
       "staffRoleGranted": "已将“{{role}}”授予 {{employee}}。",
+      "previousMutationReceipt": "最近的权限变更可供审计查证。",
       "committedReceiptUnavailable": "更改已保存，但审计回执或最新状态暂时无法读取。请先刷新页面，再进行其他更改。"
     },
     "filters": {
@@ -408,9 +410,12 @@
       "invitationSent": "邀请邮件已发送。",
       "invitationResent": "邀请已用新链接重新发送。",
       "invitationRevoked": "邀请已撤销。",
+      "invitationCommittedDeliveryFailed": "邀请已记录，但邮件未能发送。重试前请先检查邀请状态。",
+      "invitationCommittedDeliveryPending": "邀请已记录，邮件投递仍在确认中。重试前请先检查邀请状态。",
       "invitationError": "无法处理员工邀请。",
       "joinedEmployees": "已加入员工",
       "invitationListEntry": "{{roleName}} · {{status}} · {{delivery}}",
+      "expiresAt": "到期时间：{{value}}",
       "delivery": {
         "pending": "等待中",
         "sending": "发送中",
@@ -560,11 +565,13 @@
       "revokeTitle": "撤销分配"
     },
     "audit": {
-      "readOnlyTitle": "只读证据。",
-      "readOnlyDescription": "此全平台审计日志包含访问控制及关联的平台治理事件；目录审核仍是独立工作流程。",
+      "readOnlyTitle": "只读记录。",
+      "readOnlyDescription": "包含权限变更及相关管理操作。",
       "focusedEvent": "已选择审计事件：{{id}}",
+      "focusedEntity": "正在查看 {{id}} 的审计记录",
       "focusNotOnPage": "所选事件不在当前结果页内。",
       "when": "时间",
+      "whenMyt": "时间（马来西亚时间）",
       "actor": "操作者",
       "action": "操作",
       "target": "目标",
@@ -572,6 +579,7 @@
       "trace": "追踪引用",
       "details": "详情",
       "systemActor": "系统",
+      "unknownActor": "未知账号",
       "before": "变更前",
       "after": "变更后",
       "changeSummary": "关键变更",
@@ -607,6 +615,17 @@
         "staffInvitationDeliverySucceeded": "发送了员工邀请",
         "staffInvitationResent": "重新发送了员工邀请",
         "staffInvitationRevoked": "撤销了员工邀请",
+        "staffModuleCreated": "创建了员工权限模块",
+        "staffModuleUpdated": "更新了员工权限模块",
+        "staffPasskeyApprove": "验证了用于审批的通行密钥",
+        "staffPasskeyEnrollmentGrant": "授予了通行密钥注册权限",
+        "staffPasskeyFraudOverride": "验证了用于反欺诈例外操作的通行密钥",
+        "staffPasskeyLogin": "使用通行密钥登录",
+        "staffPasskeyManage": "验证了用于员工安全管理的通行密钥",
+        "staffPasskeyRecoveryGrant": "授予了通行密钥恢复权限",
+        "staffPasskeyRegister": "注册了通行密钥",
+        "staffPasskeyRetryPayout": "验证了用于重试付款的通行密钥",
+        "staffPasskeyRevoked": "撤销了通行密钥",
         "staffRoleAssigned": "分配了员工角色",
         "staffRoleCreated": "创建了员工角色",
         "staffRoleRevoked": "撤销了员工角色分配",
@@ -645,6 +664,10 @@
         "customerVisible": "客户可见",
         "manuallyAssignable": "可手动分配",
         "generation": "代次",
+        "assignmentId": "分配记录 ID",
+        "roleId": "角色 ID",
+        "userId": "用户 ID",
+        "revoked": "已撤销",
         "roleName": "角色名称",
         "moduleKeys": "模块",
         "permissionKeys": "权限",
@@ -1105,6 +1128,7 @@
       "batchFailed": "批量更新知识库文件失败。",
       "batchUpdate": "一个或多个知识库文件无法更新。",
       "draft": "暂时无法起草知识库条目。",
+      "privacyBlocked": "完整请求没有发送给 AI，因为可能包含个人资料。请移除电话、邮箱、证件、银行资料或私人地址，或手动编写知识库条目。关键词答复仍可使用。",
       "loadDescription": "加载聊天机器人概览时出错。请尝试刷新页面。",
       "loadTitle": "无法加载聊天机器人统计数据",
       "reindex": "重新索引失败。",
@@ -1927,7 +1951,7 @@
       "contributorLine": "顾客推荐 · {{category}} · {{state}} · 推荐人：{{author}}",
       "description": "在联系商家前审核社区推荐。",
       "duplicate": "重复",
-      "member": "MyLawatan 会员",
+      "member": "MYLawatan 会员",
       "noPending": "没有待审核推荐",
       "pending": "待审核（{{count}}）",
       "pendingLabel": "待审核推荐",
@@ -2736,7 +2760,9 @@
       "analysisUnavailable": "AI 分析不可用，以下仍显示确定性证据检查结果。",
       "confidence": "{{value}} 置信度",
       "errors": {
-        "unavailable": "AI 审核暂时不可用。"
+        "unavailable": "AI 审核暂时不可用。",
+        "privacyBlocked": "推荐内容可能含有电话、邮箱、证件、银行资料或私人地址，因此没有发送给 AI。请删除这些资料后重试，也可以不使用 AI，继续人工审核。",
+        "imagesWithheld": "推荐图片没有发送给 AI，因为图片可能包含个人资料。你可以直接继续人工审核，或移除图片后重试。"
       },
       "evidence": "证据",
       "kind": "类型",
@@ -3120,6 +3146,7 @@
     },
     "errors": {
       "actionFailed": "操作失败",
+      "actionOutcomeUnknown": "暂时无法确认审核操作是否已保存。请先查看当前提款状态，再进行其他操作。",
       "batchActionFailed": "一个或多个提现操作失败。",
       "chooseDecisionReason": "请选择此决策的原因。",
       "invalidReasonCategory": "请选择适用于此提现操作的有效原因类别。",
@@ -3131,6 +3158,7 @@
     "evidence": {
       "affiliateSources": "联盟来源",
       "doNotApprove": "数据可用前请勿批准。",
+      "retrySources": "来源记录暂时无法读取。请重试查看。",
       "fraudFlags": "欺诈标记",
       "noAffiliateTransactions": "未找到联盟交易。",
       "noFraudFlags": "未记录欺诈标记。",
@@ -3211,7 +3239,7 @@
       "eventStatus": "服务商状态",
       "amount": "金额",
       "providerTime": "服务商时间",
-      "receivedTime": "MyLawatan 接收时间",
+      "receivedTime": "MYLawatan 接收时间",
       "signatureVerified": "签名已验证",
       "payloadHash": "载荷 SHA-256",
       "deliveryStatus": "Callback 投递状态",
@@ -3251,6 +3279,7 @@
       "singleApproval": "单次审批",
       "title": "决策准备情况",
       "unavailable": "不可用",
+      "noRelatedTransactions": "未找到相关交易",
       "walletEvidence": "钱包证据"
     },
     "reasons": {
@@ -3386,7 +3415,7 @@
     "providers": {
       "bankTransferSimulator": "银行转账 — 模拟器",
       "grabpaySimulator": "GrabPay — 模拟器",
-      "mylawatanWallet": "MyLawatan 钱包",
+      "mylawatanWallet": "MYLawatan 钱包",
       "stripeSandbox": "Stripe 沙盒",
       "tngSimulator": "Touch ’n Go 电子钱包 — 模拟器",
       "unknown": "未知服务商"

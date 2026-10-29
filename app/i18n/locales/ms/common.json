@@ -295,6 +295,7 @@
     "viewMyTickets": "Lihat tiket saya",
     "ticketError": "Tidak dapat mencipta tiket sekarang. Sila cuba lagi.",
     "somethingWrong": "Maaf, sesuatu tidak kena. Sila cuba lagi.",
+    "privacyBlocked": "Mesej penuh anda tidak dihantar kepada AI kerana mungkin mengandungi nombor telefon, e-mel, nombor pengenalan, butiran bank atau alamat peribadi. Buang butiran tersebut dan hantar semula, atau teruskan menggunakan FAQ tempatan tanpa AI.",
     "supportRequest": "Permintaan sokongan",
     "faq": {
       "browse": "Lihat soalan lazim",
@@ -309,7 +310,7 @@
       "stop": "Berhenti mendengar"
     },
     "list": {
-      "supportLabel": "Sokongan MyLawatan",
+      "supportLabel": "Sokongan MYLawatan",
       "signInPrompt": "Log masuk untuk berbual dengan vendor."
     },
     "expandChat": "Kembangkan ke skrin penuh",
@@ -368,8 +369,8 @@
     "cmdK": "⌘K"
   },
   "brand": {
-    "speed": "MyLawatan Speed",
-    "copyright": "© {{year}} MyLawatan. Hak cipta terpelihara."
+    "speed": "MYLawatan Speed",
+    "copyright": "© {{year}} MYLawatan. Hak cipta terpelihara."
   },
   "ui": {
     "vendor": {

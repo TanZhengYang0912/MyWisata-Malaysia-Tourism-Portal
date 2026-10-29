@@ -24,12 +24,16 @@ export function RecommendationEarningsPanel({ recommendationId, showEmpty = fals
   const { t } = useTranslation("customer");
   const [dataState, setDataState] = useState<{ recommendationId?: string; data: RecommendationEarnings | null | undefined }>(() => ({ recommendationId, data: undefined }));
   const [cursorState, setCursorState] = useState<{ recommendationId?: string; history: Array<{ createdAt: string; id: string } | null> }>(() => ({ recommendationId, history: [null] }));
+  const [loadError, setLoadError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const loadGeneration = useRef(0);
   const cursorHistory = cursorState.recommendationId === recommendationId ? cursorState.history : [null];
   const cursor = cursorHistory[cursorHistory.length - 1] ?? null;
   const data = dataState.recommendationId === recommendationId ? dataState.data : undefined;
   const snapshotCutoffRef = useRef<{ recommendationId?: string; snapshotCutoff: string } | null>(null);
 
   useEffect(() => {
+    const generation = ++loadGeneration.current;
     if (snapshotCutoffRef.current?.recommendationId !== recommendationId) snapshotCutoffRef.current = null;
     (async () => {
       try {
@@ -42,16 +46,21 @@ export function RecommendationEarningsPanel({ recommendationId, showEmpty = fals
           params.set("beforeId", cursor.id);
         }
         const res = await fetch(`/api/recommendations/earnings?${params.toString()}`);
+        if (!res.ok) throw new Error("earnings_load_failed");
         const body = (await res.json()) as { data: RecommendationEarnings | null };
+        if (generation !== loadGeneration.current) return;
         setDataState({ recommendationId, data: res.ok ? body.data ?? null : null });
+        setLoadError(false);
         if (res.ok && body.data) snapshotCutoffRef.current = { recommendationId, snapshotCutoff: body.data.snapshotCutoff };
       } catch {
-        setDataState({ recommendationId, data: null });
+        if (generation === loadGeneration.current) setLoadError(true);
       }
     })();
-  }, [recommendationId, cursor]);
+    return () => { loadGeneration.current += 1; };
+  }, [recommendationId, cursor, retryCount]);
 
-  if (data === undefined || data === null) return null; // loading / failed — not critical
+  if (loadError) return <div role="alert" className="mb-6 rounded-2xl border border-destructive/20 bg-card p-5 text-sm"><p className="text-destructive">{t("ui.recommendationEarnings.loadError")}</p><Button className="mt-3" size="sm" variant="outline" onClick={() => setRetryCount((count) => count + 1)}>{t("ui.actions.retry")}</Button></div>;
+  if (data === undefined || data === null) return null;
 
   const commissions = data.commissions;
 

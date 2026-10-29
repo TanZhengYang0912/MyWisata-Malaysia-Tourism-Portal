@@ -679,6 +679,13 @@ it('builds a complete safe summary without raw contact values or paths', () => {
   expect(safeText).not.toContain('staged/');
 });
 
+it('refuses the full recommendation summary when a free-text field contains personal data', () => {
+  expect(() => buildSafeSubmissionText({
+    ...completeRow,
+    description: 'Call the owner at 012-3456789 before visiting.',
+  }, 0, 0)).toThrow('sensitive_data_detected');
+});
+
 it('continues when one transformed photo cannot be loaded', async () => {
   const createSignedUrl = vi.fn()
     .mockResolvedValueOnce({ data: { signedUrl: 'https://signed/one' }, error: null })

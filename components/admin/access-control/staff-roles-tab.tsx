@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, RefreshCw, Search, ShieldCheck, UserPlus } from "lucide-react";
+import { RefreshCw, Search, ShieldCheck, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -25,6 +25,8 @@ import { canDelegateStaffModule } from "@/lib/staff-permissions/types";
 import { StaffEmployeesPanel } from "./staff-employees-panel";
 import { StaffModulesPanel } from "@/components/admin/access-control/staff-modules-panel";
 import { Button } from "@/components/ui/button";
+import { formatDateTime } from "@/lib/i18n/format";
+import { isAppLocale } from "@/lib/i18n/locale";
 
 type RolesPayload = {
   roles: StaffRoleRecord[];
@@ -66,8 +68,9 @@ const PERMISSION_LABEL_KEYS: Partial<Record<string, string>> = {
   "admin.map_campaign.manage": "accessControl.staffRoles.permissionLabels.mapCampaignManage",
 };
 
-export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus) => void }) {
-  const { t } = useTranslation("admin");
+export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: (focus: AuditFocus) => void; onMutation?: (receipt: MutationReceipt, message: string) => void }) {
+  const { t, i18n } = useTranslation("admin");
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : "en";
   const { prompt } = useAppDialog();
   const [roles, setRoles] = useState<StaffRoleRecord[]>([]);
   const [assignments, setAssignments] = useState<StaffRoleAssignmentRecord[]>([]);
@@ -99,8 +102,6 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
   const [saving, setSaving] = useState(false);
   const [searchingStaff, setSearchingStaff] = useState(false);
   const [error, setError] = useState("");
-  const [receipt, setReceipt] = useState<MutationReceipt | null>(null);
-  const [feedbackMessage, setFeedbackMessage] = useState("");
   const staffSearchInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -200,8 +201,6 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
   }
 
   function editRole(role: StaffRoleRecord) {
-    setReceipt(null);
-    setFeedbackMessage("");
     setForm({
       id: role.id,
       name: role.name,
@@ -226,8 +225,6 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
         ? "Wallet Approver"
         : role.name === "Legacy Admin" ? "Admin Reviewer" : `${role.name} Copy`.slice(0, 20);
     setForm({ ...EMPTY_FORM, name: proposedName, description: role.description ?? "", moduleKeys: [...role.moduleKeys] });
-    setFeedbackMessage("");
-    setReceipt(null);
   }
 
   function toggleModule(module: StaffModuleRecord, selected: boolean) {
@@ -266,8 +263,7 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
       if (!response.ok || !body.data) {
         throw new Error(errorMessage(body, t("accessControl.errors.saveStaffRole")));
       }
-      setReceipt(body.data);
-      setFeedbackMessage(t("accessControl.feedback.staffRoleUpdated"));
+      onMutation(body.data, t("accessControl.feedback.staffRoleUpdated"));
       setForm(EMPTY_FORM);
       setConfirmOpen(false);
       await load();
@@ -295,8 +291,7 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
       if (!response.ok || !body.data) {
         throw new Error(errorMessage(body, t("accessControl.errors.assignStaffRole")));
       }
-      setReceipt(body.data);
-      setFeedbackMessage(t("accessControl.feedback.staffRoleGranted", {
+      onMutation(body.data, t("accessControl.feedback.staffRoleGranted", {
         employee: grantedStaff.name,
         role: grantedRole.name,
       }));
@@ -328,10 +323,10 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
           reason: invitationReason.trim(),
         }),
       });
-      const body = await response.json() as ApiEnvelope<{ id: string }>;
+      const body = await response.json() as ApiEnvelope<MutationReceipt & { deliveryStatus?: string }>;
       if (!response.ok || !body.data) throw new Error(errorMessage(body, t("accessControl.staffRoles.invitationError")));
+      onMutation(body.data, invitationFeedback(t, "created", body.data.deliveryStatus));
       setInvitationEmail(""); setInvitationReason(""); setInviteConfirmOpen(false);
-      setFeedbackMessage(t("accessControl.staffRoles.invitationSent"));
       await load();
     } catch (caught) {
       setInviteConfirmOpen(false);
@@ -345,9 +340,9 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
       const response = await fetch(`/api/admin/access-control/staff-invitations/${invitationId}/resend`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}),
       });
-      const body = await response.json() as ApiEnvelope<{ id: string }>;
+      const body = await response.json() as ApiEnvelope<MutationReceipt & { deliveryStatus?: string }>;
       if (!response.ok || !body.data) throw new Error(errorMessage(body, t("accessControl.staffRoles.invitationError")));
-      setFeedbackMessage(t("accessControl.staffRoles.invitationResent"));
+      onMutation(body.data, invitationFeedback(t, "resent", body.data.deliveryStatus));
       await load();
     } catch (caught) { setError(caught instanceof Error ? caught.message : t("accessControl.staffRoles.invitationError")); }
     finally { setSaving(false); }
@@ -361,9 +356,9 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
       const response = await fetch(`/api/admin/access-control/staff-invitations/${invitationId}/revoke`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason }),
       });
-      const body = await response.json() as ApiEnvelope<{ id: string }>;
+      const body = await response.json() as ApiEnvelope<MutationReceipt>;
       if (!response.ok || !body.data) throw new Error(errorMessage(body, t("accessControl.staffRoles.invitationError")));
-      setFeedbackMessage(t("accessControl.staffRoles.invitationRevoked"));
+      onMutation(body.data, t("accessControl.staffRoles.invitationRevoked"));
       await load();
     } catch (caught) { setError(caught instanceof Error ? caught.message : t("accessControl.staffRoles.invitationError")); }
     finally { setSaving(false); }
@@ -408,10 +403,6 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
     || saving;
 
   return <div className="space-y-5">
-    {receipt && <div role="status" aria-live="polite" className="flex items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-primary">
-      <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4" />{receipt.receiptAvailable === false ? t("accessControl.feedback.committedReceiptUnavailable") : feedbackMessage}</span>
-      {receipt.auditEventId && <Button size="sm" variant="outline" onClick={() => onViewAudit({ eventId: receipt.auditEventId!, entityId: receipt.roleId ?? receipt.assignmentId })}>{t("accessControl.actions.viewAuditEvent")}</Button>}
-    </div>}
     {error && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
 
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
@@ -486,7 +477,7 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
               <select aria-label={t("accessControl.staffEmployees.pageSize")} value={invitationPageSize} onChange={(event) => { setInvitationPageSize(Number(event.target.value)); setInvitationPage(1); }} className={adminFilterControlClassName}>{[25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}</select>
             </div>
             <p className="text-xs text-muted-foreground">{t("accessControl.staffEmployees.total", { count: invitationTotal })}</p>
-            {invitations.length === 0 ? <p className="text-xs text-muted-foreground">{t("accessControl.staffRoles.noPendingInvitations")}</p> : <ul className="space-y-2">{invitations.map((item) => <li key={item.id} className="rounded-xl border border-border p-3 text-xs"><p className="font-semibold">{item.invitedEmail}</p><p>{t("accessControl.staffRoles.invitationListEntry", { roleName: item.roleName, status: t(`accessControl.staffEmployees.invitationStatuses.${item.status}`), delivery: t(`accessControl.staffRoles.delivery.${item.deliveryStatus}`) })}</p>{["pending", "expired"].includes(item.status) && <div className="mt-2 flex gap-2"><Button size="sm" variant="outline" disabled={saving} onClick={() => void resendInvitation(item.id)}>{t("accessControl.staffRoles.resendInvitation")}</Button><Button size="sm" variant="outline" disabled={saving} onClick={() => void revokeInvitation(item.id)}>{t("accessControl.staffRoles.revokeInvitation")}</Button></div>}</li>)}</ul>}
+            {invitations.length === 0 ? <p className="text-xs text-muted-foreground">{t("accessControl.staffRoles.noPendingInvitations")}</p> : <ul className="space-y-2">{invitations.map((item) => <li key={item.id} className="rounded-xl border border-border p-3 text-xs"><p className="font-semibold">{item.invitedEmail}</p><p>{t("accessControl.staffRoles.invitationListEntry", { roleName: item.roleName, status: t(`accessControl.staffEmployees.invitationStatuses.${item.status}`), delivery: t(`accessControl.staffRoles.delivery.${item.deliveryStatus}`) })}</p><p className="mt-1 text-muted-foreground">{t("accessControl.staffRoles.expiresAt", { value: `${formatDateTime(item.expiresAt, locale, { timeZone: "Asia/Kuala_Lumpur" })} MYT` })}</p>{["pending", "expired"].includes(item.status) && <div className="mt-2 flex gap-2"><Button size="sm" variant="outline" disabled={saving} onClick={() => void resendInvitation(item.id)}>{t("accessControl.staffRoles.resendInvitation")}</Button><Button size="sm" variant="outline" disabled={saving} onClick={() => void revokeInvitation(item.id)}>{t("accessControl.staffRoles.revokeInvitation")}</Button></div>}</li>)}</ul>}
             <div className="flex items-center justify-between text-xs"><span>{t("accessControl.pagination.pageOf", { page: invitationPage, total: Math.max(invitationTotalPages, 1) })}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={loading || invitationPage <= 1} onClick={() => setInvitationPage((value) => value - 1)}>{t("accessControl.accessibility.previousPage")}</Button><Button size="sm" variant="outline" disabled={loading || invitationPage >= invitationTotalPages} onClick={() => setInvitationPage((value) => value + 1)}>{t("accessControl.accessibility.nextPage")}</Button></div></div>
           </div>
         </section>
@@ -536,7 +527,7 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
         </section>
       </div>
     </div>
-    <StaffEmployeesPanel generation={employeeGeneration} onViewAudit={onViewAudit} permissions={permissions} onChanged={load} />
+    <StaffEmployeesPanel generation={employeeGeneration} onMutation={onMutation} permissions={permissions} onChanged={load} />
     <StaffModulesPanel modules={modules} permissions={permissions} groups={moduleGroups} onSaved={load} />
     <AdminConfirmDialog open={confirmOpen} title={t("accessControl.staffRoles.confirmTitle")} description={t("accessControl.staffRoles.confirmDescription")} confirmLabel="accessControl.staffRoles.confirmSave" confirmationPhrase="CONFIRM" confirmationResetKey={JSON.stringify(form)} busy={saving} onCancel={() => setConfirmOpen(false)} onConfirm={() => void saveRole()} />
     <AdminConfirmDialog open={inviteConfirmOpen} title={t("accessControl.staffRoles.confirmInvitationTitle")} description={selectedInvitationRole ? <div className="space-y-2 text-sm"><p>{invitationEmail.trim()}</p><p className="font-semibold">{selectedInvitationRole.name}</p><ul>{selectedInvitationRole.permissionKeys.map((key) => <li key={key}>{permissionLabel(key)}</li>)}</ul><p>{invitationReason.trim()}</p></div> : t("accessControl.staffRoles.inviteHelp")} confirmLabel="accessControl.staffRoles.sendInvitation" confirmationPhrase="CONFIRM" confirmationResetKey={`${invitationEmail}|${selectedInvitationRole?.id ?? ""}|${invitationReason}`} busy={saving} onCancel={() => setInviteConfirmOpen(false)} onConfirm={() => void sendInvitation()} />
@@ -564,4 +555,10 @@ export function StaffRolesTab({ onViewAudit }: { onViewAudit: (focus: AuditFocus
 
 function Field({ htmlFor, label, children }: { htmlFor: string; label: string; children: React.ReactNode }) {
   return <div className="mt-3"><label htmlFor={htmlFor} className="block text-sm font-medium">{label}</label><div className="mt-1">{children}</div></div>;
+}
+
+function invitationFeedback(t: (key: string) => string, action: "created" | "resent", deliveryStatus: string | undefined) {
+  if (deliveryStatus === "sent") return t(action === "created" ? "accessControl.staffRoles.invitationSent" : "accessControl.staffRoles.invitationResent");
+  if (deliveryStatus === "failed") return t("accessControl.staffRoles.invitationCommittedDeliveryFailed");
+  return t("accessControl.staffRoles.invitationCommittedDeliveryPending");
 }

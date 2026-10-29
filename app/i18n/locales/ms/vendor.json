@@ -153,7 +153,7 @@
       "google": "Tidak dapat meneruskan dengan Google. Cuba lagi.",
       "switchAccount": "Tidak dapat menukar akaun. Cuba lagi.",
       "load": "Kami tidak dapat memuatkan jemputan ini. Cuba lagi atau minta jemputan baharu.",
-      "phoneAlreadyClaimed": "Nombor mudah alih ini telah dipautkan kepada akaun MyLawatan lain. Gunakan nombor yang berbeza.",
+      "phoneAlreadyClaimed": "Nombor mudah alih ini telah dipautkan kepada akaun MYLawatan lain. Gunakan nombor yang berbeza.",
       "phoneRateLimited": "Terlalu banyak kod diminta. Cuba lagi dalam 1 jam.",
       "phoneInvalidCode": "Kod itu tidak sah atau telah tamat tempoh. Minta kod baharu dan cuba lagi.",
       "phoneInvalidNumber": "Masukkan nombor mudah alih yang sah.",
@@ -186,7 +186,7 @@
     },
     "codes": {
       "INVITE_INVALID": "Pautan jemputan ini tidak sah.",
-      "INVITE_EXPIRED": "Jemputan vendor ini telah tamat tempoh. Minta jemputan baharu daripada MyLawatan.",
+      "INVITE_EXPIRED": "Jemputan vendor ini telah tamat tempoh. Minta jemputan baharu daripada MYLawatan.",
       "INVITE_CANCELLED": "Jemputan vendor ini telah dibatalkan.",
       "INVITE_ALREADY_CLAIMED": "Jemputan vendor ini telah dituntut.",
       "RECOMMENDATION_NOT_READY": "Cadangan ini belum bersedia untuk tuntutan vendor."
@@ -197,7 +197,7 @@
       "back": "Kembali",
       "retry": "Cuba lagi",
       "requestNew": "Minta jemputan baharu",
-      "contactSupport": "Hubungi sokongan MyLawatan"
+      "contactSupport": "Hubungi sokongan MYLawatan"
     },
     "account": {
       "useInvitedAccount": "Gunakan akaun yang dijemput",
@@ -255,14 +255,14 @@
       "sendOtp": "Hantar OTP telefon",
       "finalReview": "Semakan akhir",
       "reviewApplication": "Semak permohonan anda",
-      "reviewDescription": "Sahkan butiran ini sebelum menghantarnya kepada MyLawatan untuk semakan.",
+      "reviewDescription": "Sahkan butiran ini sebelum menghantarnya kepada MYLawatan untuk semakan.",
       "ownerAccount": "Pemilik dan akaun",
       "signedInInvitationEmail": "Log masuk dengan e-mel jemputan",
       "mobileVerified": "Telefon mudah alih disahkan",
       "vendor": "Vendor",
       "firstOutlet": "Outlet pertama",
       "applicationStatus": "Status permohonan",
-      "pendingReview": "Menunggu semakan MyLawatan. Vendor dan Outlet kekal peribadi sehingga diluluskan.",
+      "pendingReview": "Menunggu semakan MYLawatan. Vendor dan Outlet kekal peribadi sehingga diluluskan.",
       "authorization": "Saya mengesahkan bahawa saya diberi kuasa untuk mewakili perniagaan ini dan menghantar permohonan Vendor ini.",
       "submitting": "Menghantar…",
       "submitApplication": "Hantar permohonan",
@@ -271,8 +271,8 @@
     },
     "recommendation": {
       "eyebrow": "Jemputan cadangan",
-      "title": "Anda dijemput menyertai MyLawatan",
-      "description": "Ahli MyLawatan telah mencadangkan perniagaan ini.",
+      "title": "Anda dijemput menyertai MYLawatan",
+      "description": "Ahli MYLawatan telah mencadangkan perniagaan ini.",
       "details": "Butiran cadangan",
       "why": "Sebab ia dicadangkan",
       "photoAlt": "Foto cadangan {{business}} {{index}}",
@@ -288,11 +288,11 @@
     },
     "submitted": {
       "title": "Permohonan vendor dihantar",
-      "description": "Vendor dan Outlet pertama anda kekal peribadi sementara MyLawatan menyemak permohonan."
+      "description": "Vendor dan Outlet pertama anda kekal peribadi sementara MYLawatan menyemak permohonan."
     },
     "inactive": {
       "title": "Jemputan vendor tidak aktif",
-      "description": "Jemputan vendor ini tidak lagi aktif. Hubungi sokongan MyLawatan jika anda memerlukan bantuan."
+      "description": "Jemputan vendor ini tidak lagi aktif. Hubungi sokongan MYLawatan jika anda memerlukan bantuan."
     },
     "setupLabel": "Persediaan jemputan vendor",
     "step": "Langkah {{current}} daripada {{total}}",
@@ -322,10 +322,9 @@
     "uploadAndSubmitting": "Memuat naik imej dan menghantar…",
     "required": "Wajib",
     "optional": "Pilihan",
-    "phoneHint": "Pilih negara; kod negaranya akan kekal di sebelah medan. Masukkan nombor sahaja selepas kod tersebut. Untuk Malaysia (+60), buang 0 di hadapan nombor tempatan: 012 345 6789 menjadi 12 345 6789. Pengumpulan nombor mengikut negara yang dipilih.",
     "sections": {
       "businessProfile": "Profil perniagaan",
-      "businessProfileDescription": "Nama perniagaan ialah nama yang dilihat pelanggan di MyLawatan. Nama perniagaan sah di bawah ialah nama pada dokumen pendaftaran; kedua-duanya boleh sama atau berbeza. Pilih jenis perniagaan yang paling sesuai dan terangkan perkara yang boleh ditempah atau dikunjungi pelanggan.",
+      "businessProfileDescription": "Nama perniagaan ialah nama yang dilihat pelanggan di MYLawatan. Nama perniagaan sah di bawah ialah nama pada dokumen pendaftaran; kedua-duanya boleh sama atau berbeza. Pilih jenis perniagaan yang paling sesuai dan terangkan perkara yang boleh ditempah atau dikunjungi pelanggan.",
       "businessProfileHelpLabel": "Tentang profil perniagaan",
       "legalContact": "Maklumat undang-undang dan perhubungan",
       "legalContactDescription": "Isi nama perniagaan berdaftar dan nombor pendaftaran SSM atau syarikat jika ada. Kedua-duanya pilihan. Maklumat hubungan membantu kami membuat susulan tentang permohonan anda.",
@@ -440,11 +439,7 @@
     "placeholders": {
       "businessName": "cth. Rasa Malaysia Kitchen",
       "description": "Terangkan perniagaan anda...",
-      "legalBusinessName": "Nama perniagaan berdaftar",
-      "registrationNumber": "Isi jika tersedia",
-      "contactPerson": "Pemilik atau orang yang diberi kuasa",
-      "businessEmail": "business@example.com",
-      "businessAddress": "Alamat perniagaan berdaftar"
+      "businessEmail": "business@example.com"
     },
     "options": {
       "selectType": "Pilih jenis...",
@@ -455,7 +450,8 @@
       "wellness": "Kesihatan & Spa",
       "adventure": "Pengembaraan & Sukan",
       "other": "Lain-lain"
-    }
+    },
+    "ifAvailable": "Jika ada"
   },
   "ui": {
     "common": {
@@ -870,7 +866,7 @@
       "noVendor": "Akaun ini tiada vendor yang ditugaskan. Log masuk dengan akaun pengurus cawangan.",
       "outletsUnavailable": "Tidak dapat memuatkan cawangan yang dibenarkan untuk imbasan. Muat semula atau hubungi pentadbir.",
       "checkCode": "Semak kod",
-      "invalidCode": "Kod ini bukan tiket atau baucar MyLawatan yang sah.",
+      "invalidCode": "Kod ini bukan tiket atau baucar MYLawatan yang sah.",
       "resolveFailed": "Tidak dapat menyemak kod ini.",
       "cameraUnsupported": "Pelayar ini tidak menyediakan akses kamera.",
       "cameraFailed": "Tidak dapat membuka kamera. Semak kebenaran pelayar dan cuba lagi.",
@@ -921,7 +917,12 @@
       "eventPickupsOnly": "Pengambilan acara",
       "eventPickupKind": "Pengambilan acara",
       "eventPickupTitle": "Tempahan {{order}}",
-      "pickupDate": "Tarikh pengambilan"
+      "pickupDate": "Tarikh pengambilan",
+      "retailPickupKind": "Pengambilan runcit",
+      "retailPickupCollected": "{{quantity}} item berjaya diserahkan.",
+      "retailPickupQuantity": "Serahkan kesemua {{quantity}} item dalam baris pesanan ini.",
+      "confirmRetailPickup": "Sahkan serahan",
+      "orderReference": "Pesanan #{{order}}"
     },
     "redemptions": {
       "eyebrow": "Penebusan Cawangan",
@@ -932,6 +933,12 @@
       "allTime": "Semua imbasan direkodkan",
       "todayScans": "Imbasan Hari Ini",
       "redeemedToday": "Ditebus hari ini",
+      "retailPickups": "Pengambilan runcit",
+      "retailItemsHandedOver": "Baris pesanan diserahkan",
+      "kindRetailPickup": "Pengambilan runcit",
+      "kindEventPickup": "Pengambilan acara",
+      "filteredCount_one": "{{count}} rekod",
+      "filteredCount_other": "{{count}} rekod",
       "vouchersUsed": "Baucar Ditebus",
       "storePromos": "Baucar cawangan",
       "ticketsAdmitted": "Tiket Diterima",
@@ -947,7 +954,8 @@
       "filters": {
         "all": "Semua Aktiviti",
         "vouchers": "Baucar",
-        "tickets": "Tiket"
+        "tickets": "Tiket",
+        "retail": "Pengambilan runcit"
       },
       "table": {
         "type": "Jenis",
@@ -2112,7 +2120,7 @@
     "invite": "Jemput",
     "inviteByEmail": "Jemput melalui e-mel",
     "inviteCreated": "Jemputan pengurus outlet dicipta.",
-    "inviteExisting": "Jemputan dicipta untuk akaun MyLawatan ini.",
+    "inviteExisting": "Jemputan dicipta untuk akaun MYLawatan ini.",
     "inviteFailed": "Tidak dapat mencipta jemputan.",
     "inviteHint": "Pengurus menerima dengan e-mel ini sebelum mendapat akses kepada outlet ini.",
     "inviting": "Sedang menjemput…",
@@ -2457,7 +2465,7 @@
       "reviews_other": "{{count}} ulasan"
     }
   },
-    "transactions": {
+  "transactions": {
     "action": "Tindakan",
     "close": "Tutup",
     "empty": "Tiada transaksi ditemui dalam tempoh ini.",

@@ -8,7 +8,7 @@ import sharp from "sharp";
 const ROOT = process.cwd();
 const INPUT_PATH = path.resolve(ROOT, "scripts/data/verified-place-activity-media.json");
 const ASSET_DIR = path.resolve(ROOT, "public/assets/customer/activity-media");
-const USER_AGENT = "MyLawatan-place-activity-curator/1.0 (local development; attribution recorded)";
+const USER_AGENT = "MYLawatan-place-activity-curator/1.0 (local development; attribution recorded)";
 const ALLOWED_LICENSE = /^(CC0(?: [0-9.]+)?|CC BY(?:-SA)?(?: [0-9.]+)?|Public domain|Official operator media; source attribution recorded)/i;
 const COMMONS_REQUEST_INTERVAL_MS = 6_000;
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));

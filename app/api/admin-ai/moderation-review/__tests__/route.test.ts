@@ -114,4 +114,19 @@ describe('POST /api/admin-ai/moderation-review', () => {
     expect(body.data.aiAvailable).toBe(false);
     expect(JSON.stringify(body)).not.toContain('Gemini API key');
   });
+
+  it('explains that photos were withheld and manual review can continue', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'admin-1' } } });
+    mocks.isSuperAdmin.mockResolvedValue(true);
+    mocks.createServiceClient.mockReturnValue({ marker: 'service' });
+    mocks.reviewRecommendation.mockRejectedValue(new Error('image_privacy_review_required'));
+
+    const response = await POST(validRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(422);
+    expect(body.error).toMatchObject({ code: 'IMAGES_WITHHELD' });
+    expect(body.error.message).toContain('not sent to AI');
+    expect(body.error.message).toContain('manually');
+  });
 });

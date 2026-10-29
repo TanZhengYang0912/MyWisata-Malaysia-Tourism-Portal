@@ -43,6 +43,8 @@ Storage bucket: `avatars`, public (avatar URLs are displayed to other users). RL
 
 ### Bio Moderation — OpenAI Moderation API
 
+**2026-10-27 refinement:** Short Bio remains required. New or edited biographies must contain 3–30 trimmed characters. Previously completed profiles may retain an accepted 31–200 character biography until it is edited; profile completion still requires all other evidence. This replaces the implementation's former 30–200 range and does not adopt the optional-bio proposal. See `docs/plans/2026-10-27-1648-required-short-bio-length.md` and migration `20261027085814_required_short_bio_length.sql`.
+
 All bio submissions pass through OpenAI's free Moderation API (`POST https://api.openai.com/v1/moderations`) before being written to the database. This is **synchronous and fail-closed**:
 
 - If the API returns `results[0].flagged = true`, the submission is rejected with 422 and `code: 'bio_content_rejected'`.

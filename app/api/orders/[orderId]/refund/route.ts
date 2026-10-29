@@ -4,7 +4,11 @@ import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { z } from 'zod';
 import { emitVendorNotification } from '@/lib/vendor-notifications/emit';
 
-const schema = z.object({ reason: z.string().trim().min(5).max(500), reasonCode: z.enum(['schedule_change','mistake','unavailable','dissatisfied','other']).optional() }).strict();
+const schema = z.object({ reason: z.string().trim().min(1).max(500), reasonCode: z.enum(['schedule_change','mistake','unavailable','dissatisfied','other']).optional() }).strict().superRefine((value, context) => {
+  if ((!value.reasonCode && value.reason.length < 5) || (value.reasonCode === 'other' && value.reason.length < 5)) {
+    context.addIssue({ code: 'custom', path: ['reason'], message: 'A detailed refund reason is required' });
+  }
+});
 interface Props { params: Promise<{ orderId: string }> }
 
 function vendorNoticeLabel(value: unknown, fallback: string): string {

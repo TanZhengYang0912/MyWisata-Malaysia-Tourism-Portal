@@ -16,10 +16,11 @@ type FoodOrderPass = {
   items: { name: string; variant: string | null; quantity: number }[];
   foodToken: string;
 };
+type FoodOrderPassDisplay = FoodOrderPass & { qr: string };
 
-export function FoodOrderQrCodes({ orderId }: { orderId: string }) {
+export function FoodOrderQrCodes({ orderId, passes: controlledPasses, onRefresh }: { orderId: string; passes?: FoodOrderPassDisplay[]; onRefresh?: () => void }) {
   const { t } = useTranslation("customer");
-  const [passes, setPasses] = useState<Array<FoodOrderPass & { qr: string }>>([]);
+  const [passes, setPasses] = useState<FoodOrderPassDisplay[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -45,6 +46,7 @@ export function FoodOrderQrCodes({ orderId }: { orderId: string }) {
   }, [orderId]);
 
   useEffect(() => {
+    if (controlledPasses !== undefined) return;
     let active = true;
     const load = async () => { if (active) await refresh(); };
     const onVisibility = () => { if (document.visibilityState === "visible") void load(); };
@@ -56,9 +58,10 @@ export function FoodOrderQrCodes({ orderId }: { orderId: string }) {
       window.removeEventListener("focus", load);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [refresh]);
+  }, [controlledPasses, refresh]);
 
-  if (passes.length === 0) return null;
+  const visiblePasses = controlledPasses ?? passes;
+  if (visiblePasses.length === 0) return null;
 
   return (
     <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-labelledby="food-order-qr-heading">
@@ -67,12 +70,12 @@ export function FoodOrderQrCodes({ orderId }: { orderId: string }) {
           <h2 id="food-order-qr-heading" className="text-sm font-bold uppercase tracking-[0.14em] text-primary">{t("ui.booking.foodOrderQrTitle")}</h2>
           <p className="mt-1 text-xs text-muted-foreground">{t("ui.booking.foodOrderQrDescription")}</p>
         </div>
-        <button type="button" onClick={() => void refresh()} disabled={refreshing} className="text-xs font-semibold text-primary underline disabled:opacity-50">
+        <button type="button" onClick={() => onRefresh ? onRefresh() : void refresh()} disabled={refreshing && !onRefresh} className="text-xs font-semibold text-primary underline disabled:opacity-50">
           {t("ui.booking.refreshPass")}
         </button>
       </div>
       <div>
-        {passes.map((pass) => {
+        {visiblePasses.map((pass) => {
           const statusPresentation = pass.status === "fulfilled"
             ? { Icon: CheckCircle2, tone: "border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200" }
             : pass.status === "checked_in"

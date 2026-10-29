@@ -11,12 +11,32 @@ import {
 const completeProfile = {
   fullName: 'Aisha Ali',
   avatarUrl: '/uploads/aisha.webp',
-  bio: 'A local food guide with a short profile.',
+  bio: 'A local food guide.',
   city: 'Kuala Lumpur',
   country: 'Malaysia',
 };
 
 describe('computeProfileCompletion', () => {
+  it.each([0, 2, 31, 200, 201])('keeps an uncompleted %i-character bio incomplete', (length) => {
+    expect(computeProfileCompletion({ ...completeProfile, bio: 'x'.repeat(length) }).missing).toContain('bio');
+  });
+
+  it.each([3, 30])('accepts a new %i-character bio for completion', (length) => {
+    expect(computeProfileCompletion({ ...completeProfile, bio: 'x'.repeat(length) }).complete).toBe(true);
+  });
+
+  it.each([31, 200])('preserves a previously completed %i-character biography', (length) => {
+    expect(computeProfileVerification({
+      ...completeProfile, bio: 'x'.repeat(length), profileCompletedAt: '2026-10-27T00:00:00Z', surveyComplete: true,
+    }).complete).toBe(true);
+  });
+
+  it.each([0, 2, 201])('does not use a completion timestamp to accept an invalid %i-character bio', (length) => {
+    expect(computeProfileCompletion({
+      ...completeProfile, bio: 'x'.repeat(length), profileCompletedAt: '2026-10-27T00:00:00Z',
+    }).missing).toContain('bio');
+  });
+
   it('requires all five teacher-specified fields for 100% completion', () => {
     expect(computeProfileCompletion(completeProfile)).toEqual({
       percentage: 100,

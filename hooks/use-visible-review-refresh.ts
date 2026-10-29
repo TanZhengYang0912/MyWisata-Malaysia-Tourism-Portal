@@ -5,7 +5,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 type VisibleReviewRefreshOptions = {
   enabled: boolean;
   onRefresh: (signal: AbortSignal) => Promise<unknown> | unknown;
-  intervalMs?: number;
+  intervalMs?: number | null;
+  identityKey?: string | null;
+  refreshKey?: unknown;
+  initialRefresh?: boolean;
+  coalesceMs?: number;
 };
 
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -16,11 +20,19 @@ export function useVisibleReviewRefresh({
   enabled,
   onRefresh,
   intervalMs = 30_000,
+  identityKey,
+  refreshKey,
+  initialRefresh = false,
+  coalesceMs = 0,
 }: VisibleReviewRefreshOptions) {
   const [lastSuccessAt, setLastSuccessAt] = useState<number | null>(null);
   const [hasRefreshError, setHasRefreshError] = useState(false);
   const manualRef = useRef<(() => Promise<void>) | null>(null);
-  const refresh = useCallback(() => { void manualRef.current?.(); }, []);
+  const invalidateRef = useRef<((verified: boolean) => void) | null>(null);
+  const refresh = useCallback(() => {
+    if (invalidateRef.current) invalidateRef.current(true);
+    else void manualRef.current?.();
+  }, []);
   const refreshRef = useRef(onRefresh);
 
   useEffect(() => {
@@ -28,7 +40,7 @@ export function useVisibleReviewRefresh({
   }, [onRefresh]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || intervalMs === null) return;
 
     let isMounted = true;
     let timer: number | null = null;
@@ -96,5 +108,90 @@ export function useVisibleReviewRefresh({
       window.removeEventListener("focus", onFocus);
     };
   }, [enabled, intervalMs]);
+
+  // Customer reads are event-driven. Keep legacy review polling unchanged.
+  useEffect(() => {
+    if (!enabled || intervalMs !== null) return;
+    let mounted = true;
+    let timer: number | null = null;
+    let timeout: number | null = null;
+    let controller: AbortController | null = null;
+    let inFlight = false;
+    let dirty = false;
+    let accessDenied = false;
+    let verifiedGeneration = 0;
+    const visible = () => document.visibilityState === 'visible';
+    const clearTimer = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = null;
+    };
+    const schedule = () => {
+      if (!mounted || !dirty || !visible() || inFlight || accessDenied) return;
+      clearTimer();
+      timer = window.setTimeout(() => { void run(); }, coalesceMs);
+    };
+    const run = async () => {
+      clearTimer();
+      if (!mounted || !visible() || inFlight || accessDenied) return;
+      dirty = false;
+      inFlight = true;
+      const generation = verifiedGeneration;
+      const activeController = new AbortController();
+      controller = activeController;
+      try {
+        // Race the deadline as well as aborting: an abort-ignoring callback
+        // must not permanently prevent future invalidations from being read.
+        await Promise.race([
+          Promise.resolve().then(() => refreshRef.current(activeController.signal)),
+          new Promise<never>((_, reject) => {
+            timeout = window.setTimeout(() => {
+              activeController.abort();
+              reject(new Error('Refresh timed out'));
+            }, REQUEST_TIMEOUT_MS);
+          }),
+        ]);
+        if (mounted && !activeController.signal.aborted) {
+          setLastSuccessAt(Date.now());
+          setHasRefreshError(false);
+        }
+      } catch (error) {
+        if (generation === verifiedGeneration && error && typeof error === 'object' && 'status' in error && (error.status === 401 || error.status === 403)) accessDenied = true;
+        if (mounted) setHasRefreshError(true);
+      } finally {
+        if (timeout !== null) window.clearTimeout(timeout);
+        timeout = null;
+        if (controller === activeController) controller = null;
+        inFlight = false;
+        schedule();
+      }
+    };
+    const invalidate = (verified: boolean) => {
+      if (verified) { verifiedGeneration += 1; accessDenied = false; }
+      dirty = true;
+      schedule();
+    };
+    invalidateRef.current = invalidate;
+    const onVisibility = () => {
+      if (!visible()) { clearTimer(); return; }
+      invalidate(false);
+    };
+    const onFocus = () => { invalidate(false); };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', onFocus);
+    if (initialRefresh) invalidate(false);
+    return () => {
+      mounted = false;
+      invalidateRef.current = null;
+      clearTimer();
+      if (timeout !== null) window.clearTimeout(timeout);
+      controller?.abort();
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [enabled, intervalMs, identityKey, initialRefresh, coalesceMs]);
+
+  useEffect(() => {
+    if (refreshKey !== undefined) invalidateRef.current?.(true);
+  }, [refreshKey]);
   return { lastSuccessAt, hasRefreshError, refresh };
 }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEven
 import { useTranslation } from "react-i18next";
 import Image from "next/image";
 import Link from "next/link";
-import { AlertTriangle, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Map as MapIcon, Navigation, Pencil, Plus, Search, ShoppingCart, SlidersHorizontal, Sparkles, Star, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Map as MapIcon, Navigation, Pencil, Plus, Search, ShoppingCart, SlidersHorizontal, Sparkles, Star, X } from "lucide-react";
 import { MapView, type MapPin } from "@/components/map/map-view";
 import { DirectoryPagination } from "@/components/customer/directory-pagination";
 import { CATEGORIES, getBookingSlots, getOutlet } from "@/backend/domains/catalogue";
@@ -157,6 +157,7 @@ export function MapClient({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMode, setAiMode] = useState("");
   const [aiError, setAiError] = useState("");
+  const [tripActionStatus, setTripActionStatus] = useState("");
   const [placesPage, setPlacesPage] = useState(1);
   const [focusRequest, setFocusRequest] = useState<{ pin: MapPin; token: number } | null>(null);
   const focusTokenRef = useRef(0);
@@ -552,13 +553,21 @@ export function MapClient({
       .format(new Date(Date.UTC(2000, 0, 1, Number(value.slice(0, 2)), Number(value.slice(3, 5)))));
   }
 
-  function toggleStop(pin: MapPin) {
+  async function toggleStop(pin: MapPin) {
     if (pin.replacesId) {
       void swapSuggestedStop(pin, pin.replacesId);
       return;
     }
-    if (trip.has(pin.id)) trip.remove(pin.id);
-    else trip.add({ id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor", outletId: activitiesById.get(pin.id)?.outlet.id });
+    if (trip.has(pin.id)) {
+      await trip.remove(pin.id);
+      setTripActionStatus(tCustomer("strictMigration.tripPlanner.itemRemoved", { item: pin.label }));
+    } else {
+      const added = await trip.add({ id: pin.id, lat: pin.lat, lng: pin.lng, label: pin.label, sublabel: pin.sublabel, source: "vendor", outletId: activitiesById.get(pin.id)?.outlet.id });
+      if (added) {
+        setTripActionStatus(tCustomer("strictMigration.tripPlanner.itemAddedUnscheduled", { item: pin.label }));
+        setActivePanel("itinerary");
+      }
+    }
   }
 
   // Budget Guard "Suggested" pin: replace the real over-budget item in its
@@ -724,7 +733,8 @@ export function MapClient({
     const controller = new AbortController();
     aiRequestRef.current?.abort();
     aiRequestRef.current = controller;
-    const timeout = window.setTimeout(() => controller.abort(), 50_000);
+    let timedOut = false;
+    const timeout = window.setTimeout(() => { timedOut = true; controller.abort(); }, 50_000);
     setAiLoading(true);
     setAiError("");
     try {
@@ -738,7 +748,10 @@ export function MapClient({
         body: JSON.stringify({ tripId: tripData.id, preference: aiPreference.trim(), locale }),
       });
       const body = await response.json() as { data?: { suggestions?: TripPlanSuggestion[]; mode?: string }; error?: { code?: string } };
-      if (controller.signal.aborted || aiRequestRef.current !== controller) return;
+      if (controller.signal.aborted || aiRequestRef.current !== controller) {
+        if (timedOut) setAiError(tCustomer("strictMigration.tripPlanner.ai.timeout"));
+        return;
+      }
       if (!response.ok || !body.data) {
         setAiSuggestions([]);
         setAiError(body.error?.code === "PHONE_VERIFICATION_REQUIRED"
@@ -749,7 +762,10 @@ export function MapClient({
       setAiMode(body.data.mode ?? "");
       setAiSuggestions(body.data.suggestions ?? []);
     } catch {
-      if (controller.signal.aborted || aiRequestRef.current !== controller) return;
+      if (controller.signal.aborted || aiRequestRef.current !== controller) {
+        if (timedOut) setAiError(tCustomer("strictMigration.tripPlanner.ai.timeout"));
+        return;
+      }
       setAiSuggestions([]);
       setAiError(tCustomer("strictMigration.tripPlanner.ai.error"));
     } finally {
@@ -861,6 +877,11 @@ export function MapClient({
       ? { kind: "free" }
       : getTripTimeChoices({ activity, date: item.scheduled_date, outletId, slots: activity ? slotsByProduct.get(activity.id) : undefined, hours: outletHours, bounds: timeBounds });
     const timeProblem = getTripTimeProblem(timeChoices, item.scheduled_time, outletHours, item.scheduled_date, timeBounds);
+    const itemIndex = trip.items.findIndex((candidate) => candidate.id === item.id);
+    const sameDayItems = trip.items.filter((candidate) => candidate.scheduled_date === item.scheduled_date).sort((left, right) => left.sequence - right.sequence);
+    const sameDayIndex = sameDayItems.findIndex((candidate) => candidate.id === item.id);
+    const earlierIndex = sameDayIndex > 0 ? trip.items.findIndex((candidate) => candidate.id === sameDayItems[sameDayIndex - 1].id) : -1;
+    const laterIndex = sameDayIndex >= 0 && sameDayIndex < sameDayItems.length - 1 ? trip.items.findIndex((candidate) => candidate.id === sameDayItems[sameDayIndex + 1].id) : -1;
 
     return (
       <li
@@ -907,15 +928,29 @@ export function MapClient({
             )}
           </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <GripVertical size={14} className="shrink-0 cursor-grab text-muted-foreground" />
-            {activity?.image ? <span data-itinerary-image={item.id} className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-secondary"><Image src={activity.image} alt="" width={40} height={40} unoptimized className="h-full w-full object-cover" /><b className="absolute bottom-0.5 left-0.5 grid h-4 min-w-4 place-items-center rounded-full border border-white bg-primary px-0.5 text-[8px] text-white">{stopNumber > 0 ? stopNumber : "–"}</b></span> : <span className={"grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[11px] font-bold text-white " + (isLocation ? "bg-[#16A34A]" : "bg-primary")}>{stopNumber > 0 ? stopNumber : "–"}</span>}
-            <span className="min-w-0 flex-1">
-              <span className="block break-words whitespace-normal text-xs font-bold text-foreground">{item.label}</span>
-              <span className="block break-words whitespace-normal text-[11px] text-muted-foreground">{sublabel}</span>
-              <TripWeatherItemMarker result={weatherResult} />
-            </span>
-            {timeChoices.kind === "free" ? (
+          <div data-trip-item-card="true" className="min-w-0">
+            <div className="flex min-w-0 items-start gap-2">
+              <GripVertical size={14} className="mt-1 shrink-0 cursor-grab text-muted-foreground" />
+              {activity?.image ? <span data-itinerary-image={item.id} className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-secondary"><Image src={activity.image} alt="" width={40} height={40} unoptimized className="h-full w-full object-cover" /><b className="absolute bottom-0.5 left-0.5 grid h-4 min-w-4 place-items-center rounded-full border border-white bg-primary px-0.5 text-[8px] text-white">{stopNumber > 0 ? stopNumber : "–"}</b></span> : <span className={"grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[11px] font-bold text-white " + (isLocation ? "bg-[#16A34A]" : "bg-primary")}>{stopNumber > 0 ? stopNumber : "–"}</span>}
+              <span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)]">
+                <span className="min-w-0 break-words whitespace-normal text-left text-xs font-bold text-foreground [overflow-wrap:anywhere]">{item.label}</span>
+                <span className="mt-0.5 min-w-0 break-words whitespace-normal text-[11px] text-muted-foreground [overflow-wrap:anywhere]">{sublabel}</span>
+                <TripWeatherItemMarker result={weatherResult} />
+              </span>
+              {(isLocation || isCustom) && (
+                <button
+                  type="button"
+                  onClick={() => item.id === origin?.id ? openStartEditor() : openStopEditor({ id: item.id, lat: item.lat, lng: item.lng, label: item.label, sublabel: item.sublabel, source: item.source, locationKind: item.kind })}
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary"
+                  aria-label={tCustomer("strictMigration.tripPlanner.editItem", { item: item.label })}
+                ><Pencil size={13} /></button>
+              )}
+              <button type="button" onClick={() => trip.remove(item.id)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={tCustomer("strictMigration.tripPlanner.removeItem", { item: item.label })}>
+                <X size={14} />
+              </button>
+            </div>
+            <div data-trip-item-controls="true" className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5 pl-6">
+              {timeChoices.kind === "free" ? (
               showTimeInput ? (
                 <input
                   type="time"
@@ -941,19 +976,20 @@ export function MapClient({
                 </button>
               )
             ) : renderTimeChoice(item, timeChoices, showTimeInput)}
-            {item.scheduled_date && <span className="sr-only">{tCustomer("strictMigration.tripPlanner.scheduledFor", { date: item.scheduled_date })}</span>}
-            {(isLocation || isCustom) && (
-              <button
-                onClick={() => item.id === origin?.id ? openStartEditor() : openStopEditor({ id: item.id, lat: item.lat, lng: item.lng, label: item.label, sublabel: item.sublabel, source: item.source, locationKind: item.kind })}
-                className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-primary"
-                aria-label={tCustomer("strictMigration.tripPlanner.editItem", { item: item.label })}
-              >
-                <Pencil size={13} />
+              {item.scheduled_date && <span className="sr-only">{tCustomer("strictMigration.tripPlanner.scheduledFor", { date: item.scheduled_date })}</span>}
+              <span className="flex shrink-0 items-center gap-1">
+              <button type="button" onClick={() => trip.move(itemIndex, earlierIndex)} disabled={earlierIndex < 0 || trip.pending} className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label={tCustomer("strictMigration.tripPlanner.moveEarlier", { item: item.label })}>
+                <ArrowUp size={13} />
               </button>
-            )}
-            <button onClick={() => trip.remove(item.id)} className="rounded-lg p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={tCustomer("strictMigration.tripPlanner.removeItem", { item: item.label })}>
-              <X size={14} />
-            </button>
+              <button type="button" onClick={() => trip.move(itemIndex, laterIndex)} disabled={laterIndex < 0 || trip.pending} className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary disabled:cursor-not-allowed disabled:opacity-30" aria-label={tCustomer("strictMigration.tripPlanner.moveLater", { item: item.label })}>
+                <ArrowDown size={13} />
+              </button>
+              </span>
+              <select value={item.scheduled_date ?? "__unscheduled"} disabled={trip.pending} onChange={(event) => trip.schedule(item.id, event.target.value === "__unscheduled" ? null : event.target.value, item.scheduled_time)} aria-label={tCustomer("strictMigration.tripPlanner.moveToDay", { item: item.label })} className="h-8 min-w-28 max-w-full rounded-lg border border-border bg-background px-2 py-1 text-[11px] font-semibold text-muted-foreground">
+              <option value="__unscheduled">{tCustomer("strictMigration.tripPlanner.unscheduled")}</option>
+              {groupedItems.days.map((day, index) => <option key={day.date} value={day.date}>{tCustomer("strictMigration.tripPlanner.dayNumber", { number: index + 1 })} · {formatTripDay(day.date)}</option>)}
+            </select>
+            </div>
           </div>
         )}
         {!editing && activity && activity.variants.length > 1 && <Link href={`/customer/activity/${activity.id}?outletId=${tripItemOutletId(item,activity)}`} className="text-xs font-semibold text-primary underline">{tCustomer("ui.tripCheckout.selectDetails")}</Link>}
@@ -1091,7 +1127,7 @@ export function MapClient({
   return (
     <section aria-label={tCustomer("strictMigration.tripPlanner.itinerary")} className="h-[calc(100dvh-6rem)] w-full overflow-hidden bg-card sm:h-[calc(100dvh-4rem)]">
           <div className="flex h-full w-full flex-col overflow-hidden bg-card" aria-busy={trip.pending}>
-      {(trip.pending || trip.error) && <p role={trip.error ? "alert" : "status"} className="border-b border-border px-3 py-2 text-xs">{trip.pending ? tCustomer("ui.trip.saving") : trip.error}</p>}
+      {(trip.pending || trip.error || tripActionStatus) && <p role={trip.error ? "alert" : "status"} className="border-b border-border px-3 py-2 text-xs">{trip.pending ? tCustomer("ui.trip.saving") : trip.error || tripActionStatus}</p>}
             <div className="flex shrink-0 gap-1 border-b border-border bg-card p-2 xl:hidden" aria-label={tCustomer("strictMigration.tripPlanner.plannerViews")}>
               {(["ai", "itinerary", "map", "places"] as const).map((panel) => (
                 <button key={panel} onClick={() => setActivePanel(panel)} className={"flex-1 rounded-full px-3 py-2 text-xs font-bold capitalize " + (activePanel === panel ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}>
@@ -1119,7 +1155,7 @@ export function MapClient({
             <header className="shrink-0 border-b border-border px-4 py-5">
               <div className="flex items-center gap-2 pr-10">
                 <span className="grid h-8 w-8 place-items-center rounded-xl bg-secondary text-primary"><Sparkles size={16} /></span>
-                <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-primary">{tCustomer("strictMigration.tripPlanner.ai.label")}</p><h1 className="text-lg font-bold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.title")}</h1></div>
+                <h1 className="text-lg font-bold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.title")}</h1>
               </div>
             </header>
 

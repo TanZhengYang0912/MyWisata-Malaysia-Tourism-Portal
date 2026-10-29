@@ -141,8 +141,8 @@ export class ToyyibPayProvider implements CheckoutPaymentProvider {
     const form = new URLSearchParams({
       userSecretKey: config.userSecretKey,
       categoryCode: config.categoryCode,
-      billName: `MyLawatan ${input.orderId.slice(0, 8)}`,
-      billDescription: `MyLawatan order ${input.orderId}`,
+      billName: `MYLawatan ${input.orderId.slice(0, 8)}`,
+      billDescription: `MYLawatan order ${input.orderId}`,
       billPriceSetting: '1',
       billPayorInfo: '1',
       billAmount: String(input.amountSen),

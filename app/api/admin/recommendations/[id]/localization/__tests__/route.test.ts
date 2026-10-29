@@ -88,7 +88,7 @@ describe('POST /api/admin/recommendations/:id/localization', () => {
     mocks.generateAiText.mockResolvedValue({ available: true, provider: 'modelscope', model: 'test-model', content: 'Terjemahan selamat' });
     mocks.serviceFrom.mockImplementation((table: string) => {
       if (table === 'vendor_recommendations') {
-        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: recommendationId, vendor_name: 'Kedai Amanah +6012-345 6789', description: 'Email vendor@example.com or visit https://vendor.example/menu.', status: 'approved' }, error: null }) }) }) };
+        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: recommendationId, vendor_name: 'Kedai Amanah', description: 'Fresh local dishes near the waterfront.', status: 'approved' }, error: null }) }) }) };
       }
       if (table === 'content_translation_generation_locks') {
         return {
@@ -113,9 +113,33 @@ describe('POST /api/admin/recommendations/:id/localization', () => {
 
     expect(response.status).toBe(200);
     expect(mocks.generateAiText).toHaveBeenCalledTimes(4);
-    expect(mocks.generateAiText.mock.calls.map((call) => call[1]).join('\n')).not.toContain('vendor@example.com');
-    expect(mocks.generateAiText.mock.calls.map((call) => call[1]).join('\n')).not.toContain('+6012-345 6789');
-    expect(mocks.generateAiText.mock.calls.map((call) => call[1]).join('\n')).not.toContain('vendor.example');
+    expect(mocks.generateAiText.mock.calls.map((call) => call[1]).join('\n')).toContain('Fresh local dishes');
+  });
+
+  it('withholds recommendation translations with personal contact details', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'super-admin-1' } }, error: null });
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
+    mocks.generateAiText.mockResolvedValue({ available: true, provider: 'modelscope', model: 'test-model', content: 'Draft' });
+    mocks.serviceFrom.mockImplementation((table: string) => {
+      if (table === 'vendor_recommendations') {
+        return {
+          select: () => ({
+            eq: () => ({ maybeSingle: async () => ({
+              data: { id: recommendationId, vendor_name: 'Kedai Amanah', description: 'Call 012-3456789 or email vendor@example.com.', status: 'approved' },
+              error: null,
+            }) }),
+          }),
+        };
+      }
+      return { select: () => ({ match: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) };
+    });
+
+    const response = await POST(new Request(`http://localhost/api/admin/recommendations/${recommendationId}/localization`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'generate' }),
+    }), { params: Promise.resolve({ id: recommendationId }) });
+
+    expect(response.status).toBe(422);
+    expect(mocks.generateAiText).not.toHaveBeenCalled();
   });
 });
 

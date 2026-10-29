@@ -82,7 +82,7 @@ function VoucherOptionCard({ option, applied, hasAppliedVoucher = false, onApply
 
 export default function CartPage() {
   const { t: tCustomer } = useTranslation("customer");
-  const { items, activities = [], activitiesReady, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, updateQty, removeItem, updateStayDetails, totals } = useCart();
+  const { items, itemsLoading, itemsLoadError, reloadItems, activities = [], activitiesReady, activitiesFailed, reloadActivities, selectedKeys, selectedItems, toggleSelected, setAllSelected, setGroupSelected, updateQty, removeItem, updateStayDetails, totals } = useCart();
   const { showFeedback } = useActionFeedback();
   const { currentUser } = useAuth();
   const [code, setCode] = useState("");
@@ -90,6 +90,7 @@ export default function CartPage() {
   const [appliedClaimId, setAppliedClaimId] = useState<string | null>(null);
   const [deepLinkedVoucher, setDeepLinkedVoucher] = useState<{ code: string; claimId: string | null } | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [cartActionError, setCartActionError] = useState(false);
   const [outlets, setOutlets] = useState<Map<string, Outlet>>(new Map());
   const [slotsById, setSlotsById] = useState<Map<string, BookingSlot>>(new Map());
   const [bookingSlotsLoad, setBookingSlotsLoad] = useState<BookingSlotLookupState>({ requestToken: null, status: "loaded" });
@@ -193,7 +194,7 @@ export default function CartPage() {
       if (!activity) return;
       // Prefer the outlet stored on the line — a product may be sold at several
       // outlets, so the product's own outlet is only a fallback for old rows.
-      const outletId = item.outletId ?? activity.outletId;
+      const outletId = item.outletId ?? activity?.outletId ?? "unavailable";
       const group = groups.get(outletId) ?? { outletId, rows: [] };
       group.rows.push({ item, index });
       groups.set(outletId, group);
@@ -254,7 +255,7 @@ export default function CartPage() {
 
   useEffect(() => {
     let active = true;
-    if (candidateVouchers.length === 0 || voucherValidationItems.length === 0) {
+    if (!currentUser || candidateVouchers.length === 0 || voucherValidationItems.length === 0) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setVoucherOptions([]);
       setLoadingVouchers(false);
@@ -291,7 +292,7 @@ export default function CartPage() {
       });
 
     return () => { active = false; };
-  }, [candidateVouchers, selectedVendorIds, subtotal, voucherValidationItems]);
+  }, [currentUser, candidateVouchers, selectedVendorIds, subtotal, voucherValidationItems]);
 
   const appliedVoucherOption = useMemo(() => appliedVoucher ? {
     voucher: appliedVoucher,
@@ -385,6 +386,7 @@ export default function CartPage() {
   }
 
   if (items.length === 0) {
+    if (itemsLoadError) return <EmptyState icon={<ShoppingCart size={40} />} title={tCustomer("ui.cart.loadErrorTitle")} description={tCustomer("ui.cart.loadErrorDescription")} action={<Button type="button" onClick={reloadItems}>{tCustomer("ui.actions.retry")}</Button>} />;
     return (
       <EmptyState
         icon={<ShoppingCart size={40} />}
@@ -402,6 +404,18 @@ export default function CartPage() {
     );
   }
 
+  async function updateCartQuantity(index: number, quantity: number) {
+    setCartActionError(false);
+    try { await updateQty(index, quantity); }
+    catch { setCartActionError(true); }
+  }
+
+  async function removeCartItem(index: number) {
+    setCartActionError(false);
+    try { await removeItem(index); }
+    catch { setCartActionError(true); }
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -410,6 +424,9 @@ export default function CartPage() {
           <Link href="/customer" className="mt-1 inline-flex text-sm font-semibold text-primary hover:underline">{tCustomer("ui.cart.continueShopping")}</Link>
         </div>
       </div>
+      {itemsLoadError && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm"><span>{tCustomer("ui.cart.refreshError")}</span><Button type="button" size="sm" variant="outline" onClick={reloadItems}>{tCustomer("ui.actions.retry")}</Button></div>}
+      {itemsLoading && items.length > 0 && <p role="status" className="mb-4 text-xs text-muted-foreground">{tCustomer("ui.cart.refreshing")}</p>}
+      {cartActionError && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm"><span>{tCustomer("ui.cart.actionError")}</span><Button type="button" size="sm" variant="outline" onClick={reloadItems}>{tCustomer("ui.actions.retry")}</Button></div>}
 
       <div className="mb-3 flex items-center justify-between gap-3 px-1">
         <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-foreground">
@@ -440,21 +457,16 @@ export default function CartPage() {
                   aria-label={`Select all items from ${group.outlet?.name ?? "this outlet"}`}
                   className="h-4 w-4 shrink-0 accent-primary disabled:cursor-not-allowed disabled:opacity-50"
                 />
-                <span className="break-words whitespace-normal text-sm font-semibold text-foreground">{group.outlet?.name ?? "Outlet"}</span>
+                <span className="break-words whitespace-normal text-sm font-semibold text-foreground">{group.outlet?.name ?? tCustomer("ui.cart.unavailableOutlet")}</span>
               </label>
-              <Link
-                href={`/customer/outlet/${group.outletId}`}
-                className="shrink-0 text-xs font-semibold text-primary hover:underline"
-              >
-                {tCustomer("ui.cart.viewOutlet")}
-              </Link>
+              {group.outlet && <Link href={`/customer/outlet/${group.outletId}`} className="shrink-0 text-xs font-semibold text-primary hover:underline">{tCustomer("ui.cart.viewOutlet")}</Link>}
             </header>
             <div className="space-y-3 p-3">
         {group.rows.map(({ item, index }) => {
           const activity = activities.find((a) => a.id === item.activityId);
-          if (!activity) return null;
           const key = cartItemKey(item);
           const checked = selectedKeys.has(key);
+          if (!activity) return <div key={key} className="flex items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4"><div><p className="text-sm font-semibold">{tCustomer(activitiesFailed ? "ui.cart.availabilityLoadError" : "ui.cart.unavailableProduct")}</p><p className="text-xs text-muted-foreground">{tCustomer(activitiesFailed ? "ui.cart.availabilityLoadHelp" : "ui.cart.unavailableProductHelp")}</p></div>{activitiesFailed ? <Button type="button" variant="outline" size="sm" onClick={reloadActivities}>{tCustomer("ui.actions.retry")}</Button> : <Button type="button" variant="outline" size="sm" onClick={() => void removeCartItem(index)}>{tCustomer("ui.cart.remove")}</Button>}</div>;
           const outlet = outlets.get(item.outletId ?? activity.outletId);
           const variant = activity.variants.find((v) => v.id === item.variantId);
           const slot = item.slotId ? slotsById.get(item.slotId) : undefined;
@@ -540,17 +552,19 @@ export default function CartPage() {
               <div className="flex flex-col items-end gap-2 shrink-0">
                 <ReferencePrice amountMYR={lineTotal} className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]" />
                 <div className="flex items-center gap-2">
-                  <button onClick={() => updateQty(index, item.qty - 1)} className="w-7 h-7 rounded-lg border border-border text-foreground">−</button>
+                  <button type="button" aria-label={tCustomer("ui.activityDetail.decreaseQuantity")} onClick={() => void updateCartQuantity(index, item.qty - 1)} className="w-7 h-7 rounded-lg border border-border text-foreground">−</button>
                   <span className="w-6 text-center text-sm font-semibold text-foreground">{item.qty}</span>
                   <button
-                    onClick={() => updateQty(index, item.qty + 1)}
+                    type="button"
+                    aria-label={tCustomer("ui.activityDetail.increaseQuantity")}
+                    onClick={() => void updateCartQuantity(index, item.qty + 1)}
                     disabled={(stockLimit !== undefined && item.qty >= stockLimit) || (item.slotId && availability.status !== "available") || (availability.seatsLeft !== undefined && item.qty >= availability.seatsLeft)}
                     className="w-7 h-7 rounded-lg border border-border text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     +
                   </button>
                 </div>
-                <button onClick={() => removeItem(index)} className="text-destructive" title={tCustomer("ui.cart.remove")}>
+                <button type="button" onClick={() => void removeCartItem(index)} className="text-destructive" title={tCustomer("ui.cart.remove")}>
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -628,7 +642,7 @@ export default function CartPage() {
           </div>
         )}
         {voucherError && <p className="mt-2 text-xs text-destructive">{voucherError}</p>}
-      </div> : <p className="mb-6 text-sm text-muted-foreground">{tCustomer("guestCheckout.hint")}</p>}
+      </div> : <p className="mb-6 text-sm text-muted-foreground">{tCustomer("guestCheckout.cartHint")}</p>}
 
       {currentUser && showAllVouchers && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" role="dialog" aria-modal="true" aria-labelledby="all-vouchers-title">
