@@ -25,6 +25,11 @@ const GENERATE_TIMEOUT_MS = 15_000;
 // Verbatim from CLAUDE-PHASE2.md Section 2 — the strictness here is what
 // keeps the bot from hallucinating about money. Do not soften this.
 //
+// Multi-question messages: the NO_ANSWER rule now applies when the context
+// covers NONE of the questions; a covered question is answered and an
+// uncovered one gets a one-line "no information" instead of a guess. The
+// money rule below is unchanged.
+//
 // CLAUDE-P4-EXTRAS.md Extra 1 (trilingual): the language-matching paragraph
 // is the whole implementation of trilingual support on the generation side
 // — no separate translation pipeline, Gemini does this natively. The
@@ -37,7 +42,11 @@ const SYSTEM_PROMPT = `You are the support assistant for MYLawatan, a Malaysian 
 Answer ONLY using the CONTEXT below. The context is the complete set of
 facts you are allowed to use.
 
-If the context does not contain the answer, reply with exactly:
+The user may ask more than one question in a single message. Answer
+each question the context covers. For any question the context does not
+cover, say in one short sentence that you don't have that information, and
+never guess at it. If the context covers none of the questions, reply with
+exactly:
 NO_ANSWER
 
 Never guess. Never invent policy, prices, timelines, or amounts.
@@ -55,7 +64,7 @@ Malaysia) unless the user clearly wrote traditional. If you reply with
 NO_ANSWER, always reply with exactly that literal token regardless of the
 question's language — never translate NO_ANSWER itself.
 
-Be concise: 1-3 sentences. Plain language, matching the user's own.`;
+Be concise: 1-3 sentences per question. Plain language, matching the user's own.`;
 
 interface GeminiGenerateResponse {
   candidates?: { content?: { parts?: { text?: string }[] } }[];
@@ -68,8 +77,14 @@ interface GeminiGenerateResponse {
  * caller (lib/chatbot/answer.ts) is required to catch this and fall back to
  * the keyword matcher — never let this reach the user as an error.
  */
-export async function generateAnswer(question: string, docs: GenerateDoc[]): Promise<string | null> {
-  const context = docs.map((d) => `TITLE: ${d.title}\nBODY: ${d.body}`).join('\n\n');
+/** `questionCount` > 1 doubles the output budget so every question gets its answer. */
+export async function generateAnswer(question: string, docs: GenerateDoc[], questionCount = 1): Promise<string | null> {
+  // A doc the privacy check rejects is dropped on its own instead of sinking
+  // every other doc with it (16 of 89 KB docs mention "KYC"). The combined
+  // prompt is still checked below, so nothing rejected is ever sent.
+  const safeDocs = docs.filter((d) => prepareExternalText(`TITLE: ${d.title}\nBODY: ${d.body}`).allowed);
+  if (safeDocs.length === 0) throw new Error('sensitive_data_detected');
+  const context = safeDocs.map((d) => `TITLE: ${d.title}\nBODY: ${d.body}`).join('\n\n');
   const userText = `CONTEXT:\n${context}\n\nQUESTION: ${question}`;
   const preparedPayload = prepareExternalText(userText);
   if (!preparedPayload.allowed) throw new Error('sensitive_data_detected');
@@ -86,7 +101,7 @@ export async function generateAnswer(question: string, docs: GenerateDoc[]): Pro
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
         contents: [{ role: 'user', parts: [{ text: preparedPayload.clean }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 300 },
+        generationConfig: { temperature: 0.2, maxOutputTokens: questionCount > 1 ? 600 : 300 },
       }),
       signal: controller.signal,
     });

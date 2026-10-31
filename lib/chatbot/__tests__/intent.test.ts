@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyIntent } from "../intent";
+import { classifyIntent, splitQuestions } from "../intent";
 
 describe("classifyIntent", () => {
   it("classifies plain greetings", () => {
@@ -53,5 +53,32 @@ describe("classifyIntent", () => {
 
   it("classifies a bare punctuation-only Chinese message as unclear", () => {
     expect(classifyIntent("？")).toBe("unclear");
+  });
+});
+
+describe("splitQuestions", () => {
+  it("leaves a single question untouched", () => {
+    expect(splitQuestions("How do I withdraw my earnings?")).toEqual(["How do I withdraw my earnings?"]);
+    expect(splitQuestions("how do I withdraw and how long does it take")).toEqual(["how do I withdraw and how long does it take"]);
+  });
+
+  it("splits on question marks, full-width question marks and line breaks", () => {
+    expect(splitQuestions("How do I withdraw my earnings? Can I cancel a booking?")).toEqual([
+      "How do I withdraw my earnings",
+      "Can I cancel a booking",
+    ]);
+    expect(splitQuestions("怎么提现我的收入？可以取消预订吗？")).toEqual(["怎么提现我的收入", "可以取消预订吗"]);
+    expect(splitQuestions("How do I withdraw my earnings\nCan I cancel a booking")).toEqual([
+      "How do I withdraw my earnings",
+      "Can I cancel a booking",
+    ]);
+  });
+
+  it("drops greetings and filler, and returns the whole message when one question remains", () => {
+    expect(splitQuestions("Hi? How do I withdraw my earnings? thanks")).toEqual(["Hi? How do I withdraw my earnings? thanks"]);
+  });
+
+  it("keeps at most three questions", () => {
+    expect(splitQuestions("How do I withdraw money? Can I cancel a booking? Where is my voucher code? How do refunds work?")).toHaveLength(3);
   });
 });

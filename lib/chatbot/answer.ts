@@ -30,10 +30,10 @@
 // `LLM_API_KEY` check, so greetings work identically with or without a key.
 
 import { createServiceClient } from '@/lib/supabase/service';
-import { retrieve } from './retrieve';
+import { retrieve, type RetrievedDoc } from './retrieve';
 import { generateAnswer } from './generate';
 import { answerQuestion as matchKeyword, type KbDoc } from './match';
-import { classifyIntent } from './intent';
+import { classifyIntent, splitQuestions } from './intent';
 import { redactPII } from './pii';
 import { detectLanguage, type ChatLanguage } from './language';
 import { CHAT_STRINGS } from './strings';
@@ -76,9 +76,24 @@ export interface AnswerResult {
   language: ChatLanguage;
 }
 
+/** Several questions: fewer docs each, so all of them fit in the context (max 6). */
+function retrievalCount(questionCount: number): number {
+  return questionCount > 1 ? 2 : 3;
+}
+
+/** One retrieval per question, deduped by doc id (best similarity wins), best first. */
+function mergeRetrieved(lists: RetrievedDoc[][]): RetrievedDoc[] {
+  const best = new Map<string, RetrievedDoc>();
+  for (const doc of lists.flat()) {
+    const seen = best.get(doc.id);
+    if (!seen || doc.similarity > seen.similarity) best.set(doc.id, doc);
+  }
+  return [...best.values()].sort((a, b) => b.similarity - a.similarity);
+}
+
 async function answerWithKeywordFallback(
   service: ReturnType<typeof createServiceClient>,
-  question: string,
+  questions: string[],
   piiDetected: boolean,
   language: ChatLanguage,
 ): Promise<AnswerResult> {
@@ -102,9 +117,12 @@ async function answerWithKeywordFallback(
   // nothing to translate on a successful match without risking exactly the
   // "subtly wrong translation" the extras doc warns about, and this path
   // only runs when the LLM is unavailable/failing anyway.
-  const match = matchKeyword(question, docs);
-  return match
-    ? { answer: match.body, kbMatched: true, canEscalate: false, usedKb: [{ id: match.id, similarity: null }], mode: 'keyword', piiDetected, language }
+  // One match per question, each doc shown once.
+  const matches = [...new Map(
+    questions.map((q) => matchKeyword(q, docs)).filter((doc): doc is KbDoc => doc !== null).map((doc) => [doc.id, doc]),
+  ).values()];
+  return matches.length > 0
+    ? { answer: matches.map((doc) => doc.body).join('\n\n'), kbMatched: true, canEscalate: false, usedKb: matches.map((doc) => ({ id: doc.id, similarity: null })), mode: 'keyword', piiDetected, language }
     : { answer: CHAT_STRINGS[language].fallback, kbMatched: false, canEscalate: true, usedKb: [], mode: 'keyword', piiDetected, language };
 }
 
@@ -141,10 +159,14 @@ export async function answerQuestion(question: string, useAi = true): Promise<An
   }
 
   const service = createServiceClient();
+  const questions = splitQuestions(question);
 
   if (useAi && process.env.LLM_API_KEY) {
     try {
-      const retrieved = await retrieve(service, question, 3);
+      // Each question clears the similarity threshold on its own, so one
+      // off-topic question no longer sinks an on-topic one beside it.
+      const k = retrievalCount(questions.length);
+      const retrieved = mergeRetrieved(await Promise.all(questions.map((q) => retrieve(service, q, k))));
       if (retrieved.length === 0) {
         // Threshold check happens BEFORE the LLM call — the model never
         // sees an off-topic question at all. See lib/chatbot/retrieve.ts.
@@ -152,7 +174,7 @@ export async function answerQuestion(question: string, useAi = true): Promise<An
       }
 
       const usedKb: UsedKbRef[] = retrieved.map((r) => ({ id: r.id, similarity: r.similarity }));
-      const llmAnswer = await generateAnswer(question, retrieved);
+      const llmAnswer = await generateAnswer(question, retrieved, questions.length);
 
       if (llmAnswer === null) {
         // NO_ANSWER — still record which docs were retrieved/considered,
@@ -168,5 +190,5 @@ export async function answerQuestion(question: string, useAi = true): Promise<An
     }
   }
 
-  return answerWithKeywordFallback(service, question, piiDetected, language);
+  return answerWithKeywordFallback(service, questions, piiDetected, language);
 }
