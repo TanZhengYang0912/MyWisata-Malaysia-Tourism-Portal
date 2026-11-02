@@ -20,4 +20,12 @@ describe('vendor notification metadata migration', () => {
     expect(sql).toContain('WHERE id = v_notification_id AND user_id = p_user_id');
     expect(sql).toContain('TO authenticated, service_role');
   });
+
+  it('lets wrapper callers execute the private implementation without granting anonymous access', () => {
+    for (const schema of ['public', 'app_private']) {
+      expect(sql).toContain(`GRANT EXECUTE ON FUNCTION ${schema}.send_notification_with_metadata(uuid, character varying, character varying, text, text, jsonb)\n  TO authenticated, service_role;`);
+    }
+    expect(sql).toContain('FROM PUBLIC, anon, authenticated, service_role;');
+    expect(sql).toContain('FROM PUBLIC, anon;');
+  });
 });

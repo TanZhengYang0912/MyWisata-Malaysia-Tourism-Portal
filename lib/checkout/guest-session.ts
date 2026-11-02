@@ -3,21 +3,45 @@ import { createHash, randomBytes } from "node:crypto";
 import { isIP } from "node:net";
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { resolvePaymentAppUrl } from "@/lib/payments/app-url";
 
 export const GUEST_SESSION_SECONDS = 30 * 24 * 60 * 60;
 export function hashGuestCredential(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 export function newGuestCredential(): string { return randomBytes(32).toString("base64url"); }
-export function guestCookieName(request: Request, order = false): string {
-  return `${new URL(request.url).protocol === "https:" ? "__Host-" : ""}mylawatan-${order ? "order-access" : "guest"}`;
+function guestPublicOrigin(request: Request): string | null {
+  try {
+    if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
+      return new URL(request.url).origin;
+    }
+    if (process.env.NODE_ENV === "production") return resolvePaymentAppUrl();
+    return null;
+  } catch {
+    return null;
+  }
 }
-function legacyGuestCookieName(request: Request, order = false): string {
-  return `${new URL(request.url).protocol === "https:" ? "__Host-" : ""}mywisata-${order ? "order-access" : "guest"}`;
+function hasSecureGuestOrigin(request: Request): boolean {
+  const origin = guestPublicOrigin(request);
+  return origin !== null && new URL(origin).protocol === "https:";
+}
+export function guestCookieName(request: Request, order = false): string | null {
+  const origin = guestPublicOrigin(request);
+  if (!origin) return null;
+  const prefix = new URL(origin).protocol === "https:" ? "__Host-" : "";
+  return `${prefix}mylawatan-${order ? "order-access" : "guest"}`;
+}
+function legacyGuestCookieName(request: Request, order = false): string | null {
+  const origin = guestPublicOrigin(request);
+  if (!origin) return null;
+  const prefix = new URL(origin).protocol === "https:" ? "__Host-" : "";
+  return `${prefix}mywisata-${order ? "order-access" : "guest"}`;
 }
 export function readGuestCookie(request: Request, order = false): string | null {
+  if (!guestPublicOrigin(request)) return null;
   const cookieHeader = request.headers.get("cookie") ?? "";
   for (const name of [guestCookieName(request, order), legacyGuestCookieName(request, order)]) {
+    if (!name) continue;
     const raw = cookieHeader.split(";").map((part) => part.trim())
       .find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1);
     if (raw && /^[A-Za-z0-9_-]{43}$/.test(raw)) return raw;
@@ -25,14 +49,19 @@ export function readGuestCookie(request: Request, order = false): string | null 
   return null;
 }
 export function setGuestCookie(response: NextResponse, request: Request, token: string, order = false) {
-  response.cookies.set(guestCookieName(request, order), token, {
-    httpOnly: true, secure: new URL(request.url).protocol === "https:", sameSite: "lax", path: "/",
+  const name = guestCookieName(request, order);
+  if (!name) return;
+  response.cookies.set(name, token, {
+    httpOnly: true, secure: hasSecureGuestOrigin(request), sameSite: "lax", path: "/",
     maxAge: order ? 24 * 60 * 60 : GUEST_SESSION_SECONDS,
   });
 }
 export function isSameOriginMutation(request: Request): boolean {
+  const expectedOrigin = guestPublicOrigin(request);
   const origin = request.headers.get("origin");
-  return origin === new URL(request.url).origin && !["cross-site", "none"].includes(request.headers.get("sec-fetch-site") ?? "");
+  return expectedOrigin !== null
+    && origin === expectedOrigin
+    && !["cross-site", "none"].includes(request.headers.get("sec-fetch-site") ?? "");
 }
 export function privateCheckoutJson(payload: unknown, init?: ResponseInit): NextResponse {
   const response = NextResponse.json(payload, init);

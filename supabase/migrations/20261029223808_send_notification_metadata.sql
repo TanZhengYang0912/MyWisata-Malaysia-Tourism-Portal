@@ -44,6 +44,9 @@ $$;
 
 REVOKE ALL ON FUNCTION app_private.send_notification_with_metadata(uuid, character varying, character varying, text, text, jsonb)
   FROM PUBLIC, anon, authenticated, service_role;
+-- The public SECURITY INVOKER wrapper calls this function as the caller.
+GRANT EXECUTE ON FUNCTION app_private.send_notification_with_metadata(uuid, character varying, character varying, text, text, jsonb)
+  TO authenticated, service_role;
 
 CREATE FUNCTION public.send_notification_with_metadata(
   p_user_id uuid,
