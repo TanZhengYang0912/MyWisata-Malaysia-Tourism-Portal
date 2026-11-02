@@ -26,6 +26,13 @@ describe('receipt email recipient language', () => {
     expect(mail.text).toContain(total);
     expect(mail.html).toContain(total);
     expect(mail.attachments).toHaveLength(1);
+    if (process.env.RECEIPT_EMAIL_PREVIEW_DIR) {
+      const directory = process.env.RECEIPT_EMAIL_PREVIEW_DIR;
+      mkdirSync(directory, { recursive: true });
+      const preview = mail.html.replace(/<body([^>]*)>/i, `$&<p style="padding:12px;background:#eef2ff">Synthetic locale preview · not sent<br>To: test@example.test<br>${subject}</p>`);
+      writeFileSync(path.join(directory, `receipt-${locale}.html`), preview);
+      writeFileSync(path.join(directory, `receipt-${locale}.txt`), mail.text);
+    }
   });
 
   it('embeds a scannable retail QR matching the signed order line without printing the token', async () => {

@@ -32,8 +32,6 @@ let root: ReturnType<typeof createRoot>;
 let container: TestElement;
 let fetchMock: ReturnType<typeof vi.fn>;
 let saved: ReturnType<typeof initialProfile>;
-let surveySaved: boolean;
-let savedNotes: string;
 let rejectBio: boolean;
 
 function initialProfile(id = 'user-a') {
@@ -41,8 +39,10 @@ function initialProfile(id = 'user-a') {
     cityId: null, countryCode: 'MY', bio: 'I enjoy travel.', avatarUrl: `https://avatars.example/${id}.png` };
 }
 function summary() {
-  return { ...saved, phoneVerified: true, kycStatus: 'approved',
-    verification: computeProfileVerification({ ...saved, surveyComplete: surveySaved }) };
+  const verification = computeProfileVerification(saved);
+  return { ...saved, phoneVerified: true, kycStatus: 'approved', verification: {
+    ...verification, complete: false, percentage: 67 as const, completedSteps: ['identity', 'avatar'] as const, currentStep: 'bio' as const,
+  } };
 }
 function response(data: unknown, status = 200) { return new Response(JSON.stringify({ data }), { status }); }
 async function settle() { for (let index = 0; index < 8; index += 1) await Promise.resolve(); }
@@ -76,12 +76,11 @@ describe('Profile wizard navigation and draft ownership', () => {
     mocks.user = { id: 'user-a', name: 'Aisha', email: 'a@example.test', city: 'Kuala Lumpur', country: 'Malaysia' };
     mocks.feedback.mockReset(); mocks.push.mockReset();
     mocks.refresh.mockReset().mockImplementation(async () => { mocks.user = { ...mocks.user }; });
-    saved = initialProfile(); surveySaved = false; savedNotes = ''; rejectBio = false;
+    saved = initialProfile(); rejectBio = false;
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:avatar-draft');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
     fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
       if (url === '/api/profile/me') return response(summary());
-      if (url === '/api/profile/survey' && !options?.method) return response({ interests: surveySaved ? ['food'] : [], notes: savedNotes });
       if (url === '/api/profile/identity') { saved = { ...saved, ...JSON.parse(options?.body as string) }; return response({ updated: true }); }
       if (url === '/api/profile/bio') {
         if (rejectBio) return response(null, 503);
@@ -90,7 +89,6 @@ describe('Profile wizard navigation and draft ownership', () => {
       if (url.startsWith('/api/profile/avatar?')) return response({ uploadUrl: 'https://upload.example/signed', path: `${saved.id}/avatar.png` });
       if (url === 'https://upload.example/signed') return new Response(null, { status: 200 });
       if (url === '/api/profile/avatar/confirm') { saved.avatarUrl = `https://avatars.example/${saved.id}-new.png`; return response({ updated: true }); }
-      if (url === '/api/profile/survey') { surveySaved = true; savedNotes = JSON.parse(options?.body as string).notes ?? ''; return response({ updated: true }); }
       throw new Error(`Unexpected request: ${url}`);
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -102,18 +100,13 @@ describe('Profile wizard navigation and draft ownership', () => {
     vi.restoreAllMocks(); vi.unstubAllGlobals();
   });
 
-  it('returns from Preferences to saved biography, photo and identity with Back and Continue', async () => {
+  it('keeps the Profile wizard limited to identity, photo and biography', async () => {
     await renderPage();
-    await click(button('ui.profileWizard.previous'));
-    expect(valueOf(input('ui.profileWizard.bioPlaceholder'))).toBe(saved.bio);
     await click(button('ui.profileWizard.previous'));
     expect(findOne(container, (node) => node.getAttribute('data-testid') === 'photo-preview').getAttribute('data-src')).toBe(saved.avatarUrl);
     await click(button('ui.profileWizard.previous'));
     expect(input('ui.profileWizard.fullNamePlaceholder').value).toBe(saved.fullName);
-    await click(button('ui.profileWizard.continue'));
-    await click(button('ui.profileWizard.continue'));
-    await click(button('ui.profileWizard.continue'));
-    expect(input('ui.preferencesEditor.notesPlaceholder')).toBeDefined();
+    expect(findElements(container, (node) => node.tagName === 'BUTTON' && node.textContent === 'ui.profileWizard.steps.survey')).toHaveLength(0);
     expect(writes('/api/profile/identity')).toHaveLength(0);
     expect(writes('/api/profile/bio')).toHaveLength(0);
   });
@@ -129,18 +122,6 @@ describe('Profile wizard navigation and draft ownership', () => {
     expect(saved.bio).toBe('I enjoy travel.');
   });
 
-  it('retains preference answers across navigation and a different section save', async () => {
-    await renderPage();
-    await fill(input('ui.preferencesEditor.notesPlaceholder'), 'Keep these preferences');
-    await click(button('categories.food'));
-    await step('identity'); await fill(input('ui.profileWizard.fullNamePlaceholder'), 'Aisha Updated');
-    await click(button('ui.profileWizard.continue')); await step('survey');
-    expect(valueOf(input('ui.preferencesEditor.notesPlaceholder'))).toBe('Keep these preferences');
-    await click(button('ui.kyc.completeProfile'));
-    expect(JSON.parse(writes('/api/profile/survey')[0][1].body)).toMatchObject({ interests: ['food'], notes: 'Keep these preferences' });
-    expect(container.textContent).toContain('Completed profile');
-  });
-
   it('retains a selected photo across another save and restores the saved photo after upload', async () => {
     await renderPage(); await step('avatar'); await click(button('Choose test photo'));
     await step('bio'); await fill(input('ui.profileWizard.bioPlaceholder'), '爱旅行');
@@ -151,15 +132,6 @@ describe('Profile wizard navigation and draft ownership', () => {
     expect(findOne(container, (node) => node.getAttribute('data-testid') === 'photo-preview').getAttribute('data-src')).toBe(saved.avatarUrl);
     expect(saved.avatarUrl).toContain('-new.png');
     expect(saved.bio).toBe('爱旅行');
-  });
-
-  it('requires saving other drafts before final preference submission', async () => {
-    await renderPage(); await step('bio'); await fill(input('ui.profileWizard.bioPlaceholder'), '爱旅行');
-    await step('survey'); await click(button('categories.food'));
-    await click(button('ui.kyc.completeProfile'));
-    expect(writes('/api/profile/survey')).toHaveLength(0);
-    expect(valueOf(input('ui.profileWizard.bioPlaceholder'))).toBe('爱旅行');
-    expect(mocks.feedback).toHaveBeenCalledWith('error', 'ui.profileWizard.saveStepFirst');
   });
 
   it('keeps an unsuccessful save on its current step without discarding the draft', async () => {
@@ -174,18 +146,17 @@ describe('Profile wizard navigation and draft ownership', () => {
   it('does not unlock later missing steps or mark an invalid biography complete', async () => {
     saved.bio = '';
     await renderPage();
-    expect(button('ui.profileWizard.steps.survey').disabled).toBe(true);
+    expect(button('ui.profileWizard.steps.bio').disabled).toBe(false);
     await fill(input('ui.profileWizard.bioPlaceholder'), 'Hi'); await click(button('ui.profileWizard.continue'));
     expect(writes('/api/profile/bio')).toHaveLength(0);
     expect(container.textContent).toContain('ui.profileWizard.bioValidation');
   });
 
-  it('clears the prior account photo and preference drafts when the account changes', async () => {
-    await renderPage(); await fill(input('ui.preferencesEditor.notesPlaceholder'), 'Private draft');
+  it('clears the prior account photo draft when the account changes', async () => {
+    await renderPage();
     await step('avatar'); await click(button('Choose test photo'));
     mocks.user = { ...mocks.user, id: 'user-b', name: 'New account' }; saved = initialProfile('user-b');
     await renderPage();
-    expect(valueOf(input('ui.preferencesEditor.notesPlaceholder'))).toBe('');
     await step('avatar');
     expect(findOne(container, (node) => node.getAttribute('data-testid') === 'photo-preview').getAttribute('data-src')).toBe('https://avatars.example/user-b.png');
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:avatar-draft');

@@ -43,6 +43,7 @@ export async function describeFit(input: DescribeFitInput): Promise<string> {
     const publicPayload = {
       preferences: {
         interests: input.preferences.interests,
+        travelStyle: input.preferences.travelStyle ?? 'unspecified',
         budgetRange: input.preferences.budgetRange,
         mobilityNeeds: input.preferences.mobilityNeeds,
         preferredRadiusKm: input.preferences.preferredRadiusKm,

@@ -280,11 +280,12 @@ export async function getDiscoveryOutletsByIds(
   return getDiscoveryOutlets(ids, db, badgeSlugs);
 }
 
-async function mapWithConcurrencyTwo<T, R>(items: T[], mapper: (item: T) => Promise<R>): Promise<R[]> {
+export async function mapWithConcurrencyTwo<T, R>(items: T[], mapper: (item: T) => Promise<R>, signal?: AbortSignal): Promise<R[]> {
   const results = new Array<R>(items.length);
   let nextIndex = 0;
   async function worker() {
     while (true) {
+      signal?.throwIfAborted();
       const index = nextIndex++;
       if (index >= items.length) return;
       results[index] = await mapper(items[index]);

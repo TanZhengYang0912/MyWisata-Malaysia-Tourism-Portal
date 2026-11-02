@@ -14,7 +14,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { getComputedActivity, searchActivities } from '@/backend/domains/catalogue';
+import { getActivitiesByIds, getDiscoveryOutletsByIds, composeDiscoveryActivities, searchActivities } from '@/backend/domains/catalogue';
 import { canonicalCategorySlug } from '@/lib/customer/discovery-categories';
 import { callGemini } from '@/lib/admin-ai/gemini';
 import { formatMYR } from '@/lib/i18n/format';
@@ -94,12 +94,20 @@ export async function resolveBudgetItems(
   lines: { productId: string; qty: number }[],
   db: SupabaseClient,
 ): Promise<BudgetItem[]> {
-  const resolved = await Promise.all(lines.map(async (line) => {
-    const activity = await getComputedActivity(line.productId, undefined, db);
-    return activity ? { line, activity } : null;
-  }));
-  const pairs = resolved.filter((pair): pair is NonNullable<typeof pair> => pair !== null);
-  const productTypeById = await fetchProductTypes(pairs.map(({ activity }) => activity.id), db);
+  const ids = [...new Set(lines.map((line) => line.productId))];
+  const [activities, productTypeById] = await Promise.all([
+    getActivitiesByIds(ids, db), fetchProductTypes(ids, db),
+  ]);
+  const outlets = await getDiscoveryOutletsByIds(activities.flatMap((activity) => [
+    activity.outletId, ...(activity.offers ?? []).map((offer) => offer.outletId),
+  ]), db);
+  // Budget lines use price/category/state only; reviews do not affect these fields.
+  // Keep the same toComputed offer selection as the single-product loader.
+  const byId = new Map(composeDiscoveryActivities(activities, outlets).map((activity) => [activity.id, activity]));
+  const pairs = lines.flatMap((line) => {
+    const activity = byId.get(line.productId);
+    return activity ? [{ line, activity }] : [];
+  });
 
   return pairs.map(({ line, activity }) => ({
     productId: activity.id,
@@ -117,13 +125,24 @@ async function findCheaperAlternatives(
   item: BudgetItem,
   excludeProductIds: Set<string>,
   db: SupabaseClient,
+  pools: Map<string, Promise<{ results: Awaited<ReturnType<typeof searchActivities>>; types: Map<string, string> }>>,
+  maxPrice: number,
 ): Promise<BudgetAlternative[]> {
-  const results = await searchActivities({
+  const key = JSON.stringify([item.state, canonicalCategorySlug(item.categorySlug), maxPrice]);
+  let pool = pools.get(key);
+  if (!pool) {
+    pool = (async () => {
+      const results = await searchActivities({
     state: item.state,
     categorySlug: canonicalCategorySlug(item.categorySlug),
-    priceMax: item.price,
+    priceMax: maxPrice,
     sort: 'rating_desc',
-  }, db);
+      }, db);
+      return { results, types: await fetchProductTypes(results.map((activity) => activity.id), db) };
+    })();
+    pools.set(key, pool);
+  }
+  const { results, types: productTypeById } = await pool;
   const candidates = results.filter((activity) => !excludeProductIds.has(activity.id) && activity.price < item.price);
 
   // categorySlug alone is too coarse — the catalogue puts food-tour
@@ -131,8 +150,6 @@ async function findCheaperAlternatives(
   // landmark admissions (see BudgetItem.productType's comment). Requiring
   // the real product_type to match too keeps a landmark's alternatives to
   // other landmarks/experiences of the same type, never a food item.
-  const productTypeById = await fetchProductTypes(candidates.map((activity) => activity.id), db);
-
   return candidates
     .filter((activity) => productTypeById.get(activity.id) === item.productType)
     .slice(0, MAX_ALTERNATIVES_PER_ITEM)
@@ -167,13 +184,17 @@ export async function evaluateBudget(
     .slice(0, MAX_ITEMS_TO_ADDRESS);
   const excludeProductIds = new Set(items.map((item) => item.productId));
 
+  const pools = new Map<string, Promise<{ results: Awaited<ReturnType<typeof searchActivities>>; types: Map<string, string> }>>();
+  const groupKey = (item: BudgetItem) => JSON.stringify([item.state, canonicalCategorySlug(item.categorySlug)]);
+  const maxPrices = new Map<string, number>();
+  for (const item of ranked) maxPrices.set(groupKey(item), Math.max(maxPrices.get(groupKey(item)) ?? 0, item.price));
   const overBudgetItems = await Promise.all(ranked.map(async (item) => ({
     productId: item.productId,
     name: item.name,
     price: item.price,
     qty: item.qty,
     lineTotalRM: Math.round(item.price * item.qty * 100) / 100,
-    alternatives: await findCheaperAlternatives(item, excludeProductIds, db),
+    alternatives: await findCheaperAlternatives(item, excludeProductIds, db, pools, maxPrices.get(groupKey(item)) ?? item.price),
   })));
 
   return { totalRM, budgetRM, isOverBudget, overBudgetByRM, overBudgetItems };

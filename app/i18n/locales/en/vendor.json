@@ -519,6 +519,15 @@
       "viewAll": "View all",
       "stockAlerts": "Stock alerts",
       "stockAlertsDescription": "Active, configured inventory appears here when it reaches its low-stock threshold.",
+      "salesScope": "Sales data",
+      "salesMode": {
+        "live": "Real sales",
+        "demo": "Test & Demo"
+      },
+      "demoRevenue": "Test/demo sales",
+      "demoSalesDescription": "Revenue, charts and sales rankings show successful test/demo purchases only. Amounts are for demonstration. Order counts still include all orders.",
+      "includedDemoSales_one": "Included test/demo sales: {{amount}} across {{count}} order",
+      "includedDemoSales_other": "Included test/demo sales: {{amount}} across {{count}} orders",
       "salesProvenanceTitle": "Sales verification",
       "salesProvenanceDescription": "Order count includes demo and test-mode orders. Verified revenue, sales charts and product rankings only include paid or completed orders with successful live payments; simulated and unverified sales appear separately.",
       "simulatedSales_one": "Excluded simulated sales: {{amount}} across {{count}} order",
@@ -687,6 +696,16 @@
       }
     },
     "bookings": {
+      "csv": {
+        "reference": "Reference",
+        "customer": "Customer",
+        "email": "Email",
+        "experience": "Product / experience",
+        "dateTime": "Date and time",
+        "quantity": "Quantity",
+        "status": "Status",
+        "checkInTime": "Check-in time"
+      },
       "loadFailed": "Could not load bookings.",
       "checkInFailed": "Could not check in booking.",
       "checkInTryAgain": "Could not check in booking. Please try again.",
@@ -728,7 +747,7 @@
       "reservationCount": "{{count}} reservations · grouped by outlet",
       "pageSummary": "{{count}} reservations · {{perPage}} per page",
       "malaysia": "Malaysia",
-      "onThisPage": "本页 {{count}} 个",
+      "onThisPage": "{{count}} on this page",
       "outletAgenda": "Outlet agenda",
       "selectBooking": "Select booking {{id}}",
       "guest": "Guest",
@@ -808,8 +827,8 @@
       "reservationCount_other": "{{count}} reservations · grouped by outlet",
       "pageSummary_one": "{{count}} reservation · {{perPage}} per page",
       "pageSummary_other": "{{count}} reservations · {{perPage}} per page",
-      "onThisPage_one": "本页 {{count}} 个",
-      "onThisPage_other": "本页 {{count}} 个"
+      "onThisPage_one": "{{count}} on this page",
+      "onThisPage_other": "{{count}} on this page"
     },
     "inbox": {
       "filter": {
@@ -977,6 +996,17 @@
       "price": "Price"
     },
     "orders": {
+      "csv": {
+        "orderId": "Order ID",
+        "customer": "Customer",
+        "email": "Email",
+        "products": "Products",
+        "outlets": "Outlets",
+        "total": "Total (MYR)",
+        "fulfilmentStatus": "Fulfilment status",
+        "orderStatus": "Order status",
+        "date": "Date"
+      },
       "loadFailed": "Could not load orders.",
       "updateFailed": "Could not update fulfilment.",
       "updateTryAgain": "Could not update fulfilment. Please try again.",
@@ -2359,6 +2389,7 @@
     "saving": "Saving…",
     "working": "Working…",
     "exportCsv": "Export CSV",
+    "exportReadableCsv": "Export readable CSV",
     "refresh": "Refresh",
     "tryAgain": "Try again",
     "previous": "Previous",
@@ -2416,6 +2447,8 @@
       "topProductsGrouped_other": "Showing top {{count}} products · others grouped"
     },
     "sales": {
+      "demoDescription": "Successful test/demo purchases · simulated amounts",
+      "noDemoActivity": "No successful test/demo purchases in this period.",
       "description": "Verified sales backed by successful live payments",
       "list": "List",
       "livePerformance": "Live performance",

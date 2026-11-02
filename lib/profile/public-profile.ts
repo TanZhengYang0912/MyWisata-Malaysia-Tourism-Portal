@@ -8,7 +8,7 @@ export type PublicProfileRow = {
   city: string | null;
   country: string | null;
   bio: string | null;
-  is_kyc_verified: boolean;
+  is_verified_contributor: boolean;
 };
 
 export function mapPublicProfile(row: PublicProfileRow): PublicUser {
@@ -19,6 +19,6 @@ export function mapPublicProfile(row: PublicProfileRow): PublicUser {
     city: row.city ?? undefined,
     country: row.country ?? undefined,
     bio: row.bio ?? undefined,
-    isKycVerified: Boolean(row.is_kyc_verified),
+    isVerifiedContributor: Boolean(row.is_verified_contributor),
   };
 }

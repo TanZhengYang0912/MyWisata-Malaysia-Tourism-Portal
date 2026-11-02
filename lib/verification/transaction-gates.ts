@@ -7,7 +7,7 @@ export function checkPhoneVerification(phoneVerifiedAt: string | null | undefine
     return {
       allowed: false,
       code: 'PHONE_VERIFICATION_REQUIRED',
-      message: 'Phone verification is required before booking or purchase.',
+      message: 'Phone verification is required before continuing.',
     };
   }
   return { allowed: true };

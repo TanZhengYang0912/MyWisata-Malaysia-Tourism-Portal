@@ -25,6 +25,7 @@ export type ProfileRow = {
 
 export type PreferenceRow = {
   interests: string[] | null;
+  travel_style?: string | null;
   budget_range: string | null;
   mobility_needs: string | null;
   preferred_radius_km: number | null;
@@ -81,7 +82,6 @@ export function mapProfileSummary(profile: ProfileRow, preference: PreferenceRow
     profileCompletedAt: profile.profile_completed_at,
     city: profile.city,
     country: profile.country,
-    surveyComplete: Boolean(preference?.interests?.length),
   });
   return {
     id: profile.id,
@@ -107,6 +107,7 @@ export function mapProfileSummary(profile: ProfileRow, preference: PreferenceRow
     profileRichness,
     survey: preference ? {
       interests: normalizeCategorySlugs(preference.interests),
+      travelStyle: preference.travel_style ?? null,
       budgetRange: preference.budget_range,
       mobilityNeeds: preference.mobility_needs,
       preferredRadiusKm: preference.preferred_radius_km,

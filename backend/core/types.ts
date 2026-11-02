@@ -462,7 +462,7 @@ export interface PublicUser {
   city?: string;
   country?: string;
   bio?: string;
-  isKycVerified: boolean;
+  isVerifiedContributor: boolean;
 }
 
 export interface ProfileSummary {
@@ -487,9 +487,9 @@ export interface ProfileSummary {
   profileComplete: boolean;
   verification: {
     complete: boolean;
-    percentage: 0 | 25 | 50 | 75 | 100;
-    completedSteps: Array<"identity" | "avatar" | "bio" | "survey">;
-    currentStep: "identity" | "avatar" | "bio" | "survey" | null;
+    percentage: 0 | 33 | 67 | 100;
+    completedSteps: Array<"identity" | "avatar" | "bio">;
+    currentStep: "identity" | "avatar" | "bio" | null;
   };
   profileRichness: {
     percentage: 0 | 20 | 40 | 60 | 80 | 100;
@@ -498,6 +498,7 @@ export interface ProfileSummary {
   };
   survey: {
     interests: string[];
+    travelStyle: string | null;
     budgetRange: string | null;
     mobilityNeeds: string | null;
     preferredRadiusKm: number | null;

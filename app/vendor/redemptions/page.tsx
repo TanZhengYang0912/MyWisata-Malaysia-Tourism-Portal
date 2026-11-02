@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
+import { formatDateTime } from '@/lib/i18n/format';
 import {
   Check,
   ClipboardCheck,
@@ -25,7 +27,8 @@ interface OutletOption {
 }
 
 export default function VendorRedemptionsPage() {
-  const { t } = useTranslation('vendor');
+  const { t, i18n } = useTranslation('vendor');
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const { user } = useAuth();
   const vendorId = user?.activeVendorId;
 
@@ -411,13 +414,7 @@ export default function VendorRedemptionsPage() {
 
                     {/* Time */}
                     <td className="whitespace-nowrap px-5 py-4 text-xs font-medium text-gray-500 dark:text-muted-foreground">
-                      {new Date(r.redeemedAt).toLocaleString('en-MY', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {formatDateTime(r.redeemedAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })}
                     </td>
                   </tr>
                 ))}

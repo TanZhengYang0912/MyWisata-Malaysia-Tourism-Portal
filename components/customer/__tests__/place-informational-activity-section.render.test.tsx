@@ -14,6 +14,15 @@ vi.mock("@/components/ui/dialog", () => ({
   DialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
 }));
 
+vi.mock("@/components/customer/localized-content", () => ({
+  LocalizedContent: ({ entityType, entityId, field, sourceText }: { entityType: string; entityId: string; field: string; sourceText: string }) => (
+    <span data-entity-type={entityType} data-entity-id={entityId} data-field={field}>{sourceText}</span>
+  ),
+  LocalizedContentHeading: ({ entityType, entityId, field, sourceText }: { entityType: string; entityId: string; field: string; sourceText: string }) => (
+    <span data-entity-type={entityType} data-entity-id={entityId} data-field={field}>{sourceText}</span>
+  ),
+}));
+
 const activities: PlaceInformationalActivity[] = [
   {
     id: "art-lane",
@@ -115,6 +124,9 @@ describe("place informational activity details", () => {
     expect(dialog.textContent).toContain("Free entry");
     expect(dialog.textContent).toContain("Tourism Malaysia");
     expect(findElements(dialog, (element) => element.tagName === "A")).toHaveLength(0);
+    expect(findElements(dialog, (element) => element.getAttribute("data-entity-type") === "place_informational_activity").map((element) => [element.getAttribute("data-entity-id"), element.getAttribute("data-field")])).toEqual([
+      ["art-lane", "title"], ["art-lane", "description"],
+    ]);
   });
 
   it("shows the correct details when a different card is selected", async () => {

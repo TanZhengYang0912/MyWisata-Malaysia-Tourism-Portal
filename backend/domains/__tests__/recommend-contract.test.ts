@@ -8,7 +8,7 @@ const source = readFileSync(
 );
 
 describe("canonical recommendation preference contract", () => {
-  it("reads only supported preference columns", () => {
+  it("keeps the shared recommendation domain independent of profile survey persistence", () => {
     expect(source).toContain("preferred_radius_km");
     expect(source).not.toContain("travel_style");
     expect(source).not.toContain("travelStyle");

@@ -9,6 +9,8 @@ vi.mock('@/lib/auth/staff-assurance', async (importOriginal) => ({
   requireStaffAssurance: vi.fn(async () => null),
 }));
 
+vi.mock('@/lib/i18n/server', () => ({ getRequestLocale: async () => 'en' }));
+
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(), from: vi.fn(), rpc: vi.fn(), service: vi.fn(),
   serviceFrom: vi.fn(), storage: vi.fn(), resolveVendor: vi.fn(),

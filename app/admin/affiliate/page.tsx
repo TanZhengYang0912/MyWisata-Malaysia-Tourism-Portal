@@ -59,6 +59,7 @@ interface AdminAffiliateStats {
     reviewStatus: 'pending' | 'released' | 'rejected' | null;
     reviewVersion: number | null;
     reviewEvidence: string | null;
+    releaseCheck: { reason: string | null; orderChecksPassed: boolean; matured: boolean; eligibleAfter: string } | null;
   }[];
   attributionTotalCount: number;
   attributionPageSize: number;
@@ -131,6 +132,20 @@ const SEVERITY_STYLE: Record<string, string> = {
 // Avoids floating-point noise like "7.000000000000001" from 0.07 * 100.
 function formatRatePercent(rate: number): string {
   return Number((rate * 100).toFixed(2)).toString();
+}
+
+function releasePreviewReasonKey(reason: string): string {
+  switch (reason) {
+    case "no_show_policy":
+    case "order_exception_open":
+    case "order_missing":
+    case "order_not_paid":
+    case "pickup_unconfirmed":
+    case "refund_review":
+      return reason;
+    default:
+      return "preview_unavailable";
+  }
 }
 
 interface TierDraft {
@@ -489,9 +504,16 @@ export default function AdminAffiliatePage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
+        const safeCode = body.error?.code;
         showFeedback(
           "error",
-          body.error?.message ??
+          safeCode === "CLEARING_RESULT_UNCERTAIN"
+            ? t("affiliate.errors.clearingUncertain", { requestId: body.error?.requestId ?? res.headers.get("x-request-id") ?? t("affiliate.errors.requestIdUnavailable") })
+            : safeCode === "AFFILIATE_NO_SHOW_POLICY_REVIEW"
+            ? t("affiliate.errors.noShowPolicy")
+            : safeCode === "AFFILIATE_ORDER_REVIEW_REQUIRED"
+              ? t("affiliate.errors.orderReview")
+              : body.error?.message ??
             (action === "accept"
               ? t("affiliate.errors.accept")
               : t("affiliate.errors.reject")),
@@ -549,7 +571,7 @@ export default function AdminAffiliatePage() {
     try {
       const res = await fetch("/api/admin/affiliate/run-clearing", { method: "POST" });
       const body = (await res.json()) as {
-        data: { cleared: unknown[]; reversed: unknown[]; skipped: number; errors: unknown[]; hasMore?: boolean; busy?: boolean } | null;
+        data: { cleared: unknown[]; reversed: unknown[]; skipped: number; errors: { requestId?: string }[]; orderReviewRequired?: number; hasMore?: boolean; busy?: boolean } | null;
         error: { message: string } | null;
       };
       if (res.ok && body.data) {
@@ -558,8 +580,17 @@ export default function AdminAffiliatePage() {
           : body.data.hasMore
             ? t("affiliate.jobs.more")
             : "";
+        const orderReview = body.data.orderReviewRequired
+          ? t("affiliate.clearing.orderReviewRequired", { count: body.data.orderReviewRequired })
+          : "";
+        const errorRefs = body.data.errors.map((error) => error.requestId).filter((id): id is string => Boolean(id)).slice(0, 3);
+        const clearingErrors = body.data.errors.length
+          ? t("affiliate.clearing.rowErrors", { count: body.data.errors.length, requestIds: errorRefs.join(", ") || t("affiliate.errors.requestIdUnavailable") })
+          : "";
         setClearingResult([
-          t("affiliate.clearing.result", { cleared: body.data.cleared.length, reversed: body.data.reversed.length, skipped: body.data.skipped, errors: body.data.errors.length ? t("affiliate.clearing.errors", { count: body.data.errors.length }) : "" }),
+          t("affiliate.clearing.result", { cleared: body.data.cleared.length, reversed: body.data.reversed.length, skipped: body.data.skipped, errors: "" }),
+          orderReview,
+          clearingErrors,
           progress,
         ].filter(Boolean).join(" "));
         await loadStats();
@@ -1111,6 +1142,20 @@ export default function AdminAffiliatePage() {
                   <td className="px-4 py-2.5 text-foreground capitalize">{t(`affiliate.status.${r.status}`)}</td>
                   <td className="px-4 py-2.5 text-right font-[family-name:var(--font-mono)] text-foreground">
                     {formatMYR(r.commissionAmount)}
+                    {r.status === "pending" && r.releaseCheck ? (
+                      <div className="mt-1 max-w-64 text-left text-xs font-normal text-muted-foreground">
+                        <span className="font-medium">{t("affiliate.releasePreview.label")}: </span>
+                        {r.releaseCheck.reason ? (
+                          <>
+                            <div>{t("affiliate.releasePreview.orderReference", { id: r.orderId })}</div>
+                            {t(`affiliate.releasePreview.reasons.${releasePreviewReasonKey(r.releaseCheck.reason)}`)}
+                            {r.releaseCheck.reason !== "no_show_policy" && r.releaseCheck.reason !== "preview_unavailable" ? (
+                              <> · <a className="underline underline-offset-2" href="/admin/reports/reconciliation">{t("affiliate.releasePreview.openReconciliation")}</a></>
+                            ) : null}
+                          </>
+                        ) : r.releaseCheck.matured ? t("affiliate.releasePreview.ready") : t("affiliate.releasePreview.waitingForMaturity", { date: new Date(r.releaseCheck.eligibleAfter).toLocaleDateString(locale) })}
+                      </div>
+                    ) : null}
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     {r.status === "pending" && r.reviewStatus === "pending" && r.reviewVersion !== null ? (

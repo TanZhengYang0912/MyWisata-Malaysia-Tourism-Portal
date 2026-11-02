@@ -25,7 +25,7 @@ type RecommendationListItem = {
   createdAt: string;
   ageHours: number;
   slaState: "within_sla" | "due_soon" | "overdue";
-  author: { id: string; name: string; isKycVerified: boolean };
+  author: { id: string; name: string; isVerifiedContributor: boolean };
   assignee: { id: string; name: string; claimedAt: string | null } | null;
   availableActions: string[];
 };
@@ -158,7 +158,7 @@ export default function AdminRecommendationsPage() {
                     <p className="font-semibold text-foreground">{r.name}</p><StatusBadge status={r.status} />
                     {r.slaState !== "within_sla" && <span className="rounded-full border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:text-amber-200">{t(`ui.recommendations.sla.${r.slaState}`, { hours: r.ageHours })}</span>}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span>{t("ui.recommendations.contributorLine", { category: r.category, state: r.state, author: r.author.name })}</span><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span>{t("ui.recommendations.contributorLine", { category: r.category, state: r.state, author: r.author.name })}</span><VerifiedContributorBadge verified={r.author.isVerifiedContributor} /></div>
                   <p className="mt-1 text-xs text-muted-foreground">{r.assignee ? t("ui.recommendations.assignedTo", { name: r.assignee.name }) : t("ui.recommendations.unassigned")}</p>
                 </div>
                 <ArrowUpRight aria-hidden="true" size={16} className="text-muted-foreground transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />

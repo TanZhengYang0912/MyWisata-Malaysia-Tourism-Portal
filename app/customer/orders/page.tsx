@@ -1,12 +1,10 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, Package, ReceiptText, Search, SlidersHorizontal, X } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
-import { getOrdersForUser } from "@/backend/domains/commerce";
-import { getOutlets } from "@/backend/domains/catalogue";
 import { productImageUrl } from "@/lib/storage/product-image";
 import { supabase } from "@/backend/supabase";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -18,7 +16,9 @@ import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/cust
 import { formatMYR } from "@/lib/i18n/format";
 import { getMalaysiaDateRangeDefaults } from "@/lib/datetime/date-input";
 import { formatOrderReference } from "@/lib/checkout/order-reference";
-import { isInvalidMalaysiaDateRange, malaysiaCalendarDateToIso } from "@/lib/datetime/malaysia";
+import { isInvalidMalaysiaDateRange } from "@/lib/datetime/malaysia";
+
+import { useVisibleReviewRefresh } from "@/hooks/use-visible-review-refresh";
 
 type OrderFilterStatus = "all" | "PAID" | "COMPLETED" | "CANCELLED" | "REFUNDED" | "PENDING_PAYMENT";
 type OrderFilterType = "all" | "booking" | "product" | "mixed";
@@ -44,17 +44,6 @@ function typeLabelKey(type: Exclude<OrderFilterType, "all">) {
 function dateLabel(value: string, locale: string) {
   return new Date(value).toLocaleDateString(locale === "en" ? "en-MY" : locale, { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kuala_Lumpur" });
 }
-function matchesDate(value: string, from: string, to: string) {
-  const time = new Date(value).getTime();
-  try {
-    if (from && time < new Date(malaysiaCalendarDateToIso(from, "start")).getTime()) return false;
-    if (to && time > new Date(malaysiaCalendarDateToIso(to, "end")).getTime()) return false;
-  } catch {
-    return false;
-  }
-  return true;
-}
-
 function OrderStatusBadge({ status, refundedLabel }: { status: string; refundedLabel: string }) {
   if (status !== "REFUNDED") return <StatusBadge status={status} />;
   return <span className="rounded-full bg-muted px-2.5 py-1 text-[0.625rem] font-bold text-muted-foreground">{refundedLabel}</span>;
@@ -63,9 +52,6 @@ function OrderStatusBadge({ status, refundedLabel }: { status: string; refundedL
 export default function OrdersPage() {
   const { t: tCustomer, i18n } = useTranslation("customer");
   const { currentUser } = useAuth();
-  const [orders, setOrders] = useState<Order[] | null>(null);
-  const [outlets, setOutlets] = useState<Outlet[]>([]);
-  const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<OrderFilterStatus>("all");
   const [type, setType] = useState<OrderFilterType>("all");
@@ -74,62 +60,67 @@ export default function OrdersPage() {
   const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  type Snapshot = { owner: string; key: string; orders: Order[]; outlets: Pick<Outlet, "id" | "name">[]; total: number; page: number; stats: { total: number; paid: number; bookings: number } };
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [failureKey, setFailureKey] = useState<string | null>(null);
+  const invalidDateRange = Boolean(from && to && isInvalidMalaysiaDateRange(from, to));
+  const owner = currentUser?.id ?? "";
+  const requestKey = JSON.stringify([owner, query, status, type, outletId, from, to, page]);
+  const currentKey = useRef(requestKey);
+  useEffect(() => { currentKey.current = requestKey; }, [requestKey]);
+  const { refresh } = useVisibleReviewRefresh({
+    enabled: Boolean(owner) && !invalidDateRange,
+    identityKey: owner,
+    intervalMs: null,
+    initialRefresh: true,
+    coalesceMs: 150,
+    refreshKey: requestKey,
+    onRefresh: async (signal) => {
+      const key = requestKey;
+      const params = new URLSearchParams({ query, status, type, outletId, from, to, page: String(page) });
+      try {
+        const response = await fetch(`/api/customer/orders?${params}`, { signal, cache: "no-store" });
+        if (!response.ok) throw Object.assign(new Error("orders_unavailable"), { status: response.status });
+        const payload = await response.json();
+        if (signal.aborted || currentKey.current !== key) return;
+        setSnapshot({ ...payload.data, owner, key });
+        setFailureKey(null);
+      } catch (error) {
+        if (!signal.aborted && currentKey.current === key) setFailureKey(key);
+        throw error;
+      }
+    },
+  });
+  useEffect(() => {
+    if (!owner) return;
+    const channel = supabase.channel(`customer-orders-${owner}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `user_id=eq.${owner}` }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings", filter: `customer_id=eq.${owner}` }, refresh)
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [owner, refresh]);
+  const data = snapshot?.owner === owner ? snapshot : null;
+  const currentData = data?.key === requestKey ? data : null;
+  const outlets = data?.outlets ?? [];
+  const outletMap = useMemo(() => new Map((data?.outlets ?? []).map((outlet) => [outlet.id, outlet])), [data?.outlets]);
+  const error = failureKey === requestKey ? tCustomer("ui.orders.loadError") : "";
+  const total = currentData?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const visiblePage = currentData?.page ?? 1;
+  const pagedOrders = currentData?.orders ?? [];
+  const stats = data?.stats ?? { total: 0, paid: 0, bookings: 0 };
+  const loading = !currentData && !error && !invalidDateRange;
 
   function primeDateRange() {
     const defaults = getMalaysiaDateRangeDefaults();
     setFrom((value) => value || defaults.from);
     setTo((value) => value || defaults.to);
+    setPage(1);
   }
-
-  useEffect(() => {
-    if (!currentUser) return;
-    let active = true;
-    const load = async () => {
-      try {
-        const [nextOrders, nextOutlets] = await Promise.all([getOrdersForUser(currentUser.id), getOutlets()]);
-        if (active) { setOrders(nextOrders); setOutlets(nextOutlets); setError(""); }
-      } catch (reason) {
-        if (active) { setError(reason instanceof Error ? reason.message : tCustomer("ui.orders.loadError")); setOrders([]); }
-      }
-    };
-    void load();
-    const channel = supabase
-      .channel(`customer-orders-${currentUser.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `user_id=eq.${currentUser.id}` }, () => { void load(); })
-      .on("postgres_changes", { event: "*", schema: "public", table: "bookings", filter: `customer_id=eq.${currentUser.id}` }, () => { void load(); })
-      .subscribe();
-    return () => { active = false; void supabase.removeChannel(channel); };
-  }, [currentUser, tCustomer]);
-
-  const outletMap = useMemo(() => new Map(outlets.map((outlet) => [outlet.id, outlet])), [outlets]);
-  const filteredOrders = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return (orders ?? []).filter((order) => {
-      if (status !== "all" && order.status !== status) return false;
-      if (type !== "all" && orderType(order) !== type) return false;
-      if (outletId !== "all" && !order.items.some((item) => item.outletId === outletId)) return false;
-      if (!matchesDate(order.createdAt, from, to)) return false;
-      if (needle && ![order.id, order.displayId ?? "", ...order.items.flatMap((item) => [item.activityName, item.variantLabel, outletMap.get(item.outletId)?.name || ""])].join(" ").toLowerCase().includes(needle)) return false;
-      return true;
-    });
-  }, [from, outletId, orders, outletMap, query, status, to, type]);
-
-  const pageCount = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
-  const visiblePage = Math.min(page, pageCount);
-  const pagedOrders = filteredOrders.slice((visiblePage - 1) * PAGE_SIZE, visiblePage * PAGE_SIZE);
-
-  const stats = useMemo(() => ({
-    total: orders?.length ?? 0,
-    paid: (orders ?? []).filter((order) => order.status === "PAID" || order.status === "COMPLETED").length,
-    bookings: (orders ?? []).filter((order) => orderType(order) !== "product").length,
-  }), [orders]);
 
   function clearFilters() { setPage(1); setQuery(""); setStatus("all"); setType("all"); setOutletId("all"); setFrom(""); setTo(""); }
   const hasFilters = Boolean(query || status !== "all" || type !== "all" || outletId !== "all" || from || to);
   const activeFilterCount = [status !== "all", type !== "all", outletId !== "all", Boolean(from), Boolean(to)].filter(Boolean).length;
-  const invalidDateRange = Boolean(from && to && isInvalidMalaysiaDateRange(from, to));
-
-  if (orders === null) return <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground">{tCustomer("ui.states.loading")}</div>;
 
   return (
     <div className="min-h-full bg-background">
@@ -145,19 +136,19 @@ export default function OrdersPage() {
       />
       <CustomerPageShell wide className="pt-0 sm:pt-0">
 
-        <p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-muted-foreground"><span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.total}</span> {tCustomer("ui.orders.summaryOrders")} <span className="text-muted-foreground/50">·</span> <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.paid}</span> {tCustomer("ui.orders.summaryPaid")} <span className="text-muted-foreground/50">·</span> <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.bookings}</span> {tCustomer("ui.orders.summaryBookings")}</p>
+        {data && <p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-muted-foreground"><span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.total}</span> {tCustomer("ui.orders.summaryOrders")} <span className="text-muted-foreground/50">·</span> <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.paid}</span> {tCustomer("ui.orders.summaryPaid")} <span className="text-muted-foreground/50">·</span> <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.bookings}</span> {tCustomer("ui.orders.summaryBookings")}</p>}
 
         <section className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center"><label className="relative min-w-0 flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={tCustomer("ui.orders.search")} aria-label={tCustomer("ui.orders.search")} className="h-11 w-full rounded-xl border border-border bg-secondary/50 pl-10 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-[rgba(1,0,102,0.12)]" /></label><button type="button" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} aria-controls="order-filters" className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-primary/20 ${filtersOpen || hasFilters ? "border-primary bg-secondary text-primary" : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-primary"}`}><SlidersHorizontal size={15} /> {tCustomer("ui.orders.filters")} {activeFilterCount > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] text-white">{activeFilterCount}</span>}</button></div>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center"><label className="relative min-w-0 flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input maxLength={200} value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={tCustomer("ui.orders.search")} aria-label={tCustomer("ui.orders.search")} className="h-11 w-full rounded-xl border border-border bg-secondary/50 pl-10 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-[rgba(1,0,102,0.12)]" /></label><button type="button" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} aria-controls="order-filters" className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-primary/20 ${filtersOpen || hasFilters ? "border-primary bg-secondary text-primary" : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-primary"}`}><SlidersHorizontal size={15} /> {tCustomer("ui.orders.filters")} {activeFilterCount > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] text-white">{activeFilterCount}</span>}</button></div>
           {filtersOpen && <div id="order-filters" className="mt-3 grid gap-2 border-t border-border pt-3 sm:grid-cols-2 lg:grid-cols-5"><select value={status} onChange={(event) => { setStatus(event.target.value as OrderFilterStatus); setPage(1); }} aria-label={tCustomer("ui.labels.status")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary">{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{tCustomer(option.key)}</option>)}</select><select value={type} onChange={(event) => { setType(event.target.value as OrderFilterType); setPage(1); }} aria-label={tCustomer("ui.orders.allTypes")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.orders.allTypes")}</option><option value="booking">{tCustomer("ui.orders.bookingOrder")}</option><option value="product">{tCustomer("ui.orders.productOrder")}</option><option value="mixed">{tCustomer("ui.orders.mixedOrder")}</option></select><select value={outletId} onChange={(event) => { setOutletId(event.target.value); setPage(1); }} aria-label={tCustomer("ui.orders.allOutlets")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.orders.allOutlets")}</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}</select><input type="date" value={from} onFocus={primeDateRange} onChange={(event) => { setFrom(event.target.value); setPage(1); }} aria-label={tCustomer("ui.orders.fromDate")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /><input type="date" value={to} onFocus={primeDateRange} onChange={(event) => { setTo(event.target.value); setPage(1); }} aria-label={tCustomer("ui.orders.toDate")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /></div>}
           {hasFilters && <button type="button" onClick={clearFilters} className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><X size={13} /> {tCustomer("ui.actions.clearFilters")}</button>}
         </section>
         {invalidDateRange && <p role="alert" className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{tCustomer("ui.orders.invalidDateRange")}</p>}
 
-        {error && <div className="mt-5 rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">{error}</div>}
-        <div className="mt-7 flex items-center justify-between"><p className="text-sm text-muted-foreground">{tCustomer("ui.orders.found", { count: filteredOrders.length })}</p><span className="hidden items-center gap-1 text-xs text-muted-foreground sm:inline-flex"><Clock3 size={14} /> {tCustomer("ui.labels.newestFirst")}</span></div>
+        {error && <div role="alert" className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"><span>{error}</span><Button type="button" variant="outline" onClick={refresh}>{tCustomer("ui.actions.retry")}</Button></div>}
+        {currentData && <div className="mt-7 flex items-center justify-between"><p className="text-sm text-muted-foreground">{tCustomer("ui.orders.found", { count: total })}</p><span className="hidden items-center gap-1 text-xs text-muted-foreground sm:inline-flex"><Clock3 size={14} /> {tCustomer("ui.labels.newestFirst")}</span></div>}
 
-        {filteredOrders.length === 0 ? <div className="mt-5"><EmptyState icon={<Package size={40} />} title={hasFilters ? tCustomer("ui.orders.noMatch") : tCustomer("ui.states.noOrders")} description={hasFilters ? tCustomer("ui.orders.tryFilters") : tCustomer("ui.orders.emptyDescription")} action={hasFilters ? <Button variant="outline" onClick={clearFilters}>{tCustomer("ui.actions.clearFilters")}</Button> : <Link href="/customer"><Button>{tCustomer("ui.actions.viewExperiences")}</Button></Link>} /></div> : <>
+        {loading ? <p role="status" className="mt-5 text-sm text-muted-foreground">{tCustomer("ui.states.loading")}</p> : error && !currentData ? null : invalidDateRange ? null : total === 0 ? <div className="mt-5"><EmptyState icon={<Package size={40} />} title={hasFilters ? tCustomer("ui.orders.noMatch") : tCustomer("ui.states.noOrders")} description={hasFilters ? tCustomer("ui.orders.tryFilters") : tCustomer("ui.orders.emptyDescription")} action={hasFilters ? <Button variant="outline" onClick={clearFilters}>{tCustomer("ui.actions.clearFilters")}</Button> : <Link href="/customer"><Button>{tCustomer("ui.actions.viewExperiences")}</Button></Link>} /></div> : <>
           <div className="mt-4 space-y-4">{pagedOrders.map((order) => { 
             const kind = orderType(order); 
             const orderOutlets = [...new Set(order.items.map((item) => outletMap.get(item.outletId)?.name).filter(Boolean))]; 
@@ -225,7 +216,7 @@ export default function OrdersPage() {
               </Link>
             ); 
           })}</div>
-          {pageCount > 1 && <nav aria-label={tCustomer("ui.orders.paginationLabel")} className="mt-5 flex flex-col gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"><p className="text-xs text-muted-foreground">{tCustomer("ui.orders.showing", { from: (visiblePage - 1) * PAGE_SIZE + 1, to: Math.min(visiblePage * PAGE_SIZE, filteredOrders.length), total: filteredOrders.length })}</p><div className="flex items-center justify-between gap-3 sm:justify-end"><button type="button" aria-label={tCustomer("ui.orders.previousPage")} disabled={visiblePage === 1} onClick={() => setPage(Math.max(1, visiblePage - 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={15} /> {tCustomer("ui.orders.previous")}</button><span className="min-w-20 text-center text-xs font-semibold text-muted-foreground">{tCustomer("ui.orders.pageOf", { page: visiblePage, pages: pageCount })}</span><button type="button" aria-label={tCustomer("ui.orders.nextPage")} disabled={visiblePage === pageCount} onClick={() => setPage(Math.min(pageCount, visiblePage + 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40">{tCustomer("ui.orders.next")} <ChevronRight size={15} /></button></div></nav>}
+          {pageCount > 1 && <nav aria-label={tCustomer("ui.orders.paginationLabel")} className="mt-5 flex flex-col gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"><p className="text-xs text-muted-foreground">{tCustomer("ui.orders.showing", { from: (visiblePage - 1) * PAGE_SIZE + 1, to: Math.min(visiblePage * PAGE_SIZE, total), total: total })}</p><div className="flex items-center justify-between gap-3 sm:justify-end"><button type="button" aria-label={tCustomer("ui.orders.previousPage")} disabled={visiblePage === 1} onClick={() => setPage(Math.max(1, visiblePage - 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={15} /> {tCustomer("ui.orders.previous")}</button><span className="min-w-20 text-center text-xs font-semibold text-muted-foreground">{tCustomer("ui.orders.pageOf", { page: visiblePage, pages: pageCount })}</span><button type="button" aria-label={tCustomer("ui.orders.nextPage")} disabled={visiblePage === pageCount} onClick={() => setPage(Math.min(pageCount, visiblePage + 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40">{tCustomer("ui.orders.next")} <ChevronRight size={15} /></button></div></nav>}
         </>}
       </CustomerPageShell>
     </div>

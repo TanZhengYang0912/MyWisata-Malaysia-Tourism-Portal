@@ -98,6 +98,8 @@ const priorTaskFiles = new Set([
   'components/vendor/vendor-settlement-panel.tsx',
   'components/vendor/hotel-profile-editor.tsx',
   'components/shared/action-feedback.tsx',
+  // Shared Task F error UI uses common translations; it is not vendor-specific.
+  'components/shared/api-error-notice.tsx',
   'components/shared/affiliate-qr-code.tsx',
   'components/shared/appearance-control.tsx',
   'components/shared/auth-page-shell.tsx',

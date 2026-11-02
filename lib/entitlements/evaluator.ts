@@ -30,6 +30,19 @@ const CUSTOMER_CAPABILITIES = new Set<CapabilityKey>([
 const PHONE_CAPABILITIES = new Set<CapabilityKey>([
   "wallet.top_up",
   "ai.basic_recommendation",
+  "recommendation.submit",
+  "affiliate.limited",
+  "affiliate.full",
+  "affiliate.earn_commission",
+  "wallet.request_withdrawal",
+]);
+
+const PROFILE_CAPABILITIES = new Set<CapabilityKey>([
+  "recommendation.submit",
+  "affiliate.limited",
+  "affiliate.full",
+  "affiliate.earn_commission",
+  "wallet.request_withdrawal",
 ]);
 
 const KYC_CAPABILITIES = new Set<CapabilityKey>([
@@ -87,19 +100,13 @@ export function hardGuardDecision(
     return denied(capability, "PHONE_VERIFICATION_REQUIRED", [QUALIFICATION_PATH.phone]);
   }
 
-  if (capability === "recommendation.submit" && !facts.profileComplete && facts.kycStatus !== "approved") {
-    return denied(capability, "PROFILE_OR_KYC_REQUIRED", [
-      QUALIFICATION_PATH.profile,
-      QUALIFICATION_PATH.kyc,
-    ]);
+  if (PROFILE_CAPABILITIES.has(capability) && !facts.profileComplete) {
+    return denied(capability, "PROFILE_REQUIRED", [QUALIFICATION_PATH.profile]);
   }
 
   if (capability === "affiliate.limited") {
     if (!hasEligibleCustomerRole(facts) || facts.kycStatus === "approved") {
       return denied(capability, "ENTITLEMENT_DENIED");
-    }
-    if (!facts.profileComplete) {
-      return denied(capability, "PROFILE_REQUIRED", [QUALIFICATION_PATH.profile]);
     }
   }
 

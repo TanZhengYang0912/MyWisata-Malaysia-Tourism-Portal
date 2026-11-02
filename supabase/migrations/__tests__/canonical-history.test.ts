@@ -6,6 +6,17 @@ const migrationsDirectory = resolve(process.cwd(), "supabase/migrations");
 const baselinePath = resolve(process.cwd(), "supabase/canonical-migration-baseline.json");
 // Keep post-baseline migrations explicit; this is separate from the canonical baseline.
 const approvedForwardMigrations = [
+  "20261030122005_withdrawal_escalation_recovery.sql",
+  "20261030123521_owned_flow_recovery_and_order_pages.sql",
+  "20261030130327_withdrawal_escalation_history_alignment.sql",
+  "20261029223806_vendor_event_promotion_content_translation.sql",
+  "20261029223808_send_notification_metadata.sql",
+  "20261029223809_receipt_contact_locale_precedence.sql",
+  "20261030120000_vendor_invite_profile_email_lookup.sql",
+  "20261029060000_affiliate_order_release_guard.sql",
+  "20261029045138_affiliate_refund_resolution_code.sql",
+  "20261028181502_task_b_verification_affiliate_eligibility.sql",
+  "20261028154016_affiliate_links_unique_user.sql",
   "20261025235303_platform_transfer_log.sql",
   "20261027145912_retail_pickup_redemption.sql",
   "20261027145914_enable_retail_pickup_guard.sql",

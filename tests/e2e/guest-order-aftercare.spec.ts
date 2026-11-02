@@ -28,9 +28,35 @@ test('Guest recovery accepts a public order number and keeps the result generic'
 
   await page.goto('/customer/orders/access');
   await expect(page.getByRole('heading', { name: 'Access your guest order' })).toBeVisible();
-  await page.getByLabel('Order number (e.g. ORD-1000)').fill('#ord-2026-0042');
+  await page.getByLabel('Order number (optional)').fill('#ord-2026-0042');
   await page.getByLabel('Contact email').fill('guest+aftercare@example.com');
   await page.getByRole('button', { name: 'Email me an order link' }).click();
   await expect(page.getByRole('status')).toContainText('If the details match');
   expect(recoveryRequest).toEqual({ orderReference: '#ord-2026-0042', email: 'guest+aftercare@example.com' });
+});
+
+
+test('serializes consecutive Guest exchanges so their session cookies cannot arrive out of order', async ({ page }) => {
+  const orderA='00000000-0000-4000-8000-000000000001';
+  const orderB='00000000-0000-4000-8000-000000000002';
+  let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});
+  let calls=0;
+  await page.route('**/api/guest/cart',route=>route.fulfill({json:{data:{items:[]}}}));
+  await page.route('**/api/guest/orders/access',async route=>{
+    calls++;
+    const first=route.request().postDataJSON().token==='A'.repeat(43);
+    if(first)await gate;
+    else expect(route.request().headers().cookie).toContain('qa-order-session=A');
+    await route.fulfill({headers:{'Set-Cookie':`qa-order-session=${first?'A':'B'}; Path=/; HttpOnly; SameSite=Lax`},json:{data:{orderId:first?orderA:orderB},error:null}});
+  });
+  await page.goto(`/customer/orders/access#token=${'A'.repeat(43)}`);
+  await expect.poll(()=>calls).toBe(1);
+  await page.evaluate(token=>{window.location.hash=`token=${token}`;},'B'.repeat(43));
+  await expect(page).not.toHaveURL(/token=/);
+  await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+  expect(calls).toBe(1);
+  release();
+  await page.waitForURL(`**/customer/orders/${orderB}`);
+  expect(calls).toBe(2);
+  expect((await page.context().cookies()).find(cookie=>cookie.name==='qa-order-session')?.value).toBe('B');
 });

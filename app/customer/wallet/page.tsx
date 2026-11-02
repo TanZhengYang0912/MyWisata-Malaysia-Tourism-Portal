@@ -24,10 +24,11 @@ import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { formatMYR, formatMYRNumber } from "@/lib/i18n/format";
 import { WalletBalanceSummary, type WalletBuckets } from "@/components/customer/wallet/wallet-balance-summary";
 import { PayoutReadiness, type CustomerConnectStatus } from "@/components/customer/wallet/payout-readiness";
-import { WithdrawalList } from "@/components/customer/wallet/withdrawal-list";
+import { WithdrawalHistory, WithdrawalList } from "@/components/customer/wallet/withdrawal-list";
 import { CustomerTransactionHistory } from "@/components/customer/wallet/customer-transaction-history";
 import type { CustomerWalletCapabilities } from "@/lib/wallet/customer-capabilities";
 import { isSettlementPending, startSettlementPolling } from "@/lib/wallet/settlement-polling";
+import { ApiErrorNotice } from "@/components/shared/api-error-notice";
 
 
 type ConnectStatus = CustomerConnectStatus;
@@ -95,6 +96,7 @@ function WalletContent() {
   const [withdrawing, setWithdrawing]     = useState(false);
   const [confirmingWithdrawal, setConfirmingWithdrawal] = useState(false);
   const [withdrawError, setWithdrawError] = useState("");
+  const [withdrawRequestId, setWithdrawRequestId] = useState<string | undefined>();
   const [withdrawalSubmitted, setWithdrawalSubmitted] = useState(false);
   const [destinations, setDestinations] = useState<PayoutDestination[]>([]);
   const [selectedDestinationId, setSelectedDestinationId] = useState("");
@@ -116,6 +118,7 @@ function WalletContent() {
   // Connect onboarding
   const [onboarding, setOnboarding] = useState(false);
   const [onboardError, setOnboardError] = useState("");
+  const [onboardRequestId, setOnboardRequestId] = useState<string | undefined>();
 
   useEffect(() => {
     isActiveRef.current = true;
@@ -145,6 +148,7 @@ function WalletContent() {
     if (!currentUser) return "idle";
     setConnectStatus("loading");
     setOnboardError("");
+    setOnboardRequestId(undefined);
     try {
       const response = await fetch("/api/stripe/connect-status", { cache: "no-store" });
       const body = await response.json() as {
@@ -153,13 +157,14 @@ function WalletContent() {
           payoutsEnabled: boolean;
           payoutStatus: "unlinked" | "currently_due" | "pending_verification" | "payouts_enabled" | "past_due" | "restricted";
         };
-        error?: { message?: string } | string;
+        error?: { message?: string; requestId?: string } | string;
       };
       if (!response.ok) {
         const message = typeof body.error === "string"
           ? body.error
           : body.error?.message ?? tCustomer("ui.wallet.verifyPayoutError");
         setOnboardError(message);
+        setOnboardRequestId(typeof body.error === "object" ? body.error.requestId : undefined);
         setConnectStatus("status_error");
         return "status_error";
       }
@@ -320,6 +325,7 @@ function WalletContent() {
           ? data.error
           : data.error?.message ?? tCustomer("ui.wallet.startStripeError");
         setOnboardError(message);
+        setOnboardRequestId(typeof data.error === "object" && data.error ? data.error.requestId : undefined);
         setConnectStatus("status_error");
         return;
       }
@@ -486,6 +492,7 @@ function WalletContent() {
     if (!existingPending && !gate(CUSTOMER_CAPABILITY.WITHDRAWAL, "/customer/wallet")) return;
     if (!existingPending && showAddTngDestination) return;
     setWithdrawError("");
+    setWithdrawRequestId(undefined);
     if (!existingPending && !readiness?.canWithdraw) {
       setWithdrawError(tCustomer("ui.wallet.earningsLoadingError"));
       return;
@@ -520,6 +527,7 @@ function WalletContent() {
       }
       if (!response.ok) {
         if (response.status >= 500) {
+          const apiRequestId = response.headers.get("x-request-id") ?? undefined;
           setConfirmingWithdrawal(true);
           const reconciled = await reconcileWithdrawalRequest(requestId);
           if (reconciled) {
@@ -529,6 +537,7 @@ function WalletContent() {
           } else if (isActiveRef.current) {
             setWithdrawalOutcomePending(true);
             setWithdrawError(tCustomer("ui.wallet.withdrawalOutcomeUnknown"));
+            setWithdrawRequestId(apiRequestId);
           }
           return;
         }
@@ -650,7 +659,7 @@ function WalletContent() {
 
       {/* Stripe payout setup is intentionally hidden until a withdrawal-related JIT trigger. */}
       {showPayoutSetup && (!readiness?.canWithdraw || usesStripeDestination) && (
-        <PayoutReadiness readiness={readiness} connectStatus={connectStatus} error={onboardError} busy={onboarding} onSetup={() => void handleConnectOnboard()} onRetry={() => void refreshConnectStatus()} />
+        <PayoutReadiness readiness={readiness} connectStatus={connectStatus} error={onboardError} requestId={onboardRequestId} busy={onboarding} onSetup={() => void handleConnectOnboard()} onRetry={() => void refreshConnectStatus()} />
       )}
 
       {/* ── Top-up form ── */}
@@ -810,7 +819,7 @@ function WalletContent() {
             </p>
           )}
           {confirmingWithdrawal && <p role="status" className="text-xs text-amber-700 dark:text-amber-200">{tCustomer("ui.wallet.confirmingWithdrawal")}</p>}
-          {(withdrawError || withdrawalOutcomePending) && <p role="alert" className="text-xs text-red-500">{withdrawError || tCustomer("ui.wallet.withdrawalOutcomeUnknown")}</p>}
+          {(withdrawError || withdrawalOutcomePending) && <ApiErrorNotice message={withdrawError || tCustomer("ui.wallet.withdrawalOutcomeUnknown")} requestId={withdrawRequestId} />}
           <div className="flex gap-2">
             <Button type="submit" disabled={withdrawing || confirmingWithdrawal || withdrawAmount.trim() === "" || showAddTngDestination || (!withdrawalOutcomePending && (!walletReady || resolvedAvailableEarnings <= 0 || !readiness?.canWithdraw))} className="flex-1">
               {confirmingWithdrawal ? tCustomer("ui.wallet.confirmingWithdrawal") : withdrawing ? tCustomer("ui.states.submitting") : withdrawalOutcomePending ? tCustomer("ui.wallet.retrySameWithdrawal") : tCustomer("ui.wallet.submitRequest")}
@@ -821,6 +830,7 @@ function WalletContent() {
       )}
 
       <WithdrawalList pending={pending} />
+      {currentUser && <WithdrawalHistory key={currentUser.id} userId={currentUser.id} />}
       {currentUser && <CustomerTransactionHistory key={currentUser.id} userId={currentUser.id} refreshKey={historyRefreshKey} />}
       </CustomerPageShell>
     </>

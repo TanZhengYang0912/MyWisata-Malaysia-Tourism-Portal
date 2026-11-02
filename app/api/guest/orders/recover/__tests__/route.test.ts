@@ -29,6 +29,9 @@ function queryFor(column: string, value: string) {
     is: vi.fn(() => query),
     not: vi.fn(() => query),
     in: vi.fn(() => query),
+    ilike: vi.fn((_name: string, input: string) => { query.result = orders.filter(order => order.contact_email.toLowerCase() === input.toLowerCase().replace(/\\([%_\\])/g, '$1')); return query; }),
+    order: vi.fn(() => query),
+    limit: vi.fn(() => query),
     maybeSingle: vi.fn(async () => ({ data: query.result[0] ?? null, error: null })),
     result: [] as typeof orders,
   };
@@ -73,5 +76,60 @@ describe('Guest order recovery references', () => {
     expect(ambiguous.status).toBe(200);
     expect(mocks.rpc).not.toHaveBeenCalled();
     expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it('accepts email-only recovery, handles case and keeps a deterministic latest-order lookup', async () => {
+    const query = queryFor('id', ORDER_ID);
+    mocks.from.mockReturnValue(query);
+    const response = await POST(new Request('https://example.test/api/guest/orders/recover', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'GUEST@example.com' }),
+    }));
+    expect(response.status).toBe(200);
+    expect(query.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(query.order).toHaveBeenCalledWith('id', { ascending: false });
+    expect(query.limit).toHaveBeenCalledWith(1);
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it('escapes email wildcard characters and does not send when limited or invalid', async () => {
+    const query = queryFor('id', ORDER_ID);
+    mocks.from.mockReturnValue(query);
+    const request = (email: string) => new Request('https://example.test/api/guest/orders/recover', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }),
+    });
+    await POST(request('guest_name@example.com'));
+    expect(query.ilike).toHaveBeenCalledWith('contact_email', 'guest\\_name@example.com');
+    mocks.rate.mockResolvedValue(false);
+    await POST(request('guest@example.com'));
+    await POST(request('invalid'));
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('retries a failed enqueue once using the same idempotency key', async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: '08006' } }).mockResolvedValueOnce({ data: null, error: null });
+    await POST(new Request('https://example.test/api/guest/orders/recover', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: ORDER_ID, email: 'guest@example.com' }) }));
+    expect(mocks.rpc).toHaveBeenCalledTimes(2);
+    expect(mocks.rpc.mock.calls[0]).toEqual(mocks.rpc.mock.calls[1]);
+  });
+
+  it('keeps the same public response when queuing the access link fails', async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: 'XX000', message: 'internal failure' } });
+    const matching = await POST(new Request('https://example.test/api/guest/orders/recover', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderId: ORDER_ID, email: 'guest@example.com' }),
+    }));
+
+    mocks.from.mockImplementation(() => {
+      const query = queryFor('id', ORDER_ID);
+      query.result = [];
+      return query;
+    });
+    const unmatched = await POST(new Request('https://example.test/api/guest/orders/recover', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderId: ORDER_ID, email: 'other@example.com' }),
+    }));
+
+    expect(await matching.json()).toEqual(await unmatched.json());
+    expect(matching.status).toBe(unmatched.status);
   });
 });

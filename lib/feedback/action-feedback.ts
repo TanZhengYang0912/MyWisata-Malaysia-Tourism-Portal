@@ -1,9 +1,11 @@
 export type FeedbackTone = 'success' | 'error' | 'info';
 
+export type FeedbackMessage = string | { key: string; namespace?: string };
+
 export interface FeedbackNotice {
   id: string;
   tone: FeedbackTone;
-  message: string;
+  message: FeedbackMessage;
   role: 'status' | 'alert';
   duration: number;
 }
@@ -12,7 +14,7 @@ export type FeedbackAction =
   | { type: 'add'; notice: FeedbackNotice }
   | { type: 'remove'; id: string };
 
-export function createFeedbackNotice(tone: FeedbackTone, message: string, duration = 4500): FeedbackNotice {
+export function createFeedbackNotice(tone: FeedbackTone, message: FeedbackMessage, duration = 4500): FeedbackNotice {
   return {
     id: `feedback-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     tone,

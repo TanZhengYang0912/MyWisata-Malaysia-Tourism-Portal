@@ -11,6 +11,13 @@ export const kycQueueQuerySchema = z.object({
 });
 
 export type KycQueueSubmission = AdminKycSubmission & { assignedTo: string | null };
+export type KycReviewCandidate = {
+  submissionId: string;
+  name: string;
+  docType: string;
+  submittedAt: string;
+  isAssignedToCurrentUser: boolean;
+};
 export type KycQueueResult = {
   submissions: KycQueueSubmission[];
   customers: Pick<User, 'id' | 'name' | 'email' | 'verificationTier'>[];

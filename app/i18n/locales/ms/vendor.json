@@ -476,12 +476,12 @@
       "paid": "Dibayar",
       "completed": "Selesai",
       "pending_payment": "Menunggu bayaran",
-      "refunded": "Dipulangkan",
+      "refunded": "Dibayar balik",
       "available": "Tersedia",
       "full": "Penuh",
       "expired": "Tamat tempoh",
       "confirmed": "Disahkan",
-      "checked_in": "Daftar masuk",
+      "checked_in": "Sudah daftar masuk",
       "no_show": "Tidak hadir",
       "active": "Aktif",
       "inactive": "Tidak aktif",
@@ -519,6 +519,15 @@
       "viewAll": "Lihat semua",
       "stockAlerts": "Makluman stok",
       "stockAlertsDescription": "Inventori aktif yang telah dikonfigurasi dipaparkan di sini apabila mencapai ambang stok rendah.",
+      "salesScope": "Data jualan",
+      "salesMode": {
+        "live": "Jualan sebenar",
+        "demo": "Ujian & Demo"
+      },
+      "demoRevenue": "Jualan ujian/demo",
+      "demoSalesDescription": "Hasil, carta dan kedudukan jualan hanya merangkumi pembelian ujian/demo yang berjaya. Amaun adalah untuk demonstrasi. Bilangan pesanan masih merangkumi semua pesanan.",
+      "includedDemoSales_one": "Jualan ujian/demo disertakan: {{amount}} daripada {{count}} pesanan",
+      "includedDemoSales_other": "Jualan ujian/demo disertakan: {{amount}} daripada {{count}} pesanan",
       "salesProvenanceTitle": "Pengesahan jualan",
       "salesProvenanceDescription": "Jumlah pesanan turut merangkumi pesanan demo dan mod ujian. Hasil disahkan, carta jualan dan kedudukan produk hanya merangkumi pesanan berbayar atau selesai dengan pembayaran langsung yang berjaya; jualan simulasi dan belum disahkan dipaparkan berasingan.",
       "simulatedSales_one": "Jualan simulasi dikecualikan: {{amount}} daripada {{count}} pesanan",
@@ -607,7 +616,7 @@
         "description": "Bandingkan hasil, jumlah pesanan dan nilai pesanan purata dalam tempoh dipilih.",
         "metrics": {
           "revenue": "Hasil",
-          "averageOrderValue": "NPP",
+          "averageOrderValue": "Nilai pesanan purata",
           "orders": "Pesanan"
         },
         "trendHint": "Julat pendek dikumpulkan mengikut minggu dan julat panjang mengikut bulan."
@@ -687,6 +696,16 @@
       }
     },
     "bookings": {
+      "csv": {
+        "reference": "Rujukan",
+        "customer": "Pelanggan",
+        "email": "E-mel",
+        "experience": "Produk / pengalaman",
+        "dateTime": "Tarikh dan masa",
+        "quantity": "Kuantiti",
+        "status": "Status",
+        "checkInTime": "Masa daftar masuk"
+      },
       "loadFailed": "Tidak dapat memuatkan tempahan.",
       "checkInFailed": "Tidak dapat mendaftar masuk tempahan.",
       "checkInTryAgain": "Tidak dapat mendaftar masuk tempahan. Cuba lagi.",
@@ -950,7 +969,7 @@
       "emptyDescription": "Apabila pelanggan menebus baucar atau mendaftar masuk tiket di cawangan anda, aktiviti imbasan akan dipaparkan di sini.",
       "kindVoucher": "Baucar",
       "kindTicket": "Pas Tiket",
-      "selfService": "Daftar keluar kaunter",
+      "selfService": "Pembayaran di kaunter",
       "filters": {
         "all": "Semua Aktiviti",
         "vouchers": "Baucar",
@@ -977,6 +996,17 @@
       "price": "Harga"
     },
     "orders": {
+      "csv": {
+        "orderId": "ID Pesanan",
+        "customer": "Pelanggan",
+        "email": "E-mel",
+        "products": "Produk",
+        "outlets": "Outlet",
+        "total": "Jumlah (MYR)",
+        "fulfilmentStatus": "Status pemenuhan",
+        "orderStatus": "Status pesanan",
+        "date": "Tarikh"
+      },
       "loadFailed": "Tidak dapat memuatkan pesanan.",
       "updateFailed": "Tidak dapat mengemas kini pemenuhan.",
       "updateTryAgain": "Tidak dapat mengemas kini pemenuhan. Cuba lagi.",
@@ -1400,7 +1430,7 @@
       "bestPerformingPrefix": "Baucar terbaik · ",
       "usesCount": "{{count}} penggunaan",
       "unlimitedUsage": "Penggunaan tanpa had",
-      "usageCap": "{{percent}}% had penggunaan",
+      "usageCap": "{{percent}}% daripada had penggunaan",
       "analyticsAmounts": "Jualan RM{{revenue}} · diskaun RM{{discount}} · kesan bersih RM{{impact}}",
       "noAnalyticsMatches": "Tiada baucar sepadan dengan penapis tarikh dan cawangan.",
       "searchPlaceholder": "Cari kod baucar atau kempen",
@@ -1496,7 +1526,7 @@
       "netColumn": "Bersih anda",
       "statusColumn": "Status",
       "statusCleared": "Dikreditkan ke dompet anda",
-      "statusReversed": "Dibatalkan — pesanan dikembalikan",
+      "statusReversed": "Pendapatan dibalikkan — pesanan dibayar balik",
       "clearsToday": "Ditahan · matang hari ini",
       "clearsInDays": "Ditahan · matang dalam {{count}} hari",
       "clearsInDays_one": "Ditahan · matang dalam {{count}} hari",
@@ -1511,7 +1541,7 @@
       "tierNext": "Jual {{amount}} lagi untuk mencapai {{tier}}.",
       "tierTop": "Anda berada di peringkat tertinggi.",
       "tierPinned": "Peringkat anda ditetapkan oleh pasukan platform.",
-      "feeRules": "Item yang dijual dari halaman acara menggunakan yuran setiap item acara itu. Jika pesanan datang melalui affiliate atau cadangan, yuran menampung bayaran tersebut."
+      "feeRules": "Item yang dijual dari halaman acara menggunakan yuran setiap item acara itu. Jika pesanan datang melalui afiliasi atau cadangan, yuran menampung bayaran tersebut."
     },
     "wallet": {
       "vendorFinance": "Kewangan vendor",
@@ -1526,7 +1556,7 @@
       "loadFailed": "Tidak dapat memuatkan {{items}}. Anda boleh cuba lagi.",
       "minimumError": "Pengeluaran minimum ialah RM{{amount}}.",
       "insufficientBalance": "Baki tersedia tidak mencukupi.",
-      "submissionFailed": "Penghantaran gagal.",
+      "submissionFailed": "Penyerahan gagal.",
       "activeUnderReview": "Pengeluaran aktif anda sedang disemak.",
       "summaryLabel": "Ringkasan dompet",
       "availableToWithdraw": "Tersedia untuk dikeluarkan",
@@ -1709,7 +1739,7 @@
         "productPrice": "Harga (RM)",
         "addPhoto": "Tambah foto",
         "newForEvent": "baharu untuk acara ini",
-        "preferredStallNumber": "Nombor gerai pilihan (pilihan)"
+        "preferredStallNumber": "Nombor gerai pilihan (opsyenal)"
       },
       "actions": {
         "register": "Daftar",
@@ -1788,16 +1818,16 @@
       },
       "withdraw": {
         "action": "Tarik diri dari lokasi ini",
-        "prompt": "Mengapa anda menarik diri? Pelanggan yang menempah di sini akan dipulangkan wang.",
+        "prompt": "Mengapa anda menarik diri? Pelanggan yang menempah di sini akan dibayar balik.",
         "reasonRequired": "Berikan sebab sekurang-kurangnya 5 aksara.",
         "error": "Anda tidak dapat menarik diri dari lokasi ini.",
-        "done": "Anda telah menarik diri. Tempahan yang terjejas dibatalkan dan dipulangkan.",
+        "done": "Anda telah menarik diri. Tempahan yang terjejas dibatalkan dan dibayar balik.",
         "closed": {
           "withdrawn": "Anda telah menarik diri dari lokasi ini.",
           "removed": "Anda telah dikeluarkan dari lokasi ini oleh penganjur."
         }
       },
-      "adminAllocate": "Peruntukan oleh Admin diminta",
+      "adminAllocate": "Menunggu peruntukan Admin",
       "intakeOpen": "Menerima permohonan baharu",
       "intakeClosed": "Permohonan baharu ditutup",
       "noConfirmedSpaces": "Tiada ruang yang disahkan tersedia. Permohonan tidak menjamin gerai.",
@@ -2359,6 +2389,7 @@
     "saving": "Menyimpan…",
     "working": "Sedang diproses…",
     "exportCsv": "Eksport CSV",
+    "exportReadableCsv": "Eksport CSV untuk dibaca",
     "refresh": "Muat semula",
     "tryAgain": "Cuba lagi",
     "previous": "Sebelumnya",
@@ -2416,6 +2447,8 @@
       "topProductsGrouped_other": "Menunjukkan {{count}} produk teratas · lain-lain digabungkan"
     },
     "sales": {
+      "demoDescription": "Pembelian ujian/demo berjaya · amaun simulasi",
+      "noDemoActivity": "Tiada pembelian ujian/demo yang berjaya dalam tempoh ini.",
       "description": "Jualan disahkan dengan pembayaran langsung yang berjaya",
       "list": "Senarai",
       "livePerformance": "Prestasi langsung",
@@ -2510,7 +2543,7 @@
     "quantityAndLines": "Kuantiti: {{quantity}} · {{count}} {{lineLabel}}",
     "recentOrder": "Pesanan terkini",
     "status": "Status",
-    "vendorTotal": "Jumlah pesanan",
+    "vendorTotal": "Amaun pesanan",
     "view": "Lihat",
     "quantityAndLines_one": "Kuantiti: {{quantity}} · {{count}} {{lineLabel}}",
     "quantityAndLines_other": "Kuantiti: {{quantity}} · {{count}} {{lineLabel}}"
@@ -2613,7 +2646,7 @@
     "rank": {
       "earnings": "mengikut pendapatan — {{amount}} bulan ini",
       "empty": "Kongsi pautan untuk menyertai papan kedudukan.",
-      "position": "#{{rank}} daripada {{total}} ahli gabungan bulan ini",
+      "position": "#{{rank}} daripada {{total}} pengguna afiliasi bulan ini",
       "title": "Kedudukan Anda",
       "topFive": "5 teratas bulan ini"
     }
@@ -2684,7 +2717,7 @@
       "summary": "Ringkasan baucar",
       "onlineOrInStore": "Dalam talian atau di kedai",
       "inStoreOnly": "Di kedai sahaja",
-      "onlineCheckout": "Daftar keluar dalam talian",
+      "onlineCheckout": "Pembayaran dalam talian",
       "summaryMinSpend": "Perbelanjaan minimum {{amount}}",
       "totalUses": "{{count}} jumlah penggunaan",
       "type": "Jenis",

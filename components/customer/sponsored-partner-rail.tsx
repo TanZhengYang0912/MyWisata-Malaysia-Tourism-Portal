@@ -12,6 +12,7 @@ import { FeaturedSplitCard } from "@/components/customer/featured-split-card";
 import { FeaturedRecommendationsFrame } from "@/components/customer/featured-recommendations-frame";
 import { formatDate } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
+import { LocalizedContent } from "@/components/customer/localized-content";
 
 function placementIdFor(advertisement: DiscoveryResult): string | null {
   return advertisement.sponsorship?.placementId ?? null;
@@ -208,7 +209,7 @@ export function SponsoredPartnerRail({ advertisements, eventPromotions = [] }: {
             >
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("ui.eventPromotions.rail.eyebrow")}</p>
               <h3 className="mt-3 break-words whitespace-normal font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-foreground lg:text-4xl">
-                {activeSlide.event.title}
+                <LocalizedContent entityType="vendor_event_promotion" entityId={activeSlide.event.id} field="title" sourceText={activeSlide.event.title} />
               </h3>
               <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
                 <span className="inline-flex min-w-0 items-start gap-2 break-words whitespace-normal">

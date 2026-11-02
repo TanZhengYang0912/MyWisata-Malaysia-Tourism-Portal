@@ -7,7 +7,6 @@ import { rankPersonalizedActivities, type TravelPreferences } from '@/lib/person
 import { normalizeCategorySlugs } from '@/lib/customer/discovery-categories';
 import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
 import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
-import { computeProfileVerification } from '@/lib/verification/eligibility';
 import { reserveAiQuota } from '@/lib/rate-limit/ai';
 
 export async function POST(request: Request) {
@@ -34,8 +33,8 @@ export async function POST(request: Request) {
   }
 
   const [{ data: profile, error: profileError }, { data: survey, error: surveyError }] = await Promise.all([
-    db.from('users').select('profile_completed_at,kyc_status,full_name,avatar_url,bio,city,country').eq('id', user.id).maybeSingle(),
-    db.from('preference_survey_responses').select('interests,budget_range,mobility_needs,preferred_radius_km').eq('user_id', user.id).maybeSingle(),
+    db.from('users').select('city,country').eq('id', user.id).maybeSingle(),
+    db.from('preference_survey_responses').select('interests,travel_style,budget_range,mobility_needs,preferred_radius_km').eq('user_id', user.id).maybeSingle(),
   ]);
   if (profileError || !profile) return apiFail('PROFILE_UNAVAILABLE', 'Unable to read your verification status', 500);
   if (surveyError) return apiFail('PREFERENCES_UNAVAILABLE', 'Unable to read preferences', 500);
@@ -43,17 +42,7 @@ export async function POST(request: Request) {
   const cityOrigin = await cityCentre(profile.city);
   const origin = browserOrigin ?? cityOrigin ?? undefined;
   const activities = await searchActivities({ category: null, sort: 'recommended', near: origin }, db);
-  const profileVerification = computeProfileVerification({
-    fullName: profile.full_name,
-    avatarUrl: profile.avatar_url,
-    bio: profile.bio,
-    profileCompletedAt: profile.profile_completed_at,
-    city: profile.city,
-    country: profile.country,
-    surveyComplete: Boolean(survey?.interests?.length),
-  });
-  const profileComplete = Boolean(profile.profile_completed_at) && profileVerification.complete;
-  const personalized = Boolean(profileComplete || profile.kyc_status === 'approved') && Boolean(survey);
+  const personalized = Boolean(survey?.interests?.length);
 
   if (!personalized) {
     return apiOk({
@@ -65,6 +54,7 @@ export async function POST(request: Request) {
 
   const preferences: TravelPreferences = {
     interests: normalizeCategorySlugs(survey?.interests),
+    travelStyle: survey?.travel_style ?? 'solo',
     budgetRange: survey?.budget_range ?? 'mid_range',
     mobilityNeeds: survey?.mobility_needs ?? 'none',
     preferredRadiusKm: survey?.preferred_radius_km ?? 20,

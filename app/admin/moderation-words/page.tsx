@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { adminFilterControlClassName } from "@/components/admin/filter-bar";
+import { APP_LOCALES, isAppLocale } from "@/lib/i18n/locale";
 
 interface CustomWord {
   id: string;
@@ -92,12 +93,17 @@ export default function ModerationWordsPage() {
     }
   }
 
+  function languageLabel(language: string | null) {
+    if (!language) return "—";
+    if (language === "other") return t("moderationWords.form.otherLanguage");
+    return isAppLocale(language) ? t(`email.draft.languages.${language}`) : language;
+  }
+
   return (
     <AdminPageShell>
       <AdminPageHeader
         eyebrow={<span className="flex items-center gap-2"><ShieldBan size={14} /> {t("moderationWords.eyebrow")}</span>}
         title={t("moderationWords.title")}
-        description={t("moderationWords.description")}
       />
 
       <section className="rounded-2xl border border-border bg-card p-5">
@@ -125,12 +131,17 @@ export default function ModerationWordsPage() {
           </label>
           <label className="text-sm">
             <span className="mb-1.5 block font-medium text-foreground">{t("moderationWords.form.language")}</span>
-            <input
+            <select
               value={form.language}
               onChange={(e) => setForm((f) => ({ ...f, language: e.target.value }))}
               className={adminFilterControlClassName}
-              placeholder={t("moderationWords.form.languagePlaceholder")}
-            />
+            >
+              <option value="">{t("moderationWords.form.languageNotSpecified")}</option>
+              {APP_LOCALES.map((language) => (
+                <option key={language} value={language}>{t(`email.draft.languages.${language}`)}</option>
+              ))}
+              <option value="other">{t("moderationWords.form.otherLanguage")}</option>
+            </select>
           </label>
           <Button onClick={() => void addWord()} disabled={saving || !form.term.trim()}>
             <Plus size={15} /> {t("moderationWords.form.add")}
@@ -160,7 +171,7 @@ export default function ModerationWordsPage() {
                   <tr key={word.id} className="border-b border-border/60 last:border-0">
                     <td className="py-3 pr-3 font-medium text-foreground">{word.term}</td>
                     <td className="py-3 pr-3 text-muted-foreground">{t(`moderationWords.category.${word.category}`)}</td>
-                    <td className="py-3 pr-3 text-muted-foreground">{word.language ?? "—"}</td>
+                    <td className="py-3 pr-3 text-muted-foreground">{languageLabel(word.language)}</td>
                     <td className="py-3 pr-3">
                       <button
                         onClick={() => void toggleActive(word)}

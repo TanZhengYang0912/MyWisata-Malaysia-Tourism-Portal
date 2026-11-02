@@ -15,22 +15,32 @@ export default function GuestOrderAccessPage() {
   const accessAttemptRef = useRef<Promise<string> | null>(null);
   useEffect(() => {
     let active = true;
-    let attempt = accessAttemptRef.current;
-    if (!attempt) {
+    const openLink = () => {
+      let attempt = accessAttemptRef.current;
       const token = new URLSearchParams(window.location.hash.slice(1)).get('token');
       window.history.replaceState(null,'',window.location.pathname);
-      // A missing one-time URL token immediately switches to the recovery form.
-      if (!token) {
+      if (token) {
+        queueMicrotask(() => { if (active) { setFailed(false); setMessage(''); } });
+        // Exchange responses set the same HttpOnly cookie. Serialize the whole
+        // response, so an older exchange cannot overwrite a newer session.
+        const previous = attempt;
+        attempt = (previous ? previous.catch(() => undefined) : Promise.resolve()).then(() => fetch('/api/guest/orders/access',{ method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token}) }))
+          .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
+          .then(body => String(body.data.orderId));
+        accessAttemptRef.current = attempt;
+      } else if (!attempt) {
         queueMicrotask(() => { if (active) setFailed(true); });
-        return () => { active = false; };
+        return;
       }
-      attempt = fetch('/api/guest/orders/access',{ method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token}) })
-        .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
-        .then(body => String(body.data.orderId));
-      accessAttemptRef.current = attempt;
-    }
-    void attempt.then(orderId => { if (active) router.replace(`/customer/orders/${orderId}`); }).catch(()=>{ if (active) setFailed(true); });
-    return () => { active = false; };
+      // New fragments can arrive on an already-mounted recovery page. Only the
+      // latest exchange may redirect; StrictMode reuses the same pending attempt.
+      void attempt.then(orderId => {
+        if (active && accessAttemptRef.current === attempt) router.replace(`/customer/orders/${orderId}`);
+      }).catch(() => { if (active && accessAttemptRef.current === attempt) setFailed(true); });
+    };
+    openLink();
+    window.addEventListener('hashchange', openLink);
+    return () => { active = false; window.removeEventListener('hashchange', openLink); };
   },[router]);
   async function recover(event:React.FormEvent) {
     event.preventDefault();setSending(true);
@@ -46,7 +56,9 @@ export default function GuestOrderAccessPage() {
       <p className="text-sm text-muted-foreground">{t("guestCheckout.recoveryHint")}</p>
       <label className="block text-sm">{t("guestCheckout.orderNumber")}<Input value={orderId} onChange={event=>setOrderId(event.target.value)} /></label>
       <label className="block text-sm">{t("guestCheckout.email")}<Input required type="email" autoComplete="email" value={email} onChange={event=>setEmail(event.target.value)} /></label>
-      <Button type="submit" disabled={sending}>{t("guestCheckout.emailLink")}</Button>
+      <div className="flex justify-center sm:justify-start">
+        <Button type="submit" disabled={sending}>{t("guestCheckout.emailLink")}</Button>
+      </div>
       {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}
     </form>}
   </div>;

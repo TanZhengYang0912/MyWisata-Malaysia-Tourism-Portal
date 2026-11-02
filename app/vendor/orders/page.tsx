@@ -21,9 +21,11 @@ import BatchActionBar from "@/components/vendor/batch-action-bar";
 import ActionConfirmationDialog from "@/components/vendor/action-confirmation-dialog";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { useDebounce } from "@/hooks/use-debounce";
-import { exportToCsv, type CsvColumn } from "@/lib/export-csv";
+import { exportToCsv, generateCsvContent, downloadCsvFile, type CsvColumn } from "@/lib/export-csv";
 import { productImageUrl } from "@/lib/storage/product-image";
 import { formatMYR } from "@/lib/i18n/format";
+import { formatDateTime } from "@/lib/i18n/format";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { getMalaysiaDateRangeDefaults } from "@/lib/datetime/date-input";
 import type { StayBookingDetails } from "@/backend/core/types";
 import CenteredDetailModal from "@/components/ui/centered-detail-modal";
@@ -146,7 +148,8 @@ function categorySlugFor(item: OrderItemData) {
 }
 
 export default function VendorOrdersPage() {
-  const { t } = useTranslation("vendor");
+  const { t, i18n } = useTranslation("vendor");
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const router = useRouter();
   const searchParams = useSearchParams();
   const linkedOrderId = searchParams.get("orderId") ?? "";
@@ -388,6 +391,22 @@ export default function VendorOrdersPage() {
     );
   }
 
+  function handleExportReadableOrders() {
+    if (!items.length) return;
+    const columns: CsvColumn<VendorOrderData>[] = [
+      { header: t("ui.orders.csv.orderId"), accessor: (o) => o.display_id || o.id },
+      { header: t("ui.orders.csv.customer"), accessor: (o) => customerFor(o).full_name || t("ui.bookings.guest") },
+      { header: t("ui.orders.csv.email"), accessor: (o) => customerFor(o).email || "" },
+      { header: t("ui.orders.csv.products"), accessor: (o) => o.product_summary },
+      { header: t("ui.orders.csv.outlets"), accessor: (o) => o.outlets_summary },
+      { header: t("ui.orders.csv.total"), accessor: (o) => formatMYR(Number(o.vendor_total)) },
+      { header: t("ui.orders.csv.fulfilmentStatus"), accessor: (o) => i18n.exists(`ui.status.${o.vendor_fulfil_status}`) ? t(`ui.status.${o.vendor_fulfil_status}`) : o.vendor_fulfil_status },
+      { header: t("ui.orders.csv.orderStatus"), accessor: (o) => i18n.exists(`ui.status.${o.status}`) ? t(`ui.status.${o.status}`) : o.status },
+      { header: t("ui.orders.csv.date"), accessor: (o) => formatDateTime(o.created_at, locale, { timeZone: "Asia/Kuala_Lumpur" }) },
+    ];
+    downloadCsvFile(`orders-${new Date().toISOString().slice(0, 10)}-${locale}`, generateCsvContent(columns, items));
+  }
+
   function eligibleItemsFor(order: VendorOrderData, action: FulfilmentAction) {
     return order.vendor_items.filter(
       (item) =>
@@ -612,6 +631,7 @@ export default function VendorOrdersPage() {
             {t("ui.orders.description")}
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={handleExportOrders}
@@ -620,6 +640,10 @@ export default function VendorOrdersPage() {
         >
           <Download size={16} aria-hidden="true" /> {t("actions.exportCsv")}
         </button>
+        <button type="button" onClick={handleExportReadableOrders} disabled={loading || items.length === 0} className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
+          <Download size={16} aria-hidden="true" /> {t("actions.exportReadableCsv")}
+        </button>
+        </div>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-4">

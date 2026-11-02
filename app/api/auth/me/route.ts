@@ -43,24 +43,19 @@ type ProfileRow = {
   status: string | null;
 };
 
-type PreferenceRow = {
-  interests: string[] | null;
-};
-
 export async function GET() {
   const supabase = await createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   if (!authUser) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
 
-  const [{ data: profile, error: profileError }, { data: roleRows, error: rolesError }, { data: managerRows, error: managerError }, { data: preference, error: preferenceError }] = await Promise.all([
+  const [{ data: profile, error: profileError }, { data: roleRows, error: rolesError }, { data: managerRows, error: managerError }] = await Promise.all([
     supabase.from('users').select('id,email,full_name,avatar_url,bio,kyc_status,tier,email_verified_at,phone_verified_at,profile_completed_at,city,country,preferred_locale,phone,status').eq('id', authUser.id).maybeSingle(),
     supabase.from('user_roles').select('vendor_id,outlet_id,roles(name),outlets(vendor_id,name)').eq('user_id', authUser.id),
     supabase.from('outlet_managers').select('outlet_id,outlets(vendor_id,name)').eq('user_id', authUser.id),
-    supabase.from('preference_survey_responses').select('interests').eq('user_id', authUser.id).maybeSingle(),
   ]);
-  if (profileError || rolesError || managerError || preferenceError) {
+  if (profileError || rolesError || managerError) {
     console.error('[auth/me] account bootstrap query failed', {
-      profile: Boolean(profileError), roles: Boolean(rolesError), managers: Boolean(managerError), preferences: Boolean(preferenceError),
+      profile: Boolean(profileError), roles: Boolean(rolesError), managers: Boolean(managerError),
     });
     return NextResponse.json({ error: 'Unable to load account details right now. Please retry.' }, { status: 503 });
   }
@@ -113,7 +108,6 @@ export async function GET() {
   ].filter((id): id is string => Boolean(id)))];
   const outletIds = [...new Set(managerAssignments.map((row) => row.outlet_id))];
   const assignedOutletRelation = managerAssignments[0] ? (Array.isArray(managerAssignments[0].outlets) ? managerAssignments[0].outlets[0] : managerAssignments[0].outlets) : null;
-  const preferenceRow = preference as PreferenceRow | null;
   const profileVerification = computeProfileVerification({
     fullName: profileRow.full_name,
     avatarUrl: profileRow.avatar_url,
@@ -121,7 +115,6 @@ export async function GET() {
     profileCompletedAt: profileRow.profile_completed_at,
     city: profileRow.city,
     country: profileRow.country,
-    surveyComplete: Boolean(preferenceRow?.interests?.length),
   });
   const verificationFacts: VerificationFacts = {
     emailVerified: Boolean(profileRow.email_verified_at),

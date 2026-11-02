@@ -3,20 +3,20 @@
 // Single preferences editor used by the standalone Preferences slot
 // (app/customer/preferences), the onboarding wizard, and the profile settings
 // card — one source of truth for the §11.1 form. Loads current answers from
-// GET /api/profile/survey and saves via POST (which also promotes tier when
-// onboarding criteria are met).
+// GET /api/profile/survey and saves personalization preferences via POST.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  INTEREST_OPTIONS, BUDGET_RANGES, MOBILITY_NEEDS, DISTANCE_OPTIONS,
+  INTEREST_OPTIONS, TRAVEL_STYLES, BUDGET_RANGES, MOBILITY_NEEDS, DISTANCE_OPTIONS,
 } from "@/backend/domains/preferences";
 import { getOptionalDiscoveryCategoryLabelKey, normalizeCategorySlugs } from "@/lib/customer/discovery-categories";
 
 type SurveyResponse = {
   interests: string[] | null;
+  travel_style: string | null;
   budget_range: string | null;
   mobility_needs: string | null;
   pet_friendly: boolean | null;
@@ -36,6 +36,7 @@ type PreferencesEditorProps = {
 export function PreferencesEditor({ onSaved, submitLabel, onBack, onBeforeSave, onBusyChange }: PreferencesEditorProps) {
   const { t } = useTranslation("customer");
   const [interests, setInterests] = useState<string[]>([]);
+  const [travelStyle, setTravelStyle] = useState("solo");
   const [budgetRange, setBudgetRange] = useState("mid_range");
   const [mobilityNeeds, setMobilityNeeds] = useState("none");
   const [petFriendly, setPetFriendly] = useState(false);
@@ -64,6 +65,7 @@ export function PreferencesEditor({ onSaved, submitLabel, onBack, onBeforeSave, 
       const s = body.data;
       if (s) {
         setInterests(normalizeCategorySlugs(s.interests));
+        setTravelStyle(s.travel_style ?? "solo");
         setBudgetRange(s.budget_range ?? "mid_range");
         setMobilityNeeds(s.mobility_needs ?? "none");
         setPetFriendly(Boolean(s.pet_friendly));
@@ -98,7 +100,7 @@ export function PreferencesEditor({ onSaved, submitLabel, onBack, onBeforeSave, 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          interests, budgetRange, mobilityNeeds,
+          interests, travelStyle, budgetRange, mobilityNeeds,
           petFriendly, preferredRadiusKm: radiusKm,
           notes: notes.trim() || undefined,
         }),
@@ -143,6 +145,12 @@ export function PreferencesEditor({ onSaved, submitLabel, onBack, onBeforeSave, 
             const sel = interests.includes(slug);
             return <Chip key={slug} selected={sel} onClick={() => toggle(interests, setInterests, slug)}>{t(labelKey)}</Chip>;
           })}
+        </div>
+      </Field>
+
+      <Field label={t("ui.preferencesEditor.travelStyle")}>
+        <div className="grid grid-cols-2 gap-2">
+          {TRAVEL_STYLES.map(({ value, labelKey }) => <Option key={value} selected={travelStyle === value} onClick={() => setTravelStyle(value)}>{t(labelKey)}</Option>)}
         </div>
       </Field>
 

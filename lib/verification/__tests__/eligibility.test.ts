@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  canCreateBooking,
-  canCreatePurchase,
   canSubmitRecommendation,
   canWithdraw,
   computeProfileCompletion,
   computeProfileVerification,
+  isVerifiedContributor,
 } from '../eligibility';
 
 const completeProfile = {
@@ -27,7 +26,7 @@ describe('computeProfileCompletion', () => {
 
   it.each([31, 200])('preserves a previously completed %i-character biography', (length) => {
     expect(computeProfileVerification({
-      ...completeProfile, bio: 'x'.repeat(length), profileCompletedAt: '2026-10-27T00:00:00Z', surveyComplete: true,
+      ...completeProfile, bio: 'x'.repeat(length), profileCompletedAt: '2026-10-27T00:00:00Z',
     }).complete).toBe(true);
   });
 
@@ -67,26 +66,24 @@ describe('computeProfileCompletion', () => {
 });
 
 describe('computeProfileVerification', () => {
-  it('completes Profile from identity, avatar, bio, and survey without Phone', () => {
+  it('completes Profile from the five core fields without requiring the survey or Phone', () => {
     expect(computeProfileVerification({
       ...completeProfile,
-      surveyComplete: true,
     })).toEqual({
       complete: true,
       percentage: 100,
-      completedSteps: ['identity', 'avatar', 'bio', 'survey'],
+      completedSteps: ['identity', 'avatar', 'bio'],
       currentStep: null,
     });
   });
 
-  it('reports four stable 25-point progress increments', () => {
+  it('reports three stable progress steps independently of survey completion', () => {
     expect(computeProfileVerification({
       ...completeProfile,
       avatarUrl: null,
-      surveyComplete: false,
     })).toEqual({
       complete: false,
-      percentage: 50,
+      percentage: 67,
       completedSteps: ['identity', 'bio'],
       currentStep: 'avatar',
     });
@@ -102,26 +99,14 @@ describe('computeProfileVerification', () => {
     expect(computeProfileVerification({
       ...completeProfile,
       avatarUrl,
-      surveyComplete: true,
     })).toMatchObject({
       complete: false,
-      percentage: 75,
-      completedSteps: ['identity', 'bio', 'survey'],
+      percentage: 67,
+      completedSteps: ['identity', 'bio'],
       currentStep: 'avatar',
     });
   });
 
-  it('does not complete Profile when the preference survey has no interests', () => {
-    expect(computeProfileVerification({
-      ...completeProfile,
-      surveyComplete: false,
-    })).toMatchObject({
-      complete: false,
-      percentage: 75,
-      completedSteps: ['identity', 'avatar', 'bio'],
-      currentStep: 'survey',
-    });
-  });
 });
 
 describe('eligibility predicates', () => {
@@ -133,22 +118,36 @@ describe('eligibility predicates', () => {
     payoutDestinationVerified: true,
   };
 
-  it('requires the completed profile for recommendations', () => {
+  it('requires Email, Phone and the completed profile for recommendations', () => {
     expect(canSubmitRecommendation(snapshot)).toBe(true);
+    expect(canSubmitRecommendation({ ...snapshot, emailVerified: false })).toBe(false);
+    expect(canSubmitRecommendation({ ...snapshot, phoneVerified: false })).toBe(false);
     expect(canSubmitRecommendation({ ...snapshot, profile: { percentage: 80, missing: ['country'], complete: false } })).toBe(false);
   });
 
-  it('requires phone verification for bookings and purchases', () => {
-    expect(canCreateBooking(snapshot)).toBe(true);
-    expect(canCreatePurchase(snapshot)).toBe(true);
-    expect(canCreateBooking({ ...snapshot, phoneVerified: false })).toBe(false);
-    expect(canCreatePurchase({ ...snapshot, phoneVerified: false })).toBe(false);
-  });
-
-  it('requires KYC and a payout destination for withdrawal independently of Phone', () => {
+  it('requires Email, Phone, Profile, KYC and payout readiness for withdrawal', () => {
     expect(canWithdraw(snapshot)).toBe(true);
     expect(canWithdraw({ ...snapshot, payoutDestinationVerified: false })).toBe(false);
     expect(canWithdraw({ ...snapshot, kycStatus: 'pending' })).toBe(false);
-    expect(canWithdraw({ ...snapshot, phoneVerified: false })).toBe(true);
+    expect(canWithdraw({ ...snapshot, emailVerified: false })).toBe(false);
+    expect(canWithdraw({ ...snapshot, phoneVerified: false })).toBe(false);
+    expect(canWithdraw({ ...snapshot, profile: { percentage: 80, missing: ['country'], complete: false } })).toBe(false);
+  });
+});
+
+describe('Verified Contributor eligibility', () => {
+  const facts = {
+    emailVerifiedAt: '2026-10-01T00:00:00Z',
+    phoneVerifiedAt: '2026-10-01T00:01:00Z',
+    kycStatus: 'approved',
+    profile: completeProfile,
+  };
+
+  it('requires Email, Phone, all core Profile fields and approved KYC', () => {
+    expect(isVerifiedContributor(facts)).toBe(true);
+    expect(isVerifiedContributor({ ...facts, emailVerifiedAt: null })).toBe(false);
+    expect(isVerifiedContributor({ ...facts, phoneVerifiedAt: null })).toBe(false);
+    expect(isVerifiedContributor({ ...facts, kycStatus: 'pending' })).toBe(false);
+    expect(isVerifiedContributor({ ...facts, profile: { ...completeProfile, avatarUrl: null } })).toBe(false);
   });
 });

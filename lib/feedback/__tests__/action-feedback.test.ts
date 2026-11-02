@@ -17,4 +17,14 @@ describe('action feedback reducer', () => {
 
     expect(feedbackReducer([first, second], { type: 'remove', id: first.id })).toEqual([second]);
   });
+
+  it('keeps translated notices as keys so the toast can follow locale changes', () => {
+    const notice = createFeedbackNotice('success', { key: 'language.saved', namespace: 'common' });
+
+    expect(notice).toMatchObject({
+      tone: 'success',
+      message: { key: 'language.saved', namespace: 'common' },
+      role: 'status',
+    });
+  });
 });

@@ -11,7 +11,7 @@ import { useAppDialog } from '@/components/providers/app-dialog';
 import { AdminBatchActionBar } from '@/components/admin/batch-action-bar';
 import { AdminSegmentedFilter } from '@/components/admin/segmented-filter';
 import { AdminFilterBar } from '@/components/admin/filter-bar';
-import { AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
 import { useVisibleReviewRefresh } from '@/hooks/use-visible-review-refresh';
@@ -240,17 +240,18 @@ export default function CatalogueReviewPage() {
   return (
     <AdminPageShell>
       <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground"><Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>{t("actions.refresh")}</Button><span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {reviewRefresh.lastSuccessAt ? new Date(reviewRefresh.lastSuccessAt).toLocaleTimeString() : "—"}</span></div>
-        <AdminPageHeader
-          eyebrow={<><ClipboardCheck size={15} /> {t('catalogue.eyebrow')}</>}
-          title={t('catalogue.title')}
-          description={t('catalogue.description')}
-          actions={<div className="flex flex-wrap items-center justify-end gap-2"><Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}><RefreshCw size={14} />{t('actions.refresh')}</Button><Button asChild variant="outline" size="sm"><Link href="/admin/hotel-amenities">{t('hotelAmenities.manage')}</Link></Button><div className="rounded-2xl border border-amber-200/60 bg-amber-50 px-4 py-3 text-right dark:border-amber-500/30 dark:bg-amber-500/10"><p className="text-sm font-semibold text-amber-700 dark:text-amber-400">{t('catalogue.waiting')}</p><p className="mt-4 text-3xl font-bold tracking-[-0.05em] text-amber-950 dark:text-amber-100">{total}</p></div></div>}
-        />
+      <AdminPageHeader
+        eyebrow={<><ClipboardCheck size={15} /> {t('catalogue.eyebrow')}</>}
+        title={t('catalogue.title')}
+        actions={<div className="flex flex-wrap items-center justify-end gap-2"><Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}><RefreshCw size={14} />{t('actions.refresh')}</Button><Button asChild variant="outline" size="sm"><Link href="/admin/catalogue/hotel-amenities">{t('hotelAmenities.manage')}</Link></Button></div>}
+      />
+      <AdminMetricGrid items={[{ label: t('catalogue.waiting'), value: total }]} />
 
         <AdminFilterBar>
           <AdminSegmentedFilter
             value={filter}
             ariaLabel="catalogue.accessibility.itemType"
+            fullWidth={false}
             items={(['all', 'outlet', 'product', 'voucher', 'hotel_profile'] as const).map((value) => ({ value, label: value === 'all' ? t('catalogue.filters.allItems') : t(labelKeys[value]), count: counts[value] }))}
             onChange={(value) => { setFilter(value as 'all' | ReviewItem['entityType']); setPage(1); setSelectedIds(new Set()); }}
           />

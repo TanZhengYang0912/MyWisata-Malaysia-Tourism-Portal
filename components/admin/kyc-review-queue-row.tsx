@@ -29,6 +29,7 @@ export function KycReviewQueueRow({
   return (
     <Link
       href={href}
+      prefetch={false}
       aria-label={`${reviewLabel}: ${user.name}`}
       className="flex flex-col gap-4 px-5 py-4 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:flex-row sm:items-center sm:justify-between"
     >

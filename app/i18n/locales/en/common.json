@@ -80,6 +80,7 @@
     "active": "Active",
     "inactive": "Inactive",
     "pending": "Pending",
+    "pendingSecondApproval": "Waiting for second approval",
     "pendingReview": "Pending review",
     "changesRequested": "Changes requested",
     "invited": "Invited",
@@ -98,7 +99,11 @@
   },
   "errors": {
     "generic": "Something went wrong. Please try again.",
-    "network": "Unable to connect. Please try again."
+    "network": "Unable to connect. Please try again.",
+    "referenceId": "Reference ID:",
+    "copyReferenceId": "Copy ID",
+    "referenceCopied": "Copied",
+    "referenceCopyUnavailable": "Select the ID above and copy it manually."
   },
   "accessibility": {
     "dismissNotification": "Dismiss notification",
@@ -156,7 +161,7 @@
         "body": "Your withdrawal has been approved and will be transferred to your selected payout destination shortly."
       },
       "withdrawalSecondApprovalPending": {
-        "title": "Withdrawal partially approved — awaiting second review",
+        "title": "First withdrawal review completed — awaiting second review",
         "body": "Your withdrawal has received its first approval and requires one more review."
       },
       "withdrawalSubmitted": {
@@ -224,6 +229,25 @@
       "recommendationApprovedWithName": {
         "title": "Your recommendation \"{{vendorName}}\" was approved",
         "body": "Great find! We will reach out to the vendor soon."
+      },
+      "vendorLifecycle": {
+        "approved": {
+          "title": "Your vendor {{vendorName}} was approved",
+          "body": "You can now manage your outlets and products."
+        },
+        "informationRequested": {
+          "title": "More information is needed for {{vendorName}}"
+        },
+        "rejected": {
+          "title": "Your vendor application for {{vendorName}} was not approved"
+        },
+        "suspended": {
+          "title": "Your vendor account {{vendorName}} was suspended"
+        },
+        "reactivated": {
+          "title": "Your vendor account {{vendorName}} is active again",
+          "body": "You can resume managing your outlets and products."
+        }
       },
       "kycSecurity": {
         "title": "KYC security alert",

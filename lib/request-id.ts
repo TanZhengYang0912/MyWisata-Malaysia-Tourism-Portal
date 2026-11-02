@@ -3,6 +3,10 @@
 // correlates a single call to Stripe's API, not our own request/response.
 // Vercel sets `x-vercel-id` on every incoming request; falls back to a fresh
 // UUID for local dev or any other host.
+export function createRequestId(): string {
+  return crypto.randomUUID();
+}
+
 export function getRequestId(request: Request): string {
-  return request.headers.get('x-vercel-id') ?? crypto.randomUUID();
+  return request.headers.get('x-vercel-id') ?? createRequestId();
 }

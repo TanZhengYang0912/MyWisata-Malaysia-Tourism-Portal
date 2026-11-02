@@ -39,7 +39,7 @@ export interface AdminRecommendationDetail {
     id: string;
     name: string;
     email: string | null;
-    isKycVerified: boolean;
+    isVerifiedContributor: boolean;
   };
   submittedAt: string;
   imageAttestedAt: string | null;
@@ -128,7 +128,7 @@ interface UserSummaryRow {
   id: string;
   full_name: string | null;
   email: string | null;
-  kyc_status?: string | null;
+  is_verified_contributor?: boolean;
 }
 
 interface ConvertedVendorRow {
@@ -234,7 +234,7 @@ export function buildAdminRecommendationDetail(input: {
       id: row.recommender_id,
       name: input.recommender?.full_name ?? 'MYLawatan member',
       email: input.recommender?.email ?? null,
-      isKycVerified: input.recommender?.kyc_status === 'approved',
+      isVerifiedContributor: input.recommender?.is_verified_contributor === true,
     },
     submittedAt: row.created_at,
     imageAttestedAt: row.image_attested_at,

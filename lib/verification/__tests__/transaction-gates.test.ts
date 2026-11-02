@@ -6,7 +6,7 @@ describe('checkPhoneVerification', () => {
     expect(checkPhoneVerification(null)).toEqual({
       allowed: false,
       code: 'PHONE_VERIFICATION_REQUIRED',
-      message: 'Phone verification is required before booking or purchase.',
+      message: 'Phone verification is required before continuing.',
     });
   });
 

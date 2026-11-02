@@ -7,6 +7,7 @@ export const PUBLIC_TRANSLATION_FIELDS = {
   place_informational_activity: ['title', 'description'],
   review: ['title', 'body'],
   promotion_campaign: ['title', 'summary', 'description'],
+  vendor_event_promotion: ['title', 'details'],
 } as const;
 
 export type PublicTranslationEntity = keyof typeof PUBLIC_TRANSLATION_FIELDS;

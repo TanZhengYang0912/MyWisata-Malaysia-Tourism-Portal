@@ -77,7 +77,7 @@ describe("PlatformFundsPanel", () => {
     expect(container.textContent).toContain("reconciliation.funds.owed.readyToWithdraw");
     expect(findOne(container, (element) => element.getAttribute("data-owed-total") !== null).textContent).toMatch(/39,625\.03/);
     expect(button("reconciliation.funds.recordButton").disabled).toBe(true);
-    expect(container.textContent).toContain("reconciliation.funds.nothingAvailable");
+    expect(container.textContent).not.toContain("reconciliation.funds.nothingAvailable");
   });
 
   it("blocks an amount above what is available and records a valid one only after confirming", async () => {

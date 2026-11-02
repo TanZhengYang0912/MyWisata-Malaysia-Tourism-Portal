@@ -3,6 +3,7 @@ import {
   buildAnalyticsSnapshot,
   type AnalyticsInput,
 } from '@/lib/vendor/analytics';
+import { formatAnalyticsTrendBucket } from '@/lib/vendor/performance-ranking';
 
 const input: AnalyticsInput = {
   range: {
@@ -30,6 +31,13 @@ const input: AnalyticsInput = {
 };
 
 describe('vendor analytics aggregation', () => {
+  it('formats machine trend buckets by display locale while preserving Malaysia bucket boundaries', () => {
+    expect(formatAnalyticsTrendBucket('2026-10-26', 'week', 'zh-CN')).not.toBe('26 Oct');
+    expect(formatAnalyticsTrendBucket('2026-10', 'month', 'ms')).toMatch(/2026|26/);
+    const snapshot = buildAnalyticsSnapshot(input);
+    expect(snapshot.trend.every((point) => point.bucketKey && point.bucketGranularity === 'week')).toBe(true);
+  });
+
   it('builds revenue, order and average-order-value trend points without duplicating order lines', () => {
     const snapshot = buildAnalyticsSnapshot(input);
 

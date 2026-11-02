@@ -326,17 +326,13 @@ export function StaffConductPanel() {
 
   return (
     <div className="space-y-4">
-      <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-destructive">
-        <UserX size={13} /> {t("staffConduct.title")}
-      </p>
-
       <div aria-label={t("staffConduct.metrics.ariaLabel")}>
         <AdminMetricGrid items={[
-          { labelKey: "staffConduct.metrics.needsAction", value: metrics.needsAction, detailKey: "staffConduct.metrics.openRecords" },
-          { labelKey: "staffConduct.metrics.flaggedConduct", value: metrics.flaggedConduct, detailKey: "staffConduct.metrics.openRecords" },
-          { labelKey: "staffConduct.metrics.reportedChat", value: metrics.reportedChat, detailKey: "staffConduct.metrics.openRecords" },
-          { labelKey: "staffConduct.metrics.highSeverity", value: metrics.highSeverity, detailKey: "staffConduct.metrics.openRecords" },
-        ].map((metric) => ({ label: t(metric.labelKey), value: metric.value, detail: t(metric.detailKey) }))} />
+          { label: t("staffConduct.metrics.needsAction"), value: metrics.needsAction },
+          { label: t("staffConduct.metrics.flaggedConduct"), value: metrics.flaggedConduct },
+          { label: t("staffConduct.metrics.reportedChat"), value: metrics.reportedChat },
+          { label: t("staffConduct.metrics.highSeverity"), value: metrics.highSeverity },
+        ]} />
       </div>
 
       <AdminFilterBar>

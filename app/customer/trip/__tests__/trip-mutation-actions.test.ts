@@ -10,8 +10,8 @@ const {updateTripItemScheduleAction}=await import("../actions");
 beforeEach(()=>vi.resetAllMocks());
 describe("Trip mutation transport",()=>{
  it("returns a safe validation failure rather than throwing into the framework",async()=>{
-  mocks.update.mockRejectedValue(new Error("Trip times must follow itinerary order"));
-  await expect(updateTripItemScheduleAction("trip","item",{scheduled_date:"2026-10-22",scheduled_time:"09:00"},"version")).resolves.toEqual({ok:false});
+  mocks.update.mockRejectedValue(Object.assign(new Error("Trip times must follow itinerary order"), {code:"TRIP_INVALID"}));
+  await expect(updateTripItemScheduleAction("trip","item",{scheduled_date:"2026-10-22",scheduled_time:"09:00"},"version")).resolves.toEqual({ok:false,code:"TRIP_INVALID"});
   expect(mocks.revalidate).not.toHaveBeenCalled();
  });
  it("returns the canonical row and revalidates only after success",async()=>{

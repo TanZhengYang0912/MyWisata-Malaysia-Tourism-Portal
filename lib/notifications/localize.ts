@@ -17,6 +17,11 @@ type NotificationTemplate = {
 };
 
 const TEMPLATES: Record<string, NotificationTemplate> = {
+  vendor_approved: { title: 'notifications.events.vendorLifecycle.approved.title', body: 'notifications.events.vendorLifecycle.approved.body' },
+  vendor_information_requested: { title: 'notifications.events.vendorLifecycle.informationRequested.title' },
+  vendor_rejected: { title: 'notifications.events.vendorLifecycle.rejected.title' },
+  vendor_suspended: { title: 'notifications.events.vendorLifecycle.suspended.title' },
+  vendor_unsuspended: { title: 'notifications.events.vendorLifecycle.reactivated.title', body: 'notifications.events.vendorLifecycle.reactivated.body' },
   vendor_event_exception_payment_blocked: { title: 'notifications.events.eventException.payment_blocked.title', body: 'notifications.events.eventException.payment_blocked.body' },
   vendor_event_exception_pickup_review: { title: 'notifications.events.eventException.pickup_review.title', body: 'notifications.events.eventException.pickup_review.body' },
   vendor_event_exception_refund_pending: { title: 'notifications.events.eventException.refund_pending.title', body: 'notifications.events.eventException.refund_pending.body' },
@@ -71,6 +76,13 @@ export function localizeNotification(
 
   const metadata = safeMetadata(notification.metadata);
 
+  if (
+    ['vendor_approved', 'vendor_information_requested', 'vendor_rejected', 'vendor_suspended', 'vendor_unsuspended'].includes(notification.type ?? '')
+    && typeof metadata.vendorName !== 'string'
+  ) {
+    return { title: notification.title, body: notification.body };
+  }
+
   // Legacy recommendation rows only have an already-rendered English title.
   // Keep that title until the producer starts supplying the vendor name as data;
   // parsing user text to recover a name would be brittle and unsafe.
@@ -99,6 +111,10 @@ export function localizeNotification(
         ? translate('notifications.events.chatMessage.attachmentBody', metadata)
         : (typeof metadata.preview === 'string' && metadata.preview.length > 0 ? metadata.preview : notification.body),
     };
+  }
+
+  if (notification.type === 'vendor_information_requested' || notification.type === 'vendor_rejected' || notification.type === 'vendor_suspended') {
+    return { title: translate(template.title, metadata), body: notification.body };
   }
 
   return {

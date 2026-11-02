@@ -13,7 +13,11 @@ describe("Access Control capability labels", () => {
       const names = locale.accessControl.capabilityNames as Record<string, string>;
       const translate = ((key: string) => names[key.replace("accessControl.capabilityNames.", "")] ?? key) as TFunction<"admin">;
       for (const key of CAPABILITY_KEYS) {
+        const nameKey = key.replaceAll(".", "_");
+        expect(Object.hasOwn(names, nameKey), `Missing capability name: ${nameKey}`).toBe(true);
+        expect(names[nameKey]?.trim()).toBeTruthy();
         const label = capabilityLabel(key, translate);
+        expect(label).toBe(names[nameKey]);
         expect(label).toBeTruthy();
         expect(label).not.toBe(key);
         expect(label).not.toContain("accessControl.capabilityNames.");

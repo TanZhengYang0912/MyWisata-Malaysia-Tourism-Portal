@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent as ReactFormEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import Image from "next/image";
@@ -1127,7 +1129,7 @@ export function MapClient({
   return (
     <section aria-label={tCustomer("strictMigration.tripPlanner.itinerary")} className="h-[calc(100dvh-6rem)] w-full overflow-hidden bg-card sm:h-[calc(100dvh-4rem)]">
           <div className="flex h-full w-full flex-col overflow-hidden bg-card" aria-busy={trip.pending}>
-      {(trip.pending || trip.error || tripActionStatus) && <p role={trip.error ? "alert" : "status"} className="border-b border-border px-3 py-2 text-xs">{trip.pending ? tCustomer("ui.trip.saving") : trip.error || tripActionStatus}</p>}
+      {(trip.pending || trip.error || tripActionStatus) && <p role={trip.error ? "alert" : "status"} className="border-b border-border px-3 py-2 text-xs">{trip.pending ? tCustomer("ui.trip.saving") : trip.error || tripActionStatus}{trip.error && <Button type="button" variant="outline" size="sm" className="ml-3" onClick={() => void trip.verify()} disabled={trip.pending}>{tCustomer("ui.trip.verifyState")}</Button>}</p>}
             <div className="flex shrink-0 gap-1 border-b border-border bg-card p-2 xl:hidden" aria-label={tCustomer("strictMigration.tripPlanner.plannerViews")}>
               {(["ai", "itinerary", "map", "places"] as const).map((panel) => (
                 <button key={panel} onClick={() => setActivePanel(panel)} className={"flex-1 rounded-full px-3 py-2 text-xs font-bold capitalize " + (activePanel === panel ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted")}>

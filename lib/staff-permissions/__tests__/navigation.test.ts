@@ -64,4 +64,16 @@ describe("database-driven Staff navigation", () => {
       permissionKeys: ["admin.promotion_campaign.manage"],
     });
   });
+
+  it("uses the built-in moderation label key only for the known system module", () => {
+    const items = staffNavigationSections([
+      moduleRecord({ key: "moderation_words", label: "Moderation Words", labelKey: null }),
+      moduleRecord({ key: "custom_vendor_tool", label: "Vendor Tool", labelKey: null }),
+      moduleRecord({ key: "custom_keyed", label: "Custom", labelKey: "custom.translation.key" }),
+    ]).flatMap((section) => section.items);
+
+    expect(items.find((item) => item.key === "moderation_words")?.labelKey).toBe("moderationWords.title");
+    expect(items.find((item) => item.key === "custom_vendor_tool")?.labelKey).toBeNull();
+    expect(items.find((item) => item.key === "custom_keyed")?.labelKey).toBe("custom.translation.key");
+  });
 });

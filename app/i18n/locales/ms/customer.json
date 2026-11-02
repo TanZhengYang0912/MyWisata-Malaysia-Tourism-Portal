@@ -50,7 +50,7 @@
     },
     "Wallet": {
       "label": "Dompet",
-      "description": "Baki dan pembayaran keluar"
+      "description": "Baki dan pengeluaran"
     },
     "Verification": {
       "label": "Pengesahan",
@@ -90,7 +90,7 @@
     },
     "wallet": {
       "label": "Dompet",
-      "description": "Baki dan pembayaran keluar"
+      "description": "Baki dan pengeluaran"
     },
     "vouchers": {
       "label": "Baucar Saya",
@@ -130,6 +130,12 @@
     "hidden_gem": "Permata Tersembunyi"
   },
   "preferences": {
+    "travelStyles": {
+      "solo": "Solo",
+      "couple": "Pasangan",
+      "family": "Keluarga",
+      "group": "Berkumpulan"
+    },
     "budgetRanges": {
       "budget": "Bajet (< RM100.00/hari)",
       "mid_range": "Pertengahan (RM100.00–RM500.00/hari)",
@@ -137,7 +143,7 @@
     },
     "mobilityNeeds": {
       "none": "Tiada sekatan",
-      "limited": "Berjalan secara terhad",
+      "limited": "Keupayaan berjalan terhad",
       "wheelchair": "Akses kerusi roda"
     },
     "distance": {
@@ -218,7 +224,7 @@
         },
         "PROFILE_OR_KYC_REQUIRED": {
           "title": "Pilih cara untuk melayakkan diri",
-          "description": "Lengkapkan profil untuk menghantar cadangan dan menggunakan Afiliasi Terhad, atau lengkapkan KYC untuk menghantar cadangan dan membuka tier Afiliasi Penuh.",
+          "description": "Lengkapkan profil untuk menghantar cadangan dan menggunakan Afiliasi Terhad, atau lengkapkan KYC untuk menghantar cadangan dan membuka tahap Afiliasi Penuh.",
           "cta": "Pilih pilihan pengesahan"
         },
         "KYC_REQUIRED": {
@@ -272,7 +278,7 @@
         "title": "Apakah yang anda mahu lakukan?",
         "description": "Pilih matlamat untuk melihat kelayakan yang membukanya.",
         "checkout": {
-          "title": "Tempah, beli, checkout atau guna AI asas",
+          "title": "Tempah, beli, buat pembayaran atau guna AI asas",
           "description": "Sahkan telefon anda. Profil atau KYC tidak diperlukan untuk fungsi ini."
         },
         "recommendation": {
@@ -302,7 +308,7 @@
       "guestTitle": "Log masuk untuk mengesahkan telefon",
       "guestDescription": "Log masuk sebelum memulakan pengesahan telefon.",
       "completeTitle": "Telefon telah disahkan",
-      "completeDescription": "Tempahan, pembelian, checkout dan cadangan AI asas kini tersedia, tertakluk pada polisi semasa.",
+      "completeDescription": "Anda kini boleh membuat tempahan dan pembelian, membuat pembayaran serta menggunakan cadangan AI asas. Selamat menggunakan MYLawatan!",
       "verified": "Nombor telefon telah disahkan."
     },
     "actions": {
@@ -393,7 +399,7 @@
       "viewStayDetails": "Lihat butiran tetamu",
       "editStayDetails": "Edit butiran tetamu",
       "completeStayDetails": "Lengkapkan butiran tetamu",
-      "stayDetailsCompleteBeforeCheckout": "Lengkapkan butiran tetamu untuk penginapan ini sebelum daftar keluar.",
+      "stayDetailsCompleteBeforeCheckout": "Lengkapkan butiran tetamu untuk penginapan ini sebelum meneruskan pembayaran.",
       "guestDetailsRequired": "Masukkan nama tetamu utama, alamat e-mel yang sah dan nombor telefon bimbit yang sah untuk meneruskan.",
       "estimatedArrival": "Anggaran waktu ketibaan",
       "arrivalUnknown": "Belum pasti",
@@ -438,7 +444,7 @@
       "package": "Pakej",
       "quantity": "Kuantiti",
       "imageUnavailable": "Imej tidak tersedia",
-      "wheelchairAccessible": "Boleh diakses kerusi roda",
+      "wheelchairAccessible": "Boleh diakses dengan kerusi roda",
       "accessible": "Mudah diakses",
       "closed": "Ditutup",
       "days": {
@@ -450,7 +456,7 @@
         "sat": "Sab",
         "sun": "Ahd"
       },
-      "trending": "Sóhor kini",
+      "trending": "Sedang sohor",
       "verified": "Disahkan",
       "person": "orang",
       "people": "orang",
@@ -950,7 +956,7 @@
       "chooseOutletForMoreProducts": "Lebih banyak produk tersedia di {{outlet}}."
     },
     "affiliate": {
-      "loadingDashboard": "Memuatkan papan pemuka ahli gabungan…",
+      "loadingDashboard": "Memuatkan papan pemuka afiliasi…",
       "noClicks": "Tiada klik dalam 30 hari terakhir.",
       "clicks": "Klik",
       "day": "Hari {{label}}",
@@ -1019,14 +1025,14 @@
       "chooseYear": "Pilih tahun",
       "selectMonth": "Pilih {{month}}",
       "itineraryItems": "{{count}} item jadual perjalanan",
-      "inMonth": "{{monthCount}} bulan ini · {{totalCount}} sepadan keseluruhan",
+      "inMonth": "{{monthCount}} item jadual perjalanan bulan ini · {{totalCount}} padanan keseluruhan",
       "showItinerary": "Tunjukkan butiran jadual perjalanan {{activity}}",
       "showMore": "Tunjukkan {{count}} item jadual perjalanan lagi untuk {{date}}",
       "more": "+{{count}} lagi",
       "noBookingsMatch": "Tiada tempahan sepadan dengan penapis yang dipilih.",
       "noBookingsFound": "Tiada tempahan ditemui",
       "changeFilters": "Cuba ubah penapis anda.",
-      "afterCheckout": "Aktiviti yang ditempah akan muncul di sini selepas daftar keluar.",
+      "afterCheckout": "Aktiviti yang ditempah akan muncul di sini selepas pembayaran.",
       "viewItinerary": "Lihat butiran jadual perjalanan",
       "loading": "Memuatkan kalendar…",
       "scopeTitles": {
@@ -1112,7 +1118,7 @@
         "productGrid": "Grid produk",
         "gallery": "Galeri",
         "hours": "Waktu operasi",
-        "contact": "Peta dan hubungan",
+        "contact": "Peta dan maklumat hubungan",
         "voucherBanner": "Baucar",
         "cta": "Seruan tindakan tempahan",
         "reviewHighlight": "Ulasan tetamu",
@@ -1266,7 +1272,7 @@
       "selectItem": "Pilih {{item}}",
       "checkingAvailability": "Sedang menyemak ketersediaan tempahan…",
       "availabilityCheckFailed": "Ketersediaan tempahan tidak dapat disemak",
-      "seatsLeft": "{{count}} tempat tinggal",
+      "seatsLeft": "{{count}} tempat lagi",
       "outOfStock": "Kehabisan stok",
       "inStock": "{{count}} dalam stok",
       "lowStock": "Stok rendah",
@@ -1318,8 +1324,8 @@
       "viewAll_other": "Lihat semua {{count}} baucar",
       "subtotalSelected_one": "Jumlah kecil ({{count}} dipilih)",
       "subtotalSelected_other": "Jumlah kecil ({{count}} dipilih)",
-      "seatsLeft_one": "{{count}} tempat tinggal",
-      "seatsLeft_other": "{{count}} tempat tinggal"
+      "seatsLeft_one": "{{count}} tempat lagi",
+      "seatsLeft_other": "{{count}} tempat lagi"
     },
     "tripBudget": {
       "title": "Bajet Perjalanan",
@@ -1379,6 +1385,7 @@
       "notesPlaceholder": "cth. Saya suka makanan jalanan, mengelakkan pusat beli-belah sesak dan sentiasa mengembara dengan anjing saya…",
       "basedOnActivity": "Berdasarkan aktiviti anda",
       "interests": "Minat (pilih semua yang berkenaan)",
+      "travelStyle": "Gaya perjalanan",
       "budgetRange": "Julat bajet",
       "preferredDistance": "Jarak pilihan",
       "mobilityAccessibility": "Mobiliti & kebolehcapaian",
@@ -1533,21 +1540,21 @@
       "editUnavailable": "Cadangan ini tidak dapat dibuka untuk dikemas kini. Muat semula butirannya dan cuba lagi."
     },
     "recommendationEarnings": {
-      "title": "Pendapatan cadangan",
-      "pending": "Belum matang",
+      "title": "Komisen rujukan",
+      "pending": "Belum dilepaskan",
       "lifetime": "Dikreditkan ke dompet",
       "convertedVendors": "Vendor menyertai",
-      "empty": "Belum ada pendapatan cadangan. Anda memperoleh pendapatan apabila vendor yang anda cadangkan menyertai dan membuat jualan.",
-      "loadError": "Pendapatan cadangan tidak dapat dimuatkan. Rekod anda tidak berubah. Cuba lagi untuk menyemak.",
+      "empty": "Belum ada komisen rujukan. Anda memperoleh komisen apabila vendor yang anda rujuk menyertai dan membuat jualan.",
+      "loadError": "Komisen rujukan tidak dapat dimuatkan. Rekod anda tidak berubah. Cuba lagi untuk menyemak.",
       "bonusLabel": "Bonus jualan pertama",
       "ongoingLabel": "Komisen berterusan",
       "statusCleared": "Dikreditkan ke dompet anda",
-      "statusReversed": "Dibatalkan — pesanan dibatalkan atau dikembalikan",
-      "clearsToday": "Belum matang · matang hari ini",
-      "clearsInDays": "Belum matang · matang dalam {{count}} hari",
-      "clearsInDays_one": "Belum matang · matang dalam {{count}} hari",
-      "clearsInDays_other": "Belum matang · matang dalam {{count}} hari",
-      "viewRecommendation": "Lihat cadangan"
+      "statusReversed": "Komisen rujukan dibalikkan — pesanan dibatalkan atau dibayar balik",
+      "clearsToday": "Belum dilepaskan · akan dilepaskan hari ini",
+      "clearsInDays": "Belum dilepaskan · akan dilepaskan dalam {{count}} hari",
+      "clearsInDays_one": "Belum dilepaskan · akan dilepaskan dalam {{count}} hari",
+      "clearsInDays_other": "Belum dilepaskan · akan dilepaskan dalam {{count}} hari",
+      "viewRecommendation": "Lihat rujukan"
     },
     "profileWizard": {
       "completion": "Kelengkapan profil",
@@ -1844,7 +1851,7 @@
         "withdrawal_cancel": "Pengeluaran dikembalikan",
         "earnings_pending": "Pendapatan belum selesai",
         "earnings_confirm": "Pendapatan dilepaskan",
-        "earnings_reverse": "Pendapatan belum selesai dibalikkan",
+        "earnings_reverse": "Pendapatan tertunda dibalikkan",
         "refund": "Bayaran balik",
         "adjustment_credit": "Pelarasan baki",
         "adjustment_debit": "Pelarasan baki"
@@ -1874,6 +1881,12 @@
       "bankWithdrawalsRestricted": "Pengeluaran bank dihadkan sementara",
       "unableVerifyPayout": "Tidak dapat mengesahkan akaun pembayaran",
       "completeKycFirst": "Lengkapkan KYC MYLawatan dahulu",
+      "verifyEmailForWithdrawal": "Sahkan e-mel anda dahulu",
+      "verifyEmailForWithdrawalDescription": "Sahkan alamat e-mel akaun sebelum meminta pengeluaran.",
+      "verifyPhoneForWithdrawal": "Sahkan telefon anda dahulu",
+      "verifyPhoneForWithdrawalDescription": "Telefon yang disahkan diperlukan sebelum meminta pengeluaran.",
+      "completeProfileForWithdrawal": "Lengkapkan profil dahulu",
+      "completeProfileForWithdrawalDescription": "Isi nama, foto, bio, bandar dan negara sebelum meminta pengeluaran.",
       "checkingSetup": "Menyemak penyediaan pengeluaran",
       "setupEarningsOptional": "Sediakan pengeluaran pendapatan (pilihan)",
       "approvedBankDestination": "Pengeluaran bank yang diluluskan akan dihantar ke akaun yang disimpan oleh Stripe.",
@@ -1925,7 +1938,18 @@
       "later": "Kemudian",
       "inProgress": "Sedang Diproses ({{count}})",
       "inProgress_one": "Sedang Diproses ({{count}})",
-      "inProgress_other": "Sedang Diproses ({{count}})"
+      "inProgress_other": "Sedang Diproses ({{count}})",
+      "withdrawalHistory": {
+        "title": "Sejarah pengeluaran",
+        "loading": "Memuatkan sejarah pengeluaran…",
+        "error": "Sejarah pengeluaran tidak dapat dimuatkan. Sila cuba lagi.",
+        "retry": "Cuba lagi",
+        "empty": "Tiada permohonan pengeluaran lagi.",
+        "unknownDestination": "Destinasi bayaran",
+        "page": "Halaman {{page}} daripada {{pages}} · {{total}} permohonan",
+        "previous": "Sebelumnya",
+        "next": "Seterusnya"
+      }
     },
     "profileSections": {
       "contact": "Butiran hubungan",
@@ -1999,7 +2023,7 @@
       "found": "{{count}} pesanan ditemui",
       "noMatch": "Tiada pesanan sepadan dengan penapis ini",
       "tryFilters": "Cuba kosongkan satu penapis atau cari aktiviti lain.",
-      "emptyDescription": "Sejarah tempahan dan pesanan anda akan muncul di sini selepas daftar keluar.",
+      "emptyDescription": "Sejarah tempahan dan pesanan anda akan muncul di sini selepas pembayaran.",
       "summaryOrders": "pesanan",
       "summaryPaid": "dibayar atau selesai",
       "summaryBookings": "dengan tempahan",
@@ -2133,7 +2157,7 @@
       "destinationCarousel": "Karusel destinasi",
       "destinationPage": "Halaman {{page}} daripada {{total}}",
       "exploreDestinations": "Teroka Destinasi",
-      "swipeDestinations": "Leret untuk meneroka semua {{count}} negeri.",
+      "swipeDestinations": "Leret untuk meneroka semua {{count}} negeri dan wilayah persekutuan.",
       "forYou": "Untuk Anda",
       "nearbyPartners": "Rakan Niaga Berdekatan",
       "nearbyPrompt": "Kongsi lokasi anda untuk mencari rakan niaga dalam lingkungan 20 km.",
@@ -2452,6 +2476,13 @@
         "fits_estimate": "Sesuai dengan anggaran perjalanan semasa",
         "unknown": "Tempoh lawatan atau anggaran perjalanan tidak diketahui"
       },
+      "invalidChange": "Semak tarikh, masa dan susunan hentian, kemudian cuba lagi.",
+      "accessChanged": "Akses perjalanan anda telah berubah. Log masuk semula dan muat semula perjalanan.",
+      "itemUnavailable": "Hentian atau masa ini tidak lagi tersedia. Muat semula perjalanan dan pilih pilihan lain.",
+      "resultUnknown": "Kami tidak dapat memastikan perubahan telah disimpan. Semak perjalanan tersimpan sebelum mencuba lagi.",
+      "serviceUnavailable": "Perkhidmatan perjalanan tidak tersedia buat sementara. Pelan semasa anda dikekalkan. Cuba lagi kemudian.",
+      "verifyFailed": "Kami tidak dapat menyemak perjalanan tersimpan. Biarkan halaman ini terbuka dan cuba semak lagi.",
+      "verifyState": "Semak perjalanan tersimpan",
       "versionConflict": "Perjalanan ini berubah dalam sesi lain. Input anda dikekalkan. Muat semula sebelum menyimpan lagi.",
       "legacyRestore": "Pulihkan perjalanan lama",
       "legacyRestoreHint": "Pelayar ini mempunyai perjalanan lama. Pulihkan sekali jika masih diperlukan.",
@@ -2854,9 +2885,9 @@
         "markerLabel_other": "{{state}}: {{count}} acara",
         "stateCountsEyebrow": "ACARA MENGIKUT NEGERI",
         "stateCountsTitle": "Cari acara mengikut negeri",
-        "activeStates": "negeri dengan acara",
+        "activeStates": "negeri dan wilayah persekutuan dengan acara",
         "totalEventsLabel": "acara disenaraikan",
-        "statesLabel": "negeri",
+        "statesLabel": "negeri dan wilayah persekutuan",
         "allMalaysia": "Seluruh Malaysia",
         "stateCountLabel_one": "{{state}}: {{count}} acara",
         "stateCountLabel_other": "{{state}}: {{count}} acara",
@@ -2864,9 +2895,9 @@
         "eventCount_other": "{{count}} acara",
         "eventsInMalaysia": "Acara di seluruh Malaysia",
         "eventsInState": "Acara di {{state}}",
-        "multipleStatesNote": "Satu acara mungkin muncul di beberapa negeri.",
-        "unlocatedCount_one": "{{count}} acara tidak dapat dipadankan dengan negeri.",
-        "unlocatedCount_other": "{{count}} acara tidak dapat dipadankan dengan negeri.",
+        "multipleStatesNote": "Satu acara mungkin muncul di lebih daripada satu negeri atau wilayah persekutuan.",
+        "unlocatedCount_one": "{{count}} acara tidak dapat dipadankan dengan negeri atau wilayah persekutuan.",
+        "unlocatedCount_other": "{{count}} acara tidak dapat dipadankan dengan negeri atau wilayah persekutuan.",
         "emptyStateTitle": "Belum ada acara akan datang di {{state}}",
         "emptyMalaysiaTitle": "Tiada acara akan datang untuk dipaparkan",
         "emptyDescription": "Pilih negeri lain atau lihat seluruh Malaysia."
@@ -2958,7 +2989,7 @@
         "pending": "Sedia untuk diambil",
         "collected": "Telah diambil",
         "legacy_completed": "Pesanan telah selesai",
-        "refund_paused": "Pengambilan dijeda semasa bayaran balik disemak",
+        "refund_paused": "Pengambilan dijeda kerana status bayaran balik. Semak butiran bayaran balik.",
         "unavailable": "Pengambilan tidak tersedia"
       }
     },
@@ -3151,7 +3182,7 @@
       "clearsIn": "Dijelaskan dalam {{count}} hari",
       "clearsIn_other": "Dijelaskan dalam {{count}} hari",
       "earnToWithdraw": "Peroleh komisen melalui perkongsian untuk membuat pengeluaran",
-      "withdrawableSpans": "Termasuk pendapatan ahli gabungan dan cadangan",
+      "withdrawableSpans": "Termasuk komisen afiliasi dan komisen rujukan",
       "confirmedReferrals": "{{count}} rujukan disahkan",
       "confirmedReferrals_other": "{{count}} rujukan disahkan",
       "noLink": "Anda belum mempunyai pautan afiliasi.",
@@ -3169,10 +3200,10 @@
       "clearsIn_one": "Dijelaskan dalam {{count}} hari",
       "confirmedReferrals_one": "{{count}} rujukan disahkan",
       "signInRequired": "Log masuk diperlukan",
-      "signInDescription": "Log masuk untuk melihat papan pemuka ahli gabungan anda.",
+      "signInDescription": "Log masuk untuk melihat papan pemuka afiliasi anda.",
       "eligibilityDescription": "Kongsi aktiviti kegemaran anda dan dapatkan komisen apabila seseorang menempah melalui pautan anda.",
       "verifyAccount": "Sahkan akaun saya",
-      "loadFailed": "Masalah berlaku semasa memuatkan papan pemuka ahli gabungan. Cuba muat semula halaman.",
+      "loadFailed": "Masalah berlaku semasa memuatkan papan pemuka afiliasi. Cuba muat semula halaman.",
       "description": "Kongsi pengalaman tempatan kegemaran anda dan jejaki ganjaran daripada pautan rujukan.",
       "cashOut": "Keluarkan Wang",
       "nextTier": " · {{count}} lagi untuk mencapai {{tier}} ({{percent}}%)",
@@ -3181,7 +3212,7 @@
       "topTier": " · anda berada pada tahap tertinggi",
       "copied": "Disalin",
       "copy": "Salin",
-      "myLink": "Pautan ahli gabungan saya",
+      "myLink": "Pautan afiliasi saya",
       "linkHint": "Kongsi pautan ini — anda memperoleh komisen apabila seseorang mengklik dan membuat tempahan.",
       "generating": "Sedang menjana…",
       "generateLink": "Jana pautan saya",
@@ -3198,10 +3229,11 @@
         "order": "pesanan {{amount}}",
         "cleared": "Dimasukkan ke dompet",
         "pendingToday": "Belum selesai · selesai hari ini",
+        "pendingNotice": "Komisen tertunda belum tersedia dalam dompet anda. Kami menyemak pemenuhan pesanan, bayaran balik dan tempoh pelepasan yang dikonfigurasi. Baki dompet sedia ada anda tidak terjejas.",
         "pendingIn_other": "Belum selesai · selesai dalam {{count}} hari",
         "pendingIn_one": "Belum selesai · selesai dalam {{count}} hari",
         "pendingIn": "Belum selesai · selesai dalam {{count}} hari",
-        "reversed": "Dibatalkan — pesanan dibatalkan atau dibayar balik",
+        "reversed": "Pendapatan dibalikkan — pesanan dibatalkan atau dibayar balik",
         "rejected": "Tidak diluluskan selepas semakan",
         "latest": "Memaparkan {{shown}} terkini daripada {{total}}",
         "noneInRange": "Tiada pendapatan dalam tempoh ini.",
@@ -3428,7 +3460,7 @@
       "simulateFailure": "Simulasikan kegagalan",
       "cancelPayment": "Batalkan pembayaran",
       "expireSession": "Tamatkan tempoh sesi",
-      "backToCheckout": "Kembali ke daftar keluar",
+      "backToCheckout": "Kembali ke pembayaran",
       "statuses": {
         "requires_action": "Tindakan diperlukan",
         "pending": "Belum selesai",
@@ -3605,9 +3637,9 @@
       "backToWallet": "Kembali ke dompet",
       "eyebrow": "Dompet MYLawatan",
       "title": "Resit pengeluaran",
-      "payoutDestination": "Destinasi pembayaran",
-      "defaultDestination": "Destinasi pembayaran yang dipilih",
-      "payoutReference": "Rujukan pembayaran: {{reference}}",
+      "payoutDestination": "Destinasi pengeluaran",
+      "defaultDestination": "Destinasi pengeluaran yang dipilih",
+      "payoutReference": "Rujukan pengeluaran: {{reference}}",
       "reviewNote": "Nota semakan",
       "settlementNotice": "Resit ini merekodkan permintaan pengeluaran dalam MYLawatan. Masa penyelesaian bergantung pada penyedia pembayaran yang dipilih ({{provider}}).",
       "moneyMovement": {
@@ -3615,17 +3647,17 @@
         "reserved": "Pendapatan dirizab",
         "withdrawn": "Pendapatan dikeluarkan",
         "earnings": "Pendapatan tersedia",
-        "pending": "Menunggu penyedia"
+        "pending": "Menunggu penyedia pembayaran"
       },
       "timeline": {
         "title": "Garis masa penyelesaian",
         "requested": "Pengeluaran diminta dan dana dirizab",
-        "submitted": "Pembayaran diluluskan dihantar kepada penyedia",
+        "submitted": "Pengeluaran yang diluluskan dihantar kepada penyedia",
         "callbackVerified": "Panggilan balik penyedia diterima dan tandatangan disahkan",
         "ledgerSettled": "Lejar dompet diselesaikan"
       },
       "proof": {
-        "title": "Bukti pembayaran",
+        "title": "Bukti pengeluaran",
         "verified": "Tandatangan disahkan",
         "eventId": "Peristiwa penyedia",
         "amount": "Amaun",
@@ -3636,24 +3668,24 @@
       },
       "guidance": {
         "failed": {
-          "title": "Pembayaran gagal — dana dipulihkan",
-          "message": "Amaun yang dirizab telah dikembalikan kepada pendapatan tersedia anda. Semak destinasi pembayaran sebelum membuat pengeluaran baharu, atau hubungi Sokongan jika butirannya betul."
+          "title": "Pengeluaran gagal — dana dikembalikan",
+          "message": "Amaun yang dirizab telah dikembalikan kepada pendapatan tersedia anda. Semak destinasi pengeluaran sebelum membuat permintaan baharu, atau hubungi Sokongan jika butirannya betul."
         },
         "processing": {
-          "title": "Pembayaran sedang diproses",
-          "message": "Penyedia pembayaran sedang memproses pengeluaran ini. Tiada tindakan diperlukan melainkan status tidak berubah dalam tempoh penyelesaian biasa penyedia."
+          "title": "Pengeluaran sedang diproses",
+          "message": "Penyedia pembayaran sedang memproses permintaan pengeluaran ini. Tiada tindakan diperlukan melainkan status tidak berubah dalam tempoh penyelesaian biasa penyedia."
         },
         "approvedReconciliation": {
           "title": "Penyelarasan penyedia sedang dijalankan",
           "message": "Dana anda kekal dirizab sementara pentadbir menyemak transaksi penyedia. Jangan buat pengeluaran lain untuk dana yang sama; hubungi Sokongan jika anda memerlukan kemas kini."
         },
         "approved": {
-          "title": "Diluluskan — pembayaran belum selesai",
+          "title": "Diluluskan — menunggu pembayaran pengeluaran",
           "message": "Dana anda kekal dirizab sementara pembayaran yang diluluskan disediakan. Tiada tindakan diperlukan daripada anda."
         },
         "completed": {
-          "title": "Pembayaran selesai",
-          "message": "Pengeluaran telah dihantar ke destinasi pembayaran pilihan anda."
+          "title": "Pengeluaran selesai",
+          "message": "Pengeluaran telah dihantar ke destinasi pilihan anda."
         }
       }
     },
@@ -3723,7 +3755,7 @@
       "noResults": "Tiada artikel sepadan dengan carian anda."
     },
     "empty": "Tiada artikel bantuan tersedia lagi.",
-    "backToExplore": "Kembali ke jelajah",
+    "backToExplore": "Kembali meneroka",
     "backToHelp": "Kembali ke Pusat Bantuan",
     "article": {
       "topics": "Topik",

@@ -1,4 +1,7 @@
 export type CustomerWalletBlockerCode =
+  | 'email_verification_required'
+  | 'phone_verification_required'
+  | 'profile_required'
   | 'kyc_required'
   | 'minimum_balance_required'
   | 'payout_destination_required'
@@ -6,6 +9,9 @@ export type CustomerWalletBlockerCode =
   | 'payout_provider_required';
 
 export type CustomerWalletNextAction =
+  | 'verify_email'
+  | 'verify_phone'
+  | 'complete_profile'
   | 'complete_kyc'
   | 'earn_minimum'
   | 'add_payout_destination'
@@ -35,6 +41,9 @@ export type CustomerWalletCapabilities = {
 };
 
 export function deriveCustomerWalletCapabilities(input: {
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  profileComplete?: boolean;
   kycStatus: string | null;
   availableEarningsSen: number;
   minimumWithdrawalSen: number;
@@ -58,6 +67,9 @@ export function deriveCustomerWalletCapabilities(input: {
     lastProviderCheckAt,
   });
 
+  if (input.emailVerified === false) return blocked('email_verification_required', 'verify_email');
+  if (input.phoneVerified === false) return blocked('phone_verification_required', 'verify_phone');
+  if (input.profileComplete === false) return blocked('profile_required', 'complete_profile');
   if (input.kycStatus !== 'approved') return blocked('kyc_required', 'complete_kyc');
   if (input.availableEarningsSen < input.minimumWithdrawalSen) return blocked('minimum_balance_required', 'earn_minimum');
   if (!input.destination && input.stripeFallback) {

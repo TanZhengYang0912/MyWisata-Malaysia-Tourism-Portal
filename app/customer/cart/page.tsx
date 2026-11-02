@@ -8,7 +8,7 @@ import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { CalendarClock, Check, ChevronDown, ImageOff, Info, Search, ShoppingCart, Tag, Trash2, X } from "lucide-react";
 import { cartItemKey, useCart } from "@/components/providers/cart";
-import { getBookingSlots, getOutlets, getVoucherByCode, getVouchers } from "@/backend/domains/catalogue";
+import { mapWithConcurrencyTwo, getBookingSlots, getOutlets, getVoucherByCode, getVouchers } from "@/backend/domains/catalogue";
 import { getSelectedOutletStock } from "@/lib/customer/outlet-shop";
 import { resolveCartLinePrice } from "@/backend/core/helpers";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -262,16 +262,20 @@ export default function CartPage() {
       return () => { active = false; };
     }
 
+    const controller = new AbortController();
     setLoadingVouchers(true);
-    Promise.all(candidateVouchers.map(async (voucher) => {
+    const validate = async (voucher: typeof candidateVouchers[number]) => {
       const response = await fetch("/api/vouchers/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: voucher.code, vendorId: selectedVendorIds.size === 1 ? [...selectedVendorIds][0] : undefined, cartSubtotal: subtotal, items: voucherValidationItems, intent: "view" }),
+        signal: controller.signal,
       });
       const payload = await response.json() as { data?: { valid?: boolean; discountAmount?: number } };
       return payload.data?.valid ? { voucher, discountAmount: Number(payload.data.discountAmount ?? 0) } : null;
-    }))
+    };
+    // Reuse the catalogue's bounded worker pool; cancellation stops new calls.
+    mapWithConcurrencyTwo(candidateVouchers, validate, controller.signal)
       .then((options) => {
         if (!active) return;
         setVoucherOptions(
@@ -285,13 +289,14 @@ export default function CartPage() {
         );
       })
       .catch(() => {
+        controller.abort();
         if (active) setVoucherOptions([]);
       })
       .finally(() => {
         if (active) setLoadingVouchers(false);
       });
 
-    return () => { active = false; };
+    return () => { active = false; controller.abort(); };
   }, [currentUser, candidateVouchers, selectedVendorIds, subtotal, voucherValidationItems]);
 
   const appliedVoucherOption = useMemo(() => appliedVoucher ? {

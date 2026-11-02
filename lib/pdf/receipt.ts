@@ -1,8 +1,8 @@
 import PDFDocument from 'pdfkit';
-import path from 'node:path';
 import type { AppLocale } from '@/lib/i18n/locale';
 import { emailCopy, emailTime, emailPaymentMethod } from '@/lib/email/copy';
 import { formatMYR } from '@/lib/i18n/format';
+import { registerPdfFonts } from '@/lib/pdf/font';
 
 export type ReceiptItem = {
   activityName: string;
@@ -30,10 +30,7 @@ export function generateReceiptPdf(data: ReceiptData): Promise<Buffer> {
     const copy = emailCopy(data.locale);
     const doc = new PDFDocument({ margin: 50, size: 'A4' });
     // Embed CJK glyphs for Chinese copy and Chinese names in any language.
-    const cjk = data.locale === 'zh-CN' || /[\u2e80-\u9fff\uf900-\ufaff]/u.test(JSON.stringify(data));
-    if (cjk) doc.registerFont('ReceiptCJK', path.join(process.cwd(), 'lib/pdf/fonts/NotoSansCJKsc-Regular.otf'));
-    const regular = cjk ? 'ReceiptCJK' : 'Helvetica';
-    const bold = cjk ? 'ReceiptCJK' : 'Helvetica-Bold';
+    const { regular, bold } = registerPdfFonts(doc, data.locale ?? 'en', JSON.stringify(data), 'Receipt');
     const chunks: Buffer[] = [];
 
     doc.on('data', (chunk: Buffer) => chunks.push(chunk));

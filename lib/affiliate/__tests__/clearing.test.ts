@@ -74,4 +74,20 @@ describe('atomic affiliate clearing', () => {
     expect(Date.parse(args.p_matured_before)).toBeGreaterThanOrEqual(before);
     expect(Date.parse(args.p_matured_before)).toBeLessThanOrEqual(Date.now() - 7 * 86_400_000);
   });
+
+  it('keeps an attribution pending when its order requires operational review', async () => {
+    const { service, attribution } = fixture();
+    mocks.rpc.mockImplementation(async (name: string) => {
+      if (name === 'clear_affiliate_commission') {
+        return { data: { outcome: 'order_review_required', reason: 'pickup_unconfirmed' }, error: null };
+      }
+      return { data: null, error: null };
+    });
+
+    const accepted = await acceptAttribution(service, attribution.id);
+
+    expect(accepted).toEqual({ outcome: 'order_review_required', reason: 'pickup_unconfirmed' });
+    expect(attribution.status).toBe('pending');
+    expect(mocks.notify).not.toHaveBeenCalled();
+  });
 });

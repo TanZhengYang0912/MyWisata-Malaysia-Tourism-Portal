@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
+import { isVerifiedContributor } from '@/lib/verification/eligibility';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,13 +103,20 @@ export async function GET(request: Request) {
     (value): value is string => Boolean(value),
   ))];
   const { data: users } = userIds.length > 0
-    ? await service.from('users').select('id,full_name,email,kyc_status').in('id', userIds)
+    ? await service.from('users').select('id,full_name,email,kyc_status,email_verified_at,phone_verified_at,profile_completed_at,avatar_url,bio,city,country').in('id', userIds)
     : { data: [] };
   const userMap = new Map(((users ?? []) as Array<{
     id: string;
     full_name: string | null;
     email: string | null;
     kyc_status: string | null;
+    email_verified_at: string | null;
+    phone_verified_at: string | null;
+    profile_completed_at: string | null;
+    avatar_url: string | null;
+    bio: string | null;
+    city: string | null;
+    country: string | null;
   }>).map((entry) => [entry.id, entry]));
 
   const items = rows.map((row) => {
@@ -137,7 +145,12 @@ export async function GET(request: Request) {
       author: {
         id: row.recommender_id,
         name: author?.full_name ?? 'MYLawatan member',
-        isKycVerified: author?.kyc_status === 'approved',
+        isVerifiedContributor: author ? isVerifiedContributor({
+          emailVerifiedAt: author.email_verified_at,
+          phoneVerifiedAt: author.phone_verified_at,
+          kycStatus: author.kyc_status,
+          profile: { fullName: author.full_name, avatarUrl: author.avatar_url, bio: author.bio, city: author.city, country: author.country, profileCompletedAt: author.profile_completed_at },
+        }) : false,
       },
       assignee: row.assigned_to ? {
         id: row.assigned_to,

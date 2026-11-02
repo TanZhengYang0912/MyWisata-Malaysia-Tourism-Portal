@@ -3,7 +3,7 @@ import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { preferenceSurveySchema } from '@/lib/validation/profile-schemas';
 import { normalizeCategorySlugs } from '@/lib/customer/discovery-categories';
 
-// POST: submit survey (promotes tier if all profile criteria met)
+// POST: save personalization answers without changing verification tier.
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -11,11 +11,12 @@ export async function POST(request: Request) {
 
   const parsed = await parseBody(request, preferenceSurveySchema);
   if (!parsed.ok) return parsed.response;
-  const { interests, budgetRange, mobilityNeeds, petFriendly, preferredRadiusKm, notes } = parsed.data;
+  const { interests, travelStyle, budgetRange, mobilityNeeds, petFriendly, preferredRadiusKm, notes } = parsed.data;
 
   const { error } = await supabase.rpc('complete_preference_survey', {
     p_user_id:             user.id,
     p_interests:           interests,
+    p_travel_style:        travelStyle,
     p_budget_range:        budgetRange,
     p_mobility_needs:      mobilityNeeds,
     p_pet_friendly:        petFriendly,
@@ -28,13 +29,7 @@ export async function POST(request: Request) {
     return apiFail('SURVEY_SAVE_FAILED', 'Unable to save preferences. Try again.', 500);
   }
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('tier')
-    .eq('id', user.id)
-    .single();
-
-  return apiOk({ submitted: true, tier: profile?.tier ?? null }, { status: 201 });
+  return apiOk({ submitted: true }, { status: 201 });
 }
 
 // PUT: update preferences (no tier effect — survey already counted)
@@ -45,12 +40,13 @@ export async function PUT(request: Request) {
 
   const parsed = await parseBody(request, preferenceSurveySchema);
   if (!parsed.ok) return parsed.response;
-  const { interests, budgetRange, mobilityNeeds, petFriendly, preferredRadiusKm, notes } = parsed.data;
+  const { interests, travelStyle, budgetRange, mobilityNeeds, petFriendly, preferredRadiusKm, notes } = parsed.data;
 
   const { error } = await supabase
     .from('preference_survey_responses')
     .update({
       interests,
+      travel_style:        travelStyle,
       budget_range:        budgetRange,
       mobility_needs:      mobilityNeeds,
       pet_friendly:        petFriendly,
@@ -76,7 +72,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('preference_survey_responses')
-    .select('interests, budget_range, mobility_needs, pet_friendly, preferred_radius_km, notes, learned_affinity, created_at, updated_at')
+    .select('interests, travel_style, budget_range, mobility_needs, pet_friendly, preferred_radius_km, notes, learned_affinity, created_at, updated_at')
     .eq('user_id', user.id)
     .single();
 

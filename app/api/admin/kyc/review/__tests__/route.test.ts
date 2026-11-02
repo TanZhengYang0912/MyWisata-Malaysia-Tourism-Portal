@@ -145,10 +145,14 @@ describe('POST /api/admin/kyc/review', () => {
     }));
 
     expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({
+    const body = await response.json();
+    expect(body).toMatchObject({
       data: null,
       error: { code: 'RPC_ERROR', message: 'KYC review could not be completed' },
     });
+    expect(body.error.requestId).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(response.headers.get('x-request-id')).toBe(body.error.requestId);
+    expect(JSON.stringify(body)).not.toContain('sensitive_table secret diagnostic');
   });
 
   it('returns the independent KYC outcome without a synthetic tier', async () => {

@@ -1,4 +1,4 @@
-# ADR-031: Preference Survey — Consumer Contract & Tier Promotion
+# ADR-031: Preference Survey — Personalization Contract
 
 **Status:** Accepted  
 **PR:** 031 — `031_preference_survey.sql`
@@ -7,23 +7,15 @@
 
 ## Context
 
-The preference survey is a one-time onboarding quiz that feeds the AI discovery engine (Member 2's domain). It must also trigger tier advancement for Member 3's `profile_complete` gate — but only if phone verification and full profile fields are already complete. Two questions had to be resolved before implementation:
-
-1. How does survey submission advance the user's tier without Member 3 and Member 2 coupling directly?
-2. What is the minimal schema contract so both members can build in parallel?
+The preference survey feeds personalized recommendations. It does not contribute to Profile completion or promote a verification tier. Profile completion uses only the five core fields: full name, photo, short bio, city, and country.
 
 ---
 
 ## Decisions
 
-### Atomic RPC — `complete_preference_survey`
+### Survey RPC — `complete_preference_survey`
 
-Survey submission does two things that must succeed or fail together:
-
-1. Insert the user's answers into `preference_survey_responses`.
-2. Call `promote_to_profile_complete(p_user_id)` if all other completion criteria are met.
-
-These are wrapped in a single SECURITY DEFINER RPC:
+Survey submission stores the user's preference answers. The SECURITY DEFINER RPC does not call Profile promotion:
 
 ```sql
 CREATE OR REPLACE FUNCTION complete_preference_survey(
@@ -37,19 +29,15 @@ BEGIN
   INSERT INTO preference_survey_responses (...)
   VALUES (...);
 
-  -- Idempotent: only promote if not already at or past this tier
-  PERFORM promote_to_profile_complete(p_user_id);
-EXCEPTION
-  WHEN unique_violation THEN NULL; -- survey already submitted, ignore
+  -- Upsert existing answers; verification tier remains unchanged.
 END;
 $$;
 ```
 
-The EXCEPTION block makes re-submission idempotent — a user who accidentally submits twice does not get an error, and does not get a duplicate row.
 
-### Four Core Questions (Minimum Contract)
+### Personalization Questions
 
-The survey schema is agreed between Member 2 (AI discovery consumer) and Member 3 (tier gate):
+The survey schema is the personalization input contract:
 
 | Column | Type | Values |
 |---|---|---|
@@ -58,38 +46,29 @@ The survey schema is agreed between Member 2 (AI discovery consumer) and Member 
 | `budget_range` | `TEXT` | `budget`, `mid_range`, `luxury` |
 | `mobility_needs` | `TEXT` | `none`, `limited`, `wheelchair` |
 
-Member 2 may add more columns later without changing the contract — the RPC only requires these four. Additional columns default to `NULL` if not supplied.
+The existing survey also stores budget, mobility, radius, pet-friendly, and notes preferences.
 
-### Tier Advancement Criteria
+### Profile Completion
 
-`promote_to_profile_complete` checks all four criteria atomically:
+`profile_completion_eligible` checks the five core fields:
 
 1. `profiles.full_name IS NOT NULL AND profiles.full_name != ''`
 2. `profiles.city IS NOT NULL`
 3. `profiles.avatar_url IS NOT NULL`
 4. `profiles.bio IS NOT NULL`
-5. Survey row exists for this user (`EXISTS (SELECT 1 FROM preference_survey_responses WHERE user_id = p_user_id)`)
+5. A valid short bio (existing completed profiles retain their previously accepted bio length)
 
-The survey is criterion #5. All five must be true. If the user skips the survey and fills everything else, they cannot reach `profile_complete` — the survey is mandatory.
+The survey is not a criterion. A customer who skips it can complete Profile and use the capabilities allowed by their other verified facts. Personalized recommendations become available after survey answers are saved.
 
-### Survey Is One-Time
+### Survey Can Be Updated
 
-`preference_survey_responses` has a UNIQUE constraint on `user_id`. Re-submission is silently ignored (EXCEPTION block above). A separate `PUT /api/profile/survey/update` route exists for users who want to update preferences later — this route does not re-trigger tier promotion.
-
-### Why Not a Trigger
-
-A trigger on `preference_survey_responses` INSERT that automatically promotes the tier would be simpler but:
-- Silent — hard to trace why a tier changed
-- Cannot be unit-tested without inserting rows
-- Couples Member 2's table to Member 3's tier logic invisibly
-
-The RPC call from the route is explicit, logged, and testable.
+`preference_survey_responses` has a UNIQUE constraint on `user_id`; the RPC upserts the row. Both POST and PUT save Travel Style and do not change Profile status.
 
 ---
 
 ## Scope
 
-- **Migration**: `preference_survey_responses` table; UNIQUE index on `user_id`; `complete_preference_survey` RPC; updated `promote_to_profile_complete` to include survey check.
+- **Migration**: restore `preference_survey_responses.travel_style`; keep the old seven-argument `complete_preference_survey` signature for existing clients; ensure survey saves do not promote Profile.
 - **`app/api/profile/survey/route.ts`**: POST calls `complete_preference_survey` RPC; PUT updates individual preferences (no tier effect).
 - **`lib/validation/profile-schemas.ts`**: `preferenceSurveySchema` added.
 - **Member 2 dependency**: Member 2's AI discovery reads `preference_survey_responses` directly — no API contract between members, just a shared table. Schema changes to additional columns must be coordinated.

@@ -75,6 +75,8 @@ function LoginContent() {
     } else if (queryError) {
       setError(GENERIC_ERROR);
     }
+    if (process.env.NODE_ENV === "production") return;
+
     const controller = new AbortController();
     const generation = ++demoRequestGeneration.current;
     setDemoLoadState("loading");
@@ -670,8 +672,8 @@ function LoginContent() {
         </Card>
       </main>
 
-      {/* DEV / DEMO ONLY: Seeded Demo Accounts (Placed in unused right-hand space on desktop, easily removable) */}
-      <aside className="w-full max-w-[490px] mx-auto mt-6 lg:mt-0 lg:fixed lg:right-6 xl:right-8 lg:top-16 xl:top-18 lg:w-[350px] xl:w-[370px] lg:z-20">
+      {/* Demo accounts are local development tools, not part of deployed login. */}
+      {process.env.NODE_ENV !== "production" && <aside className="w-full max-w-[490px] mx-auto mt-6 lg:mt-0 lg:fixed lg:right-6 xl:right-8 lg:top-16 xl:top-18 lg:w-[350px] xl:w-[370px] lg:z-20">
         <div className="rounded-2xl border border-border bg-card/95 p-4 shadow-sm backdrop-blur-md">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -756,7 +758,7 @@ function LoginContent() {
             {tAuth("demo.disclaimer")}
           </p>
         </div>
-      </aside>
+      </aside>}
 
       {/* Clean Minimal Footer */}
       <CustomerSiteFooter variant="slim" />

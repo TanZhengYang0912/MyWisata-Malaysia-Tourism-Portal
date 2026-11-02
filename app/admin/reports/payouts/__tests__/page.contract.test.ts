@@ -11,9 +11,10 @@ describe('payout report page contract', () => {
     expect(source).toContain('Available RM');
   });
 
-  it('renders observed vendor clawback shortfalls with a clear coverage note', () => {
+  it('renders observed vendor clawback shortfall data without explanatory copy', () => {
     expect(source).toContain('vendor_clawback_shortfall_month_rm');
     expect(source).toContain('vendor_clawback_open_shortfall_rm');
-    expect(source).toContain('payouts.riskExposureDescription');
+    expect(source).toContain('payouts.riskExposureTitle');
+    expect(source).not.toContain('payouts.riskExposureDescription');
   });
 });

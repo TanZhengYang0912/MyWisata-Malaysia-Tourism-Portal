@@ -9,6 +9,8 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { clearMaturedCommissions } from '@/lib/affiliate/clearing';
+import { createRequestId } from '@/lib/request-id';
+import { log } from '@/lib/log';
 
 export async function POST() {
   const supabase = await createClient();
@@ -21,7 +23,18 @@ export async function POST() {
   const service = createServiceClient();
   try {
     const result = await clearMaturedCommissions(service);
-    return apiOk(result);
+    const errors = result.errors.map(({ attributionId, critical }) => {
+      const requestId = createRequestId();
+      log('error', 'affiliate_clearing_row_failed', { requestId, attributionId, critical: Boolean(critical) });
+      return {
+        attributionId,
+        code: 'CLEARING_RESULT_UNCERTAIN',
+        message: 'We could not confirm this commission status. Refresh the list before taking another action. Contact support with the Request ID if it remains unclear.',
+        requestId,
+        critical,
+      };
+    });
+    return apiOk({ ...result, errors });
   } catch {
     return apiFail('CLEARING_FAILED', 'Unable to clear matured commissions', 500);
   }

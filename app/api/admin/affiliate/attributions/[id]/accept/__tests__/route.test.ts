@@ -59,12 +59,16 @@ describe('POST /api/admin/affiliate/attributions/[id]/accept', () => {
     expect(acceptAttribution).toHaveBeenCalledWith({}, ATTRIBUTION_ID);
   });
 
-  it('surfaces a real error outcome as a 500', async () => {
+  it('returns a safe uncertain-result message and Request ID for internal errors', async () => {
     isSuperAdmin.mockResolvedValue(true);
-    acceptAttribution.mockResolvedValue({ outcome: 'error', error: 'click not found' });
+    acceptAttribution.mockResolvedValue({ outcome: 'error', error: 'permission denied: internal schema secret' });
 
     const response = await call();
-    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(response.status).toBe(503);
+    expect(body.error.message).toMatch(/refresh/i);
+    expect(body.error.requestId).toBeTruthy();
+    expect(JSON.stringify(body)).not.toContain('internal schema secret');
   });
 
   it('returns 200 for a skipped outcome (e.g. already resolved) rather than an error', async () => {
@@ -79,5 +83,17 @@ describe('POST /api/admin/affiliate/attributions/[id]/accept', () => {
     isSuperAdmin.mockResolvedValue(true);
     acceptAttribution.mockResolvedValue({ outcome: 'review_required', error: 'Resolve the guest commission review first' });
     expect((await call()).status).toBe(409);
+  });
+
+  it('returns an actionable conflict while the order still needs operational review', async () => {
+    isSuperAdmin.mockResolvedValue(true);
+    acceptAttribution.mockResolvedValue({ outcome: 'order_review_required', reason: 'pickup_unconfirmed' });
+
+    const response = await call();
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body.error.message).toMatch(/order/i);
+    expect(JSON.stringify(body)).not.toMatch(/database|SQLSTATE|exception/i);
   });
 });

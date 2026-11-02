@@ -549,7 +549,7 @@ describe("LanguageSwitcher", () => {
     expect(mocks.changeLanguage).not.toHaveBeenCalledWith("ms");
     expect(mocks.fetch).not.toHaveBeenCalled();
     expect(mocks.refresh).not.toHaveBeenCalled();
-    expect(mocks.showFeedback).toHaveBeenCalledWith("error", translations["language.saveError"]);
+    expect(mocks.showFeedback).toHaveBeenCalledWith("error", { key: "language.saveError", namespace: "common" });
   });
 
   it("reports success through feedback and aria-live, refreshes, and never pushes", async () => {
@@ -570,7 +570,7 @@ describe("LanguageSwitcher", () => {
       body: JSON.stringify({ locale: "zh-CN" }),
     });
     expect(mocks.changeLanguage).toHaveBeenCalledWith("zh-CN");
-    expect(mocks.showFeedback).toHaveBeenCalledWith("success", "Language preference saved.");
+    expect(mocks.showFeedback).toHaveBeenCalledWith("success", { key: "language.saved", namespace: "common" });
     expect(liveRegion.textContent).toBe("Language preference saved.");
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
     expect(mocks.push).not.toHaveBeenCalled();
@@ -592,7 +592,7 @@ describe("LanguageSwitcher", () => {
 
     const liveRegion = findOne(container, (element) => element.getAttribute("aria-live") === "polite");
     expect(select.value).toBe("en");
-    expect(mocks.showFeedback).toHaveBeenCalledWith("error", "Unable to save language preference. Please try again.");
+    expect(mocks.showFeedback).toHaveBeenCalledWith("error", { key: "language.saveError", namespace: "common" });
     expect(liveRegion.textContent).toBe("Unable to save language preference. Please try again.");
     expect(mocks.refresh).not.toHaveBeenCalled();
     expect(mocks.push).not.toHaveBeenCalled();

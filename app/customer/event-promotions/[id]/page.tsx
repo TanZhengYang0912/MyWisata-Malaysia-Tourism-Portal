@@ -6,6 +6,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { getServerTranslation } from '@/lib/i18n/server';
 import { getFeaturedEventPromotions } from '@/lib/customer/event-promotions';
 import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
+import { LocalizedContent } from '@/components/customer/localized-content';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,7 +51,7 @@ export default async function EventPromotionDetailPage({ params }: Props) {
         <img src={promotion.posterUrl} alt="" className="h-72 w-full rounded-2xl border border-border object-cover md:h-full" />
 
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{promotion.title}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"><LocalizedContent entityType="vendor_event_promotion" entityId={promotion.id} field="title" sourceText={promotion.title} /></h1>
 
           <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1.5"><Store size={15} aria-hidden="true" /> {promotion.vendorName}</span>
@@ -60,7 +61,7 @@ export default async function EventPromotionDetailPage({ params }: Props) {
             </span>
           </div>
 
-          <p className="mt-6 whitespace-pre-wrap text-sm leading-relaxed text-foreground">{promotion.details}</p>
+          <p className="mt-6 whitespace-pre-wrap text-sm leading-relaxed text-foreground"><LocalizedContent entityType="vendor_event_promotion" entityId={promotion.id} field="details" sourceText={promotion.details} /></p>
         </div>
       </div>
     </main>

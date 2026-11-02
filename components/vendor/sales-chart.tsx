@@ -8,6 +8,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { formatMYR, formatNumber } from '@/lib/i18n/format';
 import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
+import type { DashboardSalesMode } from '@/lib/vendor/dashboard-metrics';
 
 interface SalesPoint {
   label: string;
@@ -15,7 +16,7 @@ interface SalesPoint {
   orders: number;
 }
 
-export default function SalesChart({ data }: { data: SalesPoint[] }) {
+export default function SalesChart({ data, salesMode = 'live' }: { data: SalesPoint[]; salesMode?: DashboardSalesMode }) {
   const { t, i18n } = useTranslation('vendor');
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [view, setView] = useState<'timeline' | 'list'>('timeline');
@@ -26,10 +27,10 @@ export default function SalesChart({ data }: { data: SalesPoint[] }) {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-            <LineChartIcon size={15} /> {t('charts.sales.livePerformance')}
+            <LineChartIcon size={15} /> {t(salesMode === 'demo' ? 'ui.dashboard.salesMode.demo' : 'charts.sales.livePerformance')}
           </div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-foreground">{t('charts.sales.performance')}</h2>
-          <p className="text-sm text-gray-500 dark:text-muted-foreground">{t('charts.sales.description')}</p>
+          <p className="text-sm text-gray-500 dark:text-muted-foreground">{t(salesMode === 'demo' ? 'charts.sales.demoDescription' : 'charts.sales.description')}</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg bg-gray-100 dark:bg-muted p-1">
@@ -55,7 +56,7 @@ export default function SalesChart({ data }: { data: SalesPoint[] }) {
               <span className="text-gray-500 dark:text-muted-foreground">{t('charts.sales.orders', { count: formatNumber(point.orders, locale) })}</span>
             </div>
           ))}
-          {!data.length && <div className="px-4 py-12 text-center text-sm text-gray-400 dark:text-muted-foreground">{t('charts.sales.noPaidActivity')}</div>}
+          {!data.length && <div className="px-4 py-12 text-center text-sm text-gray-400 dark:text-muted-foreground">{t(salesMode === 'demo' ? 'charts.sales.noDemoActivity' : 'charts.sales.noPaidActivity')}</div>}
         </div>
       ) : (
         <div className="min-h-[280px] flex-1">
@@ -71,7 +72,7 @@ export default function SalesChart({ data }: { data: SalesPoint[] }) {
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-gray-400 dark:text-muted-foreground">{t('charts.sales.noPaidActivity')}</div>
+            <div className="flex h-full items-center justify-center text-sm text-gray-400 dark:text-muted-foreground">{t(salesMode === 'demo' ? 'charts.sales.noDemoActivity' : 'charts.sales.noPaidActivity')}</div>
           )}
         </div>
       )}

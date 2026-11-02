@@ -12,16 +12,16 @@ const profileRoute = readFileSync(
 );
 
 describe("profile preference route contracts", () => {
-  it("uses only supported survey fields", () => {
+  it("persists Travel Style with personalization preferences only", () => {
     expect(surveyRoute).toContain("preferred_radius_km");
-    expect(surveyRoute).not.toMatch(
-      /travel_style|group_composition|p_travel_style|p_group_composition/,
-    );
+    expect(surveyRoute).toContain("travel_style");
+    expect(surveyRoute).toContain("p_travel_style");
+    expect(surveyRoute).not.toContain("group_composition");
   });
 
   it("maps the profile summary from the numeric radius column", () => {
     expect(profileRoute).toContain("preferred_radius_km");
     expect(profileRoute).not.toContain("preferred_distance");
-    expect(profileRoute).not.toContain("travel_style");
+    expect(profileRoute).toContain("travel_style");
   });
 });

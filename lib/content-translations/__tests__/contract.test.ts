@@ -17,6 +17,8 @@ describe('public content translation contract', () => {
     expect(isPublicTranslationField('review', 'authorName')).toBe(false);
     expect(isPublicTranslationField('review', 'user_id')).toBe(false);
     expect(isPublicTranslationField('promotion_campaign', 'summary')).toBe(true);
+    expect(isPublicTranslationField('vendor_event_promotion', 'details')).toBe(true);
+    expect(isPublicTranslationField('vendor_event_promotion', 'status')).toBe(false);
     expect(isPublicTranslationField('unknown', 'description')).toBe(false);
   });
 

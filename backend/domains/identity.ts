@@ -19,7 +19,7 @@ const USER_SELECT = "id,email,full_name,city,phone,tier,user_roles(vendor_id,out
 
 // Explicit allow-list for public identity data. Never replace this with a
 // users.* query: the public_users view is the column-level KYC boundary.
-const PUBLIC_USER_SELECT = "id,full_name,display_name,avatar_url,city,country,bio,is_kyc_verified,created_at";
+const PUBLIC_USER_SELECT = "id,full_name,display_name,avatar_url,city,country,bio,is_verified_contributor,created_at";
 
 /** Fetches only active, public-safe identity fields for contributor cards. */
 export async function getPublicUsers(ids: string[]): Promise<PublicUser[]> {

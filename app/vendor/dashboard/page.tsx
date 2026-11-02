@@ -17,8 +17,9 @@ import CompactThumbnail from '@/components/vendor/compact-thumbnail';
 import { VendorRevenueAssistantCard } from '@/components/vendor/revenue-assistant-card';
 import { dashboardFilterLabel } from '@/lib/vendor/performance-ranking';
 import { getServerTranslation } from '@/lib/i18n/server';
+import { normalizeDashboardSalesMode } from '@/lib/vendor/dashboard-metrics';
 
-interface Props { searchParams?: Promise<{ filter?: string; from?: string; to?: string }> }
+interface Props { searchParams?: Promise<{ filter?: string; from?: string; to?: string; sales?: string | string[] }> }
 
 const FILTERS: DashboardFilter[] = ['today', '7d', '30d', '12m', 'custom'];
 
@@ -39,17 +40,20 @@ export default async function VendorDashboard({ searchParams }: Props) {
   const { t } = await getServerTranslation('vendor');
   const params = await searchParams;
   const filter = normalizeFilter(params?.filter);
-  const data = await getVendorDashboardData(filter, { from: params?.from, to: params?.to });
+  const salesMode = normalizeDashboardSalesMode(params?.sales);
+  const isDemoSales = salesMode === 'demo';
+  const scopeLabel = t(`ui.dashboard.salesMode.${salesMode}`);
+  const data = await getVendorDashboardData(filter, { from: params?.from, to: params?.to }, salesMode);
   if (!data) redirect('/login');
   const isOutletManager = data.role === 'outlet_manager';
 
   const stats = isOutletManager ? [
-    { label: t('ui.dashboard.totalRevenue'), value: formatMYR(data.stats.totalRevenue), note: formatGrowth(data.stats.revenueGrowth), icon: Banknote, tone: 'teal' },
+    { label: t(isDemoSales ? 'ui.dashboard.demoRevenue' : 'ui.dashboard.totalRevenue'), value: formatMYR(data.stats.totalRevenue), note: formatGrowth(data.stats.revenueGrowth), icon: Banknote, tone: 'teal' },
     { label: t('ui.dashboard.totalOrders'), value: data.stats.totalOrders.toLocaleString(), note: formatGrowth(data.stats.ordersGrowth), icon: ShoppingBag, tone: 'blue' },
     { label: t('ui.dashboard.bookingActivity'), value: data.stats.bookingItems.toLocaleString(), note: t('ui.dashboard.bookingsInPeriod'), icon: CalendarDays, tone: 'teal' },
     { label: t('ui.dashboard.ordersToFulfil'), value: data.stats.pendingOrders.toLocaleString(), note: t('ui.dashboard.assignedOutletOperations'), icon: ShoppingBag, tone: 'amber' },
   ] : [
-    { label: t('ui.dashboard.totalRevenue'), value: formatMYR(data.stats.totalRevenue), note: formatGrowth(data.stats.revenueGrowth), icon: Banknote, tone: 'teal' },
+    { label: t(isDemoSales ? 'ui.dashboard.demoRevenue' : 'ui.dashboard.totalRevenue'), value: formatMYR(data.stats.totalRevenue), note: formatGrowth(data.stats.revenueGrowth), icon: Banknote, tone: 'teal' },
     { label: t('ui.dashboard.totalOrders'), value: data.stats.totalOrders.toLocaleString(), note: formatGrowth(data.stats.ordersGrowth), icon: ShoppingBag, tone: 'blue' },
     { label: t('ui.dashboard.activeListings'), value: data.stats.activeProducts.toLocaleString(), note: t('ui.dashboard.publishedProducts'), icon: Compass, tone: 'amber' },
     { label: t('ui.dashboard.outletsManaged'), value: data.stats.activeOutlets.toLocaleString(), note: t('ui.dashboard.acrossMalaysia'), icon: MapPinned, tone: 'rose' },
@@ -66,7 +70,7 @@ export default async function VendorDashboard({ searchParams }: Props) {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <DashboardFilterControl />
-          <div className="inline-flex items-center gap-2 rounded-xl border border-primary/10 bg-secondary px-4 py-2 text-sm font-semibold text-primary"><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-nature-green/60 opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" /></span>{t('ui.dashboard.live')}</div>
+          <div className="inline-flex items-center gap-2 rounded-xl border border-primary/10 bg-secondary px-4 py-2 text-sm font-semibold text-primary"><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-nature-green/60 opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" /></span>{isDemoSales ? scopeLabel : t('ui.dashboard.live')}</div>
         </div>
       </header>
 
@@ -81,14 +85,14 @@ export default async function VendorDashboard({ searchParams }: Props) {
         ))}
       </section>
 
-      {(data.stats.simulatedOrders > 0 || data.stats.unverifiedOrders > 0) && <section className="rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-500/10 p-5" role="status">
+      {(isDemoSales || data.stats.simulatedOrders > 0 || data.stats.unverifiedOrders > 0) && <section className="rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-500/10 p-5" role="status">
         <div className="flex items-start gap-3">
           <AlertTriangle size={19} className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-200" />
           <div className="min-w-0">
-            <h2 className="font-semibold text-amber-950 dark:text-amber-200">{t('ui.dashboard.salesProvenanceTitle')}</h2>
-            <p className="mt-1 text-sm leading-6 text-amber-900 dark:text-amber-200">{t('ui.dashboard.salesProvenanceDescription')}</p>
+            <h2 className="font-semibold text-amber-950 dark:text-amber-200">{isDemoSales ? scopeLabel : t('ui.dashboard.salesProvenanceTitle')}</h2>
+            <p className="mt-1 text-sm leading-6 text-amber-900 dark:text-amber-200">{t(isDemoSales ? 'ui.dashboard.demoSalesDescription' : 'ui.dashboard.salesProvenanceDescription')}</p>
             <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm font-medium text-amber-950 dark:text-amber-200">
-              {data.stats.simulatedOrders > 0 && <span>{t('ui.dashboard.simulatedSales', { amount: formatMYR(data.stats.simulatedRevenue), count: data.stats.simulatedOrders })}</span>}
+              {data.stats.simulatedOrders > 0 && <span>{t(isDemoSales ? 'ui.dashboard.includedDemoSales' : 'ui.dashboard.simulatedSales', { amount: formatMYR(data.stats.simulatedRevenue), count: data.stats.simulatedOrders })}</span>}
               {data.stats.unverifiedOrders > 0 && <span>{t('ui.dashboard.unverifiedSales', { amount: formatMYR(data.stats.unverifiedRevenue), count: data.stats.unverifiedOrders })}</span>}
             </div>
           </div>
@@ -98,12 +102,12 @@ export default async function VendorDashboard({ searchParams }: Props) {
       {data.stats.totalOrders === 0 && <section className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-secondary/70 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-primary">{t('ui.dashboard.noOrdersPeriod')}</p><p className="mt-1 text-sm text-primary">{data.stats.activeProducts > 0 ? t('ui.dashboard.checkAnotherRange') : t('ui.dashboard.publishListing')}</p></div><div className="flex gap-2"><Link href="/vendor/products" className="rounded-lg bg-white dark:bg-card px-3 py-2 text-sm font-semibold text-primary ring-1 ring-primary/20">{t('ui.dashboard.manageListings')}</Link><Link href="/vendor/orders" className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white">{t('ui.dashboard.viewOrders')}</Link></div></section>}
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-6 shadow-sm lg:col-span-2"><SalesChart data={data.chart} /></div>
-        <OutletPieChart data={data.salesByProduct} total={data.totalProductSales} />
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-6 shadow-sm lg:col-span-2"><SalesChart key={salesMode} data={data.chart} salesMode={salesMode} /></div>
+        <OutletPieChart key={salesMode} data={data.salesByProduct} total={data.totalProductSales} salesMode={salesMode} />
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <PerformanceRankingCard kind="selling" periodLabel={dashboardFilterLabel(data.filter)} items={data.topSelling} href="/vendor/products" />
+        <PerformanceRankingCard kind="selling" periodLabel={dashboardFilterLabel(data.filter)} items={data.topSelling} href="/vendor/products" salesMode={salesMode} />
         <PerformanceRankingCard kind="rated" periodLabel={dashboardFilterLabel(data.filter)} items={data.topRated} href="/vendor/analytics" />
       </section>
 

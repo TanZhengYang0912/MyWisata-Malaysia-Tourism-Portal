@@ -35,7 +35,7 @@ type RecommendationResponse = {
     avatarUrl: string | null;
     city: string | null;
     country: string | null;
-    isKycVerified: boolean;
+    isVerifiedContributor: boolean;
   } | null;
 };
 
@@ -121,7 +121,7 @@ function RecommendationsContent() {
           category: r.categories?.slug ? getDiscoveryCategoryLabel(r.categories.slug) : r.categories?.name ?? "",
           state: r.state ?? "", status: r.status, qualityScore: 0, duplicate: false,
           author: r.author ? { id: r.author.id, name: r.author.name, avatarUrl: r.author.avatarUrl ?? undefined,
-            city: r.author.city ?? undefined, country: r.author.country ?? undefined, isKycVerified: Boolean(r.author.isKycVerified) } : undefined,
+            city: r.author.city ?? undefined, country: r.author.country ?? undefined, isVerifiedContributor: Boolean(r.author.isVerifiedContributor) } : undefined,
         })));
         setList({ key: requestKey, total: body.data.total, pages: body.data.totalPages, error: false });
       }).catch(() => { if (active) { setRecs([]); setList({ key: requestKey, total: 0, pages: 1, error: true }); } })
@@ -389,7 +389,7 @@ function RecommendationsContent() {
                   <p className="mt-1 text-xs text-muted-foreground">{tCustomer(`ui.recommendations.status.${r.status}`)}</p>
                   {r.status === "pending" && <p className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.recommendations.notEditable")}</p>}
                   {r.status === "changes_requested" && <button type="button" onClick={() => void openEditor(r.id)} className="mt-1 text-xs font-semibold text-primary hover:underline">{tCustomer("ui.recommendations.updateDetails")}</button>}
-                  {r.author && <div className="mt-1 flex items-center gap-2"><Link href={`/customer/profile/${r.author.id}`} className="text-xs font-semibold text-primary hover:underline">{tCustomer("ui.recommendations.viewContributor")}</Link><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>}
+                  {r.author && <div className="mt-1 flex items-center gap-2"><Link href={`/customer/profile/${r.author.id}`} className="text-xs font-semibold text-primary hover:underline">{tCustomer("ui.recommendations.viewContributor")}</Link><VerifiedContributorBadge verified={r.author.isVerifiedContributor} /></div>}
                 </div>
                 <StatusBadge status={r.status} />
               </div>
@@ -426,7 +426,7 @@ function RecommendationsContent() {
                     <Link href={`/customer/recommendations/${r.id}`} className="text-sm font-semibold text-foreground hover:text-primary hover:underline">{r.name}</Link>
                     <p className="text-xs text-muted-foreground">{r.category} · {r.state || "—"}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{tCustomer(`ui.recommendations.status.${r.status}`)}</p>
-                    {r.author && <div className="mt-1 flex items-center gap-2"><Link href={`/customer/profile/${r.author.id}`} className="text-xs font-semibold text-primary hover:underline">{tCustomer("ui.recommendations.viewContributor")}</Link><VerifiedContributorBadge verified={r.author.isKycVerified} /></div>}
+                    {r.author && <div className="mt-1 flex items-center gap-2"><Link href={`/customer/profile/${r.author.id}`} className="text-xs font-semibold text-primary hover:underline">{tCustomer("ui.recommendations.viewContributor")}</Link><VerifiedContributorBadge verified={r.author.isVerifiedContributor} /></div>}
                   </div>
                 </div>
                 <StatusBadge status={r.status} />

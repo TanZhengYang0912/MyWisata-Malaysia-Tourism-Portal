@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+const routeSource = readFileSync(resolve(process.cwd(), 'app/api/customer/orders/route.ts'), 'utf8');
 const pageSource = readFileSync(resolve(process.cwd(), 'app/customer/orders/page.tsx'), 'utf8');
 
 describe('customer order list references', () => {
@@ -18,8 +19,8 @@ describe('customer order list references', () => {
   });
 
   it('uses Malaysia calendar boundaries and renders order dates in MYT', () => {
-    expect(pageSource).toContain('malaysiaCalendarDateToIso(from, "start")');
-    expect(pageSource).toContain('malaysiaCalendarDateToIso(to, "end")');
+    expect(routeSource).toContain("malaysiaCalendarDateToIso(input.from, 'start')");
+    expect(routeSource).toContain("malaysiaCalendarDateToIso(input.to, 'end')");
     expect(pageSource).toContain('timeZone: "Asia/Kuala_Lumpur"');
     expect(pageSource).toContain('ui.orders.invalidDateRange');
   });

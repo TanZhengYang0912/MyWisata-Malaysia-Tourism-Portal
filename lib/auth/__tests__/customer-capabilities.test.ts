@@ -31,11 +31,11 @@ describe("customer capability compatibility", () => {
     const emailKycOnly = customerFacts({ kycStatus: "approved" });
 
     expect(resolveCustomerCapability(emailKycOnly, CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT))
-      .toMatchObject({ allowed: true });
+      .toMatchObject({ allowed: false, blockerCode: "PHONE_VERIFICATION_REQUIRED" });
     expect(resolveCustomerCapability(emailKycOnly, CUSTOMER_CAPABILITY.AFFILIATE_FULL))
-      .toMatchObject({ allowed: true });
+      .toMatchObject({ allowed: false, blockerCode: "PHONE_VERIFICATION_REQUIRED" });
     expect(resolveCustomerCapability(emailKycOnly, CUSTOMER_CAPABILITY.WITHDRAWAL))
-      .toMatchObject({ allowed: true });
+      .toMatchObject({ allowed: false, blockerCode: "PHONE_VERIFICATION_REQUIRED" });
     expect(resolveCustomerCapability(emailKycOnly, CUSTOMER_CAPABILITY.CHECKOUT))
       .toMatchObject({ allowed: true });
   });
@@ -45,7 +45,7 @@ describe("customer capability compatibility", () => {
 
     expect(Object.values(CUSTOMER_CAPABILITY).every((capability) => capability in snapshot)).toBe(true);
     expect(snapshot["commerce.checkout"].allowed).toBe(true);
-    expect(snapshot["recommendation.submit"].blockerCode).toBe("PROFILE_OR_KYC_REQUIRED");
+    expect(snapshot["recommendation.submit"].blockerCode).toBe("PROFILE_REQUIRED");
   });
 
   it("maps an entitlement blocker to the legacy access result", () => {

@@ -18,7 +18,8 @@ export async function POST(request:Request) {
   const parsedReference = parseOrderReference(body.data.orderReference ?? body.data.orderId ?? '');
   const hasReference = Boolean(body.data.orderReference || body.data.orderId);
   if (hasReference && !parsedReference) return response();
-  const service=createServiceClient();
+  try {
+  const service=createServiceClient({ signal: AbortSignal.timeout(10_000) });
   const emailHash = hashGuestCredential(body.data.email.toLowerCase());
   if (!await reserveGuestRateLimit(`recovery-email:${emailHash}`,3,3600)) return response();
   const query = service.from('orders').select('id,contact_email')
@@ -26,12 +27,19 @@ export async function POST(request:Request) {
     .in('status',['pending_payment','paid','completed']);
   const {data,error}=parsedReference
     ? await query.eq(parsedReference.kind === 'id' ? 'id' : 'display_id',parsedReference.value).maybeSingle()
-    : await query.ilike('contact_email',body.data.email).order('created_at',{ascending:false}).limit(1).maybeSingle();
+    : await query.ilike('contact_email',body.data.email.replace(/[\\%_]/g, '\\$&')).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(1).maybeSingle();
   if (error || !data) return response();
   if (!await reserveGuestRateLimit(`recovery-order:${data.id}`,3,3600)) return response();
   if (String(data.contact_email).toLowerCase()===body.data.email.toLowerCase()) {
     const window=Math.floor(Date.now()/3600000);
-    await service.rpc('queue_guest_order_access',{p_order_id:data.id,p_event_key:`guest-recovery:${hashGuestCredential(`${data.id}:${window}`)}`,p_reason:'Your requested private order link.'});
+    const eventKey = `guest-recovery:${hashGuestCredential(`${data.id}:${window}`)}`;
+    // A lost RPC response may already have committed. Reuse the same event key.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const { error: queueError } = await service.rpc('queue_guest_order_access', { p_order_id: data.id, p_event_key: eventKey, p_reason: 'Your requested private order link.' });
+      if (!queueError) break;
+      if (attempt === 1) console.error('[guest-order-recovery] access link enqueue failed', { orderId: data.id, code: queueError.code ?? 'unknown', window });
+    }
   }
+  } catch { console.error('[guest-order-recovery] recovery service unavailable'); }
   return response();
 }

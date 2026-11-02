@@ -2,12 +2,12 @@
 
 import {useRef, useState} from "react";
 import {useTranslation} from "react-i18next";
-import type {TripItem} from "@/backend/domains/trips";
+import type {TripItem, TripMutationCode} from "@/backend/domains/trips";
 import type {TripStop} from "./trip-planner-client";
 import {applyTripOrder,resolveTripOrigin} from "@/lib/customer/trip-planner";
 import {useAppDialog} from "@/components/providers/app-dialog";
 import type {TripMutationResult} from "../actions";
-import {addTripItemAction, clearTripItemsAction, deleteTripItemAction, reorderTripItemsAction, replaceTripItemAction, updateTripItemLocationAction, updateTripItemScheduleAction} from "../actions";
+import {getTripItemsStateAction, addTripItemAction, clearTripItemsAction, deleteTripItemAction, reorderTripItemsAction, replaceTripItemAction, updateTripItemLocationAction, updateTripItemScheduleAction} from "../actions";
 
 type StopInput = Omit<TripStop, "id"> & {id?: string};
 
@@ -15,11 +15,11 @@ export function useTripItems(tripId: string, initialItems: TripItem[], initialVe
   const [items, setItems] = useState(initialItems);
   const current = useRef(initialItems);
   const version = useRef(initialVersion);
-  const conflicted = useRef(false);
+  const blocked = useRef<TripMutationCode | null>(null);
   function stored<T>(result:TripMutationResult<T>):T {
     if(!result.ok) {
-      if(result.code === "TRIP_CHANGED") conflicted.current=true;
-      throw new Error("Trip mutation rejected");
+      if(result.code === "TRIP_CHANGED" || result.code === "TRIP_RESULT_UNKNOWN") blocked.current=result.code;
+      throw Object.assign(new Error("Trip mutation rejected"), {code:result.code ?? "TRIP_UNAVAILABLE"});
     }
     version.current=result.version;
     return result.value;
@@ -36,9 +36,15 @@ export function useTripItems(tripId: string, initialItems: TripItem[], initialVe
     setPending(count=>count+1);
     const task = queue.current.then(async()=>{
       setError(null);
-      try {if(conflicted.current) throw new Error("Trip changed");return await operation();}
-      catch {
-        const message = t(conflicted.current ? "ui.trip.versionConflict" : "strictMigration.tripPlanner.scheduleFailed");
+      try {if(blocked.current) throw Object.assign(new Error("Trip requires verification"), {code:blocked.current});return await operation();}
+      catch (error) {
+        const code = typeof error === "object" && error && "code" in error ? String(error.code) : "TRIP_RESULT_UNKNOWN";
+        if (code === "TRIP_RESULT_UNKNOWN") blocked.current = "TRIP_RESULT_UNKNOWN";
+        const message = t(code === "TRIP_CHANGED" ? "ui.trip.versionConflict"
+          : code === "TRIP_INVALID" ? "ui.trip.invalidChange"
+          : code === "TRIP_ACCESS_DENIED" ? "ui.trip.accessChanged"
+          : code === "TRIP_NOT_AVAILABLE" ? "ui.trip.itemUnavailable"
+          : code === "TRIP_RESULT_UNKNOWN" ? "ui.trip.resultUnknown" : "ui.trip.serviceUnavailable");
         setError(message);
         void alert(message);
         return undefined;
@@ -53,6 +59,16 @@ export function useTripItems(tripId: string, initialItems: TripItem[], initialVe
   const stops:TripStop[] = items.map(item=>({id:item.id,lat:item.lat,lng:item.lng,label:item.label,sublabel:item.sublabel,source:item.source,locationKind:item.kind,outletId:item.outlet_id ?? undefined}));
   return {
     items, stops, origin:resolveTripOrigin(items,null), pending:pending>0,error,
+    verify: async () => {
+      if (pending > 0) return;
+      setPending(count=>count+1);
+      try {
+        const result = await getTripItemsStateAction(tripId);
+        if (!result.ok) { setError(t("ui.trip.verifyFailed")); return; }
+        commit(result.items); version.current=result.version; blocked.current=null; setError(null);
+      } catch { setError(t("ui.trip.verifyFailed")); }
+      finally { setPending(count=>count-1); }
+    },
     has:(id:string)=>items.some(item=>item.id === id || item.experience_id === id),
     add:(stop:StopInput,schedule?:{date:string | null;time?:string | null})=>run(async()=>{
       const row=stored(await addTripItemAction(input(stop,schedule?.date,schedule?.time),version.current));

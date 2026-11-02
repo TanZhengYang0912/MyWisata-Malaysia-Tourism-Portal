@@ -40,3 +40,17 @@ describe('legacy Trip recovery is explicit',()=>{
     expect((await legacyCustomerTrips('owner')).map(row=>row.legacyId)).toEqual(['old']);
   });
 });
+
+// Safe failure categories must never expose the server's raw diagnostic text.
+describe('Trip failure recovery categories',()=>{
+  it.each([
+    ['trip_invalid','P0001','TRIP_INVALID'],
+    ['trip_schedule_unavailable','P0001','TRIP_NOT_AVAILABLE'],
+    ['authentication_required','P0001','TRIP_ACCESS_DENIED'],
+    ['private database diagnostic','XX000','TRIP_UNAVAILABLE'],
+    ['transport response lost','','TRIP_RESULT_UNKNOWN'],
+  ])('classifies %s safely',async(message,code,expected)=>{
+    const db={rpc:vi.fn(async()=>({data:null,error:{message,code}}))} as unknown as SupabaseClient;
+    await expect(writeTrip(db,'trip','version','schedule')).rejects.toMatchObject({code:expected,message:'Trip mutation rejected'});
+  });
+});

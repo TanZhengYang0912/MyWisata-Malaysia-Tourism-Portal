@@ -158,11 +158,10 @@ describe('POST /api/recommendations', () => {
     expect(update).toHaveBeenCalledWith({ suggested_place_id: 'internal-ipoh', place_resolution_status: 'suggested' });
   });
 
-  it('accepts a KYC-only entitlement without loading Profile completion facts', async () => {
-    mocks.rpc.mockResolvedValue({ data: '3bd3f3ef-8e4c-4bbc-b7f5-be5d9f9ae9fe', error: null });
-    mocks.serviceFrom.mockImplementation((table: string) => {
-      if (table === 'places') return { select: () => ({ eq: async () => ({ data: [], error: null }) }) };
-      throw new Error(`unexpected service table ${table}`);
+  it('returns a safe actionable error when the database verification gate rejects submission', async () => {
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: { message: 'verification_requirements_required: private database detail' },
     });
 
     const response = await POST(new Request('http://localhost/api/recommendations', {
@@ -175,7 +174,13 @@ describe('POST /api/recommendations', () => {
       }),
     }));
 
-    expect(response.status).toBe(201);
-    expect(mocks.from).not.toHaveBeenCalledWith('users');
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.error).toMatchObject({
+      code: 'VERIFICATION_REQUIRED',
+      message: 'Verify your email and phone and complete your Profile before submitting a recommendation',
+    });
+    expect(JSON.stringify(body)).not.toContain('private database detail');
+    expect(mocks.serviceRpc).not.toHaveBeenCalled();
   });
 });

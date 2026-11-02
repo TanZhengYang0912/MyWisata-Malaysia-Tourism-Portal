@@ -9,5 +9,5 @@ export default async function StaffMfaPage({ searchParams }: { searchParams: Pro
   const { response } = await requireStaffMfaSetup();
   if (response?.status === 401) redirect('/login');
   const params = await searchParams;
-  return <KycMfa next={safeStaffVerificationNext(params.next)} scope="staff" available={!response} />;
+  return <KycMfa next={safeStaffVerificationNext(params.next)} scope="staff" available={!response} unavailableReason={response?.status === 403 ? 'forbidden' : 'unavailable'} />;
 }

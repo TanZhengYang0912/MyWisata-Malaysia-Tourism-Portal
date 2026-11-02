@@ -3,9 +3,9 @@
 import { useTranslation } from "react-i18next";
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
-  User, Camera, MessageSquare, ClipboardList,
+  User, Camera, MessageSquare,
   Loader2, ArrowLeft, ArrowRight,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
@@ -16,7 +16,6 @@ import { VerificationPathCards } from "@/components/profile/verification-path-ca
 import { ProfileLocationFields } from "@/components/profile/profile-location-fields";
 import { ProfilePhotoPicker } from "@/components/profile/profile-photo-picker";
 import { ProfileSections } from "@/components/profile/profile-sections";
-import { PreferencesEditor } from "@/components/profile/preferences-editor";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { canVisitWizardStep, getWizardProgress, WIZARD_STEPS, type WizardStep } from "./wizard-progress";
 import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
@@ -34,7 +33,6 @@ export default function ProfilePage() {
 function ProfileWizard({ userId }: { userId: string | null }) {
   const { t: tCustomer } = useTranslation("customer");
   const { currentUser, refreshUser } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const continuation = postLoginPath(searchParams.get("next"));
   const { showFeedback } = useActionFeedback();
@@ -42,7 +40,6 @@ function ProfileWizard({ userId }: { userId: string | null }) {
   const [profile, setProfile] = useState<ProfileSummary | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [selectedStep, setSelectedStep] = useState<WizardStep | null>(null);
-  const [surveyBusy, setSurveyBusy] = useState(false);
   const mounted = useRef(false);
   const profileRequest = useRef(0);
 
@@ -236,7 +233,7 @@ function ProfileWizard({ userId }: { userId: string | null }) {
   // ── Bio handler ────────────────────────────────────────────────────────────
   async function submitBio() {
     if (profile?.verification.completedSteps.includes("bio") && bio.trim() === (profile.bio ?? "").trim()) {
-      advanceTo("survey");
+      advanceTo("bio");
       return;
     }
     const parsed = bioSchema.safeParse({ bio });
@@ -260,34 +257,13 @@ function ProfileWizard({ userId }: { userId: string | null }) {
       const [, savedProfile] = await Promise.all([refreshUser(), loadProfile()]);
       if (!mounted.current) return;
       if (!savedProfile) throw new Error("Profile refresh failed");
-      advanceTo("survey", savedProfile);
+      advanceTo("bio", savedProfile);
       showFeedback("success", tCustomer("ui.profileWizard.saveDetails"));
     } catch (cause) {
       setBioError(cause instanceof Error ? cause.message : tCustomer("ui.profileWizard.saveDetails"));
     } finally {
       setBioBusy(false);
     }
-  }
-
-  async function handlePreferencesSaved() {
-    const [, savedProfile] = await Promise.all([refreshUser(), loadProfile()]);
-    if (!mounted.current) return;
-    if (!savedProfile) throw new Error("Profile refresh failed");
-    setSelectedStep(savedProfile.verification.currentStep);
-    showFeedback("success", tCustomer("ui.preferencesEditor.saved"));
-    if (savedProfile.verification.complete && continuation) router.push(continuation);
-  }
-
-  function beforePreferencesSave() {
-    if (!profile) return false;
-    const pendingStep: WizardStep | null = fullName.trim() !== (profile.fullName ?? "").trim()
-      || city.trim() !== (profile.city ?? "").trim() || country.trim() !== (profile.country ?? "").trim()
-      || cityId !== profile.cityId || countryCode !== profile.countryCode ? "identity"
-      : avatarFile ? "avatar" : bio.trim() !== (profile.bio ?? "").trim() ? "bio" : null;
-    if (!pendingStep) return true;
-    setSelectedStep(pendingStep);
-    showFeedback("error", tCustomer("ui.profileWizard.saveStepFirst", { label: tCustomer(`ui.profileWizard.steps.${pendingStep}`) }));
-    return false;
   }
 
   if (!currentUser) return <CustomerPageShell><GuestAccountEmptyState title={tCustomer("ui.states.couldNotLoad")} description={tCustomer("ui.guest.accountHint")} nextPath={continuation ?? "/customer/profile"} /></CustomerPageShell>;
@@ -298,7 +274,7 @@ function ProfileWizard({ userId }: { userId: string | null }) {
   const isDone = profile.verification.complete && selectedStep == null;
   const activeStep = selectedStep && canVisitWizardStep(profile.verification, selectedStep) ? selectedStep : profile.verification.currentStep;
   const wizardProgress = getWizardProgress(profile.verification, isDone ? null : activeStep);
-  const isSaving = identityBusy || avatarBusy || bioBusy || surveyBusy;
+  const isSaving = identityBusy || avatarBusy || bioBusy;
   const localizedStepLabel = (label: string) => tCustomer(`ui.profileWizard.steps.${label.toLowerCase()}`);
 
   if (isDone) return (
@@ -317,6 +293,7 @@ function ProfileWizard({ userId }: { userId: string | null }) {
           {tCustomer("ui.profileWizard.stepOf", { current: wizardProgress.totalSteps, total: wizardProgress.totalSteps })} · {tCustomer("ui.profileWizard.current", { label: tCustomer("ui.profileWizard.steps.complete") })} · {tCustomer("ui.profileWizard.percentComplete", { percent: wizardProgress.percentage })}
         </div>
         {continuation && <Button asChild className="mt-4"><Link href={continuation}>{tCustomer("ui.profileWizard.continue")}</Link></Button>}
+        <Button asChild variant="outline" className="mt-4"><Link href="/customer/preferences">{tCustomer("ui.preferencesPage.title")}</Link></Button>
       </CustomerPageShell>
       <ProfileSections wide shellClassName="pt-0 sm:pt-0" showHeader={false} />
     </>
@@ -466,20 +443,6 @@ function ProfileWizard({ userId }: { userId: string | null }) {
         </fieldset>
       )}
 
-      {/* ── Step 4: Preferences ──────────────────────────────────────────── */}
-        <fieldset hidden={activeStep !== "survey"} disabled={isSaving} className="rounded-2xl border border-border bg-card p-6 space-y-5">
-          <div className="flex items-center gap-2">
-            <ClipboardList size={18} className="text-primary" />
-            <h2 className="font-bold text-foreground">{tCustomer("ui.preferencesPage.title")}</h2>
-          </div>
-          <PreferencesEditor
-            submitLabel={tCustomer("ui.kyc.completeProfile")}
-            onSaved={handlePreferencesSaved}
-            onBack={() => advanceTo("bio")}
-            onBeforeSave={beforePreferencesSave}
-            onBusyChange={setSurveyBusy}
-          />
-        </fieldset>
       </CustomerPageShell>
     </>
   );

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { INTEREST_SLUGS } from '@/backend/domains/preferences';
+import { INTEREST_SLUGS, TRAVEL_STYLES } from '@/backend/domains/preferences';
 import { isCountryCode } from '@/lib/location/countries';
 import { PROFILE_BIO_MIN_LENGTH, PROFILE_BIO_MAX_LENGTH } from '@/lib/verification/eligibility';
 
@@ -34,6 +34,7 @@ export const bioSchema = z.object({
 // straight to listings.
 export const preferenceSurveySchema = z.object({
   interests:         z.array(z.enum(INTEREST_SLUGS as [string, ...string[]])).min(1).max(4),
+  travelStyle:       z.enum(TRAVEL_STYLES.map(({ value }) => value) as [string, ...string[]]),
   budgetRange:       z.enum(['budget', 'mid_range', 'luxury']),
   mobilityNeeds:     z.enum(['none', 'limited', 'wheelchair']).default('none'),
   petFriendly:       z.boolean().default(false),

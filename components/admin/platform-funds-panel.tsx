@@ -119,7 +119,6 @@ export function PlatformFundsPanel() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-semibold"><Landmark size={18} aria-hidden="true" /> {t("reconciliation.funds.title")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("reconciliation.funds.description")}</p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={() => void load()} disabled={busy}><RefreshCw size={14} /> {t("reconciliation.funds.refresh")}</Button>
       </div>
@@ -140,9 +139,7 @@ export function PlatformFundsPanel() {
               <div className="flex justify-between gap-3"><dt className="text-muted-foreground">{t("reconciliation.funds.earnings.transferred")}</dt><dd className="font-medium tabular-nums">{money(funds.transferredSen)}</dd></div>
               <div className="flex justify-between gap-3 border-t border-border pt-2"><dt className="font-semibold">{t("reconciliation.funds.earnings.available")}</dt><dd data-available className="font-bold tabular-nums">{money(funds.availableSen)}</dd></div>
             </dl>
-            <p className="mt-3 text-xs text-muted-foreground">{t("reconciliation.funds.earnings.hint")}</p>
             <Button type="button" className="mt-3" onClick={() => { setFormError(""); setOpen(true); }} disabled={busy || funds.availableSen <= 0}><ArrowRightLeft size={15} /> {t("reconciliation.funds.recordButton")}</Button>
-            {funds.availableSen <= 0 && <p className="mt-2 text-xs text-muted-foreground">{t("reconciliation.funds.nothingAvailable")}</p>}
           </div>
         </div>
       )}

@@ -130,6 +130,7 @@
     "hidden_gem": "Hidden Gem"
   },
   "preferences": {
+    "travelStyles": { "solo": "Solo", "couple": "Couple", "family": "Family", "group": "Group" },
     "budgetRanges": {
       "budget": "Budget (< RM100.00/day)",
       "mid_range": "Mid-range (RM100.00–RM500.00/day)",
@@ -302,7 +303,7 @@
       "guestTitle": "Sign in to verify your phone",
       "guestDescription": "Sign in before starting phone verification.",
       "completeTitle": "Phone verified",
-      "completeDescription": "Booking, purchasing, checkout and basic AI recommendations are now available, subject to current policy.",
+      "completeDescription": "You can now make bookings and purchases, complete checkout, and use basic AI recommendations. Enjoy using MYLawatan!",
       "verified": "Phone number verified."
     },
     "actions": {
@@ -1379,6 +1380,7 @@
       "notesPlaceholder": "e.g. I love street food, avoid crowded malls, always travel with my dog…",
       "basedOnActivity": "Based on your activity",
       "interests": "Interests (select all that apply)",
+      "travelStyle": "Travel style",
       "budgetRange": "Budget range",
       "preferredDistance": "Preferred distance",
       "mobilityAccessibility": "Mobility & accessibility",
@@ -1874,6 +1876,12 @@
       "bankWithdrawalsRestricted": "Bank withdrawals temporarily restricted",
       "unableVerifyPayout": "Unable to verify payout account",
       "completeKycFirst": "Complete MYLawatan KYC first",
+      "verifyEmailForWithdrawal": "Verify your email first",
+      "verifyEmailForWithdrawalDescription": "Verify the email address on your account before requesting a withdrawal.",
+      "verifyPhoneForWithdrawal": "Verify your phone first",
+      "verifyPhoneForWithdrawalDescription": "A verified phone is required before requesting a withdrawal.",
+      "completeProfileForWithdrawal": "Complete your Profile first",
+      "completeProfileForWithdrawalDescription": "Add your name, photo, bio, city and country before requesting a withdrawal.",
       "checkingSetup": "Checking withdrawal setup",
       "setupEarningsOptional": "Set up earnings withdrawals (optional)",
       "approvedBankDestination": "Approved bank withdrawals will go to the account held by Stripe.",
@@ -1925,7 +1933,18 @@
       "later": "Later",
       "inProgress": "In Progress ({{count}})",
       "inProgress_one": "In Progress ({{count}})",
-      "inProgress_other": "In Progress ({{count}})"
+      "inProgress_other": "In Progress ({{count}})",
+      "withdrawalHistory": {
+        "title": "Withdrawal history",
+        "loading": "Loading withdrawal history…",
+        "error": "Could not load withdrawal history. Please try again.",
+        "retry": "Try again",
+        "empty": "No withdrawal requests yet.",
+        "unknownDestination": "Payout destination",
+        "page": "Page {{page}} of {{pages}} · {{total}} requests",
+        "previous": "Previous",
+        "next": "Next"
+      }
     },
     "profileSections": {
       "contact": "Contact details",
@@ -2452,6 +2471,13 @@
         "fits_estimate": "Fits the current travel estimate",
         "unknown": "Visit duration or travel estimate unknown"
       },
+      "invalidChange": "Check the dates, time and stop order, then try again.",
+      "accessChanged": "Your trip access has changed. Sign in again and refresh the trip.",
+      "itemUnavailable": "This stop or time is no longer available. Refresh the trip and choose another option.",
+      "resultUnknown": "We could not confirm whether the change was saved. Check the saved trip before trying again.",
+      "serviceUnavailable": "The trip service is temporarily unavailable. Your current plan is preserved. Try again later.",
+      "verifyFailed": "We could not check the saved trip. Keep this page open and try checking again.",
+      "verifyState": "Check saved trip",
       "versionConflict": "This trip changed in another session. Your input is preserved. Reload the trip before saving again.",
       "legacyRestore": "Restore old trips",
       "legacyRestoreHint": "This browser has older saved trips. Restore them once if you still need them.",
@@ -2958,7 +2984,7 @@
         "pending": "Ready to collect",
         "collected": "Collected",
         "legacy_completed": "Already completed",
-        "refund_paused": "Collection paused while refund is reviewed",
+        "refund_paused": "Collection paused due to refund status. Check refund details.",
         "unavailable": "Collection is unavailable"
       }
     },
@@ -3198,6 +3224,7 @@
         "order": "order {{amount}}",
         "cleared": "Cleared to wallet",
         "pendingToday": "Pending · clears today",
+        "pendingNotice": "Pending commissions are not available in your wallet yet. We check order fulfilment, refunds and the configured clearance period. Your existing wallet balance is unaffected.",
         "pendingIn_other": "Pending · clears in {{count}} days",
         "pendingIn_one": "Pending · clears in {{count}} day",
         "pendingIn": "Pending · clears in {{count}} days",

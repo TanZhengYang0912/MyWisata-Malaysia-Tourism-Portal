@@ -466,8 +466,13 @@ describe("StaffRolesTab", () => {
     await setValue(findOne(container, (element) => element.getAttribute("id") === "assignment-reason"), "Restore wallet review coverage");
 
     expect(container.textContent).not.toContain("accessControl.staffRoles.alreadyAssigned");
-    expect(findOne(container, (element) =>
-      element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.reviewGrant")).disabled).toBe(false);
+    // Employee assignment checks run on the next task. Wait for the observed
+    // permission result instead of assuming it finishes within a fixed delay.
+    await vi.waitFor(async () => {
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+      expect(findOne(container, (element) =>
+        element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.reviewGrant")).disabled).toBe(false);
+    });
   });
 
   it("shows a distinct empty result only after a completed staff search", async () => {

@@ -10,9 +10,9 @@
     "saveError": "无法保存语言偏好，请重试。"
   },
   "currency": {
-    "label": "参考币种",
-    "saved": "参考币种已更新。",
-    "saveError": "无法保存参考币种，请重试。",
+    "label": "显示货币",
+    "saved": "显示货币已更新。",
+    "saveError": "无法保存显示货币，请重试。",
     "rateUnavailable": "{{currency}} 参考汇率暂时不可用，当前价格以 MYR 显示。",
     "referenceOnly": "换算金额仅为估算，供参考使用。",
     "rateDate": "参考汇率日期：{{date}}。",
@@ -80,12 +80,13 @@
     "active": "活跃",
     "inactive": "未启用",
     "pending": "待处理",
+    "pendingSecondApproval": "等待第二位审核人批准",
     "pendingReview": "待审核",
     "changesRequested": "要求修改",
     "invited": "已邀请",
     "claimed": "已认领",
-    "onboarding": "入门中",
-    "vendorPendingReview": "待商家审核",
+    "onboarding": "入驻中",
+    "vendorPendingReview": "商家申请待审核",
     "converted": "商家已加入",
     "processing": "处理中",
     "onHold": "暂缓",
@@ -98,7 +99,11 @@
   },
   "errors": {
     "generic": "出错了，请重试。",
-    "network": "无法连接，请重试。"
+    "network": "无法连接，请重试。",
+    "referenceId": "问题编号：",
+    "copyReferenceId": "复制编号",
+    "referenceCopied": "已复制",
+    "referenceCopyUnavailable": "请选中上方编号并手动复制。"
   },
   "accessibility": {
     "dismissNotification": "关闭通知",
@@ -135,7 +140,7 @@
       "all": "全部",
       "wallet": "钱包",
       "bookings_purchases": "预订与购买",
-      "recommendations_affiliate": "推荐与联盟",
+      "recommendations_affiliate": "推荐与推广",
       "support": "客服支持",
       "account_security": "账户与安全",
       "messages": "消息",
@@ -152,11 +157,11 @@
         "attachmentBody": "发送了一个附件"
       },
       "withdrawalApproved": {
-        "title": "提现已批准——付款处理中",
+        "title": "提现已批准——打款处理中",
         "body": "您的提现已获批准，很快会转入您选择的收款账户。"
       },
       "withdrawalSecondApprovalPending": {
-        "title": "提现已部分批准——等待第二次审核",
+        "title": "提现第一步审核已完成——等待第二次审核",
         "body": "您的提现已通过第一次审核，还需要一次审核。"
       },
       "withdrawalSubmitted": {
@@ -225,6 +230,25 @@
         "title": "您的推荐“{{vendorName}}”已获批准",
         "body": "感谢您的推荐！我们很快会联系该商家。"
       },
+      "vendorLifecycle": {
+        "approved": {
+          "title": "您的商家 {{vendorName}} 已获批准",
+          "body": "您现在可以管理自己的门店和商品。"
+        },
+        "informationRequested": {
+          "title": "{{vendorName}} 需要补充资料"
+        },
+        "rejected": {
+          "title": "您的商家申请 {{vendorName}} 未获批准"
+        },
+        "suspended": {
+          "title": "您的商家 {{vendorName}} 账号已暂停"
+        },
+        "reactivated": {
+          "title": "您的商家 {{vendorName}} 账号已恢复",
+          "body": "您可以继续管理自己的门店和商品。"
+        }
+      },
       "kycSecurity": {
         "title": "KYC 安全告警",
         "purge_failed": "KYC 证件删除任务失败或部分失败（{{count}} 项删除失败）。",
@@ -279,7 +303,7 @@
     "title": "聊天",
     "myTickets": "我的工单",
     "closeChat": "关闭聊天",
-    "emptyPrompt": "可以询问奖励、联盟链接、提现、预订或验证相关问题。",
+    "emptyPrompt": "可以询问奖励、推广链接、提现、预订或验证相关问题。",
     "inputPlaceholder": "输入问题…",
     "send": "发送消息",
     "openChat": "与我们聊天",
@@ -351,7 +375,7 @@
     "unreadQueue": "{{name}}未读",
     "admin": "系统管理",
     "preferences": "偏好设置",
-    "navigate": "切换项",
+    "navigate": "移动选择",
     "select": "确认选择",
     "openPalette": "命令面板"
   },

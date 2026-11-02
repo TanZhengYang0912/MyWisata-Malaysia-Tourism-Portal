@@ -5,6 +5,15 @@ export type DashboardPayment = {
 };
 
 export type DashboardSaleClass = 'verified' | 'simulated' | 'unverified' | 'excluded';
+export type DashboardSalesMode = 'live' | 'demo';
+
+export function normalizeDashboardSalesMode(value: unknown): DashboardSalesMode {
+  return value === 'demo' ? 'demo' : 'live';
+}
+
+export function matchesDashboardSalesMode(sale: DashboardSaleClass, mode: DashboardSalesMode): boolean {
+  return sale === (mode === 'demo' ? 'simulated' : 'verified');
+}
 export type DashboardPaymentMode = 'live' | 'test' | 'demo' | 'mixed' | 'unknown';
 export type DashboardPaymentProvider = 'demo' | 'stripe' | 'tng' | 'grabpay' | 'bank_transfer' | 'other' | 'mixed' | 'unknown';
 
@@ -33,7 +42,9 @@ function paymentProviderKey(provider: string | null | undefined): DashboardPayme
 }
 
 function paymentMode(payment: DashboardPayment): Exclude<DashboardPaymentMode, 'mixed'> {
-  if (payment.provider?.toLowerCase() === 'demo') return 'demo';
+  const provider = payment.provider?.trim().toLowerCase();
+  if (!provider) return 'unknown';
+  if (provider === 'demo') return 'demo';
   if (payment.is_live === true) return 'live';
   if (payment.is_live === false) return 'test';
   return 'unknown';
@@ -64,12 +75,12 @@ export function classifyDashboardSale(orderStatus: string | null | undefined, pa
   const successfulPayments = (payments ?? []).filter((payment) => payment.status === 'succeeded');
   if (!successfulPayments.length) return 'unverified';
 
-  const livePayments = successfulPayments.filter((payment) => payment.is_live === true && payment.provider !== 'demo');
-  if (livePayments.length === successfulPayments.length) return 'verified';
-  if (livePayments.length === 0) return 'simulated';
+  const modes = successfulPayments.map(paymentMode);
+  if (modes.every((mode) => mode === 'live')) return 'verified';
+  if (modes.every((mode) => mode === 'demo' || mode === 'test')) return 'simulated';
 
-  // Mixed successful sources cannot safely attribute the full order value to
-  // live revenue, so keep the order visible as unverified context.
+  // Unknown or mixed successful sources cannot safely attribute the full order
+  // value to either view. Switching the display must not turn them into sales.
   return 'unverified';
 }
 

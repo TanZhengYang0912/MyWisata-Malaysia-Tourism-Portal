@@ -4,7 +4,7 @@ import type { PublicTranslationRequestItem } from '../contract';
 
 function queryResult(data: unknown) {
   const builder: Record<string, unknown> = {};
-  for (const method of ['select', 'in', 'eq']) builder[method] = vi.fn(() => builder);
+  for (const method of ['select', 'in', 'eq', 'gte']) builder[method] = vi.fn(() => builder);
   builder.then = (resolve: (value: unknown) => unknown) => Promise.resolve({ data, error: null }).then(resolve);
   return builder;
 }
@@ -54,5 +54,21 @@ describe('loadPublicContentSources', () => {
     expect(productQuery.eq).toHaveBeenCalledWith('status', 'active');
     expect(productQuery.eq).toHaveBeenCalledWith('review_status', 'approved');
     expect(sources.size).toBe(2);
+  });
+
+  it('loads only paid, in-date event-promotion copy and never selects payment fields', async () => {
+    const query = queryResult([{ id: 'event-1', title: 'Food festival', details: 'Local food stalls' }]);
+    const from = vi.fn(() => query);
+    const db = { from } as never;
+    const items: PublicTranslationRequestItem[] = [{ entityType: 'vendor_event_promotion', entityId: 'event-1', fields: ['title', 'details'] }];
+
+    const sources = await loadPublicContentSources(db, items);
+
+    expect(from).toHaveBeenCalledWith('vendor_event_promotions');
+    expect(query.select).toHaveBeenCalledWith('id,title,details');
+    expect(query.eq).toHaveBeenCalledWith('status', 'paid');
+    expect(query.gte).toHaveBeenCalledWith('ends_on', expect.any(String));
+    expect(sources.get('vendor_event_promotion:event-1:title')?.sourceText).toBe('Food festival');
+    expect(sources.get('vendor_event_promotion:event-1:details')?.sourceText).toBe('Local food stalls');
   });
 });

@@ -11,6 +11,7 @@ describe("PreferencesEditor localization contract", () => {
   it("renders every option collection from its declared labelKey", () => {
     for (const collection of [
       "INTEREST_OPTIONS",
+      "TRAVEL_STYLES",
       "BUDGET_RANGES",
       "DISTANCE_OPTIONS",
       "MOBILITY_NEEDS",
@@ -21,9 +22,8 @@ describe("PreferencesEditor localization contract", () => {
     }
 
     expect(source).toContain("t(labelKey)");
-    expect(source).not.toContain("TRAVEL_STYLES");
     expect(source).not.toContain("GROUP_COMPOSITIONS");
-    expect(source).not.toContain("travelStyle");
+    expect(source).toContain("travelStyle");
     expect(source).not.toContain("groupComposition");
     expect(source).not.toMatch(/\.map\(\(\{[^}]*\blabel\b[^}]*\}\)[^\n]*>\{label\}</);
   });

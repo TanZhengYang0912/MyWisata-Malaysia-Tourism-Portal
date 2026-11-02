@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { bioSchema, preferenceSurveySchema } from '../profile-schemas';
 
 const validSurvey = {
-  interests: ['food'], budgetRange: 'mid_range', mobilityNeeds: 'none', preferredRadiusKm: 5,
+  interests: ['food'], travelStyle: 'solo', budgetRange: 'mid_range', mobilityNeeds: 'none', preferredRadiusKm: 5,
 };
 
 describe('preferenceSurveySchema', () => {
@@ -20,7 +20,7 @@ describe('preferenceSurveySchema', () => {
     expect(() => preferenceSurveySchema.parse({ ...validSurvey, interests: ['skydiving'] })).toThrow();
   });
 
-  it('rejects removed travel style and group composition fields', () => {
+  it('requires a supported Travel Style and rejects group composition fields', () => {
     expect(() => preferenceSurveySchema.parse({ ...validSurvey, travelStyle: 'mid_range' })).toThrow();
     expect(() => preferenceSurveySchema.parse({ ...validSurvey, groupComposition: ['solo'] })).toThrow();
   });

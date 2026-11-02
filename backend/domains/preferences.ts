@@ -12,6 +12,14 @@ export const INTEREST_OPTIONS = DISCOVERY_CATEGORIES
 export type InterestSlug = (typeof REAL_CATEGORY_SLUGS)[number];
 export const INTEREST_SLUGS = INTEREST_OPTIONS.map((o) => o.slug) as InterestSlug[];
 
+export const TRAVEL_STYLES = [
+  { value: "solo", labelKey: "preferences.travelStyles.solo" },
+  { value: "couple", labelKey: "preferences.travelStyles.couple" },
+  { value: "family", labelKey: "preferences.travelStyles.family" },
+  { value: "group", labelKey: "preferences.travelStyles.group" },
+] as const;
+export type TravelStyle = (typeof TRAVEL_STYLES)[number]["value"];
+
 export const BUDGET_RANGES = [
   { value: "budget",    label: "Budget (< RM 100/day)", labelKey: "preferences.budgetRanges.budget" },
   { value: "mid_range", label: "Mid-range (RM 100–500/day)", labelKey: "preferences.budgetRanges.mid_range" },

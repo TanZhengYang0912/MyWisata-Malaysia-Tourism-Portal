@@ -175,7 +175,6 @@ export default function ReconciliationPage() {
       <AdminPageHeader
         eyebrow={<span className="flex items-center gap-2"><Scale size={14} /> {t("reconciliation.eyebrow")}</span>}
         title={t("reconciliation.title")}
-        description={t("reconciliation.description")}
       />
 
       <PlatformFundsPanel />
@@ -190,8 +189,6 @@ export default function ReconciliationPage() {
             undated: data.eventOperations.summary.undated, overdue: data.eventOperations.summary.overdue,
             amount: formatMYRFromSen(data.eventOperations.summary.outstandingSen),
           })}</p>
-          <p className="text-xs text-muted-foreground">{t('eventOperations.deadlineHelp')}</p>
-          <p className="text-xs text-muted-foreground">{t('eventOperations.pickupHelp')}</p>
           <Button variant="outline" disabled={loading || busyCase !== null} onClick={() => void refreshPickups()}>{t('eventOperations.refreshPickups')}</Button>
           {data.eventOperations.jobs.map((job) => (
             <p key={job.jobKey} className="text-sm">
@@ -201,7 +198,6 @@ export default function ReconciliationPage() {
               {job.finishedAt && ` · ${new Intl.DateTimeFormat(locale, { timeZone: 'Asia/Kuala_Lumpur', dateStyle: 'short', timeStyle: 'short' }).format(new Date(job.finishedAt))}`}
             </p>
           ))}
-          <p className="text-xs text-muted-foreground">{t('eventOperations.filters.globalScope')}</p>
           <AdminFilterBar>
             <form className="flex min-w-[220px] flex-1 flex-wrap items-end gap-2.5" onSubmit={(event) => { event.preventDefault(); changeCaseFilter('caseSearch', caseSearchInput.trim()); }}>
               <label className="min-w-[220px] flex-1 text-sm"><span className="mb-1.5 block">{t('eventOperations.filters.search')}</span>
@@ -265,34 +261,22 @@ export default function ReconciliationPage() {
 
       <section className="mt-5 space-y-5">
           <AdminFilterBar>
-            <label className="text-sm"><span className="mb-1.5 block">{t('reconciliation.month')}</span>
-              <input type="month" value={period} onChange={(event) => { setPeriod(event.target.value); setFinancialPage(1); }} className={adminFilterControlClassName} />
-            </label>
-            <label className="min-w-[220px] flex-1 text-sm"><span className="mb-1.5 block">{t('reconciliation.filters.search')}</span>
-              <input className={`${adminFilterControlClassName} w-full`} maxLength={100} value={filters.search} onChange={(event) => changeFinancialFilter('search', event.target.value)} />
-            </label>
-            <label className="text-sm"><span className="mb-1.5 block">{t('reconciliation.columns.status')}</span>
-              <select className={adminFilterControlClassName} aria-label={t('reconciliation.columns.status')} value={filters.status} onChange={(event) => changeFinancialFilter('status', event.target.value)}>
+            <input type="month" aria-label={t('reconciliation.month')} value={period} onChange={(event) => { setPeriod(event.target.value); setFinancialPage(1); }} className={adminFilterControlClassName} />
+            <input aria-label={t('reconciliation.filters.search')} className={`${adminFilterControlClassName} min-w-[220px] flex-1`} maxLength={100} value={filters.search} onChange={(event) => changeFinancialFilter('search', event.target.value)} />
+            <select className={adminFilterControlClassName} aria-label={t('reconciliation.columns.status')} value={filters.status} onChange={(event) => changeFinancialFilter('status', event.target.value)}>
                 <option value="all">{t('orderOperations.statuses.all')}</option>
                 {[...new Set([...statusOptions, ...(filters.status === 'all' ? [] : [filters.status])])].map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
-              </select>
-            </label>
-            <label className="text-sm"><span className="mb-1.5 block">{t('reconciliation.metrics.platformNet')}</span>
-              <select className={adminFilterControlClassName} aria-label={t('reconciliation.metrics.platformNet')} value={filters.net} onChange={(event) => changeFinancialFilter('net', event.target.value as ReconciliationFilters['net'])}>
+            </select>
+            <select className={adminFilterControlClassName} aria-label={t('reconciliation.metrics.platformNet')} value={filters.net} onChange={(event) => changeFinancialFilter('net', event.target.value as ReconciliationFilters['net'])}>
                 {(['all', 'positive', 'zero', 'negative'] as const).map((net) => <option key={net} value={net}>{t(`reconciliation.filters.net.${net}`)}</option>)}
-              </select>
-            </label>
-            <label className="text-sm"><span className="mb-1.5 block">{t('staffConduct.filters.perPageAriaLabel')}</span>
-              <select className={adminFilterControlClassName} aria-label={t('staffConduct.filters.perPageAriaLabel')} value={financialPageSize} onChange={(event) => { setFinancialPageSize(Number(event.target.value) as (typeof PAGE_SIZES)[number]); setFinancialPage(1); }}>
+            </select>
+            <select className={adminFilterControlClassName} aria-label={t('staffConduct.filters.perPageAriaLabel')} value={financialPageSize} onChange={(event) => { setFinancialPageSize(Number(event.target.value) as (typeof PAGE_SIZES)[number]); setFinancialPage(1); }}>
                 {PAGE_SIZES.map((size) => <option key={size} value={size}>{t('ui.pagination.perPage', { count: size })}</option>)}
-              </select>
-            </label>
+            </select>
             <Button variant="outline" onClick={() => { setFilters({ search: '', status: 'all', net: 'all' }); setFinancialPage(1); }}>{t('reconciliation.filters.clear')}</Button>
             <Button onClick={() => void load()} disabled={loading || !period}><RefreshCw size={15} />{loading ? t('reconciliation.loading') : t('reconciliation.reload')}</Button>
             <Button variant="outline" onClick={downloadCsv} disabled={!ready || !filteredReport.rows.length}><Download size={15} />{t('reconciliation.exportCsv')}</Button>
           </AdminFilterBar>
-          <p className="text-xs text-muted-foreground">{t('reconciliation.filters.scope')}</p>
-          {ready && <p className="text-sm text-muted-foreground">{t('reconciliation.filters.count', { shown: filteredReport.rows.length, total: data?.rows.length ?? 0 })}</p>}
           {ready && <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {metrics.map(([label, sen]) => (

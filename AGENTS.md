@@ -132,6 +132,7 @@ Always:
 - Reuse existing UI components (buttons, inputs, cards, back links, and other
   shared primitives) instead of building new look-alikes. Consistency first.
   See `docs/coding-standards.md` → "Reuse existing UI components".
+- Use layout to explain controls; remove redundant visible labels and descriptions while preserving accessible names.
 - Use existing design tokens.
 - Keep changes minimal.
 - Preserve existing coding style.

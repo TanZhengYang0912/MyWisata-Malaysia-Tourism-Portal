@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   const recommendationFailure = customerCapabilityFailure(
     CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT,
     recommendationDecision,
-    'Complete your Profile or receive KYC approval before submitting a recommendation',
+    'Verify your email and phone and complete your Profile before submitting a recommendation',
   );
   if (recommendationFailure) return recommendationFailure;
 
@@ -62,11 +62,19 @@ export async function POST(request: Request) {
   });
 
   if (error) {
+    if (error.message.includes('verification_requirements_required')) {
+      return apiFail(
+        'VERIFICATION_REQUIRED',
+        'Verify your email and phone and complete your Profile before submitting a recommendation',
+        403,
+      );
+    }
     if (error.message.includes('rate_limited'))
       return apiFail('RATE_LIMITED', 'Daily recommendation limit reached — try again tomorrow', 429);
     if (error.message.includes('duplicate'))
       return apiFail('DUPLICATE', 'You already recommended a vendor with this name', 409);
-    return apiFail('DB_ERROR', error.message, 500);
+    console.error('[recommendations] submission failed', { message: error.message, userId: user.id });
+    return apiFail('RECOMMENDATION_FAILED', 'We could not submit your recommendation. Please try again.', 500);
   }
 
   await storeSuggestedPlace(data, value.location.latitude, value.location.longitude);
@@ -101,7 +109,7 @@ export async function GET(request: Request) {
   const { data: authors, error: authorError } = authorIds.length > 0
     ? await supabase
       .from('public_users')
-      .select('id,full_name,display_name,avatar_url,city,country,is_kyc_verified')
+      .select('id,full_name,display_name,avatar_url,city,country,is_verified_contributor')
       .in('id', authorIds)
     : { data: [], error: null };
   if (authorError) return apiFail('DB_ERROR', authorError.message, 500);
@@ -111,7 +119,7 @@ export async function GET(request: Request) {
     avatarUrl: author.avatar_url ?? null,
     city: author.city ?? null,
     country: author.country ?? null,
-    isKycVerified: Boolean(author.is_kyc_verified),
+    isVerifiedContributor: Boolean(author.is_verified_contributor),
   }]));
   return apiOk({ items: rows.map((row) => ({ ...row, author: authorById.get(row.recommender_id) ?? null })),
     page, pageSize, total: count ?? 0, totalPages: Math.max(1, Math.ceil((count ?? 0) / pageSize)) });
