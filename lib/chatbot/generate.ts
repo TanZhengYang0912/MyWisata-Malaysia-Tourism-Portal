@@ -12,7 +12,7 @@
 // this is a short-answer FAQ bot, not a reasoning-heavy task. Google moves
 // these aliases around — if this 404s or 429s again later, re-run the
 // ListModels check (see lib/chatbot/embed.ts's note) rather than guessing.
-import { prepareExternalText } from './pii';
+import { prepareExternalText, prepareKbText } from './pii';
 
 export interface GenerateDoc {
   title: string;
@@ -79,14 +79,18 @@ interface GeminiGenerateResponse {
  */
 /** `questionCount` > 1 doubles the output budget so every question gets its answer. */
 export async function generateAnswer(question: string, docs: GenerateDoc[], questionCount = 1): Promise<string | null> {
-  // A doc the privacy check rejects is dropped on its own instead of sinking
-  // every other doc with it (16 of 89 KB docs mention "KYC"). The combined
-  // prompt is still checked below, so nothing rejected is ever sent.
-  const safeDocs = docs.filter((d) => prepareExternalText(`TITLE: ${d.title}\nBODY: ${d.body}`).allowed);
+  // The user's question gets the full check; the help articles get the KB
+  // check (lib/chatbot/pii.ts prepareKbText), which ignores phrases like
+  // "KYC" that only mean something in a user's own message. A doc that fails
+  // is dropped on its own instead of sinking every other doc with it.
+  const preparedQuestion = prepareExternalText(question);
+  if (!preparedQuestion.allowed) throw new Error('sensitive_data_detected');
+  const safeDocs = docs.filter((d) => prepareKbText(`TITLE: ${d.title}\nBODY: ${d.body}`).allowed);
   if (safeDocs.length === 0) throw new Error('sensitive_data_detected');
   const context = safeDocs.map((d) => `TITLE: ${d.title}\nBODY: ${d.body}`).join('\n\n');
-  const userText = `CONTEXT:\n${context}\n\nQUESTION: ${question}`;
-  const preparedPayload = prepareExternalText(userText);
+  const userText = `CONTEXT:\n${context}\n\nQUESTION: ${preparedQuestion.clean}`;
+  // Personal data split across a doc/question boundary is still caught here.
+  const preparedPayload = prepareKbText(userText);
   if (!preparedPayload.allowed) throw new Error('sensitive_data_detected');
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) throw new Error('LLM_API_KEY not configured');

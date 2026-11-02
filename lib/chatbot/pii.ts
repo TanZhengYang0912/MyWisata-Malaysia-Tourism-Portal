@@ -68,22 +68,41 @@ function hasUnlabelledPhoneLikeNumber(text: string): boolean {
   return false;
 }
 
-/** Prepare arbitrary user text for an external model. Unstructured address/KYC/bank text is denied entirely. */
-export function prepareExternalText(text: string): ExternalTextResult {
-  if (
-    PRIVATE_CONTEXT.test(text)
-    || PRIVATE_CONTEXT_CJK.test(text)
-    || UNIT_ADDRESS.test(text)
+/** Addresses and phone-like numbers, which redactPII() cannot cleanly mask. */
+function hasStructuredPersonalData(text: string): boolean {
+  return UNIT_ADDRESS.test(text)
     || NUMBERED_STREET_ADDRESS.test(text)
     || CITY_POSTCODE_ADDRESS.test(text)
     || CHINESE_NUMBERED_ADDRESS.test(text)
-    || hasUnlabelledPhoneLikeNumber(text)
-  ) return { allowed: false };
+    || hasUnlabelledPhoneLikeNumber(text);
+}
+
+/** redactPII() as a gate: anything found rejects the whole text. */
+function rejectAnyPII(text: string): ExternalTextResult {
   const redacted = redactPII(text);
   // A partially redacted prompt can still reveal sensitive context. Reject
   // the whole prompt so the model never receives placeholders beside it.
   if (redacted.found) return { allowed: false };
   return { allowed: true, clean: redacted.clean, found: redacted.found };
+}
+
+/** Prepare arbitrary user text for an external model. Unstructured address/KYC/bank text is denied entirely. */
+export function prepareExternalText(text: string): ExternalTextResult {
+  if (PRIVATE_CONTEXT.test(text) || PRIVATE_CONTEXT_CJK.test(text) || hasStructuredPersonalData(text)) return { allowed: false };
+  return rejectAnyPII(text);
+}
+
+/**
+ * Prepare platform-written help-article text (chatbot KB). Skips the
+ * disclosure phrases ("KYC", "full name", "my bank account"): those flag a
+ * USER revealing something, and an article explaining KYC reveals nothing —
+ * applying them here blocked 16 of 89 KB articles, including every
+ * withdrawal one. Real personal data (IC, passport, email, phone, card,
+ * address) still blocks the text. Never use this for user input.
+ */
+export function prepareKbText(text: string): ExternalTextResult {
+  if (hasStructuredPersonalData(text)) return { allowed: false };
+  return rejectAnyPII(text);
 }
 
 /**

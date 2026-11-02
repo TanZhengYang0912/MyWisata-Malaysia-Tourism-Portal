@@ -81,3 +81,32 @@ describe('generateAnswer with a mix of safe and blocked docs', () => {
     expect(sent).not.toContain('TITLE: Contact');
   });
 });
+
+describe('generateAnswer help-article privacy check', () => {
+  afterEach(() => {
+    delete process.env.LLM_API_KEY;
+    vi.restoreAllMocks();
+  });
+
+  it('sends a withdrawal article that mentions KYC', async () => {
+    process.env.LLM_API_KEY = 'test-key';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      candidates: [{ content: { parts: [{ text: 'Complete KYC, then withdraw from Wallet.' }] } }],
+    }), { status: 200 }));
+
+    await expect(generateAnswer('How do I withdraw my earnings?', [
+      { title: 'How do I withdraw my earnings?', body: 'Complete KYC verification, add your bank account, then withdraw from Wallet.' },
+    ])).resolves.toBe('Complete KYC, then withdraw from Wallet.');
+    expect(String(fetchMock.mock.calls[0]?.[1]?.body)).toContain('Complete KYC verification');
+  });
+
+  it('still refuses a question where the user discloses their own details', async () => {
+    process.env.LLM_API_KEY = 'test-key';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }));
+
+    await expect(generateAnswer('my bank account is 1234 at Maybank, why is my withdrawal late?', [
+      { title: 'Wallet', body: 'Withdrawals take 3 working days.' },
+    ])).rejects.toThrow('sensitive_data_detected');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
