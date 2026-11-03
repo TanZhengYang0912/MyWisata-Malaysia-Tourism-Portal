@@ -3270,6 +3270,8 @@
       "planned": "已规划 {{scheduled}}/{{total}}",
       "buildRoute": "规划您的路线",
       "tripMap": "旅程地图",
+      "mapLoadFailed": "地图暂时无法加载，行程停靠点仍已保存。",
+      "retryMap": "重试地图",
       "placesToAdd": "可添加的地点",
       "placesReady": "有 {{count}} 个地点可添加",
       "toggleVendorPins": "切换商家图钉",
@@ -3301,7 +3303,17 @@
         "collapse": "收起 AI 规划栏",
         "expand": "展开 AI 规划栏",
         "resize": "调整 AI 规划栏宽度",
-        "basicSuggestions": "AI 暂时不可用或繁忙，目前显示基础建议。"
+        "basicSuggestions": "AI 暂时不可用或繁忙，目前显示基础建议。",
+        "scopeApplied": "推荐范围：{{state}}",
+        "scopeAppliedWithCategory": "推荐范围：{{state}} · {{category}}",
+        "chooseState": "行程提到了多个州属。请选择一个州属查看推荐。",
+        "noMatches": "这个地点和类别暂时没有可推荐的商家或项目。请尝试其他地点或类别。",
+        "category": {
+          "food": "美食",
+          "activity": "活动",
+          "accommodation": "住宿",
+          "retail": "购物"
+        }
       },
       "timeFor": "{{item}}的时间",
       "moveEarlier": "将 {{item}} 前移",

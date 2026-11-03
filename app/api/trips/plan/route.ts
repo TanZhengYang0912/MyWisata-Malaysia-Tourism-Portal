@@ -3,7 +3,7 @@ import { getTripById, getTripItems } from "@/backend/domains/trips";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { customerCapabilityFailure, resolveServerCustomerCapability } from "@/lib/auth/customer-capabilities.server";
 import { createClient } from "@/lib/supabase/server";
-import { generateTripSuggestions, getTripCopilotCandidates } from "@/lib/customer/trip-copilot";
+import { generateTripSuggestions, getTripCopilotCandidates, resolveTripSuggestionScope } from "@/lib/customer/trip-copilot";
 import type { ChatLanguage } from "@/lib/chatbot/language";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 import { consumeTripPlanRateLimit } from "./route-state";
@@ -17,6 +17,7 @@ const requestSchema = z.object({
   tripId: z.string().trim().min(1).max(128),
   preference: z.string().trim().max(140).default(""),
   locale: z.enum(["en", "ms", "zh-CN"]),
+  selectedState: z.string().trim().max(40).optional(),
 }).strict();
 
 function privateResponse(response: Response) {
@@ -50,7 +51,14 @@ export async function POST(request: Request) {
     if (trip.user_id !== user.id) return privateResponse(apiFail("FORBIDDEN", "Trip access denied", 403));
 
     const tripItems = await getTripItems(parsed.data.tripId, db);
+    const scope = resolveTripSuggestionScope(parsed.data.preference, trip.name, parsed.data.selectedState);
+    if (scope.ambiguousStates.length > 0) {
+      return privateResponse(apiOk({ mode: "needs-destination", suggestions: [], scope }));
+    }
     const candidates = await getTripCopilotCandidates({
+      state: scope.state,
+      categorySlug: scope.categorySlug,
+      preference: parsed.data.preference,
       excludeProductIds: tripItems.flatMap((item) => item.experience_id ? [item.experience_id] : []),
     }, db);
     const language: ChatLanguage = parsed.data.locale === "ms" ? "bm" : parsed.data.locale === "zh-CN" ? "zh" : "en";
@@ -74,6 +82,7 @@ export async function POST(request: Request) {
 
     return privateResponse(apiOk({
       mode: result.mode,
+      scope,
       suggestions: result.suggestions.flatMap((suggestion) => {
         const candidate = candidatesById.get(suggestion.productId);
         return candidate ? [{

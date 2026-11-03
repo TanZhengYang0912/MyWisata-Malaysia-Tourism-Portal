@@ -351,8 +351,9 @@
     "switchAccount": "Tukar akaun"
   },
   "guest": {
-    "mode": "Mod tetamu",
-    "startError": "Tidak dapat memulakan Mod tetamu. Sila cuba lagi."
+    "mode": "Tetamu",
+    "continue": "Teruskan sebagai tetamu",
+    "startError": "Tidak dapat meneruskan sebagai tetamu. Sila cuba lagi."
   },
   "cart": {
     "label": "Troli beli-belah",

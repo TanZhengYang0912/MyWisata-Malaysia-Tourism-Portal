@@ -26,6 +26,36 @@ export interface MapPin {
 // OpenFreeMap — free hosted vector tiles, no API key / signup / card. Swap to
 // "bright" or "positron" for a different look (one-line change).
 const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+const MAP_FAILURE_THRESHOLD = 3;
+const MAP_TILE_FAILURE_THRESHOLD = 6;
+const MAP_FAILURE_WINDOW_MS = 10_000;
+
+export type MapFailureSignal = { at: number; sourceId?: string; tileKey?: string };
+
+export function shouldEscalateMapFailure(signals: MapFailureSignal[], now: number) {
+  const recent = signals.filter((signal) => now - signal.at < MAP_FAILURE_WINDOW_MS
+    && !signal.sourceId?.startsWith("trip-weather-"));
+  const sourceFailures: Record<string, number> = {};
+  const sourceTileFailures: Record<string, string[]> = {};
+  let mapLevelFailures = 0;
+
+  for (const signal of recent) {
+    if (signal.tileKey) {
+      const sourceId = signal.sourceId ?? "unknown-source";
+      const tileKeys = sourceTileFailures[sourceId] ?? [];
+      if (!tileKeys.includes(signal.tileKey)) tileKeys.push(signal.tileKey);
+      sourceTileFailures[sourceId] = tileKeys;
+    } else if (signal.sourceId) {
+      sourceFailures[signal.sourceId] = (sourceFailures[signal.sourceId] ?? 0) + 1;
+    } else {
+      mapLevelFailures += 1;
+    }
+  }
+
+  return mapLevelFailures >= MAP_FAILURE_THRESHOLD
+    || Object.values(sourceFailures).some((count) => count >= MAP_FAILURE_THRESHOLD)
+    || Object.values(sourceTileFailures).some((tileKeys) => tileKeys.length >= MAP_TILE_FAILURE_THRESHOLD);
+}
 
 const SOURCE_ID = "pins";
 const CLUSTER_LAYER_ID = "clusters";
@@ -204,6 +234,10 @@ export function MaplibreMap({
 }) {
   const { t } = useTranslation("customer");
   const mapRef = useRef<MapRef | null>(null);
+  const [mapEpoch, setMapEpoch] = useState(0);
+  const [mapFailed, setMapFailed] = useState(false);
+  const mapErrorsRef = useRef<MapFailureSignal[]>([]);
+  const [cameraViewState, setCameraViewState] = useState({ longitude: center[1], latitude: center[0], zoom, bearing: 0, pitch: 0 });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cursor, setCursor] = useState("grab");
   // Re-fit only when the coordinates really change. A parent that passes a new
@@ -303,9 +337,11 @@ export function MaplibreMap({
   }
 
   return (
+    <div className="relative w-full" style={{ height }}>
     <Map
+      key={mapEpoch}
       ref={mapRef}
-      initialViewState={{ longitude: center[1], latitude: center[0], zoom, bearing: 0, pitch: 0 }}
+      initialViewState={cameraViewState}
       mapStyle={MAP_STYLE}
       style={{ height, width: "100%", borderRadius: "1rem" }}
       dragPan={!disableNavigationGestures}
@@ -320,9 +356,32 @@ export function MaplibreMap({
       cursor={disableNavigationGestures ? "default" : cursor}
       onMouseEnter={() => { if (!disableNavigationGestures) setCursor("pointer"); }}
       onMouseLeave={() => { if (!disableNavigationGestures) setCursor("grab"); }}
-      onLoad={() => { onApiLoaded?.(); fitMapToRoute(); }}
+      onLoad={() => { onApiLoaded?.(); if (mapEpoch === 0) fitMapToRoute(); }}
+      onError={(event) => {
+        const resourceError = event as typeof event & {
+          sourceId?: string;
+          tile?: { tileID?: { canonical?: { z: number; x: number; y: number } } };
+        };
+        const now = Date.now();
+        const canonical = resourceError.tile?.tileID?.canonical;
+        const tileKey = canonical ? `${canonical.z}/${canonical.x}/${canonical.y}` : undefined;
+        mapErrorsRef.current = [
+          ...mapErrorsRef.current.filter((signal) => now - signal.at < MAP_FAILURE_WINDOW_MS),
+          { at: now, sourceId: resourceError.sourceId, tileKey },
+        ];
+        if (shouldEscalateMapFailure(mapErrorsRef.current, now)) setMapFailed(true);
+      }}
       onMoveStart={() => onMapMovingChange?.(true)}
-      onMoveEnd={() => onMapMovingChange?.(false)}
+      onMoveEnd={(event) => {
+        onMapMovingChange?.(false);
+        setCameraViewState({
+          longitude: event.viewState.longitude,
+          latitude: event.viewState.latitude,
+          zoom: event.viewState.zoom,
+          bearing: event.viewState.bearing,
+          pitch: event.viewState.pitch,
+        });
+      }}
       onClick={handleMapClick}
     >
       {!redPins && <Source id={SOURCE_ID} type="geojson" data={pinsGeoJSON} cluster={cluster} clusterMaxZoom={14} clusterRadius={50}>
@@ -551,5 +610,10 @@ export function MaplibreMap({
         </Popup>
       )}
     </Map>
+    {mapFailed && <div role="alert" className="absolute inset-x-3 bottom-3 z-30 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card/95 p-3 shadow-lg backdrop-blur">
+      <p className="text-sm text-foreground">{t("strictMigration.tripPlanner.mapLoadFailed")}</p>
+      <button type="button" onClick={() => { mapErrorsRef.current = []; setMapFailed(false); setMapEpoch((epoch) => epoch + 1); }} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">{t("strictMigration.tripPlanner.retryMap")}</button>
+    </div>}
+    </div>
   );
 }

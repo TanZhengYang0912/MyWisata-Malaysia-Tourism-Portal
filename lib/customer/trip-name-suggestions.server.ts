@@ -4,6 +4,7 @@ import { callGemini } from "@/lib/admin-ai/gemini";
 import {
   fallbackTripNameSuggestions,
   parseTripNameSuggestions,
+  resolveTripNameLocale,
   type TripDuration,
 } from "@/lib/customer/trip-name";
 
@@ -26,14 +27,16 @@ Duration may be omitted. If included, it must exactly match the supplied days an
 Return plain text names without HTML, Markdown, commentary, or personal data.`;
 
 export async function generateTripNameSuggestions(input: TripNameSuggestionInput) {
-  const fallback = fallbackTripNameSuggestions(input.idea, input.duration, input.locale);
+  const locale = resolveTripNameLocale(input.idea, input.locale);
+  const localizedInput = { ...input, locale };
+  const fallback = fallbackTripNameSuggestions(input.idea, input.duration, locale);
   try {
     const raw = await callGemini(
       TRIP_NAME_SYSTEM_PROMPT,
-      JSON.stringify(input),
+      JSON.stringify(localizedInput),
       { temperature: 0.55, maxOutputTokens: 180 },
     );
-    const suggestions = parseTripNameSuggestions(raw, input.duration, input.locale);
+    const suggestions = parseTripNameSuggestions(raw, input.duration, locale);
     if (suggestions.length !== 3) return { suggestions: fallback, aiAvailable: false };
     return { suggestions, aiAvailable: true };
   } catch (error) {

@@ -3265,6 +3265,8 @@
       "planned": "{{scheduled}}/{{total}} planned",
       "buildRoute": "Build your route",
       "tripMap": "Trip map",
+      "mapLoadFailed": "The map tiles could not be loaded. Your trip stops are still saved.",
+      "retryMap": "Retry map",
       "placesToAdd": "Places to add",
       "placesReady": "{{count}} places ready to add",
       "toggleVendorPins": "Toggle vendor pins",
@@ -3296,7 +3298,17 @@
         "collapse": "Collapse AI planner",
         "expand": "Expand AI planner",
         "resize": "Resize AI planner",
-        "basicSuggestions": "Showing basic suggestions while AI is unavailable or busy."
+        "basicSuggestions": "Showing basic suggestions while AI is unavailable or busy.",
+        "scopeApplied": "Recommendations for {{state}}",
+        "scopeAppliedWithCategory": "{{category}} recommendations for {{state}}",
+        "chooseState": "Your trip mentions more than one state. Choose where to see recommendations.",
+        "noMatches": "No active listings match this destination and category yet. Try another place or category.",
+        "category": {
+          "food": "Food",
+          "activity": "Activities",
+          "accommodation": "Accommodation",
+          "retail": "Shopping"
+        }
       },
       "timeFor": "Time for {{item}}",
       "moveEarlier": "Move {{item}} earlier",

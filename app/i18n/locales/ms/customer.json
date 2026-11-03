@@ -3270,6 +3270,8 @@
       "planned": "{{scheduled}}/{{total}} dirancang",
       "buildRoute": "Bina laluan anda",
       "tripMap": "Peta perjalanan",
+      "mapLoadFailed": "Peta tidak dapat dimuatkan. Hentian perjalanan anda masih disimpan.",
+      "retryMap": "Cuba semula peta",
       "placesToAdd": "Tempat untuk ditambah",
       "placesReady": "{{count}} tempat sedia ditambah",
       "toggleVendorPins": "Togol pin vendor",
@@ -3301,7 +3303,17 @@
         "collapse": "Kecilkan perancang AI",
         "expand": "Besarkan perancang AI",
         "resize": "Ubah saiz perancang AI",
-        "basicSuggestions": "Memaparkan cadangan asas semasa AI tidak tersedia atau sibuk."
+        "basicSuggestions": "Memaparkan cadangan asas semasa AI tidak tersedia atau sibuk.",
+        "scopeApplied": "Cadangan untuk {{state}}",
+        "scopeAppliedWithCategory": "Cadangan {{category}} untuk {{state}}",
+        "chooseState": "Perjalanan anda menyebut lebih daripada satu negeri. Pilih negeri untuk melihat cadangan.",
+        "noMatches": "Tiada senarai aktif yang sepadan dengan destinasi dan kategori ini. Cuba tempat atau kategori lain.",
+        "category": {
+          "food": "Makanan",
+          "activity": "Aktiviti",
+          "accommodation": "Penginapan",
+          "retail": "Beli-belah"
+        }
       },
       "timeFor": "Masa untuk {{item}}",
       "moveEarlier": "Pindahkan {{item}} ke atas",

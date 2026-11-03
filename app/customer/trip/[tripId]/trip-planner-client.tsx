@@ -62,6 +62,16 @@ interface TripPlanSuggestion {
   category: string;
 }
 
+interface TripPlanScope {
+  state: string | null;
+  categorySlug: string | null;
+  ambiguousStates: string[];
+}
+
+function malaysiaStateKey(state: string) {
+  return state.replace(/\s+(.)/g, (_, letter: string) => letter.toUpperCase()).replace(/^./, (letter) => letter.toLowerCase());
+}
+
 const KL_CENTER: [number, number] = [3.139, 101.6869];
 const ROUTE_TRAFFIC_REFRESH_MS = 5 * 60 * 1000;
 const ROUTE_TRAFFIC_LEGEND = [
@@ -158,6 +168,8 @@ export function MapClient({
   const [aiSuggestions, setAiSuggestions] = useState<TripPlanSuggestion[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMode, setAiMode] = useState("");
+  const [aiScope, setAiScope] = useState<TripPlanScope | null>(null);
+  const [aiSelectedState, setAiSelectedState] = useState<string | null>(null);
   const [aiError, setAiError] = useState("");
   const [tripActionStatus, setTripActionStatus] = useState("");
   const [placesPage, setPlacesPage] = useState(1);
@@ -729,7 +741,7 @@ export function MapClient({
     window.addEventListener("pointerup", onUp);
   }
 
-  async function requestAiPlan(event?: ReactFormEvent<HTMLFormElement>) {
+  async function requestAiPlan(event?: ReactFormEvent<HTMLFormElement>, selectedState?: string) {
     event?.preventDefault();
     if (aiLoading) return;
     const controller = new AbortController();
@@ -747,21 +759,23 @@ export function MapClient({
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
         signal: controller.signal,
-        body: JSON.stringify({ tripId: tripData.id, preference: aiPreference.trim(), locale }),
+        body: JSON.stringify({ tripId: tripData.id, preference: aiPreference.trim(), locale, ...((selectedState ?? aiSelectedState) ? { selectedState: selectedState ?? aiSelectedState } : {}) }),
       });
-      const body = await response.json() as { data?: { suggestions?: TripPlanSuggestion[]; mode?: string }; error?: { code?: string } };
+      const body = await response.json() as { data?: { suggestions?: TripPlanSuggestion[]; mode?: string; scope?: TripPlanScope }; error?: { code?: string } };
       if (controller.signal.aborted || aiRequestRef.current !== controller) {
         if (timedOut) setAiError(tCustomer("strictMigration.tripPlanner.ai.timeout"));
         return;
       }
       if (!response.ok || !body.data) {
         setAiSuggestions([]);
+        setAiScope(null);
         setAiError(body.error?.code === "PHONE_VERIFICATION_REQUIRED"
           ? tCustomer("strictMigration.tripPlanner.ai.verifyPhone")
           : tCustomer("strictMigration.tripPlanner.ai.error"));
         return;
       }
       setAiMode(body.data.mode ?? "");
+      setAiScope(body.data.scope ?? null);
       setAiSuggestions(body.data.suggestions ?? []);
     } catch {
       if (controller.signal.aborted || aiRequestRef.current !== controller) {
@@ -769,6 +783,7 @@ export function MapClient({
         return;
       }
       setAiSuggestions([]);
+      setAiScope(null);
       setAiError(tCustomer("strictMigration.tripPlanner.ai.error"));
     } finally {
       window.clearTimeout(timeout);
@@ -1164,12 +1179,14 @@ export function MapClient({
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
               <form onSubmit={requestAiPlan} className="space-y-2">
                 <label htmlFor="trip-ai-preference" className="text-xs font-semibold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.preferenceLabel")}</label>
-                <input id="trip-ai-preference" value={aiPreference} onChange={(event) => setAiPreference(event.target.value)} maxLength={140} placeholder={tCustomer("strictMigration.tripPlanner.ai.preferencePlaceholder")} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10" />
+                <input id="trip-ai-preference" value={aiPreference} onChange={(event) => { setAiPreference(event.target.value); setAiSelectedState(null); setAiSuggestions([]); setAiScope(null); setAiMode(""); }} maxLength={140} placeholder={tCustomer("strictMigration.tripPlanner.ai.preferencePlaceholder")} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10" />
                 <button type="submit" disabled={aiLoading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-xs font-bold text-white transition hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60">
                   {aiLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}{aiLoading ? tCustomer("strictMigration.tripPlanner.ai.loading") : tCustomer("strictMigration.tripPlanner.ai.planAction")}
                 </button>
               </form>
               {aiError && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{aiError}</p>}
+              {aiScope && aiScope.ambiguousStates.length === 0 && <p role="status" className="rounded-lg bg-secondary px-3 py-2 text-xs text-muted-foreground">{tCustomer(aiScope.categorySlug ? "strictMigration.tripPlanner.ai.scopeAppliedWithCategory" : "strictMigration.tripPlanner.ai.scopeApplied", { state: aiScope.state ? tCustomer(`ui.malaysiaStates.${malaysiaStateKey(aiScope.state)}`) : tCustomer("ui.malaysiaStates.allMalaysia"), category: aiScope.categorySlug ? tCustomer(`strictMigration.tripPlanner.ai.category.${aiScope.categorySlug}`) : "" })}</p>}
+              {aiScope && aiScope.ambiguousStates.length > 0 && <section aria-label={tCustomer("strictMigration.tripPlanner.ai.chooseState")} className="rounded-xl border border-border bg-background p-3"><p className="text-xs font-semibold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.chooseState")}</p><div className="mt-2 flex flex-wrap gap-2">{aiScope.ambiguousStates.map((state) => <button key={state} type="button" disabled={aiLoading} onClick={() => { setAiSelectedState(state); void requestAiPlan(undefined, state); }} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-primary hover:bg-secondary disabled:opacity-60">{tCustomer(`ui.malaysiaStates.${malaysiaStateKey(state)}`)}</button>)}</div></section>}
               {aiSuggestions.length > 0 && <section aria-label={tCustomer("strictMigration.tripPlanner.ai.suggestions")} className="space-y-2">
                 <h2 className="text-xs font-bold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.suggestions")}</h2>
                 {aiSuggestions.slice(0, 3).map((suggestion) => {
@@ -1184,7 +1201,8 @@ export function MapClient({
                 })}
               </section>}
               {aiMode === "rule-based" && <p role="status" className="text-xs text-muted-foreground">{tCustomer("strictMigration.tripPlanner.ai.basicSuggestions")}</p>}
-              {!aiLoading && !aiError && aiSuggestions.length === 0 && <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">{tCustomer("strictMigration.tripPlanner.ai.empty")}</p>}
+              {!aiLoading && !aiError && aiSuggestions.length === 0 && aiMode === "no-candidates" && <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">{tCustomer("strictMigration.tripPlanner.ai.noMatches")}</p>}
+              {!aiLoading && !aiError && aiSuggestions.length === 0 && aiMode !== "no-candidates" && aiMode !== "needs-destination" && <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">{tCustomer("strictMigration.tripPlanner.ai.empty")}</p>}
               <details className="rounded-xl border border-border bg-background px-3 py-2">
                 <summary className="cursor-pointer list-none text-xs font-semibold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.budget")}</summary>
                 <div className="pt-3"><TripBudgetGuard tripId={tripData.id} items={trip.items} activities={[...activitiesById.values()]} onShowOnMap={(pin) => { setSuggestedPins((current) => current.some((existing) => existing.id === pin.id) ? current : [...current, pin]); focusPin(pin); }} /></div>

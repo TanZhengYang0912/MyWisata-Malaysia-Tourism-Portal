@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getTripItems: vi.fn(),
   getCandidates: vi.fn(),
   generateSuggestions: vi.fn(),
+  resolveScope: vi.fn(),
 }));
 
 vi.mock("@/lib/rate-limit/ai", () => ({ reserveAiQuota: vi.fn().mockResolvedValue(true) }));
@@ -27,6 +28,7 @@ vi.mock("@/backend/domains/trips", () => ({
 vi.mock("@/lib/customer/trip-copilot", () => ({
   getTripCopilotCandidates: mocks.getCandidates,
   generateTripSuggestions: mocks.generateSuggestions,
+  resolveTripSuggestionScope: mocks.resolveScope,
 }));
 
 const { POST } = await import("../route");
@@ -75,6 +77,12 @@ describe("POST /api/trips/plan", () => {
     });
     mocks.getTripItems.mockResolvedValue([]);
     mocks.getCandidates.mockResolvedValue([candidate]);
+    mocks.resolveScope.mockImplementation((preference: string, tripName: string, selectedState?: string) => {
+      const stateNames = ["Penang", "Sabah"].filter((state) => `${preference} ${tripName}`.toLowerCase().includes(state.toLowerCase()));
+      if (selectedState) return { state: selectedState, categorySlug: preference.toLowerCase().includes("food") ? "food" : null, ambiguousStates: [] };
+      if (stateNames.length > 1) return { state: null, categorySlug: preference.toLowerCase().includes("food") ? "food" : null, ambiguousStates: ["Penang", "Sabah"].filter((state) => stateNames.includes(state)) };
+      return { state: stateNames[0] ?? null, categorySlug: preference.toLowerCase().includes("food") ? "food" : null, ambiguousStates: [] };
+    });
     mocks.generateSuggestions.mockResolvedValue({
       mode: "llm",
       suggestions: [{ productId: "place-1", productName: candidate.name, message: "A well-rated local food stop." }],
@@ -117,7 +125,7 @@ describe("POST /api/trips/plan", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0");
     expect(response.headers.get("referrer-policy")).toBe("no-referrer");
-    expect(mocks.getCandidates).toHaveBeenCalledWith({ excludeProductIds: [] }, expect.anything());
+    expect(mocks.getCandidates).toHaveBeenCalledWith({ state: null, categorySlug: "food", preference: "local food", excludeProductIds: [] }, expect.anything());
     expect(mocks.generateSuggestions).toHaveBeenCalledWith({
       name: "KL weekend",
       startDate: "2026-10-09",
@@ -134,6 +142,7 @@ describe("POST /api/trips/plan", () => {
       image: candidate.image,
       category: "Food",
     }]);
+    expect(body.data.scope).toEqual({ state: null, categorySlug: "food", ambiguousStates: [] });
     expect(JSON.stringify(body)).not.toContain("alice@example.com");
   });
 
@@ -143,6 +152,19 @@ describe("POST /api/trips/plan", () => {
     expect(response.status).toBe(422);
     expect(mocks.getTripById).not.toHaveBeenCalled();
     expect(mocks.getCandidates).not.toHaveBeenCalled();
+  });
+
+  it("asks for a state before generating suggestions when the trip names multiple states", async () => {
+    mocks.getTripById.mockResolvedValueOnce({
+      id: "trip-1", user_id: "user-1", name: "Sabah and Penang food trip", start_date: null, end_date: null,
+    });
+
+    const response = await POST(request({ tripId: "trip-1", preference: "", locale: "en" }));
+    const body = await response.json();
+
+    expect(body.data).toMatchObject({ mode: "needs-destination", suggestions: [], scope: { ambiguousStates: ["Penang", "Sabah"] } });
+    expect(mocks.getCandidates).not.toHaveBeenCalled();
+    expect(mocks.generateSuggestions).not.toHaveBeenCalled();
   });
 
   it("rate-limits repeated AI planning requests per user", async () => {

@@ -32,6 +32,7 @@ type AlertRequest = {
   id: number;
   kind: "alert";
   message: string;
+  actionAlignment?: "center";
   resolve: () => void;
 };
 
@@ -40,7 +41,7 @@ type DialogRequest = ConfirmRequest | PromptRequest | AlertRequest;
 type AppDialogContextValue = {
   confirm: (message: string) => Promise<boolean>;
   prompt: (message: string, defaultValue?: string) => Promise<string | null>;
-  alert: (message: string) => Promise<void>;
+  alert: (message: string, options?: { actionAlignment?: "center" }) => Promise<void>;
 };
 
 const AppDialogContext = createContext<AppDialogContextValue | null>(null);
@@ -92,9 +93,9 @@ export function AppDialogProvider({ children }: { children: ReactNode }) {
     setQueue((requests) => [...requests, { id, kind: "prompt", message, defaultValue, resolve }]);
   }), []);
 
-  const alert = useCallback((message: string) => new Promise<void>((resolve) => {
+  const alert = useCallback((message: string, options?: { actionAlignment?: "center" }) => new Promise<void>((resolve) => {
     const id = nextId.current++;
-    setQueue((requests) => [...requests, { id, kind: "alert", message, resolve }]);
+    setQueue((requests) => [...requests, { id, kind: "alert", message, actionAlignment: options?.actionAlignment, resolve }]);
   }), []);
 
   const settleCurrent = useCallback((result: boolean | string | null = false) => {
@@ -128,7 +129,7 @@ export function AppDialogProvider({ children }: { children: ReactNode }) {
                 onConfirm={(input) => settleCurrent(input)}
               />
             ) : (
-              <DialogFooter className="mt-2">
+              <DialogFooter className={current.kind === "alert" && current.actionAlignment === "center" ? "mt-2 items-center sm:justify-center" : "mt-2"}>
                 {current.kind !== "alert" && <Button type="button" variant="outline" onClick={() => settleCurrent()}>{t("actions.cancel")}</Button>}
                 <Button type="button" onClick={() => settleCurrent(true)}>{current.kind === "alert" ? t("actions.close") : t("actions.confirm")}</Button>
               </DialogFooter>
