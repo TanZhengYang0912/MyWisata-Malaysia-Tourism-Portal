@@ -47,7 +47,7 @@ export async function PATCH(request: Request, { params }: Props) {
 
   if (contentChanged && process.env.LLM_API_KEY) {
     try {
-      const embedding = await embedText(`${title ?? existing.title}\n${body ?? existing.body}`);
+      const embedding = await embedText(`${title ?? existing.title}\n${body ?? existing.body}`, 'kb');
       await service.from('chatbot_kb_documents').update({ embedding, embedded_at: new Date().toISOString() }).eq('id', id);
     } catch (err) {
       console.error('[chatbot] inline re-embed on update failed', err instanceof Error ? err.message : err);

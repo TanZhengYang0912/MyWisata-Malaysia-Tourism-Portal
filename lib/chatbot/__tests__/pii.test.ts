@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { prepareExternalText, redactPII } from "../pii";
+import { prepareExternalText, prepareKbText, redactPII } from "../pii";
 
 describe("redactPII", () => {
   it("redacts a dashed Malaysian IC", () => {
@@ -90,5 +90,34 @@ describe("redactPII", () => {
     expect(prepareExternalText("Family of 4, RM 1,200 for 5 days in Penang and Kuala Lumpur, 20–24 Dec 2026.").allowed).toBe(true);
     expect(prepareExternalText("Plan a 2-day trip to Penang from 2026-11-12 to 2026-11-14 for RM 600.").allowed).toBe(true);
     expect(prepareExternalText("Is Jalan Alor worth visiting during a 2-night Kuala Lumpur trip?").allowed).toBe(true);
+  });
+});
+
+describe("prepareKbText (platform-written help articles)", () => {
+  const kycArticle = "TITLE: How do I withdraw my earnings?\nBODY: Complete KYC verification first, then add your bank account and request a withdrawal from Wallet. Enter your full name exactly as it appears on your IC.";
+
+  it("allows an article that explains KYC and bank accounts", () => {
+    expect(prepareKbText(kycArticle)).toEqual({ allowed: true, clean: kycArticle, found: false });
+  });
+
+  it("still blocks the same words in a user's own message", () => {
+    expect(prepareExternalText("my bank account is with Maybank, KYC done").allowed).toBe(false);
+    expect(prepareExternalText(kycArticle).allowed).toBe(false);
+  });
+
+  it("still blocks real personal data inside an article", () => {
+    for (const text of [
+      "Contact our agent at alice@example.com for KYC help.",
+      "Call 012-345 6789 to verify.",
+      "Sample IC: 990101-14-5678.",
+      "Visit us at 12 Jalan Ampang for verification.",
+      "Passport A12345678 is accepted.",
+    ]) {
+      expect(prepareKbText(text).allowed, text).toBe(false);
+    }
+  });
+
+  it("allows prices and dates in an article", () => {
+    expect(prepareKbText("The minimum withdrawal is RM 50. Payouts run on 2026-11-15.").allowed).toBe(true);
   });
 });
