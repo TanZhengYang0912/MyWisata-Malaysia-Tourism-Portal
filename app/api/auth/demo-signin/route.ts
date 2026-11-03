@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isDemoToolRuntimeEnabled } from '@/lib/demo/runtime';
+import { DEMO_SIGN_IN_CAPTCHA_FAILED_CODE, DEMO_SIGN_IN_FAILED_CODE } from '@/lib/auth/demo-signin-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,12 +23,15 @@ export async function POST(request: Request) {
       password: 'demo123456',
       options: { captchaToken: body.captchaToken },
     });
-    if (error) return NextResponse.json({ error: error.message }, { status: 401 });
+    if (error?.code === DEMO_SIGN_IN_CAPTCHA_FAILED_CODE) {
+      return NextResponse.json({ code: DEMO_SIGN_IN_CAPTCHA_FAILED_CODE }, { status: 401 });
+    }
+    if (error) return NextResponse.json({ code: DEMO_SIGN_IN_FAILED_CODE }, { status: 401 });
 
     return NextResponse.json({ ok: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unable to sign in' },
+      { code: DEMO_SIGN_IN_FAILED_CODE },
       { status: 500 },
     );
   }

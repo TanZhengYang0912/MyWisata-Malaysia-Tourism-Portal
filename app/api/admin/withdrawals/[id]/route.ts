@@ -36,7 +36,7 @@ export async function GET(
       payout_execution_claim_token, payout_execution_claimed_at,
       customer_reason, created_at, updated_at,
       users!inner(
-        full_name, email, kyc_status, tier,
+        full_name, email, kyc_status, tier, verified_kyc_submission_id,
         stripe_connect_account_id,
         kyc_submissions!kyc_submissions_user_id_fkey(status, reviewed_at, document_type)
       ),
@@ -89,6 +89,11 @@ export async function GET(
   const w = r.wallets as Record<string, unknown>;
   const kycSubs = (u.kyc_submissions as Record<string, unknown>[] | null) ?? [];
   const latestKyc = kycSubs[0] as Record<string, unknown> | undefined;
+  const verifiedSubmissionId = u.verified_kyc_submission_id as string | null;
+  const verifiedSubmission = verifiedSubmissionId
+    ? await service.from('kyc_submissions').select('status,legal_name_snapshot').eq('id', verifiedSubmissionId).eq('user_id', r.user_id).maybeSingle()
+    : { data: null, error: null };
+  if (verifiedSubmission.error) return apiFail('KYC_IDENTITY_UNAVAILABLE', 'Verified identity details could not be loaded', 503);
   const riskRelationValue = r.withdrawal_risk_assessments as Record<string, unknown> | Record<string, unknown>[] | null;
   const risk = Array.isArray(riskRelationValue) ? riskRelationValue[0] : riskRelationValue;
   const approvals = (r.withdrawal_approvals as Record<string, unknown>[] | null) ?? [];
@@ -121,6 +126,7 @@ export async function GET(
       email:        u.email as string ?? '',
       kycStatus:    u.kyc_status as string ?? 'unverified',
       kycApprovedAt: latestKyc?.reviewed_at as string | null ?? null,
+      kycVerifiedName: verifiedSubmission.data?.status === 'approved' ? verifiedSubmission.data.legal_name_snapshot ?? null : null,
     },
     wallet: {
       topupSen:          (w.topup_sen as number) ?? 0,

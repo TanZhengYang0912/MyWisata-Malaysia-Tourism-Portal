@@ -441,7 +441,7 @@ export interface Booking {
   validUntil?: string;
 }
 
-export type KycSubmissionStatus = "draft" | "pending" | "info_requested" | "approved" | "rejected" | "superseded";
+export type KycSubmissionStatus = "draft" | "pending" | "info_requested" | "approved" | "rejected" | "superseded" | "withdrawn";
 
 export interface CustomerKycSubmission {
   id: string;
@@ -452,6 +452,7 @@ export interface CustomerKycSubmission {
   reviewedAt: string | null;
   reviewReasonCode: string | null;
   reviewReasonDetail: string | null;
+  reviewVersion?: number;
 }
 
 /** Safe identity fields for displaying another user on a public surface. */

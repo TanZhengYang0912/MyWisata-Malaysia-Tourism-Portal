@@ -16,11 +16,12 @@ type Props = {
   onCancel: () => void;
   onConfirm: () => void;
   confirmControl?: ReactNode;
+  content?: ReactNode;
   confirmationPhrase?: string;
   confirmationResetKey?: string | number;
 };
 
-export function AdminConfirmDialog({ open, title, titleIsTranslated = false, description, confirmLabel, confirmVariant = "default", busy = false, onCancel, onConfirm, confirmControl, confirmationPhrase, confirmationResetKey }: Props) {
+export function AdminConfirmDialog({ open, title, titleIsTranslated = false, description, confirmLabel, confirmVariant = "default", busy = false, onCancel, onConfirm, confirmControl, content, confirmationPhrase, confirmationResetKey }: Props) {
   const { t: tAdmin } = useTranslation("admin");
   const { t: tCommon } = useTranslation("common");
   const resetKey = `${open}:${title}:${confirmationPhrase ?? ""}:${String(confirmationResetKey ?? "")}`;
@@ -52,6 +53,7 @@ export function AdminConfirmDialog({ open, title, titleIsTranslated = false, des
             <div id="admin-confirm-description" className="mt-2 text-sm leading-5 text-muted-foreground">
               {typeof description === "string" ? tAdmin(description) : description}
             </div>
+        {content}
           </div>
         </div>
         <ConfirmationActions

@@ -18,7 +18,7 @@ export async function GET(_request: Request, { params }: Props) {
   }
 
   const service = createServiceClient();
-  const { data: storagePath, error } = await service.rpc('get_kyc_document_view', {
+  const { data: access, error } = await service.rpc('get_kyc_document_view_v2', {
     p_submission_id: submissionId,
     p_side: side,
     p_actor_id: user.id,
@@ -28,11 +28,11 @@ export async function GET(_request: Request, { params }: Props) {
     if (error.message.includes('document_not_found')) return apiFail('NOT_FOUND', 'Document not found', 404);
     return apiFail('DOCUMENT_UNAVAILABLE', 'Document is temporarily unavailable', 500);
   }
-  if (typeof storagePath !== 'string') return apiFail('NOT_FOUND', 'Document not found', 404);
+  if (!access || typeof access !== 'object' || typeof access.storage_path !== 'string' || typeof access.access_id !== 'string') return apiFail('NOT_FOUND', 'Document not found', 404);
 
   const { data: document, error: downloadError } = await service.storage
     .from('kyc-documents')
-    .download(storagePath);
+    .download(access.storage_path);
   if (downloadError || !document) {
     return apiFail('DOCUMENT_UNAVAILABLE', 'Document is temporarily unavailable', 500);
   }
@@ -47,6 +47,7 @@ export async function GET(_request: Request, { params }: Props) {
       'Content-Disposition': `inline; filename="kyc-${side}"`,
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'no-referrer',
+      'X-KYC-Document-Access-Id': access.access_id,
     },
   });
 }

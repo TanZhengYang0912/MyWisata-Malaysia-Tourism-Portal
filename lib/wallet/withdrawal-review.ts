@@ -31,6 +31,7 @@ export type WithdrawalReviewDetail = {
     email: string;
     kycStatus: string;
     kycApprovedAt: string | null;
+    kycVerifiedName: string | null;
   };
   wallet: {
     topupSen: number;
