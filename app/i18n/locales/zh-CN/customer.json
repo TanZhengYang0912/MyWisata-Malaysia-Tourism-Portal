@@ -2492,6 +2492,8 @@
       "changeOrigin": "更改起点",
       "routeStale": "正在刷新路线，暂显示上次估算",
       "continuousRoute": "路线估算假设连续行驶，未包含各地点的游览和等待时间。",
+      "sameLocation": "同一地点",
+      "sameLocationNoTravel": "所有停靠点都在同一地点，无需安排车程。",
       "feasibility": {
         "conflict": "预计少了约 {{minutes}} 分钟",
         "fits_estimate": "按当前交通估算可衔接",

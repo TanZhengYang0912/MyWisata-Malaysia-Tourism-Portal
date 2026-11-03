@@ -101,6 +101,10 @@ const nextConfig: NextConfig = {
     const site = publicSiteUrl();
     return [
       { source: '/(.*)', headers: securityHeaders },
+      ...['/maplibre/maplibre-gl-worker.mjs', '/maplibre/maplibre-gl-shared.mjs'].map((source) => ({
+        source,
+        headers: [{ key: 'Content-Type', value: 'text/javascript; charset=utf-8' }],
+      })),
       // Canonical as an HTTP Link header (honoured by Google) instead of a <link> in every page's metadata.
       // The root needs its own rule: an empty `:path*` is left uninterpolated in header values.
       ...(site ? [

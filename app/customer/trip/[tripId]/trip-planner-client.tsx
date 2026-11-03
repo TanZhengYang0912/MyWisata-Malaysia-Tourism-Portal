@@ -14,7 +14,7 @@ import { TRAVEL_MODES, buildGoogleMapsDirectionsUrl, type TravelModeId } from "@
 import { ROUTE_TRAFFIC_COLORS, buildRouteDepartureTime, type GeoHit } from "@/lib/routing";
 import type { BookingSlot, ComputedActivity, OperatingHours, SponsoredPlacement } from "@/backend/core/types";
 import type { Trip, TripItem } from "@/backend/domains/trips";
-import { getTripLegFeasibility, resolveTripOrigin, getTripDiscoveryAnchor, getTripDiscoveryFingerprint, getTripActivitySublabel, getTripItemTimeBounds, groupTripItemsByDay, formatTripDay, isValidTripCoordinate } from "@/lib/customer/trip-planner";
+import { getTripLegFeasibility, resolveTripOrigin, getTripDiscoveryAnchor, getTripDiscoveryFingerprint, getTripActivitySublabel, getTripItemTimeBounds, groupTripItemsByDay, formatTripDay, isValidTripCoordinate, hasDistinctTripRoutePoints } from "@/lib/customer/trip-planner";
 import { useTripRoutes } from "./use-trip-routes";
 import { useTripItems } from "./use-trip-items";
 import { DISTANCE_UNIT_KM } from "@/lib/i18n/invariant-tokens";
@@ -243,6 +243,8 @@ export function MapClient({
     () => selectedRouteStops.map((stop): [number, number] => [stop.lat, stop.lng]),
     [selectedRouteStops],
   );
+  const hasDifferentRoutePoints = hasDistinctTripRoutePoints(selectedRouteCoordinates);
+  const sameLocationRoute = selectedRouteCoordinates.length >= 2 && !hasDifferentRoutePoints;
 
   const isFirstRender = useRef(true);
   const discoveryFingerprint = getTripDiscoveryFingerprint(trip.items, selectedDate);
@@ -273,13 +275,13 @@ export function MapClient({
     trip.items.filter((item) => item.scheduled_date === selectedDate).map((item) => item.scheduled_time),
   );
   useEffect(() => {
-    if (mode !== "DRIVING" || selectedRouteStops.length < 2) return;
+    if (mode !== "DRIVING" || selectedRouteStops.length < 2 || !hasDifferentRoutePoints) return;
     const interval = window.setInterval(() => {
       if (document.visibilityState === "visible") setRouteRefreshTick((current) => current + 1);
     }, ROUTE_TRAFFIC_REFRESH_MS);
     return () => window.clearInterval(interval);
-  }, [mode, pointsKey, selectedRouteStops.length]);
-  const routeState = useTripRoutes(selectedRouteCoordinates, mode, routeDepartureTime, routeRefreshTick);
+  }, [hasDifferentRoutePoints, mode, pointsKey, selectedRouteStops.length]);
+  const routeState = useTripRoutes(hasDifferentRoutePoints ? selectedRouteCoordinates : [], mode, routeDepartureTime, routeRefreshTick);
   const routesLoading = routeState.loading;
   const routeChoiceKey = `${pointsKey}|${routeDepartureTime ?? "live"}|${mode}`;
   const selectedRouteIdx = routeChoice?.key === routeChoiceKey ? routeChoice.index : 0;
@@ -806,7 +808,10 @@ export function MapClient({
   }
 
   function renderTravelLeg(fromId: string, toId: string, index: number) {
-    const leg = activeRoute?.legs?.[index];
+    const fromStop = selectedRouteStops.find((stop) => stop.id === fromId);
+    const toStop = selectedRouteStops.find((stop) => stop.id === toId);
+    const sameLocation = Boolean(fromStop && toStop && fromStop.lat === toStop.lat && fromStop.lng === toStop.lng);
+    const leg = sameLocation ? undefined : activeRoute?.legs?.[index];
     const ModeIcon = TRAVEL_MODES.find((travelMode) => travelMode.id === mode)?.icon ?? Navigation;
     const longLeg = Boolean(leg && leg.durationMin > LONG_LEG_TRAVEL_MIN);
     const from=trip.items.find(item=>item.id === fromId);
@@ -816,13 +821,14 @@ export function MapClient({
     const slot=activity && from?.scheduled_date && from.scheduled_time ? getDaySlots(slotsByProduct.get(activity.id) ?? [],tripItemOutletId(from,activity),from.scheduled_date).find(slot=>slotClockTime(slot.startsAt) === normalizeTripTime(from.scheduled_time)) : undefined;
     const endDate=slot?.endsAt ? new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kuala_Lumpur"}).format(new Date(slot.endsAt)) : null;
     const end=slot?.endsAt && endDate === from?.scheduled_date ? toMinutes(slotClockTime(slot.endsAt)) : null;
-    const feasibility=getTripLegFeasibility({previousStart:toMinutes(from?.scheduled_time),previousEnd:end,nextStart:toMinutes(to?.scheduled_time),travelMinutes:leg?.durationMin ?? null});
+    const feasibility=getTripLegFeasibility({previousStart:toMinutes(from?.scheduled_time),previousEnd:end,nextStart:toMinutes(to?.scheduled_time),travelMinutes:sameLocation ? 0 : leg?.durationMin ?? null});
 
     return (
       <li key={`leg-${fromId}-${toId}`} data-trip-leg data-long-leg={longLeg || undefined} className={"flex flex-wrap items-center gap-2 pl-4 text-[11px] " + (longLeg ? "font-semibold text-destructive" : "text-muted-foreground")}>
         <span className="h-5 border-l border-dashed border-border" aria-hidden="true" />
         {longLeg ? <AlertTriangle size={12} className="shrink-0" aria-label={tCustomer("strictMigration.tripPlanner.longLeg")} /> : <ModeIcon size={12} className="shrink-0 text-primary" />}
         <span className="font-semibold">{travelModeLabel(mode)}</span>
+        {sameLocation && <span>{tCustomer("ui.trip.sameLocation")}</span>}
         {leg && <span>· {formatDurationShort(leg.durationMin)} · {leg.distanceKm.toFixed(1)} {DISTANCE_UNIT_KM}</span>}
         {from?.scheduled_time && to?.scheduled_time && <span data-trip-feasibility={feasibility.status} className={feasibility.status === "conflict" ? "text-destructive" : "text-muted-foreground"}>{tCustomer(`ui.trip.feasibility.${feasibility.status}`,{minutes:Math.ceil(Math.abs(feasibility.slackMinutes ?? 0))})}{feasibility.status === "conflict" && <button className="ml-2 underline" onClick={()=>setTimeEditingId(to.id)}>{tCustomer("strictMigration.tripPlanner.addTime")}</button>}</span>}
         {!leg && routesLoading && mode !== "TRANSIT" && <span>· {tCustomer("strictMigration.tripPlanner.ai.calculating")}</span>}
@@ -1142,7 +1148,7 @@ export function MapClient({
   }
 
   return (
-    <section aria-label={tCustomer("strictMigration.tripPlanner.itinerary")} className="h-[calc(100dvh-6rem)] w-full overflow-hidden bg-card sm:h-[calc(100dvh-4rem)]">
+    <section aria-label={tCustomer("strictMigration.tripPlanner.itinerary")} className="h-[calc(100dvh-6rem)] w-full overflow-hidden bg-card sm:h-[calc(100dvh-4.25rem)]">
           <div className="flex h-full w-full flex-col overflow-hidden bg-card" aria-busy={trip.pending}>
       {(trip.pending || trip.error || tripActionStatus) && <p role={trip.error ? "alert" : "status"} className="border-b border-border px-3 py-2 text-xs">{trip.pending ? tCustomer("ui.trip.saving") : trip.error || tripActionStatus}{trip.error && <Button type="button" variant="outline" size="sm" className="ml-3" onClick={() => void trip.verify()} disabled={trip.pending}>{tCustomer("ui.trip.verifyState")}</Button>}</p>}
             <div className="flex shrink-0 gap-1 border-b border-border bg-card p-2 xl:hidden" aria-label={tCustomer("strictMigration.tripPlanner.plannerViews")}>
@@ -1304,8 +1310,9 @@ export function MapClient({
             <div className="flex flex-wrap items-center gap-2">
               <label className="sr-only" htmlFor="planner-travel-mode">{tCustomer("strictMigration.tripPlanner.buildRoute")}</label>
               <select id="planner-travel-mode" value={mode} onChange={(event) => setMode(event.target.value as TravelModeId)} className="min-w-36 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary">{TRAVEL_MODES.map((travelMode) => <option key={travelMode.id} value={travelMode.id}>{travelModeLabel(travelMode.id)}</option>)}</select>
-              {hasRouteInputs && <p className="text-[11px] text-muted-foreground">{tCustomer("ui.trip.continuousRoute")}</p>}
-              {hasRouteInputs && <p className="text-[11px] font-semibold text-muted-foreground">{mode === "TRANSIT" ? tCustomer("ui.map.transitOpensMaps") : routesLoading ? tCustomer(routeState.status === "stale" ? "ui.trip.routeStale" : "ui.map.calculatingRoute") : activeRoute ? `${formatDuration(activeRoute.durationMin)} · ${activeRoute.distanceKm} ${DISTANCE_UNIT_KM}` : tCustomer("ui.map.routeUnavailable")}</p>}
+              {hasRouteInputs && !sameLocationRoute && <p className="text-[11px] text-muted-foreground">{tCustomer("ui.trip.continuousRoute")}</p>}
+              {sameLocationRoute && <p className="text-[11px] font-semibold text-muted-foreground">{tCustomer("ui.trip.sameLocationNoTravel")}</p>}
+              {hasRouteInputs && !sameLocationRoute && <p className="text-[11px] font-semibold text-muted-foreground">{mode === "TRANSIT" ? tCustomer("ui.map.transitOpensMaps") : routesLoading ? tCustomer(routeState.status === "stale" ? "ui.trip.routeStale" : "ui.map.calculatingRoute") : activeRoute ? `${formatDuration(activeRoute.durationMin)} · ${activeRoute.distanceKm} ${DISTANCE_UNIT_KM}` : tCustomer("ui.map.routeUnavailable")}</p>}
               {activeRoutes.length > 1 && <label className="ml-auto flex items-center gap-2 text-[11px] font-semibold text-muted-foreground"><span>{tCustomer("ui.map.routeOptions")}</span><select aria-label={tCustomer("ui.map.routeOptions")} value={selectedRouteIdx} onChange={(event) => setRouteChoice({key:routeChoiceKey,index:Number(event.target.value)})} className="max-w-52 rounded-lg border border-border bg-background px-2 py-2 text-[11px] text-foreground">{activeRoutes.map((route, index) => <option key={index} value={index}>{formatDurationShort(route.durationMin)} · {route.distanceKm} {DISTANCE_UNIT_KM}{route.hasTolls ? ` · ${tCustomer("ui.map.toll")}` : ""}</option>)}</select></label>}
             </div>
             {mode === "DRIVING" && activeRoute && (

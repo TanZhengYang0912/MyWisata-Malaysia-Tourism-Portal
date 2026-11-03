@@ -2492,6 +2492,8 @@
       "changeOrigin": "Tukar titik mula",
       "routeStale": "Mengemas kini laluan; anggaran terdahulu dipaparkan",
       "continuousRoute": "Anggaran laluan mengandaikan perjalanan berterusan; masa lawatan dan menunggu tidak disertakan.",
+      "sameLocation": "Lokasi yang sama",
+      "sameLocationNoTravel": "Semua hentian di lokasi yang sama; tiada masa perjalanan diperlukan.",
       "feasibility": {
         "conflict": "Kekurangan kira-kira {{minutes}} min",
         "fits_estimate": "Sesuai dengan anggaran perjalanan semasa",

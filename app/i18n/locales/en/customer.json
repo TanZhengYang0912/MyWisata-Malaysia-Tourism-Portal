@@ -2487,6 +2487,8 @@
       "changeOrigin": "Change starting point",
       "routeStale": "Refreshing route; previous estimate shown",
       "continuousRoute": "Route estimates assume continuous travel; visits and waiting between stops are not included.",
+      "sameLocation": "Same location",
+      "sameLocationNoTravel": "All stops are at the same location; no travel time is needed.",
       "feasibility": {
         "conflict": "Short by approximately {{minutes}} min",
         "fits_estimate": "Fits the current travel estimate",
