@@ -22,7 +22,15 @@ describe("auth state error handling", () => {
     const source = readFileSync(resolve(process.cwd(), "components/providers/auth.tsx"), "utf8");
 
     expect(source).toMatch(
-      /const switchUser = useCallback\([\s\S]*?try \{[\s\S]*?fetch\('\/api\/auth\/demo-signin'[\s\S]*?loadSupabaseUser\(id, request\)[\s\S]*?\} catch \{[\s\S]*?supabase\.auth\.signOut\(\{ scope: "local" \}\)[\s\S]*?throw new Error\(tAuth\('signIn\.error'\)\)/,
+      /const switchUser = useCallback\([\s\S]*?try \{[\s\S]*?fetch\('\/api\/auth\/demo-signin'[\s\S]*?loadSupabaseUser\(id, request\)[\s\S]*?\} catch \(error\) \{[\s\S]*?supabase\.auth\.signOut\(\{ scope: "local" \}\)[\s\S]*?if \(error instanceof DemoSignInCaptchaError\) throw error;[\s\S]*?throw new Error\(tAuth\('signIn\.error'\)\)/,
     );
+  });
+
+  it("preserves a stable CAPTCHA failure code from the demo sign-in response", () => {
+    const source = readFileSync(resolve(process.cwd(), "components/providers/auth.tsx"), "utf8");
+
+    expect(source).toMatch(/const payload: unknown = await response\.json\(\)\.catch\(\(\) => null\)/);
+    expect(source).toContain("payload.code === DEMO_SIGN_IN_CAPTCHA_FAILED_CODE");
+    expect(source).toContain("throw new DemoSignInCaptchaError()");
   });
 });

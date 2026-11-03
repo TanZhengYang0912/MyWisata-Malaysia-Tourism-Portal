@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { clearCurrentUser, setCurrentUser as setStoredCurrentUser } from "@/backend/domains/current-user";
 import { createClient } from "@/lib/supabase/client";
 import { pickDemoRole } from "@/lib/auth/demo-user-role";
+import { DEMO_SIGN_IN_CAPTCHA_FAILED_CODE, DemoSignInCaptchaError } from "@/lib/auth/demo-signin-error";
 import { accountGate, canSuspendedAccessPath } from "@/lib/account/lifecycle";
 import { resolveCustomerCapabilities, type CustomerCapabilitySnapshot } from "@/lib/auth/customer-capabilities";
 import { isAppLocale } from "@/lib/i18n/locale";
@@ -262,20 +263,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email: user.email, captchaToken }),
         signal: request.controller.signal,
       });
-      await response.json().catch(() => null);
+      const payload: unknown = await response.json().catch(() => null);
       if (!isCurrentRequest(request)) return null;
+      const isCaptchaFailure = typeof payload === "object"
+        && payload !== null
+        && "code" in payload
+        && payload.code === DEMO_SIGN_IN_CAPTCHA_FAILED_CODE;
+      if (isCaptchaFailure) throw new DemoSignInCaptchaError();
       if (!response.ok) throw new Error(tAuth('signIn.error'));
 
       const loadedUser = await loadSupabaseUser(id, request);
       if (!loadedUser || !isCurrentRequest(request)) return null;
       setLoading(false);
       return loadedUser;
-    } catch {
+    } catch (error) {
       if (!isCurrentRequest(request)) return null;
       invalidateRequests();
       await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
       clearIdentityState();
       setLoading(false);
+      if (error instanceof DemoSignInCaptchaError) throw error;
       throw new Error(tAuth('signIn.error'));
     }
   }, [beginRequest, clearIdentityState, invalidateRequests, isCurrentRequest, loadSupabaseUser, supabase, tAuth]);

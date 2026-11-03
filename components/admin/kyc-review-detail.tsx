@@ -28,6 +28,7 @@ export type KycReviewDecision = {
   action: "approve" | "reject" | "request_info";
   reasonCode?: KycReviewReasonCode;
   reasonDetail?: string;
+  operationId?: string;
 };
 
 type ReasonAction = "reject" | "request_info";
@@ -37,6 +38,7 @@ type KycReviewDetailContentProps = {
   busy: boolean;
   error: string | null;
   onOpenDocument: (side: "front" | "back") => void;
+  documentAccessRefs?: { front?: string; back?: string };
   onDecision: (decision: KycReviewDecision) => void;
   documentPreview?: { side: "front" | "back"; url: string; pdf?: boolean } | null;
   documentLoading?: boolean;
@@ -52,6 +54,7 @@ export function KycReviewDetailContent({
   busy,
   error,
   onOpenDocument,
+  documentAccessRefs,
   onDecision,
   documentPreview,
   documentLoading,
@@ -60,13 +63,44 @@ export function KycReviewDetailContent({
   const { t, i18n } = useTranslation("admin");
   const { t: tCommon } = useTranslation("common");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
+  const currentDocumentAccessRefs = documentAccessRefs ?? {};
   const { customer, submission } = detail;
   const [reasonAction, setReasonAction] = useState<ReasonAction | null>(null);
   const [reasonCode, setReasonCode] = useState<KycReviewReasonCode | "">("");
   const [reasonDetail, setReasonDetail] = useState("");
   const [confirmDecision, setConfirmDecision] = useState<KycReviewDecision | null>(null);
+  const [manualIdentity, setManualIdentity] = useState({
+    actualDocumentType: submission.docType,
+    issuerCountry: submission.docType === "passport" ? "" : "MY",
+    identifierKind: submission.docType === "passport" ? "passport" : "my_ic",
+    holderName: submission.legalIdentity.fullName ?? customer.name,
+    documentNumber: "",
+    reasonCode: "ocr_unavailable",
+    secondaryReviewerId: "",
+  });
+  const [primaryConfirmed, setPrimaryConfirmed] = useState(false);
+  const [secondReviewComplete, setSecondReviewComplete] = useState(false);
+  const [counterSignCandidates, setCounterSignCandidates] = useState<Array<{ id: string; name: string }>>([]);
+  const [counterSignCandidatesLoading, setCounterSignCandidatesLoading] = useState(false);
+  const [operationId, setOperationId] = useState<string | null>(null);
+  const [confirmationBusy, setConfirmationBusy] = useState(false);
+  const [confirmationError, setConfirmationError] = useState<string | null>(null);
+  const [confirmationPurpose, setConfirmationPurpose] = useState<"primary" | "independent_second">("primary");
 
   const [confirmationVersion, setConfirmationVersion] = useState<number | null>(null);
+  const [resolutionId, setResolutionId] = useState<string | null>(null);
+  const [resolutionState, setResolutionState] = useState<{ id: string; kind: string; status: string; version: number; primary: boolean; secondary: boolean; primaryConfirmed: boolean; secondaryConfirmed: boolean; canApply: boolean } | null>(null);
+  const [resolutionKind, setResolutionKind] = useState<"replacement" | "legacy_conflict" | "ownership_correction">("legacy_conflict");
+  const [resolutionCandidates, setResolutionCandidates] = useState<Array<{ id: string; name: string }>>([]);
+  const [resolutionReviewerId, setResolutionReviewerId] = useState("");
+  const [resolutionHolderName, setResolutionHolderName] = useState(submission.legalIdentity.fullName ?? customer.name);
+  const [resolutionNumber, setResolutionNumber] = useState("");
+  const [resolutionReason, setResolutionReason] = useState("");
+  const [resolutionCancelReason, setResolutionCancelReason] = useState<"reviewer_declined" | "evidence_unavailable" | "case_changed" | "other">("reviewer_declined");
+  const [resolutionBusy, setResolutionBusy] = useState(false);
+  const [resolutionError, setResolutionError] = useState<string | null>(null);
+  const resolutionStartOperationId = useRef<string | null>(null);
+  const resolutionApplyOperationId = useRef<string | null>(null);
   const actionable = submission.status === "pending" && detail.assignment.canDecide;
   const canContinue = Boolean(reasonCode) && (reasonCode !== "other" || reasonDetail.trim().length >= 10);
   const statusLabel = t(`kyc.status.${statusKey(submission.status)}`);
@@ -94,9 +128,207 @@ export function KycReviewDetailContent({
     });
   }
 
-  function submitConfirmedDecision() {
-    if (!confirmDecision || !actionable || confirmationVersion !== detail.assignment.reviewVersion) return;
-    onDecision(confirmDecision);
+  async function loadResolutionState(id: string) {
+    const response = await fetch(`/api/admin/kyc/identity-resolutions/${encodeURIComponent(id)}`, { cache: "no-store" });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || !body.data) throw new Error(body.error?.message ?? t("kyc.resolution.error"));
+    setResolutionState(body.data);
+    return body.data as typeof resolutionState;
+  }
+
+  async function beginIdentityResolution() {
+    setResolutionBusy(true);
+    setResolutionError(null);
+    try {
+      resolutionStartOperationId.current ??= crypto.randomUUID();
+      const response = await fetch("/api/admin/kyc/identity-resolutions", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionId: submission.id, kind: resolutionKind,
+          reasonCode: resolutionKind === "replacement" ? "identity_replacement" : "legacy_resolution", operationId: resolutionStartOperationId.current }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || typeof body.data?.id !== "string") throw new Error(body.error?.message ?? t("kyc.resolution.error"));
+      resolutionStartOperationId.current = null;
+      setResolutionId(body.data.id);
+      await loadResolutionState(body.data.id);
+      const candidatesResponse = await fetch(`/api/admin/kyc/identity-resolutions/${encodeURIComponent(body.data.id)}/candidates?version=${encodeURIComponent(String(body.data.version))}`, { cache: "no-store" });
+      const candidatesBody = await candidatesResponse.json().catch(() => ({}));
+      if (candidatesResponse.ok && Array.isArray(candidatesBody.data?.candidates)) setResolutionCandidates(candidatesBody.data.candidates);
+    } catch (caught) {
+      setResolutionError(caught instanceof Error ? caught.message : t("kyc.resolution.error"));
+    } finally { setResolutionBusy(false); }
+  }
+
+  async function authorizeIdentityResolution() {
+    if (!resolutionId || !resolutionState || !resolutionReviewerId) return;
+    setResolutionBusy(true); setResolutionError(null);
+    try {
+      const response = await fetch(`/api/admin/kyc/identity-resolutions/${encodeURIComponent(resolutionId)}/countersign`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version: resolutionState.version, secondaryReviewerId: resolutionReviewerId }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error?.message ?? t("kyc.resolution.error"));
+      await loadResolutionState(resolutionId);
+    } catch (caught) { setResolutionError(caught instanceof Error ? caught.message : t("kyc.resolution.error")); }
+    finally { setResolutionBusy(false); }
+  }
+
+  async function confirmIdentityResolution() {
+    if (!resolutionId || !resolutionState || !currentDocumentAccessRefs.front || !currentDocumentAccessRefs.back || !resolutionNumber.trim() || resolutionReason.trim().length < 10) return;
+    setResolutionBusy(true); setResolutionError(null);
+    try {
+      const response = await fetch(`/api/admin/kyc/identity-resolutions/${encodeURIComponent(resolutionId)}/confirm`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version: resolutionState.version, documentAccessRefs: [currentDocumentAccessRefs.front, currentDocumentAccessRefs.back],
+          actualDocumentType: manualIdentity.actualDocumentType, issuerCountry: "MY", identifierKind: "my_ic", holderName: resolutionHolderName,
+          documentNumber: resolutionNumber, reasonDetail: resolutionReason }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error?.message ?? t("kyc.resolution.error"));
+      setResolutionNumber("");
+      await loadResolutionState(resolutionId);
+    } catch (caught) { setResolutionError(caught instanceof Error ? caught.message : t("kyc.resolution.error")); }
+    finally { setResolutionBusy(false); }
+  }
+
+  async function applyIdentityResolution() {
+    if (!resolutionId || !resolutionState) return;
+    setResolutionBusy(true); setResolutionError(null);
+    try {
+      resolutionApplyOperationId.current ??= crypto.randomUUID();
+      const response = await fetch(`/api/admin/kyc/identity-resolutions/${encodeURIComponent(resolutionId)}/apply`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version: resolutionState.version, operationId: resolutionApplyOperationId.current }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error?.message ?? t("kyc.resolution.error"));
+      await loadResolutionState(resolutionId);
+      resolutionApplyOperationId.current = null;
+      setResolutionNumber("");
+    } catch (caught) { setResolutionError(caught instanceof Error ? caught.message : t("kyc.resolution.error")); }
+    finally { setResolutionBusy(false); }
+  }
+
+  async function cancelIdentityResolution() {
+    if (!resolutionId || !resolutionState || !window.confirm(t("kyc.resolution.cancelConfirm"))) return;
+    setResolutionBusy(true); setResolutionError(null);
+    try {
+      const response = await fetch(`/api/admin/kyc/identity-resolutions/${encodeURIComponent(resolutionId)}/cancel`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version: resolutionState.version, reasonCode: resolutionCancelReason }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error?.message ?? t("kyc.resolution.error"));
+      await loadResolutionState(resolutionId);
+    } catch (caught) { setResolutionError(caught instanceof Error ? caught.message : t("kyc.resolution.error")); }
+    finally { setResolutionBusy(false); }
+  }
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch(`/api/admin/kyc/identity-resolutions?submissionId=${encodeURIComponent(submission.id)}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => ({ response, body: await response.json().catch(() => ({})) }))
+      .then(async ({ response, body }) => {
+        if (!response.ok || typeof body.data?.id !== "string") return;
+        setResolutionId(body.data.id);
+        setResolutionState(body.data);
+        if (body.data.primary === true && body.data.status === "open") {
+          const candidateResponse = await fetch(`/api/admin/kyc/identity-resolutions/${encodeURIComponent(body.data.id)}/candidates?version=${encodeURIComponent(String(body.data.version))}`, { cache: "no-store", signal: controller.signal });
+          const candidateBody = await candidateResponse.json().catch(() => ({}));
+          if (candidateResponse.ok && Array.isArray(candidateBody.data?.candidates)) setResolutionCandidates(candidateBody.data.candidates);
+        }
+      }).catch(() => undefined);
+    return () => controller.abort();
+  }, [submission.id]);
+
+  async function submitConfirmedDecision() {
+    if (!confirmDecision || (confirmationPurpose === "primary" && !actionable) || confirmationVersion !== detail.assignment.reviewVersion) return;
+    if (confirmDecision.action === "approve") {
+      if (!currentDocumentAccessRefs.front || !currentDocumentAccessRefs.back) {
+        setConfirmationError(t("kyc.confirm.openBothDocuments"));
+        return;
+      }
+      if (confirmationPurpose === "independent_second") {
+        setConfirmationBusy(true);
+        setConfirmationError(null);
+        try {
+          const proofResponse = await fetch("/api/admin/kyc/review/confirm", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              submissionId: submission.id,
+              expectedVersion: detail.assignment.reviewVersion,
+              purpose: "independent_second",
+              documentAccessRefs: [currentDocumentAccessRefs.front, currentDocumentAccessRefs.back],
+              actualDocumentType: manualIdentity.actualDocumentType,
+              issuerCountry: manualIdentity.issuerCountry,
+              identifierKind: manualIdentity.identifierKind,
+              holderName: manualIdentity.holderName,
+              documentNumber: manualIdentity.documentNumber,
+              reasonCode: manualIdentity.reasonCode,
+            }),
+          });
+          const proofBody = await proofResponse.json().catch(() => ({}));
+          if (!proofResponse.ok || proofBody.data?.confirmed !== true) throw new Error(proofBody.error?.message ?? t("kyc.errors.reviewFailed"));
+          setManualIdentity((value) => ({ ...value, documentNumber: "" }));
+          setConfirmationError(t("kyc.confirm.secondReviewRecorded"));
+        } catch (reason) {
+          setConfirmationError(reason instanceof Error ? reason.message : t("kyc.errors.reviewFailed"));
+        } finally {
+          setConfirmationBusy(false);
+        }
+        return;
+      }
+      if (!primaryConfirmed) {
+        if (!manualIdentity.secondaryReviewerId) {
+          setConfirmationError(t("kyc.confirm.secondaryReviewerRequired"));
+          return;
+        }
+        setConfirmationBusy(true);
+        setConfirmationError(null);
+        try {
+          const countersignResponse = await fetch("/api/admin/kyc/review/countersign", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              submissionId: submission.id,
+              expectedVersion: detail.assignment.reviewVersion,
+              secondaryReviewerId: manualIdentity.secondaryReviewerId,
+            }),
+          });
+          const countersignBody = await countersignResponse.json().catch(() => ({}));
+          if (!countersignResponse.ok) throw new Error(countersignBody.error?.message ?? t("kyc.errors.reviewFailed"));
+          const proofResponse = await fetch("/api/admin/kyc/review/confirm", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              submissionId: submission.id,
+              expectedVersion: detail.assignment.reviewVersion,
+              documentAccessRefs: [currentDocumentAccessRefs.front, currentDocumentAccessRefs.back],
+              actualDocumentType: manualIdentity.actualDocumentType,
+              issuerCountry: manualIdentity.issuerCountry,
+              identifierKind: manualIdentity.identifierKind,
+              holderName: manualIdentity.holderName,
+              documentNumber: manualIdentity.documentNumber,
+              reasonCode: manualIdentity.reasonCode,
+            }),
+          });
+          const proofBody = await proofResponse.json().catch(() => ({}));
+          if (!proofResponse.ok || proofBody.data?.confirmed !== true) throw new Error(proofBody.error?.message ?? t("kyc.errors.reviewFailed"));
+          setPrimaryConfirmed(true);
+          setSecondReviewComplete(false);
+          setManualIdentity((value) => ({ ...value, documentNumber: "" }));
+        } catch (reason) {
+          setConfirmationError(reason instanceof Error ? reason.message : t("kyc.errors.reviewFailed"));
+        } finally {
+          setConfirmationBusy(false);
+        }
+        return;
+      }
+      const stableOperationId = operationId ?? crypto.randomUUID();
+      setOperationId(stableOperationId);
+      onDecision({ ...confirmDecision, operationId: stableOperationId });
+    } else {
+      onDecision(confirmDecision);
+    }
     setConfirmDecision(null);
   }
 
@@ -122,6 +354,24 @@ export function KycReviewDetailContent({
   const reasonLabel = submission.reviewReasonCode && KYC_REVIEW_REASON_CODES.includes(submission.reviewReasonCode as KycReviewReasonCode)
     ? t(`kyc.reasons.${submission.reviewReasonCode}`)
     : submission.reviewReasonCode;
+
+  useEffect(() => {
+    if (confirmDecision?.action !== "approve" || confirmationPurpose !== "primary") return;
+    const controller = new AbortController();
+    void fetch(`/api/admin/kyc/review/countersign/candidates?submissionId=${encodeURIComponent(submission.id)}&expectedVersion=${detail.assignment.reviewVersion}`, { signal: controller.signal })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.error?.message ?? t("kyc.errors.reviewFailed"));
+        const reviewers = body.data?.reviewers;
+        setCounterSignCandidates(Array.isArray(reviewers) ? reviewers.filter((item: unknown): item is { id: string; name: string } =>
+          Boolean(item && typeof item === "object" && "id" in item && typeof item.id === "string" && "name" in item && typeof item.name === "string")) : []);
+        setPrimaryConfirmed(body.data?.primaryConfirmed === true);
+        setSecondReviewComplete(body.data?.secondReviewComplete === true);
+      })
+      .catch(() => { if (!controller.signal.aborted) setCounterSignCandidates([]); })
+      .finally(() => { if (!controller.signal.aborted) setCounterSignCandidatesLoading(false); });
+    return () => controller.abort();
+  }, [confirmDecision?.action, confirmationPurpose, submission.id, detail.assignment.reviewVersion, t]);
 
   return (
     <>
@@ -217,17 +467,92 @@ export function KycReviewDetailContent({
             </dl>
           </section>
 
+          {(actionable || Boolean(resolutionState)) && submission.docType !== "passport" && <section className="rounded-2xl border border-border bg-card p-5">
+            <h2 className="font-semibold text-foreground">{t("kyc.resolution.title")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("kyc.resolution.description")}</p>
+            {(!resolutionState || resolutionState.status === "cancelled") && actionable && <div className="mt-4 space-y-3">
+              <label className="block text-xs">{t("kyc.resolution.kind")}
+                <select value={resolutionKind} onChange={(event) => setResolutionKind(event.target.value as typeof resolutionKind)} className={`${adminFilterControlClassName} mt-1 w-full`}>
+                  <option value="legacy_conflict">{t("kyc.resolution.legacyConflict")}</option>
+                  <option value="ownership_correction">{t("kyc.resolution.ownershipCorrection")}</option>
+                  <option value="replacement">{t("kyc.resolution.replacement")}</option>
+                </select>
+              </label>
+              <Button variant="outline" disabled={busy || resolutionBusy} onClick={beginIdentityResolution}>{t("kyc.resolution.start")}</Button>
+            </div>}
+            {resolutionState && <div className="mt-4 space-y-3">
+              <p className="text-sm">{t("kyc.resolution.status", { status: t(`kyc.resolution.statuses.${resolutionState.status}`) })}</p>
+              {resolutionState.status === "open" && resolutionState.primary && <div className="space-y-3">
+                <label className="block text-xs">{t("kyc.resolution.secondReviewer")}
+                  <select value={resolutionReviewerId} onChange={(event) => setResolutionReviewerId(event.target.value)} className={`${adminFilterControlClassName} mt-1 w-full`}>
+                    <option value="">{t("kyc.resolution.selectReviewer")}</option>
+                    {resolutionCandidates.map((reviewer) => <option key={reviewer.id} value={reviewer.id}>{reviewer.name}</option>)}
+                  </select>
+                </label>
+                <Button variant="outline" disabled={busy || resolutionBusy || !resolutionReviewerId} onClick={authorizeIdentityResolution}>{t("kyc.resolution.assignSecond")}</Button>
+              </div>}
+              {resolutionState.status === "second_review" && <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">{t("kyc.resolution.evidenceHint")}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => onOpenDocument("front")}>{t("kyc.detail.openDocument", { side: t("kyc.detail.front") })}</Button>
+                  <Button size="sm" variant="outline" onClick={() => onOpenDocument("back")}>{t("kyc.detail.openDocument", { side: t("kyc.detail.back") })}</Button>
+                </div>
+                <p className="text-xs text-muted-foreground">{t("kyc.resolution.documentsViewed", { count: Number(Boolean(currentDocumentAccessRefs.front)) + Number(Boolean(currentDocumentAccessRefs.back)) })}</p>
+                <label className="block text-xs">{t("kyc.confirm.actualType")}
+                  <select value={manualIdentity.actualDocumentType === "national_id" || manualIdentity.actualDocumentType === "driving_license" ? manualIdentity.actualDocumentType : "national_id"}
+                    onChange={(event) => setManualIdentity((value) => ({ ...value, actualDocumentType: event.target.value as "national_id" | "driving_license" }))} className={`${adminFilterControlClassName} mt-1 w-full`}>
+                    <option value="national_id">{t("kyc.documents.national_id")}</option><option value="driving_license">{t("kyc.documents.driving_license")}</option>
+                  </select>
+                </label>
+                <label className="block text-xs">{t("kyc.confirm.holderName")}
+                  <input value={resolutionHolderName} onChange={(event) => setResolutionHolderName(event.target.value)} maxLength={100} autoComplete="off" className={`${adminFilterControlClassName} mt-1 w-full`} />
+                </label>
+                <label className="block text-xs">{t("kyc.confirm.documentNumber")}
+                  <input value={resolutionNumber} onChange={(event) => setResolutionNumber(event.target.value)} maxLength={32} autoComplete="off" className={`${adminFilterControlClassName} mt-1 w-full`} />
+                </label>
+                <label className="block text-xs">{t("kyc.resolution.reason")}
+                  <textarea value={resolutionReason} onChange={(event) => setResolutionReason(event.target.value)} maxLength={500} rows={3} className={`${adminFilterControlClassName} mt-1 w-full`} />
+                </label>
+                <Button variant="outline" disabled={busy || resolutionBusy || !currentDocumentAccessRefs.front || !currentDocumentAccessRefs.back || resolutionReason.trim().length < 10 || resolutionNumber.trim().length < 6}
+                  onClick={confirmIdentityResolution}>{t("kyc.resolution.confirmEvidence")}</Button>
+                <p className="text-xs text-muted-foreground">{t("kyc.resolution.confirmations", { primary: resolutionState.primaryConfirmed ? t("kyc.resolution.confirmed") : t("kyc.resolution.pending"), secondary: resolutionState.secondaryConfirmed ? t("kyc.resolution.confirmed") : t("kyc.resolution.pending") })}</p>
+                {resolutionState.primary && resolutionState.canApply && <Button disabled={busy || resolutionBusy} onClick={applyIdentityResolution}>{t("kyc.resolution.apply")}</Button>}
+              </div>}
+              {resolutionState.status === "applied" && <p role="status" className="text-sm text-muted-foreground">{t(resolutionState.kind === "replacement" ? "kyc.resolution.appliedNote" : "kyc.resolution.conflictHeldNote")}</p>}
+              {resolutionState.status === "cancelled" && <p role="status" className="text-sm text-muted-foreground">{t("kyc.resolution.cancelledNote")}</p>}
+              {resolutionState.primary && ["open", "evidence_required", "second_review"].includes(resolutionState.status) && <div className="space-y-2">
+                <label className="block text-xs">{t("kyc.resolution.cancelReason")}
+                  <select value={resolutionCancelReason} onChange={(event) => setResolutionCancelReason(event.target.value as typeof resolutionCancelReason)} className={`${adminFilterControlClassName} mt-1 w-full`}>
+                    <option value="reviewer_declined">{t("kyc.resolution.cancelReasons.reviewer_declined")}</option>
+                    <option value="evidence_unavailable">{t("kyc.resolution.cancelReasons.evidence_unavailable")}</option>
+                    <option value="case_changed">{t("kyc.resolution.cancelReasons.case_changed")}</option>
+                    <option value="other">{t("kyc.resolution.cancelReasons.other")}</option>
+                  </select>
+                </label>
+                <Button variant="outline" disabled={busy || resolutionBusy} onClick={() => void cancelIdentityResolution()}>{t("kyc.resolution.cancel")}</Button>
+              </div>}
+            </div>}
+            {resolutionError && <p role="alert" className="mt-3 text-xs text-destructive">{resolutionError}</p>}
+          </section>}
+
           {submission.status === "pending" && !detail.assignment.canDecide ? (
             <section className="rounded-2xl border border-border bg-muted/50 p-5">
               <h2 className="font-semibold text-foreground">{t("kyc.detail.assignedElsewhere")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{t("kyc.detail.assignedElsewhereDescription")}</p>
+              <Button className="mt-4" variant="outline" disabled={busy} onClick={() => {
+                setConfirmationPurpose("independent_second");
+                setConfirmationError(null);
+                setConfirmationVersion(detail.assignment.reviewVersion);
+                setCounterSignCandidatesLoading(true);
+                setConfirmDecision({ action: "approve" });
+              }}>{t("kyc.confirm.independentReview")}</Button>
             </section>
           ) : actionable ? (
             <section className="rounded-2xl border border-border bg-card p-5">
               <h2 className="font-semibold text-foreground">{t("kyc.detail.decision")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{t("kyc.detail.decisionDescription")}</p>
               <div className="mt-4 grid gap-2">
-                <Button disabled={busy} onClick={() => { setConfirmationVersion(detail.assignment.reviewVersion); setConfirmDecision({ action: "approve" }); }}><CheckSquare size={14} /> {t("kyc.detail.approve")}</Button>
+                <Button disabled={busy} onClick={() => { setConfirmationVersion(detail.assignment.reviewVersion); setCounterSignCandidatesLoading(true); setConfirmDecision({ action: "approve" }); }}><CheckSquare size={14} /> {t("kyc.detail.approve")}</Button>
                 <Button variant="outline" disabled={busy} onClick={() => beginReasonAction("request_info")}><MessageSquare size={14} /> {t("kyc.detail.requestInfo")}</Button>
                 <Button variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" disabled={busy} onClick={() => beginReasonAction("reject")}><XCircle size={14} /> {t("kyc.detail.reject")}</Button>
               </div>
@@ -309,14 +634,49 @@ export function KycReviewDetailContent({
       </section>
 
       <AdminConfirmDialog
-        open={Boolean(confirmDecision) && actionable && confirmationVersion === detail.assignment.reviewVersion}
+        open={Boolean(confirmDecision) && (actionable || confirmationPurpose === "independent_second") && confirmationVersion === detail.assignment.reviewVersion}
         title={confirmTitle}
         description={confirmDescription}
         confirmLabel={confirmLabel}
         confirmVariant={confirmDecision?.action === "reject" ? "destructive" : "default"}
-        busy={busy}
-        onCancel={() => setConfirmDecision(null)}
+        busy={busy || confirmationBusy}
+        onCancel={() => { setConfirmDecision(null); setConfirmationError(null); setManualIdentity((value) => ({ ...value, documentNumber: "" })); }}
         onConfirm={submitConfirmedDecision}
+        content={confirmDecision?.action === "approve" ? <div className="mt-4 space-y-3">
+          <p className="text-xs text-muted-foreground">{t(confirmationPurpose === "primary" ? "kyc.confirm.identityEvidenceHint" : "kyc.confirm.independentEvidenceHint")}</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="text-xs">{t("kyc.confirm.actualType")}
+              <select value={manualIdentity.actualDocumentType} onChange={(event) => setManualIdentity((value) => ({ ...value, actualDocumentType: event.target.value as typeof value.actualDocumentType, identifierKind: event.target.value === "passport" ? "passport" : "my_ic", issuerCountry: event.target.value === "passport" ? "" : "MY" }))} className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm">
+                <option value="national_id">{t("kyc.documents.national_id")}</option><option value="driving_license">{t("kyc.documents.driving_license")}</option><option value="passport">{t("kyc.documents.passport")}</option>
+              </select>
+            </label>
+            <label className="text-xs">{t("kyc.confirm.issuerCountry")}
+              <input value={manualIdentity.issuerCountry} maxLength={2} onChange={(event) => setManualIdentity((value) => ({ ...value, issuerCountry: event.target.value.toUpperCase() }))} className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm" autoComplete="off" />
+            </label>
+            <label className="text-xs sm:col-span-2">{t("kyc.confirm.holderName")}
+              <input value={manualIdentity.holderName} maxLength={100} onChange={(event) => setManualIdentity((value) => ({ ...value, holderName: event.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm" autoComplete="off" />
+            </label>
+            <label className="text-xs sm:col-span-2">{t("kyc.confirm.documentNumber")}
+              <input value={manualIdentity.documentNumber} maxLength={32} onChange={(event) => setManualIdentity((value) => ({ ...value, documentNumber: event.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm" autoComplete="off" inputMode="text" />
+            </label>
+            <label className="text-xs sm:col-span-2">{t("kyc.confirm.manualReason")}
+              <select value={manualIdentity.reasonCode} onChange={(event) => setManualIdentity((value) => ({ ...value, reasonCode: event.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm">
+                <option value="ocr_number_mismatch">{t("kyc.confirm.numberMismatch")}</option>
+                <option value="ocr_name_mismatch">{t("kyc.confirm.nameMismatch")}</option>
+                <option value="ocr_unavailable">{t("kyc.confirm.ocrUnavailable")}</option>
+                <option value="ocr_unreadable">{t("kyc.confirm.ocrUnreadable")}</option>
+              </select>
+            </label>
+            {confirmationPurpose === "primary" && !primaryConfirmed && <label className="text-xs sm:col-span-2">{t("kyc.confirm.secondaryReviewer")}
+              <select value={manualIdentity.secondaryReviewerId} onChange={(event) => setManualIdentity((value) => ({ ...value, secondaryReviewerId: event.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm" disabled={counterSignCandidatesLoading || counterSignCandidates.length === 0}>
+                <option value="">{counterSignCandidatesLoading ? t("kyc.confirm.loadingReviewers") : t("kyc.confirm.selectReviewer")}</option>
+                {counterSignCandidates.map((reviewer) => <option key={reviewer.id} value={reviewer.id}>{reviewer.name}</option>)}
+              </select>
+            </label>}
+          </div>
+          {confirmationError && <p role="alert" className="text-xs text-destructive">{confirmationError}</p>}
+          {confirmationPurpose === "primary" && primaryConfirmed && <p className="text-xs text-muted-foreground">{t(secondReviewComplete ? "kyc.confirm.secondReviewReady" : "kyc.confirm.waitingForSecondReview")}</p>}
+        </div> : undefined}
       />
     </>
   );
@@ -337,6 +697,7 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
   const workSequence = useRef(0);
 
   const [documentPreview, setDocumentPreview] = useState<{ side: "front" | "back"; url: string; pdf?: boolean; submissionId: string } | null>(null);
+  const [documentAccessRefs, setDocumentAccessRefs] = useState<{ front?: string; back?: string }>({});
   const [documentLoading, setDocumentLoading] = useState(false);
   const documentResource = useRef<{ url: string | null; request: AbortController | null; epoch: number }>({ url: null, request: null, epoch: 0 });
   const disposeDocument = useCallback(() => {
@@ -415,6 +776,8 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
         if (handlePermissionFailure(response.status, body?.error?.code)) return;
         throw new Error(t("kyc.errors.loadDocument"));
       }
+      const accessId = response.headers.get("x-kyc-document-access-id");
+      if (accessId) setDocumentAccessRefs((value) => ({ ...value, [side]: accessId }));
       if (response.headers.get("content-type")?.split(";")[0] === "application/pdf") {
         await response.body?.cancel();
         if (epoch !== resource.epoch || controller.signal.aborted) return;
@@ -455,6 +818,7 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
           action: decision.action,
           ...(decision.reasonCode ? { reasonCode: decision.reasonCode } : {}),
           ...(decision.reasonDetail ? { reasonDetail: decision.reasonDetail } : {}),
+          ...(decision.operationId ? { operationId: decision.operationId } : {}),
         }),
       });
       const body = await response.json().catch(() => ({}));
@@ -577,6 +941,7 @@ export function KycReviewDetail({ submissionId }: { submissionId: string }) {
       busy={busy}
       error={error}
       onOpenDocument={(side) => { void openDocument(side); }}
+      documentAccessRefs={documentAccessRefs}
       onDecision={(decision) => { void review(decision); }}
       />
     </>

@@ -34,12 +34,20 @@ export const kycReviewSchema = z.object({
   action: z.enum(['approve', 'reject', 'request_info']),
   reasonCode: z.enum(KYC_REVIEW_REASON_CODES).optional(),
   reasonDetail: z.string().max(500).optional(),
+  operationId: uuid.optional(),
 }).strict().superRefine((data, ctx) => {
   if (data.action === 'approve') {
     if (data.reasonCode !== undefined || data.reasonDetail !== undefined) {
       ctx.addIssue({ code: 'custom', message: 'Approved submissions cannot include a review reason', path: ['reasonCode'] });
     }
+    if (!data.operationId) {
+      ctx.addIssue({ code: 'custom', message: 'An idempotency key is required', path: ['operationId'] });
+    }
     return;
+  }
+
+  if (data.operationId !== undefined) {
+    ctx.addIssue({ code: 'custom', message: 'Approval operation IDs are only valid for approval', path: ['operationId'] });
   }
 
   if (!data.reasonCode) {

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-import { runKycOcr } from '../ocr';
+import { extractKycPreviewFields, runKycOcr } from '../ocr';
 
 function configure() {
   vi.stubEnv('KYC_PRIVATE_OCR_URL', 'http://127.0.0.1:8091/ocr');
@@ -42,6 +42,16 @@ afterEach(() => {
 });
 
 describe('runKycOcr', () => {
+  it('returns full extracted number only in the temporary owner preview result', async () => {
+    configure();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(privateResponse(JSON.stringify({
+      holderName: 'Aminah Ali', documentNumber: '900101-14-1234', expiryDate: null, confidence: 0.91, unreadable: false,
+    })));
+    await expect(extractKycPreviewFields(input())).resolves.toMatchObject({
+      status: 'extracted', holderName: 'Aminah Ali', documentNumber: '900101-14-1234', providerModel: 'private-ocr-v1',
+    });
+  });
+
   it('never sends evidence to a provider without explicit operator opt-in', async () => {
     delete process.env.KYC_EXTERNAL_OCR_ENABLED;
     process.env.GOOGLE_AI_KEY = 'test-key';

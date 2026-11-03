@@ -12,6 +12,7 @@ import { validatePassword } from "@/lib/auth/password-policy";
 import { postLoginPath } from "@/lib/auth/guest-mode";
 import { demoAccountRoleCategories, filterDemoAccountsByRole } from "@/lib/auth/demo-account-filter";
 import { postLoginDestination } from "@/lib/auth/post-login-destination";
+import { getDemoSignInErrorMessage } from "@/lib/auth/demo-signin-error";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -120,8 +121,8 @@ function LoginContent() {
       const signedInUser = await switchUser(user.id, user, captchaToken);
       router.push(postLoginDestination(signedInUser?.role ?? user.role, requestedNext(), signedInUser?.staffVerified, signedInUser?.staffPasskeyRequired, signedInUser?.staffMfaRequired));
       router.refresh();
-    } catch {
-      setError(GENERIC_ERROR);
+    } catch (error) {
+      setError(getDemoSignInErrorMessage(error, tAuth("humanVerification.invalid"), GENERIC_ERROR));
     } finally { setBusy(false); }
   }
 

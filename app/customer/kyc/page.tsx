@@ -2,7 +2,7 @@
 
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ShieldCheck, Upload, CheckCircle2, Clock, FileCheck2,
   Info, AlertTriangle, ArrowLeft,
@@ -20,6 +20,7 @@ import type { CustomerKycSubmission } from "@/backend/core/types";
 import { useSearchParams } from "next/navigation";
 import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 import { postLoginPath } from "@/lib/auth/guest-mode";
+import { ApiErrorNotice } from "@/components/shared/api-error-notice";
 
 const IC_PATTERNS: Record<string, { regex: RegExp; hintKey: string }> = {
   national_id:     { regex: /^\d{6}-?\d{2}-?\d{4}$/, hintKey: "ui.kyc.myKadHint" },
@@ -54,12 +55,26 @@ export default function KycPage() {
   const { showFeedback } = useActionFeedback();
   const [submitting,        setSubmitting]        = useState(false);
   const [form,              setForm]              = useState({ icNumber: "", docType: "national_id" });
+  const [holderName,        setHolderName]        = useState("");
+  const [ocrFields,         setOcrFields]          = useState<{ holderName: string | null; documentNumber: string | null; status: string } | null>(null);
+  const [previewing,        setPreviewing]         = useState(false);
+  const [savingDraft,       setSavingDraft]        = useState(false);
+  const [draftId,           setDraftId]            = useState<string | null>(null);
+  const [draftVersion,      setDraftVersion]       = useState<number | null>(null);
+  const [draftNotice,       setDraftNotice]        = useState<string | null>(null);
+  const [submitUncertain,   setSubmitUncertain]    = useState(false);
+  const [operationChecking, setOperationChecking]  = useState(false);
+  const [submitRequestId,   setSubmitRequestId]     = useState<string | null>(null);
+  const submitOperationIdRef = useRef<string | null>(null);
   const [formError,         setFormError]         = useState<string | null>(null);
   const [fileErrors,        setFileErrors]        = useState<{ front: string | null; back: string | null }>({ front: null, back: null });
   const [submitError,       setSubmitError]       = useState<string | null>(null);
   const [frontFile,         setFrontFile]         = useState<File | null>(null);
   const [backFile,          setBackFile]          = useState<File | null>(null);
   const [ocrConsent,        setOcrConsent]        = useState(false);
+  const [withdrawing,       setWithdrawing]       = useState(false);
+  const [confirmWithdrawal, setConfirmWithdrawal] = useState(false);
+  const [statusChecking,    setStatusChecking]    = useState(false);
   const [ocrNotice,         setOcrNotice]         = useState<string | null>(null);
   const [activeSubmission,  setActiveSubmission]  = useState<CustomerKycSubmission | null | undefined>(undefined);
   const frontFileInputRef = useRef<HTMLInputElement>(null);
@@ -71,6 +86,21 @@ export default function KycPage() {
     && verificationFacts.accountStatus === "active";
   const loading          = activeSubmission === undefined;
 
+  const refreshSubmissionStatus = useCallback(async () => {
+    setStatusChecking(true);
+    try {
+      const response = await fetch("/api/kyc/submission", { cache: "no-store" });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error("status_unavailable");
+      setActiveSubmission(body.data?.submission ?? null);
+      setSubmitError(null);
+    } catch {
+      setSubmitError(tCustomer("ui.kyc.statusCheckFailed"));
+    } finally {
+      setStatusChecking(false);
+    }
+  }, [tCustomer]);
+
   useEffect(() => {
     if (!currentUser?.id) {
       const timer = window.setTimeout(() => setActiveSubmission(null), 0);
@@ -79,21 +109,99 @@ export default function KycPage() {
     let active = true;
     (async () => {
       try {
-        const response = await fetch("/api/kyc/submission");
+        const operationKey = `mylawatan:kyc-operation:${currentUser.id}`;
+        const savedOperationId = window.localStorage.getItem(operationKey);
+        if (savedOperationId && /^[0-9a-f-]{36}$/i.test(savedOperationId)) {
+          submitOperationIdRef.current = savedOperationId;
+          setSubmitUncertain(true);
+        }
+        const [response, draftResponse] = await Promise.all([
+          fetch("/api/kyc/submission", { cache: "no-store" }),
+          fetch("/api/kyc/draft", { cache: "no-store" }),
+        ]);
         const body = await response.json().catch(() => ({}));
+        const draftBody = await draftResponse.json().catch(() => ({}));
         if (!active) return;
         setActiveSubmission(response.ok ? (body.data?.submission ?? null) : null);
+        if (savedOperationId && /^[0-9a-f-]{36}$/i.test(savedOperationId)) {
+          const operationResponse = await fetch(`/api/kyc/operation/${savedOperationId}`, { cache: "no-store" });
+          const operationBody = await operationResponse.json().catch(() => ({}));
+          const operation = operationBody.data?.operation;
+          if (active && operationResponse.ok && operation?.state === "succeeded") {
+            window.localStorage.removeItem(operationKey); submitOperationIdRef.current = null; setSubmitUncertain(false);
+            if (!response.ok || !body.data?.submission) await refreshSubmissionStatus();
+          }
+        }
+        const draft = draftResponse.ok ? draftBody.data?.draft : null;
+        if (draft?.id && typeof draft.version === "number") {
+          setDraftId(draft.id);
+          setDraftVersion(draft.version);
+          setHolderName(typeof draft.holderName === "string" ? draft.holderName : "");
+          setForm((value) => ({ ...value, docType: draft.documentType }));
+          const restore = async (side: "front" | "back") => {
+            const image = await fetch(`/api/kyc/draft/documents/${draft.id}/${side}`, { cache: "no-store" });
+            if (!image.ok) return null;
+            const blob = await image.blob();
+            return new File([blob], `${side}.${blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg"}`, { type: blob.type });
+          };
+          const [front, back] = await Promise.all([restore("front"), restore("back")]);
+          if (active) {
+            if (front) setFrontFile(front);
+            if (back) setBackFile(back);
+            setDraftNotice(tCustomer("ui.kyc.draftRestored"));
+          }
+        }
       } catch {
         if (active) setActiveSubmission(null);
       }
     })();
     return () => { active = false; };
-  }, [currentUser?.id]);
+  }, [currentUser?.id, refreshSubmissionStatus, tCustomer]);
 
   function handleFileChange(side: "front" | "back", file: File | null) {
+    setOcrFields(null);
+    setDraftNotice(null);
     if (side === "front") setFrontFile(file);
     else setBackFile(file);
     setFileErrors((errors) => ({ ...errors, [side]: localizedKycFileError(file, tCustomer) }));
+  }
+
+  async function previewDocument() {
+    if (!frontFile || !backFile || previewing || !ocrConsent) return;
+    setPreviewing(true); setFormError(null); setOcrNotice(null);
+    try {
+      const saved = await saveDraft();
+      if (!saved) throw new Error(tCustomer("ui.kyc.draftSaveFailed"));
+      const response = await fetch("/api/kyc/preview", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draftId: saved.id, version: saved.version }) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error?.message ?? tCustomer("ui.kyc.previewUnavailable"));
+      const preview = body.data?.preview;
+      if (!preview) throw new Error(tCustomer("ui.kyc.previewUnavailable"));
+      setOcrFields({ holderName: preview.holderName ?? null, documentNumber: preview.documentNumber ?? null, status: preview.status });
+      if (preview.holderName) setHolderName(preview.holderName);
+      if (preview.documentNumber) setForm((value) => ({ ...value, icNumber: preview.documentNumber }));
+      if (preview.status !== "extracted") setOcrNotice(tCustomer("ui.kyc.previewManualEntry"));
+    } catch (error) {
+      setOcrNotice(error instanceof Error ? error.message : tCustomer("ui.kyc.previewUnavailable"));
+    } finally { setPreviewing(false); }
+  }
+
+  async function saveDraft(): Promise<{ id: string; version: number } | null> {
+    if (!frontFile || !backFile || savingDraft) return null;
+    setSavingDraft(true); setDraftNotice(null);
+    try {
+      const data = new FormData();
+      data.append("draftId", draftId ?? ""); if (draftVersion !== null) data.append("version", String(draftVersion));
+      data.append("documentType", form.docType); data.append("holderName", holderName.trim());
+      data.append("frontFile", frontFile); data.append("backFile", backFile);
+      const response = await fetch("/api/kyc/draft", { method: "POST", body: data });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error?.message ?? tCustomer("ui.kyc.draftSaveFailed"));
+      setDraftId(body.data.draft.id); setDraftVersion(body.data.draft.version); setDraftNotice(tCustomer("ui.kyc.draftSaved"));
+      return { id: body.data.draft.id as string, version: body.data.draft.version as number };
+    } catch (error) { setDraftNotice(error instanceof Error ? error.message : tCustomer("ui.kyc.draftSaveFailed")); return null; }
+    finally { setSavingDraft(false); }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -108,24 +216,40 @@ export default function KycPage() {
     const frontError = localizedKycFileError(frontFile, tCustomer);
     const backError = localizedKycFileError(backFile, tCustomer);
     if (frontError || backError) { setFileErrors({ front: frontError, back: backError }); return; }
-    if (!ocrConsent) { setSubmitError(tCustomer("ui.kyc.consentRequired")); return; }
+    if (!ocrConsent && !submitUncertain) { setSubmitError(tCustomer("ui.kyc.consentRequired")); return; }
 
     setSubmitting(true);
     try {
+      const savedDraft = submitUncertain && draftId && draftVersion !== null
+        ? { id: draftId, version: draftVersion }
+        : await saveDraft();
+      if (!savedDraft) { setSubmitting(false); return; }
       const fd = new FormData();
+      const operationId = submitOperationIdRef.current ?? crypto.randomUUID();
+      submitOperationIdRef.current = operationId;
+      window.localStorage.setItem(`mylawatan:kyc-operation:${currentUser.id}`, operationId);
+      fd.append("operationId", operationId);
       fd.append("icNumber", result.data.icNumber.toUpperCase());
+      fd.append("holderName", holderName.trim());
       fd.append("docType",  result.data.docType);
-      fd.append("frontFile", frontFile!);
-      fd.append("backFile", backFile!);
+      fd.append("draftId", savedDraft.id);
+      fd.append("draftVersion", String(savedDraft.version));
       fd.append("ocrConsent", "true");
-      const res = await fetch("/api/kyc/upload", { method: "POST", body: fd });
+      const res = await fetch("/api/kyc/upload", { method: "POST", headers: { "Idempotency-Key": operationId }, body: fd });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
+        setSubmitRequestId(body.error?.requestId ?? null);
+        if (res.status >= 500) setSubmitUncertain(true);
+        else { submitOperationIdRef.current = null; window.localStorage.removeItem(`mylawatan:kyc-operation:${currentUser.id}`); }
         throw new Error((body as { error?: { message?: string } })?.error?.message ?? tCustomer("ui.kyc.submissionFailed"));
       }
       const { data: resData } = await res.json() as { data: { submissionId: string; status: "pending"; manualReviewRequired?: boolean } };
       setOcrNotice(resData.manualReviewRequired ? tCustomer("ui.kyc.manualReview") : null);
       await refreshUser();
+      submitOperationIdRef.current = null;
+      window.localStorage.removeItem(`mylawatan:kyc-operation:${currentUser.id}`);
+      setSubmitUncertain(false);
+      setSubmitRequestId(null);
       setActiveSubmission({
         id:            resData.submissionId,
         status:        "pending",
@@ -136,23 +260,68 @@ export default function KycPage() {
         reviewReasonCode: null,
         reviewReasonDetail: null,
       });
+      await refreshSubmissionStatus();
       setFrontFile(null);
       setBackFile(null);
       setOcrConsent(false);
       setForm({ icNumber: "", docType: "national_id" });
+      setHolderName(""); setOcrFields(null); setDraftId(null); setDraftVersion(null);
       showFeedback("success", tCustomer("ui.kyc.submitted"));
     } catch (err) {
       const message = err instanceof Error ? err.message : tCustomer("ui.kyc.submissionFailed");
       setSubmitError(message);
+      if (submitOperationIdRef.current) setSubmitUncertain(true);
       showFeedback("error", message);
     } finally {
       setSubmitting(false);
     }
   }
 
-  const canStartNewSubmission = !activeSubmission || ["rejected", "info_requested", "superseded"].includes(activeSubmission.status);
+  const canStartNewSubmission = !activeSubmission || ["rejected", "info_requested", "superseded", "withdrawn"].includes(activeSubmission.status);
   const showForm = canSubmit && !isVerified && !loading && canStartNewSubmission;
-  const submitDisabled = submitting || !frontFile || !backFile || Boolean(fileErrors.front || fileErrors.back);
+  const submitDisabled = submitting || !frontFile || !backFile || !holderName.trim() || Boolean(fileErrors.front || fileErrors.back);
+
+  async function refreshOperationStatus() {
+    const operationId = submitOperationIdRef.current;
+    if (!operationId || operationChecking) return;
+    setOperationChecking(true);
+    try {
+      const response = await fetch(`/api/kyc/operation/${operationId}`, { cache: "no-store" });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error("operation_unavailable");
+      if (body.data?.operation?.state === "succeeded") {
+        window.localStorage.removeItem(`mylawatan:kyc-operation:${currentUser?.id}`);
+        submitOperationIdRef.current = null; setSubmitUncertain(false); setSubmitError(null);
+        await refreshSubmissionStatus();
+      }
+    } catch { setSubmitError(tCustomer("ui.kyc.statusCheckFailed")); }
+    finally { setOperationChecking(false); }
+  }
+
+  async function withdrawSubmission() {
+    if (!activeSubmission || activeSubmission.status !== "pending" || typeof activeSubmission.reviewVersion !== "number" || withdrawing) return;
+    setWithdrawing(true);
+    setSubmitError(null);
+    const operationId = crypto.randomUUID();
+    try {
+      const response = await fetch("/api/kyc/submission/withdraw", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionId: activeSubmission.id, expectedVersion: activeSubmission.reviewVersion, operationId }),
+      });
+      if (!response.ok) {
+        await refreshSubmissionStatus();
+        return;
+      }
+      setActiveSubmission({ ...activeSubmission, status: "withdrawn" });
+      setConfirmWithdrawal(false);
+      showFeedback("success", tCustomer("ui.kyc.withdrawn"));
+    } catch {
+      // Resolve the case state instead of encouraging a blind resubmission.
+      await refreshSubmissionStatus();
+    } finally {
+      setWithdrawing(false);
+    }
+  }
 
   if (!currentUser) return <CustomerPageShell><GuestAccountEmptyState title={tCustomer("ui.kyc.guestTitle")} description={tCustomer("ui.kyc.guestDescription")} nextPath={continuation ?? "/customer/kyc"} /></CustomerPageShell>;
 
@@ -222,6 +391,8 @@ export default function KycPage() {
               ? tCustomer("ui.kyc.rejected")
               : activeSubmission?.status === "pending"
               ? tCustomer("ui.kyc.underReview")
+              : activeSubmission?.status === "withdrawn"
+              ? tCustomer("ui.kyc.withdrawn")
               : canSubmit
               ? tCustomer("ui.kyc.ready")
               : tCustomer("ui.kyc.baseAccountRequired")}
@@ -251,8 +422,29 @@ export default function KycPage() {
         </div>
       </div>
 
+      {activeSubmission?.status === "pending" && <section className="mb-6 rounded-2xl border border-border bg-card p-4">
+        {!confirmWithdrawal ? <Button variant="outline" disabled={withdrawing || Boolean(submitError)} onClick={() => setConfirmWithdrawal(true)}>{tCustomer("ui.kyc.withdrawApplication")}</Button> : <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">{tCustomer("ui.kyc.withdrawConfirm")}</p>
+          <div className="flex gap-2"><Button variant="destructive" disabled={withdrawing || Boolean(submitError)} onClick={() => void withdrawSubmission()}>{withdrawing ? tCustomer("ui.kyc.submitting") : tCustomer("ui.kyc.confirmWithdraw")}</Button><Button variant="outline" disabled={withdrawing} onClick={() => setConfirmWithdrawal(false)}>{tCustomer("actions.cancel", { ns: "common" })}</Button></div>
+        </div>}
+      </section>}
+      {submitUncertain && <div className="mb-6 rounded-xl border border-amber-500/30 p-3 text-sm" role="status">
+        <p>{tCustomer("ui.kyc.submissionChecking")}</p>
+        {submitError && <div className="mt-1"><ApiErrorNotice message={submitError} requestId={submitRequestId ?? undefined} /></div>}
+        <Button variant="outline" size="sm" disabled={operationChecking} onClick={() => void refreshOperationStatus()} className="mt-2">{operationChecking ? tCustomer("ui.kyc.checkingStatus") : tCustomer("ui.kyc.checkStatus")}</Button>
+        {!form.icNumber && <div className="mt-3 space-y-1"><label htmlFor="kyc-retry-ic-number" className="text-xs font-semibold text-muted-foreground">{tCustomer("ui.kyc.reenterNumberForRetry")}</label>
+          <input id="kyc-retry-ic-number" value={form.icNumber} onChange={(event) => setForm((value) => ({ ...value, icNumber: event.target.value }))}
+            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" /></div>}
+        <Button variant="outline" size="sm" disabled={submitting || !form.icNumber || !frontFile || !backFile} onClick={() => void handleSubmit({ preventDefault() {} } as React.FormEvent)} className="mt-2">
+          {tCustomer("ui.kyc.retrySameOperation")}
+        </Button>
+      </div>}
+      {submitError && activeSubmission?.status === "pending" && !submitUncertain && <div className="mb-6 rounded-xl border border-destructive/30 p-3 text-sm text-destructive" role="alert">
+        <p>{submitError}</p><Button variant="outline" size="sm" disabled={statusChecking} onClick={() => void refreshSubmissionStatus()} className="mt-2">{statusChecking ? tCustomer("ui.kyc.checkingStatus") : tCustomer("ui.kyc.checkStatus")}</Button>
+      </div>}
+
       {/* KYC submission form */}
-      {showForm && (
+      {showForm && !submitUncertain && (
         <form onSubmit={handleSubmit} className="rounded-2xl border border-border bg-card p-6 space-y-5">
           <h2 className="font-bold text-foreground">
             {activeSubmission?.status === "info_requested" || activeSubmission?.status === "rejected" ? tCustomer("ui.kyc.newSubmission") : tCustomer("ui.kyc.submitDocuments")}
@@ -266,6 +458,12 @@ export default function KycPage() {
               </span>
             </div>
           )}
+
+          <div className="space-y-1">
+            <label htmlFor="kyc-holder-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.kyc.holderName")}</label>
+            <input id="kyc-holder-name" value={holderName} onChange={(event) => setHolderName(event.target.value)} maxLength={100}
+              className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30" />
+          </div>
 
           <div className="space-y-1">
             <label htmlFor="kyc-ic-number" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
@@ -286,7 +484,7 @@ export default function KycPage() {
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.kyc.documentType")}</label>
             <select
               value={form.docType}
-              onChange={(e) => setForm((f) => ({ ...f, docType: e.target.value }))}
+              onChange={(e) => { setForm((f) => ({ ...f, docType: e.target.value })); setOcrFields(null); }}
               className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="national_id">{tCustomer("ui.kyc.myKad")}</option>
@@ -319,7 +517,18 @@ export default function KycPage() {
             <span>{tCustomer("ui.kyc.consent")}</span>
           </label>
 
-          {submitError && <p className="text-xs text-destructive text-center">{submitError}</p>}
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" disabled={!frontFile || !backFile || previewing || !ocrConsent} onClick={() => void previewDocument()}>
+              {previewing ? tCustomer("ui.kyc.previewing") : tCustomer("ui.kyc.recognizeDocument")}
+            </Button>
+            <Button type="button" variant="outline" disabled={!frontFile || !backFile || savingDraft} onClick={() => void saveDraft()}>
+              {savingDraft ? tCustomer("ui.kyc.savingDraft") : tCustomer("ui.kyc.saveDraft")}
+            </Button>
+          </div>
+          {ocrFields && <p className="text-xs text-muted-foreground">{tCustomer("ui.kyc.ocrEditableNotice")}</p>}
+          {draftNotice && <p className="text-xs text-muted-foreground" role="status">{draftNotice}</p>}
+
+          {submitError && <ApiErrorNotice message={submitError} requestId={submitRequestId ?? undefined} />}
           {ocrNotice && <p className="text-xs text-amber-700 dark:text-amber-200 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg px-3 py-2">{ocrNotice}</p>}
 
           <Button type="submit" disabled={submitDisabled || !ocrConsent} className="w-full">
