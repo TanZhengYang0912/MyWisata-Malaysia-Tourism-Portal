@@ -60,13 +60,16 @@ export function TravelDetailsSummary({ value, contactPhone, relationship, travel
   const { t, i18n } = useTranslation("customer");
   const locale = i18n.resolvedLanguage ?? i18n.language;
   const country = getCountryOptions(locale).find((option) => option.code === value.nationalityCode)?.label;
+  const relationshipLabel = (value: string) => TRAVEL_RELATIONSHIPS.includes(value as typeof TRAVEL_RELATIONSHIPS[number])
+    ? t(`ui.travelDetails.relationships.${value}`)
+    : value;
   const items = [
     [t("ui.travelDetails.legalName"), value.legalName],
     [t("ui.travelDetails.dateOfBirth"), value.dateOfBirth ? new Intl.DateTimeFormat(locale, { timeZone: "UTC" }).format(new Date(`${value.dateOfBirth}T00:00:00Z`)) : null],
     [t("ui.travelDetails.gender"), value.gender ? t(`ui.travelDetails.genders.${value.gender}`) : null],
     [t("ui.travelDetails.nationality"), country],
-    [t("ui.travelDetails.emergencyName"), value.emergencyContact ? `${value.emergencyContact.name}${value.emergencyContact.relationship ? ` · ${t(`ui.travelDetails.relationships.${value.emergencyContact.relationship}`, { defaultValue: value.emergencyContact.relationship })}` : ""} · ${value.emergencyContact.phone}` : null],
-    ...(traveller ? [[t("ui.travelDetails.phone"), contactPhone], [t("ui.travelDetails.relationship"), relationship ? t(`ui.travelDetails.relationships.${relationship}`, { defaultValue: relationship }) : null]] : []),
+    [t("ui.travelDetails.emergencyName"), value.emergencyContact ? `${value.emergencyContact.name}${value.emergencyContact.relationship ? ` · ${relationshipLabel(value.emergencyContact.relationship)}` : ""} · ${value.emergencyContact.phone}` : null],
+    ...(traveller ? [[t("ui.travelDetails.phone"), contactPhone], [t("ui.travelDetails.relationship"), relationship ? relationshipLabel(relationship) : null]] : []),
   ].filter(([, content]) => content);
   return items.length ? <dl className="grid gap-3 text-sm sm:grid-cols-2">{items.map(([label, content]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-medium">{content}</dd></div>)}</dl> : <p className="text-sm text-muted-foreground">{t("ui.travelDetails.noPersonalDetails")}</p>;
 }
