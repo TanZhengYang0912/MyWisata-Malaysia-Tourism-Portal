@@ -123,6 +123,40 @@ The plan must include:
 
 ---
 
+## System Load and Resource Lifecycle
+
+For every feature, fix, and review, check both the real user experience and the
+system's long-term resource cost across all related entry points and consumers.
+Perform a read-only inventory first and reuse existing guards and helpers.
+
+- Check duplicate requests, unchanged writes, repeated uploads, abandoned or
+  superseded files, redundant queries, N+1 reads, unbounded reads, and repeated
+  work caused by concurrent submissions, retries, or background refreshes.
+- Skip unchanged submissions in the client where practical. On the server,
+  compare validated, normalized business values and avoid unnecessary writes,
+  timestamp changes, moderation calls, notifications, and downstream work.
+  Keep authorization, validation, and required state reconciliation intact.
+- Design retry and concurrency behavior explicitly: prevent duplicate effects,
+  distinguish a failed operation from an unknown result, and reconcile unknown
+  results before retrying a non-idempotent mutation. Do not merge distinct people
+  or records merely because names, contact numbers, or images match.
+- Define each stored file's lifecycle: staging, validation, binding, replacement,
+  abandonment, and deletion. State the deduplication scope and trusted hash
+  source. Cleanup must be bounded, retryable, observable, and safe against
+  deleting a referenced file or racing with an in-flight upload or confirmation.
+- Follow the existing database read-efficiency rules below. Reuse applicable
+  pagination, caching, request coordination, and workload controls; preserve
+  ownership, freshness, ordering, and business semantics.
+- Report existing protections, confirmed gaps, evidence and impact, the smallest
+  safe fix, and unverified assumptions. Measure relevant request/write counts,
+  storage growth, external calls, and latency in an identified test environment.
+  Do not invent capacity targets or add infrastructure without evidence.
+- Every implementation plan must include the applicable resource-cost and
+  lifecycle checks and acceptance criteria. Mark genuinely inapplicable checks
+  with a reason instead of silently omitting them.
+
+---
+
 ## Coding Rules
 
 Always:
@@ -133,6 +167,7 @@ Always:
   shared primitives) instead of building new look-alikes. Consistency first.
   See `docs/coding-standards.md` → "Reuse existing UI components".
 - Use layout to explain controls; remove redundant visible labels and descriptions while preserving accessible names.
+- Default to concise UI copy: section titles, field labels or placeholders, values, and actions. Do not add explanatory subtitles, introductory paragraphs, redundant helper text, privacy boilerplate, or descriptions of future functionality beneath headings or controls unless the user explicitly requests them or the text is essential to an immediate decision, validation error, or action consequence. Prefer a clear label or control option instead of an extra sentence. Preserve accessible names and meaningful loading, empty, error, and confirmation states.
 - Use existing design tokens.
 - Keep changes minimal.
 - Preserve existing coding style.

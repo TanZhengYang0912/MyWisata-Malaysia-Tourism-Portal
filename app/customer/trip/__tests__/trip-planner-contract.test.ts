@@ -12,7 +12,7 @@ describe("trip planner workspace contract", () => {
   it("removes the repeated page title and uses the full area below the customer navigation", () => {
     expect(plannerSource).not.toContain("<CustomerPageTitle");
     expect(plannerSource).not.toContain("<CustomerPageShell");
-    expect(plannerSource).toContain("h-[calc(100dvh-6rem)] w-full overflow-hidden bg-card sm:h-[calc(100dvh-4rem)]");
+    expect(plannerSource).toContain("h-[calc(100dvh-6rem)] w-full overflow-hidden bg-card sm:h-[calc(100dvh-4.25rem)]");
   });
 
   it("presents an AI planner, one selected day, and the places rail", () => {
@@ -152,7 +152,9 @@ describe("trip planner workspace contract", () => {
 
   it("retains real route traffic status and explains the shared color legend", () => {
     expect(plannerSource).toContain("buildRouteDepartureTime");
-    expect(plannerSource).toContain("useTripRoutes(selectedRouteCoordinates, mode, routeDepartureTime, routeRefreshTick)");
+    expect(plannerSource).toContain("useTripRoutes(hasDifferentRoutePoints ? selectedRouteCoordinates : [], mode, routeDepartureTime, routeRefreshTick)");
+    expect(plannerSource).toContain("const sameLocationRoute = selectedRouteCoordinates.length >= 2 && !hasDifferentRoutePoints");
+    expect(plannerSource).toContain('tCustomer("ui.trip.sameLocationNoTravel")');
     expect(routeHookSource).toContain("departureTime:departure");
     expect(plannerSource).toContain("trafficSegments: route.traffic?.segments");
     expect(plannerSource).toContain("data-route-traffic-status");

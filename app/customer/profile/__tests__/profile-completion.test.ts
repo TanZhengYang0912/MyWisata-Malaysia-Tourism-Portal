@@ -79,9 +79,7 @@ describe('profile completion display contract', () => {
     expect(page).toContain('<ProfilePhotoPicker');
     expect(sections).toContain('import { ProfilePhotoPicker }');
     expect(sections).toContain('<ProfilePhotoPicker');
-    expect(page).toContain('/api/profile/avatar?type=');
-    expect(page).toContain('/api/profile/avatar/confirm');
-    expect(sections).toContain('/api/profile/avatar?type=');
-    expect(sections).toContain('/api/profile/avatar/confirm');
+    expect(page).toContain('uploadProfileAvatar(avatarFile)');
+    expect(sections).toContain('uploadProfileAvatar(avatarFile)');
   });
 });

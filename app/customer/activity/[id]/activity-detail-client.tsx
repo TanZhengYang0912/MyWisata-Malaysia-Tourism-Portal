@@ -188,17 +188,15 @@ export function ActivityDetailClient({
 
 
   return (
-    // lg:h-[...] + overflow-hidden bounds the page to the viewport at desktop so
-    // only the reviews list scrolls internally; mobile keeps normal page scroll.
-    <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7 lg:h-[calc(100dvh-6rem)]">
+    <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7">
       <div className="mb-4">
         <BackLink fallbackHref={returnTo} className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold text-primary transition hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/30">
           <ArrowLeft size={16} aria-hidden="true" /> {t("actions.back", { ns: "common" })}
         </BackLink>
       </div>
 
-      <div className="grid items-start gap-6 lg:h-full lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
-      <div className="min-w-0 lg:flex lg:h-full lg:flex-col lg:overflow-hidden">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
+      <div className="min-w-0">
       <div className="relative mb-4 h-44 shrink-0 overflow-hidden rounded-2xl sm:h-52 lg:h-64">
         {placeBound || activity.image ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -227,7 +225,7 @@ export function ActivityDetailClient({
         )}
       </div>
 
-      <section className="min-w-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+      <section className="min-w-0">
           <div className="flex items-start justify-between gap-4 mb-4 flex-wrap shrink-0">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold leading-tight mb-2 text-foreground font-[family-name:var(--font-display)]"><LocalizedContent entityType="product" entityId={activity.id} field="name" sourceText={activity.name} /></h1>
@@ -271,14 +269,14 @@ export function ActivityDetailClient({
         </div>
       </div>
 
-      <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+      <div>
         <div className="shrink-0">
           {activity.aiTag && <div className="mb-4"><AiTag text={activity.aiTag} /></div>}
 
           <p className="text-sm leading-relaxed mb-6 text-foreground/80"><LocalizedContent entityType="product" entityId={activity.id} field="description" sourceText={activity.description} /></p>
         </div>
 
-        <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+        <div>
           <ActivityReviews productId={activity.id} outletId={selectedOutlet!.outletId} rating={selectedOutlet!.rating} totalReviews={selectedOutlet!.reviews} initialReviews={reviews} />
         </div>
       </div>
@@ -286,7 +284,7 @@ export function ActivityDetailClient({
       </section>
       </div>
 
-      <aside className="lg:h-full lg:overflow-y-auto">
+      <aside>
         <div className="rounded-3xl border border-border bg-card p-5 shadow-[0_12px_35px_rgba(1,0,102,0.08)]">
           <div className="mb-5 flex items-start justify-between gap-3 border-b border-border pb-4">
             <div>

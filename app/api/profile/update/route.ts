@@ -17,25 +17,18 @@ export async function POST(request: Request) {
 
   const { fullName, city, country } = parsed.data;
 
-  const { error } = await supabase
-    .from('users')
-    .update({
-      full_name: fullName,
-      city,
-      country,
-      city_id: null,
-      country_code: findCountryCode(country, 'en'),
-      city_source: 'manual',
-    })
-    .eq('id', user.id);
-
+  const countryCode = findCountryCode(country, 'en');
+  const { data: saveRows, error } = await supabase.rpc('save_profile_identity_if_changed', {
+    p_full_name: fullName,
+    p_city: city,
+    p_country: country,
+    p_city_id: null,
+    p_country_code: countryCode,
+    p_city_source: 'manual',
+  });
   if (error) return apiFail('DB_ERROR', 'Unable to update profile', 500);
+  const updated = Array.isArray(saveRows) ? saveRows[0] : null;
+  if (!updated) return apiFail('DB_ERROR', 'Unable to update profile', 500);
 
-  const { data: updated } = await supabase
-    .from('users')
-    .select('tier')
-    .eq('id', user.id)
-    .single();
-
-  return apiOk({ verificationTier: updated?.tier ?? 'email_unverified' });
+  return apiOk({ verificationTier: updated.tier ?? 'email_unverified', changed: updated.changed === true });
 }

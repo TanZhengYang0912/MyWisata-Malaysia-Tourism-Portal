@@ -23,7 +23,7 @@ import { HumanVerification, useHumanVerification } from "@/components/shared/hum
 import type { Role, User } from "@/backend/core/types";
 
 type DemoUser = User & { vendorName?: string; outletName?: string };
-type AuthMode = "signin" | "signup" | "verify" | "forgot";
+type AuthMode = "signin" | "signup" | "verify" | "forgot" | "recover";
 type DemoLoadState = "loading" | "ready" | "error";
 
 export default function LoginPage() {
@@ -61,7 +61,9 @@ function LoginContent() {
   const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
   const [resendReady, setResendReady] = useState(true);
-  const human = useHumanVerification(mode === "verify" ? "signup_resend" : mode === "forgot" ? "password_reset" : mode);
+  const human = useHumanVerification(
+    mode === "verify" ? "signup_resend" : mode === "forgot" || mode === "recover" ? "password_reset" : mode,
+  );
 
   function startResendCooldown() {
     setResendReady(false);
@@ -282,6 +284,30 @@ function LoginContent() {
       return;
     }
     setMessage(tAuth("passwordReset.instructionsSent"));
+    setOtp("");
+    setMode("recover");
+  }
+
+  async function verifyRecoveryCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    resetFeedback();
+    if (!/^\d{6}$/.test(otp)) {
+      setError(tAuth("verification.invalidCode"));
+      return;
+    }
+    setBusy(true);
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: otp,
+      type: "recovery",
+    });
+    setBusy(false);
+    if (verifyError) {
+      setError(tAuth("passwordReset.invalidCode"));
+      return;
+    }
+    router.push("/reset-password");
+    router.refresh();
   }
 
   async function continueWithGoogle() {
@@ -335,9 +361,6 @@ function LoginContent() {
             {/* Header / Title */}
             <div className="text-center mb-6 sm:mb-7">
               <h1 className="text-2xl sm:text-[28px] font-bold tracking-tight text-foreground">{title}</h1>
-              <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                {tAuth("login.description")}
-              </p>
             </div>
 
             {/* Error & Feedback Messages */}
@@ -358,10 +381,56 @@ function LoginContent() {
               </div>
             )}
 
-            <div className="mb-4"><HumanVerification {...human} /></div>
+            {mode !== "recover" && <div className="mb-4"><HumanVerification {...human} /></div>}
 
             {/* Mode: Verify Email */}
-            {mode === "verify" ? (
+            {mode === "recover" ? (
+              <form onSubmit={verifyRecoveryCode} className="space-y-4 sm:space-y-5">
+                <p className="text-xs sm:text-sm text-muted-foreground text-center">
+                  {tAuth("passwordReset.codeSentTo")} <strong className="text-foreground">{email}</strong>
+                </p>
+                <input
+                  aria-label={tAuth("passwordReset.codeLabel")}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  required
+                  value={otp}
+                  onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className="h-12 w-full rounded-xl border border-border bg-secondary/40 px-4 text-center text-xl font-bold tracking-[0.4em] text-foreground focus:border-primary focus:bg-card focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all"
+                />
+                <Button
+                  type="submit"
+                  className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm sm:text-base shadow-sm transition-all"
+                  disabled={busy}
+                >
+                  {busy ? tCommon("states.processingEllipsis") : tAuth("passwordReset.verifyCode")}
+                </Button>
+                <div className="flex flex-col gap-2 pt-2 text-center text-xs sm:text-sm">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetFeedback();
+                      setOtp("");
+                      setMode("forgot");
+                    }}
+                    className="font-semibold text-primary hover:underline"
+                  >
+                    {tAuth("passwordReset.requestAnotherCode")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetFeedback();
+                      setMode("signin");
+                    }}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {tAuth("actions.backToSignIn")}
+                  </button>
+                </div>
+              </form>
+            ) : mode === "verify" ? (
               <form onSubmit={verifyEmail} className="space-y-4 sm:space-y-5">
                 <p className="text-xs sm:text-sm text-muted-foreground text-center">
                   {tAuth("verification.codeSentTo")}{" "}
@@ -660,8 +729,7 @@ function LoginContent() {
                     G
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs sm:text-sm font-semibold text-foreground">{tCommon("guest.mode")}</p>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground truncate">{tAuth("guest.description")}</p>
+                    <p className="text-xs sm:text-sm font-semibold text-foreground">{tCommon("guest.continue")}</p>
                   </div>
                   <Badge variant="secondary" className="shrink-0 text-[10px] bg-secondary text-primary font-semibold">
                     {tAuth("guest.label")}

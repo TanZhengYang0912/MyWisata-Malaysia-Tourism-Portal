@@ -56,6 +56,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const isActivityDetailPage = /^\/customer\/activity\/[^/]+\/?$/.test(pathname);
   const { currentUser, loading } = useRequireRole(["customer"], { allowUnauthenticated: isPublicCustomerPath });
   const gate = useCustomerCapabilityGate();
   const { count } = useCart();
@@ -397,7 +398,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      <main className="flex-1 min-h-0">{children}</main>
+      <main className={isActivityDetailPage ? "flex-none" : "flex-1 min-h-0"}>{children}</main>
       {/* On phones the floating chatbot button would cover the centred copyright line, so leave room below it there only. */}
       <CustomerSiteFooter variant={customerFooterVariant(pathname)} className="pb-16 sm:pb-0" />
       <ChatbotWidget />

@@ -1,93 +1,90 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { stripe } from '@/lib/stripe';
-import {
-  STRIPE_TOP_UP_MAXIMUM_RM,
-  STRIPE_TOP_UP_MAXIMUM_SEN,
-  STRIPE_TOP_UP_MINIMUM_RM,
-} from '@/lib/stripe/top-up-limits';
 import { CUSTOMER_CAPABILITY, resolveCustomerCapability } from '@/lib/auth/customer-capabilities';
 import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/lib/auth/customer-capabilities.server';
+import { STRIPE_TOP_UP_MAXIMUM_RM, STRIPE_TOP_UP_MAXIMUM_SEN, STRIPE_TOP_UP_MINIMUM_RM } from '@/lib/stripe/top-up-limits';
 import { formatMYR } from '@/lib/i18n/format';
+import { databaseUuidSchema, parseBody } from '@/lib/validation/schemas';
+import { getActiveWalletTopUp, startOrResumeWalletTopUp } from '@/lib/wallet/topup-operations';
 
 export const dynamic = 'force-dynamic';
 
+const createSchema = z.object({
+  amount_rm: z.number().finite(),
+  operation_id: databaseUuidSchema.optional(),
+}).strict();
+
+function privateJson(body: unknown, status = 200) {
+  const response = NextResponse.json(body, { status });
+  response.headers.set('Cache-Control', 'private, no-store, max-age=0');
+  response.headers.set('Referrer-Policy', 'no-referrer');
+  return response;
+}
+
 export async function POST(req: Request) {
   const db = await createClient();
-  const { data: { user: authUser }, error: authErr } = await db.auth.getUser();
-  if (authErr || !authUser) {
-    return customerCapabilityFailure(
+  const { data: { user }, error: authError } = await db.auth.getUser();
+  if (authError || !user || user.is_anonymous) {
+    const denied = customerCapabilityFailure(
       CUSTOMER_CAPABILITY.WALLET_TOP_UP,
       resolveCustomerCapability(null, CUSTOMER_CAPABILITY.WALLET_TOP_UP),
       'Sign in before topping up your wallet',
     )!;
+    denied.headers.set('Cache-Control', 'private, no-store, max-age=0');
+    denied.headers.set('Referrer-Policy', 'no-referrer');
+    return denied;
   }
 
-  const topUpDecision = await resolveServerCustomerCapability(authUser.id, CUSTOMER_CAPABILITY.WALLET_TOP_UP);
-  const topUpFailure = customerCapabilityFailure(
+  const decision = await resolveServerCustomerCapability(user.id, CUSTOMER_CAPABILITY.WALLET_TOP_UP);
+  const denied = customerCapabilityFailure(
     CUSTOMER_CAPABILITY.WALLET_TOP_UP,
-    topUpDecision,
+    decision,
     'Phone verification is required before wallet top-up',
   );
-  if (topUpFailure) return topUpFailure;
-
-  let body: { amount_rm?: unknown };
-  try { body = await req.json(); } catch { body = {}; }
-
-  const amountRM = Number(body.amount_rm);
-  if (!amountRM || amountRM <= 0 || !Number.isFinite(amountRM)) {
-    return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+  if (denied) {
+    denied.headers.set('Cache-Control', 'private, no-store, max-age=0');
+    denied.headers.set('Referrer-Policy', 'no-referrer');
+    return denied;
   }
+
+  const parsed = await parseBody(req, createSchema, { maxBytes: 2048 });
+  if (!parsed.ok) return privateJson(await parsed.response.json(), parsed.response.status);
+  const amountRM = parsed.data.amount_rm;
   if (amountRM < STRIPE_TOP_UP_MINIMUM_RM) {
-    return NextResponse.json({ error: `Minimum top-up is ${formatMYR(STRIPE_TOP_UP_MINIMUM_RM)}` }, { status: 400 });
+    return privateJson({ error: `Minimum top-up is ${formatMYR(STRIPE_TOP_UP_MINIMUM_RM)}` }, 400);
+  }
+  if (amountRM > STRIPE_TOP_UP_MAXIMUM_RM) {
+    return privateJson({ error: `Maximum top-up is ${formatMYR(STRIPE_TOP_UP_MAXIMUM_RM)}` }, 400);
+  }
+  if (!Number.isSafeInteger(amountRM * 100)) {
+    return privateJson({ error: 'Enter an amount with no more than two decimal places' }, 400);
   }
   const amountSen = Math.round(amountRM * 100);
   if (!Number.isSafeInteger(amountSen) || amountSen > STRIPE_TOP_UP_MAXIMUM_SEN) {
-    return NextResponse.json({ error: `Maximum top-up is ${formatMYR(STRIPE_TOP_UP_MAXIMUM_RM)}` }, { status: 400 });
+    return privateJson({ error: `Maximum top-up is ${formatMYR(STRIPE_TOP_UP_MAXIMUM_RM)}` }, 400);
   }
 
-  const { data: userRow, error: userErr } = await db
-    .from('users')
-    .select('email, full_name, stripe_customer_id')
-    .eq('id', authUser.id)
-    .single();
-  if (userErr || !userRow) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
-  }
+  const { data: profile, error: profileError } = await db.from('users')
+    .select('email,full_name').eq('id', user.id).maybeSingle();
+  if (profileError || !profile) return privateJson({ error: 'User not found' }, 404);
 
-  // Get or create Stripe Customer (stored on users row)
-  let customerId: string = (userRow as { stripe_customer_id?: string | null }).stripe_customer_id ?? '';
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: (userRow as { email?: string | null }).email ?? authUser.email ?? undefined,
-      name:  (userRow as { full_name?: string | null }).full_name ?? undefined,
-      metadata: { supabase_user_id: authUser.id },
+  try {
+    const result = await startOrResumeWalletTopUp({
+      ownerUserId: user.id,
+      email: profile.email ?? user.email ?? null,
+      fullName: profile.full_name ?? null,
+      amountSen,
+      operationId: parsed.data.operation_id ?? randomUUID(),
     });
-    customerId = customer.id;
-    await db
-      .from('users')
-      .update({ stripe_customer_id: customerId })
-      .eq('id', authUser.id);
+    return privateJson(result, result.state === 'checking' || result.state === 'paid_pending_credit' ? 202 : 200);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'wallet_topup_active_amount_conflict') {
+      let activeOperation = null;
+      try { activeOperation = await getActiveWalletTopUp(user.id); } catch { /* Keep the actionable conflict response safe. */ }
+      return privateJson({ error: 'A top-up is already in progress. Check its status before starting another.', activeOperation }, 409);
+    }
+    return privateJson({ error: 'Unable to start this top-up. Check its status before retrying.' }, 503);
   }
-
-  const origin = req.headers.get('origin') ?? 'http://localhost:3000';
-  const session = await stripe.checkout.sessions.create({
-    customer: customerId,
-    mode: 'payment',
-    payment_method_types: ['card'],
-    payment_intent_data: { metadata: { user_id: authUser.id, payment_kind: 'topup' } },
-    line_items: [{
-      price_data: {
-        currency: 'myr',
-        unit_amount: amountSen,
-        product_data: { name: 'Malaysia Tourism Wallet Top-up' },
-      },
-      quantity: 1,
-    }],
-    metadata: { user_id: authUser.id, payment_kind: 'topup' },
-    success_url: `${origin}/customer/wallet?topup=success`,
-    cancel_url:  `${origin}/customer/wallet`,
-  });
-
-  return NextResponse.json({ url: session.url });
 }

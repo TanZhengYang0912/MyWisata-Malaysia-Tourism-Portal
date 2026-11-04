@@ -15,8 +15,9 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { searchActivities, type SearchFilters } from '@/backend/domains/catalogue';
+import { searchActivities, searchExploreActivities, type SearchFilters } from '@/backend/domains/catalogue';
 import type { RealCategorySlug } from '@/lib/customer/discovery-categories';
+import { STATES_MY } from '@/lib/customer/malaysia-states';
 import { callGemini } from '@/lib/admin-ai/gemini';
 import type { ChatLanguage } from '@/lib/chatbot/language';
 import { getTripDayDates } from '@/lib/customer/trip-planner';
@@ -49,11 +50,72 @@ export interface TripCopilotCandidateFilters {
   /** The trip's destination, when known. */
   state?: string | null;
   categorySlug?: RealCategorySlug | null;
+  /** Free-text preference used only for deterministic relevance ordering. */
+  preference?: string;
   /** Listings already in the trip, or otherwise not worth re-suggesting. */
   excludeProductIds?: string[];
 }
 
+export interface TripSuggestionScope {
+  state: string | null;
+  categorySlug: RealCategorySlug | null;
+  ambiguousStates: string[];
+}
+
+const STATE_ALIASES: Record<string, string[]> = {
+  Johor: ["Johor", "柔佛"], Kedah: ["Kedah", "吉打"], Kelantan: ["Kelantan", "吉兰丹"],
+  Melaka: ["Melaka", "Malacca", "马六甲"], "Negeri Sembilan": ["Negeri Sembilan", "森美兰"],
+  Pahang: ["Pahang", "彭亨"], Perak: ["Perak", "霹雳"], Perlis: ["Perlis", "玻璃市"],
+  Penang: ["Penang", "Pulau Pinang", "槟城"], Sabah: ["Sabah", "沙巴"], Sarawak: ["Sarawak", "砂拉越"],
+  Selangor: ["Selangor", "雪兰莪"], Terengganu: ["Terengganu", "登嘉楼"],
+  "Kuala Lumpur": ["Kuala Lumpur", "KL", "吉隆坡"], Putrajaya: ["Putrajaya", "布城"], Labuan: ["Labuan", "纳闽"],
+};
+
+function statesMentioned(text: string) {
+  const states: readonly string[] = STATES_MY;
+  return states.filter((state) => state !== "All Malaysia" && (STATE_ALIASES[state] ?? [state]).some((alias) => {
+    const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return /[\u3400-\u9fff]/u.test(alias)
+      ? text.includes(alias)
+      : new RegExp(`(?:^|[^\\p{L}])${escaped}(?=$|[^\\p{L}])`, "iu").test(text);
+  }));
+}
+
+function categoryMentioned(text: string): RealCategorySlug | null {
+  if (/\b(food|makanan|kuliner)\b|美食|食物/iu.test(text)) return "food";
+  if (/\b(activity|activities|attraction|attractions|aktiviti|aktivitas)\b|活动|景点/iu.test(text)) return "activity";
+  if (/\b(accommodation|hotel|stay|penginapan)\b|住宿|酒店/iu.test(text)) return "accommodation";
+  if (/\b(retail|shopping|shop|kedai|souvenir)\b|零售|购物|纪念品/iu.test(text)) return "retail";
+  return null;
+}
+
+/** Resolve explicit destination/category cues; ambiguous multi-state cues require a user choice. */
+export function resolveTripSuggestionScope(preference: string, tripName: string, selectedState?: string | null): TripSuggestionScope {
+  const preferenceStates = statesMentioned(preference);
+  const titleStates = statesMentioned(tripName);
+  const mentionedStates = preferenceStates.length ? preferenceStates : titleStates;
+  const state = selectedState && mentionedStates.includes(selectedState)
+    ? selectedState
+    : mentionedStates.length === 1 ? mentionedStates[0] : null;
+  const categorySlug = categoryMentioned(preference) ?? categoryMentioned(tripName);
+  return { state, categorySlug, ambiguousStates: mentionedStates.length > 1 && !state ? mentionedStates : [] };
+}
+
 const CANDIDATE_CAP = 12;
+
+function preferenceKeywords(value: string) {
+  const stateNames = Object.values(STATE_ALIASES).flat().map((name) => name.toLocaleLowerCase());
+  return value.toLocaleLowerCase().match(/[\p{L}\p{N}]{3,}/gu)?.filter((word) => (
+    !["the", "and", "for", "with", "from", "local", "food", "makanan", "activity", "activities", "hotel", "accommodation", "shopping", "retail", "trip", "travel", "saya", "untuk", "dengan", "dan"].includes(word)
+    && !stateNames.includes(word)
+  )) ?? [];
+}
+
+function relevanceScore(activity: { name: string; category: string; description: string }, keywords: string[]) {
+  if (keywords.length === 0) return 0;
+  const haystack = `${activity.name} ${activity.category} ${activity.description}`.toLocaleLowerCase();
+  return keywords.reduce((score, word) => score + (haystack.includes(word) ? 1 : 0), 0);
+}
 
 export async function getTripCopilotCandidates(
   filters: TripCopilotCandidateFilters,
@@ -64,11 +126,18 @@ export async function getTripCopilotCandidates(
     categorySlug: filters.categorySlug ?? null,
     sort: 'rating_desc',
   };
-  const results = await searchActivities(searchFilters, db);
+  // Scoped discovery keeps the matching outlet attached before products with
+  // multiple outlets are collapsed to one representative result.
+  const results = filters.state
+    ? await searchExploreActivities(searchFilters, db)
+    : await searchActivities(searchFilters, db);
   const exclude = new Set(filters.excludeProductIds ?? []);
+  const keywords = preferenceKeywords(filters.preference ?? "");
 
-  return results
+  return [...results]
     .filter((activity) => !exclude.has(activity.id))
+    .sort((a, b) => relevanceScore(b, keywords) - relevanceScore(a, keywords)
+      || b.rating - a.rating || b.reviews - a.reviews)
     .slice(0, CANDIDATE_CAP)
     .map((activity) => ({
       productId: activity.id,
@@ -218,7 +287,7 @@ function validateSuggestions(raw: z.infer<typeof suggestionSchema>[], candidates
  * non-weather-sensitive ones of otherwise-equal rank — deprioritized, never
  * excluded outright, since the risk may not cover every day of the trip.
  */
-export function ruleBasedTripSuggestions(candidates: TripCopilotCandidate[], weather?: TripWeatherSignal): TripSuggestion[] {
+export function ruleBasedTripSuggestions(candidates: TripCopilotCandidate[], weather?: TripWeatherSignal, lang: ChatLanguage = "en"): TripSuggestion[] {
   const avoidWeatherSensitive = weather?.hasHighRiskDay ?? false;
   return [...candidates]
     .sort((a, b) => {
@@ -233,9 +302,17 @@ export function ruleBasedTripSuggestions(candidates: TripCopilotCandidate[], wea
     .map((c) => ({
       productId: c.productId,
       productName: c.name,
-      message: c.reviews > 0
-        ? `${c.name} is highly rated (${c.rating}★, ${c.reviews} reviews) — a solid pick for your trip.`
-        : `${c.name} is a real, bookable listing worth considering for your trip.`,
+      message: lang === "zh"
+        ? c.reviews > 0
+          ? `${c.name}评分较高（${c.rating}★，${c.reviews} 条评价），可以考虑加入行程。`
+          : `${c.name}是目录中的真实项目，可以考虑加入行程。`
+        : lang === "bm"
+          ? c.reviews > 0
+            ? `${c.name} mendapat penilaian tinggi (${c.rating}★, ${c.reviews} ulasan) dan sesuai dipertimbangkan untuk perjalanan anda.`
+            : `${c.name} ialah senarai sebenar dalam katalog yang boleh dipertimbangkan untuk perjalanan anda.`
+          : c.reviews > 0
+            ? `${c.name} is highly rated (${c.rating}★, ${c.reviews} reviews) — a solid pick for your trip.`
+            : `${c.name} is a real, bookable listing worth considering for your trip.`,
     }));
 }
 
@@ -250,7 +327,7 @@ export async function generateTripSuggestions(
     return { suggestions: [], mode: 'no-candidates' };
   }
 
-  if (options.allowExternal === false || options.signal?.aborted) return { suggestions: ruleBasedTripSuggestions(candidates), mode: 'rule-based' };
+  if (options.allowExternal === false || options.signal?.aborted) return { suggestions: ruleBasedTripSuggestions(candidates, undefined, lang), mode: 'rule-based' };
   const weather = await getTripWeatherSignal(trip, { lat: candidates[0].lat, lng: candidates[0].lng }, options.signal)
     .catch((error) => {
       console.error('[trip-copilot] weather signal failed, continuing without it', error instanceof Error ? error.message : error);
@@ -281,6 +358,6 @@ export async function generateTripSuggestions(
     return { suggestions, mode: 'llm' };
   } catch (error) {
     console.error('[trip-copilot] suggestion generation failed, using rule-based fallback', error instanceof Error ? error.message : error);
-    return { suggestions: ruleBasedTripSuggestions(candidates, weather), mode: 'rule-based' };
+    return { suggestions: ruleBasedTripSuggestions(candidates, weather, lang), mode: 'rule-based' };
   }
 }

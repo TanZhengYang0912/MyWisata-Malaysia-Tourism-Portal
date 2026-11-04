@@ -46,7 +46,7 @@ export function useTripItems(tripId: string, initialItems: TripItem[], initialVe
           : code === "TRIP_NOT_AVAILABLE" ? "ui.trip.itemUnavailable"
           : code === "TRIP_RESULT_UNKNOWN" ? "ui.trip.resultUnknown" : "ui.trip.serviceUnavailable");
         setError(message);
-        void alert(message);
+        void alert(message, code === "TRIP_NOT_AVAILABLE" ? {actionAlignment: "center"} : undefined);
         return undefined;
       } finally {setPending(count=>count-1);}
     });

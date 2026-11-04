@@ -93,7 +93,8 @@ describe("shared language entry points", () => {
     expect(login).not.toContain("Unable to sign in. Check your email and password.");
     expect(login).not.toContain("Unable to start Guest Mode. Please try again.");
     expect(login).toContain('tCommon("account.signIn")');
-    expect(login).toContain('tCommon("guest.mode")');
+    expect(login).toContain('tCommon("guest.continue")');
+    expect(login).not.toContain('tAuth("guest.description")');
     expect(login).toContain('tAuth("signIn.error")');
     expect(login).toContain('tCommon("guest.startError")');
   });

@@ -17,7 +17,7 @@ export function CustomerPageShell({ children, className, wide = false }: { child
 }
 
 type CustomerPageHeaderProps = {
-  eyebrow: ReactNode;
+  eyebrow?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
   icon?: ReactNode;
@@ -41,14 +41,18 @@ export function CustomerPageHeader({
   actions,
   className,
 }: CustomerPageHeaderProps) {
+  const hasEyebrow = eyebrow !== null && eyebrow !== undefined && eyebrow !== false;
+
   return (
     <header className={cn("mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between", className)}>
       <div className="min-w-0">
-        <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
-          {icon}
-          <span>{eyebrow}</span>
-        </p>
-        <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl">
+        {hasEyebrow && (
+          <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
+            {icon}
+            <span>{eyebrow}</span>
+          </p>
+        )}
+        <h1 className={cn(hasEyebrow ? "mt-2" : "", "font-[family-name:var(--font-display)] text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl")}>
           {title}
         </h1>
         {description && <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>}

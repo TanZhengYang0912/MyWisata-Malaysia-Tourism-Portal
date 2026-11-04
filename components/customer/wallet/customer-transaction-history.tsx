@@ -67,25 +67,23 @@ export function CustomerTransactionHistory({ userId, refreshKey }: { userId: str
         <h2 className="text-sm font-bold text-foreground">{t("ui.wallet.transactionHistory")}</h2>
         <div className="mt-4 grid grid-cols-1 items-end gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_auto]">
           <label className="space-y-1.5 text-xs font-medium text-muted-foreground">
-            <span>{t("ui.wallet.historyFilters.type")}</span>
-            <select name="transaction-type" className={controlClass} value={filters.type} onChange={(event) => changeFilters({ type: event.target.value as CustomerHistoryFilters["type"] })}>
+            <select name="transaction-type" aria-label={t("ui.wallet.historyFilters.type")} className={controlClass} value={filters.type} onChange={(event) => changeFilters({ type: event.target.value as CustomerHistoryFilters["type"] })}>
               {CUSTOMER_HISTORY_TYPES.map((type) => <option key={type} value={type}>{t(`ui.wallet.historyFilters.types.${type}`)}</option>)}
             </select>
           </label>
           <label className="space-y-1.5 text-xs font-medium text-muted-foreground">
-            <span>{t("ui.wallet.historyFilters.direction")}</span>
-            <select name="transaction-direction" className={controlClass} value={filters.direction} onChange={(event) => changeFilters({ direction: event.target.value as CustomerHistoryFilters["direction"] })}>
+            <select name="transaction-direction" aria-label={t("ui.wallet.historyFilters.direction")} className={controlClass} value={filters.direction} onChange={(event) => changeFilters({ direction: event.target.value as CustomerHistoryFilters["direction"] })}>
               {CUSTOMER_HISTORY_DIRECTIONS.map((direction) => <option key={direction} value={direction}>{t(`ui.wallet.historyFilters.directions.${direction}`)}</option>)}
             </select>
           </label>
-          <label className="space-y-1.5 text-xs font-medium text-muted-foreground">
-            <span>{t("ui.wallet.historyFilters.from")}</span>
-            <input name="transaction-from" type="date" className={controlClass} value={filters.from} onFocus={primeDateRange} onChange={(event) => changeFilters({ from: event.target.value })} />
-          </label>
-          <label className="space-y-1.5 text-xs font-medium text-muted-foreground">
-            <span>{t("ui.wallet.historyFilters.to")}</span>
-            <input name="transaction-to" type="date" className={controlClass} value={filters.to} onFocus={primeDateRange} onChange={(event) => changeFilters({ to: event.target.value })} />
-          </label>
+          <div className="relative">
+            <input name="transaction-from" type="date" aria-label={t("ui.wallet.historyFilters.from")} className={`${controlClass} ${filters.from ? "" : "text-transparent"}`} value={filters.from} onFocus={primeDateRange} onChange={(event) => changeFilters({ from: event.target.value })} />
+            {!filters.from && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">{t("ui.wallet.historyFilters.from")}</span>}
+          </div>
+          <div className="relative">
+            <input name="transaction-to" type="date" aria-label={t("ui.wallet.historyFilters.to")} className={`${controlClass} ${filters.to ? "" : "text-transparent"}`} value={filters.to} onFocus={primeDateRange} onChange={(event) => changeFilters({ to: event.target.value })} />
+            {!filters.to && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">{t("ui.wallet.historyFilters.to")}</span>}
+          </div>
           <Button type="button" variant="outline" onClick={() => setFilters({ ...DEFAULT_CUSTOMER_HISTORY_FILTERS })} disabled={!hasFilters && filters.page === 1}>
             {t("ui.wallet.historyFilters.clear")}
           </Button>
@@ -121,7 +119,7 @@ export function CustomerTransactionHistory({ userId, refreshKey }: { userId: str
                     <p className="text-xs text-muted-foreground">{new Date(transaction.createdAt).toLocaleDateString(locale, { timeZone: "Asia/Kuala_Lumpur" })}</p>
                   </div>
                 </div>
-                <p className={`shrink-0 font-[family-name:var(--font-mono)] font-bold ${amountClass}`}>
+                <p className={`shrink-0 font-sans font-bold ${amountClass}`}>
                   {signedTransactionAmount(transaction)}
                 </p>
               </article>

@@ -41,7 +41,7 @@ describe("PATCH /api/profile/identity canonical location", () => {
     mocks.userSingle.mockResolvedValue({ data: { tier: "profile_complete" }, error: null });
     mocks.rpc.mockImplementation(async (name: string) => name === "resolve_profile_location_city"
       ? { data: [{ id: cityId, name: "Kuala Lumpur", country_code: "MY" }], error: null }
-      : { data: null, error: null });
+      : { data: [{ changed: true, tier: "profile_complete" }], error: null });
   });
 
   it("resolves canonical strings from the selected internal city", async () => {
@@ -58,13 +58,9 @@ describe("PATCH /api/profile/identity canonical location", () => {
       p_city_id: cityId,
       p_country_code: "MY",
     });
-    expect(mocks.userUpdate).toHaveBeenCalledWith(expect.objectContaining({
-      full_name: "Aina Rahman",
-      city: "Kuala Lumpur",
-      country: "Malaysia",
-      city_id: cityId,
-      country_code: "MY",
-      city_source: "catalogue",
+    expect(mocks.rpc).toHaveBeenCalledWith("save_profile_identity_if_changed", expect.objectContaining({
+      p_full_name: "Aina Rahman", p_city: "Kuala Lumpur", p_country: "Malaysia", p_city_id: cityId,
+      p_country_code: "MY", p_city_source: "catalogue",
     }));
   });
 
@@ -76,7 +72,7 @@ describe("PATCH /api/profile/identity canonical location", () => {
       fullName: "Aina Rahman", city: "Kuala Lumpur", country: "China", cityId, countryCode: "CN",
     }));
     expect(response.status).toBe(422);
-    expect(mocks.userUpdate).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalledWith("save_profile_identity_if_changed", expect.anything());
   });
 
   it("preserves manual entry and clears any prior catalogue reference", async () => {
@@ -85,12 +81,8 @@ describe("PATCH /api/profile/identity canonical location", () => {
     }));
     expect(response.status).toBe(200);
     expect(mocks.rpc).not.toHaveBeenCalledWith("resolve_profile_location_city", expect.anything());
-    expect(mocks.userUpdate).toHaveBeenCalledWith(expect.objectContaining({
-      city: "My Small Village",
-      country: "Malaysia",
-      city_id: null,
-      country_code: "MY",
-      city_source: "manual",
+    expect(mocks.rpc).toHaveBeenCalledWith("save_profile_identity_if_changed", expect.objectContaining({
+      p_city: "My Small Village", p_country: "Malaysia", p_city_id: null, p_country_code: "MY", p_city_source: "manual",
     }));
   });
 
@@ -99,11 +91,8 @@ describe("PATCH /api/profile/identity canonical location", () => {
       fullName: "Aina Rahman", city: "Johor Bahru", country: "China", cityId: null, countryCode: "MY",
     }));
     expect(response.status).toBe(200);
-    expect(mocks.userUpdate).toHaveBeenCalledWith(expect.objectContaining({
-      city: "Johor Bahru",
-      country: "Malaysia",
-      country_code: "MY",
-      city_source: "manual",
+    expect(mocks.rpc).toHaveBeenCalledWith("save_profile_identity_if_changed", expect.objectContaining({
+      p_city: "Johor Bahru", p_country: "Malaysia", p_country_code: "MY", p_city_source: "manual",
     }));
   });
 
@@ -112,7 +101,7 @@ describe("PATCH /api/profile/identity canonical location", () => {
       fullName: "Aina Rahman", city: "Somewhere", country: "Somewhere", cityId: null, countryCode: "ZZ",
     }));
     expect(response.status).toBe(422);
-    expect(mocks.userUpdate).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalledWith("save_profile_identity_if_changed", expect.anything());
   });
 
   it("requires countryCode whenever cityId is supplied", async () => {
@@ -124,7 +113,9 @@ describe("PATCH /api/profile/identity canonical location", () => {
   });
 
   it("does not expose database error details", async () => {
-    mocks.userUpdateEq.mockResolvedValue({ error: { message: "users_city_source_shape violated" } });
+    mocks.rpc.mockImplementation(async (name: string) => name === "save_profile_identity_if_changed"
+      ? { data: null, error: { message: "users_city_source_shape violated" } }
+      : { data: [{ id: cityId, name: "Kuala Lumpur", country_code: "MY" }], error: null });
     const response = await PATCH(request({
       fullName: "Aina Rahman", city: "Kuala Lumpur", country: "Malaysia", cityId: null, countryCode: "MY",
     }));

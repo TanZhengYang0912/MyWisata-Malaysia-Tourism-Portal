@@ -86,9 +86,7 @@ describe('Profile wizard navigation and draft ownership', () => {
         if (rejectBio) return response(null, 503);
         saved.bio = JSON.parse(options?.body as string).bio; return response({ updated: true });
       }
-      if (url.startsWith('/api/profile/avatar?')) return response({ uploadUrl: 'https://upload.example/signed', path: `${saved.id}/avatar.png` });
-      if (url === 'https://upload.example/signed') return new Response(null, { status: 200 });
-      if (url === '/api/profile/avatar/confirm') { saved.avatarUrl = `https://avatars.example/${saved.id}-new.png`; return response({ updated: true }); }
+      if (url === '/api/profile/avatar') { saved.avatarUrl = `https://avatars.example/${saved.id}-new.png`; return response({ confirmed: true, changed: true, avatarUrl: saved.avatarUrl, tier: 'profile_complete' }); }
       throw new Error(`Unexpected request: ${url}`);
     });
     vi.stubGlobal('fetch', fetchMock);

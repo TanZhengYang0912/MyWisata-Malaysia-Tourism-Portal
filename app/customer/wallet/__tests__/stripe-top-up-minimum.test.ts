@@ -20,4 +20,16 @@ describe('wallet Stripe top-up amount contract', () => {
       expect(resources.ui.wallet.maximumTopUp).toContain('{{amount}}');
     }
   });
+
+  it('does not treat the Stripe return query string as proof of a completed top-up', () => {
+    expect(pageSource).not.toContain('searchParams.get("topup")');
+    expect(pageSource).toContain('/api/wallet/topups/active');
+    expect(pageSource).toContain('/api/wallet/topups/${encodeURIComponent(operationId)}');
+  });
+
+  it('keeps unknown checkout results recoverable without creating a new operation', () => {
+    expect(pageSource).toContain('wallet-topup:${currentUserId}');
+    expect(pageSource).toContain('walletTopUpChecking');
+    expect(pageSource).toContain('walletTopUpResume');
+  });
 });

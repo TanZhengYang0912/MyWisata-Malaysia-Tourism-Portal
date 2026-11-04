@@ -14,7 +14,7 @@ import { TRAVEL_MODES, buildGoogleMapsDirectionsUrl, type TravelModeId } from "@
 import { ROUTE_TRAFFIC_COLORS, buildRouteDepartureTime, type GeoHit } from "@/lib/routing";
 import type { BookingSlot, ComputedActivity, OperatingHours, SponsoredPlacement } from "@/backend/core/types";
 import type { Trip, TripItem } from "@/backend/domains/trips";
-import { getTripLegFeasibility, resolveTripOrigin, getTripDiscoveryAnchor, getTripDiscoveryFingerprint, getTripActivitySublabel, getTripItemTimeBounds, groupTripItemsByDay, formatTripDay, isValidTripCoordinate } from "@/lib/customer/trip-planner";
+import { getTripLegFeasibility, resolveTripOrigin, getTripDiscoveryAnchor, getTripDiscoveryFingerprint, getTripActivitySublabel, getTripItemTimeBounds, groupTripItemsByDay, formatTripDay, isValidTripCoordinate, hasDistinctTripRoutePoints } from "@/lib/customer/trip-planner";
 import { useTripRoutes } from "./use-trip-routes";
 import { useTripItems } from "./use-trip-items";
 import { DISTANCE_UNIT_KM } from "@/lib/i18n/invariant-tokens";
@@ -60,6 +60,16 @@ interface TripPlanSuggestion {
   rating: number;
   image: string | null;
   category: string;
+}
+
+interface TripPlanScope {
+  state: string | null;
+  categorySlug: string | null;
+  ambiguousStates: string[];
+}
+
+function malaysiaStateKey(state: string) {
+  return state.replace(/\s+(.)/g, (_, letter: string) => letter.toUpperCase()).replace(/^./, (letter) => letter.toLowerCase());
 }
 
 const KL_CENTER: [number, number] = [3.139, 101.6869];
@@ -158,6 +168,8 @@ export function MapClient({
   const [aiSuggestions, setAiSuggestions] = useState<TripPlanSuggestion[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMode, setAiMode] = useState("");
+  const [aiScope, setAiScope] = useState<TripPlanScope | null>(null);
+  const [aiSelectedState, setAiSelectedState] = useState<string | null>(null);
   const [aiError, setAiError] = useState("");
   const [tripActionStatus, setTripActionStatus] = useState("");
   const [placesPage, setPlacesPage] = useState(1);
@@ -231,6 +243,8 @@ export function MapClient({
     () => selectedRouteStops.map((stop): [number, number] => [stop.lat, stop.lng]),
     [selectedRouteStops],
   );
+  const hasDifferentRoutePoints = hasDistinctTripRoutePoints(selectedRouteCoordinates);
+  const sameLocationRoute = selectedRouteCoordinates.length >= 2 && !hasDifferentRoutePoints;
 
   const isFirstRender = useRef(true);
   const discoveryFingerprint = getTripDiscoveryFingerprint(trip.items, selectedDate);
@@ -261,13 +275,13 @@ export function MapClient({
     trip.items.filter((item) => item.scheduled_date === selectedDate).map((item) => item.scheduled_time),
   );
   useEffect(() => {
-    if (mode !== "DRIVING" || selectedRouteStops.length < 2) return;
+    if (mode !== "DRIVING" || selectedRouteStops.length < 2 || !hasDifferentRoutePoints) return;
     const interval = window.setInterval(() => {
       if (document.visibilityState === "visible") setRouteRefreshTick((current) => current + 1);
     }, ROUTE_TRAFFIC_REFRESH_MS);
     return () => window.clearInterval(interval);
-  }, [mode, pointsKey, selectedRouteStops.length]);
-  const routeState = useTripRoutes(selectedRouteCoordinates, mode, routeDepartureTime, routeRefreshTick);
+  }, [hasDifferentRoutePoints, mode, pointsKey, selectedRouteStops.length]);
+  const routeState = useTripRoutes(hasDifferentRoutePoints ? selectedRouteCoordinates : [], mode, routeDepartureTime, routeRefreshTick);
   const routesLoading = routeState.loading;
   const routeChoiceKey = `${pointsKey}|${routeDepartureTime ?? "live"}|${mode}`;
   const selectedRouteIdx = routeChoice?.key === routeChoiceKey ? routeChoice.index : 0;
@@ -729,7 +743,7 @@ export function MapClient({
     window.addEventListener("pointerup", onUp);
   }
 
-  async function requestAiPlan(event?: ReactFormEvent<HTMLFormElement>) {
+  async function requestAiPlan(event?: ReactFormEvent<HTMLFormElement>, selectedState?: string) {
     event?.preventDefault();
     if (aiLoading) return;
     const controller = new AbortController();
@@ -747,21 +761,23 @@ export function MapClient({
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
         signal: controller.signal,
-        body: JSON.stringify({ tripId: tripData.id, preference: aiPreference.trim(), locale }),
+        body: JSON.stringify({ tripId: tripData.id, preference: aiPreference.trim(), locale, ...((selectedState ?? aiSelectedState) ? { selectedState: selectedState ?? aiSelectedState } : {}) }),
       });
-      const body = await response.json() as { data?: { suggestions?: TripPlanSuggestion[]; mode?: string }; error?: { code?: string } };
+      const body = await response.json() as { data?: { suggestions?: TripPlanSuggestion[]; mode?: string; scope?: TripPlanScope }; error?: { code?: string } };
       if (controller.signal.aborted || aiRequestRef.current !== controller) {
         if (timedOut) setAiError(tCustomer("strictMigration.tripPlanner.ai.timeout"));
         return;
       }
       if (!response.ok || !body.data) {
         setAiSuggestions([]);
+        setAiScope(null);
         setAiError(body.error?.code === "PHONE_VERIFICATION_REQUIRED"
           ? tCustomer("strictMigration.tripPlanner.ai.verifyPhone")
           : tCustomer("strictMigration.tripPlanner.ai.error"));
         return;
       }
       setAiMode(body.data.mode ?? "");
+      setAiScope(body.data.scope ?? null);
       setAiSuggestions(body.data.suggestions ?? []);
     } catch {
       if (controller.signal.aborted || aiRequestRef.current !== controller) {
@@ -769,6 +785,7 @@ export function MapClient({
         return;
       }
       setAiSuggestions([]);
+      setAiScope(null);
       setAiError(tCustomer("strictMigration.tripPlanner.ai.error"));
     } finally {
       window.clearTimeout(timeout);
@@ -791,7 +808,10 @@ export function MapClient({
   }
 
   function renderTravelLeg(fromId: string, toId: string, index: number) {
-    const leg = activeRoute?.legs?.[index];
+    const fromStop = selectedRouteStops.find((stop) => stop.id === fromId);
+    const toStop = selectedRouteStops.find((stop) => stop.id === toId);
+    const sameLocation = Boolean(fromStop && toStop && fromStop.lat === toStop.lat && fromStop.lng === toStop.lng);
+    const leg = sameLocation ? undefined : activeRoute?.legs?.[index];
     const ModeIcon = TRAVEL_MODES.find((travelMode) => travelMode.id === mode)?.icon ?? Navigation;
     const longLeg = Boolean(leg && leg.durationMin > LONG_LEG_TRAVEL_MIN);
     const from=trip.items.find(item=>item.id === fromId);
@@ -801,13 +821,14 @@ export function MapClient({
     const slot=activity && from?.scheduled_date && from.scheduled_time ? getDaySlots(slotsByProduct.get(activity.id) ?? [],tripItemOutletId(from,activity),from.scheduled_date).find(slot=>slotClockTime(slot.startsAt) === normalizeTripTime(from.scheduled_time)) : undefined;
     const endDate=slot?.endsAt ? new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kuala_Lumpur"}).format(new Date(slot.endsAt)) : null;
     const end=slot?.endsAt && endDate === from?.scheduled_date ? toMinutes(slotClockTime(slot.endsAt)) : null;
-    const feasibility=getTripLegFeasibility({previousStart:toMinutes(from?.scheduled_time),previousEnd:end,nextStart:toMinutes(to?.scheduled_time),travelMinutes:leg?.durationMin ?? null});
+    const feasibility=getTripLegFeasibility({previousStart:toMinutes(from?.scheduled_time),previousEnd:end,nextStart:toMinutes(to?.scheduled_time),travelMinutes:sameLocation ? 0 : leg?.durationMin ?? null});
 
     return (
       <li key={`leg-${fromId}-${toId}`} data-trip-leg data-long-leg={longLeg || undefined} className={"flex flex-wrap items-center gap-2 pl-4 text-[11px] " + (longLeg ? "font-semibold text-destructive" : "text-muted-foreground")}>
         <span className="h-5 border-l border-dashed border-border" aria-hidden="true" />
         {longLeg ? <AlertTriangle size={12} className="shrink-0" aria-label={tCustomer("strictMigration.tripPlanner.longLeg")} /> : <ModeIcon size={12} className="shrink-0 text-primary" />}
         <span className="font-semibold">{travelModeLabel(mode)}</span>
+        {sameLocation && <span>{tCustomer("ui.trip.sameLocation")}</span>}
         {leg && <span>· {formatDurationShort(leg.durationMin)} · {leg.distanceKm.toFixed(1)} {DISTANCE_UNIT_KM}</span>}
         {from?.scheduled_time && to?.scheduled_time && <span data-trip-feasibility={feasibility.status} className={feasibility.status === "conflict" ? "text-destructive" : "text-muted-foreground"}>{tCustomer(`ui.trip.feasibility.${feasibility.status}`,{minutes:Math.ceil(Math.abs(feasibility.slackMinutes ?? 0))})}{feasibility.status === "conflict" && <button className="ml-2 underline" onClick={()=>setTimeEditingId(to.id)}>{tCustomer("strictMigration.tripPlanner.addTime")}</button>}</span>}
         {!leg && routesLoading && mode !== "TRANSIT" && <span>· {tCustomer("strictMigration.tripPlanner.ai.calculating")}</span>}
@@ -1127,7 +1148,7 @@ export function MapClient({
   }
 
   return (
-    <section aria-label={tCustomer("strictMigration.tripPlanner.itinerary")} className="h-[calc(100dvh-6rem)] w-full overflow-hidden bg-card sm:h-[calc(100dvh-4rem)]">
+    <section aria-label={tCustomer("strictMigration.tripPlanner.itinerary")} className="h-[calc(100dvh-6rem)] w-full overflow-hidden bg-card sm:h-[calc(100dvh-4.25rem)]">
           <div className="flex h-full w-full flex-col overflow-hidden bg-card" aria-busy={trip.pending}>
       {(trip.pending || trip.error || tripActionStatus) && <p role={trip.error ? "alert" : "status"} className="border-b border-border px-3 py-2 text-xs">{trip.pending ? tCustomer("ui.trip.saving") : trip.error || tripActionStatus}{trip.error && <Button type="button" variant="outline" size="sm" className="ml-3" onClick={() => void trip.verify()} disabled={trip.pending}>{tCustomer("ui.trip.verifyState")}</Button>}</p>}
             <div className="flex shrink-0 gap-1 border-b border-border bg-card p-2 xl:hidden" aria-label={tCustomer("strictMigration.tripPlanner.plannerViews")}>
@@ -1164,12 +1185,14 @@ export function MapClient({
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
               <form onSubmit={requestAiPlan} className="space-y-2">
                 <label htmlFor="trip-ai-preference" className="text-xs font-semibold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.preferenceLabel")}</label>
-                <input id="trip-ai-preference" value={aiPreference} onChange={(event) => setAiPreference(event.target.value)} maxLength={140} placeholder={tCustomer("strictMigration.tripPlanner.ai.preferencePlaceholder")} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10" />
+                <input id="trip-ai-preference" value={aiPreference} onChange={(event) => { setAiPreference(event.target.value); setAiSelectedState(null); setAiSuggestions([]); setAiScope(null); setAiMode(""); }} maxLength={140} placeholder={tCustomer("strictMigration.tripPlanner.ai.preferencePlaceholder")} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10" />
                 <button type="submit" disabled={aiLoading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-xs font-bold text-white transition hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60">
                   {aiLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}{aiLoading ? tCustomer("strictMigration.tripPlanner.ai.loading") : tCustomer("strictMigration.tripPlanner.ai.planAction")}
                 </button>
               </form>
               {aiError && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{aiError}</p>}
+              {aiScope && aiScope.ambiguousStates.length === 0 && <p role="status" className="rounded-lg bg-secondary px-3 py-2 text-xs text-muted-foreground">{tCustomer(aiScope.categorySlug ? "strictMigration.tripPlanner.ai.scopeAppliedWithCategory" : "strictMigration.tripPlanner.ai.scopeApplied", { state: aiScope.state ? tCustomer(`ui.malaysiaStates.${malaysiaStateKey(aiScope.state)}`) : tCustomer("ui.malaysiaStates.allMalaysia"), category: aiScope.categorySlug ? tCustomer(`strictMigration.tripPlanner.ai.category.${aiScope.categorySlug}`) : "" })}</p>}
+              {aiScope && aiScope.ambiguousStates.length > 0 && <section aria-label={tCustomer("strictMigration.tripPlanner.ai.chooseState")} className="rounded-xl border border-border bg-background p-3"><p className="text-xs font-semibold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.chooseState")}</p><div className="mt-2 flex flex-wrap gap-2">{aiScope.ambiguousStates.map((state) => <button key={state} type="button" disabled={aiLoading} onClick={() => { setAiSelectedState(state); void requestAiPlan(undefined, state); }} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-primary hover:bg-secondary disabled:opacity-60">{tCustomer(`ui.malaysiaStates.${malaysiaStateKey(state)}`)}</button>)}</div></section>}
               {aiSuggestions.length > 0 && <section aria-label={tCustomer("strictMigration.tripPlanner.ai.suggestions")} className="space-y-2">
                 <h2 className="text-xs font-bold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.suggestions")}</h2>
                 {aiSuggestions.slice(0, 3).map((suggestion) => {
@@ -1184,7 +1207,8 @@ export function MapClient({
                 })}
               </section>}
               {aiMode === "rule-based" && <p role="status" className="text-xs text-muted-foreground">{tCustomer("strictMigration.tripPlanner.ai.basicSuggestions")}</p>}
-              {!aiLoading && !aiError && aiSuggestions.length === 0 && <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">{tCustomer("strictMigration.tripPlanner.ai.empty")}</p>}
+              {!aiLoading && !aiError && aiSuggestions.length === 0 && aiMode === "no-candidates" && <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">{tCustomer("strictMigration.tripPlanner.ai.noMatches")}</p>}
+              {!aiLoading && !aiError && aiSuggestions.length === 0 && aiMode !== "no-candidates" && aiMode !== "needs-destination" && <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">{tCustomer("strictMigration.tripPlanner.ai.empty")}</p>}
               <details className="rounded-xl border border-border bg-background px-3 py-2">
                 <summary className="cursor-pointer list-none text-xs font-semibold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.budget")}</summary>
                 <div className="pt-3"><TripBudgetGuard tripId={tripData.id} items={trip.items} activities={[...activitiesById.values()]} onShowOnMap={(pin) => { setSuggestedPins((current) => current.some((existing) => existing.id === pin.id) ? current : [...current, pin]); focusPin(pin); }} /></div>
@@ -1286,8 +1310,9 @@ export function MapClient({
             <div className="flex flex-wrap items-center gap-2">
               <label className="sr-only" htmlFor="planner-travel-mode">{tCustomer("strictMigration.tripPlanner.buildRoute")}</label>
               <select id="planner-travel-mode" value={mode} onChange={(event) => setMode(event.target.value as TravelModeId)} className="min-w-36 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary">{TRAVEL_MODES.map((travelMode) => <option key={travelMode.id} value={travelMode.id}>{travelModeLabel(travelMode.id)}</option>)}</select>
-              {hasRouteInputs && <p className="text-[11px] text-muted-foreground">{tCustomer("ui.trip.continuousRoute")}</p>}
-              {hasRouteInputs && <p className="text-[11px] font-semibold text-muted-foreground">{mode === "TRANSIT" ? tCustomer("ui.map.transitOpensMaps") : routesLoading ? tCustomer(routeState.status === "stale" ? "ui.trip.routeStale" : "ui.map.calculatingRoute") : activeRoute ? `${formatDuration(activeRoute.durationMin)} · ${activeRoute.distanceKm} ${DISTANCE_UNIT_KM}` : tCustomer("ui.map.routeUnavailable")}</p>}
+              {hasRouteInputs && !sameLocationRoute && <p className="text-[11px] text-muted-foreground">{tCustomer("ui.trip.continuousRoute")}</p>}
+              {sameLocationRoute && <p className="text-[11px] font-semibold text-muted-foreground">{tCustomer("ui.trip.sameLocationNoTravel")}</p>}
+              {hasRouteInputs && !sameLocationRoute && <p className="text-[11px] font-semibold text-muted-foreground">{mode === "TRANSIT" ? tCustomer("ui.map.transitOpensMaps") : routesLoading ? tCustomer(routeState.status === "stale" ? "ui.trip.routeStale" : "ui.map.calculatingRoute") : activeRoute ? `${formatDuration(activeRoute.durationMin)} · ${activeRoute.distanceKm} ${DISTANCE_UNIT_KM}` : tCustomer("ui.map.routeUnavailable")}</p>}
               {activeRoutes.length > 1 && <label className="ml-auto flex items-center gap-2 text-[11px] font-semibold text-muted-foreground"><span>{tCustomer("ui.map.routeOptions")}</span><select aria-label={tCustomer("ui.map.routeOptions")} value={selectedRouteIdx} onChange={(event) => setRouteChoice({key:routeChoiceKey,index:Number(event.target.value)})} className="max-w-52 rounded-lg border border-border bg-background px-2 py-2 text-[11px] text-foreground">{activeRoutes.map((route, index) => <option key={index} value={index}>{formatDurationShort(route.durationMin)} · {route.distanceKm} {DISTANCE_UNIT_KM}{route.hasTolls ? ` · ${tCustomer("ui.map.toll")}` : ""}</option>)}</select></label>}
             </div>
             {mode === "DRIVING" && activeRoute && (

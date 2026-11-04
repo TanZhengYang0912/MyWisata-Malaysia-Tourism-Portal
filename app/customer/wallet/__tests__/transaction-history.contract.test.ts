@@ -12,7 +12,8 @@ describe("customer wallet ledger integration", () => {
   });
 
   it("clears guest ledger state and renders the signed transaction history", () => {
-    expect(source).toContain("currentUser && <CustomerTransactionHistory key={currentUser.id} userId={currentUser.id} refreshKey={historyRefreshKey}");
+    expect(source).toContain("currentUser && <WithdrawalHistory key={`withdrawal-history:${currentUser.id}`} userId={currentUser.id}");
+    expect(source).toContain("currentUser && <CustomerTransactionHistory key={`transaction-history:${currentUser.id}`} userId={currentUser.id} refreshKey={historyRefreshKey}");
     expect(source).toContain("<WithdrawalList pending={pending} />");
   });
 

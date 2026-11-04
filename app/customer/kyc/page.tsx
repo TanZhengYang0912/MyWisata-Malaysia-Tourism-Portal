@@ -21,6 +21,7 @@ import { useSearchParams } from "next/navigation";
 import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 import { postLoginPath } from "@/lib/auth/guest-mode";
 import { ApiErrorNotice } from "@/components/shared/api-error-notice";
+import { compareKycDraftValues } from "@/lib/kyc/draft-client";
 
 const IC_PATTERNS: Record<string, { regex: RegExp; hintKey: string }> = {
   national_id:     { regex: /^\d{6}-?\d{2}-?\d{4}$/, hintKey: "ui.kyc.myKadHint" },
@@ -54,7 +55,7 @@ export default function KycPage() {
   const continuation = postLoginPath(searchParams.get("next"));
   const { showFeedback } = useActionFeedback();
   const [submitting,        setSubmitting]        = useState(false);
-  const [form,              setForm]              = useState({ icNumber: "", docType: "national_id" });
+  const [form,              setForm]              = useState<{ icNumber: string; docType: "national_id" | "passport" | "driving_license" }>({ icNumber: "", docType: "national_id" });
   const [holderName,        setHolderName]        = useState("");
   const [ocrFields,         setOcrFields]          = useState<{ holderName: string | null; documentNumber: string | null; status: string } | null>(null);
   const [previewing,        setPreviewing]         = useState(false);
@@ -62,6 +63,9 @@ export default function KycPage() {
   const [draftId,           setDraftId]            = useState<string | null>(null);
   const [draftVersion,      setDraftVersion]       = useState<number | null>(null);
   const [draftNotice,       setDraftNotice]        = useState<string | null>(null);
+  const [draftBaseline,     setDraftBaseline]      = useState<{ documentType: "national_id" | "passport" | "driving_license"; holderName: string } | null>(null);
+  const [frontChanged,      setFrontChanged]       = useState(false);
+  const [backChanged,       setBackChanged]        = useState(false);
   const [submitUncertain,   setSubmitUncertain]    = useState(false);
   const [operationChecking, setOperationChecking]  = useState(false);
   const [submitRequestId,   setSubmitRequestId]     = useState<string | null>(null);
@@ -138,6 +142,9 @@ export default function KycPage() {
           setDraftVersion(draft.version);
           setHolderName(typeof draft.holderName === "string" ? draft.holderName : "");
           setForm((value) => ({ ...value, docType: draft.documentType }));
+          setDraftBaseline({ documentType: draft.documentType, holderName: typeof draft.holderName === "string" ? draft.holderName : "" });
+          setFrontChanged(false);
+          setBackChanged(false);
           const restore = async (side: "front" | "back") => {
             const image = await fetch(`/api/kyc/draft/documents/${draft.id}/${side}`, { cache: "no-store" });
             if (!image.ok) return null;
@@ -161,8 +168,8 @@ export default function KycPage() {
   function handleFileChange(side: "front" | "back", file: File | null) {
     setOcrFields(null);
     setDraftNotice(null);
-    if (side === "front") setFrontFile(file);
-    else setBackFile(file);
+    if (side === "front") { setFrontFile(file); setFrontChanged(Boolean(file)); }
+    else { setBackFile(file); setBackChanged(Boolean(file)); }
     setFileErrors((errors) => ({ ...errors, [side]: localizedKycFileError(file, tCustomer) }));
   }
 
@@ -189,16 +196,28 @@ export default function KycPage() {
 
   async function saveDraft(): Promise<{ id: string; version: number } | null> {
     if (!frontFile || !backFile || savingDraft) return null;
+    if (draftId && draftVersion !== null && draftBaseline) {
+      const comparison = compareKycDraftValues({
+        documentType: form.docType,
+        holderName,
+        frontChanged,
+        backChanged,
+      }, { ...draftBaseline, frontChanged: false, backChanged: false });
+      if (!comparison.changed) return { id: draftId, version: draftVersion };
+    }
     setSavingDraft(true); setDraftNotice(null);
     try {
       const data = new FormData();
       data.append("draftId", draftId ?? ""); if (draftVersion !== null) data.append("version", String(draftVersion));
       data.append("documentType", form.docType); data.append("holderName", holderName.trim());
-      data.append("frontFile", frontFile); data.append("backFile", backFile);
+      if (frontChanged) data.append("frontFile", frontFile); else data.append("reuseFront", "true");
+      if (backChanged) data.append("backFile", backFile); else data.append("reuseBack", "true");
       const response = await fetch("/api/kyc/draft", { method: "POST", body: data });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error?.message ?? tCustomer("ui.kyc.draftSaveFailed"));
       setDraftId(body.data.draft.id); setDraftVersion(body.data.draft.version); setDraftNotice(tCustomer("ui.kyc.draftSaved"));
+      setDraftBaseline({ documentType: form.docType, holderName: holderName.trim() });
+      setFrontChanged(false); setBackChanged(false);
       return { id: body.data.draft.id as string, version: body.data.draft.version as number };
     } catch (error) { setDraftNotice(error instanceof Error ? error.message : tCustomer("ui.kyc.draftSaveFailed")); return null; }
     finally { setSavingDraft(false); }
@@ -484,7 +503,7 @@ export default function KycPage() {
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.kyc.documentType")}</label>
             <select
               value={form.docType}
-              onChange={(e) => { setForm((f) => ({ ...f, docType: e.target.value })); setOcrFields(null); }}
+              onChange={(e) => { setForm((f) => ({ ...f, docType: e.target.value as typeof f.docType })); setOcrFields(null); }}
               className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="national_id">{tCustomer("ui.kyc.myKad")}</option>

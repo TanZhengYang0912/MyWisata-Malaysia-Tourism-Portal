@@ -47,6 +47,7 @@ export function PreferencesEditor({ onSaved, submitLabel, onBack, onBeforeSave, 
   const [loadError, setLoadError] = useState(false);
   const [refreshError, setRefreshError] = useState(false);
   const loadGeneration = useRef(0);
+  const savedAnswers = useRef<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -63,6 +64,11 @@ export function PreferencesEditor({ onSaved, submitLabel, onBack, onBeforeSave, 
       const body = await response.json() as { data?: SurveyResponse };
       if (generation !== loadGeneration.current) return;
       const s = body.data;
+      savedAnswers.current = s ? JSON.stringify({
+        interests: normalizeCategorySlugs(s.interests), travelStyle: s.travel_style ?? "solo",
+        budgetRange: s.budget_range ?? "mid_range", mobilityNeeds: s.mobility_needs ?? "none",
+        petFriendly: Boolean(s.pet_friendly), preferredRadiusKm: s.preferred_radius_km ?? 20, notes: (s.notes ?? "").trim(),
+      }) : null;
       if (s) {
         setInterests(normalizeCategorySlugs(s.interests));
         setTravelStyle(s.travel_style ?? "solo");
@@ -93,6 +99,14 @@ export function PreferencesEditor({ onSaved, submitLabel, onBack, onBeforeSave, 
   async function save() {
     if (interests.length === 0) { setError(t("ui.preferencesEditor.selectInterest")); return; }
     if (onBeforeSave?.() === false) return;
+    const nextAnswers = {
+      interests: normalizeCategorySlugs(interests), travelStyle, budgetRange, mobilityNeeds,
+      petFriendly, preferredRadiusKm: radiusKm, notes: notes.trim(),
+    };
+    if (savedAnswers.current !== null && savedAnswers.current === JSON.stringify(nextAnswers)) {
+      setSaved(true);
+      return;
+    }
     setBusy(true); setError(null); setSaved(false);
     onBusyChange?.(true);
     try {
@@ -102,12 +116,13 @@ export function PreferencesEditor({ onSaved, submitLabel, onBack, onBeforeSave, 
         body: JSON.stringify({
           interests, travelStyle, budgetRange, mobilityNeeds,
           petFriendly, preferredRadiusKm: radiusKm,
-          notes: notes.trim() || undefined,
+          notes: nextAnswers.notes || undefined,
         }),
       });
       if (!res.ok) {
         throw new Error(t("ui.preferencesEditor.saveError"));
       }
+      savedAnswers.current = JSON.stringify(nextAnswers);
       setSaved(true);
       try {
         await onSaved?.();

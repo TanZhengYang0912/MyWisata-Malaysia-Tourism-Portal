@@ -351,8 +351,9 @@
     "switchAccount": "Switch account"
   },
   "guest": {
-    "mode": "Guest Mode",
-    "startError": "Unable to start Guest Mode. Please try again."
+    "mode": "Guest",
+    "continue": "Continue as guest",
+    "startError": "Couldn't continue as a guest. Please try again."
   },
   "cart": {
     "label": "Shopping cart",

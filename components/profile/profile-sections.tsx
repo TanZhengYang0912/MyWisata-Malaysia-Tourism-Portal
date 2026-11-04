@@ -20,7 +20,11 @@ import { bioSchema, identitySchema } from "@/lib/validation/profile-schemas";
 import { PROFILE_BIO_MIN_LENGTH as MIN_BIO_LENGTH, PROFILE_BIO_MAX_LENGTH as MAX_BIO_LENGTH, LEGACY_PROFILE_BIO_MAX_LENGTH } from "@/lib/verification/eligibility";
 import { ProfileLocationFields } from "@/components/profile/profile-location-fields";
 import { ProfilePhotoPicker } from "@/components/profile/profile-photo-picker";
-import { AVATAR_MAX_BYTES, formatAvatarFileSize, getAvatarUploadStartFailure } from "@/lib/profile/avatar-validation";
+import { AVATAR_MAX_BYTES, formatAvatarFileSize } from "@/lib/profile/avatar-validation";
+import { uploadProfileAvatar } from "@/lib/profile/avatar-upload-client";
+
+import { PersonalTravelDetailsPanel } from "@/components/profile/personal-travel-details";
+import { SavedTravellers } from "@/components/profile/saved-travellers";
 
 type SectionId = "personal" | "contact";
 
@@ -93,11 +97,23 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
       setError(tCustomer("ui.profileWizard.bioValidation", { min: MIN_BIO_LENGTH, max: MAX_BIO_LENGTH }));
       return;
     }
+    const identityChanged = !summary || identity.data.fullName !== (summary.fullName ?? "")
+      || identity.data.city !== (summary.city ?? "") || identity.data.country !== (summary.country ?? "")
+      || (identity.data.cityId ?? null) !== (summary.cityId ?? null)
+      || (identity.data.countryCode ?? null) !== (summary.countryCode ?? null);
+    const bioChanged = !canKeepSavedBio && profileBio.success
+      && profileBio.data.bio !== (summary?.bio ?? "").trim();
+    if (!identityChanged && !bioChanged) { setEditing(null); setError(null); return; }
     setBusy(true); setError(null);
     try {
-      const response = await fetch("/api/profile/identity", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(identity.data) });
-      if (!response.ok) throw new Error(tCustomer("ui.profileWizard.saveDetails"));
-      if (!canKeepSavedBio && profileBio.success) {
+      let changed = false;
+      if (identityChanged) {
+        const response = await fetch("/api/profile/identity", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(identity.data) });
+        if (!response.ok) throw new Error(tCustomer("ui.profileWizard.saveDetails"));
+        const result = await response.json().catch(() => null) as { data?: { changed?: boolean } } | null;
+        changed ||= result?.data?.changed !== false;
+      }
+      if (bioChanged && profileBio.success) {
         const bioResponse = await fetch("/api/profile/bio", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profileBio.data) });
         if (!bioResponse.ok) {
           const body = await bioResponse.json().catch(() => ({}));
@@ -105,8 +121,11 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
             ? tCustomer("ui.profileWizard.personalSaveBioPrivacyBlocked")
             : tCustomer("ui.profileWizard.saveDetails"));
         }
+        const result = await bioResponse.json().catch(() => null) as { data?: { changed?: boolean } } | null;
+        changed ||= result?.data?.changed !== false;
       }
-      await loadProfile(); await refreshUser(); setEditing(null);
+      if (changed) await Promise.all([loadProfile(), refreshUser()]);
+      setEditing(null);
     } catch (cause) { setError(cause instanceof Error ? cause.message : tCustomer("ui.profileWizard.saveDetails")); }
     finally { setBusy(false); }
   }
@@ -157,48 +176,21 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
   async function uploadAvatar() {
     if (!avatarFile) return;
     setBusy(true); setError(null);
-    let failureMessage = tCustomer("ui.profileWizard.avatarUploadUrlError");
     try {
-      const signed = await fetch(`/api/profile/avatar?type=${encodeURIComponent(avatarFile.type)}`, { method: "PUT" });
-      if (!signed.ok) {
-        const failure = await getAvatarUploadStartFailure(signed);
-        const message = failure === "session-expired"
-          ? tCustomer("ui.profileWizard.avatarSessionExpired")
-          : failure === "unsupported-type"
-            ? tCustomer("ui.profileWizard.photoTypeValidation")
-            : failure === "service-unavailable"
-              ? tCustomer("ui.profileWizard.avatarUploadUnavailable")
-              : failureMessage;
-        setError(message);
-        return;
-      }
-      const { data } = await signed.json() as { data: { uploadUrl: string; path: string } };
-      failureMessage = tCustomer("ui.profileWizard.avatarStorageError");
-      const upload = await fetch(data.uploadUrl, { method: "PUT", headers: { "Content-Type": avatarFile.type }, body: avatarFile });
-      if (!upload.ok) {
-        if (upload.status === 413 && avatarFile.size > AVATAR_MAX_BYTES) {
-          setError(tCustomer("ui.profileWizard.photoSizeValidation", { size: formatAvatarFileSize(avatarFile.size) }));
-          return;
-        }
-        setError(failureMessage);
-        return;
-      }
-      failureMessage = tCustomer("ui.profileWizard.avatarConfirmError");
-      const confirmed = await fetch("/api/profile/avatar/confirm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: data.path }) });
-      if (!confirmed.ok) {
-        const body = await confirmed.json().catch(() => null) as { error?: { code?: string } } | null;
-        if (body?.error?.code === "INVALID_IMAGE") {
-          const message = avatarFile.size > AVATAR_MAX_BYTES
+      const result = await uploadProfileAvatar(avatarFile);
+      if (result.changed) { await loadProfile(); await refreshUser(); }
+      setAvatarFile(null); setAvatarPreview(null);
+    } catch (cause) {
+      const code = cause instanceof Error ? cause.message : "";
+      const message = code === "UNAUTHORIZED" ? tCustomer("ui.profileWizard.avatarSessionExpired")
+        : code === "INVALID_TYPE" ? tCustomer("ui.profileWizard.photoTypeValidation")
+          : code === "INVALID_IMAGE" ? (avatarFile.size > AVATAR_MAX_BYTES
             ? tCustomer("ui.profileWizard.photoSizeValidation", { size: formatAvatarFileSize(avatarFile.size) })
-            : tCustomer("ui.profileWizard.photoInvalidValidation");
-          setError(message);
-          return;
-        }
-        setError(failureMessage);
-        return;
-      }
-      await loadProfile(); await refreshUser(); setAvatarFile(null); setAvatarPreview(null);
-    } catch { setError(failureMessage); }
+            : tCustomer("ui.profileWizard.photoInvalidValidation"))
+            : code === "AVATAR_TOO_LARGE" ? tCustomer("ui.profileWizard.photoSizeValidation", { size: formatAvatarFileSize(avatarFile.size) })
+              : tCustomer("ui.profileWizard.avatarUploadUnavailable");
+      setError(message);
+    }
     finally { setBusy(false); }
   }
 
@@ -247,8 +239,13 @@ export function ProfileSections({ shellClassName, showHeader = true, wide = fals
         {editing === "personal" ? <div className="mt-5 space-y-3"><input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={tCustomer("ui.profileWizard.fullNamePlaceholder")} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><ProfileLocationFields compact value={{ city, country, cityId, countryCode }} disabled={busy} onChange={(location) => { setCity(location.city); setCountry(location.country); setCityId(location.cityId); setCountryCode(location.countryCode); setError(null); }} /><textarea value={bio} onChange={(e) => { setBio(e.target.value); setError(null); }} maxLength={MAX_BIO_LENGTH} rows={4} placeholder={tCustomer("ui.profileWizard.bioPlaceholder")} className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm" /><div className="flex items-center justify-between text-xs"><span className={invalidBio ? "text-destructive" : "text-muted-foreground"}>{invalidBio ? tCustomer("ui.profileWizard.bioValidation", { min: MIN_BIO_LENGTH, max: MAX_BIO_LENGTH }) : hasLegacyBio ? tCustomer("ui.profileWizard.bioLegacyHint", { min: MIN_BIO_LENGTH, max: MAX_BIO_LENGTH }) : tCustomer("ui.profileWizard.saveDetails")}</span><span className="text-muted-foreground">{bio.length}/{hasLegacyBio ? LEGACY_PROFILE_BIO_MAX_LENGTH : MAX_BIO_LENGTH}</span></div><div className="flex gap-2"><Button onClick={savePersonal} disabled={busy || invalidBio}>{busy ? <Loader2 className="animate-spin" /> : tCustomer("ui.profileWizard.saveDetails")}</Button><Button variant="outline" onClick={() => setEditing(null)}>{tCommon("actions.cancel")}</Button></div></div> : <div className="mt-5 space-y-2 text-sm"><p className="font-semibold text-foreground">{summary.fullName || tCustomer("ui.profileWizard.fullName")}</p><p className="text-muted-foreground">{[summary.city, summary.country].filter(Boolean).join(", ") || tCustomer("ui.profileWizard.city")}</p><p className="text-muted-foreground">{summary.bio || tCustomer("ui.profileWizard.bio")}</p><Button variant="outline" size="sm" className="mt-2" onClick={() => setEditing("personal")}>{tCustomer("ui.profileWizard.saveDetails")}</Button></div>}
       </SectionCard>
 
+      {currentUser && <>
+        <SectionCard title={tCustomer("ui.travelDetails.personalTitle")}><PersonalTravelDetailsPanel key={`personal:${currentUser.id}`} userId={currentUser.id} /></SectionCard>
+        <SectionCard title={tCustomer("ui.travelDetails.travellersTitle")}><SavedTravellers key={`travellers:${currentUser.id}`} userId={currentUser.id} /></SectionCard>
+      </>}
+
       <SectionCard title={tCustomer("ui.profileSections.contact")}>
-        <div className="space-y-3 text-sm"><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tCustomer("ui.profileSections.email")}</p><p className="mt-1 font-medium text-foreground">{summary.email}</p><p className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.profileSections.emailChangeHint")}</p></div><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tCustomer("ui.profileSections.phone")}</p>{editing === "contact" ? <div className="mt-2 space-y-3"><HumanVerification {...human} />{resend.seconds > 0 && <p role="status" className="text-xs text-muted-foreground">{tAuth("humanVerification.resendIn", { seconds: resend.seconds })}</p>}{phonePhase === "enter" ? <><InternationalPhoneInput id="settings-phone" value={phone} onChange={(value) => { setPhone(value); setError(null); }} disabled={busy} error={Boolean(error)} /><Button onClick={sendPhoneOtp} disabled={busy || resend.seconds > 0}>{tCustomer("ui.profileWizard.sendOtp")}</Button></> : <><p className="font-medium text-green-600">{tCustomer("ui.profileSections.otpSent")}</p><p className="text-muted-foreground">{tCustomer("ui.profileSections.otpInstruction")}</p><div className="flex gap-2">{Array.from({ length: 6 }, (_, index) => <input key={index} ref={(element) => { otpRefs.current[index] = element; }} value={phoneCode[index] ?? ""} onChange={(event) => updateOtpDigit(index, event.target.value)} onKeyDown={(event) => handleOtpKeyDown(index, event)} inputMode="numeric" maxLength={1} aria-label={tCustomer("ui.profileSections.otpDigit", { number: index + 1 })} className="h-12 w-11 rounded-xl border border-border bg-background text-center text-lg font-semibold text-foreground outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />)}</div><div className="flex items-center gap-3"><Button onClick={verifyPhone} disabled={busy || phoneCode.length !== 6}>{busy ? <Loader2 className="animate-spin" /> : tCustomer("ui.profileSections.verifyOtp")}</Button><button type="button" onClick={() => void sendPhoneOtp()} disabled={busy || resend.seconds > 0} className="text-sm font-medium text-primary hover:underline disabled:opacity-50">{tCustomer("ui.profileSections.resendOtp")}</button></div></>}</div> : <div className="mt-1 flex items-center gap-2"><span className="font-medium text-foreground">{summary.maskedPhone || tCustomer("ui.profileSections.notSet")}</span><StatusBadge label={summary.phoneVerified ? tCustomer("ui.profileSections.verified") : tCustomer("ui.profileSections.unverified")} good={summary.phoneVerified} /></div>}</div>{editing !== "contact" && <Button variant="outline" size="sm" onClick={() => setEditing("contact")}>{tCustomer("ui.profileSections.changePhone")}</Button>}</div>
+        <div className="space-y-3 text-sm"><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tCustomer("ui.profileSections.email")}</p><p className="mt-1 font-medium text-foreground">{summary.email}</p><p className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.profileSections.emailChangeHint")}</p></div><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tCustomer("ui.profileSections.phone")}</p>{editing === "contact" ? <div className="mt-2 space-y-3"><HumanVerification {...human} />{resend.seconds > 0 && <p role="status" className="text-xs text-muted-foreground">{tAuth("humanVerification.resendIn", { seconds: resend.seconds })}</p>}{phonePhase === "enter" ? <><InternationalPhoneInput id="settings-phone" value={phone} onChange={(value) => { setPhone(value); setError(null); }} disabled={busy} error={Boolean(error)} /><Button onClick={sendPhoneOtp} disabled={busy || resend.seconds > 0}>{tCustomer("ui.profileWizard.sendOtp")}</Button></> : <><p className="font-medium text-green-600">{tCustomer("ui.profileSections.otpSent")}</p><p className="text-muted-foreground">{tCustomer("ui.profileSections.otpInstruction")}</p><div className="flex gap-2">{Array.from({ length: 6 }, (_, index) => <input key={index} ref={(element) => { otpRefs.current[index] = element; }} value={phoneCode[index] ?? ""} onChange={(event) => updateOtpDigit(index, event.target.value)} onKeyDown={(event) => handleOtpKeyDown(index, event)} inputMode="numeric" maxLength={1} aria-label={tCustomer("ui.profileSections.otpDigit", { number: index + 1 })} className="h-12 w-11 rounded-xl border border-border bg-background text-center text-lg font-semibold text-foreground outline-none focus:border-primary focus:ring-4 focus:ring-primary/10" />)}</div><div className="flex items-center gap-3"><Button onClick={verifyPhone} disabled={busy || phoneCode.length !== 6}>{busy ? <Loader2 className="animate-spin" /> : tCustomer("ui.profileSections.verifyOtp")}</Button><button type="button" onClick={() => void sendPhoneOtp()} disabled={busy || resend.seconds > 0} className="cursor-pointer text-sm font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-50">{tCustomer("ui.profileSections.resendOtp")}</button></div></>}</div> : <div className="mt-1 flex items-center gap-2"><span className="font-medium text-foreground">{summary.maskedPhone || tCustomer("ui.profileSections.notSet")}</span><StatusBadge label={summary.phoneVerified ? tCustomer("ui.profileSections.verified") : tCustomer("ui.profileSections.unverified")} good={summary.phoneVerified} /></div>}</div>{editing !== "contact" && <Button variant="outline" size="sm" className="cursor-pointer" onClick={() => setEditing("contact")}>{tCustomer("ui.profileSections.changePhone")}</Button>}</div>
       </SectionCard>
 
       <SectionCard title={tCustomer("ui.profileSections.identityVerification")} description={tCustomer("ui.kyc.description")}>

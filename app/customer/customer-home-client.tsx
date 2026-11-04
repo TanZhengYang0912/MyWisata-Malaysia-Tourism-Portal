@@ -6,7 +6,6 @@ import { ArrowRight, ArrowUpRight, CalendarDays, MapPin, Sparkles } from "lucide
 import { useTranslation } from "react-i18next";
 import type { ComputedActivity } from "@/backend/core/types";
 import { ActivityCard } from "@/components/customer/activity-card";
-import { groupAccommodationByProperty } from "@/lib/customer/discovery-ranking";
 import { SaveToggleButton } from "@/components/customer/save-toggle-button";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { VendorCard, type CustomerVendorCardVendor } from "@/components/customer/vendor-card";
@@ -67,8 +66,8 @@ type NearbyPartner = CustomerVendorCardVendor & { distanceKm: number };
 type NearbyLocationSource = "browser" | "city" | "none";
 
 export function CustomerHomeClient({
-  recommended,
-  popular,
+  highlightItems,
+  forYouItems,
   vendors,
   eventPartners = [],
   campaign,
@@ -76,8 +75,8 @@ export function CustomerHomeClient({
   campaignUnavailable = false,
   titleFontClassName = "",
 }: {
-  recommended: ComputedActivity[];
-  popular: ComputedActivity[];
+  highlightItems: ComputedActivity[];
+  forYouItems: ComputedActivity[];
   vendors: DemoVendor[];
   eventPartners?: EventPartner[];
   campaign: PromotionCampaignPublic | null;
@@ -199,9 +198,6 @@ export function CustomerHomeClient({
     );
   }
 
-  const highlightItems = groupAccommodationByProperty(popular).slice(0, 4);
-  const highlightIds = new Set(highlightItems.map((activity) => activity.id));
-  const forYouItems = groupAccommodationByProperty(recommended).filter((activity) => !highlightIds.has(activity.id)).slice(0, 4);
   return (
     <div className={`${titleFontClassName} bg-background min-h-screen text-foreground pb-20`}>
       <section className="atlas-hero-section relative isolate min-h-[calc(100svh-96px)] overflow-hidden bg-[#061326] text-white lg:min-h-[calc(100svh-64px)]">

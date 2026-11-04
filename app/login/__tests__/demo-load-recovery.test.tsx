@@ -20,11 +20,10 @@ describe("login demo account recovery", () => {
 
   it("does not promise demo accounts when the environment has none", () => {
     const auth = JSON.parse(readFileSync(resolve(process.cwd(), "app/i18n/locales/en/auth.json"), "utf8")) as {
-      login: { description: string };
       demo: { empty: string; retry: string };
     };
 
-    expect(auth.login.description).not.toContain("Demo accounts remain available");
+    expect(page).not.toContain('tAuth("login.description")');
     expect(auth.demo.empty).toBeTruthy();
     expect(auth.demo.retry).toBeTruthy();
   });

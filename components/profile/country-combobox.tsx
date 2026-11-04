@@ -6,6 +6,9 @@ import { useTranslation } from "react-i18next";
 import { getCountryOptions, type CountryOption } from "@/lib/location/countries";
 
 type CountryComboboxProps = {
+  id?: string;
+  ariaLabel?: string;
+  placeholder?: string;
   valueCode: string | null;
   valueLabel: string;
   onSelect: (option: CountryOption) => void;
@@ -13,7 +16,7 @@ type CountryComboboxProps = {
   disabled?: boolean;
 };
 
-export function CountryCombobox({ valueCode, valueLabel, onSelect, error = false, disabled = false }: CountryComboboxProps) {
+export function CountryCombobox({ id, ariaLabel, placeholder, valueCode, valueLabel, onSelect, error = false, disabled = false }: CountryComboboxProps) {
   const { t: tCustomer, i18n } = useTranslation("customer");
   const listboxId = useId();
   const locale = i18n.resolvedLanguage ?? i18n.language ?? "en";
@@ -61,6 +64,8 @@ export function CountryCombobox({ valueCode, valueLabel, onSelect, error = false
     <div className="relative">
       <div className="relative">
         <input
+          id={id}
+          aria-label={ariaLabel}
           role="combobox"
           aria-autocomplete="list"
           aria-expanded={open}
@@ -72,7 +77,7 @@ export function CountryCombobox({ valueCode, valueLabel, onSelect, error = false
           onBlur={() => window.setTimeout(() => { setOpen(false); setDraftQuery(null); }, 120)}
           onChange={(event) => { setDraftQuery(event.target.value); setOpen(true); setActiveIndex(0); }}
           onKeyDown={handleKeyDown}
-          placeholder={tCustomer("ui.profileLocation.countrySearchPlaceholder")}
+          placeholder={placeholder ?? tCustomer("ui.profileLocation.countrySearchPlaceholder")}
           className="w-full rounded-xl border bg-background px-3 py-2.5 pr-9 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60"
           style={{ borderColor: error ? "var(--destructive)" : "var(--border)" }}
         />
@@ -89,7 +94,7 @@ export function CountryCombobox({ valueCode, valueLabel, onSelect, error = false
               aria-selected={option.code === valueCode}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => choose(option)}
-              className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${index === activeIndex ? "bg-secondary text-foreground" : "text-foreground hover:bg-secondary/70"}`}
+              className={`flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${index === activeIndex ? "bg-secondary text-foreground" : "text-foreground hover:bg-secondary/70"}`}
             >
               <span><span className="font-medium">{option.label}</span><span className="ml-2 text-xs text-muted-foreground">{option.code}</span></span>
               {option.code === valueCode && <Check aria-hidden size={15} className="text-primary" />}
