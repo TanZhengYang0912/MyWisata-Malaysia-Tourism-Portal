@@ -830,8 +830,8 @@ function WalletContent() {
       )}
 
       <WithdrawalList pending={pending} />
-      {currentUser && <WithdrawalHistory key={currentUser.id} userId={currentUser.id} />}
-      {currentUser && <CustomerTransactionHistory key={currentUser.id} userId={currentUser.id} refreshKey={historyRefreshKey} />}
+      {currentUser && <WithdrawalHistory key={`withdrawal-history:${currentUser.id}`} userId={currentUser.id} />}
+      {currentUser && <CustomerTransactionHistory key={`transaction-history:${currentUser.id}`} userId={currentUser.id} refreshKey={historyRefreshKey} />}
       </CustomerPageShell>
     </>
   );
