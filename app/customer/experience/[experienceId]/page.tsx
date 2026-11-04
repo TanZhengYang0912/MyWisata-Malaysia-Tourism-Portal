@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BackLink } from "@/components/shared/back-link";
+import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Clock, MapPin, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -58,6 +59,11 @@ export default async function ExperiencePage({ params }: Props) {
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+        <Breadcrumbs className="mb-4" label={t("ui.place.breadcrumb")} items={[
+          { label: t("navigation.home"), href: "/customer" },
+          { label: t("navigation.explore"), href: "/customer/explore?tab=experiences" },
+          { label: experience.name },
+        ]} />
         <BackLink
           fallbackHref="/customer/explore"
           className="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-primary"

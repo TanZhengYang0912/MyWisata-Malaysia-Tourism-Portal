@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { vendorProductDetailHref } from "@/lib/customer/vendor-page";
 
 const pageSource = readFileSync(resolve(process.cwd(), "app/customer/vendor/[vendorId]/page.tsx"), "utf8");
 
@@ -32,11 +33,10 @@ describe("customer vendor profile image contract", () => {
 
 describe("customer vendor commerce boundary", () => {
   it("preserves a single product outlet in the vendor detail link", () => {
-    expect(pageSource).toContain("function vendorProductDetailHref");
-    expect(pageSource).toContain("source=vendor");
-    expect(pageSource).toContain("outletId");
-    expect(pageSource).toContain("ui.vendor.viewProductDetails");
-    expect(pageSource).toContain("product.soldAt.length");
+    expect(vendorProductDetailHref("p1", "v1", "o1")).toContain("outletId=o1");
+    expect(vendorProductDetailHref("p1", "v1")).not.toContain("outletId=");
+    expect(pageSource).toContain("<ActivityCard");
+    expect(pageSource).toContain("vendorListing=");
   });
 
   it("keeps location copy singular when a vendor has one outlet", () => {
@@ -64,8 +64,8 @@ describe("customer vendor server module boundaries", () => {
   });
 
   it("passes serializable title props to the localized heading client component", () => {
-    expect(pageSource).toContain("<LocalizedContentHeading");
-    expect(pageSource).toContain("showTitleAttribute");
+    expect(pageSource).toContain("<ActivityCard");
+    expect(pageSource).toContain("vendorListing=");
     expect(pageSource).not.toContain("{({ text, control }) =>");
   });
 });

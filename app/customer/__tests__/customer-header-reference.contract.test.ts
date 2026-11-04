@@ -16,12 +16,10 @@ describe("customer header reference contract", () => {
     expect(customerLayoutSource).not.toContain('data-customer-header="true"');
     expect(customerLayoutSource).toContain("h-17");
     expect(customerLayoutSource).toContain("max-w-7xl mx-auto");
-    expect(customerLayoutSource).toContain("text-sm font-medium");
     expect(customerLayoutSource).toContain("ml-auto flex shrink-0");
     expect(customerLayoutSource).not.toContain("h-[104px]");
     expect(customerLayoutSource).not.toContain("markSize={56}");
-    expect(customerLayoutSource.match(/CUSTOMER_NAV\.map/g) ?? []).toHaveLength(2);
-    expect(customerLayoutSource).toContain("<item.icon size={16}");
+    expect(customerLayoutSource.match(/<CustomerPrimaryNavigation /g) ?? []).toHaveLength(2);
   });
 
   it("keeps the shared Customer header fixed at the top while routes scroll", () => {

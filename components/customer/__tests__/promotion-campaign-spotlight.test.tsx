@@ -38,12 +38,11 @@ describe("promotion campaign home spotlight", () => {
     expect(markup).toContain("bg-card");
     expect(markup).toContain("rounded-[28px]");
     expect(markup).toContain("shadow-sm");
-    expect(markup).toContain("md:grid-cols-[52%_48%]");
-    expect(markup).toContain("md:min-h-[410px]");
-    // Fixed panel height keeps every slide the same size so the arrows don't jump.
-    expect(markup).toMatch(/data-slot="promotion-campaign-content"[^>]*\bh-\[420px\][^>]*md:h-\[410px\]/);
+    expect(markup).toContain("lg:grid-cols-[44%_minmax(0,1fr)_9rem]");
+    expect(markup).toContain("lg:min-h-[310px]");
+    expect(markup).toContain('data-slot="featured-end"');
     expect(markup).toContain("aspect-[16/9]");
-    expect(markup).toContain("md:aspect-auto");
+    expect(markup).toContain("lg:aspect-auto");
     expect(markup).toContain("ui.home.campaigns");
     expect(markup).not.toContain("ui.search.featuredRecommendations");
     expect(markup).not.toContain("ui.search.featuredDescription");
@@ -54,7 +53,8 @@ describe("promotion campaign home spotlight", () => {
     expect(markup).not.toContain("lg:border-l-4");
     expect(markup).not.toContain("opacity-70");
     expect(markup).not.toContain("bg-gradient-to-r");
-    expect(getPanelActions(markup, ["ui.promotionCampaigns.exploreCampaign", "ui.promotionCampaigns.allCampaigns"])).toContain("text-primary");
+    expect(getPanelActions(markup, ["ui.promotionCampaigns.allCampaigns"])).toContain("text-primary");
+    expect(markup.slice(markup.indexOf('data-slot="featured-end"'))).toContain("ui.promotionCampaigns.exploreCampaign");
   });
 
   it("shows dates for a full-day event and retains the precise time for a legacy event", () => {
@@ -114,7 +114,7 @@ describe("promotion campaign home spotlight", () => {
     expect(markup.indexOf('src="https://thumb.wikimedia.org/event-poster.jpg"')).toBeLessThan(markup.indexOf('data-slot="promotion-campaign-content"'));
   });
 
-  it("reveals campaign location and hours over the poster without changing the split layout", () => {
+  it("reveals campaign location and hours over the event-pass poster", () => {
     const markup = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={campaign} />);
 
     expect(markup).toContain("bg-gradient-to-t from-primary/95 via-primary/40 to-transparent");
@@ -122,6 +122,6 @@ describe("promotion campaign home spotlight", () => {
     expect(markup).toContain("group-focus-within:opacity-100");
     expect(markup).toContain("Melaka");
     expect(markup).toContain("10:00 AM - 6:00 PM");
-    expect(markup).toContain("md:grid-cols-[52%_48%]");
+    expect(markup).toContain("lg:grid-cols-[44%_minmax(0,1fr)_9rem]");
   });
 });

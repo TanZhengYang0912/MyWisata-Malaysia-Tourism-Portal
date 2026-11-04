@@ -109,6 +109,8 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/chat-thread-panel.tsx",
   "components/customer/customer-capability-gate-dialog.tsx",
   "components/customer/customer-page-shell.tsx",
+  "components/customer/customer-breadcrumbs.tsx",
+  "components/customer/customer-primary-navigation.tsx",
   "components/customer/kyc-photo-preview.tsx",
   "components/customer/customer-qr-pass-card.tsx",
   "components/customer/destination-preview-modal.tsx",

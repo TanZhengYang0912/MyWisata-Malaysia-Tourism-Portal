@@ -1,3 +1,5 @@
+import type { OperatingHours } from "@/backend/core/types";
+
 export interface VendorReviewMetric {
   rating: number;
   reviews: number;
@@ -57,4 +59,22 @@ export function getVendorProductTypeLabel(productType: string | null | undefined
     product: 'Local product',
   };
   return labels[productType || ''] || 'Local favourite';
+}
+export type VendorProductCardData = {
+  id: string;
+  vendorId: string;
+  name: string;
+  description: string | null;
+  productType: string | null;
+  imageUrl: string | null;
+  fromPrice: number;
+  requiresBooking: boolean;
+  rating: number;
+  reviews: number;
+  soldAt: Array<{ id: string; name: string; price: number; city: string | null; state: string | null; operatingHours: OperatingHours | null }>;
+};
+
+export function vendorProductDetailHref(productId: string, vendorId: string, outletId?: string) {
+  const outletQuery = outletId ? `&outletId=${encodeURIComponent(outletId)}` : "";
+  return `/customer/activity/${productId}?source=vendor${outletQuery}&returnTo=${encodeURIComponent(`/customer/vendor/${vendorId}`)}`;
 }

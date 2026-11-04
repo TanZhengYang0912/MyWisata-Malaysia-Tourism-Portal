@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { BackLink } from "@/components/shared/back-link";
+import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CalendarDays, Clock, MapPin, Store } from "lucide-react";
 import { getServerTranslation } from "@/lib/i18n/server";
@@ -43,6 +44,12 @@ export default async function EventVendorStallPage({ params }: Props) {
 
   return (
     <CustomerPageShell wide>
+      <Breadcrumbs className="mb-4" label={t("ui.place.breadcrumb")} items={[
+        { label: t("navigation.home"), href: "/customer" },
+        { label: t("navigation.events"), href: "/customer/events" },
+        { label: campaign.title, href: `/customer/events/${encodeURIComponent(slug)}` },
+        { label: vendor.vendorName },
+      ]} />
       <BackLink fallbackHref={`/customer/events/${encodeURIComponent(slug)}`} className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden="true" /> {tCommon("actions.back")}
       </BackLink>

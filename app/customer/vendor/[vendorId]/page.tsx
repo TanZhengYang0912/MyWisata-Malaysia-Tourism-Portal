@@ -8,7 +8,8 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { ShareButton } from '@/components/shared/share-button';
 import { ReferencePrice } from "@/components/shared/reference-price";
-import { ProductSaveButton } from "@/components/customer/product-save-button";
+import { Breadcrumbs } from "@/components/shared/breadcrumbs";
+import { ActivityCard } from "@/components/customer/activity-card";
 import { selectFeaturedVendorProducts } from '@/lib/customer/vendor-page';
 import { getVendorVisual } from '@/lib/customer/vendor-visual';
 import { resolveOutletImage, type ManagedPlaceImage } from '@/lib/outlet-images';
@@ -18,7 +19,6 @@ import { formatHours } from '@/lib/customer/operating-hours';
 import type { OperatingHours } from '@/backend/core/types';
 import { getReviewRatingSummary, getScopedReviewPage } from '@/backend/domains/vendor-reviews';
 import { VendorReviewsList } from '@/components/customer/vendor-reviews-list';
-import { LocalizedContent, LocalizedContentHeading } from '@/components/customer/localized-content';
 import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
 import { MediaGallery } from '@/components/customer/media-gallery';
 import { selectEntityGallery, selectEntityLogo, type EntityMediaRow } from '@/lib/customer/entity-media';
@@ -151,10 +151,10 @@ async function getVendor(vendorId: string) {
   const reviewMetrics = new Map((metricRows as { product_id: string; rating: number | string; reviews: number | string }[]).map((row) => [row.product_id, { rating: Number(row.rating), reviews: Number(row.reviews) }]));
 
   const catalogue = productRows.map((product) => {
-    const offers = ((product.outlet_offers ?? []) as OutletOffer[]).filter((offer) => offer.status === 'active' && outletNames.has(offer.outlet_id));
+    const offers = ((product.outlet_offers ?? []) as OutletOffer[]).filter((offer) => offer.status === 'active' && outletNames.has(offer.outlet_id) && offer.price != null && Number.isFinite(Number(offer.price)) && Number(offer.price) >= 0);
     const soldAt = offers.length
       ? offers.map((offer) => ({ id: offer.outlet_id, name: outletNames.get(offer.outlet_id)!, price: Number(offer.price) }))
-      : product.outlet_id && outletNames.has(product.outlet_id)
+      : product.outlet_id && outletNames.has(product.outlet_id) && product.base_price != null && Number.isFinite(Number(product.base_price)) && Number(product.base_price) >= 0
         ? [{ id: product.outlet_id, name: outletNames.get(product.outlet_id)!, price: Number(product.base_price) }]
         : [];
     const metric = reviewMetrics.get(product.id) ?? { rating: 0, reviews: 0 };
@@ -217,29 +217,6 @@ export async function generateMetadata({ params }: { params: Promise<{ vendorId:
   return { title: `${result.vendor.name} | ${BRAND_NAME}`, description, openGraph: { title: result.vendor.name, description, url, images: vendorVisual.coverUrl ? [{ url: vendorVisual.coverUrl }] : undefined } };
 }
 
-function vendorProductDetailHref(productId: string, vendorId: string, outletId?: string) {
-  const outletQuery = outletId ? `&outletId=${encodeURIComponent(outletId)}` : '';
-  return `/customer/activity/${productId}?source=vendor${outletQuery}&returnTo=${encodeURIComponent(`/customer/vendor/${vendorId}`)}`;
-}
-
-function ProductCard({ product, vendorId, t }: { product: CatalogueProduct; vendorId: string; t: TFunction }) {
-  const href = vendorProductDetailHref(product.id, vendorId, product.soldAt.length === 1 ? product.soldAt[0].id : undefined);
-  return <article className="mw-card relative min-w-0">
-    <Link href={href} aria-label={t('ui.vendor.viewProductDetails')} className="group/product-media block min-w-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
-    <div className="mw-card-media h-48 aspect-auto bg-secondary">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {product.coverUrl ? <img src={product.coverUrl} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover/product-media:scale-105" /> : <div className="flex h-full items-center justify-center px-6 text-center text-xs font-semibold uppercase tracking-[0.16em] text-primary/60">{t('ui.vendor.photoComingSoon')}</div>}
-      <span className="absolute left-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-[11px] font-bold text-foreground shadow-sm">{t(`ui.vendor.productTypes.${product.productType ?? 'experience'}`)}</span>
-    </div></Link>
-    <div className="mw-card-body p-4">
-      <div className="flex items-start justify-between gap-3"><LocalizedContentHeading entityType="product" entityId={product.id} field="name" sourceText={product.name} href={href} linkClassName="mw-card-title min-w-0 flex-1 rounded-sm font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40" showTitleAttribute /><p className="shrink-0 text-right text-sm font-bold text-primary"><span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">{t('ui.vendor.from')}</span><ReferencePrice amountMYR={product.fromPrice} /></p></div>
-      <div className="mt-2 min-h-[2.5rem]">{product.description && <p className="break-words whitespace-normal text-xs leading-5 text-muted-foreground"><LocalizedContent entityType="product" entityId={product.id} field="description" sourceText={product.description} /></p>}</div>
-      <div className="mw-card-footer pt-4 text-xs"><span className="font-semibold text-muted-foreground">{t('ui.vendor.locationCount', { count: product.soldAt.length })}</span>{product.reviews > 0 ? <span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-200"><Star size={13} fill="currentColor" /> {product.rating.toFixed(1)} <span className="font-normal text-muted-foreground/60">({product.reviews})</span></span> : <Link href={href} className="font-semibold text-primary">{t('ui.vendor.viewProductDetails')} <ArrowRight size={13} className="ml-0.5 inline" /></Link>}</div>
-    </div>
-    <ProductSaveButton productId={product.id} productName={product.name} className="absolute right-3 top-3 z-10" />
-  </article>;
-}
-
 function LocationCard({ location, vendorId, t }: { location: LocationSummary; vendorId: string; t: TFunction }) {
   const visual = getVendorVisual({ name: location.name, logoUrl: location.logoUrl });
   const locationLabel = [location.city, location.state].filter(Boolean).join(', ') || t('ui.labels.malaysia');
@@ -287,6 +264,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
   if (!result) notFound();
   const { t } = await getServerTranslation('customer');
   const { vendor, vendorGallery, locations, catalogue, featuredProducts, reviewSummary, reviews, reviewRatingBuckets } = result;
+  const locationsById = new Map(locations.map((location) => [location.id, location]));
   const vendorVisual = getVendorVisual({ name: vendor.name, coverUrl: vendor.cover_url, logoUrl: vendor.logo_url });
   const heroImage = vendorVisual.coverUrl;
   const visibleVendorGallery = vendorGallery.filter((item) => item.url !== heroImage);
@@ -297,6 +275,11 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
   const jsonLd = { '@context': 'https://schema.org', '@type': 'Organization', name: vendor.name, description: vendor.description, url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/vendor/${vendor.id}` };
 
   return <main className="min-h-screen bg-background text-foreground">
+    <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8"><Breadcrumbs label={t('ui.place.breadcrumb')} items={[
+      { label: t('navigation.home'), href: '/customer' },
+      { label: t('navigation.search'), href: '/customer/partners' },
+      { label: vendor.name },
+    ]} /></div>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
 
     {/* Top Context Bar (matching Image 2) */}
@@ -457,8 +440,14 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
             <span className="text-sm font-semibold text-muted-foreground">{t('ui.vendor.publishedListingCount', { count: featuredProducts.length })}</span>
           </div>
           {featuredProducts.length ? (
-            <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-              {featuredProducts.map((product) => <ProductCard key={product.id} product={product} vendorId={vendor.id} t={t} />)}
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
+              {featuredProducts.map((product) => <ActivityCard key={product.id} returnTo={`/customer/vendor/${vendor.id}`} vendorListing={{
+                ...product, vendorId: vendor.id, imageUrl: product.coverUrl,
+                soldAt: product.soldAt.map((entry) => {
+                  const outlet = locationsById.get(entry.id);
+                  return { ...entry, city: outlet?.city ?? null, state: outlet?.state ?? null, operatingHours: outlet?.operatingHours ?? null };
+                }),
+              }} />)}
             </div>
           ) : (
             <div className="mt-6 rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">{t('ui.vendor.noExperiences')}</div>

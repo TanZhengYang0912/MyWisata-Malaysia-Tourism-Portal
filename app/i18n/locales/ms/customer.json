@@ -179,6 +179,7 @@
     }
   },
   "ui": {
+    "breadcrumbs": { "calendar": "Kalendar", "phone": "Telefon", "kyc": "Pengesahan identiti", "forYou": "Untuk Anda", "orderAccess": "Akses pesanan", "orderDetails": "Butiran pesanan", "bookingDetails": "Butiran tempahan", "withdrawalDetails": "Butiran pengeluaran", "supportDetails": "Butiran sokongan", "recommendationDetails": "Butiran cadangan", "earnings": "Pendapatan", "publicProfile": "Profil awam", "eventPromotion": "Promosi acara" },
     "loading": "Memuatkan…",
     "contentTranslation": {
       "machineTranslated": "Terjemahan mesin",

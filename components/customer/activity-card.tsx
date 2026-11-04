@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Accessibility, BedDouble, CheckCircle, Clock, ImageOff, MapPin, Star, Store } from "lucide-react";
-import { useWishlist } from "@/components/providers/wishlist";
+import { useOptionalWishlist, useWishlist } from "@/components/providers/wishlist";
 import { CategoryIcon } from "@/components/customer/category-icon";
 import { SaveToggleButton } from "@/components/customer/save-toggle-button";
 import { AiTag } from "./ai-tag";
@@ -21,13 +21,55 @@ import { useCustomerCapabilityGate } from "@/components/customer/use-customer-ca
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { OperatingHoursSummary } from "@/components/customer/operating-hours-summary";
 import { LocalizedContent } from "@/components/customer/localized-content";
+import { ProductSaveButton } from "@/components/customer/product-save-button";
+import { vendorProductDetailHref, type VendorProductCardData } from "@/lib/customer/vendor-page";
 
 type ActivityCardItem = ComputedActivity & {
   sponsorship?: { placementId: string; label: "Sponsored" } | null;
   property?: DiscoveryPropertySummary;
 };
 
-export function ActivityCard({ activity, recommendationReason, returnTo, outletId, source, onSponsoredClick, hideDiscoveryBadges = false }: { activity: ActivityCardItem; recommendationReason?: string; returnTo?: string; outletId?: string; source?: string; onSponsoredClick?: () => void; hideDiscoveryBadges?: boolean }) {
+type DiscoveryCardProps = { activity: ActivityCardItem; recommendationReason?: string; returnTo?: string; outletId?: string; source?: string; onSponsoredClick?: () => void; hideDiscoveryBadges?: boolean };
+type VendorListingProps = { vendorListing: VendorProductCardData; returnTo: string };
+
+export function ActivityCard(props: DiscoveryCardProps | VendorListingProps) {
+  return "vendorListing" in props ? <VendorListingCard {...props} /> : <DiscoveryActivityCard {...props} />;
+}
+
+function VendorListingCard({ vendorListing: product }: VendorListingProps) {
+  const { t } = useTranslation("customer");
+  const wishlist = useOptionalWishlist();
+  const single = product.soldAt.length === 1 ? product.soldAt[0] : undefined;
+  const href = vendorProductDetailHref(product.id, product.vendorId, single?.id);
+  const location = single ? [single.city, single.state].filter(Boolean).join(", ") : "";
+  return <ExpandCard
+    media={<>
+      <Link href={href} aria-label={t("ui.vendor.viewProductDetails")} className="block h-full">
+        {product.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+        ) : <div className="flex h-full items-center justify-center bg-secondary text-xs font-semibold text-primary">{t("ui.vendor.photoComingSoon")}</div>}
+      </Link>
+      <ProductSaveButton productId={product.id} productName={product.name} className="absolute right-3 top-3 z-20" />
+      {wishlist && <div className="absolute right-3 top-14 z-20"><ShareButton compact shareType="product" contentId={product.id} title={product.name} /></div>}
+    </>}
+    title={<LocalizedContent entityType="product" entityId={product.id} field="name" sourceText={product.name}>
+      {({ text, control }) => <><Link href={href}><h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={text}>{text}</h3></Link>{control}</>}
+    </LocalizedContent>}
+    price={<>{product.soldAt.length > 1 && <span className="mr-1 text-xs text-muted-foreground">{t("ui.vendor.from")}</span>}<ReferencePrice amountMYR={product.fromPrice} className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary" /></>}
+    details={<>
+      {location && <p className="text-xs text-muted-foreground"><MapPin size={12} className="mr-1 inline" aria-hidden="true" />{location}</p>}
+      {!single && <p className="text-xs text-muted-foreground">{t("ui.vendor.locationCount", { count: product.soldAt.length })}</p>}
+      {single?.operatingHours && <OperatingHoursSummary hours={single.operatingHours} compact />}
+      {product.description && <p className="break-words text-xs text-muted-foreground"><LocalizedContent entityType="product" entityId={product.id} field="description" sourceText={product.description} /></p>}
+      {product.reviews > 0 && <p className="text-xs text-muted-foreground">{product.rating.toFixed(1)} ({product.reviews})</p>}
+    </>}
+    detailsId={`vendor-product-details-${product.id}`}
+    action={{ href, label: product.requiresBooking ? t("ui.actions.bookNow") : t("ui.actions.buyNow") }}
+  />;
+}
+
+function DiscoveryActivityCard({ activity, recommendationReason, returnTo, outletId, source, onSponsoredClick, hideDiscoveryBadges = false }: DiscoveryCardProps) {
   const { t } = useTranslation("customer");
   const [saving, setSaving] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);

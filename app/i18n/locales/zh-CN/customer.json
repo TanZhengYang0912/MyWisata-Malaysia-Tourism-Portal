@@ -179,6 +179,7 @@
     }
   },
   "ui": {
+    "breadcrumbs": { "calendar": "日历", "phone": "手机", "kyc": "身份验证", "forYou": "为你推荐", "orderAccess": "访问订单", "orderDetails": "订单详情", "bookingDetails": "预订详情", "withdrawalDetails": "提现详情", "supportDetails": "支持详情", "recommendationDetails": "推荐详情", "earnings": "收益", "publicProfile": "公开资料", "eventPromotion": "活动推广" },
     "loading": "加载中…",
     "contentTranslation": {
       "machineTranslated": "机器翻译",

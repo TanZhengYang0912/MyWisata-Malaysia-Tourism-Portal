@@ -179,6 +179,7 @@
     }
   },
   "ui": {
+    "breadcrumbs": { "calendar": "Calendar", "phone": "Phone", "kyc": "Identity verification", "forYou": "For You", "orderAccess": "Order access", "orderDetails": "Order details", "bookingDetails": "Booking details", "withdrawalDetails": "Withdrawal details", "supportDetails": "Support details", "recommendationDetails": "Recommendation details", "earnings": "Earnings", "publicProfile": "Public profile", "eventPromotion": "Event promotion" },
     "loading": "Loading…",
     "contentTranslation": {
       "machineTranslated": "Machine translated",

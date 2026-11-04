@@ -82,11 +82,13 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
         onNext={() => move(1)}
       >
         <FeaturedSplitCard
+          variant={displayCampaign ? "event-pass" : "split"}
+          endContent={displayCampaign && <>
+            <span className="text-sm font-semibold text-foreground">{formatDate(displayCampaign.endsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })}</span>
+            <Button asChild className="h-auto min-h-9 max-w-full whitespace-normal rounded-full text-center"><Link href={`/customer/events/${encodeURIComponent(displayCampaign.slug)}`}>{t("ui.promotionCampaigns.exploreCampaign")} <ArrowRight size={16} aria-hidden="true" /></Link></Button>
+          </>}
           mediaSlot="promotion-campaign-image"
           contentSlot="promotion-campaign-content"
-          // Fixed height (with clamped text below) so every slide is the same size
-          // and the carousel arrows, centred on the frame, stay put between slides.
-          contentClassName="h-[420px] overflow-hidden sm:h-[380px] md:h-[410px]"
           mediaCaption={displayCampaign && (
             <>
               {displayCampaign.locations[0]?.name && <p className="flex items-start gap-1.5 text-xs font-semibold leading-snug"><MapPin size={13} className="mt-0.5 shrink-0" aria-hidden="true" />{displayCampaign.locations[0].name}</p>}
@@ -124,11 +126,11 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
           <>
             <h2
               id="promotion-campaign-spotlight-title"
-              className="mt-3 line-clamp-2 break-words font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-foreground lg:text-4xl"
+              className="mt-3 break-words font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-foreground lg:text-4xl"
             >
               <LocalizedContent entityType="promotion_campaign" entityId={displayCampaign.id} field="title" sourceText={displayCampaign.title} />
             </h2>
-            <p className="mt-4 line-clamp-2 max-w-2xl break-words text-base leading-7 text-muted-foreground">
+            <p className="mt-4 max-w-2xl break-words text-base leading-7 text-muted-foreground">
               <LocalizedContent entityType="promotion_campaign" entityId={displayCampaign.id} field="summary" sourceText={displayCampaign.summary} />
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-between gap-4 text-sm text-muted-foreground">
@@ -145,6 +147,7 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
               <span className="shrink-0 font-semibold text-foreground">
                 {t("ui.promotionCampaigns.vendorCount", { count: displayCampaign.vendors.length })}
               </span>
+              <span className="shrink-0 font-semibold text-foreground">{t("ui.promotionCampaigns.locationCount", { count: displayCampaign.locations.length })}</span>
             </div>
           </>
         ) : (
@@ -162,14 +165,6 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
         )}
 
         <div data-slot="promotion-campaign-actions" className="mt-auto flex w-full flex-wrap items-center justify-start gap-x-5 gap-y-3 pt-8">
-          {displayCampaign && (
-            <Link
-              href={`/customer/events/${encodeURIComponent(displayCampaign.slug)}`}
-              className="inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20"
-            >
-              {t("ui.promotionCampaigns.exploreCampaign")} <ArrowRight size={16} aria-hidden="true" />
-            </Link>
-          )}
           {loadFailed && (
             <Button
               type="button"

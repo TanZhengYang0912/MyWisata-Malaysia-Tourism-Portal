@@ -8,6 +8,13 @@ const source = readFileSync(
 );
 
 describe("activity detail booking layout", () => {
+  it("keeps related products in normal flow below the bounded upper grid", () => {
+    const wrapper = source.match(/<div className="mx-auto max-w-7xl px-4 py-5[^"]*"/)?.[0] ?? "";
+    const grid = source.match(/<div className="grid items-start gap-6[^"]*"/)?.[0] ?? "";
+    expect(wrapper).not.toContain("lg:h-[calc(100dvh-6rem)]");
+    expect(grid).toContain("lg:h-[calc(100dvh-6rem)]");
+    expect(source.indexOf("{relatedProducts.length > 0")).toBeGreaterThan(source.indexOf("<aside className="));
+  });
   it("places the shorter hero and content before the desktop booking card inside one grid", () => {
     const gridIndex = source.indexOf('className="grid items-start gap-6');
     const heroIndex = source.indexOf("h-44");

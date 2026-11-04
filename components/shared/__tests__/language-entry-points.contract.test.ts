@@ -65,7 +65,7 @@ describe("shared language entry points", () => {
   it("renders customer navigation and account copy from declared translation keys", () => {
     const customer = source("app/customer/layout.tsx");
     expect(customer).not.toContain("function customerNavigationKey");
-    expect(customer).toContain("tCustomer(item.labelKey)");
+    expect(source("components/customer/customer-primary-navigation.tsx")).toContain("t(item.labelKey)");
     expect(customer).toContain("tCustomer(group.labelKey)");
     expect(customer).toContain('tCustomer(`${item.labelKey}.label`)');
     expect(customer).toContain('tCustomer(`${item.labelKey}.description`)');

@@ -35,7 +35,8 @@ describe("customer activity image handling", () => {
   });
 
   it("keeps only the Sponsored label on the photo; status badges live in the details drawer", () => {
-    const media = cardSource.slice(cardSource.indexOf("media={<>"), cardSource.indexOf("<SaveToggleButton"));
+    const discovery = cardSource.slice(cardSource.indexOf("function DiscoveryActivityCard"));
+    const media = discovery.slice(discovery.indexOf("media={<>"), discovery.indexOf("<SaveToggleButton"));
     expect(media).toContain("<img");
     expect(media).toContain('t("ui.labels.sponsored")');
     expect(media).not.toContain('t("ui.labels.verified")');
