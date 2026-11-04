@@ -50,11 +50,11 @@ BEGIN
     'Profile Fixture Updated','Kuala Lumpur','Malaysia',NULL,'MY','manual');
   IF NOT v_changed THEN RAISE EXCEPTION 'changed identity was not saved'; END IF;
 
-  SELECT changed INTO v_changed FROM public.save_preference_survey_if_changed(
-    ARRAY['food'],'solo','mid_range','none',false,20,NULL);
+  SELECT public.save_preference_survey_if_changed(
+    ARRAY['food'],'solo','mid_range','none',false,20,NULL) INTO v_changed;
   IF v_changed THEN RAISE EXCEPTION 'same survey reported as changed'; END IF;
-  SELECT changed INTO v_changed FROM public.save_preference_survey_if_changed(
-    ARRAY['food'],'family','mid_range','none',false,20,NULL);
+  SELECT public.save_preference_survey_if_changed(
+    ARRAY['food'],'family','mid_range','none',false,20,NULL) INTO v_changed;
   IF NOT v_changed THEN RAISE EXCEPTION 'changed survey was not saved'; END IF;
   IF (SELECT learned_affinity FROM public.preference_survey_responses WHERE user_id=v_owner) <> '{"food":2}'::jsonb THEN
     RAISE EXCEPTION 'survey update changed learned affinity';

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const noopSql = readFileSync(new URL('../20261104162914_profile_noop_writes.sql', import.meta.url), 'utf8');
 const avatarSql = readFileSync(new URL('../20261104163453_profile_avatar_assets.sql', import.meta.url), 'utf8');
+const avatarReservationFixSql = readFileSync(new URL('../20261105090000_profile_avatar_reservation_state_resolution.sql', import.meta.url), 'utf8');
 const avatarRoute = readFileSync(new URL('../../../app/api/profile/avatar/route.ts', import.meta.url), 'utf8');
 
 describe('profile no-op and avatar asset boundaries', () => {
@@ -26,6 +27,11 @@ describe('profile no-op and avatar asset boundaries', () => {
     expect(avatarSql).toContain('a.cleanup_claim_token = p_claim_token');
     expect(avatarSql).toContain('FOR UPDATE SKIP LOCKED');
     expect(avatarSql).toContain('NOT EXISTS (SELECT 1 FROM public.users');
+  });
+
+  it('resolves the avatar reservation return-column name against the table column', () => {
+    expect(avatarReservationFixSql).toContain('#variable_conflict use_column');
+    expect(avatarReservationFixSql).toContain("WHERE state IN ('pending', 'active', 'deleting') DO NOTHING");
   });
 
   it('hashes and validates uploaded bytes on the server and never enables overwrite', () => {
