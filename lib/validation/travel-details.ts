@@ -3,9 +3,8 @@ import { isCountryCode } from "@/lib/location/countries";
 import { getMalaysiaDateInputValue } from "@/lib/datetime/date-input";
 import { malaysiaCalendarDateToIso } from "@/lib/datetime/malaysia";
 import { parseInternationalPhone } from "@/lib/phone/international";
-import { TRAVEL_GENDERS } from "@/lib/profile/travel-details";
+import { TRAVEL_GENDERS, TRAVEL_RELATIONSHIPS, type TravelRelationship } from "@/lib/profile/travel-details";
 
-const optionalText = (max: number) => z.string().trim().max(max).nullable().transform((value) => value || null);
 const legalName = z.string().trim().min(2).max(100);
 const dateOfBirth = z.string().refine((value) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value < "1900-01-01" || value > getMalaysiaDateInputValue()) return false;
@@ -17,22 +16,37 @@ const phone = z.string().trim().max(40).transform((value, ctx) => {
   if (!parsed.ok) { ctx.addIssue({ code: "custom", message: "Enter a valid international phone number" }); return z.NEVER; }
   return parsed.e164;
 });
-const emergencyContact = z.object({
+function relationship(legacyValue: string | null) {
+  const known = z.enum(TRAVEL_RELATIONSHIPS);
+  if (!legacyValue || TRAVEL_RELATIONSHIPS.includes(legacyValue as TravelRelationship)) return known.nullable();
+  return z.union([known, z.literal(legacyValue)]).nullable();
+}
+function emergencyContactSchema(legacyRelationship: string | null) {
+  return z.object({
   name: legalName,
-  relationship: optionalText(50),
+  relationship: relationship(legacyRelationship),
   phone,
-}).strict().nullable();
-const common = {
+  }).strict().nullable();
+}
+function common(legacyEmergencyRelationship: string | null) {
+  return {
   dateOfBirth,
   gender: z.enum(TRAVEL_GENDERS).nullable(),
   nationalityCode,
-  emergencyContact,
-};
-export const personalTravelDetailsSchema = z.object({ legalName: legalName.nullable(), ...common }).strict();
-export const savedTravellerSchema = z.object({
-  legalName, ...common,
-  contactPhone: phone.nullable(),
-  relationship: optionalText(50),
-}).strict();
+  emergencyContact: emergencyContactSchema(legacyEmergencyRelationship),
+  };
+}
+export function createPersonalTravelDetailsSchema(legacyEmergencyRelationship: string | null = null) {
+  return z.object({ legalName: legalName.nullable(), ...common(legacyEmergencyRelationship) }).strict();
+}
+export function createSavedTravellerSchema(options: { relationship: string | null; emergencyRelationship: string | null } = { relationship: null, emergencyRelationship: null }) {
+  return z.object({
+    legalName, ...common(options.emergencyRelationship),
+    contactPhone: phone.nullable(),
+    relationship: relationship(options.relationship),
+  }).strict();
+}
+export const personalTravelDetailsSchema = createPersonalTravelDetailsSchema();
+export const savedTravellerSchema = createSavedTravellerSchema();
 export const travellerPageSchema = z.object({ page: z.coerce.number().int().min(1).max(1_000_000).default(1) }).strict();
 export const travellerIdSchema = z.string().uuid();

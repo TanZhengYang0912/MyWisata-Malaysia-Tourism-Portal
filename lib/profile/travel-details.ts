@@ -22,6 +22,8 @@
  */
 export const TRAVEL_GENDERS = ["female", "male", "other", "prefer_not_to_say"] as const;
 export type TravelGender = typeof TRAVEL_GENDERS[number];
+export const TRAVEL_RELATIONSHIPS = ["spouse", "parent", "child", "sibling", "relative", "friend", "colleague", "other"] as const;
+export type TravelRelationship = typeof TRAVEL_RELATIONSHIPS[number];
 export const TRAVELLERS_PAGE_SIZE = 25;
 
 export type EmergencyContact = { name: string; relationship: string | null; phone: string };

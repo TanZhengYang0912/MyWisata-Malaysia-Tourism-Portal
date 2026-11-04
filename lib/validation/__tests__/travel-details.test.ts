@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { personalTravelDetailsSchema, savedTravellerSchema, travellerPageSchema } from "../travel-details";
+import { createPersonalTravelDetailsSchema, createSavedTravellerSchema, personalTravelDetailsSchema, savedTravellerSchema, travellerPageSchema } from "../travel-details";
 import { EMPTY_PERSONAL_DETAILS, EMPTY_TRAVELLER, mapPersonalTravelDetails, travelDetailsToRow } from "@/lib/profile/travel-details";
 
 describe("private travel details validation", () => {
@@ -17,8 +17,28 @@ describe("private travel details validation", () => {
     expect(personalTravelDetailsSchema.safeParse({ ...EMPTY_PERSONAL_DETAILS, dateOfBirth }).success).toBe(false);
   });
   it("normalizes international phone numbers and preserves a valid emergency contact", () => {
-    const parsed = personalTravelDetailsSchema.parse({ ...EMPTY_PERSONAL_DETAILS, emergencyContact: { name: " Aina ", relationship: " sister ", phone: "+60 12-345 6789" } });
-    expect(parsed.emergencyContact).toEqual({ name: "Aina", relationship: "sister", phone: "+60123456789" });
+    const parsed = personalTravelDetailsSchema.parse({ ...EMPTY_PERSONAL_DETAILS, emergencyContact: { name: " Aina ", relationship: "sibling", phone: "+60 12-345 6789" } });
+    expect(parsed.emergencyContact).toEqual({ name: "Aina", relationship: "sibling", phone: "+60123456789" });
+  });
+  it("accepts only the fixed relationship options for new records", () => {
+    const traveller = { ...EMPTY_TRAVELLER, legalName: "Example Traveller", relationship: "parent", emergencyContact: { name: "Example Contact", relationship: "friend", phone: "+60123456789" } };
+    expect(savedTravellerSchema.safeParse(traveller).success).toBe(true);
+    expect(savedTravellerSchema.safeParse({ ...traveller, relationship: "invented" }).success).toBe(false);
+    expect(savedTravellerSchema.safeParse({ ...traveller, emergencyContact: { ...traveller.emergencyContact!, relationship: "invented" } }).success).toBe(false);
+    expect(personalTravelDetailsSchema.safeParse({ ...EMPTY_PERSONAL_DETAILS, emergencyContact: { name: "Example Contact", relationship: "spouse", phone: "+60123456789" } }).success).toBe(true);
+  });
+  it("preserves a record's own legacy relationship while rejecting any other free text", () => {
+    const input = { ...EMPTY_TRAVELLER, legalName: "Example Traveller", relationship: "old custom relation", emergencyContact: { name: "Example Contact", relationship: "old emergency relation", phone: "+60123456789" } };
+    const schema = createSavedTravellerSchema({ relationship: "old custom relation", emergencyRelationship: "old emergency relation" });
+    expect(schema.safeParse(input).success).toBe(true);
+    expect(schema.safeParse({ ...input, relationship: "copied custom relation" }).success).toBe(false);
+    expect(schema.safeParse({ ...input, emergencyContact: { ...input.emergencyContact!, relationship: "old custom relation" } }).success).toBe(false);
+    expect(createSavedTravellerSchema({ relationship: null, emergencyRelationship: null }).safeParse(input).success).toBe(false);
+  });
+  it("preserves legacy relationships on personal details without allowing new free text", () => {
+    const input = { ...EMPTY_PERSONAL_DETAILS, emergencyContact: { name: "Example Contact", relationship: "old custom relation", phone: "+60123456789" } };
+    expect(createPersonalTravelDetailsSchema("old custom relation").safeParse(input).success).toBe(true);
+    expect(createPersonalTravelDetailsSchema(null).safeParse(input).success).toBe(false);
   });
   it("rejects incomplete emergency contacts, unsupported countries and invalid phones", () => {
     expect(personalTravelDetailsSchema.safeParse({ ...EMPTY_PERSONAL_DETAILS, emergencyContact: { name: "Aina", relationship: null, phone: "0123456789" } }).success).toBe(false);

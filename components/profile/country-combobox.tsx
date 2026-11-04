@@ -94,7 +94,7 @@ export function CountryCombobox({ id, ariaLabel, placeholder, valueCode, valueLa
               aria-selected={option.code === valueCode}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => choose(option)}
-              className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${index === activeIndex ? "bg-secondary text-foreground" : "text-foreground hover:bg-secondary/70"}`}
+              className={`flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${index === activeIndex ? "bg-secondary text-foreground" : "text-foreground hover:bg-secondary/70"}`}
             >
               <span><span className="font-medium">{option.label}</span><span className="ml-2 text-xs text-muted-foreground">{option.code}</span></span>
               {option.code === valueCode && <Check aria-hidden size={15} className="text-primary" />}

@@ -65,13 +65,12 @@ export function SavedTravellers({ userId }: { userId: string }) {
     finally { if (!controller.signal.aborted) setBusy(false); }
   }
   return <div className="space-y-4">
-    <p className="text-xs text-muted-foreground">{t("ui.travelDetails.travellersHint")}</p>
     {error && <p role="alert" className="text-sm text-destructive">{t(error)}</p>}
     {editor ? <form onSubmit={save} className="space-y-4 rounded-xl border border-border p-4">
       <h3 className="text-sm font-semibold">{t(editor.id ? "ui.travelDetails.editTraveller" : "ui.travelDetails.addTraveller")}</h3>
       <TravelDetailsFields value={editor.draft} traveller disabled={busy} onChange={(draft) => setEditor({ ...editor, draft })} />
       <div className="flex gap-2"><Button type="submit" disabled={busy}>{t(busy ? "ui.travelDetails.saving" : "ui.travelDetails.save")}</Button><Button type="button" variant="outline" disabled={busy} onClick={() => { setEditor(null); setError(null); }}>{t("ui.travelDetails.cancel")}</Button></div>
-    </form> : <Button type="button" variant="outline" disabled={busy || !current?.data} onClick={() => { setEditor({ id: null, draft: { ...EMPTY_TRAVELLER } }); setError(null); }}>{t("ui.travelDetails.addTraveller")}</Button>}
+    </form> : <Button type="button" variant="outline" className="cursor-pointer" disabled={busy || !current?.data} onClick={() => { setEditor({ id: null, draft: { ...EMPTY_TRAVELLER } }); setError(null); }}>{t("ui.travelDetails.addTraveller")}</Button>}
     {!current ? <p role="status" className="text-sm text-muted-foreground">{t("ui.travelDetails.loading")}</p> : current.error || !current.data ? <div role="alert" className="space-y-3"><p>{t(current.error ?? "ui.travelDetails.requestError")}</p><Button variant="outline" onClick={() => setRevision((value) => value + 1)}>{t("ui.travelDetails.retry")}</Button></div> : <>
       <p role="status" className="text-xs text-muted-foreground">{t("ui.travelDetails.travellerCount", { count: current.data.total })}</p>
       {current.data.travellers.length === 0 ? <p className="py-4 text-sm text-muted-foreground">{t("ui.travelDetails.noTravellers")}</p> : <div className="divide-y divide-border">{current.data.travellers.map((traveller) => <article key={traveller.id} className="space-y-3 py-4">

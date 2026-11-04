@@ -96,8 +96,8 @@ export function ProfilePhotoPicker({
           aria-haspopup="dialog"
           aria-describedby={error ? `${photoDescriptionId} ${photoErrorId}` : photoDescriptionId}
           className={variant === "wizard"
-            ? "flex min-h-44 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 text-center transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
-            : "group relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-primary transition hover:ring-2 hover:ring-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"}
+            ? "flex min-h-44 w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 text-center transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+            : "group relative flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-secondary text-primary transition hover:ring-2 hover:ring-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"}
           style={variant === "wizard" ? {
             borderColor: error ? "var(--destructive)" : previewUrl ? "var(--primary)" : "var(--border)",
             backgroundColor: previewUrl ? "color-mix(in srgb, var(--primary) 6%, transparent)" : "transparent",

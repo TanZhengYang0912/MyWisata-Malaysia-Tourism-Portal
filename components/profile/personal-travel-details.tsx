@@ -56,7 +56,6 @@ export function PersonalTravelDetailsPanel({ userId }: { userId: string }) {
   if (current.error || !current.data) return <div role="alert" className="space-y-3"><p>{t(current.error ?? "ui.travelDetails.requestError")}</p><Button variant="outline" onClick={() => setReload((value) => value + 1)}>{t("ui.travelDetails.retry")}</Button></div>;
   const hasDetails = Object.values(current.data).some((value) => value !== null);
   return <div className="space-y-4">
-    <p className="text-xs text-muted-foreground">{t("ui.travelDetails.privateHint")}</p>
     {error && <p role="alert" className="text-sm text-destructive">{t(error)}</p>}
     {editing ? <form onSubmit={save} className="space-y-4">
       <TravelDetailsFields value={draft} onChange={setDraft} disabled={busy} />

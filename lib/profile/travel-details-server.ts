@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
-import { personalTravelDetailsSchema, savedTravellerSchema, travellerIdSchema, travellerPageSchema } from "@/lib/validation/travel-details";
+import { createPersonalTravelDetailsSchema, createSavedTravellerSchema, savedTravellerSchema, travellerIdSchema, travellerPageSchema } from "@/lib/validation/travel-details";
 import {
   mapPersonalTravelDetails, mapSavedTraveller, travelDetailsToRow, TRAVELLERS_PAGE_SIZE,
   type SavedTravellerRow, type TravelDetailsRow,
@@ -39,7 +39,10 @@ export function getPersonalTravelDetails() {
 }
 export function putPersonalTravelDetails(request: Request) {
   return withOwner(async ({ db, userId }) => {
-    const parsed = await parseBody(request, personalTravelDetailsSchema, { maxBytes: 8192 });
+    const { data: current, error: readError } = await db.from("profile_personal_details")
+      .select("emergency_contact_relationship").eq("user_id", userId).maybeSingle();
+    if (readError) return unavailable();
+    const parsed = await parseBody(request, createPersonalTravelDetailsSchema(current?.emergency_contact_relationship ?? null), { maxBytes: 8192 });
     if (!parsed.ok) return parsed.response;
     const { data, error } = await db.from("profile_personal_details")
       .upsert({ user_id: userId, ...travelDetailsToRow(parsed.data) }, { onConflict: "user_id" })
@@ -91,7 +94,14 @@ export function getSavedTraveller(id: string) {
 export function putSavedTraveller(request: Request, id: string) {
   return withOwner(async ({ db, userId }) => {
     if (!travellerIdSchema.safeParse(id).success) return missing();
-    const parsed = await parseBody(request, savedTravellerSchema, { maxBytes: 8192 });
+    const { data: current, error: readError } = await db.from("saved_travellers")
+      .select("relationship,emergency_contact_relationship").eq("user_id", userId).eq("id", id).maybeSingle();
+    if (readError) return unavailable();
+    if (!current) return missing();
+    const parsed = await parseBody(request, createSavedTravellerSchema({
+      relationship: current.relationship,
+      emergencyRelationship: current.emergency_contact_relationship,
+    }), { maxBytes: 8192 });
     if (!parsed.ok) return parsed.response;
     const input = parsed.data;
     const { data, error } = await db.from("saved_travellers").update({

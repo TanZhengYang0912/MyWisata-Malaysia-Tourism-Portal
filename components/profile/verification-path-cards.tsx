@@ -47,7 +47,7 @@ export function VerificationPathCards({ phoneVerified, kycStatus }: Verification
           <Link
             key={path.key}
             href={path.href}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition hover:border-primary/30 hover:bg-primary/[0.03]"
+            className="flex cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-primary/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
               <Icon size={18} />
