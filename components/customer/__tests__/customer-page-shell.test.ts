@@ -27,6 +27,15 @@ describe("customer page dimensions", () => {
     expect(shellSource).toContain("p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6");
   });
 
+  it("allows a page title without an eyebrow", () => {
+    expect(shellSource).toContain("eyebrow?: ReactNode");
+    expect(shellSource).toContain("{hasEyebrow && (");
+    const walletSource = readFileSync(resolve(workspace, "app/customer/wallet/page.tsx"), "utf8");
+    expect(walletSource).toContain('<CustomerPageTitle\n        title={tCustomer("ui.wallet.title")}\n      />');
+    expect(walletSource).not.toContain('description={tCustomer("ui.wallet.description")}');
+    expect(walletSource).not.toContain('eyebrow={tCustomer("accountGroups.account")}');
+  });
+
   it("uses the shared page frame on every requested customer route", () => {
     for (const route of requestedRoutes) {
       const source = readFileSync(resolve(workspace, route), "utf8");

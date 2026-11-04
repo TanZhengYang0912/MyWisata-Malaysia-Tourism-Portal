@@ -31,7 +31,7 @@ export function WalletBalanceSummary({ buckets, onTopUp, onWithdraw }: {
     <p className="mb-1 text-sm opacity-75">{t("ui.checkout.total")}</p>
     <p className="font-[family-name:var(--font-mono)] text-4xl font-bold">{buckets === null ? "—" : formatMYR(totalBalance)}</p>
     <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-      {values.map(([label, amount]) => <div key={label} className="min-h-[64px] rounded-xl bg-white/10 dark:bg-card/10 px-4 py-2"><p className="text-xs opacity-60">{t(label)}</p><p className="mt-0.5 font-[family-name:var(--font-mono)] text-sm font-semibold">{amount == null ? "—" : formatMYR(amount)}</p>{label === "ui.wallet.pendingRewards" && <p className="mt-1 text-[10px] leading-snug opacity-60">{t("ui.wallet.pendingRewardsHint")}</p>}</div>)}
+      {values.map(([label, amount]) => <div key={label} className="min-h-[64px] rounded-xl bg-white/10 dark:bg-card/10 px-4 py-2"><p className="text-xs opacity-60">{t(label)}</p><p className="mt-0.5 font-[family-name:var(--font-mono)] text-sm font-bold">{amount == null ? "—" : formatMYR(amount)}</p>{label === "ui.wallet.pendingRewards" && <p className="mt-1 text-[10px] leading-snug opacity-60">{t("ui.wallet.pendingRewardsHint")}</p>}</div>)}
     </div>
     <div className="mt-5 flex gap-3">
       <button type="button" onClick={onTopUp} className="flex items-center gap-2 rounded-xl bg-white/20 dark:bg-card/20 px-4 py-2 text-sm font-semibold transition hover:bg-white/30 dark:hover:bg-card/30"><ArrowUpCircle size={16} />{t("ui.wallet.topUp")}</button>

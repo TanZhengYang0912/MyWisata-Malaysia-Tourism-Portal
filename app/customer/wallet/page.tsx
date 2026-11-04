@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
-  Wallet, CheckCircle2, Building2, AlertCircle,
+  CheckCircle2, Building2, AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import {
@@ -601,10 +601,7 @@ function WalletContent() {
   return (
     <>
       <CustomerPageTitle
-        eyebrow={tCustomer("accountGroups.account")}
         title={tCustomer("ui.wallet.title")}
-        description={tCustomer("ui.wallet.description")}
-        icon={<Wallet size={14} />}
       />
 
       <CustomerPageShell wide className="pt-0 sm:pt-0">
