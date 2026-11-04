@@ -185,6 +185,9 @@ export const CUSTOMER_I18N_FILES = [
   "components/profile/profile-location-fields.tsx",
   "components/profile/profile-photo-picker.tsx",
   "components/profile/profile-sections.tsx",
+  "components/profile/personal-travel-details.tsx",
+  "components/profile/saved-travellers.tsx",
+  "components/profile/travel-details-fields.tsx",
   "components/profile/verification-path-cards.tsx",
 ] as const;
 
