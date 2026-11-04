@@ -60,7 +60,7 @@ export function VendorCard({
   return (
     <ExpandCard
       media={
-        <Link href={vendorHref} data-card-preview-trigger="true" aria-haspopup="dialog" className="group/vendor-media absolute inset-0 block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#010066]/20">
+        <Link href={vendorHref} className="group/vendor-media absolute inset-0 block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#010066]/20">
           {visual.coverUrl ? <>
             {/* Vendor-uploaded media is intentionally rendered as a normal img because storage hosts are runtime-configured. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -74,7 +74,7 @@ export function VendorCard({
         </Link>
       }
       title={<>
-        <Link href={vendorHref} data-card-preview-trigger="true" aria-haspopup="dialog" className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"><h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={vendor.name}>{vendor.name}</h3></Link>
+        <Link href={vendorHref} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"><h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={vendor.name}>{vendor.name}</h3></Link>
         <span className="sr-only">{t("ui.search.vendorCard", { index: index + 1 })}</span>
       </>}
       details={<>
@@ -86,8 +86,6 @@ export function VendorCard({
         </div>
       </>}
       detailsId={`vendor-card-details-${vendor.id}`}
-      previewTitle={vendor.name}
-      previewLabel={t("ui.actions.viewDetails")}
       action={{ href: vendorHref, label: t("ui.actions.exploreVendor") }}
     />
   );

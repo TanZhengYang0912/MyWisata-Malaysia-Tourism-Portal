@@ -43,7 +43,7 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
   const isStayCard = categorySlug === "accommodation";
   const categoryLabel = t(getDiscoveryCategoryLabelKey(categorySlug));
   const detailsId = `activity-card-details-${activity.id}`;
-  // Details stay hidden until hover or keyboard focus opens the desktop drawer, or the mobile preview is opened.
+  // Details stay hidden until hover, keyboard focus or a first tap on a touch screen opens the drawer.
   const detailContent = (
     <>
       <div className="flex flex-wrap gap-1.5">
@@ -88,7 +88,7 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
   return (
     <ExpandCard
       media={<>
-        <Link href={activityHref} onClick={handleCardNavigation} data-card-preview-trigger="true" aria-haspopup="dialog" className="group/activity-media block h-full" aria-label={t("ui.activity.view", { name: cardName })}>
+        <Link href={activityHref} onClick={handleCardNavigation} className="group/activity-media block h-full" aria-label={t("ui.activity.view", { name: cardName })}>
           {!imageSrc || imageFailed ? (
             <div
               role="img"
@@ -126,21 +126,19 @@ export function ActivityCard({ activity, recommendationReason, returnTo, outletI
         </div>
       </>}
       title={isProperty ? (
-          <Link href={activityHref} onClick={handleCardNavigation} data-card-preview-trigger="true" aria-haspopup="dialog" className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <Link href={activityHref} onClick={handleCardNavigation} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30">
             <h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={cardName}>{cardName}</h3>
           </Link>
         ) : (
           <LocalizedContent entityType="product" entityId={activity.id} field="name" sourceText={activity.name}>
             {({ text, control }) => <>
-              <Link href={activityHref} onClick={handleCardNavigation} data-card-preview-trigger="true" aria-haspopup="dialog" className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <Link href={activityHref} onClick={handleCardNavigation} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30">
                 <h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={text}>{text}</h3>
               </Link>
               {control}
             </>}
           </LocalizedContent>
         )}
-      previewTitle={cardName}
-      previewLabel={t("ui.actions.viewDetails")}
       price={<>
         <ReferencePrice amountMYR={activity.property?.fromPrice ?? Number(activity.price)} className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary" />
         {categorySlug === "accommodation" ? (

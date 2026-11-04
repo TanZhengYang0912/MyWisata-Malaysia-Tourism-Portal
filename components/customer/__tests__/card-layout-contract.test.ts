@@ -35,7 +35,7 @@ describe("shared card layout contract", () => {
     expect(cardRule).toContain("overflow: visible");
     expect(rowRule).toContain("height: 2.25rem");
     expect(drawerRule).toContain("position: absolute");
-    expect(drawerRule).toContain("top: 2.25rem");
+    expect(drawerRule).toMatch(/^\s*top: 0;/m);
   });
 
   it("keeps closed drawer details readable by screen readers (collapsed, not visibility: hidden)", () => {
@@ -47,12 +47,10 @@ describe("shared card layout contract", () => {
     expect(closedRule).not.toContain("visibility");
   });
 
-  it("uses the mobile dialog instead of forcing details open inline on touch screens", () => {
+  it("styles a tap-opened card like a hovered one", () => {
     const styles = read("app/globals.css");
-    const touch = styles.slice(styles.indexOf("@media (hover: none) {"));
-
-    expect(touch).toContain(".mw-card-expand-card .mw-card-cta-drawer {\n    display: none;");
-    expect(touch).not.toContain("grid-template-rows: 1fr;");
+    expect(styles).not.toContain("@media (hover: none) {");
+    expect(styles).toContain('.mw-card-expand-card[data-open="true"] .mw-card-details-expand');
   });
 
   it("keeps media consumer backgrounds from being overwritten", () => {

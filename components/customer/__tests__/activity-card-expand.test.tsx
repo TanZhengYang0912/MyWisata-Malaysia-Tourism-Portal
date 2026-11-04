@@ -96,8 +96,7 @@ describe("ActivityCard expanding details", () => {
 
     expect(container.textContent).toContain("Brinchang, Pahang");
     expect(() => findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-label") === "View Details")).toThrow();
-    const mediaLink = findOne(container, (element) => element.getAttribute("data-card-preview-trigger") === "true");
-    expect(mediaLink.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(() => findOne(container, (element) => element.hasAttribute("aria-haspopup"))).toThrow();
   });
 
   it("keeps details in the desktop drawer and the primary action in its own visible row", async () => {
@@ -108,7 +107,7 @@ describe("ActivityCard expanding details", () => {
     expect(details.textContent).toContain("Brinchang, Pahang");
     expect(details.className).not.toContain("bg-primary");
     expect(action.textContent).toBe("Book Now");
-    expect((action.parentNode as TestElement | null)?.className).toContain("mw-card-cta-row");
+    expect((action.parentNode as TestElement | null)?.className).toContain("mw-card-cta-drawer");
   });
 
   it("puts the price and full-width primary action in separate footer rows", async () => {
@@ -118,7 +117,7 @@ describe("ActivityCard expanding details", () => {
     const price = findOne(footer, (element) => element.getAttribute("data-testid") === "activity-card-price");
     const action = findOne(footer, (element) => element.getAttribute("data-card-primary-cta") === "true");
     expect((price.parentNode as TestElement | null)?.className).toContain("mw-card-price-row");
-    expect((action.parentNode as TestElement | null)?.className).toContain("mw-card-cta-row");
+    expect((action.parentNode as TestElement | null)?.className).toContain("mw-card-cta-drawer");
     expect(action.textContent).toBe("Book Now");
     expect(action.className).toContain("w-full");
     expect(action.className).toContain("h-9");

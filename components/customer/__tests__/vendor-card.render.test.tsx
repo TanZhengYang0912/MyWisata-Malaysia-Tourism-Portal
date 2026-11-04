@@ -52,7 +52,7 @@ describe("VendorCard on the shared ExpandCard", () => {
 
     expect(markup).not.toContain("aria-expanded");
     expect(markup).not.toContain("View Details");
-    expect(markup).toContain('data-card-preview-trigger="true" aria-haspopup="dialog"');
+    expect(markup).not.toContain('aria-haspopup="dialog"');
   });
 
   it("renders the initials tile when the vendor has no cover", () => {
