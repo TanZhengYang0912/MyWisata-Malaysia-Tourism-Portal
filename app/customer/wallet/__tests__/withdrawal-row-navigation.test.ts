@@ -31,6 +31,13 @@ describe('customer wallet withdrawal row navigation', () => {
 
   it('shows the reserved withdrawal as a primary-blue negative amount', () => {
     expect(listSource).toContain('text-primary">-{formatMYR(w.amount)}');
+    expect(listSource.match(/font-sans font-bold text-primary/g) ?? []).toHaveLength(2);
+    expect(listSource).not.toContain('font-[family-name:var(--font-mono)]');
+  });
+
+  it('uses the regular site font for wallet form balances', () => {
+    expect(pageSource.match(/className="font-sans">\{formatMYR\(/g) ?? []).toHaveLength(3);
+    expect(pageSource).not.toContain('className="font-mono">{formatMYR(');
   });
 
   it('refreshes wallet buckets while a payout is awaiting provider settlement', () => {

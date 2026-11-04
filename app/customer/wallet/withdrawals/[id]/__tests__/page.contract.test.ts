@@ -31,6 +31,11 @@ describe('withdrawal receipt provider presentation', () => {
     expect(source).not.toContain('I received the money');
   });
 
+  it('uses the regular site font for all displayed money amounts', () => {
+    expect(source).toContain('font-sans text-xl font-bold">{formatMYR(receipt.amountRm)}');
+    expect(source.match(/font-sans font-semibold">\{formatMYRFromSen\(movement.amountSen\)\}/g) ?? []).toHaveLength(2);
+  });
+
   it('polls only non-terminal receipts and cleans up the timer', () => {
     expect(source).toContain('loadReceipt');
     expect(source).toContain('startSettlementPolling');

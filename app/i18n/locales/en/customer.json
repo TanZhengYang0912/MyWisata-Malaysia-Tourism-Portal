@@ -1830,8 +1830,8 @@
       "historyFilters": {
         "type": "Transaction type",
         "direction": "Money in / out",
-        "from": "From date",
-        "to": "To date",
+        "from": "Start date",
+        "to": "End date",
         "clear": "Clear filters",
         "timezone": "Dates use Malaysia time (UTC+08:00), including both selected days.",
         "loading": "Loading transactions…",

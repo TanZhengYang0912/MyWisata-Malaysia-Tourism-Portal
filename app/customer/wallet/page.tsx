@@ -699,17 +699,17 @@ function WalletContent() {
           <div className="rounded-xl bg-muted/50 px-4 py-3 space-y-1 text-xs">
             <div className="flex justify-between text-muted-foreground">
               <span>{tCustomer("ui.wallet.earningsBalance")}</span>
-              <span className="font-mono">{formatMYR(buckets?.earnings ?? 0)}</span>
+              <span className="font-sans">{formatMYR(buckets?.earnings ?? 0)}</span>
             </div>
             {pendingTotal > 0 && (
               <div className="flex justify-between text-amber-600 dark:text-amber-300">
                 <span>{tCustomer("ui.wallet.reservedRequests")}</span>
-                <span className="font-mono">{formatMYR(pendingTotal)}</span>
+                <span className="font-sans">{formatMYR(pendingTotal)}</span>
               </div>
             )}
             <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1 mt-1">
               <span>{tCustomer("ui.wallet.availableWithdraw")}</span>
-              <span className="font-mono">{formatMYR(availableEarnings)}</span>
+              <span className="font-sans">{formatMYR(availableEarnings)}</span>
             </div>
           </div>
 
