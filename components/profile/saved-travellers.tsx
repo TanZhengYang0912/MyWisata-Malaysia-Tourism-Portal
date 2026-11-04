@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DirectoryPagination } from "@/components/customer/directory-pagination";
 import { useAppDialog } from "@/components/providers/app-dialog";
 import { TravelDetailsFields, TravelDetailsSummary, type TravelDetailsDraft } from "@/components/profile/travel-details-fields";
-import { EMPTY_TRAVELLER, TRAVELLERS_PAGE_SIZE, type SavedTraveller, type TravellersPage } from "@/lib/profile/travel-details";
+import { EMPTY_TRAVELLER, sameSavedTravellerInput, TRAVELLERS_PAGE_SIZE, type SavedTraveller, type SavedTravellerInput, type TravellersPage } from "@/lib/profile/travel-details";
 import { savedTravellerSchema } from "@/lib/validation/travel-details";
 import { requestTravelDetails, travelDetailsErrorKey } from "@/lib/profile/travel-details-client";
 
@@ -40,6 +40,17 @@ export function SavedTravellers({ userId }: { userId: string }) {
     if (!editor || busy) return;
     const parsed = savedTravellerSchema.safeParse(editor.draft);
     if (!parsed.success) { setError("ui.travelDetails.validationError"); return; }
+    if (editor.id) {
+      const savedTraveller = current?.data?.travellers.find((traveller) => traveller.id === editor.id);
+      if (savedTraveller) {
+        const savedInput: SavedTravellerInput = {
+          legalName: savedTraveller.legalName, dateOfBirth: savedTraveller.dateOfBirth, gender: savedTraveller.gender,
+          nationalityCode: savedTraveller.nationalityCode, emergencyContact: savedTraveller.emergencyContact,
+          contactPhone: savedTraveller.contactPhone, relationship: savedTraveller.relationship,
+        };
+        if (sameSavedTravellerInput(parsed.data, savedInput)) { setEditor(null); setError(null); return; }
+      }
+    }
     const controller = new AbortController(); mutation.current = controller;
     setBusy(true); setError(null);
     try {

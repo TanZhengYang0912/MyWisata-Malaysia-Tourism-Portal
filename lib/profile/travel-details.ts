@@ -88,3 +88,21 @@ export function travelDetailsToRow(input: PersonalTravelDetails) {
     emergency_contact_phone: input.emergencyContact?.phone ?? null,
   };
 }
+
+/** Compare validated business fields only; row IDs and timestamps are metadata. */
+export function samePersonalTravelDetails(left: PersonalTravelDetails, right: PersonalTravelDetails): boolean {
+  return left.legalName === right.legalName
+    && left.dateOfBirth === right.dateOfBirth
+    && left.gender === right.gender
+    && left.nationalityCode === right.nationalityCode
+    && left.emergencyContact?.name === right.emergencyContact?.name
+    && (left.emergencyContact?.relationship ?? null) === (right.emergencyContact?.relationship ?? null)
+    && left.emergencyContact?.phone === right.emergencyContact?.phone;
+}
+
+export function sameSavedTravellerInput(left: SavedTravellerInput, right: SavedTravellerInput): boolean {
+  return samePersonalTravelDetails(left, right)
+    && left.legalName === right.legalName
+    && left.contactPhone === right.contactPhone
+    && left.relationship === right.relationship;
+}

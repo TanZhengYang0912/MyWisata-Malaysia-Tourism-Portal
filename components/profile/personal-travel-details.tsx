@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { useAppDialog } from "@/components/providers/app-dialog";
 import { TravelDetailsFields, TravelDetailsSummary, type TravelDetailsDraft } from "@/components/profile/travel-details-fields";
-import { EMPTY_PERSONAL_DETAILS, type PersonalTravelDetails } from "@/lib/profile/travel-details";
+import { EMPTY_PERSONAL_DETAILS, samePersonalTravelDetails, type PersonalTravelDetails } from "@/lib/profile/travel-details";
 import { personalTravelDetailsSchema } from "@/lib/validation/travel-details";
 import { requestTravelDetails, travelDetailsErrorKey } from "@/lib/profile/travel-details-client";
 
@@ -35,6 +35,7 @@ export function PersonalTravelDetailsPanel({ userId }: { userId: string }) {
     event.preventDefault();
     const parsed = personalTravelDetailsSchema.safeParse({ legalName: draft.legalName, dateOfBirth: draft.dateOfBirth, gender: draft.gender, nationalityCode: draft.nationalityCode, emergencyContact: draft.emergencyContact });
     if (!parsed.success) { setError("ui.travelDetails.validationError"); return; }
+    if (samePersonalTravelDetails(parsed.data, current?.data ?? EMPTY_PERSONAL_DETAILS)) { setEditing(false); setError(null); return; }
     await mutate("PUT", parsed.data);
   }
   async function mutate(method: "PUT" | "DELETE", body?: PersonalTravelDetails) {

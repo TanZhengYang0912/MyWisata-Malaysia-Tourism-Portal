@@ -44,10 +44,16 @@ export function putPersonalTravelDetails(request: Request) {
     if (readError) return unavailable();
     const parsed = await parseBody(request, createPersonalTravelDetailsSchema(current?.emergency_contact_relationship ?? null), { maxBytes: 8192 });
     if (!parsed.ok) return parsed.response;
-    const { data, error } = await db.from("profile_personal_details")
-      .upsert({ user_id: userId, ...travelDetailsToRow(parsed.data) }, { onConflict: "user_id" })
-      .select(PERSONAL_COLUMNS).single();
-    return error ? unavailable() : apiOk(mapPersonalTravelDetails(data as TravelDetailsRow));
+    const row = travelDetailsToRow(parsed.data);
+    const { data: changed, error } = await db.rpc("save_personal_travel_details_if_changed", {
+      p_legal_name: row.legal_name, p_date_of_birth: row.date_of_birth, p_gender: row.gender,
+      p_nationality_code: row.nationality_code, p_emergency_contact_name: row.emergency_contact_name,
+      p_emergency_contact_relationship: row.emergency_contact_relationship, p_emergency_contact_phone: row.emergency_contact_phone,
+    });
+    if (error) return unavailable();
+    const { data, error: loadError } = await db.from("profile_personal_details").select(PERSONAL_COLUMNS).eq("user_id", userId).maybeSingle();
+    if (loadError) return unavailable();
+    return apiOk({ ...mapPersonalTravelDetails(data as TravelDetailsRow | null), changed: changed === true });
   });
 }
 export function clearPersonalTravelDetails() {
@@ -104,10 +110,19 @@ export function putSavedTraveller(request: Request, id: string) {
     }), { maxBytes: 8192 });
     if (!parsed.ok) return parsed.response;
     const input = parsed.data;
-    const { data, error } = await db.from("saved_travellers").update({
-      ...travelDetailsToRow(input), contact_phone: input.contactPhone, relationship: input.relationship,
-    }).eq("user_id", userId).eq("id", id).select(TRAVELLER_COLUMNS).maybeSingle();
-    return error ? unavailable() : data ? apiOk(mapSavedTraveller(data as SavedTravellerRow)) : missing();
+    const row = travelDetailsToRow(input);
+    const { data: changeData, error } = await db.rpc("save_saved_traveller_if_changed", {
+      p_traveller_id: id, p_legal_name: row.legal_name, p_date_of_birth: row.date_of_birth, p_gender: row.gender,
+      p_nationality_code: row.nationality_code, p_emergency_contact_name: row.emergency_contact_name,
+      p_emergency_contact_relationship: row.emergency_contact_relationship, p_emergency_contact_phone: row.emergency_contact_phone,
+      p_contact_phone: input.contactPhone, p_relationship: input.relationship,
+    });
+    if (error) return unavailable();
+    const changed = Array.isArray(changeData) && changeData[0]?.changed === true;
+    const { data, error: loadError } = await db.from("saved_travellers").select(TRAVELLER_COLUMNS)
+      .eq("user_id", userId).eq("id", id).maybeSingle();
+    if (loadError) return unavailable();
+    return data ? apiOk({ ...mapSavedTraveller(data as SavedTravellerRow), changed }) : missing();
   });
 }
 export function deleteSavedTraveller(id: string) {

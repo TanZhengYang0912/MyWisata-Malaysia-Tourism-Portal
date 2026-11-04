@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
-  auth: vi.fn(), from: vi.fn(), account: vi.fn(), result: { data: null as unknown, error: null as unknown, count: 0 },
+  auth: vi.fn(), from: vi.fn(), rpc: vi.fn(), account: vi.fn(), result: { data: null as unknown, error: null as unknown, count: 0 },
 }));
-vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ auth: { getUser: mocks.auth }, from: mocks.from }) }));
+vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ auth: { getUser: mocks.auth }, from: mocks.from, rpc: mocks.rpc }) }));
 import { GET as getPersonal, PUT as putPersonal, DELETE as clearPersonal } from "../personal-details/route";
 import { GET as list, POST as create } from "../travellers/route";
 import { GET as getOne, PUT as update, DELETE as remove } from "../travellers/[id]/route";
@@ -30,6 +30,8 @@ beforeEach(() => {
   mocks.auth.mockResolvedValue({ data: { user: { id: owner, is_anonymous: false } }, error: null });
   mocks.account.mockResolvedValue({ data: { status: "active" }, error: null });
   mocks.result = { data: null, error: null, count: 0 };
+  mocks.rpc.mockImplementation(async (name: string) => name === "save_saved_traveller_if_changed"
+    ? { data: [{ changed: true }], error: null } : { data: true, error: null });
   dataQuery = chain();
   mocks.from.mockImplementation((table: string) => table === "users"
     ? { select: () => ({ eq: () => ({ maybeSingle: mocks.account }) }) } : dataQuery);
@@ -56,7 +58,7 @@ describe("private travel detail API boundaries", () => {
   it("saves explicit nulls and never accepts a client-selected owner", async () => {
     mocks.result.data = row;
     expect((await putPersonal(request(EMPTY_PERSONAL_DETAILS))).status).toBe(200);
-    expect(dataQuery.upsert).toHaveBeenCalledWith({ user_id: owner, ...travelDetailsToRow(EMPTY_PERSONAL_DETAILS) }, { onConflict: "user_id" });
+    expect(mocks.rpc).toHaveBeenCalledWith("save_personal_travel_details_if_changed", expect.objectContaining({ p_legal_name: null, p_emergency_contact_phone: null }));
     expect((await create(request({ ...EMPTY_TRAVELLER, legalName: "Aina", user_id: id }))).status).toBe(422);
     expect(dataQuery.insert).not.toHaveBeenCalled();
   });
@@ -82,8 +84,7 @@ describe("private travel detail API boundaries", () => {
     expect((await remove(request(), context)).status).toBe(200);
     expect(dataQuery.eq).toHaveBeenCalledWith("id", id);
     expect(dataQuery.eq).toHaveBeenCalledWith("user_id", owner);
-    expect(dataQuery.update).toHaveBeenCalledWith(expect.objectContaining({ legal_name: "Updated Name", emergency_contact_phone: null }));
-    expect(dataQuery.update.mock.calls[0][0]).not.toHaveProperty("user_id");
+    expect(mocks.rpc).toHaveBeenCalledWith("save_saved_traveller_if_changed", expect.objectContaining({ p_traveller_id: id, p_legal_name: "Updated Name", p_emergency_contact_phone: null }));
   });
   it("gives the same not-found response for unavailable and foreign records", async () => {
     for (const response of [await getOne(request(), context), await update(request({ ...EMPTY_TRAVELLER, legalName: "Aina" }), context), await remove(request(), context)]) {

@@ -23,7 +23,8 @@ import { postLoginPath } from "@/lib/auth/guest-mode";
 import { identitySchema, bioSchema } from "@/lib/validation/profile-schemas";
 import { PROFILE_BIO_MIN_LENGTH, PROFILE_BIO_MAX_LENGTH } from "@/lib/verification/eligibility";
 import type { ProfileSummary } from "@/backend/core/types";
-import { AVATAR_MAX_BYTES, formatAvatarFileSize, getAvatarUploadStartFailure } from "@/lib/profile/avatar-validation";
+import { AVATAR_MAX_BYTES, formatAvatarFileSize } from "@/lib/profile/avatar-validation";
+import { uploadProfileAvatar } from "@/lib/profile/avatar-upload-client";
 
 export default function ProfilePage() {
   const { currentUser } = useAuth();
@@ -161,61 +162,11 @@ function ProfileWizard({ userId }: { userId: string | null }) {
     if (!avatarFile) { setAvatarError(tCustomer("ui.profileWizard.choosePhoto")); return; }
     setAvatarError(null);
     setAvatarBusy(true);
-    let failureMessage = tCustomer("ui.profileWizard.avatarUploadUrlError");
     try {
-      const signRes = await fetch(`/api/profile/avatar?type=${encodeURIComponent(avatarFile.type)}`, { method: "PUT" });
+      const result = await uploadProfileAvatar(avatarFile);
       if (!mounted.current) return;
-      if (!signRes.ok) {
-        const failure = await getAvatarUploadStartFailure(signRes);
-        const message = failure === "session-expired"
-          ? tCustomer("ui.profileWizard.avatarSessionExpired")
-          : failure === "unsupported-type"
-            ? tCustomer("ui.profileWizard.photoTypeValidation")
-            : failure === "service-unavailable"
-              ? tCustomer("ui.profileWizard.avatarUploadUnavailable")
-              : failureMessage;
-        setAvatarError(message);
-        return;
-      }
-      const { data: { uploadUrl, path } } = await signRes.json() as { data: { uploadUrl: string; path: string } };
-
-      failureMessage = tCustomer("ui.profileWizard.avatarStorageError");
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": avatarFile.type },
-        body: avatarFile,
-      });
-      if (!mounted.current) return;
-      if (!uploadRes.ok) {
-        if (uploadRes.status === 413 && avatarFile.size > AVATAR_MAX_BYTES) {
-          setAvatarError(tCustomer("ui.profileWizard.photoSizeValidation", { size: formatAvatarFileSize(avatarFile.size) }));
-          return;
-        }
-        setAvatarError(failureMessage);
-        return;
-      }
-
-      failureMessage = tCustomer("ui.profileWizard.avatarConfirmError");
-      const confirmRes = await fetch("/api/profile/avatar/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path }),
-      });
-      if (!mounted.current) return;
-      if (!confirmRes.ok) {
-        const body = await confirmRes.json().catch(() => null) as { error?: { code?: string } } | null;
-        if (body?.error?.code === "INVALID_IMAGE") {
-          const message = avatarFile.size > AVATAR_MAX_BYTES
-            ? tCustomer("ui.profileWizard.photoSizeValidation", { size: formatAvatarFileSize(avatarFile.size) })
-            : tCustomer("ui.profileWizard.photoInvalidValidation");
-          setAvatarError(message);
-          return;
-        }
-        setAvatarError(failureMessage);
-        return;
-      }
       setSelectedStep("avatar");
-      const [, savedProfile] = await Promise.all([refreshUser(), loadProfile()]);
+      const [, savedProfile] = result.changed ? await Promise.all([refreshUser(), loadProfile()]) : [undefined, profile];
       if (!mounted.current) return;
       if (!savedProfile) throw new Error("Profile refresh failed");
       if (avatarPreview) URL.revokeObjectURL(avatarPreview);
@@ -223,8 +174,16 @@ function ProfileWizard({ userId }: { userId: string | null }) {
       setAvatarPreview(null);
       advanceTo("bio", savedProfile);
       showFeedback("success", tCustomer("ui.profileWizard.savePhoto"));
-    } catch {
-      setAvatarError(failureMessage);
+    } catch (cause) {
+      const code = cause instanceof Error ? cause.message : "";
+      const message = code === "UNAUTHORIZED" ? tCustomer("ui.profileWizard.avatarSessionExpired")
+        : code === "INVALID_TYPE" ? tCustomer("ui.profileWizard.photoTypeValidation")
+          : code === "INVALID_IMAGE" ? (avatarFile.size > AVATAR_MAX_BYTES
+            ? tCustomer("ui.profileWizard.photoSizeValidation", { size: formatAvatarFileSize(avatarFile.size) })
+            : tCustomer("ui.profileWizard.photoInvalidValidation"))
+            : code === "AVATAR_TOO_LARGE" ? tCustomer("ui.profileWizard.photoSizeValidation", { size: formatAvatarFileSize(avatarFile.size) })
+              : tCustomer("ui.profileWizard.avatarUploadUnavailable");
+      setAvatarError(message);
     } finally {
       setAvatarBusy(false);
     }

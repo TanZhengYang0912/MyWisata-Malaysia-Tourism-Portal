@@ -6,6 +6,8 @@ const positiveInteger = (name: string, maximum: number) => {
   return Number.isSafeInteger(value) && value > 0 && value <= maximum ? value : null;
 };
 
+const DRAFT_OBJECT_BATCH_LIMIT = 25;
+
 export async function POST(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) return apiFail('UNAUTHORIZED', 'Unauthorized', 401);
@@ -19,20 +21,53 @@ export async function POST(request: Request) {
   let deleted = 0;
   let failed = 0;
   for (const row of data as Array<{ draft_id: string; front_storage_path: string | null; back_storage_path: string | null; retired_storage_paths: string[] | null }>) {
-    const paths = [...new Set([row.front_storage_path, row.back_storage_path, ...(row.retired_storage_paths ?? [])]
+    const allPaths = [...new Set([row.front_storage_path, row.back_storage_path, ...(row.retired_storage_paths ?? [])]
       .filter((path): path is string => typeof path === 'string'))];
-    const storageResult = paths.length ? await service.storage.from('kyc-documents').remove(paths).catch(() => ({ error: { message: 'remove_failed' } })) : { error: null };
-    const removed = !storageResult.error;
-    const { data: finished, error: finishError } = await service.rpc('finish_kyc_draft_purge', {
-      p_draft_id: row.draft_id, p_succeeded: removed,
+    const paths = allPaths.slice(0, DRAFT_OBJECT_BATCH_LIMIT);
+    if (!paths.length) {
+      const { data: finished, error: finishError } = await service.rpc('progress_kyc_draft_purge', {
+        p_draft_id: row.draft_id, p_processed_paths: [],
+      });
+      if (!finishError && finished === true) deleted++;
+      else failed++;
+      continue;
+    }
+    const { data: references, error: referenceError } = await service.from('kyc_submission_documents')
+      .select('storage_path').in('storage_path', paths);
+    if (referenceError || !Array.isArray(references)) {
+      failed++;
+      await service.rpc('finish_kyc_draft_purge', { p_draft_id: row.draft_id, p_succeeded: false });
+      continue;
+    }
+    const referencedPaths = new Set(references.map((reference: { storage_path: string }) => reference.storage_path));
+    const safeToRemove = paths.filter((path) => !referencedPaths.has(path));
+    const storageResult = safeToRemove.length
+      ? await service.storage.from('kyc-documents').remove(safeToRemove).catch(() => ({ error: { message: 'remove_failed' } }))
+      : { error: null };
+    if (storageResult.error) {
+      failed++;
+      await service.rpc('finish_kyc_draft_purge', { p_draft_id: row.draft_id, p_succeeded: false });
+      continue;
+    }
+    const { data: progressed, error: progressError } = await service.rpc('progress_kyc_draft_purge', {
+      p_draft_id: row.draft_id, p_processed_paths: paths,
     });
-    if (!finishError && finished === true && removed) deleted++;
-    else failed++;
+    if (progressError) {
+      failed++;
+      await service.rpc('finish_kyc_draft_purge', { p_draft_id: row.draft_id, p_succeeded: false });
+    } else if (progressed === true) deleted++;
   }
   const { data: orphanRows, error: orphanError } = await service.rpc('claim_kyc_draft_cleanup_orphans', { p_limit: batch, p_lease_seconds: lease });
   if (orphanError || !Array.isArray(orphanRows)) failed++;
   else for (const orphan of orphanRows as Array<{ orphan_id: string; storage_path: string }>) {
-    const removed = await service.storage.from('kyc-documents').remove([orphan.storage_path]).catch(() => ({ error: { message: 'remove_failed' } }));
+    const { data: references, error: referenceError } = await service.from('kyc_submission_documents')
+      .select('storage_path').eq('storage_path', orphan.storage_path).limit(1);
+    const isReferenced = Array.isArray(references) && references.length > 0;
+    const removed = referenceError
+      ? { error: referenceError }
+      : isReferenced
+        ? { error: null }
+        : await service.storage.from('kyc-documents').remove([orphan.storage_path]).catch(() => ({ error: { message: 'remove_failed' } }));
     const { data: finished, error: finishError } = await service.rpc('finish_kyc_draft_cleanup_orphan', {
       p_orphan_id: orphan.orphan_id, p_succeeded: !removed.error,
     });

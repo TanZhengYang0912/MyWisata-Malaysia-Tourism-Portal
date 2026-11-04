@@ -115,33 +115,63 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ received: true });
     }
-
-    const { error } = await db.rpc('credit_topup', {
-      p_user_id:         userId,
-      p_amount_sen:      session.amount_total,  // Stripe MYR amount_total is already in sen
-      p_stripe_event_id: event.id,
-      p_stripe_ref:      typeof session.payment_intent === 'string'
-                           ? session.payment_intent
-                           : null,
+    if (session.metadata?.payment_kind !== 'topup') {
+      log('warn', '[stripe-webhook] Ignoring unsupported Checkout payment kind', { requestId, sessionId: session.id });
+      return NextResponse.json({ received: true });
+    }
+    if (session.payment_status !== 'paid' || !session.amount_total || !session.currency
+        || session.currency.toUpperCase() !== 'MYR'
+        || session.livemode !== process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')) {
+      return NextResponse.json({ error: 'Top-up payment is not confirmed' }, { status: 409 });
+    }
+    const operationId = session.metadata.topup_operation_id ?? null;
+    if (operationId !== null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(operationId)) {
+      log('error', '[stripe-webhook] Invalid top-up operation metadata', { requestId, sessionId: session.id });
+      return NextResponse.json({ error: 'Invalid top-up reference', requestId }, { status: 400 });
+    }
+    const paymentIntentId = typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : session.payment_intent?.id ?? null;
+    const { data: settlement, error } = await db.rpc('apply_wallet_topup_payment', {
+      p_operation_id: operationId,
+      p_owner_user_id: userId,
+      p_session_id: session.id,
+      p_payment_intent_id: paymentIntentId,
+      p_amount_sen: session.amount_total,
+      p_currency: session.currency.toUpperCase(),
+      p_is_live: session.livemode,
+      p_expected_is_live: process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') ?? false,
+      p_payment_status: session.payment_status,
+      p_event_id: event.id,
     });
 
     if (error) {
-      log('error', '[stripe-webhook] credit_topup RPC failed', { requestId, error: error.message });
+      log('error', '[stripe-webhook] top-up settlement RPC failed', { requestId, error: error.message, sessionId: session.id });
       return NextResponse.json({ error: 'Failed to credit wallet', requestId }, { status: 500 });
     }
-
-    const paymentEmail = getPaymentEmailType(session.metadata?.payment_kind);
-    try {
-      await enqueueUserTransactionEmail({
-        userId,
-        eventType: paymentEmail.eventType,
-        eventKey: `${paymentEmail.keyPrefix}:${session.id}`,
-        reference: session.id,
-        amountRm: session.amount_total / 100,
-        occurredAt: new Date(event.created * 1000).toISOString(),
-      });
-    } catch (emailError) {
-      log('error', '[stripe-webhook] payment email enqueue failed', { requestId, error: emailError instanceof Error ? emailError.message : String(emailError) });
+    const credited = Boolean(settlement && typeof settlement === 'object'
+      && 'credited' in settlement && settlement.credited === true);
+    if (credited) {
+      const paymentEmail = getPaymentEmailType('topup');
+      try {
+        await enqueueUserTransactionEmail({
+          userId,
+          eventType: paymentEmail.eventType,
+          eventKey: `${paymentEmail.keyPrefix}:${session.id}`,
+          reference: session.id,
+          amountRm: session.amount_total / 100,
+          occurredAt: new Date(event.created * 1000).toISOString(),
+        });
+        if (operationId) {
+          const { error: emailStateError } = await db.rpc('mark_wallet_topup_email_queued', {
+            p_operation_id: operationId,
+            p_owner_user_id: userId,
+          });
+          if (emailStateError) log('error', '[stripe-webhook] top-up email intent remains pending', { requestId, sessionId: session.id });
+        }
+      } catch (emailError) {
+        log('error', '[stripe-webhook] payment email enqueue failed', { requestId, error: emailError instanceof Error ? emailError.message : String(emailError) });
+      }
     }
   }
 
