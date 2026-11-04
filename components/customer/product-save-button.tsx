@@ -4,18 +4,23 @@ import { useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { SaveToggleButton } from "@/components/customer/save-toggle-button";
-import { useWishlist } from "@/components/providers/wishlist";
+import { useOptionalWishlist, useWishlist } from "@/components/providers/wishlist";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 
-export function ProductSaveButton({
-  productId,
-  productName,
-  className,
-}: {
+type ProductSaveButtonProps = {
   productId: string;
   productName: string;
   className?: string;
-}) {
+};
+
+export function ProductSaveButton(props: ProductSaveButtonProps) {
+  const wishlist = useOptionalWishlist();
+  // Vendor previews reuse product markup without mounting customer action providers.
+  if (!wishlist) return null;
+  return <CustomerProductSaveButton {...props} />;
+}
+
+function CustomerProductSaveButton({ productId, productName, className }: ProductSaveButtonProps) {
   const { t } = useTranslation("customer");
   const { savedIds, toggleSaved } = useWishlist();
   const gate = useCustomerCapabilityGate();

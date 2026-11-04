@@ -1,0 +1,14 @@
+# Secrets reach the build only as a BuildKit secret and the container only via --env-file.
+.env*
+.git
+.next
+node_modules
+coverage
+test-results
+playwright-report
+tmp
+output
+public/maplibre
+docs
+supabase
+*.md

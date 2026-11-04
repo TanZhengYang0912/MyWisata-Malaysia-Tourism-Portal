@@ -9,7 +9,7 @@ describe("customer product save entry points", () => {
   it("uses the shared authenticated wishlist toggle for every product", () => {
     const button = read("components/customer/product-save-button.tsx");
 
-    expect(button).toContain("useWishlist");
+    expect(button).toContain("useOptionalWishlist");
     expect(button).toContain("savedIds.has(productId)");
     expect(button).toContain("toggleSaved(productId)");
     expect(button).toContain("CUSTOMER_CAPABILITY.ACCOUNT_MUTATION");

@@ -93,6 +93,8 @@ function publicSiteUrl() {
 }
 
 const nextConfig: NextConfig = {
+  // Self-contained server for the Docker image (Dockerfile); Vercel builds it too.
+  output: 'standalone',
   compress: true,
   poweredByHeader: false,
   // Dev only: lets a phone on the same network (iPhone hotspot or home Wi-Fi) load the dev server by LAN IP.
