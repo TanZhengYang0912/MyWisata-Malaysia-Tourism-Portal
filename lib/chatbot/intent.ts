@@ -89,3 +89,24 @@ export function classifyIntent(message: string): Intent {
 
   return 'question';
 }
+
+const MAX_QUESTIONS = 3;
+
+/**
+ * Splits a message into its separate questions so each gets its own KB
+ * search — one embedding of "how do I withdraw? can I cancel a booking?"
+ * lands between the two topics and can miss both. Breaks on `?`, `？` and
+ * line breaks, keeping only pieces classifyIntent() calls a question ("Hi!",
+ * "thanks" drop out). Zero or one piece returns the whole message, so a
+ * single question is searched exactly as before.
+ *
+ * ponytail: punctuation heuristic — "withdraw and cancel a booking" with no
+ * `?` between stays one search. Use an LLM split if that proves common.
+ */
+export function splitQuestions(message: string): string[] {
+  const pieces = message
+    .split(/[?？]+|\n+/)
+    .map((piece) => piece.trim())
+    .filter((piece) => classifyIntent(piece) === 'question');
+  return pieces.length > 1 ? pieces.slice(0, MAX_QUESTIONS) : [message];
+}

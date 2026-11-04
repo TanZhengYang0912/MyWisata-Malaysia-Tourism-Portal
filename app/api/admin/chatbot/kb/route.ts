@@ -67,7 +67,7 @@ export async function POST(request: Request) {
   // later once a key is available.
   if (process.env.LLM_API_KEY) {
     try {
-      const embedding = await embedText(`${title}\n${body}`);
+      const embedding = await embedText(`${title}\n${body}`, 'kb');
       await service.from('chatbot_kb_documents').update({ embedding, embedded_at: new Date().toISOString() }).eq('id', created.id);
     } catch (err) {
       console.error('[chatbot] inline embed on create failed', err instanceof Error ? err.message : err);

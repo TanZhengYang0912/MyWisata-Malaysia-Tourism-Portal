@@ -41,7 +41,7 @@ export async function POST() {
 
   for (const doc of stale) {
     try {
-      const embedding = await embedText(`${doc.title}\n${doc.body}`);
+      const embedding = await embedText(`${doc.title}\n${doc.body}`, 'kb');
       const { error: updateErr } = await service
         .from('chatbot_kb_documents')
         .update({ embedding, embedded_at: new Date().toISOString() })
