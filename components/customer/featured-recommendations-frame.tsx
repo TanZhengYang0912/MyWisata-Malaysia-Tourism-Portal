@@ -13,6 +13,7 @@ type FeaturedRecommendationsFrameProps = {
   hasMultipleSlides: boolean;
   onPrevious: () => void;
   onNext: () => void;
+  action?: ReactNode;
   children: ReactNode;
 };
 
@@ -28,16 +29,20 @@ export function FeaturedRecommendationsFrame({
   hasMultipleSlides,
   onPrevious,
   onNext,
+  action,
   children,
 }: FeaturedRecommendationsFrameProps) {
   return (
     <>
-      <div className="mb-6">
-        {eyebrow && <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{eyebrow}</p>}
-        <h2 id={headingId} className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
-          {title}
-        </h2>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+      <div className="mb-6 flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          {eyebrow && <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{eyebrow}</p>}
+          <h2 id={headingId} className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
+            {title}
+          </h2>
+          {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+        </div>
+        {action}
       </div>
 
       <div

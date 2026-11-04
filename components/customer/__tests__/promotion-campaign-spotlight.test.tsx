@@ -31,10 +31,11 @@ describe("promotion campaign home spotlight", () => {
     expect(markup).toContain('href="/customer/events/sample-event"');
     const imageIndex = markup.indexOf('data-slot="promotion-campaign-image"');
     const contentIndex = markup.indexOf('data-slot="promotion-campaign-content"');
-    const actionsIndex = markup.indexOf('data-slot="promotion-campaign-actions"');
     expect(imageIndex).toBeGreaterThanOrEqual(0);
     expect(contentIndex).toBeGreaterThan(imageIndex);
-    expect(actionsIndex).toBeGreaterThan(contentIndex);
+    // The header carries "Browse all events"; the card body has no action row.
+    expect(markup).not.toContain('data-slot="promotion-campaign-actions"');
+    expect(markup.indexOf("ui.promotionCampaigns.allCampaigns")).toBeLessThan(markup.indexOf('data-testid="promotion-campaign-spotlight"'));
     expect(markup).toContain("bg-card");
     expect(markup).toContain("rounded-[28px]");
     expect(markup).toContain("shadow-sm");
@@ -53,8 +54,13 @@ describe("promotion campaign home spotlight", () => {
     expect(markup).not.toContain("lg:border-l-4");
     expect(markup).not.toContain("opacity-70");
     expect(markup).not.toContain("bg-gradient-to-r");
-    expect(getPanelActions(markup, ["ui.promotionCampaigns.allCampaigns"])).toContain("text-primary");
-    expect(markup.slice(markup.indexOf('data-slot="featured-end"'))).toContain("ui.promotionCampaigns.exploreCampaign");
+    const stub = markup.slice(markup.indexOf('data-slot="featured-end"'));
+    expect(stub).toContain("ui.promotionCampaigns.exploreCampaign");
+    // Upcoming events count down to the start: 25 Sep 2026, 20:00 in Malaysia.
+    expect(stub).toContain("ui.promotionCampaigns.startsAt");
+    expect(stub).toContain(">25<");
+    expect(stub).toContain(">2026<");
+    expect(markup.indexOf("ui.promotionCampaigns.upcoming")).toBeLessThan(markup.indexOf("promotion-campaign-spotlight-title"));
   });
 
   it("shows dates for a full-day event and retains the precise time for a legacy event", () => {
@@ -114,13 +120,21 @@ describe("promotion campaign home spotlight", () => {
     expect(markup.indexOf('src="https://thumb.wikimedia.org/event-poster.jpg"')).toBeLessThan(markup.indexOf('data-slot="promotion-campaign-content"'));
   });
 
-  it("reveals campaign location and hours over the event-pass poster", () => {
+  it("counts a live campaign down to its end even between opening sessions", () => {
+    const markup = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={{ ...campaign, visibility: "live", operationalStatus: "between_sessions" }} />);
+    const stub = markup.slice(markup.indexOf('data-slot="featured-end"'));
+    expect(stub).toContain("ui.promotionCampaigns.endsAt");
+    expect(stub).toContain(">26<");
+  });
+
+  it("pins the first location on the poster and lists hours in the details", () => {
     const markup = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={campaign} />);
 
-    expect(markup).toContain("bg-gradient-to-t from-primary/95 via-primary/40 to-transparent");
-    expect(markup).toContain("group-hover:opacity-100");
-    expect(markup).toContain("group-focus-within:opacity-100");
-    expect(markup).toContain("Melaka");
+    expect(markup).not.toContain("bg-gradient-to-t from-primary/95 via-primary/40 to-transparent");
+    const chip = markup.indexOf('data-slot="promotion-campaign-location"');
+    expect(chip).toBeGreaterThan(markup.indexOf('data-slot="promotion-campaign-image"'));
+    expect(chip).toBeLessThan(markup.indexOf('data-slot="promotion-campaign-content"'));
+    expect(markup.slice(chip)).toContain("Melaka");
     expect(markup).toContain("10:00 AM - 6:00 PM");
     expect(markup).toContain("lg:grid-cols-[44%_minmax(0,1fr)_9rem]");
   });

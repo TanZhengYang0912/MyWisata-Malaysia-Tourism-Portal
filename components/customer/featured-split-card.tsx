@@ -51,7 +51,8 @@ export function FeaturedSplitCard({
       >
         {children}
       </div>
-      {variant === "event-pass" && <div data-slot="featured-end" className="flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-border p-5 lg:flex-col lg:justify-center lg:border-l lg:border-t-0">{endContent}</div>}
+      {/* Ticket stub: the two circles are clipped by the card to read as punched notches. */}
+      {variant === "event-pass" && <div data-slot="featured-end" className="relative flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-border bg-secondary/30 px-6 py-5 before:absolute before:-left-3 before:-top-3 before:h-6 before:w-6 before:rounded-full before:border before:border-border before:bg-background before:content-[''] after:absolute after:-right-3 after:-top-3 after:h-6 after:w-6 after:rounded-full after:border after:border-border after:bg-background after:content-[''] lg:flex-col lg:justify-center lg:gap-6 lg:border-l lg:border-t-0 lg:p-5 lg:after:-bottom-3 lg:after:-left-3 lg:after:right-auto lg:after:top-auto">{endContent}</div>}
     </>
   );
 

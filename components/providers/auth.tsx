@@ -216,8 +216,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return;
       }
-      if (currentUserId.current !== session.user.id) clearIdentityState();
-      setLoading(true);
+      // Supabase re-emits SIGNED_IN for the same session whenever the tab
+      // becomes visible; refresh that profile without blanking the page.
+      if (currentUserId.current !== session.user.id) {
+        clearIdentityState();
+        setLoading(true);
+      }
       void loadSupabaseUser(session.user.id, authRequest)
         .catch(() => {
           if (!active || !isCurrentRequest(authRequest)) return;
