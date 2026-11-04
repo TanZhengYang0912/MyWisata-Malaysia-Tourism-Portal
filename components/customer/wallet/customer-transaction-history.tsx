@@ -76,14 +76,14 @@ export function CustomerTransactionHistory({ userId, refreshKey }: { userId: str
               {CUSTOMER_HISTORY_DIRECTIONS.map((direction) => <option key={direction} value={direction}>{t(`ui.wallet.historyFilters.directions.${direction}`)}</option>)}
             </select>
           </label>
-          <label className="space-y-1.5 text-xs font-medium text-muted-foreground">
-            <span>{t("ui.wallet.historyFilters.from")}</span>
-            <input name="transaction-from" type="date" className={controlClass} value={filters.from} onFocus={primeDateRange} onChange={(event) => changeFilters({ from: event.target.value })} />
-          </label>
-          <label className="space-y-1.5 text-xs font-medium text-muted-foreground">
-            <span>{t("ui.wallet.historyFilters.to")}</span>
-            <input name="transaction-to" type="date" className={controlClass} value={filters.to} onFocus={primeDateRange} onChange={(event) => changeFilters({ to: event.target.value })} />
-          </label>
+          <div className="relative">
+            <input name="transaction-from" type="date" aria-label={t("ui.wallet.historyFilters.from")} className={`${controlClass} ${filters.from ? "" : "text-transparent"}`} value={filters.from} onFocus={primeDateRange} onChange={(event) => changeFilters({ from: event.target.value })} />
+            {!filters.from && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">{t("ui.wallet.historyFilters.from")}</span>}
+          </div>
+          <div className="relative">
+            <input name="transaction-to" type="date" aria-label={t("ui.wallet.historyFilters.to")} className={`${controlClass} ${filters.to ? "" : "text-transparent"}`} value={filters.to} onFocus={primeDateRange} onChange={(event) => changeFilters({ to: event.target.value })} />
+            {!filters.to && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">{t("ui.wallet.historyFilters.to")}</span>}
+          </div>
           <Button type="button" variant="outline" onClick={() => setFilters({ ...DEFAULT_CUSTOMER_HISTORY_FILTERS })} disabled={!hasFilters && filters.page === 1}>
             {t("ui.wallet.historyFilters.clear")}
           </Button>
