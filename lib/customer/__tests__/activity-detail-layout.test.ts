@@ -6,13 +6,17 @@ const source = readFileSync(
   resolve(process.cwd(), "app/customer/activity/[id]/activity-detail-client.tsx"),
   "utf8",
 );
+const reviewsSource = readFileSync(
+  resolve(process.cwd(), "components/customer/activity-reviews.tsx"),
+  "utf8",
+);
 
 describe("activity detail booking layout", () => {
   it("places the shorter hero and content before the desktop booking card inside one grid", () => {
     const gridIndex = source.indexOf('className="grid items-start gap-6');
     const heroIndex = source.indexOf("h-44");
-    const sectionIndex = source.indexOf('<section className="min-w-0 lg:flex');
-    const asideIndex = source.indexOf("<aside className=");
+    const sectionIndex = source.indexOf('<section className="min-w-0">');
+    const asideIndex = source.indexOf("<aside>");
 
     expect(gridIndex).toBeGreaterThanOrEqual(0);
     expect(heroIndex).toBeGreaterThan(gridIndex);
@@ -41,8 +45,9 @@ describe("activity detail booking layout", () => {
   });
 
   it("scopes scrolling to the reviews list, not the whole page", () => {
-    expect(source).toContain("lg:overflow-y-auto");
     expect(source).toContain("<ActivityReviews");
+    expect(reviewsSource).toContain('className="max-h-[88vh] w-full max-w-2xl overflow-y-auto');
+    expect(reviewsSource).toContain('role="dialog" aria-modal="true"');
   });
 
   it("moves the Visit vendor action into the booking aside", () => {
