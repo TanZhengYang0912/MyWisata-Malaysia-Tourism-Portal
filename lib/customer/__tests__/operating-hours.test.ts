@@ -3,6 +3,8 @@ import type { OperatingHours } from "@/backend/core/types";
 import {
   formatOperatingHours,
   formatHours,
+  getDayTrackSegments,
+  getNextOpening,
   getOperatingHoursPeriods,
   isOperatingHoursAtAvailable,
   isOperatingHoursOpenNow,
@@ -69,5 +71,22 @@ describe("customer operating-hours semantics", () => {
 
     expect(formatHours(null, { scheduleUnavailable: "No schedule available" })).toBe("No schedule available");
     expect(formatHours(null)).toBe("Check the outlet schedule before booking.");
+  });
+
+  it("clips a day's track to that day, carrying overnight periods across midnight", () => {
+    expect(getDayTrackSegments(detailedHours, "mon")).toEqual([{ start: 540, end: 780 }, { start: 840, end: 1080 }]);
+    expect(getDayTrackSegments(detailedHours, "fri")).toEqual([{ start: 1080, end: 1440 }]);
+    expect(getDayTrackSegments(detailedHours, "sat")).toEqual([{ start: 0, end: 60 }]);
+    expect(getDayTrackSegments(detailedHours, "tue")).toEqual([]);
+    expect(getDayTrackSegments(detailedHours, "wed")).toEqual([{ start: 0, end: 1440 }]);
+  });
+
+  it("finds the next opening later today, tomorrow, or later in the week", () => {
+    // 2026-11-02 is a Monday; 10:00 UTC is 18:00 in Malaysia.
+    expect(getNextOpening(detailedHours, new Date("2026-11-02T05:30:00Z"))).toEqual({ day: "mon", time: "14:00", offsetDays: 0 });
+    expect(getNextOpening(detailedHours, new Date("2026-11-02T10:00:00Z"))).toEqual({ day: "wed", time: "00:00", offsetDays: 2 });
+    expect(getNextOpening({ thu: { open: "09:00", close: "17:00" } }, new Date("2026-11-04T10:00:00Z"))).toEqual({ day: "thu", time: "09:00", offsetDays: 1 });
+    expect(getNextOpening({ tue: { closed: true } }, new Date("2026-11-02T10:00:00Z"))).toBeNull();
+    expect(getNextOpening(null)).toBeNull();
   });
 });

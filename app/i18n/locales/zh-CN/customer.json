@@ -185,6 +185,7 @@
     }
   },
   "ui": {
+    "breadcrumbs": { "calendar": "日历", "phone": "手机", "kyc": "身份验证", "forYou": "为你推荐", "orderAccess": "访问订单", "orderDetails": "订单详情", "bookingDetails": "预订详情", "withdrawalDetails": "提现详情", "supportDetails": "支持详情", "recommendationDetails": "推荐详情", "earnings": "收益", "publicProfile": "公开资料", "eventPromotion": "活动推广" },
     "backgroundRefresh": {
       "staleData": "暂时无法更新，当前显示上次的数据。"
     },
@@ -425,6 +426,7 @@
       "roomsCount_other": "{{count}} 间"
     },
     "labels": {
+      "all": "全部",
       "hiddenGem": "隐藏宝藏",
       "sponsored": "赞助",
       "featured": "精选",
@@ -934,6 +936,7 @@
       "savedHotels": "收藏的酒店"
     },
     "activity": {
+      "noReviewsYet": "暂无评价",
       "notFound": "找不到该体验",
       "removed": "该项目可能已被移除。",
       "noVendorBooking": "此公共地点没有商家预订项目。",
@@ -1698,6 +1701,33 @@
       }
     },
     "vendor": {
+      "hours": {
+        "dayShort": {
+          "mon": "一",
+          "tue": "二",
+          "wed": "三",
+          "thu": "四",
+          "fri": "五",
+          "sat": "六",
+          "sun": "日"
+        }
+      },
+      "viewPhotos": "查看照片",
+      "reviewsNav_one": "评价（{{count}}）",
+      "reviewsNav_other": "评价（{{count}}）",
+      "sectionNav": "页面分区",
+      "showingCount": "显示 {{shown}} / 共 {{total}}",
+      "showAllExperiences": "显示全部 {{count}} 个体验",
+      "showAllExperiences_one": "显示全部 {{count}} 个体验",
+      "showAllExperiences_other": "显示全部 {{count}} 个体验",
+      "showAllLocations": "显示全部 {{count}} 个地点",
+      "showAllLocations_one": "显示全部 {{count}} 个地点",
+      "showAllLocations_other": "显示全部 {{count}} 个地点",
+      "opensAt": "{{day}} {{time}} 营业",
+      "today": "今天",
+      "tomorrow": "明天",
+      "directions": "导航",
+      "popular": "热门",
       "notFound": "找不到商家",
       "metadataDescription": "探索 {{vendor}} 的门店和体验。",
       "localExperiencePartner": "本地体验合作伙伴",
@@ -2845,6 +2875,11 @@
       "moreProducts_other": "另有 {{count}} 件"
     },
     "promotionCampaigns": {
+      "locationVendorSummary": "{{locations}} · {{vendors}}",
+      "stallsJoining": "{{count}} 个摊位参与",
+      "stallsJoining_one": "{{count}} 个摊位参与",
+      "stallsJoining_other": "{{count}} 个摊位参与",
+      "viewAllStalls": "查看全部",
       "operating": "营业中",
       "betweenSessions": "非营业时段",
       "eyebrow": "限时活动",
@@ -2873,7 +2908,6 @@
       "viewAllVendors": "查看商家",
       "viewAllVendors_one": "查看商家",
       "viewAllVendors_other": "查看全部 {{count}} 个商家",
-      "previewVendorCount": "显示 {{shown}} / 共 {{total}} 个商家",
       "detailTitle": "活动详情",
       "detailDescription": "查看活动时间及参与商家。",
       "backToEvents": "返回活动列表",

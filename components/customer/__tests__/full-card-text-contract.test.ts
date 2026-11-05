@@ -55,6 +55,17 @@ describe("full user-facing card content contract", () => {
     expect(metaRules).not.toContain("text-overflow: ellipsis;");
   });
 
+  it("shows an expand card's name on one line when closed and on two lines when open", () => {
+    const styles = read("app/globals.css");
+    const closed = styles.match(/\.mw-card-expand-card \.mw-card-title\s*\{([^}]*)\}/)?.[1] ?? "";
+    const open = styles.match(/\.mw-card-expand-card\[data-open="true"\] \.mw-card-title\s*\{([^}]*)\}/)?.[1] ?? "";
+
+    expect(closed).toContain("text-overflow: ellipsis;");
+    expect(closed).toContain("white-space: nowrap;");
+    expect(closed).toContain("min-height: 0;");
+    expect(open).toContain("-webkit-line-clamp: 2;");
+  });
+
   it("does not clamp or ellipsize text in data-bearing cards and summaries", () => {
     for (const file of contentCardFiles) {
       const source = read(file);

@@ -9,6 +9,7 @@ import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { getPlaceBySlug } from "@/backend/domains/places";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { ReferencePrice } from "@/components/shared/reference-price";
+import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { LocalizedContentHeading } from "@/components/customer/localized-content";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 
@@ -109,6 +110,11 @@ export default async function DestinationPage({ params }: Props) {
 
   return (
     <main className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6"><Breadcrumbs label={t("ui.place.breadcrumb")} items={[
+        { label: t("navigation.home"), href: "/customer" },
+        { label: t("navigation.explore"), href: "/customer/explore?tab=destinations" },
+        { label: destination.state },
+      ]} /></div>
       {/* Hero */}
       <section className="relative isolate overflow-hidden bg-primary/10">
         {destination.image && (

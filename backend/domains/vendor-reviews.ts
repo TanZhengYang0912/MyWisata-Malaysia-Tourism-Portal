@@ -58,8 +58,11 @@ export async function getReviewRatingSummary(
   if (contextScopeId) query = query.eq("context_scope_id", contextScopeId);
   const { data, error } = await query;
   if (error) throw error;
+  return summarizeRatingRows((data ?? []) as unknown as MetricRow[]);
+}
 
-  const buckets = ((data ?? []) as unknown as MetricRow[])
+function summarizeRatingRows(rows: MetricRow[]): ReviewRatingSummary {
+  const buckets = rows
     .map((row) => ({ rating: Number(row.rating), count: Number(row.review_count) }))
     .filter((bucket) => Number.isInteger(bucket.rating) && bucket.rating >= 1 && bucket.rating <= 5 && bucket.count > 0)
     .sort((first, second) => second.rating - first.rating);
@@ -67,6 +70,27 @@ export async function getReviewRatingSummary(
   const weightedRating = buckets.reduce((sum, bucket) => sum + bucket.rating * bucket.count, 0);
 
   return { rating: total ? roundOneDecimal(weightedRating / total) : 0, total, buckets };
+}
+
+/** Vendor-scope ratings for many vendors in one query; vendors without reviews are left out. */
+export async function getVendorRatingSummaries(vendorIds: string[], db: SupabaseClient): Promise<Map<string, { value: number; count: number }>> {
+  const summaries = new Map<string, { value: number; count: number }>();
+  if (vendorIds.length === 0) return summaries;
+  const { data, error } = await db
+    .from("review_rating_metrics_by_scope")
+    .select("scope_id,rating,review_count")
+    .eq("scope_type", "vendor")
+    .in("scope_id", vendorIds);
+  if (error) throw error;
+  const rowsByVendor = new Map<string, MetricRow[]>();
+  for (const row of (data ?? []) as unknown as Array<MetricRow & { scope_id: string }>) {
+    rowsByVendor.set(row.scope_id, [...(rowsByVendor.get(row.scope_id) ?? []), row]);
+  }
+  for (const [vendorId, rows] of rowsByVendor) {
+    const summary = summarizeRatingRows(rows);
+    if (summary.total > 0) summaries.set(vendorId, { value: summary.rating, count: summary.total });
+  }
+  return summaries;
 }
 
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {

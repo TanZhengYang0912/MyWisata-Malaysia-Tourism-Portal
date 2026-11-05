@@ -5,11 +5,18 @@ import {
   getVendorProductTypeLabel,
   selectFeaturedVendorProducts,
   summarizeVendorReviews,
+  vendorProductDetailHref,
 } from '@/lib/customer/vendor-page';
 
 const pageSource = readFileSync(join(process.cwd(), 'app/customer/vendor/[vendorId]/page.tsx'), 'utf8');
 
 describe('vendor storefront presentation', () => {
+  it('leaves the outlet unselected for multi-outlet products', () => {
+    const url = new URL(vendorProductDetailHref('p1', 'v1'), 'https://example.invalid');
+    expect(url.searchParams.get('source')).toBe('vendor');
+    expect(url.searchParams.has('outletId')).toBe(false);
+    expect(url.searchParams.get('returnTo')).toBe('/customer/vendor/v1');
+  });
   it('calculates one vendor rating from real product review metrics', () => {
     expect(summarizeVendorReviews([
       { rating: 5, reviews: 2 },
@@ -53,7 +60,9 @@ describe('vendor storefront presentation', () => {
     expect(pageSource).toContain("t('ui.vendor.policiesSupport')");
     expect(pageSource).toContain('id="experiences"');
     expect(pageSource).toContain('id="locations"');
-    expect(pageSource).toContain('selectFeaturedVendorProducts(catalogue, 4, explicitFeaturedIds)');
+    expect(pageSource).toContain('selectFeaturedVendorProducts(catalogue, catalogue.length, explicitFeaturedIds)');
+    expect(pageSource).toContain('id="about"');
+    expect(pageSource).toContain('id="reviews"');
     expect(pageSource).not.toContain('id="all-products-heading"');
   });
 

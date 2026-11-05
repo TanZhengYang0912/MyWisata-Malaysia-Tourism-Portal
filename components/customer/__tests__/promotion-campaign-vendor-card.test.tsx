@@ -28,7 +28,6 @@ describe("PromotionCampaignVendorCard", () => {
       <PromotionCampaignVendorCard
         vendor={vendor}
         campaignSlug="antique-event"
-        mode="detail"
         layout="featured"
       />,
     );
@@ -41,9 +40,9 @@ describe("PromotionCampaignVendorCard", () => {
     expect(markup).toContain('href="/customer/events/antique-event/vendor-1"');
   });
 
-  it("keeps the default preview card vertical", () => {
+  it("keeps the default grid card vertical", () => {
     const markup = renderToStaticMarkup(
-      <PromotionCampaignVendorCard vendor={vendor} campaignSlug="antique-event" mode="preview" />,
+      <PromotionCampaignVendorCard vendor={vendor} campaignSlug="antique-event" />,
     );
 
     expect(markup).toContain('class="flex min-w-0 flex-col overflow-hidden rounded-2xl');
@@ -55,7 +54,6 @@ describe("PromotionCampaignVendorCard", () => {
     const markup = renderToStaticMarkup(createElement(SearchResultCard, {
       vendor: { ...vendor, stalls: [...vendor.stalls, { ...vendor.stalls[0], registrationId: "registration-2", stallNumber: "Z99" }] },
       campaignSlug: "antique-event",
-      mode: "detail",
       matchingStallNumbers: ["Z99"],
     }));
 

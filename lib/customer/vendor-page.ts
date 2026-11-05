@@ -1,3 +1,6 @@
+import type { ComputedActivity, OperatingHours } from "@/backend/core/types";
+import { buildActivityPath } from "@/lib/customer/navigation-context";
+
 export interface VendorReviewMetric {
   rating: number;
   reviews: number;
@@ -57,4 +60,32 @@ export function getVendorProductTypeLabel(productType: string | null | undefined
     product: 'Local product',
   };
   return labels[productType || ''] || 'Local favourite';
+}
+export type VendorProductCardData = {
+  id: string;
+  vendorId: string;
+  name: string;
+  description: string | null;
+  productType: string | null;
+  imageUrl: string | null;
+  fromPrice: number;
+  requiresBooking: boolean;
+  rating: number;
+  reviews: number;
+  soldAt: Array<{ id: string; name: string; price: number; city: string | null; state: string | null; operatingHours: OperatingHours | null }>;
+};
+
+export function vendorProductDetailHref(productId: string, vendorId: string, outletId?: string) {
+  const outletQuery = outletId ? `&outletId=${encodeURIComponent(outletId)}` : "";
+  return `/customer/activity/${productId}?source=vendor${outletQuery}&returnTo=${encodeURIComponent(`/customer/vendor/${vendorId}`)}`;
+}
+
+/** A vendor card's three most-reviewed listings, as drawer thumbnails. */
+export function popularVendorProducts(activities: ComputedActivity[], vendorId: string) {
+  const seen = new Set<string>();
+  return activities
+    .filter((activity) => activity.outlet.vendorId === vendorId && !seen.has(activity.id) && seen.add(activity.id))
+    .sort((left, right) => right.reviews - left.reviews || right.rating - left.rating)
+    .slice(0, 3)
+    .map((activity) => ({ id: activity.id, name: activity.name, imageUrl: activity.image || null, href: buildActivityPath(activity.id) }));
 }

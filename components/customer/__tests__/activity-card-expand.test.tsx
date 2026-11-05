@@ -11,6 +11,11 @@ const mocks = vi.hoisted(() => ({
     "ui.labels.person": "person",
     "ui.activityDetail.priceUnits.perNight": "per night",
     "categories.activity": "Activity",
+    "ui.labels.closed": "Closed",
+    "ui.labels.verified": "Verified",
+    "ui.labels.trending": "Trending",
+    "ui.labels.accessible": "Accessible",
+    "ui.activity.noReviewsYet": "No reviews yet",
   } as Record<string, string>,
 }));
 
@@ -23,6 +28,7 @@ vi.mock("lucide-react", () => {
   return { Accessibility: Icon, BedDouble: Icon, CheckCircle: Icon, Clock: Icon, Clock3: Icon, ImageOff: Icon, Info: Icon, MapPin: Icon, Star: Icon, Store: Icon, XIcon: Icon };
 });
 vi.mock("@/components/providers/wishlist", () => ({
+  useOptionalWishlist: () => ({}),
   useWishlist: () => ({ savedIds: new Set<string>(), savedOutletIds: new Set<string>(), toggleSaved: vi.fn(), toggleSavedOutlet: vi.fn() }),
 }));
 vi.mock("@/components/customer/use-customer-capability-gate", () => ({ useCustomerCapabilityGate: () => () => true }));
@@ -36,6 +42,7 @@ vi.mock("@/components/shared/share-button", () => ({ ShareButton: () => null }))
 vi.mock("@/components/shared/reference-price", () => ({ ReferencePrice: ({ amountMYR, className }: { amountMYR: number; className?: string }) => <span data-testid="activity-card-price" className={className}>{amountMYR}</span> }));
 
 import { ActivityCard } from "@/components/customer/activity-card";
+import { findElements } from "@/components/shared/__tests__/render-test-dom";
 
 const activity = {
   id: "activity-1",
@@ -66,9 +73,9 @@ let document: TestDocument;
 let container: TestElement;
 let root: ReturnType<typeof import("react-dom/client").createRoot> | undefined;
 
-async function renderCard() {
+async function renderCard(item: unknown = activity) {
   await act(async () => {
-    root?.render(<ActivityCard activity={activity} />);
+    root?.render(<ActivityCard activity={item as never} />);
     await Promise.resolve();
   });
 }
@@ -96,8 +103,7 @@ describe("ActivityCard expanding details", () => {
 
     expect(container.textContent).toContain("Brinchang, Pahang");
     expect(() => findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-label") === "View Details")).toThrow();
-    const mediaLink = findOne(container, (element) => element.getAttribute("data-card-preview-trigger") === "true");
-    expect(mediaLink.getAttribute("aria-haspopup")).toBe("dialog");
+    expect(() => findOne(container, (element) => element.hasAttribute("aria-haspopup"))).toThrow();
   });
 
   it("keeps details in the desktop drawer and the primary action in its own visible row", async () => {
@@ -108,7 +114,7 @@ describe("ActivityCard expanding details", () => {
     expect(details.textContent).toContain("Brinchang, Pahang");
     expect(details.className).not.toContain("bg-primary");
     expect(action.textContent).toBe("Book Now");
-    expect((action.parentNode as TestElement | null)?.className).toContain("mw-card-cta-row");
+    expect((action.parentNode as TestElement | null)?.className).toContain("mw-card-cta-drawer");
   });
 
   it("puts the price and full-width primary action in separate footer rows", async () => {
@@ -118,9 +124,48 @@ describe("ActivityCard expanding details", () => {
     const price = findOne(footer, (element) => element.getAttribute("data-testid") === "activity-card-price");
     const action = findOne(footer, (element) => element.getAttribute("data-card-primary-cta") === "true");
     expect((price.parentNode as TestElement | null)?.className).toContain("mw-card-price-row");
-    expect((action.parentNode as TestElement | null)?.className).toContain("mw-card-cta-row");
+    expect((action.parentNode as TestElement | null)?.className).toContain("mw-card-cta-drawer");
     expect(action.textContent).toBe("Book Now");
     expect(action.className).toContain("w-full");
     expect(action.className).toContain("h-9");
+  });
+
+  const pills = () => {
+    const heading = findOne(container, (element) => element.tagName === "H3");
+    const row = (heading.parentNode as TestElement).parentNode as TestElement;
+    const badgeRow = findOne(row, (element) => element.className.includes("max-h-5"));
+    return findElements(badgeRow, (element) => element.tagName === "SPAN" && element.className.includes("rounded-full"));
+  };
+
+  it("shows at most three badges right under the name, Closed first, and none in the drawer", async () => {
+    const outlet = (activity as unknown as { outlet: Record<string, unknown> }).outlet;
+    await renderCard({ ...(activity as object), hot: true, outlet: { ...outlet, currentlyOpen: false, wheelchairAccessible: true } });
+
+    expect(pills().map((pill) => pill.textContent?.trim())).toEqual(["Closed", "Activity", "Verified"]);
+    const body = findOne(container, (element) => element.className.includes("mw-card-body"));
+    const text = body.textContent ?? "";
+    expect(text.indexOf("Rafflesia Trail Guide")).toBeLessThan(text.indexOf("Closed"));
+    expect(text.indexOf("Verified")).toBeLessThan(text.indexOf("180"));
+    const details = findOne(container, (element) => element.getAttribute("data-card-details-inline") === "true");
+    expect(details.textContent).not.toContain("Verified");
+    expect(details.textContent).not.toContain("(4)");
+  });
+
+  it("puts the rating under the price, or No reviews yet when there are none", async () => {
+    await renderCard();
+    const priceRow = findOne(container, (element) => element.className.includes("mw-card-price-row"));
+    expect(priceRow.textContent).toContain("4.5");
+    expect(priceRow.textContent).toContain("(4)");
+
+    await renderCard({ ...(activity as object), reviews: 0 });
+    expect(findOne(container, (element) => element.className.includes("mw-card-price-row")).textContent).toContain("No reviews yet");
+  });
+
+  it("makes the vendor listing card's save button the same 32px as its share button", async () => {
+    const listing = { id: "p1", vendorId: "v1", name: "Batik class", description: null, productType: "activity", imageUrl: null, fromPrice: 50, requiresBooking: true, rating: 0, reviews: 0, soldAt: [] };
+    await act(async () => { root?.render(<ActivityCard vendorListing={listing} returnTo="/customer/vendor/v1" />); });
+    const save = findOne(container, (element) => element.tagName === "BUTTON");
+    expect(save.className).toContain("h-8 w-8");
+    expect(save.className).not.toContain("h-10");
   });
 });
