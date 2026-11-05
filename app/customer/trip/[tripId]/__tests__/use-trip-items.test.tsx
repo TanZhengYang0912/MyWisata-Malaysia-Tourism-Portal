@@ -2,10 +2,10 @@ import React, {act} from "react";
 import {beforeAll, describe, expect, it, vi} from "vitest";
 import {installTestDom, type TestDocument} from "@/components/shared/__tests__/render-test-dom";
 import type {TripItem} from "@/backend/domains/trips";
-const actions = vi.hoisted(()=>({addTripItemAction:vi.fn(), deleteTripItemAction:vi.fn(), reorderTripItemsAction:vi.fn(), updateTripItemLocationAction:vi.fn(), updateTripItemScheduleAction:vi.fn(), clearTripItemsAction:vi.fn(), replaceTripItemAction:vi.fn()}));
+const actions = vi.hoisted(()=>({getTripItemsStateAction:vi.fn(),addTripItemAction:vi.fn(), deleteTripItemAction:vi.fn(), reorderTripItemsAction:vi.fn(), updateTripItemLocationAction:vi.fn(), updateTripItemScheduleAction:vi.fn(), clearTripItemsAction:vi.fn(), replaceTripItemAction:vi.fn(), alert:vi.fn()}));
 vi.mock("../../actions",()=>actions);
 vi.mock("react-i18next",()=>({useTranslation:()=>({t:(key:string)=>key})}));
-vi.mock("@/components/providers/app-dialog",()=>({useAppDialog:()=>({alert:vi.fn(),confirm:async()=>true})}));
+vi.mock("@/components/providers/app-dialog",()=>({useAppDialog:()=>({alert:actions.alert,confirm:async()=>true})}));
 import {useTripItems} from "../use-trip-items";
 let document:TestDocument;
 let createRoot:typeof import("react-dom/client").createRoot;
@@ -61,8 +61,12 @@ describe("canonical trip state",()=>{
     expect(actions.deleteTripItemAction).not.toHaveBeenCalled();
     await act(async()=>{finish({...row,label:"Saved"});await update;await remove;});
     expect(trip.items[0].label).toBe("Saved");
+    actions.getTripItemsStateAction.mockResolvedValueOnce({ok:true,items:trip.items,version:"verified"});
+    await act(async()=>{await trip.verify();});
     actions.clearTripItemsAction.mockRejectedValueOnce(new Error("offline"));
     await act(async()=>{await trip.clear();});expect(trip.items).toHaveLength(1);
+    actions.getTripItemsStateAction.mockResolvedValueOnce({ok:true,items:trip.items,version:"verified-again"});
+    await act(async()=>{await trip.verify();});
     actions.clearTripItemsAction.mockResolvedValueOnce(saved(undefined));
     await act(async()=>{await trip.clear();});expect(trip.items).toEqual([]);
     await act(async()=>root.unmount());
@@ -96,6 +100,20 @@ describe("canonical trip state",()=>{
     await act(async()=>{finish();await remove;await move;});
     expect(actions.reorderTripItemsAction).toHaveBeenCalledWith("trip",["c","b"],"next-version");
     expect(trip.items.map(item=>item.id)).toEqual(["c","b"]);
+    await act(async()=>root.unmount());
+  });
+
+  it("centers only the close action for a stop that became unavailable",async()=>{
+    let trip!:ReturnType<typeof useTripItems>;
+    function Probe(){trip=useTripItems("trip",[row],"initial-version");return null;}
+    const container=document.createElement("div");const root=createRoot(container as unknown as Element);
+    await act(async()=>root.render(<Probe/>));
+    actions.alert.mockClear();
+    actions.deleteTripItemAction.mockResolvedValueOnce({ok:false,code:"TRIP_NOT_AVAILABLE"});
+
+    await act(async()=>{await trip.remove(row.id);});
+
+    expect(actions.alert).toHaveBeenCalledWith("ui.trip.itemUnavailable",{actionAlignment:"center"});
     await act(async()=>root.unmount());
   });
 

@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
   cart: vi.fn(),
   gate: vi.fn(),
   handleResponse: vi.fn(),
-  currentUser: { id: 'user-1' },
+  currentUser: { id: 'user-1', email: 'buyer@example.com', phone: '+60177143951' },
   capabilities: { checkout: { allowed: true } },
 }));
 

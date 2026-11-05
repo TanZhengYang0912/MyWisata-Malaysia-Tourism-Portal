@@ -54,7 +54,7 @@ describe("profile summary", () => {
       verification: {
         complete: true,
         percentage: 100,
-        completedSteps: ["identity", "avatar", "bio", "survey"],
+        completedSteps: ["identity", "avatar", "bio"],
         currentStep: null,
       },
       profileRichness: { percentage: 100, missing: [], complete: true },
@@ -88,7 +88,7 @@ describe("profile summary", () => {
     expect(result.profileRichness.percentage).toBe(40);
   });
 
-  it("requires non-empty survey interests and an uploaded avatar for Profile verification", () => {
+  it("does not require survey answers for Profile verification and rejects a default avatar", () => {
     const result = mapProfileSummary(
       {
         id: "u-4",
@@ -96,7 +96,7 @@ describe("profile summary", () => {
         full_name: "Aisha Rahman",
         display_name: "Aisha",
         avatar_url: "https://cdn.example/default-avatar.svg?cache=1",
-        bio: "A traveller who enjoys local food and culture.",
+        bio: "I enjoy food and culture.",
         phone: null,
         city: "Kuala Lumpur",
         country: "Malaysia",
@@ -121,7 +121,7 @@ describe("profile summary", () => {
 
     expect(result.verification).toMatchObject({
       complete: false,
-      percentage: 50,
+      percentage: 67,
       completedSteps: ["identity", "bio"],
       currentStep: "avatar",
     });

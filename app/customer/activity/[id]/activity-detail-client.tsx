@@ -135,6 +135,7 @@ export function ActivityDetailClient({
   }, [activity, publicPlace, variantId, selectedChoice]);
   const selectedSlot = slots.find((s) => s.id === slotId);
   const seatsLeft = selectedSlot ? selectedSlot.capacity - selectedSlot.booked : undefined;
+  const quantityExceedsStock = activity !== null && !activity.requiresBooking && selectedStock !== undefined && qty > selectedStock;
 
   // A slot switch can leave qty above the new slot's remaining seats — clamp down.
   useEffect(() => {
@@ -160,6 +161,10 @@ export function ActivityDetailClient({
       return;
     }
     if (activity!.requiresBooking && !slotId) return;
+    if (!activity!.requiresBooking && selectedStock !== undefined && selectedStock < qty) {
+      setAddError(t(selectedStock === 0 ? "ui.activityDetail.outOfStock" : "ui.activityDetail.quantityExceedsStock"));
+      return;
+    }
     // Sold at several outlets → the customer must pick one; price and stock
     // belong to the outlet, not to the shared product.
     if (effectiveOutletCount > 1 && !outletId) return;
@@ -184,7 +189,6 @@ export function ActivityDetailClient({
 
 
   return (
-    // Bound only the upper grid so recommendations remain in normal page flow.
     <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7">
       <Breadcrumbs className="mb-3" label={t("ui.place.breadcrumb")} items={[
         { label: t("navigation.home"), href: "/customer" },
@@ -199,8 +203,8 @@ export function ActivityDetailClient({
         </BackLink>
       </div>
 
-      <div className="grid items-start gap-6 lg:h-[calc(100dvh-6rem)] lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
-      <div className="min-w-0 lg:flex lg:h-full lg:flex-col lg:overflow-hidden">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
+      <div className="min-w-0">
       <div className="relative mb-4 h-44 shrink-0 overflow-hidden rounded-2xl sm:h-52 lg:h-64">
         {placeBound || activity.image ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -229,7 +233,7 @@ export function ActivityDetailClient({
         )}
       </div>
 
-      <section className="min-w-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+      <section className="min-w-0">
           <div className="flex items-start justify-between gap-4 mb-4 flex-wrap shrink-0">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold leading-tight mb-2 text-foreground font-[family-name:var(--font-display)]"><LocalizedContent entityType="product" entityId={activity.id} field="name" sourceText={activity.name} /></h1>
@@ -273,14 +277,14 @@ export function ActivityDetailClient({
         </div>
       </div>
 
-      <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+      <div>
         <div className="shrink-0">
           {activity.aiTag && <div className="mb-4"><AiTag text={activity.aiTag} /></div>}
 
           <p className="text-sm leading-relaxed mb-6 text-foreground/80"><LocalizedContent entityType="product" entityId={activity.id} field="description" sourceText={activity.description} /></p>
         </div>
 
-        <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+        <div>
           <ActivityReviews productId={activity.id} outletId={selectedOutlet!.outletId} rating={selectedOutlet!.rating} totalReviews={selectedOutlet!.reviews} initialReviews={reviews} />
         </div>
       </div>
@@ -288,7 +292,7 @@ export function ActivityDetailClient({
       </section>
       </div>
 
-      <aside className="lg:h-full lg:overflow-y-auto">
+      <aside>
         <div className="rounded-3xl border border-border bg-card p-5 shadow-[0_12px_35px_rgba(1,0,102,0.08)]">
           <div className="mb-5 flex items-start justify-between gap-3 border-b border-border pb-4">
             <div>
@@ -390,9 +394,9 @@ export function ActivityDetailClient({
               <span className="w-6 text-center text-sm font-bold text-foreground">{qty}</span>
               <button
                 type="button"
-                onClick={() => setQty((q) => (seatsLeft !== undefined ? Math.min(seatsLeft, q + 1) : q + 1))}
+                onClick={() => setQty((q) => Math.min(seatsLeft ?? Number.MAX_SAFE_INTEGER, selectedStock ?? Number.MAX_SAFE_INTEGER, q + 1))}
                 aria-label={t("ui.activityDetail.increaseQuantity")}
-                disabled={seatsLeft !== undefined && qty >= seatsLeft}
+                disabled={(seatsLeft !== undefined && qty >= seatsLeft) || (selectedStock !== undefined && qty >= selectedStock)}
                 className="h-8 w-8 rounded-lg border border-border bg-card text-foreground disabled:cursor-not-allowed disabled:opacity-40"
               >
                 +
@@ -404,11 +408,14 @@ export function ActivityDetailClient({
            <Button
             type="button"
             onClick={handleAddToCart}
-            disabled={adding || (activity.requiresBooking && !slotId) || (!activity.requiresBooking && selectedStock === 0)}
+            disabled={adding || (activity.requiresBooking && !slotId) || (!activity.requiresBooking && (selectedStock === 0 || quantityExceedsStock))}
             className="h-12 w-full rounded-full text-base"
            >
              {added ? t("ui.states.addedToCart") : activity.requiresBooking ? t("ui.actions.addBookingToCart") : t("ui.actions.addToCart")}
            </Button>
+
+           {!activity.requiresBooking && selectedStock === 0 && <p role="status" className="mt-2 text-center text-xs text-destructive">{t("ui.activityDetail.outOfStock")}{effectiveOutletCount > 1 ? ` ${t("ui.activityDetail.chooseOtherOutlet")}` : ""}</p>}
+           {!activity.requiresBooking && selectedStock !== undefined && selectedStock > 0 && <p role="status" className={`mt-2 text-center text-xs ${quantityExceedsStock ? "text-amber-700 dark:text-amber-200" : "text-muted-foreground"}`}>{quantityExceedsStock ? t("ui.activityDetail.quantityExceedsStock") : t("ui.activityDetail.stockAvailable", { count: selectedStock })}</p>}
 
            {addError && <p role="alert" className="mt-3 rounded-2xl bg-destructive/10 p-3 text-center text-xs font-semibold text-destructive">{addError}</p>}
 

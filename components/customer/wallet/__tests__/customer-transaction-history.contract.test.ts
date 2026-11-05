@@ -13,6 +13,11 @@ describe("customer wallet transaction history display contract", () => {
     expect(source).toContain("signedTransactionAmount(transaction)");
   });
 
+  it("uses the regular site font for transaction amounts", () => {
+    expect(source).toContain("font-sans font-bold ${amountClass}");
+    expect(source).not.toContain("font-[family-name:var(--font-mono)]");
+  });
+
   it("keeps credits neutral and gives debits an accessible theme-aware blue", () => {
     expect(source).toContain('transaction.direction === "debit" ? "text-wallet-debit" : "text-foreground"');
     expect(rootTheme).toContain("--wallet-debit: #4f46e5;");

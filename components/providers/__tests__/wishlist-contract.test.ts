@@ -15,8 +15,8 @@ const savedDestinationsProviderSource = readFileSync(
 describe("customer save providers contract", () => {
   it("keeps multiple experiences as independent saved ids", () => {
     expect(wishlistProviderSource).toContain("new Set");
-    expect(wishlistProviderSource).toContain("next.add(productId)");
-    expect(wishlistProviderSource).toContain('fetch("/api/wishlist"');
+    expect(wishlistProviderSource).toContain("next.add(itemId)");
+    expect(wishlistProviderSource).toContain('endpoint: "/api/wishlist", responseKey: "productIds", inputKey: "productId"');
   });
 
   it("keeps multiple places as independent destination states", () => {

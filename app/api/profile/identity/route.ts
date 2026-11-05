@@ -32,35 +32,22 @@ export async function PATCH(request: Request) {
     citySource = 'catalogue';
   }
 
-  // Write identity fields
-  const { error } = await supabase
-    .from('users')
-    .update({
-      full_name: fullName,
-      city: resolvedCity,
-      country: resolvedCountry,
-      city_id: resolvedCityId,
-      country_code: countryCode ?? null,
-      city_source: citySource,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', user.id);
-
-  if (error) return apiFail('DB_ERROR', 'Unable to update profile identity', 500);
-
-  // Attempt tier promotion — RPC checks all fields atomically
-  const { error: promoteErr } = await supabase.rpc('promote_to_profile_complete', {
-    p_user_id: user.id,
+  const { data: saveRows, error } = await supabase.rpc('save_profile_identity_if_changed', {
+    p_full_name: fullName, p_city: resolvedCity, p_country: resolvedCountry, p_city_id: resolvedCityId,
+    p_country_code: countryCode ?? null, p_city_source: citySource,
   });
+  if (error) return apiFail('DB_ERROR', 'Unable to update profile identity', 500);
+  const saved = Array.isArray(saveRows) ? saveRows[0] : null;
+  if (!saved) return apiFail('DB_ERROR', 'Unable to update profile identity', 500);
+  const changed = saved.changed === true;
+
+  // Only a real identity change can alter profile-completion eligibility.
+  const { error: promoteErr } = changed ? await supabase.rpc('promote_to_profile_complete', {
+    p_user_id: user.id,
+  }) : { error: null };
 
   // Promotion errors are non-fatal: other fields may not be complete yet
   const promoted = !promoteErr;
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('tier')
-    .eq('id', user.id)
-    .single();
-
-  return apiOk({ updated: true, tier: profile?.tier ?? null, promoted });
+  return apiOk({ updated: true, changed, tier: saved.tier ?? null, promoted });
 }

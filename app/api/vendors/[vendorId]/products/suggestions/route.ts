@@ -25,14 +25,13 @@ export async function POST(request: Request, { params }: Props) {
   try {
     const result = await generateListingSuggestion(parsed.data);
     if (!result.available) {
-      const message = result.reason === 'not_configured'
-        ? 'AI suggestions are deferred until the optional Qwen Cloud API key is configured.'
-        : result.reason === 'authentication_failed'
-          ? 'The configured AI provider token is invalid or expired. Update MODELSCOPE_API_KEY or QWEN_API_KEY in .env.local, then restart the server.'
-        : result.reason === 'rate_limited'
+      const message = result.reason === 'rate_limited'
           ? 'The free AI provider is temporarily rate limited. Please try again later.'
-          : 'The free AI provider is temporarily unavailable.';
-      return apiFail(`AI_${result.reason.toUpperCase()}`, message, result.reason === 'rate_limited' ? 429 : 503);
+          : result.reason === 'sensitive_input'
+            ? 'Your listing details were not sent to AI because they may contain personal information. Remove phone, email, identity, bank, or private-address details and try again, or write the listing manually.'
+          : 'AI suggestions are temporarily unavailable. You can write the listing manually or contact platform support if the problem continues.';
+      const code = result.reason === 'authentication_failed' || result.reason === 'not_configured' ? 'AI_UNAVAILABLE' : `AI_${result.reason.toUpperCase()}`;
+      return apiFail(code, message, result.reason === 'rate_limited' ? 429 : result.reason === 'sensitive_input' ? 422 : 503);
     }
     return apiOk(result);
   } catch (error) {

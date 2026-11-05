@@ -11,12 +11,13 @@ import { createClient } from '@/lib/supabase/client';
 import { safeKycReviewNext } from '@/lib/auth/safe-next';
 import { safeStaffVerificationNext } from '@/lib/auth/staff-route-boundaries';
 import { AuthPageShell } from '@/components/shared/auth-page-shell';
+import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
 
 // The real code field sits invisibly over the six display boxes. It must stay hidden while
 // disabled too, or Input's `disabled:opacity-50` shows the raw digits over the first box.
 export const STAFF_CODE_INPUT_CLASS = 'absolute inset-0 h-full w-full cursor-text opacity-0 disabled:opacity-0';
 
-export function KycMfa({ next, available = true, scope = 'kyc' }: { next: string; available?: boolean; scope?: 'kyc' | 'staff' }) {
+export function KycMfa({ next, available = true, scope = 'kyc', unavailableReason = 'unavailable' }: { next: string; available?: boolean; scope?: 'kyc' | 'staff'; unavailableReason?: 'forbidden' | 'unavailable' }) {
   const { t } = useTranslation('admin');
   const router = useRouter();
   const db = useMemo(() => createClient(), []);
@@ -46,11 +47,11 @@ export function KycMfa({ next, available = true, scope = 'kyc' }: { next: string
         setEnrolling(false);
       } else {
         // Retry only this flow's abandoned, unverified factors.
-        for (const factor of data.all.filter(factor => factor.factor_type === 'totp' && factor.status === 'unverified' && factor.friendly_name === 'MyLawatan KYC')) {
+        for (const factor of data.all.filter(factor => factor.factor_type === 'totp' && factor.status === 'unverified' && [`${BRAND_NAME} KYC`, 'MyLawatan KYC'].includes(factor.friendly_name ?? ''))) {
           const { error: cleanupError } = await db.auth.mfa.unenroll({ factorId: factor.id });
           if (cleanupError) throw new Error();
         }
-        const { data: enrollment, error: enrollError } = await db.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'MyLawatan KYC', issuer: 'MyLawatan' });
+        const { data: enrollment, error: enrollError } = await db.auth.mfa.enroll({ factorType: 'totp', friendlyName: `${BRAND_NAME} KYC`, issuer: BRAND_NAME });
         if (enrollError || !enrollment || enrollment.type !== 'totp' || !enrollment.totp.qr_code.startsWith('data:image/svg+xml;')) throw new Error();
         setFactorId(enrollment.id);
         setQr(enrollment.totp.qr_code);
@@ -105,11 +106,30 @@ export function KycMfa({ next, available = true, scope = 'kyc' }: { next: string
     finally { setBusy(false); }
   }
 
+  async function switchAccount() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { error: signOutError } = await db.auth.signOut({ scope: 'local' });
+      if (signOutError) throw new Error();
+      const destination = scope === 'staff' ? safeStaffVerificationNext(next) : safeKycReviewNext(next);
+      // The sign-out event clears the shared identity before navigating.
+      router.push(`/login?next=${encodeURIComponent(destination)}`);
+    } catch {
+      setError(t('kyc.mfa.switchAccountError'));
+      setBusy(false);
+    }
+  }
+
   const staff = scope === 'staff';
   const primaryClass = staff ? 'h-12 w-full rounded-xl text-sm font-semibold shadow-sm sm:text-base' : undefined;
   const content = (
       <section className={staff ? 'space-y-5' : 'max-w-xl space-y-4 rounded-2xl border border-border bg-card p-6'}>
-        {(!available || error) && <p role="alert" className={staff ? 'rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-xs font-medium text-destructive sm:text-sm' : 'text-sm text-destructive'}>{error ?? t('kyc.mfa.setupError')}</p>}
+        {(!available || error) && <p role="alert" className={staff ? 'rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-xs font-medium text-destructive sm:text-sm' : 'text-sm text-destructive'}>{error ?? t(!available && unavailableReason === 'forbidden' ? 'kyc.mfa.staffAccountRequired' : 'kyc.mfa.setupError')}</p>}
+        {!available && (unavailableReason === 'forbidden'
+          ? <Button className={primaryClass} disabled={busy} onClick={() => void switchAccount()}>{t(busy ? 'kyc.mfa.working' : 'kyc.mfa.switchAccount')}</Button>
+          : <Button className={primaryClass} disabled={busy} onClick={() => { setBusy(true); window.location.reload(); }}>{t(busy ? 'kyc.mfa.working' : 'kyc.mfa.retry')}</Button>)}
         {!factorId ? <Button className={primaryClass} disabled={busy || !available} onClick={() => void start()}>{t(busy ? 'kyc.mfa.working' : 'kyc.mfa.start')}</Button> : (
           <form onSubmit={verify} className="space-y-4">
             {qr && <>

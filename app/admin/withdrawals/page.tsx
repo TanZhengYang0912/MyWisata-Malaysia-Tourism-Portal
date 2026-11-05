@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Search, ShieldCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { formatMYRFromSen } from "@/lib/i18n/format";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
@@ -93,24 +93,26 @@ export default function AdminWithdrawalsPage() {
   const visiblePayoutValue = items.reduce((sum, item) => sum + item.amountSen, 0);
   const visibleHighRisk = items.filter((item) => item.riskLevel === "high").length;
   const visibleOverdue = items.filter((item) => item.status === "overdue").length;
-  const oldestRequest = items.reduce<WithdrawalListItem | null>((oldest, item) => !oldest || new Date(item.createdAt).getTime() < new Date(oldest.createdAt).getTime() ? item : oldest, null);
 
   return (
     <AdminPageShell>
-      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground"><Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>{t("actions.refresh")}</Button><span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {reviewRefresh.lastSuccessAt ? new Date(reviewRefresh.lastSuccessAt).toLocaleTimeString() : "—"}</span></div>
       <AdminPageHeader
         eyebrow={<><ShieldCheck size={14} /> {t("withdrawals.header.eyebrow")}</>}
         title={t("withdrawals.header.title")}
-        description={t("withdrawals.header.description")}
-        actions={<div className="rounded-xl border border-border bg-card px-4 py-3 text-right shadow-sm"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">{t("withdrawals.header.reviewPriority")}</p><p className="mt-1 text-sm font-semibold text-foreground">{total > 0 ? t("withdrawals.header.oldestFirst") : t("withdrawals.header.queueClear")}</p></div>}
+        actions={<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {referenceNow ? new Date(referenceNow).toLocaleTimeString(locale) : "—"}</span>
+          <Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>
+            <RefreshCw size={14} /> {t("actions.refresh")}
+          </Button>
+        </div>}
       />
 
       <div aria-label={t("withdrawals.accessibility.reviewSummary")}>
         <AdminMetricGrid items={[
-          { label: t("withdrawals.metrics.needsAction"), value: total, detail: t("withdrawals.metrics.requestsInQueue") },
-          { label: t("withdrawals.metrics.pendingPayoutValue"), value: formatMYRFromSen(visiblePayoutValue, locale), detail: t("withdrawals.metrics.visiblePageTotal") },
-          { label: t("withdrawals.metrics.highRisk"), value: visibleHighRisk, detail: t("withdrawals.metrics.visiblePageTotal") },
-          { label: t("withdrawals.metrics.overdue"), value: visibleOverdue, detail: oldestRequest ? t("withdrawals.metrics.oldestRequest", { age: formatAge(oldestRequest.createdAt) }) : t("withdrawals.metrics.noOverdueRequests") },
+          { label: t("withdrawals.metrics.needsAction"), value: total },
+          { label: t("withdrawals.metrics.pendingPayoutValue"), value: formatMYRFromSen(visiblePayoutValue, locale) },
+          { label: t("withdrawals.metrics.highRisk"), value: visibleHighRisk },
+          { label: t("withdrawals.metrics.overdue"), value: visibleOverdue },
         ]} />
       </div>
 
@@ -122,7 +124,7 @@ export default function AdminWithdrawalsPage() {
       </AdminFilterBar>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_10px_rgba(1,0,102,0.06)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"><div><h2 className="font-bold text-foreground">{t("withdrawals.queue.title", { count: total })}</h2><p className="mt-1 text-xs text-muted-foreground">{t("withdrawals.queue.description")}</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">{oldestRequest ? t("withdrawals.queue.oldestRequest", { age: formatAge(oldestRequest.createdAt) }) : t("withdrawals.queue.noOpenRequests")}</span></div>
+        <div className="border-b border-border px-5 py-4"><h2 className="font-bold text-foreground">{t("withdrawals.queue.title", { count: total })}</h2></div>
         <div className="overflow-x-auto">
           <div className="min-w-[940px]">
             <div className="grid grid-cols-[minmax(210px,1.35fr)_120px_145px_150px_120px_145px_32px] items-center gap-4 border-b border-border bg-muted/30 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground"><span>{t("withdrawals.table.customer")}</span><span>{t("withdrawals.table.amount")}</span><span>{t("withdrawals.table.riskPriority")}</span><span>{t("withdrawals.table.approvalProgress")}</span><span>{t("withdrawals.table.ageSla")}</span><span>{t("withdrawals.table.status")}</span><span aria-hidden="true" /></div>

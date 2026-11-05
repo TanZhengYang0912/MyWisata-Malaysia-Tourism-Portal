@@ -11,7 +11,10 @@ const mocks = vi.hoisted(() => ({
   serviceRpc: vi.fn(),
   retrieveSession: vi.fn(),
   createRefund: vi.fn(),
+  adminGuard: vi.fn(),
 }));
+
+vi.mock('@/lib/staff-permissions/server', () => ({ requireStaffRoleManagementSuperAdmin: mocks.adminGuard }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
@@ -46,6 +49,7 @@ describe('POST /api/admin/refunds/:refundId Stripe refund', () => {
     vi.clearAllMocks();
     mocks.serviceRpc.mockResolvedValue({ data: { status: 'processed' }, error: null });
     mocks.getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } }, error: null });
+    mocks.adminGuard.mockResolvedValue({ db: {}, user: { id: '11111111-1111-4111-8111-111111111111' }, response: null });
     mocks.rolesSelect.mockResolvedValue({ data: [{ roles: { name: 'super_admin' } }] });
     mocks.serviceFrom.mockImplementation((table: string) => queryResult(table === 'refunds' ? {
       id: REFUND_ID,

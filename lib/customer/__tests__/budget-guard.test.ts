@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ComputedActivity } from '@/backend/core/types';
 
-const mocks = vi.hoisted(() => ({ getComputedActivity: vi.fn(), searchActivities: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getActivitiesByIds: vi.fn(), getDiscoveryOutletsByIds: vi.fn(), composeDiscoveryActivities: vi.fn(), searchActivities: vi.fn() }));
 vi.mock('@/backend/domains/catalogue', () => ({
-  getComputedActivity: mocks.getComputedActivity,
+  getActivitiesByIds: mocks.getActivitiesByIds,
+  getDiscoveryOutletsByIds: mocks.getDiscoveryOutletsByIds,
+  composeDiscoveryActivities: mocks.composeDiscoveryActivities,
   searchActivities: mocks.searchActivities,
 }));
 
@@ -52,7 +54,9 @@ function mockDb(productTypeById: Record<string, string> = {}): SupabaseClient {
 
 describe('resolveBudgetItems', () => {
   it('resolves real product data for each line, including the real product_type, never trusting a caller-supplied price', async () => {
-    mocks.getComputedActivity.mockResolvedValue(activity());
+    mocks.getActivitiesByIds.mockResolvedValue([activity()]);
+    mocks.getDiscoveryOutletsByIds.mockResolvedValue([activity().outlet]);
+    mocks.composeDiscoveryActivities.mockReturnValue([activity()]);
 
     const items = await resolveBudgetItems([{ productId: 'p1', qty: 2 }], mockDb({ p1: 'experience' }));
 
@@ -61,8 +65,21 @@ describe('resolveBudgetItems', () => {
     }]);
   });
 
+  it('deduplicates fetched IDs but preserves repeated lines and quantities', async () => {
+    mocks.getActivitiesByIds.mockResolvedValue([activity()]);
+    mocks.getDiscoveryOutletsByIds.mockResolvedValue([activity().outlet]);
+    mocks.composeDiscoveryActivities.mockReturnValue([activity()]);
+    const db = mockDb({ p1: 'experience' });
+    const items = await resolveBudgetItems([{ productId: 'p1', qty: 2 }, { productId: 'p1', qty: 3 }], db);
+    expect(mocks.getActivitiesByIds).toHaveBeenLastCalledWith(['p1'], db);
+    expect(items.map((item) => item.qty)).toEqual([2, 3]);
+    expect((await evaluateBudget(items, 1000, db)).totalRM).toBe(150);
+  });
+
   it('drops a line whose product is gone or inactive rather than guessing at it', async () => {
-    mocks.getComputedActivity.mockResolvedValue(null);
+    mocks.getActivitiesByIds.mockResolvedValue([]);
+    mocks.getDiscoveryOutletsByIds.mockResolvedValue([]);
+    mocks.composeDiscoveryActivities.mockReturnValue([]);
 
     const items = await resolveBudgetItems([{ productId: 'gone', qty: 1 }], mockDb());
 
@@ -109,6 +126,19 @@ describe('evaluateBudget', () => {
     expect(result.overBudgetItems[0].alternatives).toEqual([
       { productId: 'alt1', name: 'Cheaper Stay', price: 300, rating: 4.5, reviews: 50, savingsRM: 200, lat: 5.4141, lng: 100.3288, image: null },
       { productId: 'alt2', name: 'Even Cheaper Stay', price: 200, rating: 4.2, reviews: 20, savingsRM: 300, lat: 5.4141, lng: 100.3288, image: null },
+    ]);
+  });
+
+  it('shares a category search without changing each item’s cheaper-only ranking', async () => {
+    mocks.searchActivities.mockClear().mockResolvedValue([
+      activity({ id: 'high-rated', name: 'Higher price', price: 70, rating: 5 }),
+      activity({ id: 'lower-price', name: 'Lower price', price: 30, rating: 4.8 }),
+    ]);
+    const items = [100, 50].map((price, i) => ({ productId: `picked-${i}`, name: 'Picked', price, qty: 1, category: 'Activity', categorySlug: 'activity', state: 'Penang', productType: 'experience' }));
+    const result = await evaluateBudget(items, 1, mockDb({ 'high-rated': 'experience', 'lower-price': 'experience' }));
+    expect(mocks.searchActivities).toHaveBeenCalledTimes(1);
+    expect(result.overBudgetItems.map(item => item.alternatives.map(alt => alt.productId))).toEqual([
+      ['high-rated', 'lower-price'], ['lower-price'],
     ]);
   });
 

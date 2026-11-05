@@ -12,6 +12,8 @@ export interface VendorAuthorizationOptions {
    * app/api/__tests__/event-vendor-access.contract.test.ts.
    */
   allowEventVendor?: boolean;
+  /** Require an approved merchant before exposing operational data or mutations. */
+  requireApproved?: boolean;
 }
 
 const EVENT_VENDOR_FORBIDDEN = () => apiFail('EVENT_VENDOR_FORBIDDEN', 'This feature is not available to event vendors', 403);
@@ -103,6 +105,9 @@ export async function authorizeVendor(
     };
   }
   if (vendor.owner_id === user.id && allowedRoles.includes('vendor_owner')) {
+    if (options.requireApproved && vendor.status !== 'approved') {
+      return { ok: false, response: apiFail('FORBIDDEN', 'Vendor operations require an approved merchant', 403) };
+    }
     const { data: outlets, error } = await authDb.from('outlets').select('id').eq('vendor_id', vendorId);
     if (error) return { ok: false, response: apiFail('DB_ERROR', error.message, 500) };
     return {

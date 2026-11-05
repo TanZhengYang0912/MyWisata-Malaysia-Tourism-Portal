@@ -17,6 +17,24 @@ async function fixtures(page: Page) {
   }));
 }
 
+test('a provider failure clears the proof and retains only its public error code', async ({ page }) => {
+  await fixtures(page);
+  let signupRequests = 0;
+  await page.route('**/auth/v1/signup*', route => { signupRequests += 1; return route.fulfill({ status: 400, json: { message: 'Must not send a stale proof' } }); });
+  await page.goto('/login?mode=signup');
+  await page.getByPlaceholder('Email address').fill('fixture@example.com');
+  await page.getByPlaceholder('Password', { exact: true }).fill('FixturePassword1');
+  await page.getByPlaceholder('Confirm password').fill('FixturePassword1');
+  await page.getByRole('button', { name: 'Complete fixture security check' }).click();
+  await page.evaluate(() => {
+    const callbacks = (window as unknown as { __challengeCallbacks: Record<string, Record<string, (code: string) => void>> }).__challengeCallbacks;
+    Object.values(callbacks).forEach(entry => entry['error-callback']('110200'));
+  });
+  await expect(page.locator('[data-human-verification="signup"]')).toHaveAttribute('data-human-verification-error', '110200');
+  await page.locator('form').getByRole('button', { name: 'Create account', exact: true }).click();
+  expect(signupRequests).toBe(0);
+});
+
 test('signup and resend require separate human proofs without sending real email', async ({ page }) => {
   await fixtures(page);
   const sends: Record<string, unknown>[] = [];

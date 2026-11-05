@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowRightLeft, Bell, ChevronDown, ShoppingCart, Store } from "lucide-react";
+import { ArrowRightLeft, Bell, ShoppingCart, Store } from "lucide-react";
 import { useRequireRole } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
 import dynamic from "next/dynamic";
@@ -14,6 +14,7 @@ const ChatbotWidget = dynamic(
   { ssr: false, loading: () => null },
 );
 import { HEADER_ICON_BUTTON_CLASS } from "@/components/shared/header-icon-button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { AppearanceControl } from "@/components/shared/appearance-control";
 import { CustomerSiteFooter } from "@/components/customer/customer-site-footer";
@@ -58,6 +59,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const isActivityDetailPage = /^\/customer\/activity\/[^/]+\/?$/.test(pathname);
   const { currentUser, loading } = useRequireRole(["customer"], { allowUnauthenticated: isPublicCustomerPath });
   const gate = useCustomerCapabilityGate();
   const { count } = useCart();
@@ -195,7 +197,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
         <div className="max-w-7xl mx-auto px-2 sm:px-6 flex items-center gap-1 sm:gap-8 h-17">
           <Link href="/customer" className="group flex items-center gap-2.5 shrink-0">
               <Image
-                src="/branding/mylawatan-logo-transparent.png?v=2"
+                src="/branding/mylawatan-logo-transparent.png?v=3"
                 alt={LOGO_BRAND_NAME}
                 width={758}
                 height={306}
@@ -209,7 +211,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-0 sm:gap-1">
             <LanguageSwitcher compact className="hidden w-28 xl:flex group-data-[layout=single]/header:flex group-data-[layout=stacked]/header:hidden" />
-            <CurrencySwitcher compact codeHiddenOnMobile className="w-14 md:w-24" />
+            <CurrencySwitcher compact codeHiddenOnMobile className="w-14 min-[360px]:w-16 min-[420px]:w-20 md:w-24" />
             <AppearanceControl />
             {currentUser ? <NotificationBell key={currentUser.id} /> : (
               <button type="button" aria-label={tCommon("accessibility.notifications")} onClick={() => gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION, "/customer/notifications")} className={HEADER_ICON_BUTTON_CLASS}>
@@ -270,7 +272,6 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-semibold text-foreground">{tCustomer(`${item.labelKey}.label`)}</span>
-                          <span className="block truncate text-[0.6875rem] text-muted-foreground">{tCustomer(`${item.labelKey}.description`)}</span>
                         </span>
                       </Link>
                     );
@@ -289,15 +290,19 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 aria-label={currentUser
                   ? tCommon("account.openMenuFor", { name: customerDisplayName })
                   : tCommon("account.guestMenu")}
-                className="flex items-center gap-0 rounded-full border border-border bg-card/80 p-1 pr-1 transition hover:border-primary/30 hover:bg-secondary sm:gap-1.5 sm:pr-2"
+                className="flex items-center justify-center rounded-full border border-border bg-card/80 p-1 transition hover:border-primary/30 hover:bg-secondary"
               >
                 <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white shadow-xs">
-                  {currentUser?.avatarInitial ?? "G"}
+                  <Avatar key={currentUser?.id ?? "guest"} className="h-8 w-8">
+                    <AvatarImage src={currentUser?.avatarUrl ?? undefined} alt="" className="object-cover" />
+                    <AvatarFallback className="bg-primary text-xs font-bold text-white">
+                      {currentUser?.avatarInitial ?? "G"}
+                    </AvatarFallback>
+                  </Avatar>
                   {unreadTickets > 0 && (
                     <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-destructive" />
                   )}
                 </span>
-                <ChevronDown size={14} className={`hidden text-muted-foreground transition-transform sm:inline ${accountMenuOpen ? "rotate-180" : ""}`} />
               </button>
 
               {accountMenuOpen && (
@@ -350,7 +355,6 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                                     </span>
                                   )}
                                 </span>
-                                <span className="block whitespace-normal break-words text-[0.6875rem] leading-5 text-muted-foreground">{tCustomer(`${item.labelKey}.description`)}</span>
                               </span>
                             </Link>
                           );
@@ -380,7 +384,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      <main className="flex-1 min-h-0"><CustomerBreadcrumbs />{children}</main>
+      <main className={isActivityDetailPage ? "flex-none" : "flex-1 min-h-0"}><CustomerBreadcrumbs />{children}</main>
       {/* On phones the floating chatbot button would cover the centred copyright line, so leave room below it there only. */}
       <CustomerSiteFooter variant={customerFooterVariant(pathname)} className="pb-16 sm:pb-0" />
       <ChatbotWidget />

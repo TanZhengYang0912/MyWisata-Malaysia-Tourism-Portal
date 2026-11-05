@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { formatMYR, formatNumber } from '@/lib/i18n/format';
 import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
 import type { VendorAnalyticsSnapshot } from '@/lib/vendor/analytics';
+import { formatAnalyticsTrendBucket } from '@/lib/vendor/performance-ranking';
 import { VendorShareAnalytics } from '@/components/vendor/vendor-share-analytics';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -29,6 +30,12 @@ export function VendorAnalyticsWorkspace({ data }: { data: VendorAnalyticsSnapsh
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [trendMetric, setTrendMetric] = useState<TrendMetric>('revenue');
   const [productMode, setProductMode] = useState<'revenue' | 'units'>('revenue');
+  const localizedTrend = data.trend.map((point) => ({
+    ...point,
+    label: point.bucketKey && point.bucketGranularity
+      ? formatAnalyticsTrendBucket(point.bucketKey, point.bucketGranularity, locale)
+      : point.label,
+  }));
   const maxDemand = Math.max(1, ...data.demand.map((cell) => cell.orders));
   const heatmapHours = Array.from({ length: 15 }, (_, index) => index + 8);
   const demandAt = (weekday: number, hour: number) => data.demand.find((cell) => cell.weekday === weekday && cell.hour === hour)?.orders || 0;
@@ -102,7 +109,7 @@ export function VendorAnalyticsWorkspace({ data }: { data: VendorAnalyticsSnapsh
             <span className="text-xs text-gray-400 dark:text-muted-foreground">{t('ui.analytics.revenueQuality.trendHint')}</span>
           </div>
           <div className="h-[280px] w-full">
-            {data.trend.length ? <ResponsiveContainer width="100%" height="100%"><LineChart data={data.trend} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
+            {localizedTrend.length ? <ResponsiveContainer width="100%" height="100%"><LineChart data={localizedTrend} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
               <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" vertical={false} />
               <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: MUTED, fontSize: 12 }} />
               <YAxis axisLine={false} tickLine={false} tick={{ fill: MUTED, fontSize: 12 }} tickFormatter={(value) => trendMetric === 'orders' ? formatNumber(Number(value), locale) : money(Number(value))} />

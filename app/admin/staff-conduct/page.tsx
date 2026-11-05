@@ -33,7 +33,6 @@ export default function AdminStaffConductPage() {
       <AdminPageHeader
         eyebrow={<span className="flex items-center gap-2"><Shield size={14} /> {t("strictMigration.staffConduct.eyebrow")}</span>}
         title={t("strictMigration.staffConduct.title")}
-        description={t("strictMigration.staffConduct.description")}
       />
       <StaffConductPanel />
     </AdminPageShell>

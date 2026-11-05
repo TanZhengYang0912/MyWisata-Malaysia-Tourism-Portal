@@ -33,6 +33,7 @@ export function HumanVerification({ action, resetKey, onToken }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [providerError, setProviderError] = useState<string | null>(null);
   const sitekey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   const language = i18n?.resolvedLanguage?.startsWith("zh") ? "zh-CN" : i18n?.resolvedLanguage === "ms" ? "ms" : "en";
   const configured = Boolean(sitekey) && !(process.env.NODE_ENV === "production" && /^[123]x0+/.test(sitekey ?? ""));
@@ -46,9 +47,10 @@ export function HumanVerification({ action, resetKey, onToken }: Props) {
       id = api.render(container.current, {
         sitekey, action, language, theme: "auto", size: "flexible",
         "response-field": false,
-        callback: (token: string) => { if (active) { setFailed(false); onToken(token); } },
+        callback: (token: string) => { if (active) { setFailed(false); setProviderError(null); onToken(token); } },
         "expired-callback": () => { if (active) onToken(""); },
-        "error-callback": () => { if (active) { onToken(""); setFailed(true); } },
+        // Keep only the public numeric reference code; never retain challenge tokens.
+        "error-callback": (code: string) => { if (active) { onToken(""); setProviderError(/^\d{6}$/.test(code) ? code : null); setFailed(true); } },
       });
     } catch {
       onToken("");
@@ -64,7 +66,7 @@ export function HumanVerification({ action, resetKey, onToken }: Props) {
   }, [configured, ready, sitekey, action, language, resetKey, onToken]);
 
   return (
-    <div className="space-y-2" data-human-verification={action}>
+    <div className="space-y-2" data-human-verification={action} data-human-verification-error={failed ? providerError ?? "unavailable" : undefined}>
       {configured && <Script
         src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
         strategy="afterInteractive"

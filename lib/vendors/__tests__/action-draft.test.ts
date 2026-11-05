@@ -55,17 +55,14 @@ describe('draftVendorActionReason', () => {
     await expect(draftVendorActionReason('suspend', context)).resolves.toBeNull();
   });
 
-  it('redacts PII from the description before prompting', async () => {
+  it('withholds the full action prompt when any business field contains personal data', async () => {
     process.env.LLM_API_KEY = 'test-key';
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Reason text' }] } }] }), { status: 200 }),
-    );
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
-    await draftVendorActionReason('reject', { ...context, description: 'Contact us at owner@example.com for details.' });
+    await expect(draftVendorActionReason('reject', { ...context, description: 'Contact us at owner@example.com for details.' })).resolves.toEqual({ error: 'sensitive_data_detected' });
+    await expect(draftVendorActionReason('reject', { ...context, vendorName: 'Call 012-3456789' })).resolves.toEqual({ error: 'sensitive_data_detected' });
 
-    const body = JSON.stringify(fetchMock.mock.calls[0]?.[1]?.body);
-    expect(body).not.toContain('owner@example.com');
-    expect(body).toContain('[EMAIL]');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

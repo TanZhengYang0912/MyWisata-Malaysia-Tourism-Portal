@@ -77,7 +77,7 @@ export function InternationalPhoneInput({
     <div className="relative flex w-full overflow-visible rounded-xl border border-border bg-background text-foreground focus-within:ring-2 focus-within:ring-primary/30">
       <button
         type="button"
-        className="flex shrink-0 items-center gap-2 border-r border-border px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex shrink-0 cursor-pointer items-center gap-2 border-r border-border px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
         onClick={() => setCountryMenuOpen((open) => !open)}
         disabled={disabled}
         aria-label={t("ui.phone.selectCountry")}
@@ -117,7 +117,7 @@ export function InternationalPhoneInput({
               <li key={`${candidate.iso2}-${candidate.dialCode}`}>
                 <button
                   type="button"
-                  className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-secondary"
+                  className="flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left text-sm hover:bg-secondary"
                   onClick={() => {
                     setCountry(candidate.iso2, { focusOnInput: true });
                     setCountrySearch("");

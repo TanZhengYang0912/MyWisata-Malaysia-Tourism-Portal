@@ -26,7 +26,7 @@ describe('iCalendar generator for external booking sync', () => {
 
     expect(feed).toContain('BEGIN:VCALENDAR');
     expect(feed).toContain('VERSION:2.0');
-    expect(feed).toContain('X-WR-CALNAME:MyLawatan - Penang Heritage Hub');
+    expect(feed).toContain('X-WR-CALNAME:MYLawatan - Penang Heritage Hub');
     expect(feed).toContain('UID:slot-1@mylawatan.my');
     expect(feed).toContain('SUMMARY:George Town Street Tour (10/15 Booked)');
     expect(feed).toContain('UID:slot-2@mylawatan.my');

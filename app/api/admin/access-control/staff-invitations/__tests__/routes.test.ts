@@ -7,12 +7,14 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   sendEmail: vi.fn(),
   createToken: vi.fn(),
+  listAccessControlState: vi.fn(),
 }));
 
 vi.mock("@/lib/staff-permissions/server", () => ({
   requireStaffRoleManagementSuperAdmin: mocks.requireGovernance,
 }));
 vi.mock("@/lib/supabase/service", () => ({ createServiceClient: mocks.createServiceClient }));
+vi.mock("@/lib/entitlements/admin", () => ({ listAccessControlState: mocks.listAccessControlState }));
 vi.mock("@/lib/email/sender", () => ({ sendStaffInvitationEmail: mocks.sendEmail }));
 vi.mock("@/lib/staff-invitations/server", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/staff-invitations/server")>();
@@ -53,6 +55,7 @@ function listQuery(data: unknown[]) {
   builder.range = vi.fn(() => builder);
   builder.gt = vi.fn(() => builder);
   builder.lte = vi.fn(() => builder);
+  builder.limit = vi.fn(() => builder);
   builder.maybeSingle = vi.fn(() => Promise.resolve({ data: data[0] ?? null, error: null }));
   builder.then = (resolve: (value: ReturnType<typeof result>) => unknown) => Promise.resolve(result()).then(resolve);
   return builder;
@@ -68,9 +71,10 @@ describe("staff invitation administration routes", () => {
       response: null,
     });
     mocks.createServiceClient.mockReturnValue({ from: mocks.serviceFrom });
-    mocks.serviceFrom.mockReturnValue(listQuery([]));
+    mocks.serviceFrom.mockImplementation((table: string) => listQuery(table === "audit_logs" ? [{ id: "audit-1" }] : []));
     mocks.createToken.mockReturnValue(TOKEN);
     mocks.sendEmail.mockResolvedValue({ id: "message-1" });
+    mocks.listAccessControlState.mockResolvedValue({ generation: 4 });
     mocks.rpc
       .mockResolvedValueOnce({ data: PREPARED, error: null })
       .mockResolvedValueOnce({ data: null, error: null });
@@ -111,11 +115,36 @@ describe("staff invitation administration routes", () => {
     }));
     expect(JSON.stringify(body)).not.toContain(TOKEN);
     expect(JSON.stringify(body)).not.toContain("staff-invitations/");
+    expect(body.data).toMatchObject({ committed: true, receiptAvailable: true, auditEventId: "audit-1", action: "staff.invitation.created" });
+  });
+
+  it("returns the committed invitation and failed delivery state when email sending fails", async () => {
+    mocks.sendEmail.mockRejectedValue(new Error("SMTP unavailable"));
+
+    const response = await invitationsRoute.POST(request("/api/admin/access-control/staff-invitations", {
+      email: "staff@example.com",
+      staffRoleId: ROLE_ID,
+      reason: "Invite a dedicated employee to review KYC applications",
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(202);
+    expect(body.data).toMatchObject({
+      id: INVITATION_ID,
+      committed: true,
+      receiptAvailable: true,
+      auditEventId: "audit-1",
+      action: "staff.invitation.created",
+      deliveryStatus: "failed",
+    });
+    expect(body.error).toBeNull();
   });
 
   it("uses the invited account's saved locale instead of the administrator's locale", async () => {
     const preferenceQuery = listQuery([{ preferred_locale: "zh-CN" }]);
-    mocks.serviceFrom.mockImplementation((table: string) => table === "users" ? preferenceQuery : listQuery([]));
+    mocks.serviceFrom.mockImplementation((table: string) => table === "users"
+      ? preferenceQuery
+      : listQuery(table === "audit_logs" ? [{ id: "audit-1" }] : []));
 
     const response = await invitationsRoute.POST(request("/api/admin/access-control/staff-invitations", {
       email: "staff@example.com",
@@ -130,7 +159,7 @@ describe("staff invitation administration routes", () => {
   });
 
   it("defaults to English when the invited address has no saved account preference", async () => {
-    mocks.serviceFrom.mockImplementation((table: string) => listQuery(table === "users" ? [] : []));
+    mocks.serviceFrom.mockImplementation((table: string) => listQuery(table === "audit_logs" ? [{ id: "audit-1" }] : []));
 
     const response = await invitationsRoute.POST(request("/api/admin/access-control/staff-invitations", {
       email: "new.staff@example.com",
@@ -179,7 +208,8 @@ describe("staff invitation administration routes", () => {
     }));
     const body = await response.json();
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(202);
+    expect(body.data).toMatchObject({ committed: true, deliveryStatus: "failed" });
     expect(mocks.rpc.mock.calls[1]).toEqual(["finalize_staff_invitation_delivery", expect.objectContaining({
       p_succeeded: false,
     })]);
@@ -190,6 +220,7 @@ describe("staff invitation administration routes", () => {
     const resent = await resend(request(`/api/admin/access-control/staff-invitations/${INVITATION_ID}/resend`, {
     }), { params: Promise.resolve({ invitationId: INVITATION_ID }) });
     expect(resent.status).toBe(200);
+    expect((await resent.json()).data).toMatchObject({ action: "staff.invitation.resent", entityId: INVITATION_ID, auditEventId: "audit-1" });
     expect(mocks.rpc.mock.calls[0][0]).toBe("prepare_staff_invitation_resend");
 
     mocks.rpc.mockReset();
@@ -198,6 +229,7 @@ describe("staff invitation administration routes", () => {
       reason: "Employee no longer requires the invitation",
     }), { params: Promise.resolve({ invitationId: INVITATION_ID }) });
     expect(revoked.status).toBe(200);
+    expect((await revoked.json()).data).toMatchObject({ action: "staff.invitation.revoked", entityId: INVITATION_ID, auditEventId: "audit-1" });
     expect(mocks.rpc).toHaveBeenCalledWith("revoke_staff_invitation", {
       p_invitation_id: INVITATION_ID,
       p_reason: "Employee no longer requires the invitation",
@@ -207,7 +239,7 @@ describe("staff invitation administration routes", () => {
   it("uses the recipient preference when resending an invitation", async () => {
     mocks.serviceFrom.mockImplementation((table: string) => table === "users"
       ? listQuery([{ preferred_locale: "ms" }])
-      : listQuery([]));
+      : listQuery(table === "audit_logs" ? [{ id: "audit-1" }] : []));
 
     const response = await resend(request(`/api/admin/access-control/staff-invitations/${INVITATION_ID}/resend`, {}), {
       params: Promise.resolve({ invitationId: INVITATION_ID }),

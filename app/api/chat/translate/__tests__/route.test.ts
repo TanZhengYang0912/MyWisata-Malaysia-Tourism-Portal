@@ -140,6 +140,25 @@ describe('POST /api/chat/translate', () => {
     expect(body.error.code).toBe('TRANSLATE_FAILED');
   });
 
+  it('explains when personal data was withheld and preserves manual translation', async () => {
+    serviceFrom.mockImplementation((table: string) => {
+      if (table === 'chat_messages') return queryStub({ data: { id: MESSAGE_ID, thread_id: 'thread-1', body: 'Call me at 012-3456789' }, error: null });
+      if (table === 'chat_message_translations') return queryStub({ data: null, error: null });
+      throw new Error(`unexpected table ${table}`);
+    });
+    authFrom.mockReturnValue(queryStub({ data: { id: 'thread-1', customer_id: USER_ID, outlet_id: 'outlet-1' }, error: null }));
+    translateMessage.mockRejectedValue(new Error('sensitive_data_detected'));
+
+    const response = await POST(request({ messageId: MESSAGE_ID, targetLang: 'zh' }));
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'TRANSLATION_PRIVACY_BLOCKED', message: expect.stringContaining('translate it manually') },
+    });
+    expect(reserveAiQuota).not.toHaveBeenCalled();
+    expect(translateMessage).not.toHaveBeenCalled();
+  });
+
   it('rejects an invalid target language', async () => {
     const response = await POST(request({ messageId: MESSAGE_ID, targetLang: 'fr' }));
     expect(response.status).toBe(422);

@@ -6,6 +6,18 @@ const DEFAULT_TRIP_NAME_PATTERN = /^Trip ([1-9]\d*)$/i;
 const MAX_SUGGESTION_LENGTH = 60;
 const UNSAFE_TEXT_PATTERN = /[<>\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/;
 const HAN_SCRIPT_PATTERN = /\p{Script=Han}/u;
+const BM_TRAVEL_MARKERS = /\b(percutian|perjalanan|makanan|keluarga|bersama|jalan-jalan|pergi|saya|kami|untuk|dengan|di|dan|tempat|menjelajah)\b/i;
+const EN_TRAVEL_MARKERS = /\b(trip|travel|journey|holiday|vacation|food|family|weekend|explore|visit|with|and|for|in|the)\b/i;
+
+/** Detect the language of an idea when it contains language-bearing wording. */
+export function resolveTripNameLocale(idea: string, uiLocale: AppLocale): AppLocale {
+  if (HAN_SCRIPT_PATTERN.test(idea)) return "zh-CN";
+  if (BM_TRAVEL_MARKERS.test(idea)) return "ms";
+  if (EN_TRAVEL_MARKERS.test(idea)) return "en";
+  // Latin-only place names have no reliable language signal. Use the usual
+  // travel-title language, except when the interface is already in Malay.
+  return /[a-z]/i.test(idea) ? (uiLocale === "ms" ? "ms" : "en") : uiLocale;
+}
 
 export type TripDuration = { days: number; nights: number };
 

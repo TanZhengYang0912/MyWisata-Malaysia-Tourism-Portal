@@ -12,6 +12,7 @@ import { validatePassword } from "@/lib/auth/password-policy";
 import { postLoginPath } from "@/lib/auth/guest-mode";
 import { demoAccountRoleCategories, filterDemoAccountsByRole } from "@/lib/auth/demo-account-filter";
 import { postLoginDestination } from "@/lib/auth/post-login-destination";
+import { getDemoSignInErrorMessage } from "@/lib/auth/demo-signin-error";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ import { HumanVerification, useHumanVerification } from "@/components/shared/hum
 import type { Role, User } from "@/backend/core/types";
 
 type DemoUser = User & { vendorName?: string; outletName?: string };
-type AuthMode = "signin" | "signup" | "verify" | "forgot";
+type AuthMode = "signin" | "signup" | "verify" | "forgot" | "recover";
 type DemoLoadState = "loading" | "ready" | "error";
 
 export default function LoginPage() {
@@ -60,7 +61,9 @@ function LoginContent() {
   const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
   const [resendReady, setResendReady] = useState(true);
-  const human = useHumanVerification(mode === "verify" ? "signup_resend" : mode === "forgot" ? "password_reset" : mode);
+  const human = useHumanVerification(
+    mode === "verify" ? "signup_resend" : mode === "forgot" || mode === "recover" ? "password_reset" : mode,
+  );
 
   function startResendCooldown() {
     setResendReady(false);
@@ -75,6 +78,8 @@ function LoginContent() {
     } else if (queryError) {
       setError(GENERIC_ERROR);
     }
+    if (process.env.NODE_ENV === "production") return;
+
     const controller = new AbortController();
     const generation = ++demoRequestGeneration.current;
     setDemoLoadState("loading");
@@ -118,8 +123,8 @@ function LoginContent() {
       const signedInUser = await switchUser(user.id, user, captchaToken);
       router.push(postLoginDestination(signedInUser?.role ?? user.role, requestedNext(), signedInUser?.staffVerified, signedInUser?.staffPasskeyRequired, signedInUser?.staffMfaRequired));
       router.refresh();
-    } catch {
-      setError(GENERIC_ERROR);
+    } catch (error) {
+      setError(getDemoSignInErrorMessage(error, tAuth("humanVerification.invalid"), GENERIC_ERROR));
     } finally { setBusy(false); }
   }
 
@@ -279,6 +284,30 @@ function LoginContent() {
       return;
     }
     setMessage(tAuth("passwordReset.instructionsSent"));
+    setOtp("");
+    setMode("recover");
+  }
+
+  async function verifyRecoveryCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    resetFeedback();
+    if (!/^\d{6}$/.test(otp)) {
+      setError(tAuth("verification.invalidCode"));
+      return;
+    }
+    setBusy(true);
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: otp,
+      type: "recovery",
+    });
+    setBusy(false);
+    if (verifyError) {
+      setError(tAuth("passwordReset.invalidCode"));
+      return;
+    }
+    router.push("/reset-password");
+    router.refresh();
   }
 
   async function continueWithGoogle() {
@@ -332,9 +361,6 @@ function LoginContent() {
             {/* Header / Title */}
             <div className="text-center mb-6 sm:mb-7">
               <h1 className="text-2xl sm:text-[28px] font-bold tracking-tight text-foreground">{title}</h1>
-              <p className="mt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                {tAuth("login.description")}
-              </p>
             </div>
 
             {/* Error & Feedback Messages */}
@@ -355,10 +381,56 @@ function LoginContent() {
               </div>
             )}
 
-            <div className="mb-4"><HumanVerification {...human} /></div>
+            {mode !== "recover" && <div className="mb-4"><HumanVerification {...human} /></div>}
 
             {/* Mode: Verify Email */}
-            {mode === "verify" ? (
+            {mode === "recover" ? (
+              <form onSubmit={verifyRecoveryCode} className="space-y-4 sm:space-y-5">
+                <p className="text-xs sm:text-sm text-muted-foreground text-center">
+                  {tAuth("passwordReset.codeSentTo")} <strong className="text-foreground">{email}</strong>
+                </p>
+                <input
+                  aria-label={tAuth("passwordReset.codeLabel")}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  required
+                  value={otp}
+                  onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className="h-12 w-full rounded-xl border border-border bg-secondary/40 px-4 text-center text-xl font-bold tracking-[0.4em] text-foreground focus:border-primary focus:bg-card focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all"
+                />
+                <Button
+                  type="submit"
+                  className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm sm:text-base shadow-sm transition-all"
+                  disabled={busy}
+                >
+                  {busy ? tCommon("states.processingEllipsis") : tAuth("passwordReset.verifyCode")}
+                </Button>
+                <div className="flex flex-col gap-2 pt-2 text-center text-xs sm:text-sm">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetFeedback();
+                      setOtp("");
+                      setMode("forgot");
+                    }}
+                    className="font-semibold text-primary hover:underline"
+                  >
+                    {tAuth("passwordReset.requestAnotherCode")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetFeedback();
+                      setMode("signin");
+                    }}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {tAuth("actions.backToSignIn")}
+                  </button>
+                </div>
+              </form>
+            ) : mode === "verify" ? (
               <form onSubmit={verifyEmail} className="space-y-4 sm:space-y-5">
                 <p className="text-xs sm:text-sm text-muted-foreground text-center">
                   {tAuth("verification.codeSentTo")}{" "}
@@ -657,8 +729,7 @@ function LoginContent() {
                     G
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs sm:text-sm font-semibold text-foreground">{tCommon("guest.mode")}</p>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground truncate">{tAuth("guest.description")}</p>
+                    <p className="text-xs sm:text-sm font-semibold text-foreground">{tCommon("guest.continue")}</p>
                   </div>
                   <Badge variant="secondary" className="shrink-0 text-[10px] bg-secondary text-primary font-semibold">
                     {tAuth("guest.label")}
@@ -670,8 +741,8 @@ function LoginContent() {
         </Card>
       </main>
 
-      {/* DEV / DEMO ONLY: Seeded Demo Accounts (Placed in unused right-hand space on desktop, easily removable) */}
-      <aside className="w-full max-w-[490px] mx-auto mt-6 lg:mt-0 lg:fixed lg:right-6 xl:right-8 lg:top-16 xl:top-18 lg:w-[350px] xl:w-[370px] lg:z-20">
+      {/* Demo accounts are local development tools, not part of deployed login. */}
+      {process.env.NODE_ENV !== "production" && <aside className="w-full max-w-[490px] mx-auto mt-6 lg:mt-0 lg:fixed lg:right-6 xl:right-8 lg:top-16 xl:top-18 lg:w-[350px] xl:w-[370px] lg:z-20">
         <div className="rounded-2xl border border-border bg-card/95 p-4 shadow-sm backdrop-blur-md">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -756,7 +827,7 @@ function LoginContent() {
             {tAuth("demo.disclaimer")}
           </p>
         </div>
-      </aside>
+      </aside>}
 
       {/* Clean Minimal Footer */}
       <CustomerSiteFooter variant="slim" />

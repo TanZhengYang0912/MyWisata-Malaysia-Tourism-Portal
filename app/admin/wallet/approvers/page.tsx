@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, ArrowLeft, ShieldCheck, UserPlus, UserRoundCheck } from "lucide-react";
+import { AlertCircle, ShieldCheck, UserPlus, UserRoundCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
@@ -106,13 +105,9 @@ export default function WalletApproversPage() {
 
   return (
     <AdminPageShell>
-      <Link href="/admin/wallet/settings" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
-        <ArrowLeft size={16} /> {t("ui.walletApprovers.backToSettings")}
-      </Link>
       <AdminPageHeader
         eyebrow={<span className="flex items-center gap-2"><ShieldCheck size={14} /> {t("ui.walletApprovers.eyebrow")}</span>}
         title={t("ui.walletApprovers.title")}
-        description={t("ui.walletApprovers.description")}
       />
 
       {error && <p role="alert" className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle size={16} /> {error}</p>}
@@ -120,7 +115,7 @@ export default function WalletApproversPage() {
       <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
         <div className="flex items-start gap-3">
           <span className="rounded-xl bg-primary/10 p-2 text-primary"><UserPlus size={18} /></span>
-          <div><h2 className="font-semibold text-foreground">{t("ui.walletApprovers.grantTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("ui.walletApprovers.grantDescription")}</p></div>
+          <h2 className="font-semibold text-foreground">{t("ui.walletApprovers.grantTitle")}</h2>
         </div>
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <label className="text-sm"><span className="mb-1.5 block font-medium text-foreground">{t("ui.walletApprovers.userLabel")}</span><select value={selectedUser} onChange={(event) => setSelectedUser(event.target.value)} className={`${adminFilterControlClassName} w-full`}><option value="">{t("ui.walletApprovers.selectUser")}</option>{eligibleUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.email}</option>)}</select></label>
@@ -132,7 +127,6 @@ export default function WalletApproversPage() {
 
       <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
         <h2 className="font-semibold text-foreground">{t("ui.walletApprovers.currentTitle")}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t("ui.walletApprovers.currentDescription")}</p>
         {loading ? <p className="mt-5 text-sm text-muted-foreground">{t("ui.walletApprovers.loading")}</p> : approvers.length === 0 ? <div className="mt-5 rounded-xl border border-dashed border-border p-6 text-center"><UserRoundCheck size={22} className="mx-auto text-muted-foreground" /><p className="mt-2 text-sm font-medium text-foreground">{t("ui.walletSettings.emptyApprovers.title")}</p></div> : <div className="mt-5 divide-y divide-border rounded-xl border border-border">{approvers.map((approver) => <div key={approver.id} className="flex flex-col justify-between gap-3 p-4 sm:flex-row sm:items-center"><div><p className="font-medium text-foreground">{approver.name}</p><p className="text-sm text-muted-foreground">{approver.email}</p><p className="mt-1 text-xs text-muted-foreground">{approver.active ? t("ui.walletApprovers.active") : t("ui.walletApprovers.inactive")}</p></div><Button variant="outline" disabled={busy} className="border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => requestRoleChange({ userId: approver.id, action: "revoke", name: approver.name })}>{t("ui.walletApprovers.revoke")}</Button></div>)}</div>}
         {!loading && error && <Button className="mt-4" variant="outline" onClick={() => void loadApprovers()}>{t("ui.walletSettings.retry")}</Button>}
       </section>

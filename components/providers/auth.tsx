@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { clearCurrentUser, setCurrentUser as setStoredCurrentUser } from "@/backend/domains/current-user";
 import { createClient } from "@/lib/supabase/client";
 import { pickDemoRole } from "@/lib/auth/demo-user-role";
+import { DEMO_SIGN_IN_CAPTCHA_FAILED_CODE, DemoSignInCaptchaError } from "@/lib/auth/demo-signin-error";
 import { accountGate, canSuspendedAccessPath } from "@/lib/account/lifecycle";
 import { resolveCustomerCapabilities, type CustomerCapabilitySnapshot } from "@/lib/auth/customer-capabilities";
 import { isAppLocale } from "@/lib/i18n/locale";
@@ -46,6 +47,7 @@ type AuthMeUser = {
   id: string;
   email: string;
   fullName: string | null;
+  avatarUrl: string | null;
   tier: User["verificationTier"];
   roles: Role[];
   activeVendorId: string | null;
@@ -145,6 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: row.email,
       role,
       avatarInitial: name[0]?.toUpperCase() ?? "?",
+      avatarUrl: row.avatarUrl ?? null,
       city: row.city ?? undefined,
       country: row.country ?? undefined,
       preferredLocale: isAppLocale(row.preferredLocale) ? row.preferredLocale : undefined,
@@ -216,12 +219,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return;
       }
-      // Supabase re-emits SIGNED_IN for the same session whenever the tab
-      // becomes visible; refresh that profile without blanking the page.
-      if (currentUserId.current !== session.user.id) {
-        clearIdentityState();
-        setLoading(true);
-      }
+      const identityChanged = currentUserId.current !== session.user.id;
+      if (identityChanged) clearIdentityState();
+      // Same-user focus/token refreshes must not unmount guarded page drafts.
+      setLoading(identityChanged);
       void loadSupabaseUser(session.user.id, authRequest)
         .catch(() => {
           if (!active || !isCurrentRequest(authRequest)) return;
@@ -262,20 +263,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email: user.email, captchaToken }),
         signal: request.controller.signal,
       });
-      await response.json().catch(() => null);
+      const payload: unknown = await response.json().catch(() => null);
       if (!isCurrentRequest(request)) return null;
+      const isCaptchaFailure = typeof payload === "object"
+        && payload !== null
+        && "code" in payload
+        && payload.code === DEMO_SIGN_IN_CAPTCHA_FAILED_CODE;
+      if (isCaptchaFailure) throw new DemoSignInCaptchaError();
       if (!response.ok) throw new Error(tAuth('signIn.error'));
 
       const loadedUser = await loadSupabaseUser(id, request);
       if (!loadedUser || !isCurrentRequest(request)) return null;
       setLoading(false);
       return loadedUser;
-    } catch {
+    } catch (error) {
       if (!isCurrentRequest(request)) return null;
       invalidateRequests();
       await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
       clearIdentityState();
       setLoading(false);
+      if (error instanceof DemoSignInCaptchaError) throw error;
       throw new Error(tAuth('signIn.error'));
     }
   }, [beginRequest, clearIdentityState, invalidateRequests, isCurrentRequest, loadSupabaseUser, supabase, tAuth]);
@@ -290,8 +297,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return;
       }
-      if (currentUserId.current !== user.id) clearIdentityState();
-      setLoading(true);
+      const identityChanged = currentUserId.current !== user.id;
+      if (identityChanged) clearIdentityState();
+      setLoading(identityChanged);
       await loadSupabaseUser(user.id, request);
       if (isCurrentRequest(request)) setLoading(false);
     } catch {

@@ -9,7 +9,7 @@ interface Props { params: Promise<{ vendorId: string }> }
 
 export async function GET(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendor(vendorId, undefined, { requireApproved: true });
   if (!access.ok) return access.response;
   const { serviceDb: service, outletIds } = access.access;
   if (!outletIds.length) return apiOk([]);

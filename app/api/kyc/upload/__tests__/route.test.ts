@@ -11,6 +11,7 @@ const getUser = vi.fn();
 const authenticatedRpc = vi.fn();
 const serviceRpc = vi.fn();
 const upload = vi.fn();
+const download = vi.fn();
 const activeLookup = vi.fn();
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -20,11 +21,12 @@ vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
     rpc: serviceRpc,
     from: () => ({ select: () => ({ eq: () => ({ in: () => ({ limit: activeLookup }) }) }) }),
-    storage: { from: () => ({ upload, remove: vi.fn() }) },
+    storage: { from: () => ({ upload, remove: vi.fn(), download }) },
   }),
 }));
 vi.mock('@/lib/kyc/hash', () => ({
   hashICWithHmac: vi.fn().mockResolvedValue({ algorithm: 'hmac_sha256_v1', value: 'a'.repeat(64) }),
+  normalizeIC: (value: string) => value.replace(/[-\s]/g, '').toUpperCase(),
 }));
 vi.mock('@/lib/kyc/submission', () => ({
   validateKycUploadFile: vi.fn().mockResolvedValue({ ok: true, buffer: new ArrayBuffer(8) }),
@@ -59,14 +61,16 @@ describe('POST /api/kyc/upload', () => {
     serviceRpc.mockReset();
     upload.mockReset();
     upload.mockResolvedValue({ error: null });
+    download.mockReset().mockResolvedValue({ data: new Blob(['watermarked'], { type: 'image/jpeg' }), error: null });
   });
 
   it('stores only watermarked evidence and defers OCR until after durable finalization', async () => {
     getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } } });
-    serviceRpc.mockResolvedValueOnce({ data: '33333333-3333-4333-8333-333333333333', error: null }).mockResolvedValue({ error: null });
+    serviceRpc.mockResolvedValueOnce({ data: { submissionId: '33333333-3333-4333-8333-333333333333', state: 'processing' }, error: null }).mockResolvedValue({ error: null });
     authenticatedRpc.mockResolvedValue({ error: null });
     const form = new FormData();
-    form.set('ocrConsent', 'true');
+    form.set('ocrConsent', 'true'); form.set('holderName', 'Example Holder');
+    form.set('operationId', '44444444-4444-4444-8444-444444444444');
     form.set('icNumber', '900101-14-5678');
     form.set('docType', 'national_id');
     form.set('frontFile', new File(['front'], 'front.jpg', { type: 'image/jpeg' }));
@@ -81,12 +85,33 @@ describe('POST /api/kyc/upload', () => {
     await expect(response.json()).resolves.toMatchObject({ data: { status: 'pending', ocrStatus: 'queued', manualReviewRequired: true } });
   });
 
+  it('submits the exact saved draft evidence without reprocessing or trusting client paths', async () => {
+    const owner = '11111111-1111-4111-8111-111111111111';
+    const draftId = '22222222-2222-4222-8222-222222222222';
+    const submissionId = '33333333-3333-4333-8333-333333333333';
+    const operationId = '44444444-4444-4444-8444-444444444444';
+    getUser.mockResolvedValue({ data: { user: { id: owner } } });
+    serviceRpc.mockResolvedValueOnce({ data: [{ id: draftId, version: 2, document_type: 'national_id', holder_name: 'Example Holder', evidence_revision: 'a'.repeat(64) }], error: null })
+      .mockResolvedValueOnce({ data: `${owner}/drafts/${draftId}/object/front.jpg`, error: null })
+      .mockResolvedValueOnce({ data: `${owner}/drafts/${draftId}/object/back.jpg`, error: null })
+      .mockResolvedValueOnce({ data: { submissionId, state: 'processing' }, error: null })
+      .mockResolvedValue({ error: null });
+    authenticatedRpc.mockResolvedValue({ error: null });
+    const form = new FormData();
+    for (const [key, value] of Object.entries({ ocrConsent: 'true', holderName: 'Example Holder', operationId, draftId, draftVersion: '2', docType: 'national_id', icNumber: '900101-14-5678' })) form.set(key, value);
+    const response = await POST(new Request('http://localhost/api/kyc/upload', { method: 'POST', headers: { 'Idempotency-Key': operationId }, body: form }));
+    expect(response.status).toBe(201);
+    expect(download).toHaveBeenCalledTimes(2);
+    expect(prepareKycEvidenceImage).not.toHaveBeenCalled();
+    expect(upload.mock.calls.every((call) => call[1].equals(Buffer.from('watermarked')))).toBe(true);
+  });
+
   it('rejects undecodable photos without superseding an earlier information request', async () => {
     getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } } });
-    serviceRpc.mockResolvedValueOnce({ data: '33333333-3333-4333-8333-333333333333', error: null });
+    serviceRpc.mockResolvedValueOnce({ data: { submissionId: '33333333-3333-4333-8333-333333333333', state: 'processing' }, error: null });
     vi.mocked(prepareKycEvidenceImage).mockRejectedValueOnce(new Error('invalid image'));
     const form = new FormData();
-    form.set('ocrConsent', 'true'); form.set('icNumber', '900101-14-5678'); form.set('docType', 'national_id');
+    form.set('ocrConsent', 'true'); form.set('holderName', 'Example Holder'); form.set('operationId', '44444444-4444-4444-8444-444444444444'); form.set('icNumber', '900101-14-5678'); form.set('docType', 'national_id');
     form.set('frontFile', new File(['fake'], 'front.jpg', { type: 'image/jpeg' }));
     form.set('backFile', new File(['fake'], 'back.jpg', { type: 'image/jpeg' }));
     const response = await POST(new Request('http://localhost/api/kyc/upload', { method: 'POST', body: form }));
@@ -110,6 +135,8 @@ describe('POST /api/kyc/upload', () => {
     serviceRpc.mockResolvedValueOnce({ data: null, error: { message: 'tier_insufficient' } });
     const form = new FormData();
     form.set('ocrConsent', 'true');
+    form.set('holderName', 'Example Holder');
+    form.set('operationId', '44444444-4444-4444-8444-444444444444');
     form.set('icNumber', '900101-14-5678');
     form.set('docType', 'national_id');
     form.set('frontFile', new File(['front'], 'front.jpg', { type: 'image/jpeg' }));
@@ -128,6 +155,8 @@ describe('POST /api/kyc/upload', () => {
     serviceRpc.mockResolvedValueOnce({ data: null, error: { message: 'active_submission_exists' } });
     const form = new FormData();
     form.set('ocrConsent', 'true');
+    form.set('holderName', 'Example Holder');
+    form.set('operationId', '44444444-4444-4444-8444-444444444444');
     form.set('icNumber', '900101-14-5678');
     form.set('docType', 'national_id');
     form.set('frontFile', new File(['front'], 'front.jpg', { type: 'image/jpeg' }));
@@ -151,6 +180,8 @@ describe('POST /api/kyc/upload', () => {
     serviceRpc.mockResolvedValueOnce({ data: null, error: { message } });
     const form = new FormData();
     form.set('ocrConsent', 'true');
+    form.set('holderName', 'Example Holder');
+    form.set('operationId', '44444444-4444-4444-8444-444444444444');
     form.set('icNumber', '900101-14-5678');
     form.set('docType', 'national_id');
     form.set('frontFile', new File(['front'], 'front.jpg', { type: 'image/jpeg' }));
@@ -163,7 +194,7 @@ describe('POST /api/kyc/upload', () => {
   });
   function request() {
     const body = new FormData();
-    for (const [key,value] of Object.entries({ocrConsent:'true',docType:'national_id',icNumber:'900101-14-5678'})) body.set(key,value);
+    for (const [key,value] of Object.entries({ocrConsent:'true',holderName:'Example Holder',operationId:'44444444-4444-4444-8444-444444444444',docType:'national_id',icNumber:'900101-14-5678'})) body.set(key,value);
     body.set('frontFile',new File(['front'],'front.jpg',{type:'image/jpeg'}));
     body.set('backFile',new File(['back'],'back.jpg',{type:'image/jpeg'}));
     return new Request('http://localhost/api/kyc/upload',{method:'POST',body});
@@ -183,7 +214,7 @@ describe('POST /api/kyc/upload', () => {
   });
   it('abandons only this draft when Storage throws', async () => {
     getUser.mockResolvedValue({data:{user:{id:'11111111-1111-4111-8111-111111111111'}}});
-    serviceRpc.mockResolvedValue({data:'33333333-3333-4333-8333-333333333333',error:null});
+    serviceRpc.mockResolvedValue({data:{submissionId:'33333333-3333-4333-8333-333333333333',state:'processing'},error:null});
     upload.mockRejectedValueOnce(new Error('secret storage path'));
     const response=await POST(request());
     expect(response.status).toBe(502); expect(abandonAndRemoveKycEvidence).toHaveBeenCalledOnce();
@@ -191,7 +222,7 @@ describe('POST /api/kyc/upload', () => {
   });
   it('preserves evidence when finalization outcome and abandonment are uncertain', async () => {
     getUser.mockResolvedValue({data:{user:{id:'11111111-1111-4111-8111-111111111111'}}});
-    serviceRpc.mockResolvedValue({data:'33333333-3333-4333-8333-333333333333',error:null});
+    serviceRpc.mockResolvedValue({data:{submissionId:'33333333-3333-4333-8333-333333333333',state:'processing'},error:null});
     authenticatedRpc.mockRejectedValue(new Error('timeout'));
     vi.mocked(abandonAndRemoveKycEvidence).mockResolvedValue({ok:false,reason:'draft_not_abandoned'});
     const response=await POST(request()); expect(response.status).toBe(500);

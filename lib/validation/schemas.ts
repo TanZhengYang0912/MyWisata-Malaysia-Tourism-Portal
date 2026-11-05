@@ -4,6 +4,8 @@ import { checkoutContactSchema } from "@/lib/checkout/contact";
 // before hitting the DB. Never trust `await request.json()` directly.
 
 import { z } from 'zod';
+import { log } from '@/lib/log';
+import { createRequestId } from '@/lib/request-id';
 import { validateReviewReason } from '@/lib/kyc/review-reasons';
 import { KYC_REVIEW_REASON_CODES } from '@/lib/kyc/types';
 
@@ -32,12 +34,20 @@ export const kycReviewSchema = z.object({
   action: z.enum(['approve', 'reject', 'request_info']),
   reasonCode: z.enum(KYC_REVIEW_REASON_CODES).optional(),
   reasonDetail: z.string().max(500).optional(),
+  operationId: uuid.optional(),
 }).strict().superRefine((data, ctx) => {
   if (data.action === 'approve') {
     if (data.reasonCode !== undefined || data.reasonDetail !== undefined) {
       ctx.addIssue({ code: 'custom', message: 'Approved submissions cannot include a review reason', path: ['reasonCode'] });
     }
+    if (!data.operationId) {
+      ctx.addIssue({ code: 'custom', message: 'An idempotency key is required', path: ['operationId'] });
+    }
     return;
+  }
+
+  if (data.operationId !== undefined) {
+    ctx.addIssue({ code: 'custom', message: 'Approval operation IDs are only valid for approval', path: ['operationId'] });
   }
 
   if (!data.reasonCode) {
@@ -256,8 +266,23 @@ export function apiOk<T>(data: T, init?: { status?: number }) {
   return Response.json({ data, error: null }, { status: init?.status ?? 200 });
 }
 
-export function apiFail(code: string, message: string, status = 400, details?: unknown) {
-  return Response.json({ data: null, error: { code, message, details } }, { status });
+export function apiFail(
+  code: string,
+  message: string,
+  status = 400,
+  details?: unknown,
+  options: { requestId?: string } = {},
+) {
+  const exposesInternals = /(?:row.level security|\brls\b|postgres|postgrest|supabase|database|relation ["']|column ["']|constraint|sqlstate|\.env(?:\.|\b)|api key|secret key|storage bucket|permission denied|function\s+[^ ]+\s+does not exist|could not find the function|schema cache|does not exist|invalid input syntax for type)/i.test(message);
+  const safeMessage = exposesInternals ? 'The request could not be completed. Please try again, or contact support if the problem continues.' : message;
+  const requestId = status >= 500
+    ? (options.requestId && /^[A-Za-z0-9:_-]{1,128}$/.test(options.requestId) ? options.requestId : createRequestId())
+    : undefined;
+  if (requestId) log('error', 'api_failure', { requestId, code });
+  return Response.json(
+    { data: null, error: { code, message: safeMessage, details: exposesInternals ? undefined : details, ...(requestId ? { requestId } : {}) } },
+    { status, headers: requestId ? { 'x-request-id': requestId } : undefined },
+  );
 }
 
 /**

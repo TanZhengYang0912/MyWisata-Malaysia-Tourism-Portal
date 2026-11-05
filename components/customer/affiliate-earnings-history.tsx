@@ -153,6 +153,11 @@ export function AffiliateEarningsHistory({
           </div>
         </div>
       )}
+      {shown.some((commission) => commission.status === "pending") ? (
+        <p role="status" className="border-b border-border bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
+          {tCustomer("strictMigration.affiliate.earnings.pendingNotice")}
+        </p>
+      ) : null}
       <div className="divide-y divide-border">
         {!historyPage && !historyUnavailable ? (
           <p className="px-4 py-8 text-center text-sm text-muted-foreground">{tCustomer("ui.loading")}</p>

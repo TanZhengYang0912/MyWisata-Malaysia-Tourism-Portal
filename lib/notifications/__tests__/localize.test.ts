@@ -30,6 +30,32 @@ describe('notification localization', () => {
     expect(result.title).toContain('12.5');
   });
 
+  it('localizes vendor lifecycle titles while keeping staff-entered reasons intact', () => {
+    const result = localizeNotification({
+      type: 'vendor_suspended',
+      title: 'Your vendor "Rasa Malaysia" has been suspended',
+      body: 'Please provide updated registration documents.',
+      metadata: { vendorName: 'Rasa Malaysia' },
+    }, translate);
+
+    expect(result.title).toContain('notifications.events.vendorLifecycle.suspended.title');
+    expect(result.title).toContain('Rasa Malaysia');
+    expect(result.body).toBe('Please provide updated registration documents.');
+  });
+
+  it('keeps legacy vendor lifecycle content unchanged when structured name is missing', () => {
+    const result = localizeNotification({
+      type: 'vendor_approved',
+      title: 'Your vendor "Legacy Shop" has been approved',
+      body: 'You can now manage your outlets and products.',
+    }, translate);
+
+    expect(result).toEqual({
+      title: 'Your vendor "Legacy Shop" has been approved',
+      body: 'You can now manage your outlets and products.',
+    });
+  });
+
   it('keeps dynamic user text and unknown event types unchanged', () => {
     const result = localizeNotification({
       type: 'withdrawal_rejected',

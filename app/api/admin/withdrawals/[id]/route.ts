@@ -36,7 +36,7 @@ export async function GET(
       payout_execution_claim_token, payout_execution_claimed_at,
       customer_reason, created_at, updated_at,
       users!inner(
-        full_name, email, kyc_status, tier,
+        full_name, email, kyc_status, tier, verified_kyc_submission_id,
         stripe_connect_account_id,
         kyc_submissions!kyc_submissions_user_id_fkey(status, reviewed_at, document_type)
       ),
@@ -69,8 +69,8 @@ export async function GET(
     // The review-source projection is additive and may not exist yet on a
     // remote database that has not applied migration 088. It must not block
     // the approver from opening the withdrawal and using the governed action
-    // endpoints; the UI will show the source sections as empty until the
-    // projection is available.
+    // endpoints. Return an explicit status so the UI does not present a failed
+    // projection as a confirmed empty source history.
     console.warn('[admin/withdrawals] review sources unavailable', {
       withdrawalId,
       message: sourceError?.message ?? 'empty_response',
@@ -89,6 +89,11 @@ export async function GET(
   const w = r.wallets as Record<string, unknown>;
   const kycSubs = (u.kyc_submissions as Record<string, unknown>[] | null) ?? [];
   const latestKyc = kycSubs[0] as Record<string, unknown> | undefined;
+  const verifiedSubmissionId = u.verified_kyc_submission_id as string | null;
+  const verifiedSubmission = verifiedSubmissionId
+    ? await service.from('kyc_submissions').select('status,legal_name_snapshot').eq('id', verifiedSubmissionId).eq('user_id', r.user_id).maybeSingle()
+    : { data: null, error: null };
+  if (verifiedSubmission.error) return apiFail('KYC_IDENTITY_UNAVAILABLE', 'Verified identity details could not be loaded', 503);
   const riskRelationValue = r.withdrawal_risk_assessments as Record<string, unknown> | Record<string, unknown>[] | null;
   const risk = Array.isArray(riskRelationValue) ? riskRelationValue[0] : riskRelationValue;
   const approvals = (r.withdrawal_approvals as Record<string, unknown>[] | null) ?? [];
@@ -121,6 +126,7 @@ export async function GET(
       email:        u.email as string ?? '',
       kycStatus:    u.kyc_status as string ?? 'unverified',
       kycApprovedAt: latestKyc?.reviewed_at as string | null ?? null,
+      kycVerifiedName: verifiedSubmission.data?.status === 'approved' ? verifiedSubmission.data.legal_name_snapshot ?? null : null,
     },
     wallet: {
       topupSen:          (w.topup_sen as number) ?? 0,
@@ -145,6 +151,7 @@ export async function GET(
     }),
     riskSnapshot: (risk?.snapshot as Record<string, unknown>) ?? {},
     reviewSources: sourceData as WithdrawalReviewDetail['reviewSources'] ?? EMPTY_REVIEW_SOURCES,
+    reviewSourcesStatus: sourceError || !sourceData ? 'unavailable' : 'ready',
     payoutFailure: {
       provider: r.payout_provider as string | null,
       eventId: r.payout_provider_event_id as string | null,

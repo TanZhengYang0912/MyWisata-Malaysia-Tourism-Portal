@@ -118,6 +118,13 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
                 }),
               };
             }
+            if (table === "vendors") {
+              return {
+                select: vi.fn().mockReturnValue({
+                  eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { id: vendorId, status: "approved", kind: "standard", name: "Vendor A" }, error: null }) }),
+                }),
+              };
+            }
             return {
               select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn() }) }),
             };

@@ -203,7 +203,7 @@ describe("StaffRolesTab", () => {
         return response({ data: { candidates: [] }, error: null });
       }
       if (url === "/api/admin/access-control/staff-roles/custom-role/assignments" && init?.method === "POST") {
-        return response({ data: { assignmentId: "assignment-1", auditEventId: "audit-2" }, error: null }, 201);
+        return response({ data: { assignmentId: "assignment-1", roleId: "custom-role", auditEventId: "audit-2" }, error: null }, 201);
       }
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -355,8 +355,10 @@ describe("StaffRolesTab", () => {
   });
 
   it("previews and confirms the exact additive permissions before submitting the selected UUID", async () => {
+    const onViewAudit = vi.fn();
+    const onMutation = vi.fn();
     await act(async () => {
-      root?.render(<StaffRolesTab onViewAudit={vi.fn()} />);
+      root?.render(<StaffRolesTab onViewAudit={onViewAudit} onMutation={onMutation} />);
     });
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -398,6 +400,8 @@ describe("StaffRolesTab", () => {
       userId: "22222222-2222-4222-8222-222222222222",
       reason: "Add a second wallet approver",
     });
+    expect(onMutation).toHaveBeenCalledWith(expect.objectContaining({ auditEventId: "audit-2", assignmentId: "assignment-1" }), expect.stringContaining("staffRoleGranted"));
+    expect(onViewAudit).not.toHaveBeenCalled();
   });
 
   it("blocks an active duplicate role assignment", async () => {
@@ -462,8 +466,13 @@ describe("StaffRolesTab", () => {
     await setValue(findOne(container, (element) => element.getAttribute("id") === "assignment-reason"), "Restore wallet review coverage");
 
     expect(container.textContent).not.toContain("accessControl.staffRoles.alreadyAssigned");
-    expect(findOne(container, (element) =>
-      element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.reviewGrant")).disabled).toBe(false);
+    // Employee assignment checks run on the next task. Wait for the observed
+    // permission result instead of assuming it finishes within a fixed delay.
+    await vi.waitFor(async () => {
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+      expect(findOne(container, (element) =>
+        element.tagName === "BUTTON" && element.textContent.includes("accessControl.staffRoles.reviewGrant")).disabled).toBe(false);
+    });
   });
 
   it("shows a distinct empty result only after a completed staff search", async () => {

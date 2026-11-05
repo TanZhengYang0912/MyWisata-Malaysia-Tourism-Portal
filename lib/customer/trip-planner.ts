@@ -219,6 +219,12 @@ export function resolveTripOrigin(items: TripItem[], date: string | null): TripI
   return ordered.find(item=>item.is_day_origin && item.scheduled_date === date) ?? ordered.find(item=>item.source === "location" && !item.is_day_origin) ?? null;
 }
 
+export function hasDistinctTripRoutePoints(points: readonly (readonly [number, number])[]): boolean {
+  if (points.length < 2) return false;
+  const [latitude, longitude] = points[0];
+  return points.some(([nextLatitude, nextLongitude]) => nextLatitude !== latitude || nextLongitude !== longitude);
+}
+
 export function getTripDiscoveryAnchor(items: TripItem[], date: string | null): { lat: number; lng: number } | undefined {
   const origin = resolveTripOrigin(items, date);
   if (origin && isValidTripCoordinate(origin.lat, origin.lng)) return { lat: origin.lat, lng: origin.lng };

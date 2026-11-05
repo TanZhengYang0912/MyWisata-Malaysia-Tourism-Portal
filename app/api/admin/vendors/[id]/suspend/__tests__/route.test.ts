@@ -99,6 +99,11 @@ describe("POST /api/admin/vendors/:id/suspend", () => {
       type: "vendor_suspended",
       link: "/vendor/dashboard",
     }));
+    expect(mocks.emitVendorNotification).toHaveBeenCalledWith(expect.objectContaining({
+      vendorId: VENDOR_ID,
+      type: "vendor_suspended",
+      metadata: { vendorName: "Rasa Malaysia Kitchen", status: "suspended" },
+    }));
     expect(await response.json()).toMatchObject({ data: { id: VENDOR_ID, status: "suspended" } });
   });
 });

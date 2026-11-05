@@ -23,7 +23,7 @@ export async function GET(request: Request, { params }: Props) {
   const to = url.searchParams.get('to');
   const linkedOrderId = url.searchParams.get('orderId');
 
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendor(vendorId, undefined, { requireApproved: true });
   if (!access.ok) return access.response;
   if (linkedOrderId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(linkedOrderId)) {
     return apiOk({ items: [], pagination: { page, pageSize, total: 0, totalPages: 1 } });

@@ -1,5 +1,22 @@
 export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 
+export type AvatarUploadStartFailure = "session-expired" | "unsupported-type" | "service-unavailable" | "unknown";
+
+export async function getAvatarUploadStartFailure(response: Pick<Response, "json">): Promise<AvatarUploadStartFailure> {
+  const body = await response.json().catch(() => null) as { error?: { code?: unknown } } | null;
+  switch (body?.error?.code) {
+    case "UNAUTHORIZED": return "session-expired";
+    case "INVALID_TYPE": return "unsupported-type";
+    case "STORAGE_ERROR": return "service-unavailable";
+    default: return "unknown";
+  }
+}
+
+export function formatAvatarFileSize(sizeBytes: number): string {
+  const megabytes = Math.ceil((sizeBytes / (1024 * 1024)) * 100) / 100;
+  return megabytes.toFixed(2);
+}
+
 export const AVATAR_ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
 const SIGNATURES: Record<string, Array<{ offset: number; bytes: number[] }>> = {

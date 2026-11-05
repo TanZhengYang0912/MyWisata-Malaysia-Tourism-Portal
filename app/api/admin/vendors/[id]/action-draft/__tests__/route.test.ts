@@ -94,6 +94,16 @@ describe('POST /api/admin/vendors/[id]/action-draft', () => {
     expect(response.status).toBe(502);
   });
 
+  it('explains when vendor details were withheld from AI', async () => {
+    mockVendorRow();
+    draftVendorActionReason.mockResolvedValue({ error: 'sensitive_data_detected' });
+    const response = await callRoute('suspend');
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'PERSONAL_DATA_WITHHELD', message: expect.stringContaining('write the reason manually') },
+    });
+  });
+
   it('drafts using the vendor\'s real details and the requested action', async () => {
     mockVendorRow();
     draftVendorActionReason.mockResolvedValue('Please provide your business registration document.');

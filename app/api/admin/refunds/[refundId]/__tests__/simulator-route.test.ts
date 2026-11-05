@@ -11,7 +11,10 @@ const mocks = vi.hoisted(() => ({
   refundMaybeSingle: vi.fn(),
   serviceRpc: vi.fn(),
   serviceFrom: vi.fn(),
+  adminGuard: vi.fn(),
 }));
+
+vi.mock('@/lib/staff-permissions/server', () => ({ requireStaffRoleManagementSuperAdmin: mocks.adminGuard }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
@@ -53,6 +56,7 @@ describe('POST /api/admin/refunds/:refundId simulated provider refund', () => {
     vi.stubEnv('PAYMENT_SIMULATOR_MODE', 'enabled');
     vi.stubEnv('PAYMENT_SIMULATOR_WEBHOOK_SECRET', 'refund-route-test-secret');
     mocks.getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } }, error: null });
+    mocks.adminGuard.mockResolvedValue({ db: {}, user: { id: '11111111-1111-4111-8111-111111111111' }, response: null });
     mocks.rolesSelect.mockResolvedValue({ data: [{ roles: { name: 'super_admin' } }] });
     mocks.serviceFrom.mockReturnValue(queryResult({
       id: REFUND_ID,

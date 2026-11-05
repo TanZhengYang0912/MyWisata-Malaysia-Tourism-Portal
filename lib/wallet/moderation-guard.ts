@@ -17,7 +17,7 @@ export type WalletModerationAdvisory = {
 
 export type WalletModerationGuardResult =
   | { ok: true; categories: string[]; advisory: WalletModerationAdvisory | null }
-  | { ok: false; code: 'RATE_LIMITED' | 'MODERATION_UNAVAILABLE' | 'CONTENT_REJECTED' | 'IRRELEVANT'; message: string };
+  | { ok: false; code: 'RATE_LIMITED' | 'MODERATION_UNAVAILABLE' | 'CONTENT_REJECTED' | 'IRRELEVANT' | 'PERSONAL_DATA_REMOVE'; message: string };
 
 async function recordAttempt(input: GuardInput, result: 'accepted' | 'flagged' | 'irrelevant' | 'unavailable' | 'invalid', categories: string[]) {
   try {
@@ -56,6 +56,9 @@ export async function moderateWalletAction(input: GuardInput): Promise<WalletMod
   const result = await moderateWalletReason(input.reason, input.action, input.reasonCategory);
   if ('error' in result) {
     await recordAttempt(input, 'unavailable', []);
+    if (result.error === 'sensitive_data_detected') {
+      return { ok: false, code: 'PERSONAL_DATA_REMOVE', message: 'Your full explanation was not sent to AI review because it may contain personal details. Remove identity, bank, phone, email, or private-address details and submit it again; AI-free submission is unavailable for this action.' };
+    }
     return { ok: false, code: 'MODERATION_UNAVAILABLE', message: 'Content review is temporarily unavailable; please try again.' };
   }
   if (result.flagged) {

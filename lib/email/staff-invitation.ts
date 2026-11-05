@@ -13,34 +13,34 @@ const COPY: Record<StaffInvitationLocale, {
   ignore: string;
 }> = {
   en: {
-    subject: "Invitation to join the MyLawatan team",
-    heading: "You are invited to join the MyLawatan team",
+    subject: "Invitation to join the MYLawatan team",
+    heading: "You are invited to join the MYLawatan team",
     introduction: "Hello, please review the role, permissions, and expiry below. If everything looks right, use the button to review and accept your invitation.",
     role: "Role",
     permissions: "Permissions",
     expires: "This invitation expires",
     action: "Review and accept invitation",
-    ignore: "If you were not expecting this invitation, please do not accept it. You may ignore this email or contact a MyLawatan administrator through an official channel.",
+    ignore: "If you were not expecting this invitation, please do not accept it. You may ignore this email or contact a MYLawatan administrator through an official channel.",
   },
   ms: {
-    subject: "Jemputan menyertai pasukan MyLawatan",
-    heading: "Anda dijemput menyertai pasukan MyLawatan",
+    subject: "Jemputan menyertai pasukan MYLawatan",
+    heading: "Anda dijemput menyertai pasukan MYLawatan",
     introduction: "Salam, sila semak peranan, kebenaran dan tarikh tamat tempoh di bawah. Jika semuanya tepat, gunakan butang untuk menyemak dan menerima jemputan.",
     role: "Peranan",
     permissions: "Kebenaran",
     expires: "Jemputan ini tamat tempoh",
     action: "Semak dan terima jemputan",
-    ignore: "Jika anda tidak menjangkakan jemputan ini, sila jangan menerimanya. Anda boleh mengabaikan e-mel ini atau menghubungi pentadbir MyLawatan melalui saluran rasmi.",
+    ignore: "Jika anda tidak menjangkakan jemputan ini, sila jangan menerimanya. Anda boleh mengabaikan e-mel ini atau menghubungi pentadbir MYLawatan melalui saluran rasmi.",
   },
   "zh-CN": {
-    subject: "邀请您加入 MyLawatan 团队",
-    heading: "您受邀加入 MyLawatan 团队",
+    subject: "邀请您加入 MYLawatan 团队",
+    heading: "您受邀加入 MYLawatan 团队",
     introduction: "您好，请查看以下角色、权限和邀请有效期限。确认无误后，您可以点击下方按钮查看并接受邀请。",
     role: "角色",
     permissions: "权限",
     expires: "邀请有效至",
     action: "查看并接受邀请",
-    ignore: "如果您没有预期收到此邀请，请勿接受。您可以忽略此邮件，或通过 MyLawatan 官方渠道联系管理员确认。",
+    ignore: "如果您没有预期收到此邀请，请勿接受。您可以忽略此邮件，或通过 MYLawatan 官方渠道联系管理员确认。",
   },
 };
 

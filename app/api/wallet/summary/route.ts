@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { deriveCustomerWalletCapabilities } from '@/lib/wallet/customer-capabilities';
 import { payoutDestinationDisplayLabel } from '@/lib/payouts/destinations';
+import { computeProfileCompletion } from '@/lib/verification/eligibility';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
       .maybeSingle(),
     db
       .from('users')
-      .select('kyc_status,stripe_payouts_enabled')
+      .select('email_verified_at,phone_verified_at,profile_completed_at,full_name,avatar_url,bio,city,country,kyc_status,stripe_payouts_enabled')
       .eq('id', user.id)
       .maybeSingle(),
     destinationPromise,
@@ -57,6 +58,17 @@ export async function GET(request: Request) {
   if (!Number.isSafeInteger(configuredMinimum) || configuredMinimum < 100) return NextResponse.json({ error: 'Withdrawal settings are invalid' }, { status: 503 });
   const destination = destinationResult.data;
   const capabilities = deriveCustomerWalletCapabilities({
+    emailVerified: Boolean(profileResult.data.email_verified_at),
+    phoneVerified: Boolean(profileResult.data.phone_verified_at),
+    profileComplete: Boolean(profileResult.data.profile_completed_at)
+      && computeProfileCompletion({
+        fullName: profileResult.data.full_name,
+        avatarUrl: profileResult.data.avatar_url,
+        bio: profileResult.data.bio,
+        city: profileResult.data.city,
+        country: profileResult.data.country,
+        profileCompletedAt: profileResult.data.profile_completed_at,
+      }).complete,
     kycStatus: profileResult.data.kyc_status,
     availableEarningsSen: wallet?.earnings_sen ?? 0,
     minimumWithdrawalSen: configuredMinimum,

@@ -18,12 +18,13 @@ type EventPickupPass = {
   items: { name: string; quantity: number }[];
   eventToken: string;
 };
+type EventPickupPassDisplay = EventPickupPass & { qr: string };
 
 /** QR codes for collecting event reservations — one per stall and pickup date, valid on that date only. */
-export function EventPickupQrCodes({ orderId }: { orderId: string }) {
+export function EventPickupQrCodes({ orderId, passes: controlledPasses }: { orderId: string; passes?: EventPickupPassDisplay[] }) {
   const { t, i18n } = useTranslation("customer");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
-  const [passes, setPasses] = useState<Array<EventPickupPass & { qr: string }>>([]);
+  const [passes, setPasses] = useState<EventPickupPassDisplay[]>([]);
 
   const refresh = useCallback(async () => {
     try {
@@ -44,13 +45,15 @@ export function EventPickupQrCodes({ orderId }: { orderId: string }) {
   }, [orderId]);
 
   useEffect(() => {
+    if (controlledPasses !== undefined) return;
     const load = () => { void refresh(); };
     load();
     window.addEventListener("focus", load);
     return () => window.removeEventListener("focus", load);
-  }, [refresh]);
+  }, [controlledPasses, refresh]);
 
-  if (passes.length === 0) return null;
+  const visiblePasses = controlledPasses ?? passes;
+  if (visiblePasses.length === 0) return null;
 
   return (
     <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-labelledby="event-pickup-qr-heading">
@@ -58,7 +61,7 @@ export function EventPickupQrCodes({ orderId }: { orderId: string }) {
         <h2 id="event-pickup-qr-heading" className="text-sm font-bold uppercase tracking-[0.14em] text-primary">{t("ui.eventPickup.title")}</h2>
         <p className="mt-1 text-xs text-muted-foreground">{t("ui.eventPickup.description")}</p>
       </div>
-      {passes.map((pass) => {
+      {visiblePasses.map((pass) => {
         const collected = pass.status === "collected";
         const date = formatEventDate(pass.pickupDate, locale);
         return (

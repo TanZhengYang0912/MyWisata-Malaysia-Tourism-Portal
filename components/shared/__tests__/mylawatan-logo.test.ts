@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const sourcePath = resolve(process.cwd(), "components/shared/mylawatan-logo.tsx");
 const source = existsSync(sourcePath) ? readFileSync(sourcePath, "utf8") : "";
 
-describe("MyLawatan logo contract", () => {
+describe("MYLawatan logo contract", () => {
   it("defines a reusable mark using the authentic brand asset with proportional scaling", () => {
     expect(source).toContain("export function MyLawatanMark");
     expect(source).toContain("/branding/mylawatan-mark-transparent.png");
@@ -20,7 +20,7 @@ describe("MyLawatan logo contract", () => {
   });
 
   it("renders the master logo with object-contain to prevent image distortion", () => {
-    expect(source).toContain("/branding/mylawatan-logo-transparent.png?v=2");
+    expect(source).toContain("/branding/mylawatan-logo-transparent.png?v=3");
     expect(source).toContain("object-contain");
     expect(existsSync(resolve(process.cwd(), "public/branding/mylawatan-logo-transparent.png"))).toBe(true);
   });

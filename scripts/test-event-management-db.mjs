@@ -452,7 +452,12 @@ try {
       await query(dbClient, 'ALTER TABLE public.wallets ADD COLUMN IF NOT EXISTS pending_earnings_sen bigint NOT NULL DEFAULT 0;');
       await apply(dbClient, 'supabase/migrations/20260911000000_vendor_order_settlement.sql');
       await query(dbClient, 'ALTER TABLE public.order_settlements ADD COLUMN is_simulated boolean NOT NULL DEFAULT false;');
-      if (env.EVENT_TEST_SETTLEMENT !== 'baseline') await apply(dbClient, 'supabase/migrations/20261011194020_event_settlement_pickup_resolution.sql');
+      if (env.EVENT_TEST_SETTLEMENT !== 'baseline') {
+        await apply(dbClient, 'supabase/migrations/20261011194020_event_settlement_pickup_resolution.sql');
+        await query(dbClient, sqlFile('supabase/tests/event_refund_resolution_backfill_fixture.sql'));
+        console.log('installed legacy processed-refund resolution fixture');
+        await apply(dbClient, 'supabase/migrations/20261029045138_affiliate_refund_resolution_code.sql');
+      }
       await runTransaction(dbClient, 'event settlement and overdue pickup resolution', sqlFile('supabase/tests/event_settlement_pickup_resolution.sql'));
       if (env.EVENT_TEST_SETTLEMENT !== 'baseline') await runSettlementRefundConcurrency(database);
       if (env.EVENT_TEST_VENDOR_NOTICES) {

@@ -38,7 +38,7 @@ if (!email || !password || !url || !anonKey) {
   process.exit(1);
 }
 
-const FRIENDLY_NAME = 'MyLawatan';
+const FRIENDLY_NAME = 'MYLawatan';
 
 /** RFC 6238 TOTP: SHA-1, 30-second steps, 6 digits. */
 function totp(secret, now = Date.now()) {
@@ -72,11 +72,11 @@ if (factors.some((factor) => factor.status === 'verified')) {
   console.error(`${email} already has an authenticator. To replace it, delete the factor in Supabase (Authentication → Users → ${email} → MFA) and run this again.`);
   process.exit(1);
 }
-for (const factor of factors.filter((entry) => entry.friendly_name === FRIENDLY_NAME)) {
+for (const factor of factors.filter((entry) => [FRIENDLY_NAME, 'MyLawatan'].includes(entry.friendly_name))) {
   await auth('DELETE', `/factors/${factor.id}`, undefined, token);
 }
 
-const factor = await auth('POST', '/factors', { factor_type: 'totp', friendly_name: FRIENDLY_NAME, issuer: 'MyLawatan' }, token);
+const factor = await auth('POST', '/factors', { factor_type: 'totp', friendly_name: FRIENDLY_NAME, issuer: 'MYLawatan' }, token);
 const challenge = await auth('POST', `/factors/${factor.id}/challenge`, {}, token);
 await auth('POST', `/factors/${factor.id}/verify`, { challenge_id: challenge.id, code: totp(factor.totp.secret) }, token);
 

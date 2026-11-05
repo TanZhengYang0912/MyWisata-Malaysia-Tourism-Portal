@@ -149,7 +149,6 @@
   "accessControl": {
     "eyebrow": "Security governance",
     "title": "Access Control",
-    "description": "Manage capability metadata, versioned policies, targeted assignments, and the linked global audit history.",
     "capabilityNames": {
       "platform_browse": "Authenticated browsing",
       "commerce_booking": "Customer booking",
@@ -160,6 +159,7 @@
       "affiliate_limited": "Limited affiliate",
       "affiliate_full": "Full affiliate",
       "affiliate_earn_commission": "Affiliate commission earning",
+      "wallet_top_up": "Wallet top-up",
       "wallet_request_withdrawal": "Withdrawal request",
       "wallet_approve_withdrawal": "Withdrawal approval"
     },
@@ -223,7 +223,8 @@
       "loadStaffCandidates": "Unable to search eligible staff.",
       "saveStaffRole": "Unable to save the staff role.",
       "assignStaffRole": "Unable to assign the staff role.",
-      "loadAudit": "Unable to load the Audit Log."
+      "loadAudit": "Unable to load the Audit Log.",
+      "invalidAuditDateRange": "Enter a valid date range. Audit dates use Malaysia Time (MYT)."
     },
     "feedback": {
       "capabilityUpdated": "Capability governance metadata updated.",
@@ -232,6 +233,7 @@
       "staffRoleUpdated": "Staff role action completed.",
       "staffModuleUpdated": "Staff module settings saved.",
       "staffRoleGranted": "{{role}} was granted to {{employee}}.",
+      "previousMutationReceipt": "A recent access change is ready for audit review.",
       "committedReceiptUnavailable": "The change was saved, but its audit receipt or refreshed status is temporarily unavailable. Refresh this page before making another change."
     },
     "filters": {
@@ -256,18 +258,9 @@
     },
     "overview": {
       "activeVersions": "Active versions",
-      "policiesDetail": "{{count}} governed policies",
-      "policiesDetail_one": "{{count}} governed policy",
-      "policiesDetail_other": "{{count}} governed policies",
       "pendingApprovals": "Pending approvals",
       "activeAssignments": "Active assignments",
-      "expiringDetail": "{{count}} expiring within 30 days",
-      "expiringDetail_one": "{{count}} expires within 30 days",
-      "expiringDetail_other": "{{count}} expire within 30 days",
       "generation": "Policy generation",
-      "capabilitiesDetail": "{{count}} registered capabilities",
-      "capabilitiesDetail_one": "{{count}} registered capability",
-      "capabilitiesDetail_other": "{{count}} registered capabilities",
       "healthTitle": "Evaluator health",
       "healthDescription": "Warnings reflect the current governed state and never weaken hard guards.",
       "noWarnings": "No evaluator warnings detected.",
@@ -408,9 +401,12 @@
       "invitationSent": "Invitation email sent.",
       "invitationResent": "Invitation email resent with a new link.",
       "invitationRevoked": "Invitation revoked.",
+      "invitationCommittedDeliveryFailed": "The invitation was recorded, but its email could not be sent. Check the invitation status before retrying.",
+      "invitationCommittedDeliveryPending": "The invitation was recorded. Email delivery is still being confirmed; check its status before retrying.",
       "invitationError": "Unable to process the staff invitation.",
       "joinedEmployees": "Joined employees",
       "invitationListEntry": "{{roleName}} · {{status}} · {{delivery}}",
+      "expiresAt": "Expires {{value}}",
       "delivery": {
         "pending": "Waiting",
         "sending": "Sending",
@@ -560,11 +556,13 @@
       "revokeTitle": "Revoke assignment"
     },
     "audit": {
-      "readOnlyTitle": "Read-only evidence.",
-      "readOnlyDescription": "This global Audit Log includes Access Control and linked platform governance events; Catalogue Review remains a separate workflow.",
+      "readOnlyTitle": "Read-only records.",
+      "readOnlyDescription": "Access Control and related administration activity.",
       "focusedEvent": "Selected audit event: {{id}}",
+      "focusedEntity": "Showing audit events for {{id}}",
       "focusNotOnPage": "The selected event is outside the current result page.",
       "when": "When",
+      "whenMyt": "When (MYT)",
       "actor": "Actor",
       "action": "Action",
       "target": "Target",
@@ -572,6 +570,7 @@
       "trace": "Trace reference",
       "details": "Details",
       "systemActor": "System",
+      "unknownActor": "Unknown account",
       "before": "Before",
       "after": "After",
       "changeSummary": "Key changes",
@@ -607,6 +606,17 @@
         "staffInvitationDeliverySucceeded": "Delivered a staff invitation",
         "staffInvitationResent": "Resent a staff invitation",
         "staffInvitationRevoked": "Revoked a staff invitation",
+        "staffModuleCreated": "Created a staff module",
+        "staffModuleUpdated": "Updated a staff module",
+        "staffPasskeyApprove": "Verified a Passkey for an approval",
+        "staffPasskeyEnrollmentGrant": "Granted Passkey enrollment",
+        "staffPasskeyFraudOverride": "Verified a Passkey for a fraud override",
+        "staffPasskeyLogin": "Signed in with a Passkey",
+        "staffPasskeyManage": "Verified a Passkey for staff security management",
+        "staffPasskeyRecoveryGrant": "Granted Passkey recovery",
+        "staffPasskeyRegister": "Registered a Passkey",
+        "staffPasskeyRetryPayout": "Verified a Passkey to retry a payout",
+        "staffPasskeyRevoked": "Revoked a Passkey",
         "staffRoleAssigned": "Assigned a staff role",
         "staffRoleCreated": "Created a staff role",
         "staffRoleRevoked": "Revoked a staff role assignment",
@@ -645,6 +655,10 @@
         "customerVisible": "Customer visible",
         "manuallyAssignable": "Manually assignable",
         "generation": "Generation",
+        "assignmentId": "Assignment ID",
+        "roleId": "Role ID",
+        "userId": "User ID",
+        "revoked": "Revoked",
         "roleName": "Role name",
         "moduleKeys": "Modules",
         "permissionKeys": "Permissions",
@@ -809,6 +823,12 @@
     },
     "clearing": {
       "errors": ", {{count}} error(s)",
+      "orderReviewRequired": "{{count}} commission(s) remain pending for order review.",
+      "orderReviewRequired_one": "{{count}} commission remains pending for order review.",
+      "orderReviewRequired_other": "{{count}} commissions remain pending for order review.",
+      "rowErrors": "{{count}} result(s) need checking. Refresh the list before taking another action. Contact support with Request ID(s): {{requestIds}}.",
+      "rowErrors_one": "{{count}} result needs checking. Refresh the list before taking another action. Contact support with Request ID {{requestIds}}.",
+      "rowErrors_other": "{{count}} results need checking. Refresh the list before taking another action. Contact support with Request IDs: {{requestIds}}.",
       "result": "Cleared {{cleared}}, reversed {{reversed}}, skipped {{skipped}}{{errors}}",
       "errors_one": ", {{count}} error(s)",
       "errors_other": ", {{count}} error(s)"
@@ -835,6 +855,7 @@
       "batchFlags": "One or more fraud flags could not be updated.",
       "batchFlagUpdate": "Batch fraud flag update failed.",
       "clearing": "Clearing run failed.",
+      "clearingUncertain": "We could not confirm the result. Refresh the list before taking another action. Contact support with Request ID {{requestId}}.",
       "exportRetry": "Could not export the affiliate report. Please try again.",
       "flagNeedsLink": "Every selected open flag must have a link before disabling it.",
       "fraudSweep": "Fraud sweep failed.",
@@ -849,6 +870,9 @@
       "saveTier": "Failed to save tier.",
       "selectOpenFlags": "Select open fraud flags first.",
       "accept": "Could not accept this commission.",
+      "noShowPolicy": "This commission remains pending because there is no approved Affiliate rule for a verified customer no-show.",
+      "orderReview": "This order needs fulfilment or refund review. Resolve it in Reconciliation, then refresh before accepting.",
+      "requestIdUnavailable": "unavailable",
       "reject": "Could not reject this commission.",
       "guestReview": "Could not resolve the guest commission review. Refresh and try again."
     },
@@ -883,6 +907,22 @@
     },
     "minReferrals": "Min referrals",
     "noAttributions": "No attributions match this filter.",
+    "releasePreview": {
+      "label": "Order dry run",
+      "orderReference": "Order: {{id}}",
+      "openReconciliation": "Open Reconciliation",
+      "ready": "Order checks and the clearance window pass. Full eligibility is checked again during clearing; this preview made no changes.",
+      "waitingForMaturity": "Order checks pass. Waiting for the configured clearance date: {{date}}; full eligibility is checked again during clearing.",
+      "reasons": {
+        "no_show_policy": "Verified no-show; commission policy decision is still required.",
+        "order_exception_open": "Order exception still needs review.",
+        "order_missing": "Order could not be confirmed; keep this commission pending.",
+        "order_not_paid": "Order payment is not confirmed; keep this commission pending.",
+        "pickup_unconfirmed": "Event pickup has not been recorded as fulfilled.",
+        "preview_unavailable": "Could not verify this order; keep this commission pending.",
+        "refund_review": "Refund status needs review."
+      }
+    },
     "noCommissions": "No commissions earned yet.",
     "noDisabledLinks": "No links are currently disabled.",
     "noFlags": "Nothing flagged.",
@@ -971,7 +1011,6 @@
       "restoring": "Restoring conversation…",
       "title": "Ask about platform metrics"
     },
-    "description": "Platform analytics. Never sees raw customer records — metrics come from a fixed set of registered aggregate queries.",
     "errors": {
       "unavailable": "Assistant unavailable right now."
     },
@@ -999,7 +1038,6 @@
       "type": "Type",
       "vendorLocation": "Vendor / location"
     },
-    "description": "Review outlet, product and promotion changes before they become visible to customers.",
     "empty": "No content is waiting for review.",
     "entity": {
       "listing": "Listing",
@@ -1105,6 +1143,7 @@
       "batchFailed": "Batch knowledge document update failed.",
       "batchUpdate": "One or more knowledge documents could not be updated.",
       "draft": "Could not draft a KB entry right now.",
+      "privacyBlocked": "The full request was not sent to AI because it may contain personal details. Remove phone, email, identity, bank, or private-address details, or write the KB entry manually. Keyword answers remain available.",
       "loadDescription": "Something went wrong loading the chatbot overview. Try refreshing the page.",
       "loadTitle": "Couldn't load chatbot stats",
       "reindex": "Reindex failed.",
@@ -1406,6 +1445,26 @@
     "confirm": {
       "approve": "Confirm approval",
       "approveDescription": "This will mark the customer as KYC verified and close the active submission.",
+      "actualType": "Actual document type",
+      "documentNumber": "Document number (used to create a protected match key)",
+      "holderName": "Name shown on the document",
+      "identityEvidenceHint": "Open both current document images, then compare the actual name and number. The number is not saved in plain text.",
+      "independentEvidenceHint": "Independently inspect both current images and enter the name and number you read.",
+      "independentReview": "Confirm this case as second reviewer",
+      "issuerCountry": "Issuing country (two letter code)",
+      "manualReason": "Why is manual confirmation needed?",
+      "nameMismatch": "Name differs from OCR",
+      "numberMismatch": "Number differs from OCR",
+      "ocrUnavailable": "OCR unavailable",
+      "ocrUnreadable": "OCR unreadable",
+      "openBothDocuments": "Open both the front and back images before confirming.",
+      "secondaryReviewer": "Independent second reviewer",
+      "secondaryReviewerRequired": "Select an eligible second reviewer first.",
+      "loadingReviewers": "Loading eligible reviewers…",
+      "selectReviewer": "Select a reviewer",
+      "secondReviewRecorded": "Your independent review was recorded. The assigned reviewer can complete the decision.",
+      "secondReviewReady": "Both current evidence confirmations are recorded. You can submit the approval.",
+      "waitingForSecondReview": "Your confirmation is saved. Approval becomes available after the selected reviewer confirms the same evidence.",
       "approveTitle": "Approve KYC submission?",
       "info": "Send request",
       "infoDescription": "This will notify the customer that more information is required before KYC can be completed.",
@@ -1414,7 +1473,6 @@
       "rejectDescription": "This will reject the submission and record the selected reason in the review history.",
       "rejectTitle": "Reject KYC submission?"
     },
-    "description": "Review identity documents, resolve exceptions and keep verification decisions auditable.",
     "detail": {
       "approve": "Approve KYC",
       "automatedChecks": "Automated checks",
@@ -1457,7 +1515,8 @@
       "previewAlt": "{{side}} document for identity comparison",
       "closePreview": "Close document preview",
       "openPdf": "Open PDF in browser",
-      "pdfNote": "This earlier submission contains a PDF. Open it through the protected document viewer."
+      "pdfNote": "This earlier submission contains a PDF. Open it through the protected document viewer.",
+      "viewDetails": "View details"
     },
     "documents": {
       "driving_license": "Driving licence / MyPolis",
@@ -1494,18 +1553,13 @@
     },
     "metrics": {
       "infoRequested": "Information requested",
-      "infoRequestedNote": "Waiting for customer action",
       "oldest": "Oldest queue item",
       "pending": "Pending review",
-      "pendingNote": "Awaiting a decision",
-      "queueClear": "Queue is clear",
-      "submittedFirst": "Submitted first",
-      "verified": "Verified users",
-      "verifiedNote": "Current KYC verified accounts"
+      "verified": "Verified users"
     },
     "ocr": {
       "check": "OCR check:",
-      "documentEnding": "Document ending: {{number}}",
+      "documentEnding": "Last four digits of document number: {{number}}",
       "expiryDate": "Expiry date: {{date}}",
       "extractedName": "Extracted name: {{name}}",
       "mismatch": "Mismatch: {{fields}}",
@@ -1522,10 +1576,19 @@
       "reasonCode": "Reason code ({{reasons}}):"
     },
     "queue": {
-      "description": "Open each submission to inspect documents before taking action.",
       "oldestFirst": "Oldest first",
       "selectAll": "Select all pending submissions",
-      "title": "Review queue"
+      "title": "Review queue",
+      "nextApplicant": "Next applicant",
+      "currentReview": "Current review",
+      "startReview": "Start review",
+      "startReviewFor": "Start review for {{name}}",
+      "continueReview": "Continue review",
+      "continueReviewFor": "Continue review for {{name}}",
+      "unnamedApplicant": "Unnamed applicant",
+      "candidateUnavailable": "Unable to load the next applicant. Refresh to try again.",
+      "noAvailable": "No cases are available for you to review.",
+      "securityAttention": "Needs attention"
     },
     "reasons": {
       "document_expired": "Document is expired",
@@ -1574,6 +1637,10 @@
       "verify": "Verify and continue",
       "cancel": "Cancel setup",
       "setupError": "Unable to start authenticator verification. Please retry or reload the page.",
+      "staffAccountRequired": "This account cannot access staff verification. Choose Switch account and sign in with an active administrator or staff account.",
+      "switchAccount": "Switch account",
+      "switchAccountError": "Unable to sign out. Your account is still signed in. Try Switch account again.",
+      "retry": "Check again",
       "verifyError": "Verification failed. Enter a fresh code and try again.",
       "cancelError": "Unable to cancel setup. Please try again.",
       "recovery": "If you lose your authenticator, contact the project administrator for identity-checked recovery. Never send your QR code, secret or verification code to support."
@@ -1599,6 +1666,49 @@
       "noEmailRecipients": "No eligible reviewer has a real email address. Configure a recipient before relying on email alerts.",
       "pending_one": "{{count}} security alerts are waiting for an eligible recipient.",
       "pending_other": "{{count}} security alerts are waiting for an eligible recipient."
+    },
+    "resolution": {
+      "title": "Identity resolution",
+      "description": "A controlled, two-reviewer process for identity conflicts and corrections. Applying it only reserves or transfers a key for fresh verification; it never releases an identity.",
+      "kind": "Resolution type",
+      "legacyConflict": "Historical identity conflict",
+      "ownershipCorrection": "Freeze a contested legacy ownership record",
+      "replacement": "Replace an account’s previous identity",
+      "start": "Start resolution",
+      "secondReviewer": "Independent resolver",
+      "selectReviewer": "Select an eligible resolver",
+      "assignSecond": "Request second review",
+      "evidenceHint": "Both reviewers must inspect the current front and back and confirm the actual MY identity details independently.",
+      "documentsViewed_one": "Current documents opened: {{count}} of 2",
+      "documentsViewed_other": "Current documents opened: {{count}} of 2",
+      "reason": "Why is this identity decision being corrected?",
+      "confirmEvidence": "Confirm evidence as this reviewer",
+      "confirmations": "Primary: {{primary}} · second reviewer: {{secondary}}",
+      "confirmed": "confirmed",
+      "pending": "pending",
+      "apply": "Apply controlled resolution",
+      "cancel": "Cancel this resolution",
+      "cancelConfirm": "Cancel this identity resolution? This will invalidate its confirmations and leave all identity bindings unchanged.",
+      "cancelReason": "Why is this resolution being cancelled?",
+      "cancelReasons": {
+        "reviewer_declined": "Reviewer declined to proceed",
+        "evidence_unavailable": "Required evidence is unavailable",
+        "case_changed": "The case or evidence changed",
+        "other": "Other operational reason"
+      },
+      "cancelledNote": "Resolution cancelled. Confirmations were invalidated and identity bindings were left unchanged.",
+      "appliedNote": "Resolution recorded. The account remains unverified until normal KYC approval succeeds.",
+      "conflictHeldNote": "The identity remains reserved as a conflict. No account was selected as the owner; manual adjudication is still required.",
+      "status": "Status: {{status}}",
+      "error": "Identity resolution could not be completed. Reload the case and check its current status.",
+      "statuses": {
+        "open": "awaiting independent reviewer",
+        "second_review": "awaiting two confirmations",
+        "applied": "applied",
+        "evidence_required": "evidence required",
+        "declined": "declined",
+        "cancelled": "cancelled"
+      }
     },
     "operations": {
       "title": "KYC operations · today (Malaysia time)",
@@ -1645,8 +1755,8 @@
       "recording": "Recording this interval. Leaving this window pauses it; restart manually when ready.",
       "notRecording": "Interval recording is paused. Start it when reviewing; it does not affect the decision.",
       "recordingInterrupted": "Could not confirm the recording pause. Unclosed intervals are excluded from timing statistics.",
-      "continueNext": "After saving this decision, open the next case",
-      "intervalMeans": "Mean recorded interval: first review {{first}} seconds · re-review {{repeat}} seconds (not case handling time)"
+      "continueNext": "After saving this decision, review the next applicant",
+      "intervalMeans": "Mean recorded interval: first review {{first}} seconds · re-review {{repeat}} seconds"
     }
   },
   "reconciliation": {
@@ -1678,8 +1788,8 @@
       "gross": "Gross",
       "fee": "Commission",
       "vendorNet": "Vendor net",
-      "affiliate": "Affiliate",
-      "recommendation": "Recommendation",
+      "affiliate": "Affiliate commission",
+      "recommendation": "Referral commission",
       "platformNet": "Platform net"
     },
     "filters": {
@@ -1745,6 +1855,19 @@
     }
   },
   "payouts": {
+    "csv": {
+      "summary": "Summary",
+      "detail": "Detail",
+      "headers": {
+        "section": "Section",
+        "date_or_metric": "Date or metric",
+        "user_or_source": "User or source",
+        "source_or_value": "Source or value",
+        "count": "Count",
+        "amount_rm": "Amount RM",
+        "payout_fees_rm": "Payout fees RM"
+      }
+    },
     "allSources": "All sources",
     "amountMetrics": {
       "amount_approved_rm": "Approved RM",
@@ -1785,6 +1908,7 @@
       "load": "Unable to load payout report"
     },
     "exportCsv": "Export CSV",
+    "exportReadableCsv": "Export readable CSV",
     "eyebrow": "Finance operations",
     "financialDescription": "All amounts are shown in Malaysian ringgit.",
     "financialDetails": "Financial details",
@@ -1927,7 +2051,7 @@
       "contributorLine": "Customer recommendation · {{category}} · {{state}} · by {{author}}",
       "description": "Review community recommendations before vendor outreach.",
       "duplicate": "Duplicate",
-      "member": "MyLawatan member",
+      "member": "MYLawatan member",
       "noPending": "No pending recommendations",
       "pending": "Pending ({{count}})",
       "pendingLabel": "pending recommendations",
@@ -2107,18 +2231,14 @@
       },
       "rows": "Rows",
       "rowsPerPage": "Rows per page",
-      "searchHint": "Search applies when you press Search. Filters update automatically.",
       "searchPlaceholder": "Search name, email or user ID",
       "selectAllVisible": "Select all visible users",
       "selectUser": "Select user {{name}}",
       "stats": {
-        "attention": "Needs attention",
-        "attentionNote": "Suspended, deleted or bio restricted",
+        "attention": "Needs attention (suspended, deleted, or bio restricted)",
         "incomplete": "Incomplete profiles",
-        "pageNote": "On this page",
         "pendingKyc": "Pending KYC",
-        "total": "Total users",
-        "totalNote": "All users matching the current filters"
+        "total": "Total users"
       },
       "status": {
         "active": "Active",
@@ -2296,7 +2416,6 @@
     },
     "walletApprovers": {
       "active": "Active account",
-      "backToSettings": "Back to wallet settings",
       "currentDescription": "Each role change requires its own reason and confirmation.",
       "currentTitle": "Current approvers",
       "description": "Manage who can approve wallet withdrawals without weakening the last-approver safeguard.",
@@ -2321,7 +2440,6 @@
     "systemSettings": {
       "eyebrow": "Platform controls",
       "title": "System Settings",
-      "description": "Pause selected customer-facing operations during incidents or planned maintenance.",
       "loading": "Loading system settings…",
       "retry": "Try again",
       "unsaved": "Unsaved changes",
@@ -2331,10 +2449,6 @@
       "unknownActor": "Unknown administrator",
       "updated": "Last changed {{date}} by {{by}}",
       "saved": "System settings saved and recorded.",
-      "controls": {
-        "title": "Platform controls",
-        "description": "Changes apply to new activity after they are saved."
-      },
       "orders": {
         "title": "Pause new customer orders",
         "description": "Stops new cart, event reservation, and order-payment checkout attempts.",
@@ -2348,10 +2462,6 @@
       "reasonLabel": "Reason for this change",
       "reasonPlaceholder": "Describe the incident or maintenance reason (at least 10 characters).",
       "impact": {
-        "title": "Change impact",
-        "description": "These controls are intended for temporary incidents and maintenance.",
-        "orders": "Order pause: prevents creating new customer orders; it does not cancel existing orders.",
-        "email": "Email pause: keeps queued messages pending and resumes them later.",
         "audit": "Every save records the Super Admin, timestamp, previous values, new values, and reason."
       },
       "confirm": {
@@ -2642,7 +2752,6 @@
       "reportedChat": "Reported chat",
       "highSeverity": "High severity",
       "reviewed": "Reviewed",
-      "openRecords": "Open records",
       "reviewedRecords": "Reviewed records"
     },
     "kindLabel": {
@@ -2736,7 +2845,9 @@
       "analysisUnavailable": "AI analysis unavailable. Deterministic evidence checks are still shown below.",
       "confidence": "{{value}} confidence",
       "errors": {
-        "unavailable": "AI review unavailable right now."
+        "unavailable": "AI review unavailable right now.",
+        "privacyBlocked": "The full recommendation was not sent to AI because it may contain phone, email, ID, bank, or private-address details. Remove those details and try again, or continue the review manually without AI.",
+        "imagesWithheld": "Recommendation photos were not sent to AI because they may contain private information. Continue the review manually, or remove the photos and try again."
       },
       "evidence": "Evidence",
       "kind": "Kind",
@@ -3079,6 +3190,9 @@
     "detail": {
       "amount": "Amount",
       "appKyc": "App KYC",
+      "profileName": "Editable profile name",
+      "verifiedKycName": "Name from approved KYC",
+      "verifiedKycNameUnavailable": "No approved name on file",
       "backToQueue": "Back to withdrawal queue",
       "eyebrow": "Withdrawal review",
       "notSupplied": "Not supplied",
@@ -3095,6 +3209,7 @@
     },
     "errors": {
       "actionFailed": "Action failed",
+      "actionOutcomeUnknown": "We could not confirm whether this review action was saved. Check the current withdrawal status before taking another action.",
       "batchActionFailed": "One or more withdrawal actions failed.",
       "chooseDecisionReason": "Choose a reason for this decision.",
       "invalidReasonCategory": "Choose a valid reason category for this withdrawal action.",
@@ -3131,6 +3246,7 @@
     "evidence": {
       "affiliateSources": "Affiliate sources",
       "doNotApprove": "Do not approve until the data is available.",
+      "retrySources": "Source history did not load. Retry to check it again.",
       "fraudFlags": "Fraud flags",
       "noAffiliateTransactions": "No affiliate transactions were found.",
       "noFraudFlags": "No fraud flags recorded.",
@@ -3175,7 +3291,6 @@
       "overdue": "Overdue",
       "pendingPayoutValue": "Pending payout value",
       "requestsInQueue": "Requests in this queue",
-      "visiblePageTotal": "Visible page total",
       "waitingForSecondApprover": "Waiting for second approver"
     },
     "pagination": {
@@ -3211,7 +3326,7 @@
       "eventStatus": "Provider status",
       "amount": "Amount",
       "providerTime": "Provider time",
-      "receivedTime": "MyLawatan received",
+      "receivedTime": "MYLawatan received",
       "signatureVerified": "Signature verified",
       "payloadHash": "Payload SHA-256",
       "deliveryStatus": "Callback delivery",
@@ -3251,6 +3366,7 @@
       "singleApproval": "Single approval",
       "title": "Decision readiness",
       "unavailable": "Unavailable",
+      "noRelatedTransactions": "No related transactions found",
       "walletEvidence": "Wallet evidence"
     },
     "reasons": {
@@ -3380,13 +3496,12 @@
       "pendingRefundValue": "Pending refund value",
       "processed": "Processed",
       "requestsInQueue": "Requests in this queue",
-      "simulatedProviders": "Simulated providers",
-      "visiblePageTotal": "Visible page total"
+      "simulatedProviders": "Simulated providers"
     },
     "providers": {
       "bankTransferSimulator": "Bank transfer — Simulator",
       "grabpaySimulator": "GrabPay — Simulator",
-      "mylawatanWallet": "MyLawatan Wallet",
+      "mylawatanWallet": "MYLawatan Wallet",
       "stripeSandbox": "Stripe Sandbox",
       "tngSimulator": "Touch ’n Go eWallet — Simulator",
       "unknown": "Unknown provider"
@@ -3429,7 +3544,6 @@
       "eyebrow": "Governance operations",
       "restricted": "Staff conduct review is limited to super admins.",
       "title": "Staff conduct",
-      "description": "Flagged admin conduct and human-submitted chat reports for super-admin review.",
       "flagSummary": "{{admin}} · {{source}} · Target: {{target}}"
     },
     "moderationFlagSummary": "{{user}} · {{source}} · {{flagType}}",
@@ -3507,7 +3621,6 @@
   "moderationWords": {
     "eyebrow": "Moderation",
     "title": "Moderation Words",
-    "description": "Add words to auto-censor across tickets, comments, the chatbot, and chat — supplements the built-in list, especially for other languages.",
     "loading": "Loading…",
     "empty": "No custom words added yet.",
     "confirmDelete": "Remove \"{{term}}\" from the auto-censor list?",
@@ -3516,7 +3629,8 @@
       "termPlaceholder": "Enter a word to censor",
       "category": "Category",
       "language": "Language (optional)",
-      "languagePlaceholder": "e.g. ms, zh",
+      "languageNotSpecified": "Not specified",
+      "otherLanguage": "Other language",
       "add": "Add word"
     },
     "category": {
@@ -3955,12 +4069,12 @@
     "pickupHelp": "An uncollected order is not automatically a customer no-show. Review the items and contact evidence before closing. Amounts under review are not approved refund amounts.",
     "refreshPickups": "Refresh overdue pickups",
     "resolvePickup": "Close after verified pickup / refund",
-    "confirmNoShow": "Confirm customer no-show — close without refund",
-    "noShowNote": "Explain the verified customer no-show and contact evidence (20–500 characters).",
+    "confirmNoShow": "Confirm customer did not collect the order — close without refund",
+    "noShowNote": "Explain why the customer did not collect the order and provide contact evidence (20–500 characters).",
     "resolveNote": "Explain the verified pickup or completed refund (5–500 characters).",
     "noShowConfirm": "Confirm that the customer did not collect and no refund is required? This records closure without marking goods collected. Funds still require the waiting period and all other release checks.",
     "resolutions": {
-      "customer_no_show": "Customer no-show verified; closed without refund",
+      "customer_no_show": "Customer verified as not having collected the order; closed without refund",
       "collected": "Recorded pickup verified",
       "refunded": "Refund completion verified"
     },

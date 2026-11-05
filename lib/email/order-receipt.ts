@@ -10,7 +10,7 @@ import type { AppLocale } from '@/lib/i18n/locale';
 import { ensureCustomEmailDeliveryEnabled } from '@/lib/platform/operations-settings';
 
 export type OrderReceiptPickupPass = {
-  kind: 'food' | 'event';
+  kind: 'food' | 'event' | 'retail';
   title: string;
   subtitle: string;
   details: string[];
@@ -31,6 +31,7 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
   const copy = emailCopy(payload.locale);
   const pickupPasses = await Promise.all((payload.pickupPasses ?? []).map(async (pass, index) => ({
     ...pass,
+    instructions: pass.kind === 'event' ? copy.eventPickupQrInstructions : pass.kind === 'retail' ? copy.retailPickupQrInstructions : copy.pickupQrInstructions,
     cid: `pickup-qr-${index}@mylawatan.my`,
     image: await QRCode.toBuffer(pass.qrUrl, { type: 'png', width: 256, margin: 2, errorCorrectionLevel: 'M' }),
   })));
@@ -38,7 +39,7 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
     <section style="margin:20px 0;padding:16px;border:1px solid #ddd;border-radius:10px;page-break-inside:avoid">
       <h3 style="margin:0 0 8px;color:#1a7f5a">${copy.pickupQrTitle}: ${escapeHtml(pass.title)}</h3>
       <p style="margin:0 0 8px;color:#555">${escapeHtml(pass.subtitle)}</p>
-      <p style="margin:0 0 12px;color:#555">${pass.kind === 'event' ? copy.eventPickupQrInstructions : copy.pickupQrInstructions}</p>
+      <p style="margin:0 0 12px;color:#555">${pass.instructions}</p>
       <ul style="margin:0 0 12px;padding-left:20px">${pass.details.map((detail) => `<li>${escapeHtml(detail)}</li>`).join('')}</ul>
       <img src="cid:${pass.cid}" alt="${escapeHtml(copy.qrImageAlt)}" width="256" height="256" style="display:block;width:256px;height:256px;max-width:100%;background:#fff" />
     </section>`).join('');
@@ -95,7 +96,7 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
     ...(pickupPasses.length ? pickupPasses.flatMap((pass) => [
       `${copy.pickupQrTitle}: ${pass.title}`,
       pass.subtitle,
-      pass.kind === 'event' ? copy.eventPickupQrInstructions : copy.pickupQrInstructions,
+      pass.instructions,
       ...pass.details.map((detail) => `- ${detail}`),
       `${copy.qrImageAlt}: [inline image ${pass.cid}]`,
       '',

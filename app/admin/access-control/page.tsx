@@ -20,7 +20,6 @@ export default function AccessControlPage() {
       <AdminPageHeader
         eyebrow={<span className="flex items-center gap-2"><ShieldCog size={14} /> {t("accessControl.eyebrow")}</span>}
         title={t("accessControl.title")}
-        description={t("accessControl.description")}
       />
       <AccessControlTabs />
     </AdminPageShell>

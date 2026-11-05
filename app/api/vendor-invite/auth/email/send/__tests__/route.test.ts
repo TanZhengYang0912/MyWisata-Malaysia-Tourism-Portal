@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   createServiceClient: vi.fn(),
   resolve: vi.fn(),
   signInWithOtp: vi.fn(),
+  profileExists: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: mocks.createClient }));
@@ -24,23 +25,82 @@ function request(body: unknown) {
 describe('POST /api/vendor-invite/auth/email/send', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.createServiceClient.mockReturnValue({ service: true });
+    mocks.profileExists.mockResolvedValue({ data: false, error: null });
+    mocks.createServiceClient.mockReturnValue({ service: true, rpc: mocks.profileExists });
     mocks.createClient.mockResolvedValue({ auth: { signInWithOtp: mocks.signInWithOtp } });
     mocks.resolve.mockResolvedValue({ ok: true, invite: { recommendationId: 'rec-1', email: 'owner@example.com' } });
     mocks.signInWithOtp.mockResolvedValue({ error: null });
   });
 
   it('sends an OTP only to the server-resolved invitation email', async () => {
-    const response = await POST(request({ token: 'valid-invite-token-value', captchaToken: 'valid-proof' }));
+    const inviteRequest = request({ token: 'valid-invite-token-value', captchaToken: 'valid-proof' });
+    inviteRequest.headers.set('cookie', 'NEXT_LOCALE=zh-CN');
+    const response = await POST(inviteRequest);
     const body = await response.json();
 
     expect(response.status).toBe(200);
     expect(mocks.signInWithOtp).toHaveBeenCalledWith({
       email: 'owner@example.com',
-      options: { shouldCreateUser: true, captchaToken: 'valid-proof' },
+      options: { shouldCreateUser: true, captchaToken: 'valid-proof', data: { preferred_locale: 'zh-CN' } },
     });
     expect(body).toEqual({ data: { sent: true }, error: null });
     expect(JSON.stringify(body)).not.toContain('owner@example.com');
+  });
+
+  it('does not replace an existing profile preference with the current browser language', async () => {
+    mocks.profileExists.mockResolvedValue({ data: true, error: null });
+    const inviteRequest = request({ token: 'valid-invite-token-value', captchaToken: 'valid-proof' });
+    inviteRequest.headers.set('cookie', 'NEXT_LOCALE=ms');
+
+    const response = await POST(inviteRequest);
+
+    expect(response.status).toBe(200);
+    expect(mocks.signInWithOtp).toHaveBeenCalledWith({
+      email: 'owner@example.com',
+      options: { shouldCreateUser: false, captchaToken: 'valid-proof' },
+    });
+  });
+
+  it('uses the normalized profile lookup so historical mixed-case addresses are treated as existing accounts', async () => {
+    mocks.resolve.mockResolvedValue({ ok: true, invite: { recommendationId: 'rec-1', email: 'Owner@Example.com' } });
+    mocks.profileExists.mockResolvedValue({ data: true, error: null });
+    const inviteRequest = request({ token: 'valid-invite-token-value', captchaToken: 'valid-proof' });
+    inviteRequest.headers.set('cookie', 'NEXT_LOCALE=ms');
+
+    const response = await POST(inviteRequest);
+
+    expect(response.status).toBe(200);
+    expect(mocks.profileExists).toHaveBeenCalledWith('profile_email_exists', { p_email: 'owner@example.com' });
+    expect(mocks.signInWithOtp).toHaveBeenCalledWith({
+      email: 'Owner@Example.com',
+      options: { shouldCreateUser: false, captchaToken: 'valid-proof' },
+    });
+  });
+
+  it.each([
+    ['NEXT_LOCALE=ms', 'ms'],
+    ['NEXT_LOCALE=invalid', 'en'],
+    ['', 'en'],
+  ])('uses validated cookie locale %s for a new invited user', async (cookie, locale) => {
+    const inviteRequest = request({ token: 'valid-invite-token-value', captchaToken: 'valid-proof' });
+    if (cookie) inviteRequest.headers.set('cookie', cookie);
+    const response = await POST(inviteRequest);
+
+    expect(response.status).toBe(200);
+    expect(mocks.signInWithOtp).toHaveBeenCalledWith({
+      email: 'owner@example.com',
+      options: { shouldCreateUser: true, captchaToken: 'valid-proof', data: { preferred_locale: locale } },
+    });
+  });
+
+  it('fails closed if the exact profile lookup fails', async () => {
+    mocks.profileExists.mockResolvedValue({ data: null, error: { message: 'database unavailable' } });
+
+    const response = await POST(request({ token: 'valid-invite-token-value', captchaToken: 'valid-proof' }));
+
+    expect(response.status).toBe(502);
+    expect(mocks.signInWithOtp).not.toHaveBeenCalled();
+    expect(JSON.stringify(await response.json())).not.toContain('database unavailable');
   });
 
   it('rejects a direct send without a CAPTCHA token before contacting Auth', async () => {

@@ -40,4 +40,20 @@ describe('POST /api/admin/affiliate/run-clearing', () => {
     expect(response.status).toBe(403);
     expect(mocks.clearMaturedCommissions).not.toHaveBeenCalled();
   });
+
+  it('removes raw row errors and provides safe recovery guidance with Request IDs', async () => {
+    mocks.clearMaturedCommissions.mockResolvedValue({
+      cleared: [], reversed: [], skipped: 1, hasMore: false,
+      errors: [{ attributionId: 'attribution-1', error: 'internal SQL schema and secret leaked', critical: true }],
+    });
+
+    const response = await POST();
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(JSON.stringify(body)).not.toContain('internal SQL schema and secret leaked');
+    expect(body.data.errors[0]).toMatchObject({ attributionId: 'attribution-1', code: 'CLEARING_RESULT_UNCERTAIN' });
+    expect(body.data.errors[0].requestId).toBeTruthy();
+    expect(body.data.errors[0].message).toMatch(/refresh/i);
+  });
 });

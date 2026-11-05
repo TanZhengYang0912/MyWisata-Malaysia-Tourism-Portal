@@ -21,7 +21,7 @@ const MANIFEST_PATH = path.resolve(ASSET_ROOT, "entity-media-manifest-v4.json");
 const CACHE_PATH = path.resolve("/tmp/mylawatan-vendor-outlet-commons-cache.json");
 const PAGE_DELAY_MS = 1400;
 const GALLERY_COUNT = 3;
-const USER_AGENT = "MyLawatan-vendor-outlet-media-curator/1.0 (local development; attribution recorded)";
+const USER_AGENT = "MYLawatan-vendor-outlet-media-curator/1.0 (local development; attribution recorded)";
 
 const STOPWORDS = new Set([
   "and", "the", "for", "with", "from", "this", "that", "your", "our", "one", "two", "at", "to", "of", "in", "by", "via",

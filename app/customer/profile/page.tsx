@@ -1,12 +1,12 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
-  User, Camera, MessageSquare, ClipboardList,
-  Loader2,
+  User, Camera, MessageSquare,
+  Loader2, ArrowLeft, ArrowRight,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -16,24 +16,33 @@ import { VerificationPathCards } from "@/components/profile/verification-path-ca
 import { ProfileLocationFields } from "@/components/profile/profile-location-fields";
 import { ProfilePhotoPicker } from "@/components/profile/profile-photo-picker";
 import { ProfileSections } from "@/components/profile/profile-sections";
-import { PreferencesEditor } from "@/components/profile/preferences-editor";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
-import { getWizardProgress, WIZARD_STEPS } from "./wizard-progress";
+import { canVisitWizardStep, getWizardProgress, WIZARD_STEPS, type WizardStep } from "./wizard-progress";
 import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 import { postLoginPath } from "@/lib/auth/guest-mode";
 import { identitySchema, bioSchema } from "@/lib/validation/profile-schemas";
+import { PROFILE_BIO_MIN_LENGTH, PROFILE_BIO_MAX_LENGTH } from "@/lib/verification/eligibility";
 import type { ProfileSummary } from "@/backend/core/types";
+import { AVATAR_MAX_BYTES, formatAvatarFileSize } from "@/lib/profile/avatar-validation";
+import { uploadProfileAvatar } from "@/lib/profile/avatar-upload-client";
 
 export default function ProfilePage() {
+  const { currentUser } = useAuth();
+  return <ProfileWizard key={currentUser?.id ?? "guest"} userId={currentUser?.id ?? null} />;
+}
+
+function ProfileWizard({ userId }: { userId: string | null }) {
   const { t: tCustomer } = useTranslation("customer");
   const { currentUser, refreshUser } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const continuation = postLoginPath(searchParams.get("next"));
   const { showFeedback } = useActionFeedback();
 
   const [profile, setProfile] = useState<ProfileSummary | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [selectedStep, setSelectedStep] = useState<WizardStep | null>(null);
+  const mounted = useRef(false);
+  const profileRequest = useRef(0);
 
   // ── Identity ───────────────────────────────────────────────────────────────
   const [fullName, setFullName]         = useState(currentUser?.name !== currentUser?.email ? (currentUser?.name ?? "") : "");
@@ -59,42 +68,62 @@ export default function ProfilePage() {
   const [bioError, setBioError] = useState<string | null>(null);
   const [bioBusy,  setBioBusy]  = useState(false);
 
-  const loadProfile = useCallback(async () => {
-    if (!currentUser) {
+  const loadProfile = useCallback(async (hydrateDrafts = false) => {
+    if (!userId) {
       setProfile(null);
       setProfileLoading(false);
       return null;
     }
-    setProfileLoading(true);
+    if (!mounted.current) return null;
+    const requestId = ++profileRequest.current;
+    if (hydrateDrafts) setProfileLoading(true);
     try {
       const response = await fetch("/api/profile/me", { cache: "no-store" });
       const body = await response.json() as { data?: ProfileSummary };
-      if (!response.ok || !body.data) return null;
+      if (!mounted.current || requestId !== profileRequest.current || !response.ok || body.data?.id !== userId) return null;
       const nextProfile = body.data;
       setProfile(nextProfile);
-      setFullName(nextProfile.fullName ?? "");
-      setCity(nextProfile.city ?? "");
-      setCountry(nextProfile.country ?? "");
-      setCityId(nextProfile.cityId);
-      setCountryCode(nextProfile.countryCode);
-      setBio(nextProfile.bio ?? "");
+      // Background saves refresh completion evidence without replacing other drafts.
+      if (hydrateDrafts) {
+        setFullName(nextProfile.fullName ?? "");
+        setCity(nextProfile.city ?? "");
+        setCountry(nextProfile.country ?? "");
+        setCityId(nextProfile.cityId);
+        setCountryCode(nextProfile.countryCode);
+        setBio(nextProfile.bio ?? "");
+      }
       return nextProfile;
     } catch {
       return null;
     } finally {
-      setProfileLoading(false);
+      if (mounted.current && requestId === profileRequest.current) setProfileLoading(false);
     }
-  }, [currentUser, setBio, setCity, setCountry, setFullName]);
+  }, [userId]);
 
   // This effect starts the initial request for the signed-in user’s saved profile.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void loadProfile(); }, [loadProfile]);
+  useEffect(() => {
+    mounted.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadProfile(true);
+    return () => { mounted.current = false; profileRequest.current += 1; };
+  }, [loadProfile]);
+
+  function advanceTo(step: WizardStep, savedProfile = profile) {
+    if (!mounted.current || !savedProfile) return;
+    setSelectedStep(canVisitWizardStep(savedProfile.verification, step) ? step : savedProfile.verification.currentStep);
+  }
 
   // ── Identity handler ───────────────────────────────────────────────────────
   async function submitIdentity() {
     const parsed = identitySchema.safeParse({ fullName, city, country, cityId, countryCode });
     if (!parsed.success) { setIdentityError(tCustomer("ui.profileWizard.fullNameValidation")); return; }
     setIdentityError(null);
+    if (profile?.verification.completedSteps.includes("identity")
+      && parsed.data.fullName === profile.fullName && parsed.data.city === profile.city
+      && parsed.data.country === profile.country && cityId === profile.cityId && countryCode === profile.countryCode) {
+      advanceTo("avatar");
+      return;
+    }
     setIdentityBusy(true);
     try {
       const res = await fetch("/api/profile/identity", {
@@ -105,7 +134,12 @@ export default function ProfilePage() {
       if (!res.ok) {
         throw new Error(tCustomer("ui.profileWizard.saveDetails"));
       }
-      await Promise.all([refreshUser(), loadProfile()]);
+      if (!mounted.current) return;
+      setSelectedStep("identity");
+      const [, savedProfile] = await Promise.all([refreshUser(), loadProfile()]);
+      if (!mounted.current) return;
+      if (!savedProfile) throw new Error("Profile refresh failed");
+      advanceTo("avatar", savedProfile);
       showFeedback("success", tCustomer("ui.profileWizard.saveDetails"));
     } catch {
       setIdentityError(tCustomer("ui.profileWizard.saveDetails"));
@@ -117,9 +151,6 @@ export default function ProfilePage() {
   // ── Avatar handlers ────────────────────────────────────────────────────────
   function handleFileSelect(file: File | null) {
     if (!file) return;
-    const allowed = ["image/jpeg", "image/png", "image/webp"];
-    if (!allowed.includes(file.type)) { setAvatarError(tCustomer("ui.profileWizard.photoTypeValidation")); return; }
-    if (file.size > 2 * 1024 * 1024) { setAvatarError(tCustomer("ui.profileWizard.photoSizeValidation")); return; }
     setAvatarError(null);
     setAvatarFile(file);
     if (avatarPreview) URL.revokeObjectURL(avatarPreview);
@@ -127,38 +158,32 @@ export default function ProfilePage() {
   }
 
   async function submitAvatar() {
+    if (!avatarFile && profile?.verification.completedSteps.includes("avatar")) { advanceTo("bio"); return; }
     if (!avatarFile) { setAvatarError(tCustomer("ui.profileWizard.choosePhoto")); return; }
     setAvatarError(null);
     setAvatarBusy(true);
     try {
-      const signRes = await fetch(`/api/profile/avatar?type=${encodeURIComponent(avatarFile.type)}`, { method: "PUT" });
-      if (!signRes.ok) {
-        throw new Error(tCustomer("ui.profileWizard.avatarUploadUrlError"));
-      }
-      const { data: { uploadUrl, path } } = await signRes.json() as { data: { uploadUrl: string; path: string } };
-
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": avatarFile.type },
-        body: avatarFile,
-      });
-      if (!uploadRes.ok) throw new Error(tCustomer("ui.profileWizard.avatarStorageError"));
-
-      const confirmRes = await fetch("/api/profile/avatar/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path }),
-      });
-      if (!confirmRes.ok) {
-        throw new Error(tCustomer("ui.profileWizard.avatarConfirmError"));
-      }
-      await Promise.all([refreshUser(), loadProfile()]);
+      const result = await uploadProfileAvatar(avatarFile);
+      if (!mounted.current) return;
+      setSelectedStep("avatar");
+      const [, savedProfile] = result.changed ? await Promise.all([refreshUser(), loadProfile()]) : [undefined, profile];
+      if (!mounted.current) return;
+      if (!savedProfile) throw new Error("Profile refresh failed");
       if (avatarPreview) URL.revokeObjectURL(avatarPreview);
       setAvatarFile(null);
       setAvatarPreview(null);
+      advanceTo("bio", savedProfile);
       showFeedback("success", tCustomer("ui.profileWizard.savePhoto"));
-    } catch {
-      setAvatarError(tCustomer("ui.profileWizard.savePhoto"));
+    } catch (cause) {
+      const code = cause instanceof Error ? cause.message : "";
+      const message = code === "UNAUTHORIZED" ? tCustomer("ui.profileWizard.avatarSessionExpired")
+        : code === "INVALID_TYPE" ? tCustomer("ui.profileWizard.photoTypeValidation")
+          : code === "INVALID_IMAGE" ? (avatarFile.size > AVATAR_MAX_BYTES
+            ? tCustomer("ui.profileWizard.photoSizeValidation", { size: formatAvatarFileSize(avatarFile.size) })
+            : tCustomer("ui.profileWizard.photoInvalidValidation"))
+            : code === "AVATAR_TOO_LARGE" ? tCustomer("ui.profileWizard.photoSizeValidation", { size: formatAvatarFileSize(avatarFile.size) })
+              : tCustomer("ui.profileWizard.avatarUploadUnavailable");
+      setAvatarError(message);
     } finally {
       setAvatarBusy(false);
     }
@@ -166,8 +191,12 @@ export default function ProfilePage() {
 
   // ── Bio handler ────────────────────────────────────────────────────────────
   async function submitBio() {
+    if (profile?.verification.completedSteps.includes("bio") && bio.trim() === (profile.bio ?? "").trim()) {
+      advanceTo("bio");
+      return;
+    }
     const parsed = bioSchema.safeParse({ bio });
-    if (!parsed.success) { setBioError(tCustomer("ui.profileWizard.bioValidation", { min: 30, max: 200 })); return; }
+    if (!parsed.success) { setBioError(tCustomer("ui.profileWizard.bioValidation", { min: PROFILE_BIO_MIN_LENGTH, max: PROFILE_BIO_MAX_LENGTH })); return; }
     setBioError(null);
     setBioBusy(true);
     try {
@@ -177,21 +206,23 @@ export default function ProfilePage() {
         body: JSON.stringify(parsed.data),
       });
       if (!res.ok) {
-        throw new Error(tCustomer("ui.profileWizard.saveDetails"));
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error?.code === "PERSONAL_DATA_REMOVE"
+          ? tCustomer("ui.profileWizard.privacyBlocked")
+          : tCustomer("ui.profileWizard.saveDetails"));
       }
-      await Promise.all([refreshUser(), loadProfile()]);
+      if (!mounted.current) return;
+      setSelectedStep("bio");
+      const [, savedProfile] = await Promise.all([refreshUser(), loadProfile()]);
+      if (!mounted.current) return;
+      if (!savedProfile) throw new Error("Profile refresh failed");
+      advanceTo("bio", savedProfile);
       showFeedback("success", tCustomer("ui.profileWizard.saveDetails"));
-    } catch {
-      setBioError(tCustomer("ui.profileWizard.saveDetails"));
+    } catch (cause) {
+      setBioError(cause instanceof Error ? cause.message : tCustomer("ui.profileWizard.saveDetails"));
     } finally {
       setBioBusy(false);
     }
-  }
-
-  async function handlePreferencesSaved() {
-    await Promise.all([refreshUser(), loadProfile()]);
-    showFeedback("success", tCustomer("ui.preferencesEditor.saved"));
-    if (continuation) router.push(continuation);
   }
 
   if (!currentUser) return <CustomerPageShell><GuestAccountEmptyState title={tCustomer("ui.states.couldNotLoad")} description={tCustomer("ui.guest.accountHint")} nextPath={continuation ?? "/customer/profile"} /></CustomerPageShell>;
@@ -199,9 +230,10 @@ export default function ProfilePage() {
   if (!profile) return <CustomerPageShell><div className="py-8 text-center text-sm text-destructive">{tCustomer("ui.states.couldNotLoad")}</div></CustomerPageShell>;
 
   // ── Done state ─────────────────────────────────────────────────────────────
-  const isDone = profile.verification.complete;
-  const wizardProgress = getWizardProgress(profile.verification);
-  const activeStep = profile.verification.currentStep;
+  const isDone = profile.verification.complete && selectedStep == null;
+  const activeStep = selectedStep && canVisitWizardStep(profile.verification, selectedStep) ? selectedStep : profile.verification.currentStep;
+  const wizardProgress = getWizardProgress(profile.verification, isDone ? null : activeStep);
+  const isSaving = identityBusy || avatarBusy || bioBusy;
   const localizedStepLabel = (label: string) => tCustomer(`ui.profileWizard.steps.${label.toLowerCase()}`);
 
   if (isDone) return (
@@ -209,7 +241,6 @@ export default function ProfilePage() {
       <CustomerPageTitle
         eyebrow={tCustomer("accountGroups.account")}
         title={tCustomer("ui.profileWizard.title")}
-        description={tCustomer("ui.profileWizard.description")}
       />
       <CustomerPageShell wide className="pt-0 pb-0 sm:pt-0">
         <BusinessShareBanner />
@@ -221,6 +252,7 @@ export default function ProfilePage() {
           {tCustomer("ui.profileWizard.stepOf", { current: wizardProgress.totalSteps, total: wizardProgress.totalSteps })} · {tCustomer("ui.profileWizard.current", { label: tCustomer("ui.profileWizard.steps.complete") })} · {tCustomer("ui.profileWizard.percentComplete", { percent: wizardProgress.percentage })}
         </div>
         {continuation && <Button asChild className="mt-4"><Link href={continuation}>{tCustomer("ui.profileWizard.continue")}</Link></Button>}
+        <Button asChild variant="outline" className="mt-4"><Link href="/customer/preferences">{tCustomer("ui.preferencesPage.title")}</Link></Button>
       </CustomerPageShell>
       <ProfileSections wide shellClassName="pt-0 sm:pt-0" showHeader={false} />
     </>
@@ -244,13 +276,15 @@ export default function ProfilePage() {
       />
 
       {/* Progress */}
-      <div className="flex items-end gap-1.5 mb-8">
+      <nav className="flex items-end gap-1.5 mb-8" aria-label={tCustomer("ui.profileWizard.title")}>
         {visibleSteps.map(({ id }) => {
           const done = profile.verification.completedSteps.includes(id);
           const active = id === activeStep;
           return (
-            <div key={id} className="flex-1 flex flex-col items-center gap-1">
-              <div
+            <Button key={id} variant="ghost" className="h-auto min-w-0 flex-1 flex-col gap-1 p-0 hover:bg-transparent"
+              aria-current={active ? "step" : undefined}
+              disabled={isSaving || !canVisitWizardStep(profile.verification, id)} onClick={() => setSelectedStep(id)}>
+              <span
                 className="w-full h-1.5 rounded-full transition-colors"
                 style={{ backgroundColor: done || active ? "var(--primary)" : "var(--secondary)" }}
               />
@@ -260,10 +294,10 @@ export default function ProfilePage() {
               >
                 {tCustomer(`ui.profileWizard.steps.${id}`)}
               </span>
-            </div>
+            </Button>
           );
         })}
-      </div>
+      </nav>
       <div className="mb-6 rounded-xl bg-secondary/40 px-4 py-3 text-xs text-muted-foreground">
         <p className="font-semibold text-foreground">{tCustomer("ui.profileWizard.stepOf", { current: wizardProgress.currentStep, total: wizardProgress.totalSteps })}</p>
         <p className="mt-1">{tCustomer("ui.profileWizard.current", { label: localizedStepLabel(wizardProgress.currentLabel) })}</p>
@@ -273,7 +307,7 @@ export default function ProfilePage() {
 
       {/* ── Step 1: Identity ─────────────────────────────────────────────── */}
       {activeStep === "identity" && (
-        <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+        <fieldset disabled={isSaving} className="rounded-2xl border border-border bg-card p-6 space-y-4">
           <div className="flex items-center gap-2">
             <User size={18} className="text-primary" />
             <h2 className="font-bold text-foreground">{tCustomer("ui.profileWizard.identity")}</h2>
@@ -304,18 +338,18 @@ export default function ProfilePage() {
           <Button onClick={submitIdentity} disabled={identityBusy} className="w-full">
             {identityBusy && <Loader2 size={14} className="animate-spin mr-1.5" />}
             {identityBusy ? tCustomer("ui.preferencesEditor.saving") : tCustomer("ui.profileWizard.continue")}
+            <ArrowRight aria-hidden="true" />
           </Button>
-        </div>
+        </fieldset>
       )}
 
       {/* ── Step 2: Avatar ───────────────────────────────────────────────── */}
       {activeStep === "avatar" && (
-        <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+        <fieldset disabled={isSaving} className="rounded-2xl border border-border bg-card p-6 space-y-4">
           <div className="flex items-center gap-2">
             <Camera size={18} className="text-primary" />
             <h2 className="font-bold text-foreground">{tCustomer("ui.profileWizard.profilePhoto")}</h2>
           </div>
-          <p className="text-xs text-muted-foreground">{tCustomer("ui.profileWizard.photoDescription")}</p>
           <ProfilePhotoPicker
             variant="wizard"
             previewUrl={avatarPreview || profile.avatarUrl}
@@ -324,59 +358,50 @@ export default function ProfilePage() {
             onPhotoSelected={handleFileSelect}
             onError={setAvatarError}
           />
-          <Button onClick={submitAvatar} disabled={avatarBusy || !avatarFile} className="w-full">
-            {avatarBusy && <Loader2 size={14} className="animate-spin mr-1.5" />}
-            {avatarBusy ? tCustomer("ui.states.submitting") : tCustomer("ui.profileWizard.savePhoto")}
-          </Button>
-        </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant="outline" className="w-full min-w-0" onClick={() => advanceTo("identity")}><ArrowLeft aria-hidden="true" />{tCustomer("ui.profileWizard.previous")}</Button>
+            <Button onClick={submitAvatar} disabled={avatarBusy || (!avatarFile && !profile.verification.completedSteps.includes("avatar"))} className="w-full min-w-0">
+              {avatarBusy && <Loader2 size={14} className="animate-spin mr-1.5" />}
+              {avatarBusy ? tCustomer("ui.states.submitting") : avatarFile ? tCustomer("ui.profileWizard.savePhoto") : tCustomer("ui.profileWizard.continue")}
+              <ArrowRight aria-hidden="true" />
+            </Button>
+          </div>
+        </fieldset>
       )}
 
       {/* ── Step 3: Bio ──────────────────────────────────────────────────── */}
       {activeStep === "bio" && (
-        <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
+        <fieldset disabled={isSaving} className="rounded-2xl border border-border bg-card p-6 space-y-4">
           <div className="flex items-center gap-2">
             <MessageSquare size={18} className="text-primary" />
             <h2 className="font-bold text-foreground">{tCustomer("ui.profileWizard.bio")}</h2>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {tCustomer("ui.profileWizard.bio")}
-          </p>
           <div className="space-y-1">
             <textarea
               value={bio}
               onChange={(e) => { setBio(e.target.value); setBioError(null); }}
               placeholder={tCustomer("ui.profileWizard.bioPlaceholder")}
               rows={4}
-              maxLength={200}
+              maxLength={PROFILE_BIO_MAX_LENGTH}
               className="w-full px-3 py-2.5 text-sm rounded-xl border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30 resize-none"
               style={{ borderColor: bioError ? "var(--destructive)" : "var(--border)" }}
             />
             <div className="flex justify-between items-center">
               {bioError ? <p className="text-xs text-destructive">{bioError}</p> : <span />}
-              <p className="text-xs text-muted-foreground">{bio.length}/200</p>
+              <p className="text-xs text-muted-foreground">{bio.length}/{PROFILE_BIO_MAX_LENGTH}</p>
             </div>
           </div>
-          <Button onClick={submitBio} disabled={bioBusy} className="w-full">
-            {bioBusy && <Loader2 size={14} className="animate-spin mr-1.5" />}
-            {bioBusy ? tCustomer("ui.preferencesEditor.saving") : tCustomer("ui.profileWizard.continue")}
-          </Button>
-        </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant="outline" className="w-full min-w-0" onClick={() => advanceTo("avatar")}><ArrowLeft aria-hidden="true" />{tCustomer("ui.profileWizard.previous")}</Button>
+            <Button onClick={submitBio} disabled={bioBusy} className="w-full min-w-0">
+              {bioBusy && <Loader2 size={14} className="animate-spin mr-1.5" />}
+              {bioBusy ? tCustomer("ui.preferencesEditor.saving") : tCustomer("ui.profileWizard.continue")}
+              <ArrowRight aria-hidden="true" />
+            </Button>
+          </div>
+        </fieldset>
       )}
 
-      {/* ── Step 4: Preferences ──────────────────────────────────────────── */}
-      {activeStep === "survey" && (
-        <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
-          <div className="flex items-center gap-2">
-            <ClipboardList size={18} className="text-primary" />
-            <h2 className="font-bold text-foreground">{tCustomer("ui.preferencesPage.title")}</h2>
-          </div>
-          <p className="text-xs text-muted-foreground">{tCustomer("ui.preferencesPage.description")}</p>
-          <PreferencesEditor
-            submitLabel={tCustomer("ui.kyc.completeProfile")}
-            onSaved={() => { void handlePreferencesSaved(); }}
-          />
-        </div>
-      )}
       </CustomerPageShell>
     </>
   );

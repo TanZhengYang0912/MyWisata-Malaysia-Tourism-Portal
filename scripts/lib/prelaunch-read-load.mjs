@@ -126,7 +126,7 @@ export async function runStage(phase, { fetcher = fetch, budget = { issued: 0 },
       assert.ok(Object.hasOwn(routes, key), 'route_not_allowed');
       const response = await fetcher(new URL(routes[key], origin), {
         method: 'GET', redirect: 'manual', credentials: 'omit',
-        headers: { 'user-agent': 'MyLawatan-Authorized-Capacity-Check/1.0', accept: key === 'explore' ? 'text/html' : 'application/json' },
+        headers: { 'user-agent': 'MYLawatan-Authorized-Capacity-Check/1.0', accept: key === 'explore' ? 'text/html' : 'application/json' },
         signal: AbortSignal.any([controller.signal,
           AbortSignal.timeout(Math.ceil(Math.min(limits.timeoutMs, Math.max(1, deadline - performance.now()))))]),
       });

@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   from: vi.fn(),
   update: vi.fn(),
   updateEq: vi.fn(),
+  rpc: vi.fn(),
   select: vi.fn(),
   selectEq: vi.fn(),
   single: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
     auth: { getUser: mocks.getUser },
     from: mocks.from,
+    rpc: mocks.rpc,
   })),
 }));
 
@@ -34,12 +36,10 @@ describe('POST /api/profile/update', () => {
       data: { user: { id: '11111111-1111-4111-8111-111111111111' } },
       error: null,
     });
-    mocks.from.mockReturnValue({ update: mocks.update, select: mocks.select });
-    mocks.update.mockReturnValue({ eq: mocks.updateEq });
-    mocks.updateEq.mockResolvedValue({ error: null });
-    mocks.select.mockReturnValue({ eq: mocks.selectEq });
-    mocks.selectEq.mockReturnValue({ single: mocks.single });
-    mocks.single.mockResolvedValue({ data: { tier: 'profile_complete' }, error: null });
+    mocks.rpc.mockResolvedValue({
+      data: [{ tier: 'profile_complete', changed: true }],
+      error: null,
+    });
   });
 
   it('rejects legacy phone mutations before touching the verified profile', async () => {
@@ -73,17 +73,17 @@ describe('POST /api/profile/update', () => {
     }));
 
     expect(response.status).toBe(200);
-    expect(mocks.update).toHaveBeenCalledWith({
-      full_name: 'Aina Rahman',
-      city: 'Kuala Lumpur',
-      country: 'Malaysia',
-      city_id: null,
-      country_code: 'MY',
-      city_source: 'manual',
+    expect(mocks.rpc).toHaveBeenCalledWith('save_profile_identity_if_changed', {
+      p_full_name: 'Aina Rahman',
+      p_city: 'Kuala Lumpur',
+      p_country: 'Malaysia',
+      p_city_id: null,
+      p_country_code: 'MY',
+      p_city_source: 'manual',
     });
-    expect(mocks.select).toHaveBeenCalledWith('tier');
+    expect(mocks.update).not.toHaveBeenCalled();
     await expect(response.json()).resolves.toMatchObject({
-      data: { verificationTier: 'profile_complete' },
+      data: { verificationTier: 'profile_complete', changed: true },
     });
   });
 });

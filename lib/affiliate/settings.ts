@@ -41,6 +41,18 @@ export async function getClearanceDays(service: SupabaseClient): Promise<number>
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_CLEARANCE_DAYS;
 }
 
+/** Same policy as getClearanceDays, but a read error is not presented as the default. */
+export async function getClearanceDaysForPreview(service: SupabaseClient): Promise<number> {
+  const { data, error } = await service
+    .from('platform_settings')
+    .select('value')
+    .eq('key', 'wallet.clearance_days')
+    .maybeSingle();
+  if (error) throw new Error('affiliate_clearance_policy_unavailable');
+  const parsed = data ? parseInt(data.value, 10) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_CLEARANCE_DAYS;
+}
+
 /**
  * Reads platform_settings['affiliate.monthly_click_cap'], defaulting to 50
  * if missing/invalid — the limited (non-full-KYC) affiliate tier's trial

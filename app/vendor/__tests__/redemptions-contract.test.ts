@@ -16,13 +16,14 @@ describe('Vendor redemptions and scan history contract', () => {
     expect(page).toContain('copyToClipboard');
   });
 
-  it('queries voucher store redemptions and ticket check-ins on the server', () => {
+  it('uses a bounded, authorized database projection for redemption history', () => {
     const route = read('app/api/vendors/[vendorId]/redemptions/route.ts');
-    expect(route).toContain('voucher_store_redemptions');
     expect(route).toContain('authorizeVendor');
-    expect(route).toContain('check_in_at');
-    expect(route).toContain('outletShortName');
+    expect(route).toContain("rpc('list_vendor_redemption_history'");
+    expect(route).toContain('p_scope_outlet_ids: outletIds');
+    expect(route).toContain("'retail_pickup'");
     expect(route).toContain('apiOk');
+    expect(route).not.toContain('.range(');
   });
 
   it('keeps redemptions in Vendor Owner navigation and scanner in Outlet Manager navigation', () => {

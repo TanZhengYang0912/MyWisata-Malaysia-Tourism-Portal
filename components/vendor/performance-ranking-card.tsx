@@ -4,6 +4,7 @@ import CompactThumbnail from '@/components/vendor/compact-thumbnail';
 import { rankingPercent } from '@/lib/vendor/performance-ranking';
 import { getServerTranslation } from '@/lib/i18n/server';
 import { formatNumber, formatMYR } from '@/lib/i18n/format';
+import type { DashboardSalesMode } from '@/lib/vendor/dashboard-metrics';
 
 type SellingItem = { name: string; quantity: number; revenue: number; coverUrl: string | null; outletName?: string };
 type RatedItem = { name: string; rating: number; reviews: number; coverUrl: string | null; outletName?: string };
@@ -13,6 +14,7 @@ type Props = {
   periodLabel: string;
   items: SellingItem[] | RatedItem[];
   href: string;
+  salesMode?: DashboardSalesMode;
 };
 
 const accent = {
@@ -42,7 +44,7 @@ const accent = {
   },
 } as const;
 
-export default async function PerformanceRankingCard({ kind, periodLabel, items, href }: Props) {
+export default async function PerformanceRankingCard({ kind, periodLabel, items, href, salesMode = 'live' }: Props) {
   const { t, locale } = await getServerTranslation('vendor');
   const style = accent[kind];
   const Icon = style.icon;
@@ -62,7 +64,7 @@ export default async function PerformanceRankingCard({ kind, periodLabel, items,
       <header className="border-b border-gray-100 dark:border-border p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-muted-foreground"><Icon size={14} className={style.iconClass} /> {t(style.eyebrow)}</div>
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-muted-foreground"><Icon size={14} className={style.iconClass} /> {t(kind === 'selling' && salesMode === 'demo' ? 'ui.dashboard.salesMode.demo' : style.eyebrow)}</div>
             <h2 className="text-lg font-semibold text-gray-950 dark:text-foreground">{t(style.title)}</h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{t(style.subtitle)}</p>
           </div>

@@ -22,6 +22,7 @@ export interface User {
   email: string;
   role: Role;
   avatarInitial: string;
+  avatarUrl?: string | null;
   city?: string;
   country?: string;
   preferredLocale?: AppLocale;
@@ -294,7 +295,7 @@ export interface PlaceAccess {
   imageUrl: string | null;
 }
 
-/** A source-backed attraction activity with no MyLawatan vendor checkout path. */
+/** A source-backed attraction activity with no MYLawatan vendor checkout path. */
 export interface PlaceInformationalActivity {
   id: string;
   placeId: string;
@@ -440,7 +441,7 @@ export interface Booking {
   validUntil?: string;
 }
 
-export type KycSubmissionStatus = "draft" | "pending" | "info_requested" | "approved" | "rejected" | "superseded";
+export type KycSubmissionStatus = "draft" | "pending" | "info_requested" | "approved" | "rejected" | "superseded" | "withdrawn";
 
 export interface CustomerKycSubmission {
   id: string;
@@ -451,6 +452,7 @@ export interface CustomerKycSubmission {
   reviewedAt: string | null;
   reviewReasonCode: string | null;
   reviewReasonDetail: string | null;
+  reviewVersion?: number;
 }
 
 /** Safe identity fields for displaying another user on a public surface. */
@@ -461,7 +463,7 @@ export interface PublicUser {
   city?: string;
   country?: string;
   bio?: string;
-  isKycVerified: boolean;
+  isVerifiedContributor: boolean;
 }
 
 export interface ProfileSummary {
@@ -486,9 +488,9 @@ export interface ProfileSummary {
   profileComplete: boolean;
   verification: {
     complete: boolean;
-    percentage: 0 | 25 | 50 | 75 | 100;
-    completedSteps: Array<"identity" | "avatar" | "bio" | "survey">;
-    currentStep: "identity" | "avatar" | "bio" | "survey" | null;
+    percentage: 0 | 33 | 67 | 100;
+    completedSteps: Array<"identity" | "avatar" | "bio">;
+    currentStep: "identity" | "avatar" | "bio" | null;
   };
   profileRichness: {
     percentage: 0 | 20 | 40 | 60 | 80 | 100;
@@ -497,6 +499,7 @@ export interface ProfileSummary {
   };
   survey: {
     interests: string[];
+    travelStyle: string | null;
     budgetRange: string | null;
     mobilityNeeds: string | null;
     preferredRadiusKm: number | null;

@@ -65,7 +65,7 @@ PostgreSQL column-level GRANT (`GRANT SELECT (col1, col2) ON profiles TO anon`) 
 
 ### "Verified Contributor" Badge
 
-Frontend code checks `public_users.is_kyc_verified` to render the badge. No raw timestamp is exposed; the badge is purely boolean. This satisfies the spec requirement while hiding the approval date.
+The existing `is_kyc_verified` field remains for compatibility, but it no longer grants the Verified Contributor badge by itself. The badge reads the derived `public_users.is_verified_contributor` boolean, which is true only when Email, Phone, the five core Profile fields, and KYC are verified. No email, phone value, verification timestamp, or KYC artifact is exposed by that projection.
 
 ---
 

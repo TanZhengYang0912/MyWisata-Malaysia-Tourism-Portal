@@ -36,7 +36,7 @@ describe('POST fulfil-event-pickup', () => {
     const response = await POST(request(token), params);
 
     expect(response.status).toBe(200);
-    expect(mocks.authorizeVendor).toHaveBeenCalledWith(VENDOR_ID, undefined, { allowEventVendor: true });
+    expect(mocks.authorizeVendor).toHaveBeenCalledWith(VENDOR_ID, undefined, { allowEventVendor: true, requireApproved: true });
     expect(mocks.rpc).toHaveBeenCalledWith('fulfil_event_pickup', {
       p_order_id: ORDER_ID, p_vendor_id: VENDOR_ID, p_location_id: LOCATION_ID, p_pickup_date: futureDate, p_operator_id: 'operator-1', p_pickup_slot_id: PICKUP_SLOT_ID,
     });

@@ -12,7 +12,7 @@ interface Props { params: Promise<{ vendorId: string; orderItemId: string }> }
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId, orderItemId } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendor(vendorId, undefined, { requireApproved: true });
   if (!access.ok) return access.response;
   const supabase = access.access.serviceDb;
   const outletIds = access.access.outletIds;
@@ -23,7 +23,7 @@ export async function POST(request: Request, { params }: Props) {
   // Get current order item
   const { data: item } = await supabase
     .from('order_items')
-    .select('*, orders(status), products(categories(slug))')
+    .select('*, orders(status), products(product_type,requires_booking,categories(slug))')
     .eq('id', orderItemId)
     .in('outlet_id', outletIds)
     .single();
@@ -35,8 +35,12 @@ export async function POST(request: Request, { params }: Props) {
   if (newStatus === 'fulfilled' && !canUseGenericFoodFulfilment({
     categorySlug: category?.slug,
     scannedAt: item.food_qr_scanned_at,
+    retailScannedAt: item.retail_qr_scanned_at,
+    requiresBooking: product?.requires_booking,
+    productType: product?.product_type,
+    isEventPickup: Boolean(item.event_location_id || item.event_listing_id || item.slot_starts_at),
   })) {
-    return apiFail('FOOD_QR_REQUIRED', 'Food orders must be scanned at the correct outlet before fulfilment', 409);
+    return apiFail(category?.slug === 'retail' ? 'RETAIL_QR_REQUIRED' : 'FOOD_QR_REQUIRED', category?.slug === 'retail' ? 'Retail orders must be scanned before collection' : 'Food orders must be scanned at the correct outlet before fulfilment', 409);
   }
 
   // Validate state transition

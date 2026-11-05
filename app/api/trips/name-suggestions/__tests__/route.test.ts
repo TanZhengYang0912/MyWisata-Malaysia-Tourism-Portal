@@ -134,6 +134,7 @@ describe("POST /api/trips/name-suggestions", () => {
     expect(failedBody.data).toEqual({
       suggestions: ["Penang 3D2N", "Penang Escape", "Penang Getaway"],
       aiAvailable: false,
+      privacyBlocked: false,
       duration: { days: 3, nights: 2 },
     });
     expect(JSON.stringify(failedBody)).not.toContain("/Users/private");

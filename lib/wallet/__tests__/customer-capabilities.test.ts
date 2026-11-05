@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { deriveCustomerWalletCapabilities } from '@/lib/wallet/customer-capabilities';
 
 const readyInput = {
+  emailVerified: true,
+  phoneVerified: true,
+  profileComplete: true,
   kycStatus: 'approved',
   availableEarningsSen: 10_000,
   minimumWithdrawalSen: 5_000,
@@ -44,12 +47,12 @@ describe('deriveCustomerWalletCapabilities', () => {
     expect(deriveCustomerWalletCapabilities(input)).toMatchObject({ canWithdraw: false, blockerCode, nextAction });
   });
 
-  it('allows a KYC-approved customer to withdraw without Phone verification input', () => {
-    expect(deriveCustomerWalletCapabilities(readyInput)).toMatchObject({
-      canWithdraw: true,
-      blockerCode: null,
-      nextAction: 'withdraw',
-    });
+  it.each([
+    [{ ...readyInput, emailVerified: false }, 'email_verification_required', 'verify_email'],
+    [{ ...readyInput, phoneVerified: false }, 'phone_verification_required', 'verify_phone'],
+    [{ ...readyInput, profileComplete: false }, 'profile_required', 'complete_profile'],
+  ] as const)('requires cumulative verification before withdrawal', (input, blockerCode, nextAction) => {
+    expect(deriveCustomerWalletCapabilities(input)).toMatchObject({ canWithdraw: false, blockerCode, nextAction });
   });
 
   it('allows the existing Stripe fallback when no saved destination is selected', () => {

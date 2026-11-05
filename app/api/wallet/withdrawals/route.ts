@@ -18,6 +18,13 @@ const submitSchema = z.object({
 }).strict();
 
 function withdrawalError(message: string) {
+  if (message.includes('verification_requirements_required') || message.includes('phone_verification_required')) {
+    return apiFail(
+      'VERIFICATION_REQUIRED',
+      'Verify your email and phone, complete your Profile, and get KYC approval before requesting a withdrawal',
+      403,
+    );
+  }
   if (message.includes('kyc_required')) {
     return apiFail('KYC_REQUIRED', 'KYC approval is required before requesting a withdrawal', 403);
   }

@@ -31,7 +31,7 @@ describe("customer home Discover Malaysia hero", () => {
   it("renders the localized hero title with its dedicated editorial display face", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     const markup = renderToStaticMarkup(
-      <CustomerHomeClient recommended={[]} popular={[]} vendors={[]} campaign={null} />,
+      <CustomerHomeClient highlightItems={[]} forYouItems={[]} vendors={[]} campaign={null} />,
     );
     consoleError.mockRestore();
     const title = markup.match(/<h1[^>]*>[^<]*ui\.guest\.discoverMalaysia[^<]*<\/h1>/)?.[0] ?? "";
@@ -46,7 +46,7 @@ describe("customer home Discover Malaysia hero", () => {
       renderErrors.push(args);
     });
     const markup = renderToStaticMarkup(
-      <CustomerHomeClient recommended={[]} popular={[]} vendors={[]} campaign={null} />,
+      <CustomerHomeClient highlightItems={[]} forYouItems={[]} vendors={[]} campaign={null} />,
     );
     const unexpectedRenderErrors = renderErrors.filter(
       ([message, ...values]) => !(
@@ -84,7 +84,7 @@ describe("customer home Discover Malaysia hero", () => {
 
   it("offers a direct Saved toggle on every visible state card", () => {
     const markup = renderToStaticMarkup(
-      <CustomerHomeClient recommended={[]} popular={[]} vendors={[]} campaign={null} />,
+      <CustomerHomeClient highlightItems={[]} forYouItems={[]} vendors={[]} campaign={null} />,
     );
     const destinationCarousel = markup.match(
       /<nav aria-label="ui\.home\.destinationCarousel"[\s\S]*?<\/nav>/,
@@ -101,7 +101,7 @@ describe("customer home Discover Malaysia hero", () => {
 
   it("uses the refreshed local photography for the first four destinations", () => {
     const markup = renderToStaticMarkup(
-      <CustomerHomeClient recommended={[]} popular={[]} vendors={[]} campaign={null} />,
+      <CustomerHomeClient highlightItems={[]} forYouItems={[]} vendors={[]} campaign={null} />,
     );
 
     expect(markup).toContain("klcc-home-hero-match.webp");
@@ -115,7 +115,7 @@ describe("customer home Discover Malaysia hero", () => {
 
   it("keeps the selected card thumbnail under the full-bleed hero while it loads", () => {
     const markup = renderToStaticMarkup(
-      <CustomerHomeClient recommended={[]} popular={[]} vendors={[]} campaign={null} />,
+      <CustomerHomeClient highlightItems={[]} forYouItems={[]} vendors={[]} campaign={null} />,
     );
     const heroMarkup = markup.slice(0, markup.indexOf('<nav aria-label="ui.home.destinationCarousel"'));
     const placeholder = heroMarkup.match(/<img[^>]*class="atlas-hero-placeholder[^>]*>/)?.[0] ?? "";

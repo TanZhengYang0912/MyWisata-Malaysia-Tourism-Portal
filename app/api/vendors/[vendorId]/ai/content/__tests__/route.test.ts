@@ -62,14 +62,26 @@ describe('POST /api/vendors/[vendorId]/ai/content', () => {
     await expect(response.json()).resolves.toMatchObject({ data: { draft: { title: 'Taste Georgetown' } } });
   });
 
-  it('returns an actionable message when the provider token is invalid', async () => {
+  it('keeps provider configuration details private and offers a manual fallback', async () => {
     mocks.generateContentDraft.mockResolvedValue({ available: false, reason: 'authentication_failed' });
 
     const response = await POST(request({ surface: 'business_profile', name: 'Rasa Malaysia Kitchen' }), { params: Promise.resolve({ vendorId: 'vendor-1' }) });
 
     expect(response.status).toBe(503);
+    const body = await response.json();
+    expect(body.error).toMatchObject({ code: 'AI_UNAVAILABLE' });
+    expect(body.error.message).toContain('manually');
+    expect(body.error.message).not.toMatch(/token|key|authentication/i);
+  });
+
+  it('explains when personal content was withheld from AI', async () => {
+    mocks.generateContentDraft.mockResolvedValue({ available: false, reason: 'sensitive_input' });
+
+    const response = await POST(request({ surface: 'business_profile', name: 'Rasa Malaysia Kitchen' }), { params: Promise.resolve({ vendorId: 'vendor-1' }) });
+
+    expect(response.status).toBe(422);
     await expect(response.json()).resolves.toMatchObject({
-      error: { code: 'AI_AUTHENTICATION_FAILED', message: expect.stringContaining('token') },
+      error: { code: 'AI_PERSONAL_DATA_WITHHELD', message: expect.stringContaining('write the content manually') },
     });
   });
 });

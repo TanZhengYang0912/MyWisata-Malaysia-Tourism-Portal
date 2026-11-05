@@ -10,6 +10,7 @@ import {
   invitationFailure,
   preparedInvitation,
 } from "@/lib/staff-invitations/route-helpers";
+import { mutationReceipt } from "@/app/api/admin/access-control/_shared";
 import { requireStaffRoleManagementSuperAdmin } from "@/lib/staff-permissions/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
@@ -71,8 +72,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { db, response } = await requireStaffRoleManagementSuperAdmin();
+  const { db, user, response } = await requireStaffRoleManagementSuperAdmin();
   if (response) return response;
+  if (!user) return apiFail("UNAUTHORIZED", "Sign in required", 401);
 
   const parsed = await parseBody(request, createSchema);
   if (!parsed.ok) return parsed.response;
@@ -92,14 +94,11 @@ export async function POST(request: Request) {
   const prepared = preparedInvitation(data);
   if (!prepared) return apiFail("STAFF_INVITATION_FAILED", "Unable to prepare the staff invitation", 500);
   const delivery = await deliverPreparedInvitation(db, prepared, token, tokenHash);
-  if (!delivery.sent || !delivery.finalized) {
-    return apiFail("STAFF_INVITATION_DELIVERY_FAILED", "The invitation was created but email delivery could not be confirmed", 503);
-  }
-
-  return apiOk({
+  const deliveryStatus = !delivery.finalized ? "sending" : delivery.sent ? "sent" : "failed";
+  return mutationReceipt(db, user.id, "staff.invitation.created", prepared.id, {
     id: prepared.id,
     status: prepared.status,
-    deliveryStatus: "sent",
+    deliveryStatus,
     expiresAt: prepared.expires_at,
-  }, { status: 201 });
+  }, delivery.sent && delivery.finalized ? 201 : 202);
 }

@@ -58,7 +58,7 @@ export default function CustomerRecommendationDetailPage() {
   useEffect(() => { void loadDetail(); }, [loadDetail]);
 
   return <>
-    <CustomerPageTitle eyebrow={t("ui.recommendations.community")} title={detail?.name ?? t("ui.recommendations.title")} description={t("ui.recommendations.description")} icon={<Star size={14} className="text-accent" />} />
+    <CustomerPageTitle eyebrow={t("ui.recommendations.community")} title={detail?.name ?? t("ui.recommendations.title")} icon={<Star size={14} className="text-accent" />} />
     <CustomerPageShell wide className="pt-0 sm:pt-0">
       <div className="mb-5 flex items-center justify-between gap-3"><BackLink fallbackHref="/customer/recommendations" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft size={15} />{t("actions.back", { ns: "common" })}</BackLink>{detail && <StatusBadge status={detail.status} />}</div>
       {loading ? <CustomerPanel><p className="text-sm text-muted-foreground">{t("ui.states.loading")}</p></CustomerPanel> : error || !detail ? <CustomerPanel><p role="alert" className="text-sm text-destructive">{error}</p><Button className="mt-3" variant="outline" onClick={() => void loadDetail()}>{t("ui.actions.retry")}</Button></CustomerPanel> : <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">

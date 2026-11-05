@@ -33,4 +33,37 @@ describe('POST /api/auth/demo-signin runtime gate', () => {
     expect(response.status).toBe(200);
     expect(signInWithPassword).toHaveBeenCalledWith({ email: 'customer@demo.local', password: 'demo123456', options: { captchaToken: 'valid-proof' } });
   });
+
+  it('returns a stable CAPTCHA error code without exposing the provider message', async () => {
+    vi.stubEnv('MYLAWATAN_DEMO_TOOLS', 'true');
+    vi.stubEnv('NODE_ENV', 'test');
+    signInWithPassword.mockResolvedValue({ error: { code: 'captcha_failed', message: 'request disallowed (invalid-input-response)' } });
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ code: 'captcha_failed' });
+  });
+
+  it('returns a generic error code for other provider failures', async () => {
+    vi.stubEnv('MYLAWATAN_DEMO_TOOLS', 'true');
+    vi.stubEnv('NODE_ENV', 'test');
+    signInWithPassword.mockResolvedValue({ error: { code: 'unexpected_error', message: 'private provider detail' } });
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ code: 'sign_in_failed' });
+  });
+
+  it('does not expose unexpected exception messages', async () => {
+    vi.stubEnv('MYLAWATAN_DEMO_TOOLS', 'true');
+    vi.stubEnv('NODE_ENV', 'test');
+    signInWithPassword.mockRejectedValue(new Error('private server detail'));
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ code: 'sign_in_failed' });
+  });
 });

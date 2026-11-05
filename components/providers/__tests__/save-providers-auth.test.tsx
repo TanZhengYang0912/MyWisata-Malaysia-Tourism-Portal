@@ -54,6 +54,8 @@ describe("customer save providers auth-aware hydration", () => {
   });
 
   beforeEach(() => {
+    vi.useFakeTimers();
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
     authState.currentUser = null;
     authState.loading = true;
     fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 401 }));
@@ -69,6 +71,7 @@ describe("customer save providers auth-aware hydration", () => {
     root = null;
     container = null;
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it("does not request personal save data for a guest after auth finishes loading", async () => {
@@ -109,8 +112,9 @@ describe("customer save providers auth-aware hydration", () => {
       await settle();
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/wishlist");
-    expect(fetchMock).toHaveBeenCalledWith("/api/saved-destinations");
+    await act(async () => { await vi.advanceTimersByTimeAsync(250); });
+    expect(fetchMock).toHaveBeenCalledWith("/api/wishlist", expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }));
+    expect(fetchMock).toHaveBeenCalledWith("/api/saved-destinations", expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }));
     expect(container?.textContent).toBe("ready:1|ready:1");
   });
 });

@@ -7,14 +7,17 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: mocks.from, rpc: mocks.rpc }) }));
-vi.mock('@/lib/checkout/guest-session', () => ({
+vi.mock('@/lib/checkout/guest-session', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/checkout/guest-session')>();
+  return {
+  ...actual,
   guestPrivateResponse: (data: unknown, status = 200) => Response.json({ data, error: null }, { status }),
   guestAddressRateKey: () => 'test-address',
   hashGuestCredential: (value: string) => `hash:${value}`,
-  isSameOriginMutation: () => true,
   readGuestJson: async (request: Request) => request.json(),
   reserveGuestRateLimit: mocks.rate,
-}));
+  };
+});
 
 import { POST } from '../route';
 
@@ -22,12 +25,24 @@ const ORDER_ID = '1d4057cf-c821-4b05-a454-61dbdc42d32c';
 const DISPLAY_ID = 'ORD-1000';
 let orders: Array<{ id: string; display_id: string; contact_email: string }>;
 
+function recoveryRequest(body: unknown, url = 'https://example.test/api/guest/orders/recover', origin = new URL(url).origin) {
+  return new Request(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', origin, 'sec-fetch-site': 'same-origin' },
+    body: JSON.stringify(body),
+  });
+}
+
 function queryFor(column: string, value: string) {
   const query = {
     select: vi.fn(() => query),
     eq: vi.fn((name: string, input: string) => { if (name === column && input === value) query.result = orders.filter((order) => order[name as 'id' | 'display_id'] === input); return query; }),
     is: vi.fn(() => query),
     not: vi.fn(() => query),
+    in: vi.fn(() => query),
+    ilike: vi.fn((_name: string, input: string) => { query.result = orders.filter(order => order.contact_email.toLowerCase() === input.toLowerCase().replace(/\\([%_\\])/g, '$1')); return query; }),
+    order: vi.fn(() => query),
+    limit: vi.fn(() => query),
     maybeSingle: vi.fn(async () => ({ data: query.result[0] ?? null, error: null })),
     result: [] as typeof orders,
   };
@@ -45,10 +60,7 @@ beforeEach(() => {
 describe('Guest order recovery references', () => {
   it('looks up the complete public number and rate-limits by the canonical order UUID', async () => {
     mocks.from.mockImplementation(() => queryFor('display_id', DISPLAY_ID));
-    const response = await POST(new Request('https://example.test/api/guest/orders/recover', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orderReference: '#ord-1000', email: 'guest@example.com' }),
-    }));
+    const response = await POST(recoveryRequest({ orderReference: '#ord-1000', email: 'guest@example.com' }));
 
     expect(response.status).toBe(200);
     expect(mocks.rate).toHaveBeenCalledWith(`recovery-order:${ORDER_ID}`, 3, 3600);
@@ -56,20 +68,102 @@ describe('Guest order recovery references', () => {
   });
 
   it('keeps the legacy UUID field but rejects ambiguous references without queuing mail', async () => {
-    const response = await POST(new Request('https://example.test/api/guest/orders/recover', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orderId: ORDER_ID, email: 'guest@example.com' }),
-    }));
+    const response = await POST(recoveryRequest({ orderId: ORDER_ID, email: 'guest@example.com' }));
     expect(response.status).toBe(200);
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
 
     vi.clearAllMocks();
     mocks.rate.mockResolvedValue(true);
-    const ambiguous = await POST(new Request('https://example.test/api/guest/orders/recover', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orderReference: ORDER_ID.slice(0, 8), email: 'guest@example.com' }),
-    }));
+    const ambiguous = await POST(recoveryRequest({ orderReference: ORDER_ID.slice(0, 8), email: 'guest@example.com' }));
     expect(ambiguous.status).toBe(200);
     expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it('accepts email-only recovery, handles case and keeps a deterministic latest-order lookup', async () => {
+    const query = queryFor('id', ORDER_ID);
+    mocks.from.mockReturnValue(query);
+    const response = await POST(recoveryRequest({ email: 'GUEST@example.com' }));
+    expect(response.status).toBe(200);
+    expect(query.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(query.order).toHaveBeenCalledWith('id', { ascending: false });
+    expect(query.limit).toHaveBeenCalledWith(1);
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it('escapes email wildcard characters and does not send when limited or invalid', async () => {
+    const query = queryFor('id', ORDER_ID);
+    mocks.from.mockReturnValue(query);
+    const request = (email: string) => recoveryRequest({ email });
+    await POST(request('guest_name@example.com'));
+    expect(query.ilike).toHaveBeenCalledWith('contact_email', 'guest\\_name@example.com');
+    mocks.rate.mockResolvedValue(false);
+    await POST(request('guest@example.com'));
+    await POST(request('invalid'));
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('retries a failed enqueue once using the same idempotency key', async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: '08006' } }).mockResolvedValueOnce({ data: null, error: null });
+    await POST(recoveryRequest({ orderId: ORDER_ID, email: 'guest@example.com' }));
+    expect(mocks.rpc).toHaveBeenCalledTimes(2);
+    expect(mocks.rpc.mock.calls[0]).toEqual(mocks.rpc.mock.calls[1]);
+  });
+
+  it('keeps the same public response when queuing the access link fails', async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: 'XX000', message: 'internal failure' } });
+    const matching = await POST(recoveryRequest({ orderId: ORDER_ID, email: 'guest@example.com' }));
+
+    mocks.from.mockImplementation(() => {
+      const query = queryFor('id', ORDER_ID);
+      query.result = [];
+      return query;
+    });
+    const unmatched = await POST(recoveryRequest({ orderId: ORDER_ID, email: 'other@example.com' }));
+
+    expect(await matching.json()).toEqual(await unmatched.json());
+    expect(matching.status).toBe(unmatched.status);
+  });
+
+  it('accepts a canonical HTTPS recovery request when the production request URL is internal HTTP', async () => {
+    const original={appUrl:process.env.APP_URL,publicAppUrl:process.env.NEXT_PUBLIC_APP_URL};
+    try {
+      vi.stubEnv('NODE_ENV','production');
+      process.env.APP_URL='https://mylawatan.my';
+      process.env.NEXT_PUBLIC_APP_URL='http://localhost:3000';
+      mocks.from.mockImplementation(() => queryFor('display_id', DISPLAY_ID));
+      const response = await POST(recoveryRequest(
+        { orderReference: DISPLAY_ID, email: 'guest@example.com' },
+        'http://127.0.0.1:3000/api/guest/orders/recover',
+        'https://mylawatan.my',
+      ));
+      expect(response.status).toBe(200);
+      expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllEnvs();
+      if(original.appUrl===undefined) delete process.env.APP_URL; else process.env.APP_URL=original.appUrl;
+      if(original.publicAppUrl===undefined) delete process.env.NEXT_PUBLIC_APP_URL; else process.env.NEXT_PUBLIC_APP_URL=original.publicAppUrl;
+    }
+  });
+
+  it('rejects recovery before database access when the production public URL is invalid', async () => {
+    const original={appUrl:process.env.APP_URL,publicAppUrl:process.env.NEXT_PUBLIC_APP_URL};
+    try {
+      vi.stubEnv('NODE_ENV','production');
+      process.env.APP_URL='http://localhost:3000';
+      process.env.NEXT_PUBLIC_APP_URL='https://mylawatan.my';
+      const response = await POST(recoveryRequest(
+        { orderReference: DISPLAY_ID, email: 'guest@example.com' },
+        'http://127.0.0.1:3000/api/guest/orders/recover',
+        'https://mylawatan.my',
+      ));
+      expect(response.status).toBe(403);
+      expect(mocks.from).not.toHaveBeenCalled();
+      expect(mocks.rpc).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+      if(original.appUrl===undefined) delete process.env.APP_URL; else process.env.APP_URL=original.appUrl;
+      if(original.publicAppUrl===undefined) delete process.env.NEXT_PUBLIC_APP_URL; else process.env.NEXT_PUBLIC_APP_URL=original.publicAppUrl;
+    }
   });
 });

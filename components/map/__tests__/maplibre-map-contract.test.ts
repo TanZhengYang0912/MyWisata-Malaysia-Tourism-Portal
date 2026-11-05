@@ -23,7 +23,9 @@ describe("shared MapLibre composition contract", () => {
   it("reports map movement so geographic animations can pause cleanly", () => {
     expect(mapSource).toContain("onMapMovingChange?: (moving: boolean) => void");
     expect(mapSource).toContain("onMoveStart={() => onMapMovingChange?.(true)}");
-    expect(mapSource).toContain("onMoveEnd={() => onMapMovingChange?.(false)}");
+    expect(mapSource).toContain("onMoveEnd={(event) => {");
+    expect(mapSource).toContain("onMapMovingChange?.(false)");
+    expect(mapSource).toContain("event.viewState.longitude");
     expect(viewSource).toContain("onMapMovingChange?: (moving: boolean) => void");
   });
 

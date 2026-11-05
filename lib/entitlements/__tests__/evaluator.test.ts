@@ -31,15 +31,22 @@ function facts(overrides: Partial<VerificationFacts> = {}): VerificationFacts {
 }
 
 describe("independent entitlement evaluator", () => {
-  it("grants KYC capabilities without inferring phone or profile completion", () => {
+  it("does not let KYC waive Phone or Profile for protected capabilities", () => {
     const emailKycOnly = facts({ kycStatus: "approved" });
 
     expect(evaluateEntitlementDecision(emailKycOnly, "recommendation.submit", allowPolicy))
-      .toMatchObject({ allowed: true });
+      .toMatchObject({ allowed: false, blockerCode: "PHONE_VERIFICATION_REQUIRED" });
     expect(evaluateEntitlementDecision(emailKycOnly, "affiliate.full", allowPolicy))
-      .toMatchObject({ allowed: true });
+      .toMatchObject({ allowed: false, blockerCode: "PHONE_VERIFICATION_REQUIRED" });
     expect(evaluateEntitlementDecision(emailKycOnly, "wallet.request_withdrawal", allowPolicy))
-      .toMatchObject({ allowed: true });
+      .toMatchObject({ allowed: false, blockerCode: "PHONE_VERIFICATION_REQUIRED" });
+    const phoneKycOnly = facts({ phoneVerified: true, kycStatus: "approved" });
+    expect(evaluateEntitlementDecision(phoneKycOnly, "recommendation.submit", allowPolicy))
+      .toMatchObject({ allowed: false, blockerCode: "PROFILE_REQUIRED" });
+    expect(evaluateEntitlementDecision(phoneKycOnly, "affiliate.full", allowPolicy))
+      .toMatchObject({ allowed: false, blockerCode: "PROFILE_REQUIRED" });
+    expect(evaluateEntitlementDecision(phoneKycOnly, "wallet.request_withdrawal", allowPolicy))
+      .toMatchObject({ allowed: false, blockerCode: "PROFILE_REQUIRED" });
     expect(evaluateEntitlementDecision(emailKycOnly, "wallet.top_up", allowPolicy))
       .toMatchObject({
         allowed: false,
@@ -49,10 +56,10 @@ describe("independent entitlement evaluator", () => {
 
   it.each([
     ["email only", facts(), "wallet.top_up", "PHONE_VERIFICATION_REQUIRED"],
-    ["phone only", facts({ phoneVerified: true }), "recommendation.submit", "PROFILE_OR_KYC_REQUIRED"],
+    ["phone only", facts({ phoneVerified: true }), "recommendation.submit", "PROFILE_REQUIRED"],
     ["profile only", facts({ profileComplete: true }), "wallet.top_up", "PHONE_VERIFICATION_REQUIRED"],
     ["phone and profile", facts({ phoneVerified: true, profileComplete: true }), "affiliate.full", "KYC_REQUIRED"],
-    ["phone and KYC", facts({ phoneVerified: true, kycStatus: "approved" }), "affiliate.limited", "ENTITLEMENT_DENIED"],
+    ["phone and KYC", facts({ phoneVerified: true, kycStatus: "approved" }), "affiliate.limited", "PROFILE_REQUIRED"],
     ["profile and KYC", facts({ profileComplete: true, kycStatus: "approved" }), "wallet.top_up", "PHONE_VERIFICATION_REQUIRED"],
   ] as const)("keeps %s qualifications independent", (_label, verificationFacts, capability, blockerCode) => {
     expect(evaluateEntitlementDecision(verificationFacts, capability, allowPolicy))
@@ -60,13 +67,9 @@ describe("independent entitlement evaluator", () => {
   });
 
   it.each([
-    ["phone only", facts({ phoneVerified: true }), ["commerce.booking", "commerce.purchase", "commerce.checkout", "ai.basic_recommendation"]],
-    ["profile only", facts({ profileComplete: true }), ["recommendation.submit", "affiliate.limited"]],
-    ["KYC only", facts({ kycStatus: "approved" }), ["recommendation.submit", "affiliate.full", "affiliate.earn_commission", "wallet.request_withdrawal"]],
-    ["phone and profile", facts({ phoneVerified: true, profileComplete: true }), ["commerce.checkout", "recommendation.submit", "affiliate.limited"]],
-    ["phone and KYC", facts({ phoneVerified: true, kycStatus: "approved" }), ["commerce.checkout", "recommendation.submit", "affiliate.full", "wallet.request_withdrawal"]],
-    ["profile and KYC", facts({ profileComplete: true, kycStatus: "approved" }), ["recommendation.submit", "affiliate.full", "affiliate.earn_commission", "wallet.request_withdrawal"]],
-  ] as const)("grants the union of bundles for %s", (_label, verificationFacts, capabilities) => {
+    ["phone and profile", facts({ phoneVerified: true, profileComplete: true }), ["recommendation.submit", "affiliate.limited"]],
+    ["phone, profile and KYC", facts({ phoneVerified: true, profileComplete: true, kycStatus: "approved" }), ["recommendation.submit", "affiliate.full", "affiliate.earn_commission", "wallet.request_withdrawal"]],
+  ] as const)("grants the cumulative bundle for %s", (_label, verificationFacts, capabilities) => {
     for (const capability of capabilities) {
       expect(evaluateEntitlementDecision(verificationFacts, capability, allowPolicy)).toMatchObject({
         allowed: true,
@@ -104,12 +107,22 @@ describe("independent entitlement evaluator", () => {
     expect(evaluateEntitlementDecision(facts({ phoneVerified: true }), "recommendation.submit", allowPolicy))
       .toMatchObject({
         allowed: false,
-        blockerCode: "PROFILE_OR_KYC_REQUIRED",
-        qualificationPaths: [
-          { type: "profile", href: "/customer/profile" },
-          { type: "kyc", href: "/customer/kyc" },
-        ],
+        blockerCode: "PROFILE_REQUIRED",
+        qualificationPaths: [{ type: "profile", href: "/customer/profile" }],
       });
+  });
+
+  it("allows Limited Affiliate only with Phone and Profile and without full KYC", () => {
+    expect(evaluateEntitlementDecision(
+      facts({ phoneVerified: true, profileComplete: true }),
+      "affiliate.limited",
+      allowPolicy,
+    )).toMatchObject({ allowed: true });
+    expect(evaluateEntitlementDecision(
+      facts({ phoneVerified: true, profileComplete: true, kycStatus: "approved" }),
+      "affiliate.limited",
+      allowPolicy,
+    )).toMatchObject({ allowed: false, blockerCode: "ENTITLEMENT_DENIED" });
   });
 
   it("routes Phone hard-guard recovery to the independent Phone page", () => {
@@ -124,7 +137,7 @@ describe("independent entitlement evaluator", () => {
     ["rejected", "KYC_RESUBMISSION_REQUIRED"],
     ["unverified", "KYC_REQUIRED"],
   ] as const)("keeps %s KYC recovery distinct", (kycStatus, blockerCode) => {
-    expect(evaluateEntitlementDecision(facts({ kycStatus }), "wallet.request_withdrawal", allowPolicy))
+    expect(evaluateEntitlementDecision(facts({ phoneVerified: true, profileComplete: true, kycStatus }), "wallet.request_withdrawal", allowPolicy))
       .toMatchObject({ allowed: false, blockerCode });
   });
 
@@ -135,7 +148,7 @@ describe("independent entitlement evaluator", () => {
       allowPolicy,
     )).toMatchObject({ allowed: false, blockerCode: "ACCOUNT_RESTRICTED", source: "hard_guard" });
     expect(evaluateEntitlementDecision(
-      facts({ profileComplete: true, roles: ["vendor_owner"] }),
+      facts({ phoneVerified: true, profileComplete: true, roles: ["vendor_owner"] }),
       "affiliate.limited",
       allowPolicy,
     )).toMatchObject({ allowed: false, blockerCode: "ENTITLEMENT_DENIED", source: "hard_guard" });

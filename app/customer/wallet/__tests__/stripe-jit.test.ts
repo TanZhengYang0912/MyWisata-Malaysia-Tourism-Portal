@@ -65,8 +65,9 @@ describe('customer wallet Stripe JIT contract', () => {
     expect(page).toContain('window.history.replaceState(');
     expect(handleWithdraw).toContain('completeWithdrawalSubmission();');
     expect(page).toContain('tCustomer("ui.wallet.withdrawalSubmitted")');
-    expect(page).toContain('withdrawalSubmitted ? (');
-    expect(page).toContain(': topupSuccess && (');
+    expect(page).toContain('{withdrawalSubmitted ? (');
+    expect(page).toContain(': topUpOperation?.state === "credited" && (');
+    expect(page).toContain('tCustomer("ui.wallet.topupSuccess")');
   });
 
   it('uses one idempotency key and a bounded action timeout per withdrawal attempt', () => {

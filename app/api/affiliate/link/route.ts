@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   const affiliateFailure = customerCapabilityFailure(
     requiredCapability,
     affiliateDecision,
-    'Complete your Profile or receive KYC approval before generating an affiliate link',
+    'Verify your email and phone and complete your Profile before generating an affiliate link',
   );
   if (affiliateFailure) return affiliateFailure;
 

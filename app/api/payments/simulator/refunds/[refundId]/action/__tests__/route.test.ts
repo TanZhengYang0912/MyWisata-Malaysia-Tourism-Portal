@@ -15,7 +15,10 @@ const mocks = vi.hoisted(() => ({
   authFrom: vi.fn(),
   serviceFrom: vi.fn(),
   settleSimulatorEvent: vi.fn(),
+  adminGuard: vi.fn(),
 }));
+
+vi.mock('@/lib/staff-permissions/server', () => ({ requireStaffRoleManagementSuperAdmin: mocks.adminGuard }));
 
 function queryResult(data: unknown, error: unknown = null) {
   const terminal = Promise.resolve({ data, error });
@@ -52,6 +55,7 @@ describe('POST simulator refund action', () => {
     vi.stubEnv('PAYMENT_SIMULATOR_MODE', 'enabled');
     vi.stubEnv('PAYMENT_SIMULATOR_WEBHOOK_SECRET', secret);
     mocks.getUser.mockResolvedValue({ data: { user: { id: USER_ID } }, error: null });
+    mocks.adminGuard.mockResolvedValue({ db: {}, user: { id: USER_ID }, response: null });
     mocks.authFrom.mockReturnValue(queryResult([{ roles: { name: 'super_admin' } }]));
     mocks.serviceFrom.mockReturnValue(queryResult({
       id: REFUND_ID,
@@ -124,7 +128,7 @@ describe('POST simulator refund action', () => {
   });
 
   it('requires a Super Admin role', async () => {
-    mocks.authFrom.mockReturnValue(queryResult([]));
+    mocks.adminGuard.mockResolvedValue({ db: {}, user: null, response: new Response(null, { status: 403 }) });
     const response = await POST(request({ outcome: 'failed' }), {
       params: Promise.resolve({ refundId: REFUND_ID }),
     });

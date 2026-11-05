@@ -120,6 +120,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/event-items-table.tsx",
   "components/customer/event-partners-section.tsx",
   "components/customer/event-pickup-qr-codes.tsx",
+  "app/customer/orders/[id]/order-pickup-qr-codes.tsx",
   "components/customer/featured-recommendations-frame.tsx",
   "components/customer/featured-split-card.tsx",
   "components/customer/campaign-event-pass.tsx",
@@ -193,6 +194,9 @@ export const CUSTOMER_I18N_FILES = [
   "components/profile/profile-location-fields.tsx",
   "components/profile/profile-photo-picker.tsx",
   "components/profile/profile-sections.tsx",
+  "components/profile/personal-travel-details.tsx",
+  "components/profile/saved-travellers.tsx",
+  "components/profile/travel-details-fields.tsx",
   "components/profile/verification-path-cards.tsx",
 ] as const;
 

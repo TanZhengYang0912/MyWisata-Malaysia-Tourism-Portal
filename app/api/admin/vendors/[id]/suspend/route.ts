@@ -60,6 +60,7 @@ export async function POST(request: Request, { params }: Props) {
       : `Your vendor "${vendor.name}" has been reactivated`,
     body: reason ?? undefined,
     link: '/vendor/dashboard',
+    metadata: { vendorName: vendor.name },
   });
 
   void emitVendorNotification({
@@ -73,7 +74,7 @@ export async function POST(request: Request, { params }: Props) {
     link: '/vendor/dashboard',
     email: true,
     reference: vendorId,
-    metadata: { status: newStatus },
+    metadata: { vendorName: vendor.name, status: newStatus },
     serviceDb: createServiceClient(),
   }).catch((notificationError) => console.error('[vendor-notifications] vendor status event failed', notificationError));
 

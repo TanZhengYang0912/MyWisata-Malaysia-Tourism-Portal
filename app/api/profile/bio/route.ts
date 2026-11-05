@@ -19,11 +19,14 @@ export async function PATCH(request: Request) {
   // Fetch current violation state
   const { data: profile, error: profileErr } = await supabase
     .from('users')
-    .select('bio_violation_count, bio_cooldown_until')
+    .select('bio,bio_violation_count, bio_cooldown_until,tier')
     .eq('id', user.id)
     .single();
 
   if (profileErr || !profile) return apiFail('NOT_FOUND', 'Profile not found', 404);
+
+  // A validated no-op must not call moderation or update timestamps.
+  if (profile.bio === bio) return apiOk({ updated: true, changed: false, tier: profile.tier ?? null });
 
   const violations = profile.bio_violation_count ?? 0;
   const cooldownUntil = profile.bio_cooldown_until ? new Date(profile.bio_cooldown_until) : null;
@@ -45,6 +48,9 @@ export async function PATCH(request: Request) {
 
   // Moderation (fail-closed: unavailable = block)
   const modResult = await moderateBio(bio);
+  if ('error' in modResult && modResult.error === 'sensitive_data_detected') {
+    return apiFail('PERSONAL_DATA_REMOVE', 'Your bio was not sent for AI review because it may contain identity, bank, phone, email, or private address details. Remove those details and submit it again; review is required to save a bio.', 422);
+  }
   if ('error' in modResult) {
     return apiFail('MODERATION_UNAVAILABLE', 'Bio review service is temporarily unavailable — try again shortly', 503);
   }
@@ -73,21 +79,29 @@ export async function PATCH(request: Request) {
   }
 
   // Write bio (reset cooldown if it expired naturally)
-  const { error } = await supabase
+  const { data: written, error } = await supabase
     .from('users')
     .update({
       bio,
       bio_cooldown_until: null,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', user.id);
+    .eq('id', user.id)
+    .neq('bio', bio)
+    .select('id')
+    .maybeSingle();
 
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error) {
+    console.error('[profile/bio] bio write failed', error);
+    return apiFail('BIO_SAVE_FAILED', 'Unable to save your bio. Your previous bio is unchanged; please try again.', 500);
+  }
+
+  if (!written) return apiOk({ updated: true, changed: false, tier: profile.tier ?? null });
 
   // Attempt tier promotion (non-fatal)
   await supabase.rpc('promote_to_profile_complete', { p_user_id: user.id });
 
   const { data: updated } = await supabase.from('users').select('tier').eq('id', user.id).single();
 
-  return apiOk({ updated: true, tier: updated?.tier ?? null });
+  return apiOk({ updated: true, changed: true, tier: updated?.tier ?? null });
 }

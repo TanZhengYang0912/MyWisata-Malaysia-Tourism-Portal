@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { resolveActiveVendorInvite } from '@/lib/recommendations/vendor-invite-access';
 import { createServiceClient } from '@/lib/supabase/service';
 import { createClient } from '@/lib/supabase/server';
+import { normalizeEmail } from '@/lib/validation/postgrest-filter';
+import { checkoutEmailLocale } from '@/lib/email/locale';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 
 export const dynamic = 'force-dynamic';
@@ -24,13 +26,26 @@ export async function POST(request: Request) {
   const parsed = await parseBody(request, schema);
   if (!parsed.ok) return parsed.response;
 
-  const resolution = await resolveActiveVendorInvite(createServiceClient(), parsed.data.token);
+  const service = createServiceClient();
+  const resolution = await resolveActiveVendorInvite(service, parsed.data.token);
   if (!resolution.ok) return apiFail(resolution.error.code, resolution.error.message, resolution.error.status);
 
+  const { data: profileExists, error: profileError } = await service.rpc('profile_email_exists', {
+    p_email: normalizeEmail(resolution.invite.email),
+  });
+  if (profileError || typeof profileExists !== 'boolean') {
+    return apiFail('OTP_SEND_FAILED', 'Unable to send a sign-in code. Please try again.', 502);
+  }
+
   const db = await createClient();
+  const locale = checkoutEmailLocale(request);
   const { error } = await db.auth.signInWithOtp({
     email: resolution.invite.email,
-    options: { shouldCreateUser: true, captchaToken: parsed.data.captchaToken },
+    options: {
+      shouldCreateUser: profileExists !== true,
+      captchaToken: parsed.data.captchaToken,
+      ...(profileExists === true ? {} : { data: { preferred_locale: locale } }),
+    },
   });
   if (error) return mapOtpSendError(error);
 

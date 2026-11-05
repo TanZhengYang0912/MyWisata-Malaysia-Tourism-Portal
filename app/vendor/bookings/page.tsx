@@ -36,9 +36,10 @@ import { useActionFeedback } from "@/components/providers/action-feedback";
 import { useAppDialog } from "@/components/providers/app-dialog";
 import { selectBookingOutlet } from "@/lib/vendor/booking-scope";
 import { useDebounce } from "@/hooks/use-debounce";
-import { exportToCsv, type CsvColumn } from "@/lib/export-csv";
+import { downloadCsvFile, exportToCsv, generateCsvContent, type CsvColumn } from "@/lib/export-csv";
 import { productImageUrl } from "@/lib/storage/product-image";
-import { formatMYR } from "@/lib/i18n/format";
+import { formatDateTime, formatMYR } from "@/lib/i18n/format";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { getBookingSlotAvailability } from "@/lib/customer/booking-slot-presenter";
 import { formatStayRange } from "@/lib/customer/booking-view";
 import {
@@ -256,7 +257,7 @@ function loadScopedProducts(vendorId: string, errorMessage: string) {
 
 export default function VendorBookingsPage() {
   const { t, i18n } = useTranslation("vendor");
-  const locale = i18n.resolvedLanguage || i18n.language;
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const { user, isOutletManager } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -469,6 +470,21 @@ export default function VendorBookingsPage() {
     );
   }
 
+  function handleExportReadableBookings() {
+    if (!bookings.length) return;
+    const columns: CsvColumn<Booking>[] = [
+      { header: t("ui.bookings.csv.reference"), accessor: (b) => b.display_id || b.id },
+      { header: t("ui.bookings.csv.customer"), accessor: (b) => b.customer?.full_name || t("ui.bookings.guest") },
+      { header: t("ui.bookings.csv.email"), accessor: (b) => b.customer?.email || "" },
+      { header: t("ui.bookings.csv.experience"), accessor: (b) => b.slot?.products?.name || b.orderItem?.product_name || "" },
+      { header: t("ui.bookings.csv.dateTime"), accessor: (b) => b.slot?.starts_at ? formatDateTime(b.slot.starts_at, locale, { timeZone: "Asia/Kuala_Lumpur" }) : "" },
+      { header: t("ui.bookings.csv.quantity"), accessor: (b) => b.orderItem?.quantity ?? 1 },
+      { header: t("ui.bookings.csv.status"), accessor: (b) => i18n.exists(`ui.status.${b.status}`) ? t(`ui.status.${b.status}`) : b.status },
+      { header: t("ui.bookings.csv.checkInTime"), accessor: (b) => b.check_in_at ? formatDateTime(b.check_in_at, locale, { timeZone: "Asia/Kuala_Lumpur" }) : "" },
+    ];
+    downloadCsvFile(`bookings-${new Date().toISOString().slice(0, 10)}-${locale}`, generateCsvContent(columns, bookings));
+  }
+
   async function checkIn(bookingId: string) {
     if (!vendorId) return;
     try {
@@ -663,6 +679,7 @@ export default function VendorBookingsPage() {
             </Link>
           )}
           {tab === "reservations" && (
+            <>
             <button
               type="button"
               onClick={handleExportBookings}
@@ -671,6 +688,10 @@ export default function VendorBookingsPage() {
             >
               <Download size={16} /> {t("actions.exportCsv")}
             </button>
+            <button type="button" onClick={handleExportReadableBookings} disabled={loading || bookings.length === 0} className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
+              <Download size={16} /> {t("actions.exportReadableCsv")}
+            </button>
+            </>
           )}
           <button
             type="button"

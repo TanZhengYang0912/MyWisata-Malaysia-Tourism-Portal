@@ -46,6 +46,7 @@ export async function loadPublicContentSources(
   const informationalIds = requestedIds(items, 'place_informational_activity');
   const reviewIds = requestedIds(items, 'review');
   const campaignIds = requestedIds(items, 'promotion_campaign');
+  const eventPromotionIds = requestedIds(items, 'vendor_event_promotion');
 
   const tasks: Promise<void>[] = [];
   if (productIds.length) tasks.push((async () => {
@@ -117,6 +118,20 @@ export async function loadPublicContentSources(
       addRecord(records, 'promotion_campaign', id, 'title', campaign.title);
       addRecord(records, 'promotion_campaign', id, 'summary', campaign.summary);
       addRecord(records, 'promotion_campaign', id, 'description', campaign.description);
+    }
+  })());
+
+  if (eventPromotionIds.length) tasks.push((async () => {
+    // The base table includes payment/review data and is not public-readable.
+    // Select only customer-visible copy and enforce the same publication window
+    // as the customer event-promotion listing.
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await db.from('vendor_event_promotions').select('id,title,details')
+      .in('id', eventPromotionIds).eq('status', 'paid').gte('ends_on', today);
+    if (error) throw error;
+    for (const row of data ?? []) {
+      addRecord(records, 'vendor_event_promotion', row.id, 'title', row.title);
+      addRecord(records, 'vendor_event_promotion', row.id, 'details', row.details);
     }
   })());
 

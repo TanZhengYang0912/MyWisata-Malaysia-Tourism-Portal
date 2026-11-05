@@ -22,6 +22,7 @@ import { getAdminAffiliateAttributionPage, getAffiliateAdminStats } from '@/lib/
 import { getFraudCounters } from '@/lib/affiliate/fraud';
 import { getFraudAnalytics, type FraudAnalyticsRange } from '@/lib/affiliate/fraud-analytics';
 import { generateAffiliateReportPdf } from '@/lib/pdf/affiliate-report';
+import { getRequestLocale } from '@/lib/i18n/server';
 
 const VALID_RANGES: FraudAnalyticsRange[] = ['7d', '30d', '90d'];
 
@@ -33,6 +34,7 @@ export async function GET(request: Request) {
     return apiFail('FORBIDDEN', 'Only Super Admin can export the affiliate report', 403);
   }
 
+  const locale = await getRequestLocale();
   const rangeParam = new URL(request.url).searchParams.get('range');
   const range: FraudAnalyticsRange = VALID_RANGES.includes(rangeParam as FraudAnalyticsRange)
     ? (rangeParam as FraudAnalyticsRange)
@@ -63,7 +65,7 @@ export async function GET(request: Request) {
       stats,
       fraudCounters,
       fraudAnalytics,
-    });
+    }, locale);
   } catch {
     return apiFail('UNAVAILABLE', 'Affiliate report data is temporarily unavailable', 503);
   }

@@ -4,7 +4,7 @@ import type { RecentOrder } from '@/components/vendor/recent-transactions';
 import { outletLocation, outletShortName } from '@/lib/outlet-display';
 import { isInventoryConfiguredForOutlets, isRatingEligibleProduct, isVisibleActiveProduct, resolveProductOutlet } from '@/lib/vendor/product-scope';
 import { productImageUrl } from '@/lib/storage/product-image';
-import { allocateDashboardRevenue, classifyDashboardSale, summarizeDashboardPayments, type DashboardPayment, type DashboardSaleClass } from '@/lib/vendor/dashboard-metrics';
+import { allocateDashboardRevenue, classifyDashboardSale, matchesDashboardSalesMode, summarizeDashboardPayments, type DashboardPayment, type DashboardSaleClass, type DashboardSalesMode } from '@/lib/vendor/dashboard-metrics';
 
 export type DashboardFilter = 'today' | '7d' | '30d' | '12m' | 'custom';
 export type DashboardCustomRange = { from?: string; to?: string };
@@ -115,13 +115,9 @@ function saleClass(item: DashboardRow): DashboardSaleClass {
   return classifyDashboardSale(item.orders?.status, item.orders?.payments);
 }
 
-function isRevenueItem(item: DashboardRow) {
-  return saleClass(item) === 'verified';
-}
-
-function sumRevenue(items: DashboardRow[]) {
-  const verifiedItems = items.filter(isRevenueItem);
-  return [...allocateDashboardRevenue(verifiedItems)].reduce((total, [, amount]) => total + amount, 0);
+function sumRevenue(items: DashboardRow[], mode: DashboardSalesMode) {
+  const selectedItems = items.filter((item) => matchesDashboardSalesMode(saleClass(item), mode));
+  return [...allocateDashboardRevenue(selectedItems)].reduce((total, [, amount]) => total + amount, 0);
 }
 
 function sumClassRevenue(items: DashboardRow[], target: DashboardSaleClass) {
@@ -134,7 +130,7 @@ function percentChange(current: number, previous: number) {
   return Math.round(((current - previous) / previous) * 1000) / 10;
 }
 
-export async function getVendorDashboardData(filter: DashboardFilter = '7d', customRange?: DashboardCustomRange) {
+export async function getVendorDashboardData(filter: DashboardFilter = '7d', customRange?: DashboardCustomRange, salesMode: DashboardSalesMode = 'live') {
   const authDb = await createClient();
   const { data: { user } } = await authDb.auth.getUser();
   if (!user) return null;
@@ -263,13 +259,13 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   }).sort((a, b) => a.available - b.available).slice(0, 12) as StockAlert[];
 
   const chartMap = new Map<string, { revenue: number; orders: Set<string> }>();
-  const verifiedCurrentItems = currentItems.filter(isRevenueItem);
-  const verifiedRevenueByItem = allocateDashboardRevenue(verifiedCurrentItems);
+  const selectedSalesItems = currentItems.filter((item) => matchesDashboardSalesMode(saleClass(item), salesMode));
+  const salesRevenueByItem = allocateDashboardRevenue(selectedSalesItems);
   const orderAmountByItem = allocateDashboardRevenue(currentItems);
-  for (const item of verifiedCurrentItems) {
+  for (const item of selectedSalesItems) {
     const key = bucketKey(new Date(item.created_at), filter);
     const point = chartMap.get(key) || { revenue: 0, orders: new Set<string>() };
-    point.revenue += verifiedRevenueByItem.get(item.id) ?? 0;
+    point.revenue += salesRevenueByItem.get(item.id) ?? 0;
     point.orders.add(item.order_id);
     chartMap.set(key, point);
   }
@@ -278,17 +274,17 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   }));
 
   const outletMap = new Map<string, number>();
-  for (const item of verifiedCurrentItems) outletMap.set(item.outlet_id, (outletMap.get(item.outlet_id) || 0) + (verifiedRevenueByItem.get(item.id) ?? 0));
+  for (const item of selectedSalesItems) outletMap.set(item.outlet_id, (outletMap.get(item.outlet_id) || 0) + (salesRevenueByItem.get(item.id) ?? 0));
   const salesByOutlet = [...outletMap.entries()].sort(([, a], [, b]) => b - a).map(([outletId, revenue], index) => ({
     name: outletShortNames[outletId] || outletNames[outletId] || 'Unknown outlet', fullName: outletNames[outletId] || 'Unknown outlet', revenue: Math.round(revenue * 100) / 100, color: ['#010066', '#1d2a8a', '#b45309', '#be123c', '#7c3aed'][index % 5],
   }));
 
   const productMap = new Map<string, { name: string; quantity: number; revenue: number; coverUrl: string | null; outletName: string }>();
-  for (const item of verifiedCurrentItems) {
+  for (const item of selectedSalesItems) {
     const key = item.product_id || item.product_name;
     const product = productMap.get(key) || { name: item.product_name, quantity: 0, revenue: 0, coverUrl: productImageUrl(productById[key]?.cover_url) || null, outletName: outletShortNames[item.outlet_id] || outletNames[item.outlet_id] || 'Unknown outlet' };
     product.quantity += number(item.quantity);
-    product.revenue += verifiedRevenueByItem.get(item.id) ?? 0;
+    product.revenue += salesRevenueByItem.get(item.id) ?? 0;
     productMap.set(key, product);
   }
   const topSelling = [...productMap.values()].sort((a, b) => b.quantity - a.quantity).slice(0, 5).map((product) => ({ ...product, revenue: Math.round(product.revenue * 100) / 100 }));
@@ -332,8 +328,8 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
       product_name: order.item_count > 1 ? order.product_name + ' + ' + (order.item_count - 1) + ' more' : order.product_name,
       fulfil_status: order.fulfil_statuses.includes('pending') ? 'pending' : order.fulfil_statuses.includes('ready') ? 'ready' : order.fulfil_statuses.every((status) => status === 'fulfilled') ? 'fulfilled' : order.fulfil_statuses[0] || 'pending',
     }));
-  const totalRevenue = sumRevenue(currentItems);
-  const previousRevenue = sumRevenue(previousItems);
+  const totalRevenue = sumRevenue(currentItems, salesMode);
+  const previousRevenue = sumRevenue(previousItems, salesMode);
   const simulatedItems = currentItems.filter((item) => saleClass(item) === 'simulated');
   const unverifiedItems = currentItems.filter((item) => saleClass(item) === 'unverified');
   const simulatedOrderIds = new Set(simulatedItems.map((item) => item.order_id));
@@ -357,6 +353,7 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
     role,
     outletId: role === 'outlet_manager' ? outletIds[0] || null : null,
     filter,
+    salesMode,
     range: { start: start.toISOString(), end: now.toISOString() },
     stats: {
       totalRevenue: Math.round(totalRevenue * 100) / 100,

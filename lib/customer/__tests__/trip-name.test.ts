@@ -6,6 +6,7 @@ import {
   parseSubmittedTripDates,
   parseSubmittedTripName,
   parseTripNameSuggestions,
+  resolveTripNameLocale,
   tripDuration,
 } from "@/lib/customer/trip-name";
 
@@ -70,6 +71,14 @@ describe("trip duration", () => {
 
 describe("trip name suggestions", () => {
   const duration = { days: 3, nights: 2 };
+
+  it("uses the input language for name suggestions, with UI language for place-only input", () => {
+    expect(resolveTripNameLocale("沙巴美食之旅", "en")).toBe("zh-CN");
+    expect(resolveTripNameLocale("Percutian dengan keluarga", "en")).toBe("ms");
+    expect(resolveTripNameLocale("Sarawak", "zh-CN")).toBe("en");
+    expect(resolveTripNameLocale("Sarawak", "ms")).toBe("ms");
+    expect(resolveTripNameLocale("food trip in Sabah", "zh-CN")).toBe("en");
+  });
 
   it("accepts three distinct grounded names from plain or fenced JSON", () => {
     const raw = '```json\n{"suggestions":["Penang 3D2N Escape","Discover Penang","Penang Getaway"]}\n```';

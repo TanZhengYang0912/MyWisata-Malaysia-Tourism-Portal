@@ -11,6 +11,7 @@ type CustomerSubmissionRow = {
   reviewed_at: string | null;
   review_reason_code: string | null;
   review_reason_detail?: string | null;
+  review_version?: number;
 };
 
 const SAFE_REASON_COPY: Record<KycReviewReasonCode, string> = {
@@ -23,7 +24,7 @@ const SAFE_REASON_COPY: Record<KycReviewReasonCode, string> = {
 };
 
 function isStatus(status: string): status is KycSubmissionStatus {
-  return ['draft', 'pending', 'info_requested', 'approved', 'rejected', 'superseded'].includes(status);
+  return ['draft', 'pending', 'info_requested', 'approved', 'rejected', 'superseded', 'withdrawn'].includes(status);
 }
 
 function isReasonCode(reason: string | null | undefined): reason is KycReviewReasonCode {
@@ -46,5 +47,6 @@ export function mapCustomerKycSubmission(row: CustomerSubmissionRow): CustomerKy
     reviewedAt: row.reviewed_at,
     reviewReasonCode: isReasonCode(row.review_reason_code) ? row.review_reason_code : null,
     reviewReasonDetail: null,
+    reviewVersion: typeof row.review_version === 'number' ? row.review_version : undefined,
   };
 }

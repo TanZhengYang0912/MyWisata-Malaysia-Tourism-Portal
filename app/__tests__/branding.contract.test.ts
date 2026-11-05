@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { CHAT_STRINGS } from "@/lib/chatbot/strings";
 
 const read = (path: string) => {
   const absolutePath = resolve(process.cwd(), path);
@@ -17,6 +18,7 @@ function stringValues(value: unknown): string[] {
 const layoutSource = read("app/layout.tsx");
 const nextConfigSource = read("next.config.ts");
 const previousBrand = ["My", "Wisata"].join("");
+const previousCasing = ["My", "Lawatan"].join("");
 const iconPath = resolve(process.cwd(), "app/icon.png");
 const legacyFaviconPath = resolve(process.cwd(), "app/favicon.ico");
 const localePaths = [
@@ -39,13 +41,13 @@ describe("platform branding contract", () => {
     for (const path of ["app/guest/layout.tsx", "app/login/page.tsx", "components/layout/portal-sidebar.tsx"]) {
       expect(read(path), path).toContain("@/components/shared/mylawatan-logo");
     }
-    expect(read("app/customer/layout.tsx")).toContain("/branding/mylawatan-logo-transparent.png?v=2");
+    expect(read("app/customer/layout.tsx")).toContain("/branding/mylawatan-logo-transparent.png?v=3");
   });
 
-  it("exposes the MyLawatan browser title and App Router icon", () => {
-    expect(layoutSource).toContain('title: "MyLawatan — Malaysia Tourism Portal"');
+  it("exposes the MYLawatan browser title and App Router icon", () => {
+    expect(layoutSource).toContain('title: "MYLawatan — Malaysia Tourism Portal"');
     expect(layoutSource).toContain("metadataBase");
-    expect(layoutSource).toContain('applicationName: "MyLawatan"');
+    expect(layoutSource).toContain('applicationName: "MYLawatan"');
     expect(layoutSource).toContain('url: "/icon.png?v=2"');
     expect(existsSync(iconPath)).toBe(true);
     expect(existsSync(legacyFaviconPath)).toBe(false);
@@ -58,27 +60,32 @@ describe("platform branding contract", () => {
 
   it("allows the versioned logo asset through next/image", () => {
     expect(nextConfigSource).toContain("pathname: '/branding/mylawatan-logo-transparent.png'");
-    expect(nextConfigSource).toContain("search: '?v=2'");
+    expect(nextConfigSource).toContain("search: '?v=3'");
   });
 
   it("uses the renamed brand in the browser tab metadata", () => {
-    expect(layoutSource).toContain("MyLawatan — Malaysia Tourism Portal");
+    expect(layoutSource).toContain("MYLawatan — Malaysia Tourism Portal");
     expect(layoutSource).not.toContain(`title: "${previousBrand} — Malaysia Tourism Portal"`);
     expect(layoutSource).not.toContain(`siteName: "${previousBrand}"`);
-    expect(layoutSource).toContain('siteName: "MyLawatan"');
+    expect(layoutSource).toContain('siteName: "MYLawatan"');
   });
 
   it("keeps public locale copy on the current brand", () => {
     for (const path of localePaths) {
       const values = stringValues(JSON.parse(read(path)));
       expect(values.join("\n"), path).not.toContain(previousBrand);
+      expect(values.join("\n"), path).not.toContain(previousCasing);
+    }
+    for (const copy of Object.values(CHAT_STRINGS)) {
+      expect(copy.greeting).toContain("MYLawatan");
+      expect(copy.greeting).not.toContain(previousCasing);
     }
   });
 
   it("uses one canonical public brand token", () => {
     const tokenSource = read("lib/i18n/invariant-tokens.ts");
-    expect(tokenSource).toContain('BRAND_NAME = "MyLawatan"');
+    expect(tokenSource).toContain('BRAND_NAME = "MYLawatan"');
     expect(tokenSource).toContain("LOGO_BRAND_NAME = BRAND_NAME");
-    expect(tokenSource).toContain('ATLAS_BRAND_NAME = "MyLawatan / Atlas"');
+    expect(tokenSource).toContain('ATLAS_BRAND_NAME = "MYLawatan / Atlas"');
   });
 });

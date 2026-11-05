@@ -1,5 +1,26 @@
 SET LOCAL request.jwt.claim.role='service_role';
 SET LOCAL request.jwt.claim.sub='00000000-0000-0000-0000-000000000001';
+DO $$ BEGIN
+ IF NOT EXISTS(SELECT 1 FROM public.event_order_exceptions
+   WHERE source_key='legacy-processed-refund-resolution-test'
+     AND state='resolved' AND resolution_code='refunded') THEN
+   RAISE EXCEPTION 'historical processed refund resolution was not backfilled: %',
+     (SELECT jsonb_build_object('state',e.state,'resolutionCode',e.resolution_code,'refundStatus',r.status)
+      FROM public.event_order_exceptions e LEFT JOIN public.refunds r ON r.id=e.refund_id
+      WHERE e.source_key='legacy-processed-refund-resolution-test');
+ END IF;
+END $$;
+DO $$ DECLARE v_order uuid; v_payment uuid; BEGIN
+ SELECT order_id,payment_id INTO v_order,v_payment FROM public.event_order_exceptions
+ WHERE source_key='insert-processed-refund-resolution-test';
+ INSERT INTO public.refunds(order_id,payment_id,amount,reason,status)
+ VALUES(v_order,v_payment,12,'Direct processed-refund insert fixture','processed');
+ IF NOT EXISTS(SELECT 1 FROM public.event_order_exceptions
+   WHERE source_key='insert-processed-refund-resolution-test'
+     AND state='resolved' AND resolution_code='refunded') THEN
+   RAISE EXCEPTION 'direct processed refund insert did not resolve and classify case';
+ END IF;
+END $$;
 DO $$ DECLARE oid uuid:='aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaa1'; vid uuid:='11111111-1111-4111-8111-111111111111'; wid uuid; c uuid; v integer; err text; result jsonb; BEGIN
  UPDATE public.order_items SET fulfil_status='pending',fulfilled_at=NULL,pickup_date=(now() AT TIME ZONE 'Asia/Kuala_Lumpur')::date+10 WHERE order_id=oid;
  PERFORM public.settle_order_vendor_earnings(oid);
@@ -75,7 +96,7 @@ DO $$ DECLARE oid uuid:='aaaaaaa2-aaaa-4aaa-8aaa-aaaaaaaaaaa2'; c uuid; v intege
  BEGIN PERFORM public.update_event_order_exception(c,'00000000-0000-0000-0000-000000000001',v,'resolve',NULL,'Pickup confirmed but refund is pending'); EXCEPTION WHEN OTHERS THEN err:=SQLERRM; END;
  IF err IS DISTINCT FROM 'event_exception_obligation_outstanding' THEN RAISE EXCEPTION 'pending refund manually resolved: %',err; END IF;
  UPDATE public.refunds SET status='processed' WHERE id=rid;
- IF NOT EXISTS(SELECT 1 FROM public.event_order_exceptions WHERE id=c AND state='resolved') THEN RAISE EXCEPTION 'successful refund did not close case'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.event_order_exceptions WHERE id=c AND state='resolved' AND resolution_code='refunded') THEN RAISE EXCEPTION 'successful refund did not close and classify case'; END IF;
 END $$;
 
 DO $$ DECLARE oid uuid; outlet uuid; before_sen bigint; BEGIN

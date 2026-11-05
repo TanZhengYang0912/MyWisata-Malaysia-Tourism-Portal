@@ -49,15 +49,13 @@ export function LanguageSwitcher({ compact = false, className }: { compact?: boo
       }
       await i18n.changeLanguage(value);
       await saveLocalePreference(value);
-      const message = t("language.saved");
-      setStatus(message);
-      showFeedback("success", message);
+      setStatus("language.saved");
+      showFeedback("success", { key: "language.saved", namespace: "common" });
       router.refresh();
     } catch {
       await i18n.changeLanguage(resolvedLocale);
-      const message = t("language.saveError");
-      setStatus(message);
-      showFeedback("error", message);
+      setStatus("language.saveError");
+      showFeedback("error", { key: "language.saveError", namespace: "common" });
     } finally {
       setSaving(false);
     }
@@ -93,7 +91,7 @@ export function LanguageSwitcher({ compact = false, className }: { compact?: boo
           ))}
         </SelectContent>
       </Select>
-      <span className="sr-only" aria-live="polite">{status}</span>
+      <span className="sr-only" aria-live="polite">{status ? t(status) : ""}</span>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, ArrowRight, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { AdminMetricGrid } from "@/components/admin/admin-page-shell";
@@ -27,25 +27,36 @@ export function OverviewTab({ onOpenTab }: { onOpenTab: (tab: AccessControlTabId
   const [data, setData] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const request = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
+    // Match the existing review-request deadline; a stalled fetch must expose Retry.
+    let timedOut = false;
+    const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 15_000);
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/admin/access-control/overview", { cache: "no-store" });
+      const response = await fetch("/api/admin/access-control/overview", { cache: "no-store", signal: controller.signal });
       const body = await response.json() as ApiEnvelope<OverviewData>;
+      if (request.current !== controller || controller.signal.aborted) return;
       if (!response.ok || !body.data) throw new Error(errorMessage(body, t("accessControl.errors.load")));
       setData(body.data);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : t("accessControl.errors.load"));
+      if (request.current === controller && (!controller.signal.aborted || timedOut)) {
+        setError(timedOut ? t("accessControl.errors.load") : caught instanceof Error ? caught.message : t("accessControl.errors.load"));
+      }
     } finally {
-      setLoading(false);
+      clearTimeout(timeout);
+      if (request.current === controller) { request.current = null; setLoading(false); }
     }
   }, [t]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => { void load(); }, 0);
-    return () => clearTimeout(timeoutId);
+    return () => { clearTimeout(timeoutId); request.current?.abort(); request.current = null; };
   }, [load]);
 
   if (loading && !data) return <StateCard text={t("accessControl.states.loading")} />;
@@ -55,16 +66,16 @@ export function OverviewTab({ onOpenTab }: { onOpenTab: (tab: AccessControlTabId
   return (
     <div className="space-y-5">
       <AdminMetricGrid items={[
-        { label: t("accessControl.overview.activeVersions"), value: data.counts.activeVersions, detail: t("accessControl.overview.policiesDetail", { count: data.counts.policies }) },
+        { label: t("accessControl.overview.activeVersions"), value: data.counts.activeVersions },
         { label: t("accessControl.overview.pendingApprovals"), value: data.counts.pendingApprovals, tone: data.counts.pendingApprovals ? "text-amber-600 dark:text-amber-300" : undefined },
-        { label: t("accessControl.overview.activeAssignments"), value: data.counts.activeAssignments, detail: t("accessControl.overview.expiringDetail", { count: data.counts.expiringAssignments }) },
-        { label: t("accessControl.overview.generation"), value: data.generation, detail: t("accessControl.overview.capabilitiesDetail", { count: data.counts.capabilities }) },
+        { label: t("accessControl.overview.activeAssignments"), value: data.counts.activeAssignments },
+        { label: t("accessControl.overview.generation"), value: data.generation },
       ]} />
 
       <section className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-3">
-            <div><h2 className="font-semibold text-foreground">{t("accessControl.overview.healthTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("accessControl.overview.healthDescription")}</p></div>
+            <h2 className="font-semibold text-foreground">{t("accessControl.overview.healthTitle")}</h2>
             <Button size="sm" variant="outline" onClick={() => void load()} disabled={loading}><RefreshCw className={loading ? "animate-spin" : ""} /> {t("accessControl.actions.refresh")}</Button>
           </div>
           {data.warnings.length === 0 ? (

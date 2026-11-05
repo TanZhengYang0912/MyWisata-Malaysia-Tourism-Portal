@@ -1,4 +1,5 @@
 import { WITHDRAWAL_IN_PROGRESS_STATUSES } from "@/lib/wallet/withdrawal-display";
+import type { SupabaseClient } from "@supabase/supabase-js";
 // Owner: Member 2/4 (Cart/Order/Booking/Wallet)
 import { supabase } from "@/backend/supabase";
 import { assertCartItemHasBackingRecord, canMergeCartItemLines, cartItemKey, cartTotals, unitPrice } from "@/backend/core/helpers";
@@ -520,6 +521,15 @@ type WithdrawalRow = {
 
 const WITHDRAWAL_SELECT = "id,user_id,amount,status,requires_dual_approval,destination_label,created_at";
 
+export type WithdrawalHistoryCursor = { createdAt: string; id: string };
+export type WithdrawalHistoryPage = {
+  requests: WithdrawalRequest[];
+  pageSize: 25;
+  totalCount: number | null;
+  hasMore: boolean;
+  nextCursor: WithdrawalHistoryCursor | null;
+};
+
 function mapWithdrawal(row: WithdrawalRow): WithdrawalRequest {
   return {
     id: row.id,
@@ -562,6 +572,40 @@ export async function getMyWithdrawalById(userId: string, requestId: string, sig
   const { data, error } = await query.maybeSingle();
   if (error) throw error;
   return data ? mapWithdrawal(data as unknown as WithdrawalRow) : null;
+}
+
+export async function getMyWithdrawalHistoryPage(
+  service: SupabaseClient,
+  userId: string,
+  query: { pageSize: 25; cursor: WithdrawalHistoryCursor | null },
+): Promise<WithdrawalHistoryPage> {
+  let request = service.from("withdrawal_requests")
+    .select(WITHDRAWAL_SELECT, query.cursor ? {} : { count: "exact" })
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(query.pageSize + 1);
+
+  if (query.cursor) {
+    request = request.or(
+      `created_at.lt.${query.cursor.createdAt},and(created_at.eq.${query.cursor.createdAt},id.lt.${query.cursor.id})`,
+    );
+  }
+
+  const { data, error, count } = await request;
+  if (error) throw error;
+
+  const rows = (data ?? []) as unknown as WithdrawalRow[];
+  const hasMore = rows.length > query.pageSize;
+  const pageRows = rows.slice(0, query.pageSize);
+  const lastRow = pageRows.at(-1);
+  return {
+    requests: pageRows.map(mapWithdrawal),
+    pageSize: query.pageSize,
+    totalCount: query.cursor ? null : count ?? 0,
+    hasMore,
+    nextCursor: hasMore && lastRow ? { createdAt: lastRow.created_at, id: lastRow.id } : null,
+  };
 }
 
 type WalletTransactionRow = {

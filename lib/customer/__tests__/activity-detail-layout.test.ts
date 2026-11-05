@@ -6,20 +6,26 @@ const source = readFileSync(
   resolve(process.cwd(), "app/customer/activity/[id]/activity-detail-client.tsx"),
   "utf8",
 );
+const reviewsSource = readFileSync(
+  resolve(process.cwd(), "components/customer/activity-reviews.tsx"),
+  "utf8",
+);
 
 describe("activity detail booking layout", () => {
-  it("keeps related products in normal flow below the bounded upper grid", () => {
+  it("keeps product content and recommendations in natural document flow", () => {
     const wrapper = source.match(/<div className="mx-auto max-w-7xl px-4 py-5[^"]*"/)?.[0] ?? "";
     const grid = source.match(/<div className="grid items-start gap-6[^"]*"/)?.[0] ?? "";
-    expect(wrapper).not.toContain("lg:h-[calc(100dvh-6rem)]");
-    expect(grid).toContain("lg:h-[calc(100dvh-6rem)]");
-    expect(source.indexOf("{relatedProducts.length > 0")).toBeGreaterThan(source.indexOf("<aside className="));
+    for (const classes of [wrapper, grid]) {
+      expect(classes).not.toMatch(/\bh-\[|lg:h-|lg:overflow-hidden/);
+    }
+    expect(source.indexOf("<Breadcrumbs")).toBeLessThan(source.indexOf('<section className="min-w-0">'));
+    expect(source.indexOf("{relatedProducts.length > 0")).toBeGreaterThan(source.indexOf("<aside>"));
   });
   it("places the shorter hero and content before the desktop booking card inside one grid", () => {
     const gridIndex = source.indexOf('className="grid items-start gap-6');
     const heroIndex = source.indexOf("h-44");
-    const sectionIndex = source.indexOf('<section className="min-w-0 lg:flex');
-    const asideIndex = source.indexOf("<aside className=");
+    const sectionIndex = source.indexOf('<section className="min-w-0">');
+    const asideIndex = source.indexOf("<aside>");
 
     expect(gridIndex).toBeGreaterThanOrEqual(0);
     expect(heroIndex).toBeGreaterThan(gridIndex);
@@ -47,9 +53,10 @@ describe("activity detail booking layout", () => {
     expect(source).toContain('aria-label={t("ui.activityDetail.increaseQuantity")}');
   });
 
-  it("scopes scrolling to the reviews list, not the whole page", () => {
-    expect(source).toContain("lg:overflow-y-auto");
+  it("keeps the review dialog scrollable without constraining the product page", () => {
     expect(source).toContain("<ActivityReviews");
+    expect(reviewsSource).toContain('className="max-h-[88vh] w-full max-w-2xl overflow-y-auto');
+    expect(reviewsSource).toContain('role="dialog" aria-modal="true"');
   });
 
   it("moves the Visit vendor action into the booking aside", () => {

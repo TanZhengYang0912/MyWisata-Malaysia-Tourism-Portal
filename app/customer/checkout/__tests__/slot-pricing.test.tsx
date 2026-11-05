@@ -28,6 +28,8 @@ it("waits for slot pricing and renders the same override in lines and totals",as
   expect(pay.getAttribute("disabled")).not.toBeNull();
   await act(async()=>{complete([{id:"s",activityId:"p",outletId:"o",startsAt:"2030-10-01T00:00:00Z",capacity:10,booked:0,priceOverride:20}]);});
   expect(container.textContent.match(/RM40.00/g)?.length).toBeGreaterThanOrEqual(2);
+  expect(container.textContent).toContain("ui.checkout.linePriceBreakdown");
+  expect(container.textContent).toContain("RM20.00 × 2 = RM40.00");
   expect(container.textContent).not.toContain("ui.checkout.freeReservationTitle");
   await act(async()=>root.unmount());vi.unstubAllGlobals();
 });

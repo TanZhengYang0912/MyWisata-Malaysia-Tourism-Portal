@@ -21,7 +21,7 @@ describe("cart voucher outlet validation", () => {
     expect(source).toContain("selectedVendorIds.has(voucher.vendorId)");
     expect(source).toContain("selectedOutletIds.has(voucher.outletId)");
     expect(source).toContain("selectedProductIds.has(voucher.productId)");
-    expect(source).toContain("candidateVouchers.map(async (voucher)");
+    expect(source).toContain("mapWithConcurrencyTwo(candidateVouchers, validate, controller.signal)");
   });
 
   it("explains each voucher scope using the existing cart catalogue data", () => {

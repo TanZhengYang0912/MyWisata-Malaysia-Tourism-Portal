@@ -182,6 +182,11 @@ describe('POST /api/admin/vendors/:id/approve', () => {
       type: 'vendor_approved',
       link: '/vendor/dashboard',
     }));
+    expect(mocks.emitVendorNotification).toHaveBeenCalledWith(expect.objectContaining({
+      vendorId: VENDOR_ID,
+      type: 'vendor_approved',
+      metadata: { vendorName: 'Rasa Malaysia Kitchen', status: 'approved' },
+    }));
   });
 
   it('allows an admin role to reach the claimed-vendor approval RPC', async () => {

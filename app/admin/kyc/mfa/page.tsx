@@ -9,5 +9,5 @@ export default async function KycMfaPage({ searchParams }: { searchParams: Promi
   const { response } = await requireStaffMfaSetup();
   if (response?.status === 401) redirect('/login?next=%2Fadmin%2Fkyc');
   const params = await searchParams;
-  return <KycMfa next={safeKycReviewNext(params.next)} available={!response} />;
+  return <KycMfa next={safeKycReviewNext(params.next)} available={!response} unavailableReason={response?.status === 403 ? 'forbidden' : 'unavailable'} />;
 }

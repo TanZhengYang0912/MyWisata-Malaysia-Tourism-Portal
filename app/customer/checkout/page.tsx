@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BackLink } from "@/components/shared/back-link";
@@ -15,7 +15,8 @@ import { ReferencePrice } from "@/components/shared/reference-price";
 import { Input } from "@/components/ui/input";
 import { InternationalPhoneInput } from "@/components/profile/international-phone-input";
 import { Button } from "@/components/ui/button";
-import { getCheckoutErrorMessage, type CheckoutErrorPayload } from "@/lib/checkout/errors";
+import { getCheckoutErrorCode, getCheckoutErrorRecovery, getCheckoutErrorTranslationKey, type CheckoutErrorCode, type CheckoutErrorPayload } from "@/lib/checkout/errors";
+import { checkoutContactSchema } from "@/lib/checkout/contact";
 import type { BookingSlot, Outlet, Voucher } from "@/backend/core/types";
 import { formatMYRFromSen } from "@/lib/i18n/format";
 import { formatStayRange } from "@/lib/customer/booking-view";
@@ -54,7 +55,12 @@ export default function CheckoutPage() {
   const [voucher, setVoucher] = useState<Voucher | undefined>(undefined);
   const [methodId, setMethodId] = useState("stripe_card");
   const [paying, setPaying] = useState(false);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<CheckoutErrorCode | null>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const checkoutAttemptRef = useRef<{ fingerprint: string; idempotencyKey: string } | null>(null);
+  const checkoutRecovery = checkoutError ? getCheckoutErrorRecovery(checkoutError) : null;
+  const checkoutErrorText = checkoutError ? tCustomer(getCheckoutErrorTranslationKey(checkoutError)) : null;
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [toyyibPayReturned, setToyyibPayReturned] = useState(false);
   const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
@@ -154,7 +160,7 @@ export default function CheckoutPage() {
         router.push(`/customer/orders/${orderId}`);
       })
       .catch(() => {
-        setCheckoutError("Stripe payment confirmation could not be completed. Please check your order status or try again.");
+        setCheckoutError('PAYMENT_STATUS_UNCERTAIN');
         setPaying(false);
       });
   }, [checkoutAllowed, currentUser, paying, router]);
@@ -225,36 +231,75 @@ export default function CheckoutPage() {
     );
   }
 
+  function reportCheckoutError(payload: CheckoutErrorPayload) {
+    const code = getCheckoutErrorCode(payload);
+    setCheckoutError(code);
+    const recovery = getCheckoutErrorRecovery(code);
+    const input = recovery === 'email' ? emailInputRef.current : recovery === 'name' ? nameInputRef.current : recovery === 'phone' ? document.getElementById('checkout-contact-phone') : null;
+    input?.focus();
+    input?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+  }
+
+  async function findCurrentGuestOrder() {
+    if (currentUser) return;
+    try {
+      const response = await fetch('/api/guest/orders/current', { cache: 'no-store' });
+      if (!response.ok) return;
+      const payload = await response.json() as { data?: { orderId?: string } | null };
+      const orderId = payload.data?.orderId;
+      if (orderId && /^[0-9a-f-]{36}$/i.test(orderId)) setActiveOrderId(orderId);
+    } catch {
+      // Keep the safe email-based recovery action available when session lookup is unavailable.
+    }
+  }
+
   async function handlePay() {
     if (paying || !pricingReady || !gate(CUSTOMER_CAPABILITY.CHECKOUT, "/customer/checkout")) return;
+    const contactInput = { email: contactEmail.trim(), name: contactName.trim() || null, phone: contactPhone.trim() || null };
+    const contactValidation = checkoutContactSchema.safeParse(contactInput);
+    if (!contactValidation.success) {
+      reportCheckoutError({ code: 'VALIDATION_FAILED', details: contactValidation.error.flatten() });
+      return;
+    }
+    if (showPhone && !contactValidation.data.phone) {
+      reportCheckoutError('CONTACT_PHONE_REQUIRED');
+      return;
+    }
     if (foodModeMissing) {
-      setCheckoutError(tCustomer("ui.checkout.foodServiceModeRequired"));
+      reportCheckoutError('FOOD_SERVICE_MODE_REQUIRED');
       return;
     }
     setPaying(true);
     setCheckoutError(null);
     try {
-      const idempotencyKey = crypto.randomUUID();
       const paymentMethod = isFreeReservation ? "free_reservation" : selectedMethod.paymentMethod;
       const paymentProvider = isFreeReservation ? null : selectedMethod.paymentProvider;
+      const checkoutRequest = {
+        selectedKeys: [...selectedKeys],
+        voucherCode: currentUser ? voucherCode : null,
+        claimId: currentUser ? claimId : null,
+        contact: contactValidation.data,
+        foodServiceModes: foodOutletGroups.map(({ outletId }) => ({ outletId, mode: foodModeByOutlet[outletId]! })),
+        paymentMethod,
+        paymentProvider,
+      };
+      const fingerprint = JSON.stringify(checkoutRequest);
+      if (checkoutAttemptRef.current?.fingerprint !== fingerprint) {
+        checkoutAttemptRef.current = { fingerprint, idempotencyKey: crypto.randomUUID() };
+      }
+      const idempotencyKey = checkoutAttemptRef.current.idempotencyKey;
 
       if (!currentUser) {
         const ready = await fetch("/api/guest/session", { method: "POST" });
-        if (!ready.ok) throw new Error(tCustomer("guestCheckout.unavailable"));
+        if (!ready.ok) {
+          reportCheckoutError(ready.status === 429 ? 'CHECKOUT_RATE_LIMITED' : 'GUEST_SESSION_UNAVAILABLE');
+          return;
+        }
       }
       const prepareResponse = await fetch("/api/checkout/prepare", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
-        body: JSON.stringify({
-          selectedKeys: [...selectedKeys],
-          voucherCode: currentUser ? voucherCode : null,
-          claimId: currentUser ? claimId : null,
-          contact: { email: contactEmail.trim() || (currentUser?.email ?? ""), name: contactName.trim() || null, phone: contactPhone || null },
-          foodServiceModes: foodOutletGroups.map(({ outletId }) => ({ outletId, mode: foodModeByOutlet[outletId]! })),
-          paymentMethod,
-          paymentProvider,
-          idempotencyKey,
-        }),
+        body: JSON.stringify({ ...checkoutRequest, idempotencyKey }),
       });
       if (await gate.handleResponse(prepareResponse, "/customer/checkout")) {
         setPaying(false);
@@ -264,11 +309,12 @@ export default function CheckoutPage() {
       if (!prepareResponse.ok || !prepared.data?.checkout_session_id) {
         const pendingId = typeof prepared.error === 'object' && prepared.error?.code === 'ACTIVE_CHECKOUT_EXISTS' ? prepared.error.activeOrderId : null;
         setActiveOrderId(pendingId && /^[0-9a-f-]{36}$/i.test(pendingId) ? pendingId : null);
-        if (pendingId) throw new Error(tCustomer('checkoutSafety.activeCheckout'));
-        throw new Error(getCheckoutErrorMessage(prepared.error));
+        const code = getCheckoutErrorCode(prepared.error);
+        reportCheckoutError(prepareResponse.status === 429 ? 'CHECKOUT_RATE_LIMITED' : code === 'CHECKOUT_FAILED' && prepareResponse.status >= 500 ? 'CHECKOUT_SERVICE_UNAVAILABLE' : code);
+        return;
       }
       if (isFreeReservation) {
-        if (!prepared.data.order_id) throw new Error("Order creation failed");
+        if (!prepared.data.order_id) { reportCheckoutError('CHECKOUT_FAILED'); return; }
         if (currentUser) attributeCheckout(prepared.data.order_id);
         router.push(`/customer/orders/${prepared.data.order_id}`);
         return;
@@ -289,7 +335,8 @@ export default function CheckoutPage() {
         selectedMethod.paymentMethod === "wallet" ||
         (selectedMethod.paymentMethod === "wallet_split" && prepared.data.externalAmountSen === 0);
       if (!walletFinalization) {
-        throw new Error("The payment provider did not return a secure payment action.");
+        reportCheckoutError('PAYMENT_STATUS_UNCERTAIN');
+        return;
       }
       const finalizeResponse = await fetch("/api/checkout/finalize", {
         method: "POST",
@@ -301,11 +348,16 @@ export default function CheckoutPage() {
         return;
       }
       const finalized = await finalizeResponse.json() as { data?: { order_id?: string }; error?: CheckoutErrorPayload };
-      if (!finalizeResponse.ok || !finalized.data?.order_id) throw new Error(getCheckoutErrorMessage(finalized.error));
+      if (!finalizeResponse.ok || !finalized.data?.order_id) {
+        reportCheckoutError(finalized.error);
+        return;
+      }
       attributeCheckout(finalized.data.order_id);
       router.push(`/customer/orders/${finalized.data.order_id}`);
     } catch (err) {
-      setCheckoutError(err instanceof Error ? err.message : getCheckoutErrorMessage(err as CheckoutErrorPayload));
+      reportCheckoutError(err instanceof TypeError ? 'CHECKOUT_CONNECTION_FAILED' : 'CHECKOUT_FAILED');
+      await findCurrentGuestOrder();
+    } finally {
       setPaying(false);
     }
   }
@@ -331,9 +383,12 @@ export default function CheckoutPage() {
       <section className="mb-6 space-y-3 rounded-2xl border border-border bg-card p-5">
         <h2 className="font-semibold">{!currentUser ? tCustomer("guestCheckout.title") : tCustomer("ui.property.contactDetails")}</h2>
         <p className="text-sm text-muted-foreground">{currentUser ? tCustomer("ui.property.prefilledHint") : tCustomer("guestCheckout.hint")}</p>
-        <label className="block text-sm">{tCustomer("guestCheckout.email")}<Input type="email" autoComplete="email" required value={contactEmail} onChange={event => setContactEmail(event.target.value)} /></label>
-        <label className="block text-sm">{tCustomer("guestCheckout.name")}<Input autoComplete="name" value={contactName} onChange={event => setContactName(event.target.value)} /></label>
-        {showPhone && <label className="block text-sm">{tCustomer("guestCheckout.phone")}<InternationalPhoneInput id="checkout-contact-phone" value={contactPhone} onChange={setContactPhone} /></label>}
+        <label className="block text-sm">{tCustomer("guestCheckout.email")}<Input ref={emailInputRef} id="checkout-contact-email" type="email" autoComplete="email" required aria-invalid={checkoutRecovery === 'email'} aria-describedby={checkoutRecovery === 'email' ? 'checkout-email-error' : undefined} value={contactEmail} onChange={event => { setContactEmail(event.target.value); if (checkoutRecovery === 'email') setCheckoutError(null); }} /></label>
+        {checkoutRecovery === 'email' && <p id="checkout-email-error" role="alert" className="text-sm text-destructive">{checkoutErrorText}</p>}
+        <label className="block text-sm">{tCustomer("guestCheckout.name")}<Input ref={nameInputRef} id="checkout-contact-name" autoComplete="name" aria-invalid={checkoutRecovery === 'name'} aria-describedby={checkoutRecovery === 'name' ? 'checkout-name-error' : undefined} value={contactName} onChange={event => { setContactName(event.target.value); if (checkoutRecovery === 'name') setCheckoutError(null); }} /></label>
+        {checkoutRecovery === 'name' && <p id="checkout-name-error" role="alert" className="text-sm text-destructive">{checkoutErrorText}</p>}
+        {(showPhone || checkoutRecovery === 'phone' || typedPhone !== null) && <label className="block text-sm">{tCustomer("guestCheckout.phone")}<InternationalPhoneInput id="checkout-contact-phone" value={contactPhone} error={checkoutRecovery === 'phone'} ariaDescribedBy={checkoutRecovery === 'phone' ? 'checkout-phone-error' : undefined} onChange={value => { setContactPhone(value); if (checkoutRecovery === 'phone') setCheckoutError(null); }} /></label>}
+        {checkoutRecovery === 'phone' && <p id="checkout-phone-error" role="alert" className="text-sm text-destructive">{checkoutErrorText}</p>}
       </section>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Main Column */}
@@ -430,6 +485,12 @@ export default function CheckoutPage() {
                           </span>
                         )}
                       </div>
+                      {resolved?.available && !(item.slotId && bookingSlotsStatus !== "loaded") && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          <span className="sr-only">{tCustomer("ui.checkout.linePriceBreakdown")}: </span>
+                          <ReferencePrice amountMYR={price} /> × {item.qty} = <ReferencePrice amountMYR={lineTotal} />
+                        </p>
+                      )}
                     </div>
                   </div>
                 );
@@ -490,21 +551,22 @@ export default function CheckoutPage() {
             )}
           </section>
 
-          {checkoutError && (
-            <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">
+          {checkoutError && !['email', 'phone', 'name'].includes(checkoutRecovery ?? '') && (
+            <div role="alert" className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">
               <div className="flex items-start gap-2">
                 <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                <span>{checkoutError}</span>
+                <span>{checkoutErrorText}</span>
               </div>
               {activeOrderId && <Button type="button" variant="outline" className="mt-2" onClick={() => router.push(`/customer/orders/${activeOrderId}`)}>{tCustomer('checkoutSafety.reviewExisting')}</Button>}
-              <button
+              {checkoutRecovery === 'orders' && !activeOrderId && <Button type="button" variant="outline" className="mt-2" onClick={() => router.push(currentUser ? '/customer/orders' : '/customer/orders/access')}>{tCustomer('checkoutErrors.reviewOrder')}</Button>}
+              {checkoutRecovery === 'cart' && <button
                 type="button"
                 onClick={() => router.push("/customer/cart")}
                 className="mt-2 pl-6 text-xs font-semibold underline underline-offset-2"
               >
                 {tCustomer("strictMigration.checkout.returnToCart")}
-              </button>
-              {checkoutError.includes("Wallet balance is no longer sufficient") && (
+              </button>}
+              {checkoutRecovery === 'wallet' && (
                 <div className="mt-3 flex gap-2 pl-6">
                   <Button type="button" size="sm" onClick={() => router.push("/customer/wallet?topup=1")}>{tCustomer("ui.wallet.topUp")}</Button>
                   <Button type="button" size="sm" variant="outline" onClick={() => { setMethodId("stripe_card"); setCheckoutError(null); }}>{tCustomer("strictMigration.checkout.payByCard")}</Button>
@@ -547,7 +609,7 @@ export default function CheckoutPage() {
               </p>
             )}
 
-            <Button className="h-12 w-full rounded-full text-base font-semibold shadow-md" disabled={paying || foodModeMissing || !pricingReady} onClick={() => void handlePay()}>
+            <Button className="h-12 w-full rounded-full text-base font-semibold shadow-md" disabled={paying || Boolean(activeOrderId) || foodModeMissing || !pricingReady} onClick={() => void handlePay()}>
               {paying
                 ? tCustomer("ui.states.preparingPayment")
                 : isFreeReservation

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
-  Wallet, CheckCircle2, Building2, AlertCircle,
+  CheckCircle2, Building2, AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import {
@@ -24,10 +24,12 @@ import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { formatMYR, formatMYRNumber } from "@/lib/i18n/format";
 import { WalletBalanceSummary, type WalletBuckets } from "@/components/customer/wallet/wallet-balance-summary";
 import { PayoutReadiness, type CustomerConnectStatus } from "@/components/customer/wallet/payout-readiness";
-import { WithdrawalList } from "@/components/customer/wallet/withdrawal-list";
+import { WithdrawalHistory, WithdrawalList } from "@/components/customer/wallet/withdrawal-list";
 import { CustomerTransactionHistory } from "@/components/customer/wallet/customer-transaction-history";
 import type { CustomerWalletCapabilities } from "@/lib/wallet/customer-capabilities";
 import { isSettlementPending, startSettlementPolling } from "@/lib/wallet/settlement-polling";
+import { ApiErrorNotice } from "@/components/shared/api-error-notice";
+import { isWalletTopUpPending, type WalletTopUpStatus } from "@/lib/wallet/topup-types";
 
 
 type ConnectStatus = CustomerConnectStatus;
@@ -74,7 +76,7 @@ function WalletContent() {
   const isActiveRef = useRef(true);
   const gate = useCustomerCapabilityGate();
   const searchParams     = useSearchParams();
-  const topupSuccess     = searchParams.get("topup")      === "success";
+  const returnedTopUpOperationId = searchParams.get("operation");
   const onboardComplete  = searchParams.get("onboarding") === "complete";
   const onboardRefresh   = searchParams.get("onboarding") === "refresh";
 
@@ -95,6 +97,7 @@ function WalletContent() {
   const [withdrawing, setWithdrawing]     = useState(false);
   const [confirmingWithdrawal, setConfirmingWithdrawal] = useState(false);
   const [withdrawError, setWithdrawError] = useState("");
+  const [withdrawRequestId, setWithdrawRequestId] = useState<string | undefined>();
   const [withdrawalSubmitted, setWithdrawalSubmitted] = useState(false);
   const [destinations, setDestinations] = useState<PayoutDestination[]>([]);
   const [selectedDestinationId, setSelectedDestinationId] = useState("");
@@ -112,10 +115,16 @@ function WalletContent() {
   const [topUpAmount, setTopUpAmount] = useState("");
   const [toppingUp, setToppingUp]     = useState(false);
   const [topUpError, setTopUpError]   = useState("");
+  const [topUpOperation, setTopUpOperation] = useState<WalletTopUpStatus | null>(null);
+  const [checkingTopUp, setCheckingTopUp] = useState(false);
+  const [cancellingTopUp, setCancellingTopUp] = useState(false);
+  const topUpRequestInFlight = useRef(false);
+  const [topUpPollCount, setTopUpPollCount] = useState(0);
 
   // Connect onboarding
   const [onboarding, setOnboarding] = useState(false);
   const [onboardError, setOnboardError] = useState("");
+  const [onboardRequestId, setOnboardRequestId] = useState<string | undefined>();
 
   useEffect(() => {
     isActiveRef.current = true;
@@ -145,6 +154,7 @@ function WalletContent() {
     if (!currentUser) return "idle";
     setConnectStatus("loading");
     setOnboardError("");
+    setOnboardRequestId(undefined);
     try {
       const response = await fetch("/api/stripe/connect-status", { cache: "no-store" });
       const body = await response.json() as {
@@ -153,13 +163,14 @@ function WalletContent() {
           payoutsEnabled: boolean;
           payoutStatus: "unlinked" | "currently_due" | "pending_verification" | "payouts_enabled" | "past_due" | "restricted";
         };
-        error?: { message?: string } | string;
+        error?: { message?: string; requestId?: string } | string;
       };
       if (!response.ok) {
         const message = typeof body.error === "string"
           ? body.error
           : body.error?.message ?? tCustomer("ui.wallet.verifyPayoutError");
         setOnboardError(message);
+        setOnboardRequestId(typeof body.error === "object" ? body.error.requestId : undefined);
         setConnectStatus("status_error");
         return "status_error";
       }
@@ -291,6 +302,70 @@ function WalletContent() {
     void loadWallet();
   }, [currentUser, loadWallet]);
 
+  const saveTopUpOperation = useCallback((operation: WalletTopUpStatus | null) => {
+    setTopUpOperation(operation);
+    if (!currentUserId || typeof window === "undefined") return;
+    const key = `my-lawatan:wallet-topup:${currentUserId}`;
+    if (!operation || ["credited", "expired", "cancelled", "failed"].includes(operation.state)) {
+      sessionStorage.removeItem(key);
+      return;
+    }
+    sessionStorage.setItem(key, JSON.stringify({ operationId: operation.operationId, amountSen: operation.amountSen }));
+  }, [currentUserId]);
+
+  const refreshTopUpOperation = useCallback(async (operationId?: string) => {
+    if (!currentUserId || topUpRequestInFlight.current) return;
+    topUpRequestInFlight.current = true;
+    setCheckingTopUp(true);
+    try {
+      const endpoint = operationId
+        ? `/api/wallet/topups/${encodeURIComponent(operationId)}`
+        : "/api/wallet/topups/active";
+      const response = await fetch(endpoint, { cache: "no-store" });
+      if (!response.ok) throw new Error("wallet_topup_status_unavailable");
+      const body = await response.json() as { operation?: WalletTopUpStatus | null } & Partial<WalletTopUpStatus>;
+      const operation = operationId ? body as WalletTopUpStatus : body.operation ?? null;
+      if (operation && operation.operationId) saveTopUpOperation(operation);
+      else if (!operationId) saveTopUpOperation(null);
+      setTopUpPollCount((count) => count + 1);
+    } catch {
+      setTopUpError(tCustomer("ui.wallet.walletTopUpCheckError"));
+    } finally {
+      topUpRequestInFlight.current = false;
+      setCheckingTopUp(false);
+    }
+  }, [currentUserId, saveTopUpOperation, tCustomer]);
+
+  useEffect(() => {
+    if (!currentUserId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTopUpOperation(null);
+      setTopUpPollCount(0);
+      return;
+    }
+    let operationId = returnedTopUpOperationId;
+    if (!operationId) {
+      try {
+        const stored = sessionStorage.getItem(`my-lawatan:wallet-topup:${currentUserId}`);
+        if (stored) {
+          const parsed: unknown = JSON.parse(stored);
+          if (typeof parsed === "object" && parsed !== null && "operationId" in parsed
+              && typeof parsed.operationId === "string" && /^[0-9a-f-]{36}$/i.test(parsed.operationId)) {
+            operationId = parsed.operationId;
+          }
+        }
+      } catch { /* Recover from the server's owner-scoped active operation below. */ }
+    }
+    void refreshTopUpOperation(operationId ?? undefined);
+  }, [currentUserId, refreshTopUpOperation, returnedTopUpOperationId]);
+
+  useEffect(() => {
+    const operation = topUpOperation;
+    if (!operation || (operation.state !== "checking" && operation.state !== "paid_pending_credit") || topUpPollCount >= 8) return;
+    const timeout = window.setTimeout(() => void refreshTopUpOperation(operation.operationId), 4_000);
+    return () => window.clearTimeout(timeout);
+  }, [refreshTopUpOperation, topUpOperation, topUpPollCount]);
+
   useEffect(() => {
     if (!currentUser || !withdrawals?.some((withdrawal) => isSettlementPending(withdrawal.status))) return;
     return startSettlementPolling({
@@ -320,6 +395,7 @@ function WalletContent() {
           ? data.error
           : data.error?.message ?? tCustomer("ui.wallet.startStripeError");
         setOnboardError(message);
+        setOnboardRequestId(typeof data.error === "object" && data.error ? data.error.requestId : undefined);
         setConnectStatus("status_error");
         return;
       }
@@ -486,6 +562,7 @@ function WalletContent() {
     if (!existingPending && !gate(CUSTOMER_CAPABILITY.WITHDRAWAL, "/customer/wallet")) return;
     if (!existingPending && showAddTngDestination) return;
     setWithdrawError("");
+    setWithdrawRequestId(undefined);
     if (!existingPending && !readiness?.canWithdraw) {
       setWithdrawError(tCustomer("ui.wallet.earningsLoadingError"));
       return;
@@ -520,6 +597,7 @@ function WalletContent() {
       }
       if (!response.ok) {
         if (response.status >= 500) {
+          const apiRequestId = response.headers.get("x-request-id") ?? undefined;
           setConfirmingWithdrawal(true);
           const reconciled = await reconcileWithdrawalRequest(requestId);
           if (reconciled) {
@@ -529,6 +607,7 @@ function WalletContent() {
           } else if (isActiveRef.current) {
             setWithdrawalOutcomePending(true);
             setWithdrawError(tCustomer("ui.wallet.withdrawalOutcomeUnknown"));
+            setWithdrawRequestId(apiRequestId);
           }
           return;
         }
@@ -572,30 +651,54 @@ function WalletContent() {
     if (amount < STRIPE_TOP_UP_MINIMUM_RM) { setTopUpError(tCustomer("ui.wallet.minimumTopUp", { amount: formatMYRNumber(STRIPE_TOP_UP_MINIMUM_RM) })); return; }
     if (amount > STRIPE_TOP_UP_MAXIMUM_RM) { setTopUpError(tCustomer("ui.wallet.maximumTopUp", { amount: topUpMaximumAmountLabel })); return; }
     setToppingUp(true);
+    const operationId = window.crypto.randomUUID();
+    sessionStorage.setItem(`my-lawatan:wallet-topup:${currentUserId}`, JSON.stringify({ operationId, amountSen: Math.round(amount * 100) }));
+    setTopUpOperation({ state: "checking", operationId, amountSen: Math.round(amount * 100) });
     try {
       const res  = await fetch("/api/stripe/create-checkout", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ amount_rm: amount }),
+        body:    JSON.stringify({ amount_rm: amount, operation_id: operationId }),
       });
       if (await gate.handleResponse(res, "/customer/wallet")) return;
       const data = await res.json();
-      if (!res.ok) { setTopUpError(data.error ?? tCustomer("ui.wallet.topUpError")); return; }
-      window.location.href = data.url;
+      if (!res.ok && res.status !== 202) {
+        if (data.activeOperation) saveTopUpOperation(data.activeOperation as WalletTopUpStatus);
+        setTopUpError(data.error ?? tCustomer("ui.wallet.topUpError"));
+        return;
+      }
+      saveTopUpOperation(data as WalletTopUpStatus);
+      if (data.state === "open" && typeof data.checkoutUrl === "string") window.location.href = data.checkoutUrl;
+      else setTopUpError(tCustomer("ui.wallet.walletTopUpChecking"));
     } catch {
-      setTopUpError(tCustomer("ui.wallet.topUpError"));
+      setTopUpError(tCustomer("ui.wallet.walletTopUpChecking"));
+      void refreshTopUpOperation(operationId);
     } finally {
       setToppingUp(false);
+    }
+  }
+
+  async function cancelTopUpOperation() {
+    if (!topUpOperation || cancellingTopUp) return;
+    setCancellingTopUp(true);
+    try {
+      const response = await fetch(`/api/wallet/topups/${encodeURIComponent(topUpOperation.operationId)}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "cancel" }),
+      });
+      if (!response.ok) throw new Error("wallet_topup_cancel_unavailable");
+      saveTopUpOperation(await response.json() as WalletTopUpStatus);
+    } catch {
+      setTopUpError(tCustomer("ui.wallet.walletTopUpCheckError"));
+    } finally {
+      setCancellingTopUp(false);
     }
   }
 
   return (
     <>
       <CustomerPageTitle
-        eyebrow={tCustomer("accountGroups.account")}
         title={tCustomer("ui.wallet.title")}
-        description={tCustomer("ui.wallet.description")}
-        icon={<Wallet size={14} />}
       />
 
       <CustomerPageShell wide className="pt-0 sm:pt-0">
@@ -606,7 +709,7 @@ function WalletContent() {
           <CheckCircle2 size={16} className="shrink-0" />
           <span>{tCustomer("ui.wallet.withdrawalSubmitted")}</span>
         </div>
-      ) : topupSuccess && (
+      ) : topUpOperation?.state === "credited" && (
         <div className="mb-6 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 px-4 py-3 flex items-center gap-3 text-emerald-800 dark:text-emerald-200 text-sm">
           <CheckCircle2 size={16} className="shrink-0" />
           <span>{tCustomer("ui.wallet.topupSuccess")}</span>
@@ -639,6 +742,37 @@ function WalletContent() {
         onWithdraw={() => void openWithdraw()}
       />
 
+      {topUpOperation && topUpOperation.state !== "credited" && (
+        <div role="status" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+          <span>{isWalletTopUpPending(topUpOperation)
+            ? tCustomer("ui.wallet.walletTopUpChecking")
+            : topUpOperation.state === "open"
+              ? tCustomer("ui.wallet.walletTopUpOpen")
+              : topUpOperation.state === "cancelled"
+                ? tCustomer("ui.wallet.walletTopUpCancelled")
+                : topUpOperation.state === "expired"
+                  ? tCustomer("ui.wallet.walletTopUpExpired")
+                  : tCustomer("ui.wallet.walletTopUpFailed")}</span>
+          <div className="flex gap-2">
+            {topUpOperation.state === "open" && (
+              <Button type="button" size="sm" onClick={() => { window.location.href = topUpOperation.checkoutUrl; }}>
+                {tCustomer("ui.wallet.walletTopUpResume")}
+              </Button>
+            )}
+            {isWalletTopUpPending(topUpOperation) && (
+              <Button type="button" size="sm" variant="outline" disabled={checkingTopUp} onClick={() => void refreshTopUpOperation(topUpOperation.operationId)}>
+                {tCustomer("ui.wallet.walletTopUpCheck")}
+              </Button>
+            )}
+            {(topUpOperation.state === "open" || isWalletTopUpPending(topUpOperation)) && (
+              <Button type="button" size="sm" variant="outline" disabled={cancellingTopUp} onClick={() => void cancelTopUpOperation()}>
+                {tCustomer("ui.wallet.cancel")}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {withdrawalOutcomePending && !showWithdraw && (
         <div role="status" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
           <span>{confirmingWithdrawal ? tCustomer("ui.wallet.confirmingWithdrawal") : tCustomer("ui.wallet.withdrawalOutcomeUnknown")}</span>
@@ -650,7 +784,7 @@ function WalletContent() {
 
       {/* Stripe payout setup is intentionally hidden until a withdrawal-related JIT trigger. */}
       {showPayoutSetup && (!readiness?.canWithdraw || usesStripeDestination) && (
-        <PayoutReadiness readiness={readiness} connectStatus={connectStatus} error={onboardError} busy={onboarding} onSetup={() => void handleConnectOnboard()} onRetry={() => void refreshConnectStatus()} />
+        <PayoutReadiness readiness={readiness} connectStatus={connectStatus} error={onboardError} requestId={onboardRequestId} busy={onboarding} onSetup={() => void handleConnectOnboard()} onRetry={() => void refreshConnectStatus()} />
       )}
 
       {/* ── Top-up form ── */}
@@ -693,17 +827,17 @@ function WalletContent() {
           <div className="rounded-xl bg-muted/50 px-4 py-3 space-y-1 text-xs">
             <div className="flex justify-between text-muted-foreground">
               <span>{tCustomer("ui.wallet.earningsBalance")}</span>
-              <span className="font-mono">{formatMYR(buckets?.earnings ?? 0)}</span>
+              <span className="font-sans">{formatMYR(buckets?.earnings ?? 0)}</span>
             </div>
             {pendingTotal > 0 && (
               <div className="flex justify-between text-amber-600 dark:text-amber-300">
                 <span>{tCustomer("ui.wallet.reservedRequests")}</span>
-                <span className="font-mono">{formatMYR(pendingTotal)}</span>
+                <span className="font-sans">{formatMYR(pendingTotal)}</span>
               </div>
             )}
             <div className="flex justify-between font-semibold text-foreground border-t border-border pt-1 mt-1">
               <span>{tCustomer("ui.wallet.availableWithdraw")}</span>
-              <span className="font-mono">{formatMYR(availableEarnings)}</span>
+              <span className="font-sans">{formatMYR(availableEarnings)}</span>
             </div>
           </div>
 
@@ -810,7 +944,7 @@ function WalletContent() {
             </p>
           )}
           {confirmingWithdrawal && <p role="status" className="text-xs text-amber-700 dark:text-amber-200">{tCustomer("ui.wallet.confirmingWithdrawal")}</p>}
-          {(withdrawError || withdrawalOutcomePending) && <p role="alert" className="text-xs text-red-500">{withdrawError || tCustomer("ui.wallet.withdrawalOutcomeUnknown")}</p>}
+          {(withdrawError || withdrawalOutcomePending) && <ApiErrorNotice message={withdrawError || tCustomer("ui.wallet.withdrawalOutcomeUnknown")} requestId={withdrawRequestId} />}
           <div className="flex gap-2">
             <Button type="submit" disabled={withdrawing || confirmingWithdrawal || withdrawAmount.trim() === "" || showAddTngDestination || (!withdrawalOutcomePending && (!walletReady || resolvedAvailableEarnings <= 0 || !readiness?.canWithdraw))} className="flex-1">
               {confirmingWithdrawal ? tCustomer("ui.wallet.confirmingWithdrawal") : withdrawing ? tCustomer("ui.states.submitting") : withdrawalOutcomePending ? tCustomer("ui.wallet.retrySameWithdrawal") : tCustomer("ui.wallet.submitRequest")}
@@ -821,7 +955,8 @@ function WalletContent() {
       )}
 
       <WithdrawalList pending={pending} />
-      {currentUser && <CustomerTransactionHistory key={currentUser.id} userId={currentUser.id} refreshKey={historyRefreshKey} />}
+      {currentUser && <WithdrawalHistory key={`withdrawal-history:${currentUser.id}`} userId={currentUser.id} />}
+      {currentUser && <CustomerTransactionHistory key={`transaction-history:${currentUser.id}`} userId={currentUser.id} refreshKey={historyRefreshKey} />}
       </CustomerPageShell>
     </>
   );

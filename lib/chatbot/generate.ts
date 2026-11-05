@@ -12,7 +12,7 @@
 // this is a short-answer FAQ bot, not a reasoning-heavy task. Google moves
 // these aliases around — if this 404s or 429s again later, re-run the
 // ListModels check (see lib/chatbot/embed.ts's note) rather than guessing.
-import { redactPII } from './pii';
+import { prepareExternalText, prepareKbText } from './pii';
 
 export interface GenerateDoc {
   title: string;
@@ -25,6 +25,11 @@ const GENERATE_TIMEOUT_MS = 15_000;
 // Verbatim from CLAUDE-PHASE2.md Section 2 — the strictness here is what
 // keeps the bot from hallucinating about money. Do not soften this.
 //
+// Multi-question messages: the NO_ANSWER rule now applies when the context
+// covers NONE of the questions; a covered question is answered and an
+// uncovered one gets a one-line "no information" instead of a guess. The
+// money rule below is unchanged.
+//
 // CLAUDE-P4-EXTRAS.md Extra 1 (trilingual): the language-matching paragraph
 // is the whole implementation of trilingual support on the generation side
 // — no separate translation pipeline, Gemini does this natively. The
@@ -32,12 +37,16 @@ const GENERATE_TIMEOUT_MS = 15_000;
 // doesn't get held to a looser standard than the English one — the failure
 // mode this guards against is a correct English fact becoming a subtly
 // wrong translation, not the bot refusing to answer at all.
-const SYSTEM_PROMPT = `You are the support assistant for MyLawatan, a Malaysian tourism platform.
+const SYSTEM_PROMPT = `You are the support assistant for MYLawatan, a Malaysian tourism platform.
 
 Answer ONLY using the CONTEXT below. The context is the complete set of
 facts you are allowed to use.
 
-If the context does not contain the answer, reply with exactly:
+The user may ask more than one question in a single message. Answer
+each question the context covers. For any question the context does not
+cover, say in one short sentence that you don't have that information, and
+never guess at it. If the context covers none of the questions, reply with
+exactly:
 NO_ANSWER
 
 Never guess. Never invent policy, prices, timelines, or amounts.
@@ -55,7 +64,7 @@ Malaysia) unless the user clearly wrote traditional. If you reply with
 NO_ANSWER, always reply with exactly that literal token regardless of the
 question's language — never translate NO_ANSWER itself.
 
-Be concise: 1-3 sentences. Plain language, matching the user's own.`;
+Be concise: 1-3 sentences per question. Plain language, matching the user's own.`;
 
 interface GeminiGenerateResponse {
   candidates?: { content?: { parts?: { text?: string }[] } }[];
@@ -68,17 +77,23 @@ interface GeminiGenerateResponse {
  * caller (lib/chatbot/answer.ts) is required to catch this and fall back to
  * the keyword matcher — never let this reach the user as an error.
  */
-export async function generateAnswer(question: string, docs: GenerateDoc[]): Promise<string | null> {
+/** `questionCount` > 1 doubles the output budget so every question gets its answer. */
+export async function generateAnswer(question: string, docs: GenerateDoc[], questionCount = 1): Promise<string | null> {
+  // The user's question gets the full check; the help articles get the KB
+  // check (lib/chatbot/pii.ts prepareKbText), which ignores phrases like
+  // "KYC" that only mean something in a user's own message. A doc that fails
+  // is dropped on its own instead of sinking every other doc with it.
+  const preparedQuestion = prepareExternalText(question);
+  if (!preparedQuestion.allowed) throw new Error('sensitive_data_detected');
+  const safeDocs = docs.filter((d) => prepareKbText(`TITLE: ${d.title}\nBODY: ${d.body}`).allowed);
+  if (safeDocs.length === 0) throw new Error('sensitive_data_detected');
+  const context = safeDocs.map((d) => `TITLE: ${d.title}\nBODY: ${d.body}`).join('\n\n');
+  const userText = `CONTEXT:\n${context}\n\nQUESTION: ${preparedQuestion.clean}`;
+  // Personal data split across a doc/question boundary is still caught here.
+  const preparedPayload = prepareKbText(userText);
+  if (!preparedPayload.allowed) throw new Error('sensitive_data_detected');
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) throw new Error('LLM_API_KEY not configured');
-
-  // CLAUDE-ADMIN-AI.md Part 1, §7.3: redact the user's question before it
-  // reaches Gemini. docs/context come from our own KB, not user input — not
-  // redacted, since that's internal platform content, never customer PII.
-  const { clean: cleanQuestion } = redactPII(question);
-
-  const context = docs.map((d) => `TITLE: ${d.title}\nBODY: ${d.body}`).join('\n\n');
-  const userText = `CONTEXT:\n${context}\n\nQUESTION: ${cleanQuestion}`;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
@@ -89,8 +104,8 @@ export async function generateAnswer(question: string, docs: GenerateDoc[]): Pro
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: 'user', parts: [{ text: userText }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 300 },
+        contents: [{ role: 'user', parts: [{ text: preparedPayload.clean }] }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: questionCount > 1 ? 600 : 300 },
       }),
       signal: controller.signal,
     });

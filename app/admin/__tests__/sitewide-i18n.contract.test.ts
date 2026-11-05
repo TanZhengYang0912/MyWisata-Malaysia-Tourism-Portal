@@ -45,6 +45,7 @@ const INTENTIONAL_IDENTICAL_VALUES = {
     "eventPromotions.settings.currencyPrefix",
     "eventRegistrations.filters.status",
     "kyc.documents.national_id",
+    "kyc.resolution.status",
     "navigation.KYC Review",
     "ui.support.sort.status",
     "ui.support.statusLabel",

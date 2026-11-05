@@ -50,7 +50,7 @@
     },
     "Wallet": {
       "label": "Dompet",
-      "description": "Baki dan pembayaran keluar"
+      "description": "Baki dan pengeluaran"
     },
     "Verification": {
       "label": "Pengesahan",
@@ -90,7 +90,7 @@
     },
     "wallet": {
       "label": "Dompet",
-      "description": "Baki dan pembayaran keluar"
+      "description": "Baki dan pengeluaran"
     },
     "vouchers": {
       "label": "Baucar Saya",
@@ -130,6 +130,12 @@
     "hidden_gem": "Permata Tersembunyi"
   },
   "preferences": {
+    "travelStyles": {
+      "solo": "Solo",
+      "couple": "Pasangan",
+      "family": "Keluarga",
+      "group": "Berkumpulan"
+    },
     "budgetRanges": {
       "budget": "Bajet (< RM100.00/hari)",
       "mid_range": "Pertengahan (RM100.00–RM500.00/hari)",
@@ -137,7 +143,7 @@
     },
     "mobilityNeeds": {
       "none": "Tiada sekatan",
-      "limited": "Berjalan secara terhad",
+      "limited": "Keupayaan berjalan terhad",
       "wheelchair": "Akses kerusi roda"
     },
     "distance": {
@@ -148,7 +154,7 @@
     }
   },
   "profile": {
-    "languageDescription": "Pilih bahasa yang digunakan di seluruh MyLawatan."
+    "languageDescription": "Pilih bahasa yang digunakan di seluruh MYLawatan."
   },
   "accountLifecycle": {
     "restore": {
@@ -180,6 +186,9 @@
   },
   "ui": {
     "breadcrumbs": { "calendar": "Kalendar", "phone": "Telefon", "kyc": "Pengesahan identiti", "forYou": "Untuk Anda", "orderAccess": "Akses pesanan", "orderDetails": "Butiran pesanan", "bookingDetails": "Butiran tempahan", "withdrawalDetails": "Butiran pengeluaran", "supportDetails": "Butiran sokongan", "recommendationDetails": "Butiran cadangan", "earnings": "Pendapatan", "publicProfile": "Profil awam", "eventPromotion": "Promosi acara" },
+    "backgroundRefresh": {
+      "staleData": "Tidak dapat memuat semula. Memaparkan data terakhir."
+    },
     "loading": "Memuatkan…",
     "contentTranslation": {
       "machineTranslated": "Terjemahan mesin",
@@ -206,7 +215,7 @@
         },
         "PHONE_VERIFICATION_REQUIRED": {
           "title": "Sahkan telefon anda",
-          "description": "Pengesahan telefon diperlukan untuk tempahan, pembelian, checkout dan cadangan AI asas. Anda tidak perlu melengkapkan seluruh profil untuk tindakan ini.",
+          "description": "Sahkan telefon anda untuk meneruskan. Anda tidak perlu melengkapkan profil lain untuk tindakan ini.",
           "cta": "Sahkan telefon"
         },
         "PROFILE_COMPLETION_REQUIRED": {
@@ -216,7 +225,7 @@
         },
         "PROFILE_OR_KYC_REQUIRED": {
           "title": "Pilih cara untuk melayakkan diri",
-          "description": "Lengkapkan profil untuk menghantar cadangan dan menggunakan Afiliasi Terhad, atau lengkapkan KYC untuk menghantar cadangan dan membuka tier Afiliasi Penuh.",
+          "description": "Lengkapkan profil untuk menghantar cadangan dan menggunakan Afiliasi Terhad, atau lengkapkan KYC untuk menghantar cadangan dan membuka tahap Afiliasi Penuh.",
           "cta": "Pilih pilihan pengesahan"
         },
         "KYC_REQUIRED": {
@@ -270,7 +279,7 @@
         "title": "Apakah yang anda mahu lakukan?",
         "description": "Pilih matlamat untuk melihat kelayakan yang membukanya.",
         "checkout": {
-          "title": "Tempah, beli, checkout atau guna AI asas",
+          "title": "Tempah, beli, buat pembayaran atau guna AI asas",
           "description": "Sahkan telefon anda. Profil atau KYC tidak diperlukan untuk fungsi ini."
         },
         "recommendation": {
@@ -296,11 +305,11 @@
     },
     "phoneVerification": {
       "title": "Sahkan telefon anda",
-      "description": "Sahkan telefon secara berasingan untuk membuka tempahan, pembelian, checkout dan cadangan AI asas.",
+      "description": "Sahkan bahawa nombor telefon ini milik anda.",
       "guestTitle": "Log masuk untuk mengesahkan telefon",
       "guestDescription": "Log masuk sebelum memulakan pengesahan telefon.",
       "completeTitle": "Telefon telah disahkan",
-      "completeDescription": "Tempahan, pembelian, checkout dan cadangan AI asas kini tersedia, tertakluk pada polisi semasa.",
+      "completeDescription": "Anda kini boleh membuat tempahan dan pembelian, membuat pembayaran serta menggunakan cadangan AI asas. Selamat menggunakan MYLawatan!",
       "verified": "Nombor telefon telah disahkan."
     },
     "actions": {
@@ -391,7 +400,7 @@
       "viewStayDetails": "Lihat butiran tetamu",
       "editStayDetails": "Edit butiran tetamu",
       "completeStayDetails": "Lengkapkan butiran tetamu",
-      "stayDetailsCompleteBeforeCheckout": "Lengkapkan butiran tetamu untuk penginapan ini sebelum daftar keluar.",
+      "stayDetailsCompleteBeforeCheckout": "Lengkapkan butiran tetamu untuk penginapan ini sebelum meneruskan pembayaran.",
       "guestDetailsRequired": "Masukkan nama tetamu utama, alamat e-mel yang sah dan nombor telefon bimbit yang sah untuk meneruskan.",
       "estimatedArrival": "Anggaran waktu ketibaan",
       "arrivalUnknown": "Belum pasti",
@@ -437,7 +446,7 @@
       "package": "Pakej",
       "quantity": "Kuantiti",
       "imageUnavailable": "Imej tidak tersedia",
-      "wheelchairAccessible": "Boleh diakses kerusi roda",
+      "wheelchairAccessible": "Boleh diakses dengan kerusi roda",
       "accessible": "Mudah diakses",
       "closed": "Ditutup",
       "days": {
@@ -449,7 +458,7 @@
         "sat": "Sab",
         "sun": "Ahd"
       },
-      "trending": "Sóhor kini",
+      "trending": "Sedang sohor",
       "verified": "Disahkan",
       "person": "orang",
       "people": "orang",
@@ -472,7 +481,7 @@
       "orders": "pesanan",
       "newestFirst": "Terbaharu dahulu",
       "bookingReference": "Rujukan tempahan",
-      "mylawatanOutlet": "Cawangan MyLawatan",
+      "mylawatanOutlet": "Cawangan MYLawatan",
       "localVendor": "Vendor tempatan",
       "contactViaChat": "Hubungi melalui sembang",
       "type": "Jenis",
@@ -520,17 +529,17 @@
       "viewOrders": "Lihat pesanan",
       "walletInsufficient": "Bayaran dompet tidak tersedia kerana baki boleh belanja anda terlalu rendah. Ganjaran tertunda dan rizab pengeluaran tidak boleh digunakan untuk pembayaran.",
       "continueSimulator": "Terus ke simulator pembayaran",
-      "payWallet": "Bayar dengan Dompet MyLawatan",
+      "payWallet": "Bayar dengan Dompet MYLawatan",
       "continueStripe": "Terus ke Stripe Sandbox",
       "nothing": "Tiada apa untuk dibayar",
       "selectItems": "Pilih sekurang-kurangnya satu item dalam troli untuk teruskan.",
       "phoneRequired": "Pengesahan telefon diperlukan",
-      "verifyPhone": "Sahkan nombor telefon untuk melengkapkan tempahan dan pembayaran.",
       "continueVerification": "Teruskan pengesahan",
       "reserveFreeSpot": "Tempah Tempat Percuma",
       "freeReservationTitle": "Tempahan Aktiviti Percuma",
       "freeReservationNotice": "Aktiviti ini percuma, tetapi memerlukan tempahan slot untuk kawalan kapasiti. Tiada bayaran akan diproses.",
       "itemsToReserve": "Item untuk Ditempah",
+      "linePriceBreakdown": "Harga seunit × kuantiti",
       "orderSummary": "Ringkasan Pesanan",
       "instantAllocation": "Slot ditempah serta-merta · Tiada bayaran diperlukan",
       "foodServiceModeTitle": "Bagaimana anda mahu pesanan makanan anda?",
@@ -598,7 +607,7 @@
     "support": {
       "title": "Sokongan",
       "myTickets": "Tiket Saya",
-      "description": "Jejaki soalan anda dan ikuti perkembangan bersama pasukan sokongan MyLawatan.",
+      "description": "Jejaki soalan anda dan ikuti perkembangan bersama pasukan sokongan MYLawatan.",
       "contact": "Berikan maklumat untuk pengeluaran yang ditahan",
       "subject": "Subjek tiket",
       "message": "Mesej tiket",
@@ -864,16 +873,16 @@
       "viewVendor": "Lihat vendor",
       "discoverMalaysia": "Terokai Malaysia",
       "browseTitle": "Layari vendor dan penyenaraian",
-      "browseDescription": "Anda sedang melayari sebagai tetamu. Log masuk apabila anda bersedia untuk menempah atau membeli.",
+      "browseDescription": "Layari dan beli item yang layak sebagai tetamu. Log masuk untuk ciri akaun.",
       "unableToLoadListings": "Tidak dapat memuatkan penyenaraian",
       "noListings": "Tiada penyenaraian tersedia",
       "checkBackLater": "Sila semak semula kemudian.",
       "experience": "Pengalaman"
     },
     "profile": {
-      "languageDescription": "Pilih bahasa yang digunakan di seluruh MyLawatan.",
+      "languageDescription": "Pilih bahasa yang digunakan di seluruh MYLawatan.",
       "publicBioEmpty": "Penyumbang ini belum menambah bio.",
-      "contributorProfile": "Profil penyumbang MyLawatan",
+      "contributorProfile": "Profil penyumbang MYLawatan",
       "backToProfile": "Kembali ke profil",
       "vendorApplication": "Permohonan vendor",
       "vendorApplicationDescription": "Mohon untuk menyenaraikan lawatan, makanan, penginapan atau pengalaman tempatan. Kelulusan pentadbir diperlukan sebelum kandungan dipaparkan kepada pelancong.",
@@ -950,7 +959,7 @@
       "chooseOutletForMoreProducts": "Lebih banyak produk tersedia di {{outlet}}."
     },
     "affiliate": {
-      "loadingDashboard": "Memuatkan papan pemuka ahli gabungan…",
+      "loadingDashboard": "Memuatkan papan pemuka afiliasi…",
       "noClicks": "Tiada klik dalam 30 hari terakhir.",
       "clicks": "Klik",
       "day": "Hari {{label}}",
@@ -993,7 +1002,8 @@
         "action": "Terjemah",
         "showOriginal": "Tunjukkan asal",
         "working": "Menterjemah…",
-        "failed": "Tidak dapat menterjemah"
+        "failed": "Tidak dapat menterjemah",
+        "privacyBlocked": "Mesej ini tidak dihantar kepada AI kerana mungkin mengandungi maklumat peribadi. Buang nombor telefon, e-mel, ID, butiran bank atau alamat peribadi, kemudian cuba lagi. Anda juga boleh membaca mesej asal tanpa terjemahan."
       },
       "attachOrder": "Lampirkan pesanan",
       "underReview": "Dilaporkan — pasukan kami sedang menyemak perbualan ini."
@@ -1018,14 +1028,14 @@
       "chooseYear": "Pilih tahun",
       "selectMonth": "Pilih {{month}}",
       "itineraryItems": "{{count}} item jadual perjalanan",
-      "inMonth": "{{monthCount}} bulan ini · {{totalCount}} sepadan keseluruhan",
+      "inMonth": "{{monthCount}} item jadual perjalanan bulan ini · {{totalCount}} padanan keseluruhan",
       "showItinerary": "Tunjukkan butiran jadual perjalanan {{activity}}",
       "showMore": "Tunjukkan {{count}} item jadual perjalanan lagi untuk {{date}}",
       "more": "+{{count}} lagi",
       "noBookingsMatch": "Tiada tempahan sepadan dengan penapis yang dipilih.",
       "noBookingsFound": "Tiada tempahan ditemui",
       "changeFilters": "Cuba ubah penapis anda.",
-      "afterCheckout": "Aktiviti yang ditempah akan muncul di sini selepas daftar keluar.",
+      "afterCheckout": "Aktiviti yang ditempah akan muncul di sini selepas pembayaran.",
       "viewItinerary": "Lihat butiran jadual perjalanan",
       "loading": "Memuatkan kalendar…",
       "scopeTitles": {
@@ -1069,7 +1079,7 @@
       }
     },
     "outlet": {
-      "verifiedMyLawatan": "Cawangan MyLawatan disahkan",
+      "verifiedMyLawatan": "Cawangan MYLawatan disahkan",
       "dropImage": "Letakkan imej di sini",
       "verifiedGuestsRecommend": "Tetamu disahkan mengesyorkan cawangan ini.",
       "planVisit": "Rancang lawatan anda",
@@ -1111,7 +1121,7 @@
         "productGrid": "Grid produk",
         "gallery": "Galeri",
         "hours": "Waktu operasi",
-        "contact": "Peta dan hubungan",
+        "contact": "Peta dan maklumat hubungan",
         "voucherBanner": "Baucar",
         "cta": "Seruan tindakan tempahan",
         "reviewHighlight": "Ulasan tetamu",
@@ -1239,8 +1249,17 @@
     },
     "cart": {
       "guestTitle": "Troli anda kosong",
-      "guestDescription": "Log masuk atau cipta akaun sebelum menambah pengalaman dan membuat pembayaran.",
       "emptyDescription": "Layari pengalaman dan tambah tempahan atau produk untuk bermula.",
+      "loadErrorTitle": "Troli anda tidak dapat dimuatkan",
+      "loadErrorDescription": "Troli tersimpan anda tidak berubah. Cuba muat semula atau teruskan membeli-belah.",
+      "refreshError": "Sebahagian perubahan troli mungkin belum dimuatkan. Cuba lagi sebelum meneruskan pembayaran.",
+      "refreshing": "Memuat semula troli tersimpan anda…",
+      "actionError": "Item ini tidak dapat dikemas kini. Cuba muat semula untuk melihat troli terkini.",
+      "unavailableOutlet": "Item tidak tersedia",
+      "unavailableProduct": "Item ini tidak lagi tersedia",
+      "unavailableProductHelp": "Buangnya daripada troli untuk meneruskan. Item dan pilihan lain dikekalkan.",
+      "availabilityLoadError": "Ketersediaan item ini tidak dapat diperiksa",
+      "availabilityLoadHelp": "Troli anda tidak berubah. Cuba semak ketersediaan sekali lagi sebelum membuang item.",
       "explore": "Teroka pengalaman",
       "continueShopping": "Teruskan membeli-belah",
       "title": "Troli anda",
@@ -1256,7 +1275,7 @@
       "selectItem": "Pilih {{item}}",
       "checkingAvailability": "Sedang menyemak ketersediaan tempahan…",
       "availabilityCheckFailed": "Ketersediaan tempahan tidak dapat disemak",
-      "seatsLeft": "{{count}} tempat tinggal",
+      "seatsLeft": "{{count}} tempat lagi",
       "outOfStock": "Kehabisan stok",
       "inStock": "{{count}} dalam stok",
       "lowStock": "Stok rendah",
@@ -1308,8 +1327,8 @@
       "viewAll_other": "Lihat semua {{count}} baucar",
       "subtotalSelected_one": "Jumlah kecil ({{count}} dipilih)",
       "subtotalSelected_other": "Jumlah kecil ({{count}} dipilih)",
-      "seatsLeft_one": "{{count}} tempat tinggal",
-      "seatsLeft_other": "{{count}} tempat tinggal"
+      "seatsLeft_one": "{{count}} tempat lagi",
+      "seatsLeft_other": "{{count}} tempat lagi"
     },
     "tripBudget": {
       "title": "Bajet Perjalanan",
@@ -1324,6 +1343,10 @@
       "overBudgetWarning": "Melebihi bajet sebanyak {{amount}} — ketik untuk cadangan",
       "checking": "Menyemak alternatif lebih murah…",
       "checkFailed": "Tidak dapat menyemak bajet anda sekarang.",
+      "invalidBudget": "Masukkan bajet yang lebih besar daripada sifar.",
+      "storageUnavailable": "Bajet ini hanya disimpan untuk sesi ini kerana storan pelayar tidak tersedia.",
+      "tryLater": "Perkhidmatan sedang sibuk. Tunggu sebentar dan cuba lagi.",
+      "timedOut": "Semakan mengambil masa terlalu lama. Jadual perjalanan anda tidak berubah; cuba lagi apabila sambungan stabil.",
       "noAlternatives": "Tiada alternatif lebih murah ditemui untuk pilihan termahal anda buat masa ini.",
       "viewAlternative": "Lihat penyenaraian",
       "showOnMap": "Tunjuk pada peta",
@@ -1352,10 +1375,12 @@
     "preferencesPage": {
       "eyebrow": "Keutamaan",
       "title": "Pilihan perjalanan anda",
-      "description": "Ini membentuk suapan “Disyorkan Untuk Anda”. Kemas kini bila-bila masa — semakin banyak kami tahu, semakin baik cadangannya."
+      "description": "Digunakan untuk menyesuaikan cadangan anda."
     },
     "preferencesEditor": {
       "loading": "Memuatkan pilihan…",
+      "loadError": "Pilihan tersimpan tidak dapat dimuatkan. Jawapan anda belum diubah. Cuba lagi sebelum mengedit.",
+      "refreshError": "Pilihan anda telah disimpan, tetapi status profil terkini tidak dapat dimuat semula.",
       "saved": "Pilihan disimpan.",
       "saving": "Menyimpan…",
       "save": "Simpan pilihan",
@@ -1363,6 +1388,7 @@
       "notesPlaceholder": "cth. Saya suka makanan jalanan, mengelakkan pusat beli-belah sesak dan sentiasa mengembara dengan anjing saya…",
       "basedOnActivity": "Berdasarkan aktiviti anda",
       "interests": "Minat (pilih semua yang berkenaan)",
+      "travelStyle": "Gaya perjalanan",
       "budgetRange": "Julat bajet",
       "preferredDistance": "Jarak pilihan",
       "mobilityAccessibility": "Mobiliti & kebolehcapaian",
@@ -1384,6 +1410,16 @@
       "baseAccountRequired": "Sahkan e-mel dan pulihkan akses akaun sebelum memulakan KYC",
       "completeFirst": "Lengkapkan profil dahulu",
       "reviewWindow": "Pasukan kami menyemak dalam 1–2 hari bekerja.",
+      "withdrawApplication": "Tarik balik permohonan",
+      "withdrawConfirm": "Penarikan balik menghentikan semakan yang sedang menunggu. Jika pentadbir selesai pada masa yang sama, segarkan status untuk melihat tindakan yang berjaya.",
+      "confirmWithdraw": "Tarik balik permohonan KYC",
+      "withdrawn": "Permohonan ditarik balik. Anda boleh menghantar semula apabila bersedia.",
+      "statusCheckFailed": "Status permohonan semasa tidak dapat disahkan. Semak status sebelum menghantar semula.",
+      "checkingStatus": "Menyemak…",
+      "checkStatus": "Semak status permohonan",
+      "submissionChecking": "Kami sedang menyemak sama ada permohonan KYC anda telah diterima. Jangan hantar permohonan lain dahulu.",
+      "retrySameOperation": "Cuba semula penghantaran yang sama dengan selamat",
+      "reenterNumberForRetry": "Masukkan semula nombor dokumen untuk meneruskan penghantaran yang sama dengan selamat.",
       "queue": "Anda berada di kedudukan #{{position}} dalam barisan.",
       "reviewerNote": "Nota penyemak: {{note}}",
       "reviewed": "Disemak {{date}}",
@@ -1394,6 +1430,17 @@
       "submitDocuments": "Hantar dokumen KYC",
       "previousRejected": "Penghantaran sebelumnya ditolak.",
       "moreInfo": "Maklumat lanjut diperlukan.",
+      "holderName": "Nama pada dokumen",
+      "recognizeDocument": "Baca dokumen",
+      "previewing": "Sedang membaca…",
+      "previewUnavailable": "Bacaan dokumen tidak tersedia. Anda boleh mengisi maklumat sendiri.",
+      "previewManualEntry": "Dokumen tidak dapat dibaca dengan jelas. Masukkan maklumat sendiri.",
+      "ocrEditableNotice": "Semak dan betulkan nama serta nombor yang dikesan sebelum menghantar.",
+      "saveDraft": "Simpan draf",
+      "savingDraft": "Menyimpan…",
+      "draftSaved": "Draf disimpan dengan selamat untuk tempoh singkat. Nombor dokumen penuh tidak disimpan.",
+      "draftRestored": "Draf yang disimpan telah dipulihkan. Masukkan semula nombor dokumen penuh.",
+      "draftSaveFailed": "Draf tidak dapat disimpan. Maklumat pada halaman ini masih ada.",
       "idNumber": "Nombor IC / pasport",
       "documentType": "Jenis dokumen",
       "frontOf": "bahagian hadapan dokumen",
@@ -1454,7 +1501,7 @@
       "submitted": "Cadangan vendor dihantar untuk semakan.",
       "community": "Komuniti",
       "title": "Cadangkan vendor",
-      "description": "Tahu pengalaman tempatan yang hebat dan patut ada di MyLawatan? Cadangkan di sini. Pentadbir menyemaknya dahulu, kemudian vendor boleh menyertai atau dipautkan sebelum diterbitkan. Anda mendapat komisen jika mereka menyertai melalui cadangan anda.",
+      "description": "Vendor disiarkan selepas kelulusan pentadbir. Komisen mungkin diberikan jika mereka menyertai melalui cadangan anda.",
       "recommend": "Cadangkan",
       "new": "Cadangan baharu",
       "vendorBusinessName": "Nama vendor / perniagaan",
@@ -1495,7 +1542,7 @@
         "pending": "Pentadbir sedang menyemak cadangan dan butiran vendor.",
         "changes_requested": "Pentadbir meminta butiran cadangan dikemas kini.",
         "approved": "Pentadbir telah meluluskan; vendor masih perlu menyertai atau dipautkan sebelum disiarkan.",
-        "invited": "Vendor telah dijemput untuk menyertai MyLawatan.",
+        "invited": "Vendor telah dijemput untuk menyertai MYLawatan.",
         "claimed": "Vendor telah menerima jemputan dan memulakan proses penyertaan.",
         "onboarding": "Vendor sedang melengkapkan proses penyertaan.",
         "vendor_pending_review": "Permohonan vendor sedang menunggu semakan.",
@@ -1517,20 +1564,21 @@
       "editUnavailable": "Cadangan ini tidak dapat dibuka untuk dikemas kini. Muat semula butirannya dan cuba lagi."
     },
     "recommendationEarnings": {
-      "title": "Pendapatan cadangan",
-      "pending": "Belum matang",
+      "title": "Komisen rujukan",
+      "pending": "Belum dilepaskan",
       "lifetime": "Dikreditkan ke dompet",
       "convertedVendors": "Vendor menyertai",
-      "empty": "Belum ada pendapatan cadangan. Anda memperoleh pendapatan apabila vendor yang anda cadangkan menyertai dan membuat jualan.",
+      "empty": "Belum ada komisen rujukan. Anda memperoleh komisen apabila vendor yang anda rujuk menyertai dan membuat jualan.",
+      "loadError": "Komisen rujukan tidak dapat dimuatkan. Rekod anda tidak berubah. Cuba lagi untuk menyemak.",
       "bonusLabel": "Bonus jualan pertama",
       "ongoingLabel": "Komisen berterusan",
       "statusCleared": "Dikreditkan ke dompet anda",
-      "statusReversed": "Dibatalkan — pesanan dibatalkan atau dikembalikan",
-      "clearsToday": "Belum matang · matang hari ini",
-      "clearsInDays": "Belum matang · matang dalam {{count}} hari",
-      "clearsInDays_one": "Belum matang · matang dalam {{count}} hari",
-      "clearsInDays_other": "Belum matang · matang dalam {{count}} hari",
-      "viewRecommendation": "Lihat cadangan"
+      "statusReversed": "Komisen rujukan dibalikkan — pesanan dibatalkan atau dibayar balik",
+      "clearsToday": "Belum dilepaskan · akan dilepaskan hari ini",
+      "clearsInDays": "Belum dilepaskan · akan dilepaskan dalam {{count}} hari",
+      "clearsInDays_one": "Belum dilepaskan · akan dilepaskan dalam {{count}} hari",
+      "clearsInDays_other": "Belum dilepaskan · akan dilepaskan dalam {{count}} hari",
+      "viewRecommendation": "Lihat rujukan"
     },
     "profileWizard": {
       "completion": "Kelengkapan profil",
@@ -1544,10 +1592,12 @@
       "current": "Semasa: {{label}}",
       "next": "Seterusnya: {{label}}",
       "percentComplete": "{{percent}}% lengkap",
+      "previous": "Kembali",
+      "saveStepFirst": "Simpan perubahan {{label}} sebelum melengkapkan profil anda.",
       "businessPrompt": "Ada perniagaan untuk dikongsi?",
       "businessDescription": "Mulakan permohonan vendor selepas menyediakan profil",
       "verifyPhone": "Sahkan nombor telefon anda",
-      "phoneDescription": "Masukkan nombor telefon dalam format antarabangsa. Kami akan menghantar OTP 6 digit.",
+      "phoneDescription": "Kami akan menghantar kod 6 digit untuk mengesahkan nombor anda.",
       "phoneNumber": "Nombor telefon",
       "sending": "Menghantar…",
       "sendOtp": "Hantar OTP",
@@ -1558,12 +1608,15 @@
       "verifyOtp": "Sahkan OTP",
       "identity": "Identiti anda",
       "fullName": "Nama penuh",
-      "city": "Bandar",
-      "country": "Negara",
+      "city": "Bandar tempat tinggal",
+      "country": "Negara tempat tinggal",
       "continue": "Teruskan",
       "profilePhoto": "Foto profil",
       "photoDescription": "Muat naik atau ambil foto diri yang jelas. JPG, PNG atau WebP · maksimum 2 MB.",
       "choosePhoto": "Pilih foto",
+      "photoSourceTitle": "Tambah foto profil",
+      "photoSourceDescription": "Pilih foto daripada peranti ini atau ambil foto.",
+      "cancelPhotoSelection": "Batal",
       "uploadPhoto": "Muat naik foto",
       "takePhoto": "Ambil foto",
       "savePhoto": "Simpan foto",
@@ -1581,21 +1634,27 @@
       "cameraCaptureFailed": "Foto tidak dapat diambil. Cuba lagi atau muat naik foto.",
       "bio": "Tentang anda",
       "saveDetails": "Simpan butiran",
+      "privacyBlocked": "Bio anda tidak dihantar kepada AI. Buang nombor telefon, e-mel, ID, butiran bank atau alamat peribadi, kemudian cuba lagi. Anda boleh terus mengeditnya di sini.",
+      "personalSaveBioPrivacyBlocked": "Nama dan lokasi anda telah disimpan, tetapi bio tidak dihantar kepada AI. Buang nombor telefon, e-mel, ID, butiran bank atau alamat peribadi, kemudian simpan bio sekali lagi.",
       "invalidPhone": "Masukkan nombor telefon antarabangsa yang sah.",
       "invalidOtp": "Masukkan OTP 6 digit yang lengkap.",
       "fullNameValidation": "Nama penuh mesti mengandungi sekurang-kurangnya 2 aksara.",
       "cityValidation": "Masukkan bandar anda.",
       "countryValidation": "Masukkan negara atau wilayah anda.",
       "photoTypeValidation": "Pilih imej JPG, PNG atau WebP.",
-      "photoSizeValidation": "Foto profil mestilah 2 MB atau lebih kecil.",
-      "avatarUploadUrlError": "Gagal mendapatkan pautan muat naik",
-      "avatarStorageError": "Muat naik foto gagal.",
-      "avatarConfirmError": "Gagal mengesahkan avatar",
+      "photoSizeValidation": "Foto ini bersaiz {{size}} MB, melebihi had 2 MB. Pilih foto yang lebih kecil.",
+      "photoInvalidValidation": "Fail ini bukan imej JPG, PNG atau WebP yang sah. Cuba foto lain.",
+      "avatarSessionExpired": "Sesi log masuk anda telah tamat. Log masuk semula, kemudian pilih foto anda.",
+      "avatarUploadUnavailable": "Perkhidmatan muat naik foto tidak tersedia buat sementara waktu. Cuba lagi kemudian. Hubungi sokongan jika masalah berterusan.",
+      "avatarUploadUrlError": "Muat naik foto tidak dapat dimulakan. Muat semula halaman ini dan cuba lagi. Hubungi sokongan jika masalah berterusan.",
+      "avatarStorageError": "Foto tidak dapat dimuat naik. Periksa sambungan anda dan cuba lagi.",
+      "avatarConfirmError": "Foto telah dimuat naik tetapi tidak dapat disimpan pada profil anda. Cuba lagi.",
       "bioValidation": "Tentang anda mesti mengandungi {{min}}–{{max}} aksara.",
+      "bioLegacyHint": "Anda boleh kekalkan bio semasa. Jika diubah, gunakan {{min}}–{{max}} aksara.",
       "fullNamePlaceholder": "cth. Ahmad Bin Ali",
       "cityPlaceholder": "cth. Kuala Lumpur",
       "countryPlaceholder": "cth. Malaysia",
-      "bioPlaceholder": "cth. Peminat pelancongan Malaysia yang suka meneroka permata tersembunyi dan makanan tempatan asli…",
+      "bioPlaceholder": "cth. Suka makanan dan budaya.",
       "steps": {
         "phone": "Telefon",
         "identity": "Identiti",
@@ -1608,8 +1667,8 @@
         "full_name": "nama penuh",
         "avatar": "foto profil",
         "bio": "tentang anda",
-        "city": "bandar",
-        "country": "negara"
+        "city": "Bandar tempat tinggal",
+        "country": "Negara tempat tinggal"
       }
     },
     "profileLocation": {
@@ -1629,6 +1688,12 @@
       "increaseQuantity": "Tambah kuantiti",
       "chatVendor": "Sembang dengan vendor",
       "viewCart": "Lihat troli",
+      "outOfStock": "Stok di cawangan ini telah habis.",
+      "chooseOtherOutlet": "Pilih cawangan lain untuk meneruskan.",
+      "quantityExceedsStock": "Kurangkan kuantiti supaya tidak melebihi stok sebelum menambah item ini.",
+      "stockAvailable": "{{count}} tersedia di cawangan ini.",
+      "stockAvailable_one": "{{count}} tersedia di cawangan ini.",
+      "stockAvailable_other": "{{count}} tersedia di cawangan ini.",
       "addBooking": "Tambah tempahan",
       "addCart": "Tambah ke troli",
       "priceUnits": {
@@ -1704,7 +1769,7 @@
       "exploreWithConfidence": "Terokai dengan yakin",
       "activeLocations": "Lokasi aktif",
       "publishedListings": "Penyenaraian diterbitkan",
-      "approvedOnMyLawatan": "Diluluskan di MyLawatan",
+      "approvedOnMyLawatan": "Diluluskan di MYLawatan",
       "acrossMalaysia": "Di seluruh Malaysia",
       "readyToExplore": "Sedia untuk diterokai",
       "newPartner": "Rakan baharu",
@@ -1724,7 +1789,7 @@
       "localPartnerTitle": "Rakan tempatan untuk rancangan Malaysia anda",
       "fallbackDescription": "{{vendor}} menghimpunkan produk dan pengalaman tempatan di seluruh Malaysia.",
       "verifiedBusiness": "Perniagaan disahkan",
-      "bookThrough": "Tempah melalui MyLawatan",
+      "bookThrough": "Tempah melalui MYLawatan",
       "policiesSupport": "Polisi & sokongan",
       "planDetails": "Rancang dengan butiran yang tepat",
       "hoursVary": "Waktu berbeza mengikut cawangan.",
@@ -1774,8 +1839,16 @@
       "emptyTitle": "Dompet anda kosong",
       "emptyDescription": "Log masuk untuk melihat dompet, menambah nilai dan mengurus pengeluaran pendapatan yang layak.",
       "title": "Dompet Saya",
-      "description": "Urus baki yang boleh dibelanjakan, pendapatan dan pengeluaran bayaran.",
+      "description": "Baki, pendapatan dan pengeluaran.",
       "topupSuccess": "Tambah nilai dimulakan! Baki anda akan dikemas kini selepas bayaran selesai (biasanya dalam seminit).",
+      "walletTopUpChecking": "Status tambah nilai sedang disemak. Jangan mulakan bayaran lain sementara kami mengesahkannya.",
+      "walletTopUpCheckError": "Status tambah nilai belum dapat disemak. Permintaan anda disimpan; cuba semak semula.",
+      "walletTopUpOpen": "Tambah nilai anda sedia untuk diteruskan.",
+      "walletTopUpResume": "Teruskan bayaran",
+      "walletTopUpCheck": "Semak status",
+      "walletTopUpCancelled": "Tambah nilai ini telah dibatalkan.",
+      "walletTopUpExpired": "Pautan bayaran telah tamat tempoh. Anda boleh mulakan tambah nilai baharu.",
+      "walletTopUpFailed": "Tambah nilai ini tidak dapat diselesaikan. Anda boleh mulakan yang baharu.",
       "withdrawalSubmitted": "Permintaan pengeluaran berjaya dihantar. Permintaan ini kini menunggu semakan.",
       "bankSetupSubmitted": "Penyediaan akaun bank dihantar. Stripe akan mengesahkan butiran anda — ini mungkin mengambil beberapa minit.",
       "setupExpired": "Pautan penyediaan telah tamat tempoh. Sila cuba lagi.",
@@ -1836,7 +1909,7 @@
         "withdrawal_cancel": "Pengeluaran dikembalikan",
         "earnings_pending": "Pendapatan belum selesai",
         "earnings_confirm": "Pendapatan dilepaskan",
-        "earnings_reverse": "Pendapatan belum selesai dibalikkan",
+        "earnings_reverse": "Pendapatan tertunda dibalikkan",
         "refund": "Bayaran balik",
         "adjustment_credit": "Pelarasan baki",
         "adjustment_debit": "Pelarasan baki"
@@ -1865,7 +1938,13 @@
       "stripeVerificationProgress": "Pengesahan Stripe sedang berjalan",
       "bankWithdrawalsRestricted": "Pengeluaran bank dihadkan sementara",
       "unableVerifyPayout": "Tidak dapat mengesahkan akaun pembayaran",
-      "completeKycFirst": "Lengkapkan KYC MyLawatan dahulu",
+      "completeKycFirst": "Lengkapkan KYC MYLawatan dahulu",
+      "verifyEmailForWithdrawal": "Sahkan e-mel anda dahulu",
+      "verifyEmailForWithdrawalDescription": "Sahkan alamat e-mel akaun sebelum meminta pengeluaran.",
+      "verifyPhoneForWithdrawal": "Sahkan telefon anda dahulu",
+      "verifyPhoneForWithdrawalDescription": "Telefon yang disahkan diperlukan sebelum meminta pengeluaran.",
+      "completeProfileForWithdrawal": "Lengkapkan profil dahulu",
+      "completeProfileForWithdrawalDescription": "Isi nama, foto, bio, bandar dan negara sebelum meminta pengeluaran.",
       "checkingSetup": "Menyemak penyediaan pengeluaran",
       "setupEarningsOptional": "Sediakan pengeluaran pendapatan (pilihan)",
       "approvedBankDestination": "Pengeluaran bank yang diluluskan akan dihantar ke akaun yang disimpan oleh Stripe.",
@@ -1873,10 +1952,10 @@
       "stripeReviewing": "Stripe sedang menyemak maklumat pembayaran anda. Tiada tindakan diperlukan.",
       "bankRestrictedDescription": "Pengeluaran bank dihadkan sementara.",
       "retryStatus": "Sila cuba semula semakan status.",
-      "setupAfterKyc": "Penyediaan pembayaran Stripe tersedia selepas kelulusan KYC MyLawatan.",
+      "setupAfterKyc": "Penyediaan pembayaran Stripe tersedia selepas kelulusan KYC MYLawatan.",
       "checkingStripeStatus": "Menyemak status terkini dengan selamat melalui Stripe.",
       "setupWhenWithdrawing": "Sediakan ini hanya apabila anda mahu mengeluarkan pendapatan ganjaran.",
-      "stripePrivacy": "Stripe mengumpul butiran bank pembayaran dan fail pengesahan anda dengan selamat. MyLawatan tidak menyimpan butiran yang dihoskan Stripe tersebut.",
+      "stripePrivacy": "Stripe mengumpul butiran bank pembayaran dan fail pengesahan anda dengan selamat. MYLawatan tidak menyimpan butiran yang dihoskan Stripe tersebut.",
       "setupWithdrawals": "Sediakan pengeluaran",
       "updateDetails": "Kemas kini butiran",
       "retryStatusCheck": "Cuba semula semakan status",
@@ -1917,7 +1996,18 @@
       "later": "Kemudian",
       "inProgress": "Sedang Diproses ({{count}})",
       "inProgress_one": "Sedang Diproses ({{count}})",
-      "inProgress_other": "Sedang Diproses ({{count}})"
+      "inProgress_other": "Sedang Diproses ({{count}})",
+      "withdrawalHistory": {
+        "title": "Sejarah pengeluaran",
+        "loading": "Memuatkan sejarah pengeluaran…",
+        "error": "Sejarah pengeluaran tidak dapat dimuatkan. Sila cuba lagi.",
+        "retry": "Cuba lagi",
+        "empty": "Tiada permohonan pengeluaran lagi.",
+        "unknownDestination": "Destinasi bayaran",
+        "page": "Halaman {{page}} daripada {{pages}} · {{total}} permohonan",
+        "previous": "Sebelumnya",
+        "next": "Seterusnya"
+      }
     },
     "profileSections": {
       "contact": "Butiran hubungan",
@@ -1959,6 +2049,8 @@
     },
     "orders": {
       "loadError": "Pesanan anda tidak dapat dimuatkan.",
+      "detailLoadError": "Butiran pesanan ini tidak dapat dimuatkan. Pesanan anda masih selamat; cuba lagi atau kembali ke senarai pesanan.",
+      "relatedDetailsUnavailable": "Sesetengah butiran tempahan atau cawangan tidak tersedia buat sementara. Pesanan anda masih ada; cuba lagi untuk memuatkannya.",
       "search": "Cari ID pesanan, produk atau cawangan",
       "filters": "Penapis",
       "allStatuses": "Semua status",
@@ -1973,10 +2065,23 @@
       "allOutlets": "Semua cawangan",
       "fromDate": "Tarikh mula pesanan",
       "toDate": "Tarikh akhir pesanan",
+      "invalidDateRange": "Pastikan tarikh mula tidak selepas tarikh akhir (waktu Malaysia).",
+      "refundStatusTitle": "Status bayaran balik",
+      "refundStatusUnavailable": "Status bayaran balik tidak dapat dimuatkan. Muat semula halaman untuk menyemak semula.",
+      "refundStatusDetail": "{{amount}} · dimohon pada {{date}} (MYT)",
+      "refundProcessedAt": "Diproses pada {{date}} (MYT)",
+      "refundStatuses": {
+        "pending": "Dalam semakan",
+        "approved": "Diluluskan, sedang diproses",
+        "processed": "Bayaran balik diproses",
+        "rejected": "Tidak diluluskan",
+        "failed": "Pemprosesan gagal",
+        "unknown": "Status tidak tersedia"
+      },
       "found": "{{count}} pesanan ditemui",
       "noMatch": "Tiada pesanan sepadan dengan penapis ini",
       "tryFilters": "Cuba kosongkan satu penapis atau cari aktiviti lain.",
-      "emptyDescription": "Sejarah tempahan dan pesanan anda akan muncul di sini selepas daftar keluar.",
+      "emptyDescription": "Sejarah tempahan dan pesanan anda akan muncul di sini selepas pembayaran.",
       "summaryOrders": "pesanan",
       "summaryPaid": "dibayar atau selesai",
       "summaryBookings": "dengan tempahan",
@@ -1989,7 +2094,7 @@
       "paymentMethodWalletAndCard": "Dompet dan kad",
       "paymentMethodEWallet": "E-dompet",
       "paymentMethodBankTransfer": "Pindahan bank",
-      "paymentMethodWallet": "Dompet MyLawatan",
+      "paymentMethodWallet": "Dompet MYLawatan",
       "paymentMethodDemoCard": "Kad demo",
       "paymentMethodNoPayment": "Tiada bayaran diperlukan",
       "checkingPayment": "Sedang menyemak pautan pembayaran…",
@@ -2000,18 +2105,18 @@
       "checkPaymentAgain": "Semak semula",
       "orderItems": "Item yang dibeli",
       "copyOrderId": "Salin nombor pesanan",
-      "brandName": "MyLawatan",
+      "brandName": "MYLawatan",
       "portalName": "Portal Pelancongan Malaysia",
       "paymentMethods": {
         "stripeCard": "Kad demo Stripe",
         "eWallet": "E-dompet",
         "bankTransfer": "Pindahan bank",
-        "myLawatanWallet": "Dompet MyLawatan",
+        "myLawatanWallet": "Dompet MYLawatan",
         "demoCard": "Kad demo",
         "demoPayment": "Bayaran demo"
       },
       "moreItems": " +{{count}} lagi",
-      "marketplace": "Pasaran MyLawatan",
+      "marketplace": "Pasaran MYLawatan",
       "itemCount": "{{count}} item",
       "paginationLabel": "Penomboran halaman sejarah pesanan",
       "showing": "Menunjukkan {{from}}–{{to}} daripada {{total}} pesanan",
@@ -2039,6 +2144,7 @@
       "refundReasonOther": "Sebab lain",
       "refundDetailsLabel": "Penerangan lanjut",
       "refundDetailsPlaceholder": "Sila berikan maklumat lanjut tentang permohonan bayaran balik anda (minimum 5 aksara)...",
+      "refundDetailsRequired": "Untuk “Sebab lain”, masukkan sekurang-kurangnya 5 aksara supaya pasukan kami boleh menyemak permohonan anda.",
       "refundPolicyNotice": "Permohonan bayaran balik tertakluk kepada polisi vendor dan akan disemak dalam tempoh 1-3 hari bekerja.",
       "submitRefund": "Hantar Permohonan Bayaran Balik",
       "taxInvoice": "Invois Cukai & Resit Rasmi",
@@ -2055,7 +2161,8 @@
       "found_one": "{{count}} pesanan ditemui",
       "found_other": "{{count}} pesanan ditemui",
       "moreItems_one": " +{{count}} lagi",
-      "moreItems_other": " +{{count}} lagi"
+      "moreItems_other": " +{{count}} lagi",
+      "details": "Butiran pesanan"
     },
     "outletMenu": {
       "from": "Daripada",
@@ -2108,7 +2215,7 @@
       "destinationCarousel": "Karusel destinasi",
       "destinationPage": "Halaman {{page}} daripada {{total}}",
       "exploreDestinations": "Teroka Destinasi",
-      "swipeDestinations": "Leret untuk meneroka semua {{count}} negeri.",
+      "swipeDestinations": "Leret untuk meneroka semua {{count}} negeri dan wilayah persekutuan.",
       "forYou": "Untuk Anda",
       "nearbyPartners": "Rakan Niaga Berdekatan",
       "nearbyPrompt": "Kongsi lokasi anda untuk mencari rakan niaga dalam lingkungan 20 km.",
@@ -2164,9 +2271,9 @@
     },
     "destination": {
       "notFound": "Destinasi tidak ditemui",
-      "metaTitle": "{{state}} — Teroka Malaysia di MyLawatan",
+      "metaTitle": "{{state}} — Teroka Malaysia di MYLawatan",
       "metaDescription": "Temui pengalaman, cawangan dan tarikan di {{state}}, Malaysia.",
-      "metaExploreTitle": "Teroka {{state}} | MyLawatan",
+      "metaExploreTitle": "Teroka {{state}} | MYLawatan",
       "backToExplore": "Kembali ke Teroka",
       "viewOnMap": "Lihat pada Peta",
       "findPartners": "Cari Rakan",
@@ -2183,7 +2290,7 @@
     },
     "experience": {
       "notFound": "Pengalaman tidak ditemui",
-      "metaDescription": "Tempah {{name}} di MyLawatan — temui pengalaman tempatan di seluruh Malaysia.",
+      "metaDescription": "Tempah {{name}} di MYLawatan — temui pengalaman tempatan di seluruh Malaysia.",
       "backToExplore": "Kembali ke Teroka",
       "bookable": "Pengalaman boleh ditempah",
       "about": "Tentang pengalaman ini",
@@ -2254,7 +2361,7 @@
     },
     "place": {
       "notFound": "Tempat tidak ditemui",
-      "metaTitle": "{{name}} — Teroka Malaysia di MyLawatan",
+      "metaTitle": "{{name}} — Teroka Malaysia di MYLawatan",
       "metaDescription": "Temui {{name}}, {{state}}.",
       "all": "Semua",
       "levels": {
@@ -2358,7 +2465,7 @@
       }
     },
     "saved": {
-      "metadataTitle": "Disimpan — MyLawatan",
+      "metadataTitle": "Disimpan — MYLawatan",
       "metadataDescription": "Destinasi, makanan, aktiviti dan produk anda yang disimpan di seluruh Malaysia.",
       "signInTitle": "Log masuk untuk melihat produk disimpan",
       "signInDescription": "Simpan tempat dan produk di seluruh Malaysia untuk dicari semula di sini nanti."
@@ -2374,6 +2481,7 @@
       "aiNameLoading": "Mencadangkan nama…",
       "aiNameAlternatives": "Pilih nama cadangan atau teruskan menyunting",
       "aiNameFallback": "AI tidak tersedia buat sementara waktu, jadi nama yang sepadan dengan tarikh ini dijana secara setempat.",
+      "aiNamePrivacyFallback": "Idea anda tidak dihantar kepada AI kerana mungkin mengandungi maklumat peribadi. Buang nombor telefon, e-mel, ID, butiran bank atau alamat peribadi dan cuba lagi. Nama ini dijana secara setempat; anda boleh terus mengedit perjalanan tanpa AI.",
       "aiNameError": "Nama tidak dapat dicadangkan sekarang. Anda masih boleh mencipta perjalanan ini.",
       "aiNamePhoneRequired": "Sahkan telefon anda untuk menggunakan penamaan AI. Anda masih boleh mencipta perjalanan dengan nama sendiri.",
       "startDate": "Tarikh Mula",
@@ -2421,11 +2529,20 @@
       "changeOrigin": "Tukar titik mula",
       "routeStale": "Mengemas kini laluan; anggaran terdahulu dipaparkan",
       "continuousRoute": "Anggaran laluan mengandaikan perjalanan berterusan; masa lawatan dan menunggu tidak disertakan.",
+      "sameLocation": "Lokasi yang sama",
+      "sameLocationNoTravel": "Semua hentian di lokasi yang sama; tiada masa perjalanan diperlukan.",
       "feasibility": {
         "conflict": "Kekurangan kira-kira {{minutes}} min",
         "fits_estimate": "Sesuai dengan anggaran perjalanan semasa",
         "unknown": "Tempoh lawatan atau anggaran perjalanan tidak diketahui"
       },
+      "invalidChange": "Semak tarikh, masa dan susunan hentian, kemudian cuba lagi.",
+      "accessChanged": "Akses perjalanan anda telah berubah. Log masuk semula dan muat semula perjalanan.",
+      "itemUnavailable": "Hentian atau masa ini tidak lagi tersedia. Muat semula perjalanan dan pilih pilihan lain.",
+      "resultUnknown": "Kami tidak dapat memastikan perubahan telah disimpan. Semak perjalanan tersimpan sebelum mencuba lagi.",
+      "serviceUnavailable": "Perkhidmatan perjalanan tidak tersedia buat sementara. Pelan semasa anda dikekalkan. Cuba lagi kemudian.",
+      "verifyFailed": "Kami tidak dapat menyemak perjalanan tersimpan. Biarkan halaman ini terbuka dan cuba semak lagi.",
+      "verifyState": "Semak perjalanan tersimpan",
       "versionConflict": "Perjalanan ini berubah dalam sesi lain. Input anda dikekalkan. Muat semula sebelum menyimpan lagi.",
       "legacyRestore": "Pulihkan perjalanan lama",
       "legacyRestoreHint": "Pelayar ini mempunyai perjalanan lama. Pulihkan sekali jika masih diperlukan.",
@@ -2435,7 +2552,7 @@
       "notFound": "Cawangan tidak ditemui",
       "metaDescription": "Teroka produk dan pengalaman di {{name}}.",
       "heroTitle": "Hari tempatan anda bermula di sini",
-      "verified": "Cawangan MyLawatan disahkan",
+      "verified": "Cawangan MYLawatan disahkan",
       "by": "oleh",
       "introTitle": "Hari tempatan yang sukar dilupakan",
       "introBody": "Terokai {{vendor}} di {{city}}: kegemaran tempatan, tuan rumah yang prihatin dan pengalaman yang direka khas untuk tempat ini."
@@ -2545,7 +2662,7 @@
       "ticketRequired": "Tiket diperlukan",
       "venueInformation": "Maklumat tempat",
       "venueDetails": "Lihat butiran",
-      "venueDetailsHint": "Dibuka dalam MyLawatan",
+      "venueDetailsHint": "Dibuka dalam MYLawatan",
       "venue": "Tempat",
       "informationSource": "Maklumat daripada",
       "price": "RM{{value}}",
@@ -2566,7 +2683,7 @@
       "title": "Untuk anda",
       "heading": "Malaysia anda, cara anda",
       "personalisedDescription": "Cadangan terpilih yang sepadan dengan pilihan perjalanan anda.",
-      "genericDescription": "Pengalaman popular daripada MyLawatan.",
+      "genericDescription": "Pengalaman popular daripada MYLawatan.",
       "profileCityDistance": "Jarak ditunjukkan dari bandar profil anda.",
       "unlock": "Lengkapkan profil dan tinjauan perjalanan untuk membuka cadangan diperibadikan.",
       "continueVerification": "Teruskan pengesahan →",
@@ -2665,7 +2782,7 @@
       "approvedVendors_other": "{{count}} vendor diluluskan"
     },
     "voucherHub": {
-      "eyebrow": "Baucar MyLawatan",
+      "eyebrow": "Baucar MYLawatan",
       "dealsTitle": "Teroka lebih dengan lebih jimat",
       "mineTitle": "Baucar anda",
       "dealsDescription": "Tuntut tawaran rakan kongsi dan cawangan untuk pengalaman Malaysia anda yang seterusnya.",
@@ -2831,9 +2948,9 @@
         "markerLabel_other": "{{state}}: {{count}} acara",
         "stateCountsEyebrow": "ACARA MENGIKUT NEGERI",
         "stateCountsTitle": "Cari acara mengikut negeri",
-        "activeStates": "negeri dengan acara",
+        "activeStates": "negeri dan wilayah persekutuan dengan acara",
         "totalEventsLabel": "acara disenaraikan",
-        "statesLabel": "negeri",
+        "statesLabel": "negeri dan wilayah persekutuan",
         "allMalaysia": "Seluruh Malaysia",
         "stateCountLabel_one": "{{state}}: {{count}} acara",
         "stateCountLabel_other": "{{state}}: {{count}} acara",
@@ -2841,9 +2958,9 @@
         "eventCount_other": "{{count}} acara",
         "eventsInMalaysia": "Acara di seluruh Malaysia",
         "eventsInState": "Acara di {{state}}",
-        "multipleStatesNote": "Satu acara mungkin muncul di beberapa negeri.",
-        "unlocatedCount_one": "{{count}} acara tidak dapat dipadankan dengan negeri.",
-        "unlocatedCount_other": "{{count}} acara tidak dapat dipadankan dengan negeri.",
+        "multipleStatesNote": "Satu acara mungkin muncul di lebih daripada satu negeri atau wilayah persekutuan.",
+        "unlocatedCount_one": "{{count}} acara tidak dapat dipadankan dengan negeri atau wilayah persekutuan.",
+        "unlocatedCount_other": "{{count}} acara tidak dapat dipadankan dengan negeri atau wilayah persekutuan.",
         "emptyStateTitle": "Belum ada acara akan datang di {{state}}",
         "emptyMalaysiaTitle": "Tiada acara akan datang untuk dipaparkan",
         "emptyDescription": "Pilih negeri lain atau lihat seluruh Malaysia."
@@ -2885,8 +3002,6 @@
       "ended": "Tamat",
       "title": "Tempah {{item}}",
       "description": "Ambil di {{location}}. Pilih tarikh dan masa pengambilan.",
-      "signInHint": "Log masuk untuk menempah dan membayar item acara.",
-      "signIn": "Log masuk untuk menempah",
       "date": "Tarikh pengambilan",
       "time": "Masa pengambilan",
       "loading": "Menyemak ketersediaan…",
@@ -2921,6 +3036,24 @@
       "status": {
         "pending": "Sedia untuk diambil",
         "collected": "Telah diambil"
+      }
+    },
+    "pickupPasses": {
+      "loading": "Menyemak kod pengambilan…",
+      "loadError": "Kod pengambilan tidak dapat dikemas kini. Cuba lagi.",
+      "retry": "Cuba lagi",
+      "retailTitle": "Kod pengambilan barangan runcit",
+      "retailDescription": "Tunjukkan kod di cawangan yang dinyatakan. Satu imbasan mengambil semua kuantiti yang dipaparkan.",
+      "retailQrAlt": "Kod QR pengambilan untuk {{product}}",
+      "noActiveQr": "Tiada kod pengambilan aktif",
+      "quantity_one": "Kuantiti: {{count}} item",
+      "quantity_other": "Kuantiti: {{count}} item",
+      "status": {
+        "pending": "Sedia untuk diambil",
+        "collected": "Telah diambil",
+        "legacy_completed": "Pesanan telah selesai",
+        "refund_paused": "Pengambilan dijeda kerana status bayaran balik. Semak butiran bayaran balik.",
+        "unavailable": "Pengambilan tidak tersedia"
       }
     },
     "hotel": {
@@ -2968,6 +3101,56 @@
       "totalFor_other": "Jumlah untuk {{count}} malam · {{rooms}} bilik:",
       "reviewCount_one": "({{count}} ulasan)",
       "reviewCount_other": "({{count}} ulasan)"
+    },
+    "travelDetails": {
+      "personalTitle": "Maklumat peribadi tambahan",
+      "travellersTitle": "Pengembara tersimpan",
+      "legalName": "Nama seperti dalam dokumen pengenalan",
+      "dateOfBirth": "Tarikh lahir",
+      "gender": "Jantina",
+      "nationality": "Kewarganegaraan",
+      "nationalityPlaceholder": "Pilih kewarganegaraan",
+      "clearNationality": "Kosongkan",
+      "notSet": "Belum ditetapkan",
+      "relationship": "Hubungan (pilihan)",
+      "addPhone": "Tambah nombor telefon",
+      "phone": "Nombor telefon",
+      "addEmergency": "Tambah kenalan kecemasan",
+      "emergencyName": "Nama kenalan kecemasan",
+      "emergencyPhone": "Telefon kenalan kecemasan",
+      "emergencyRelationship": "Hubungan dengan kenalan kecemasan (pilihan)",
+      "legacyRelationship": "Hubungan terdahulu: {{value}}",
+      "saved": "Disimpan",
+      "relationships": { "spouse": "Pasangan", "parent": "Ibu bapa", "child": "Anak", "sibling": "Adik-beradik", "relative": "Saudara lain", "friend": "Rakan", "colleague": "Rakan sekerja", "other": "Lain-lain" },
+      "noPersonalDetails": "Belum ada maklumat tambahan disimpan.",
+      "noTravellers": "Belum ada pengembara disimpan.",
+      "loading": "Memuatkan maklumat…",
+      "retry": "Cuba lagi",
+      "edit": "Sunting",
+      "save": "Simpan maklumat",
+      "saving": "Menyimpan…",
+      "cancel": "Batal",
+      "delete": "Padam",
+      "clearPersonal": "Kosongkan maklumat tersimpan",
+      "clearPersonalConfirm": "Kosongkan maklumat peribadi tambahan dan kenalan kecemasan anda?",
+      "addTraveller": "Tambah pengembara",
+      "editTraveller": "Sunting pengembara",
+      "editNamedTraveller": "Sunting {{name}}",
+      "deleteNamedTraveller": "Padam {{name}}",
+      "deleteConfirm": "Padam maklumat tersimpan untuk {{name}}?",
+      "travellerCount_one": "Pengembara tersimpan: {{count}}",
+      "travellerCount_other": "Pengembara tersimpan: {{count}}",
+      "sessionExpired": "Sesi anda telah tamat. Sila log masuk semula.",
+      "accountUnavailable": "Akaun anda tidak dapat mengakses maklumat ini sekarang.",
+      "validationError": "Semak nama, tarikh lahir, kewarganegaraan dan nombor telefon. Kenalan kecemasan memerlukan nama serta nombor telefon yang sah.",
+      "notFound": "Pengembara ini tidak lagi tersedia. Muat semula senarai dan cuba lagi.",
+      "requestError": "Maklumat tidak dapat dimuatkan atau disimpan. Sila cuba lagi.",
+      "genders": {
+        "female": "Perempuan",
+        "male": "Lelaki",
+        "other": "Lain-lain",
+        "prefer_not_to_say": "Tidak mahu menyatakan"
+      }
     }
   },
   "strictMigration": {
@@ -3045,7 +3228,7 @@
       "removeAttachment": "Alih keluar lampiran",
       "messagePerson": "Hantar mesej kepada {{name}}",
       "attachFile": "Lampirkan fail",
-      "safetyNotice": "Nombor telefon, butiran hubungan dan pautan disembunyikan demi keselamatan anda di MyLawatan.",
+      "safetyNotice": "Nombor telefon, butiran hubungan dan pautan disembunyikan demi keselamatan anda di MYLawatan.",
       "loadingConversations": "Memuatkan perbualan…",
       "conversationCount": "{{count}} perbualan",
       "unreadCount": "{{count}} belum dibaca",
@@ -3112,7 +3295,7 @@
       "clearsIn": "Dijelaskan dalam {{count}} hari",
       "clearsIn_other": "Dijelaskan dalam {{count}} hari",
       "earnToWithdraw": "Peroleh komisen melalui perkongsian untuk membuat pengeluaran",
-      "withdrawableSpans": "Termasuk pendapatan ahli gabungan dan cadangan",
+      "withdrawableSpans": "Termasuk komisen afiliasi dan komisen rujukan",
       "confirmedReferrals": "{{count}} rujukan disahkan",
       "confirmedReferrals_other": "{{count}} rujukan disahkan",
       "noLink": "Anda belum mempunyai pautan afiliasi.",
@@ -3130,10 +3313,10 @@
       "clearsIn_one": "Dijelaskan dalam {{count}} hari",
       "confirmedReferrals_one": "{{count}} rujukan disahkan",
       "signInRequired": "Log masuk diperlukan",
-      "signInDescription": "Log masuk untuk melihat papan pemuka ahli gabungan anda.",
+      "signInDescription": "Log masuk untuk melihat papan pemuka afiliasi anda.",
       "eligibilityDescription": "Kongsi aktiviti kegemaran anda dan dapatkan komisen apabila seseorang menempah melalui pautan anda.",
       "verifyAccount": "Sahkan akaun saya",
-      "loadFailed": "Masalah berlaku semasa memuatkan papan pemuka ahli gabungan. Cuba muat semula halaman.",
+      "loadFailed": "Masalah berlaku semasa memuatkan papan pemuka afiliasi. Cuba muat semula halaman.",
       "description": "Kongsi pengalaman tempatan kegemaran anda dan jejaki ganjaran daripada pautan rujukan.",
       "cashOut": "Keluarkan Wang",
       "nextTier": " · {{count}} lagi untuk mencapai {{tier}} ({{percent}}%)",
@@ -3142,7 +3325,7 @@
       "topTier": " · anda berada pada tahap tertinggi",
       "copied": "Disalin",
       "copy": "Salin",
-      "myLink": "Pautan ahli gabungan saya",
+      "myLink": "Pautan afiliasi saya",
       "linkHint": "Kongsi pautan ini — anda memperoleh komisen apabila seseorang mengklik dan membuat tempahan.",
       "generating": "Sedang menjana…",
       "generateLink": "Jana pautan saya",
@@ -3159,10 +3342,11 @@
         "order": "pesanan {{amount}}",
         "cleared": "Dimasukkan ke dompet",
         "pendingToday": "Belum selesai · selesai hari ini",
+        "pendingNotice": "Komisen tertunda belum tersedia dalam dompet anda. Kami menyemak pemenuhan pesanan, bayaran balik dan tempoh pelepasan yang dikonfigurasi. Baki dompet sedia ada anda tidak terjejas.",
         "pendingIn_other": "Belum selesai · selesai dalam {{count}} hari",
         "pendingIn_one": "Belum selesai · selesai dalam {{count}} hari",
         "pendingIn": "Belum selesai · selesai dalam {{count}} hari",
-        "reversed": "Dibatalkan — pesanan dibatalkan atau dibayar balik",
+        "reversed": "Pendapatan dibalikkan — pesanan dibatalkan atau dibayar balik",
         "rejected": "Tidak diluluskan selepas semakan",
         "latest": "Memaparkan {{shown}} terkini daripada {{total}}",
         "noneInRange": "Tiada pendapatan dalam tempoh ini.",
@@ -3170,12 +3354,16 @@
       }
     },
     "tripPlanner": {
+      "itemRemoved": "{{item}} telah dialih keluar daripada perjalanan anda.",
+      "itemAddedUnscheduled": "{{item}} telah ditambahkan pada perjalanan anda. Pilih hari dalam jadual perjalanan untuk menetapkannya.",
       "scheduledFor": "Dijadualkan pada {{date}}",
       "plannerViews": "Paparan perancang",
       "itinerary": "Jadual perjalanan",
       "planned": "{{scheduled}}/{{total}} dirancang",
       "buildRoute": "Bina laluan anda",
       "tripMap": "Peta perjalanan",
+      "mapLoadFailed": "Peta tidak dapat dimuatkan. Hentian perjalanan anda masih disimpan.",
+      "retryMap": "Cuba semula peta",
       "placesToAdd": "Tempat untuk ditambah",
       "placesReady": "{{count}} tempat sedia ditambah",
       "toggleVendorPins": "Togol pin vendor",
@@ -3196,6 +3384,7 @@
         "loading": "Sedang mencari idea…",
         "calculating": "Mengira laluan…",
         "error": "Cadangan tidak tersedia sekarang. Sila cuba lagi.",
+        "timeout": "Cadangan perjalanan mengambil masa terlalu lama. Semak sambungan anda dan cuba lagi.",
         "verifyPhone": "Sahkan telefon anda untuk menggunakan perancang perjalanan AI.",
         "empty": "Idea perjalanan anda akan dipaparkan di sini.",
         "suggestions": "Idea untuk perjalanan anda",
@@ -3206,9 +3395,23 @@
         "collapse": "Kecilkan perancang AI",
         "expand": "Besarkan perancang AI",
         "resize": "Ubah saiz perancang AI",
-        "basicSuggestions": "Memaparkan cadangan asas semasa AI tidak tersedia atau sibuk."
+        "basicSuggestions": "Memaparkan cadangan asas semasa AI tidak tersedia atau sibuk.",
+        "scopeApplied": "Cadangan untuk {{state}}",
+        "scopeAppliedWithCategory": "Cadangan {{category}} untuk {{state}}",
+        "chooseState": "Perjalanan anda menyebut lebih daripada satu negeri. Pilih negeri untuk melihat cadangan.",
+        "noMatches": "Tiada senarai aktif yang sepadan dengan destinasi dan kategori ini. Cuba tempat atau kategori lain.",
+        "category": {
+          "food": "Makanan",
+          "activity": "Aktiviti",
+          "accommodation": "Penginapan",
+          "retail": "Beli-belah"
+        }
       },
       "timeFor": "Masa untuk {{item}}",
+      "moveEarlier": "Pindahkan {{item}} ke atas",
+      "moveLater": "Pindahkan {{item}} ke bawah",
+      "moveToDay": "Pindahkan {{item}} ke hari lain",
+      "toggleItemTitle": "Kembangkan atau ringkaskan nama {{item}}",
       "editItem": "Sunting {{item}}",
       "removeItem": "Buang {{item}}",
       "showOnMap": "Tunjukkan {{item}} pada peta",
@@ -3382,7 +3585,7 @@
       "simulateFailure": "Simulasikan kegagalan",
       "cancelPayment": "Batalkan pembayaran",
       "expireSession": "Tamatkan tempoh sesi",
-      "backToCheckout": "Kembali ke daftar keluar",
+      "backToCheckout": "Kembali ke pembayaran",
       "statuses": {
         "requires_action": "Tindakan diperlukan",
         "pending": "Belum selesai",
@@ -3557,57 +3760,57 @@
     },
     "walletReceipt": {
       "backToWallet": "Kembali ke dompet",
-      "eyebrow": "Dompet MyLawatan",
+      "eyebrow": "Dompet MYLawatan",
       "title": "Resit pengeluaran",
-      "payoutDestination": "Destinasi pembayaran",
-      "defaultDestination": "Destinasi pembayaran yang dipilih",
-      "payoutReference": "Rujukan pembayaran: {{reference}}",
+      "payoutDestination": "Destinasi pengeluaran",
+      "defaultDestination": "Destinasi pengeluaran yang dipilih",
+      "payoutReference": "Rujukan pengeluaran: {{reference}}",
       "reviewNote": "Nota semakan",
-      "settlementNotice": "Resit ini merekodkan permintaan pengeluaran dalam MyLawatan. Masa penyelesaian bergantung pada penyedia pembayaran yang dipilih ({{provider}}).",
+      "settlementNotice": "Resit ini merekodkan permintaan pengeluaran dalam MYLawatan. Masa penyelesaian bergantung pada penyedia pembayaran yang dipilih ({{provider}}).",
       "moneyMovement": {
         "title": "Pergerakan wang",
         "reserved": "Pendapatan dirizab",
         "withdrawn": "Pendapatan dikeluarkan",
         "earnings": "Pendapatan tersedia",
-        "pending": "Menunggu penyedia"
+        "pending": "Menunggu penyedia pembayaran"
       },
       "timeline": {
         "title": "Garis masa penyelesaian",
         "requested": "Pengeluaran diminta dan dana dirizab",
-        "submitted": "Pembayaran diluluskan dihantar kepada penyedia",
+        "submitted": "Pengeluaran yang diluluskan dihantar kepada penyedia",
         "callbackVerified": "Panggilan balik penyedia diterima dan tandatangan disahkan",
         "ledgerSettled": "Lejar dompet diselesaikan"
       },
       "proof": {
-        "title": "Bukti pembayaran",
+        "title": "Bukti pengeluaran",
         "verified": "Tandatangan disahkan",
         "eventId": "Peristiwa penyedia",
         "amount": "Amaun",
         "providerTime": "Masa penyedia",
-        "receivedTime": "Diterima MyLawatan",
+        "receivedTime": "Diterima MYLawatan",
         "payloadHash": "SHA-256 muatan",
         "immutableNotice": "Bukti kekal ini merekodkan keputusan yang dilaporkan oleh penyedia. Pelanggan dan pentadbir tidak boleh mengubahnya."
       },
       "guidance": {
         "failed": {
-          "title": "Pembayaran gagal — dana dipulihkan",
-          "message": "Amaun yang dirizab telah dikembalikan kepada pendapatan tersedia anda. Semak destinasi pembayaran sebelum membuat pengeluaran baharu, atau hubungi Sokongan jika butirannya betul."
+          "title": "Pengeluaran gagal — dana dikembalikan",
+          "message": "Amaun yang dirizab telah dikembalikan kepada pendapatan tersedia anda. Semak destinasi pengeluaran sebelum membuat permintaan baharu, atau hubungi Sokongan jika butirannya betul."
         },
         "processing": {
-          "title": "Pembayaran sedang diproses",
-          "message": "Penyedia pembayaran sedang memproses pengeluaran ini. Tiada tindakan diperlukan melainkan status tidak berubah dalam tempoh penyelesaian biasa penyedia."
+          "title": "Pengeluaran sedang diproses",
+          "message": "Penyedia pembayaran sedang memproses permintaan pengeluaran ini. Tiada tindakan diperlukan melainkan status tidak berubah dalam tempoh penyelesaian biasa penyedia."
         },
         "approvedReconciliation": {
           "title": "Penyelarasan penyedia sedang dijalankan",
           "message": "Dana anda kekal dirizab sementara pentadbir menyemak transaksi penyedia. Jangan buat pengeluaran lain untuk dana yang sama; hubungi Sokongan jika anda memerlukan kemas kini."
         },
         "approved": {
-          "title": "Diluluskan — pembayaran belum selesai",
+          "title": "Diluluskan — menunggu pembayaran pengeluaran",
           "message": "Dana anda kekal dirizab sementara pembayaran yang diluluskan disediakan. Tiada tindakan diperlukan daripada anda."
         },
         "completed": {
-          "title": "Pembayaran selesai",
-          "message": "Pengeluaran telah dihantar ke destinasi pembayaran pilihan anda."
+          "title": "Pengeluaran selesai",
+          "message": "Pengeluaran telah dihantar ke destinasi pilihan anda."
         }
       }
     },
@@ -3622,11 +3825,9 @@
         "bankTransfer": "Pindahan bank — simulator Demo",
         "toyyibpay": "Perbankan dalam talian ToyyibPay",
         "toyyibpaySandbox": "ToyyibPay — Sandbox",
-        "wallet": "Baki dompet MyLawatan",
+        "wallet": "Baki dompet MYLawatan",
         "walletSplit": "Dompet dahulu + baki melalui kad"
-      },
-      "signInTitle": "Log masuk untuk membuat pembayaran",
-      "signInDescription": "Item pilihan anda kekal peribadi dan pembayaran memerlukan akaun yang disahkan."
+      }
     },
     "kyc": {
       "fileMeta": "{{size}} MB · {{type}}"
@@ -3636,15 +3837,11 @@
       "experience": "Pengalaman",
       "experienceFallback": "Temui pengalaman Malaysia ini.",
       "viewVendor": "Lihat vendor",
-      "signInBook": "Daftar masuk untuk menempah",
-      "signInPurchase": "Daftar masuk untuk membeli",
       "upcomingAvailability": "Ketersediaan akan datang",
-      "availableSessions": "{{count}} sesi tersedia. Daftar masuk untuk memilih masa.",
-      "availableSessions_other": "{{count}} sesi tersedia. Daftar masuk untuk memilih masa.",
       "guestReviews": "Ulasan tetamu",
       "noReviews": "Belum ada ulasan awam.",
       "guestReview": "Ulasan tetamu",
-      "verifiedVendor": "Vendor MyLawatan disahkan",
+      "verifiedVendor": "Vendor MYLawatan disahkan",
       "browseListings": "Semak imbas senarai",
       "locations": "Lokasi",
       "activeOutlets": "Cawangan aktif",
@@ -3652,8 +3849,7 @@
       "outletCount_other": "{{count}} cawangan",
       "noOutlets": "Belum ada cawangan awam.",
       "price": "Harga",
-      "outletCount_one": "{{count}} cawangan",
-      "availableSessions_one": "{{count}} sesi tersedia. Daftar masuk untuk memilih masa."
+      "outletCount_one": "{{count}} cawangan"
     },
     "place": {
       "entry": "Masuk"
@@ -3684,7 +3880,7 @@
       "noResults": "Tiada artikel sepadan dengan carian anda."
     },
     "empty": "Tiada artikel bantuan tersedia lagi.",
-    "backToExplore": "Kembali ke jelajah",
+    "backToExplore": "Kembali meneroka",
     "backToHelp": "Kembali ke Pusat Bantuan",
     "article": {
       "topics": "Topik",
@@ -3720,7 +3916,7 @@
     },
     "privacy": {
       "title": "Dasar Privasi",
-      "intro": "Dasar ini menerangkan maklumat peribadi yang dikumpul oleh MyLawatan, sebab kami mengumpulnya, dan pilihan yang anda ada. MyLawatan ialah projek pelajar tahun akhir, jadi anggap ia sebagai prototaip dan bukan perkhidmatan komersial.",
+      "intro": "Dasar ini menerangkan maklumat peribadi yang dikumpul oleh MYLawatan, sebab kami mengumpulnya, dan pilihan yang anda ada. MYLawatan ialah projek pelajar tahun akhir, jadi anggap ia sebagai prototaip dan bukan perkhidmatan komersial.",
       "collect": {
         "heading": "Apa yang kami kumpul",
         "body": "Butiran akaun yang anda berikan: e-mel, nama, nombor telefon, dan secara pilihan nama paparan, bio ringkas, foto profil, serta bandar dan negara anda. Jika anda memilih untuk disahkan, kami turut mengumpul dokumen pengenalan seperti yang diterangkan dalam halaman Data & KYC. Kami merekod aktiviti yang diperlukan untuk menjalankan perkhidmatan, seperti pesanan, tempahan, transaksi dompet, mesej sembang, ulasan, serta klik dan perkongsian afiliasi."
@@ -3752,14 +3948,14 @@
     },
     "terms": {
       "title": "Terma Perkhidmatan",
-      "intro": "Terma ini menerangkan peraturan menggunakan MyLawatan. Dengan menggunakan platform ini anda bersetuju dengannya. Sila baca notis prototaip dahulu.",
+      "intro": "Terma ini menerangkan peraturan menggunakan MYLawatan. Dengan menggunakan platform ini anda bersetuju dengannya. Sila baca notis prototaip dahulu.",
       "prototype": {
         "heading": "Notis prototaip",
-        "body": "MyLawatan ialah projek akademik tahun akhir, bukan produk komersial. Sesetengah ciri disimulasikan untuk tujuan demonstrasi dan tiada barangan, perkhidmatan atau bayaran sebenar dijamin. Jangan bergantung padanya untuk tempahan perjalanan sebenar."
+        "body": "MYLawatan ialah projek akademik tahun akhir, bukan produk komersial. Sesetengah ciri disimulasikan untuk tujuan demonstrasi dan tiada barangan, perkhidmatan atau bayaran sebenar dijamin. Jangan bergantung padanya untuk tempahan perjalanan sebenar."
       },
       "accounts": {
         "heading": "Akaun dan kelayakan",
-        "body": "Anda bertanggungjawab atas ketepatan maklumat yang anda berikan dan menjaga keselamatan log masuk anda. Melayari terbuka kepada semua orang; pembayaran dan tempahan memerlukan nombor telefon yang disahkan, dan pengeluaran pendapatan memerlukan pengesahan identiti."
+        "body": "Anda bertanggungjawab atas ketepatan maklumat yang anda berikan dan menjaga keselamatan log masuk anda. Melayari terbuka kepada semua orang. Tetamu boleh menempah dan membeli item yang layak tanpa log masuk atau mengesahkan nombor telefon. Pengeluaran pendapatan memerlukan pengesahan identiti."
       },
       "acceptableUse": {
         "heading": "Penggunaan yang dibenarkan",
@@ -3788,7 +3984,7 @@
     },
     "data": {
       "title": "Data & KYC Anda",
-      "intro": "Halaman ini menerangkan, dalam bahasa mudah, cara MyLawatan mengendalikan pengesahan identiti (KYC) dan dokumen sensitif yang terlibat. Ia memperincikan Dasar Privasi untuk bidang khusus ini.",
+      "intro": "Halaman ini menerangkan, dalam bahasa mudah, cara MYLawatan mengendalikan pengesahan identiti (KYC) dan dokumen sensitif yang terlibat. Ia memperincikan Dasar Privasi untuk bidang khusus ini.",
       "when": {
         "heading": "Bila pengesahan diperlukan",
         "body": "Anda tidak perlu memuat naik sebarang dokumen identiti untuk melayari, menyimpan item, atau membuat tempahan. Pengesahan identiti (KYC) hanya diperlukan untuk tindakan amanah tinggi, khususnya mengeluarkan pendapatan daripada dompet anda. Anda mengawal bila, atau sama ada, anda memulakannya."
@@ -3819,10 +4015,10 @@
       }
     },
     "about": {
-      "title": "Perihal MyLawatan",
-      "intro": "MyLawatan ialah pasar pelancongan tertumpu Malaysia yang dibina sebagai projek tahun akhir. Ia menggabungkan penemuan, tempahan, pembayaran, dan sokongan pelancong dalam satu tempat.",
+      "title": "Perihal MYLawatan",
+      "intro": "MYLawatan ialah pasar pelancongan tertumpu Malaysia yang dibina sebagai projek tahun akhir. Ia menggabungkan penemuan, tempahan, pembayaran, dan sokongan pelancong dalam satu tempat.",
       "what": {
-        "heading": "Apa itu MyLawatan",
+        "heading": "Apa itu MYLawatan",
         "body": "Anda boleh meneroka aktiviti, makanan, penginapan, dan permata tersembunyi di seluruh Malaysia, menempah dan membayar dalam satu troli, bersembang dengan vendor, dan menguruskan segalanya daripada satu akaun. Vendor menguruskan cawangan, penyenaraian, tempahan, dan baucar mereka, manakala platform mengendalikan pembayaran, pengesahan, dan ganjaran di belakang tabir."
       },
       "prototype": {
@@ -3845,13 +4041,14 @@
     "phone": "Nombor telefon untuk pembayaran (tanpa pengesahan SMS)",
     "unavailable": "Pembayaran tetamu tidak tersedia buat sementara waktu.",
     "accessTitle": "Akses pesanan tetamu anda",
-    "recoveryHint": "Minta pautan peribadi baharu menggunakan nombor pesanan dan e-mel semasa pembayaran.",
-    "orderNumber": "Nombor pesanan (cth. ORD-1000)",
+    "recoveryHint": "Masukkan e-mel yang digunakan semasa pembayaran. Tambah nombor pesanan jika ada; pautan peribadi akan dihantar jika butiran sepadan.",
+    "orderNumber": "Nombor pesanan (pilihan)",
     "emailLink": "Hantar pautan pesanan melalui e-mel",
     "requested": "Jika maklumat sepadan dengan pesanan tetamu, pautan akses akan dihantar melalui e-mel.",
     "requestFailed": "Pautan tidak dapat diminta. Sila cuba lagi kemudian.",
     "opening": "Membuka pesanan anda…",
-    "eventHint": "Semak e-mel sebelum mengesahkan. Kami akan menghantar resit dan pautan pesanan peribadi."
+    "eventHint": "Semak e-mel sebelum mengesahkan. Kami akan menghantar resit dan pautan pesanan peribadi.",
+    "cartHint": "Teruskan pembayaran dengan e-mel. Log masuk untuk dompet dan baucar akaun."
   },
   "footer": {
     "ariaLabel": "Pengaki laman",
@@ -3869,7 +4066,51 @@
       "vendorLogin": "Log masuk vendor",
       "privacyPolicy": "Dasar Privasi",
       "termsOfService": "Terma Perkhidmatan",
-      "aboutUs": "Tentang MyLawatan"
+      "aboutUs": "Tentang MYLawatan"
     }
+  },
+  "checkoutErrors": {
+    "CONTACT_EMAIL_REQUIRED": "Masukkan e-mel untuk dihubungi sebelum meneruskan pembayaran.",
+    "CONTACT_EMAIL_INVALID": "Masukkan alamat e-mel yang sah, contohnya name@example.com.",
+    "CONTACT_PHONE_REQUIRED": "Kaedah pembayaran ini memerlukan nombor telefon. Sila masukkannya dahulu.",
+    "CONTACT_PHONE_INVALID": "Semak kod negara dan masukkan nombor telefon yang sah.",
+    "CONTACT_NAME_INVALID": "Nama untuk dihubungi mestilah tidak melebihi 100 aksara, atau boleh dibiarkan kosong.",
+    "PAYMENT_SERVICE_UNAVAILABLE": "Perkhidmatan pembayaran tidak tersedia buat sementara waktu. Cuba lagi kemudian atau pilih kaedah lain yang tersedia.",
+    "PAYMENT_METHOD_UNAVAILABLE": "Kaedah pembayaran ini tidak tersedia. Pilih kaedah pembayaran lain.",
+    "PAYMENT_STATUS_UNCERTAIN": "Persediaan pembayaran belum dapat disahkan. Semak pesanan anda sebelum memulakan pembayaran lain.",
+    "CHECKOUT_SERVICE_UNAVAILABLE": "Butiran pembayaran belum dapat disahkan buat masa ini. Cuba lagi kemudian.",
+    "CHECKOUT_DETAILS_INVALID": "Semak butiran pembayaran dan betulkan medan yang tidak sah sebelum meneruskan.",
+    "CHECKOUT_CONNECTION_FAILED": "Sambungan terputus. Semak sambungan dan status pesanan sebelum mencuba lagi.",
+    "CHECKOUT_RATE_LIMITED": "Terlalu banyak percubaan pembayaran. Tunggu beberapa minit sebelum mencuba lagi.",
+    "GUEST_SESSION_UNAVAILABLE": "Pembayaran tetamu tidak tersedia buat sementara waktu. Muat semula halaman dan cuba lagi.",
+    "CHECKOUT_CLOSED": "Sesi pembayaran ini telah ditutup. Semak pesanan sebelum membayar lagi.",
+    "CART_EMPTY": "Troli anda kosong. Tambah item sebelum membuat pembayaran.",
+    "CART_SELECTION_REQUIRED": "Pilih sekurang-kurangnya satu item dalam troli sebelum membuat pembayaran.",
+    "STAY_DETAILS_REQUIRED": "Kembali ke troli dan lengkapkan butiran tetamu bagi setiap tempahan penginapan.",
+    "FOOD_SERVICE_MODE_REQUIRED": "Pilih makan di kedai atau bungkus bagi setiap premis makanan.",
+    "FOOD_SERVICE_MODE_UNAVAILABLE": "Pilihan makan di kedai atau bungkus ini tidak tersedia. Muat semula halaman dan pilih pilihan yang tersedia.",
+    "WALLET_RESERVATION_UNAVAILABLE": "Amaun pembayaran Dompet belum dapat diperuntukkan. Muat semula halaman dan cuba lagi.",
+    "ACTIVE_CHECKOUT_EXISTS": "Anda mempunyai pesanan yang belum dibayar. Selesaikan atau batalkannya sebelum membuat pembayaran baharu.",
+    "CHECKOUT_COMMITMENT_UNAVAILABLE": "Sesi pembayaran telah tamat tempoh atau kelayakan pembelian telah berubah. Semak pesanan sebelum membayar lagi.",
+    "BOOKING_CAPACITY_UNAVAILABLE": "Kapasiti slot masa ini tidak mencukupi. Pilih slot lain yang tersedia.",
+    "BOOKING_SLOT_INVALID": "Slot masa ini tidak lagi tersedia. Kembali ke troli dan pilih slot lain.",
+    "CART_ITEM_UNAVAILABLE": "Sesetengah item atau premis tidak lagi boleh menerima pesanan ini. Kembali ke troli untuk menyemak pilihan anda.",
+    "INVENTORY_UNAVAILABLE": "Stok tidak mencukupi untuk kuantiti yang dipilih. Kembali ke troli untuk mengurangkan kuantiti atau memilih item lain.",
+    "WALLET_INSUFFICIENT": "Baki Dompet tidak mencukupi. Tambah nilai atau pilih kaedah pembayaran lain yang tersedia.",
+    "VOUCHER_NOT_AVAILABLE": "Baucar ini tidak lagi tersedia. Pilih baucar lain.",
+    "VOUCHER_NOT_STARTED": "Baucar ini belum aktif.",
+    "VOUCHER_EXPIRED": "Baucar ini telah tamat tempoh. Pilih baucar lain.",
+    "VOUCHER_LIMIT_REACHED": "Baucar ini telah mencapai had penggunaannya.",
+    "VOUCHER_MINIMUM_SPEND": "Amaun pesanan belum mencapai perbelanjaan minimum baucar ini.",
+    "VOUCHER_OUTLET_NOT_APPLICABLE": "Baucar ini tidak sah untuk premis yang dipilih.",
+    "VOUCHER_PRODUCT_NOT_APPLICABLE": "Baucar ini tidak sah untuk produk yang dipilih.",
+    "VOUCHER_CUSTOMER_LIMIT_REACHED": "Anda telah mencapai had penggunaan peribadi untuk baucar ini.",
+    "VOUCHER_DISCOUNT_MISMATCH": "Diskaun baucar belum dapat disahkan. Pilih semula baucar dan cuba lagi.",
+    "VOUCHER_CLAIM_EXPIRED": "Baucar yang dituntut telah tamat tempoh. Pilih baucar lain.",
+    "VOUCHER_CLAIM_MISMATCH": "Tuntutan baucar tidak sepadan dengan baucar yang dipilih. Pilih semula baucar.",
+    "VOUCHER_CLAIM_UNAVAILABLE": "Baucar yang dituntut tidak lagi tersedia. Pilih baucar lain.",
+    "NEW_ORDERS_PAUSED": "Pesanan baharu tidak diterima buat sementara waktu. Cuba lagi kemudian.",
+    "CHECKOUT_FAILED": "Pembayaran belum dapat dimulakan. Cuba lagi kemudian. Hubungi sokongan jika masalah berterusan.",
+    "reviewOrder": "Semak pesanan"
   }
 }

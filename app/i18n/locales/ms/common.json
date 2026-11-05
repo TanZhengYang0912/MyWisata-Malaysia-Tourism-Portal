@@ -80,13 +80,14 @@
     "active": "Aktif",
     "inactive": "Tidak aktif",
     "pending": "Menunggu",
+    "pendingSecondApproval": "Menunggu kelulusan pelulus kedua",
     "pendingReview": "Menunggu semakan",
     "changesRequested": "Perubahan diminta",
     "invited": "Dijemput",
     "claimed": "Dituntut",
-    "onboarding": "Sedang bermula",
-    "vendorPendingReview": "Menunggu semakan vendor",
-    "converted": "Vendor menyertai",
+    "onboarding": "Sedang melengkapkan proses penyertaan",
+    "vendorPendingReview": "Menunggu semakan permohonan vendor",
+    "converted": "Vendor telah menyertai",
     "processing": "Sedang diproses",
     "onHold": "Ditangguhkan",
     "overdue": "Lewat",
@@ -98,7 +99,11 @@
   },
   "errors": {
     "generic": "Sesuatu tidak kena. Sila cuba lagi.",
-    "network": "Tidak dapat disambungkan. Sila cuba lagi."
+    "network": "Tidak dapat disambungkan. Sila cuba lagi.",
+    "referenceId": "ID rujukan:",
+    "copyReferenceId": "Salin ID",
+    "referenceCopied": "Disalin",
+    "referenceCopyUnavailable": "Pilih ID di atas dan salinnya secara manual."
   },
   "accessibility": {
     "dismissNotification": "Tutup pemberitahuan",
@@ -156,7 +161,7 @@
         "body": "Pengeluaran anda telah diluluskan dan akan dipindahkan ke destinasi bayaran yang dipilih tidak lama lagi."
       },
       "withdrawalSecondApprovalPending": {
-        "title": "Pengeluaran diluluskan sebahagian — menunggu semakan kedua",
+        "title": "Semakan pertama pengeluaran selesai — menunggu semakan kedua",
         "body": "Pengeluaran anda menerima kelulusan pertama dan memerlukan satu lagi semakan."
       },
       "withdrawalSubmitted": {
@@ -224,6 +229,25 @@
       "recommendationApprovedWithName": {
         "title": "Cadangan anda \"{{vendorName}}\" telah diluluskan",
         "body": "Cadangan yang baik! Kami akan menghubungi vendor tidak lama lagi."
+      },
+      "vendorLifecycle": {
+        "approved": {
+          "title": "Vendor {{vendorName}} anda telah diluluskan",
+          "body": "Anda kini boleh mengurus cawangan dan produk anda."
+        },
+        "informationRequested": {
+          "title": "Maklumat lanjut diperlukan untuk {{vendorName}}"
+        },
+        "rejected": {
+          "title": "Permohonan vendor {{vendorName}} anda tidak diluluskan"
+        },
+        "suspended": {
+          "title": "Akaun vendor {{vendorName}} anda telah digantung"
+        },
+        "reactivated": {
+          "title": "Akaun vendor {{vendorName}} anda aktif semula",
+          "body": "Anda boleh meneruskan pengurusan cawangan dan produk anda."
+        }
       },
       "kycSecurity": {
         "title": "Amaran keselamatan KYC",
@@ -295,6 +319,7 @@
     "viewMyTickets": "Lihat tiket saya",
     "ticketError": "Tidak dapat mencipta tiket sekarang. Sila cuba lagi.",
     "somethingWrong": "Maaf, sesuatu tidak kena. Sila cuba lagi.",
+    "privacyBlocked": "Mesej penuh anda tidak dihantar kepada AI kerana mungkin mengandungi nombor telefon, e-mel, nombor pengenalan, butiran bank atau alamat peribadi. Buang butiran tersebut dan hantar semula, atau teruskan menggunakan FAQ tempatan tanpa AI.",
     "supportRequest": "Permintaan sokongan",
     "faq": {
       "browse": "Lihat soalan lazim",
@@ -309,7 +334,7 @@
       "stop": "Berhenti mendengar"
     },
     "list": {
-      "supportLabel": "Sokongan MyLawatan",
+      "supportLabel": "Sokongan MYLawatan",
       "signInPrompt": "Log masuk untuk berbual dengan vendor."
     },
     "expandChat": "Kembangkan ke skrin penuh",
@@ -326,8 +351,9 @@
     "switchAccount": "Tukar akaun"
   },
   "guest": {
-    "mode": "Mod tetamu",
-    "startError": "Tidak dapat memulakan Mod tetamu. Sila cuba lagi."
+    "mode": "Tetamu",
+    "continue": "Teruskan sebagai tetamu",
+    "startError": "Tidak dapat meneruskan sebagai tetamu. Sila cuba lagi."
   },
   "cart": {
     "label": "Troli beli-belah",
@@ -368,8 +394,8 @@
     "cmdK": "⌘K"
   },
   "brand": {
-    "speed": "MyLawatan Speed",
-    "copyright": "© {{year}} MyLawatan. Hak cipta terpelihara."
+    "speed": "MYLawatan Speed",
+    "copyright": "© {{year}} MYLawatan. Hak cipta terpelihara."
   },
   "ui": {
     "vendor": {

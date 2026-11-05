@@ -32,6 +32,29 @@ describe('authorizeVendor draft owner access', () => {
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.access.isOwner).toBe(true);
   });
+
+  it('blocks pending owners from approved-vendor operations', async () => {
+    const vendor = chain({ data: { id: 'vendor-1', owner_id: 'owner-1', status: 'pending' }, error: null });
+    mocks.from.mockImplementation((table: string) => table === 'vendors' ? vendor : chain({ data: [], error: null }));
+
+    const result = await authorizeVendor('vendor-1', undefined, { requireApproved: true });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.response.status).toBe(403);
+      expect((await result.response.json()).error.code).toBe('FORBIDDEN');
+    }
+  });
+
+  it('keeps approved owners authorized for operations', async () => {
+    const vendor = chain({ data: { id: 'vendor-1', owner_id: 'owner-1', status: 'approved' }, error: null });
+    const outlets = chain({ data: [{ id: 'outlet-1' }], error: null });
+    mocks.from.mockImplementation((table: string) => table === 'vendors' ? vendor : outlets);
+
+    const result = await authorizeVendor('vendor-1', undefined, { requireApproved: true });
+
+    expect(result.ok).toBe(true);
+  });
 });
 
 describe('authorizeVendor event vendors', () => {

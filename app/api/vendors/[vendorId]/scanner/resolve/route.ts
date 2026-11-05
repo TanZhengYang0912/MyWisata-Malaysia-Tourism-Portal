@@ -6,6 +6,7 @@ import { verifyTicketPassToken } from "@/lib/tickets/tokens";
 import { verifyVoucherStoreToken } from "@/lib/vouchers/store-token";
 import { verifyFoodFulfilmentToken } from "@/lib/food/food-fulfilment-token";
 import { verifyEventPickupToken } from "@/lib/events/event-pickup-token";
+import { verifyRetailPickupToken } from "@/lib/orders/retail-pickup-token";
 import { getMalaysiaDateInputValue } from "@/lib/datetime/date-input";
 
 interface Props { params: Promise<{ vendorId: string }> }
@@ -57,12 +58,29 @@ function parseEventPickupPayload(rawValue: string) {
   }
 }
 
+function parseRetailPickupPayload(rawValue: string) {
+  try {
+    const url = new URL(rawValue, "http://localhost:3000");
+    const match = url.pathname.match(/^\/customer\/orders\/([^/]+)$/);
+    const retailToken = url.searchParams.get("retail_t");
+    if (!match || !retailToken) return null;
+    return { orderId: decodeURIComponent(match[1]), retailToken };
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
   // Event vendors have no outlets: they can only resolve event pickups below;
   // every other code still requires one of the caller's outlets.
   const access = await authorizeVendor(vendorId, undefined, { allowEventVendor: true });
   if (!access.ok) return access.response;
+
+  const { data: authorizedVendor, error: authorizedVendorError } = await access.access.serviceDb.from("vendors")
+    .select("id,status,kind").eq("id", vendorId).maybeSingle();
+  if (authorizedVendorError) return apiFail("DB_ERROR", "Unable to verify merchant access", 500);
+  if (!authorizedVendor || authorizedVendor.status !== "approved") return apiFail("FORBIDDEN", "This merchant is not available for redemptions", 403);
 
   const parsed = await parseBody(request, scanSchema);
   if (!parsed.ok) return parsed.response;
@@ -115,6 +133,51 @@ export async function POST(request: Request, { params }: Props) {
 
   const outlet = selectedOutlet(parsed.data.outletId, access.access.outletIds);
   if (!outlet.ok) return outlet.response;
+
+  const retailPickup = parseRetailPickupPayload(parsed.data.rawValue);
+  if (retailPickup) {
+    const verification = verifyRetailPickupToken(retailPickup.retailToken);
+    if (!verification.valid || verification.claims.orderId !== retailPickup.orderId) return apiFail("INVALID_RETAIL_PICKUP", "This collection code is invalid", 400);
+    const claims = verification.claims;
+    if (claims.vendorId !== vendorId || claims.outletId !== outlet.outletId) return apiFail("FORBIDDEN", "This code is not valid at the selected outlet", 403);
+    const [{ data: item, error: itemError }, { data: outletRow, error: outletError }] = await Promise.all([
+      access.access.serviceDb.from("order_items")
+        .select("id,order_id,vendor_id,outlet_id,product_name,variant_name,quantity,fulfil_status,retail_qr_scanned_at,event_location_id,event_listing_id,slot_starts_at,products(requires_booking,product_type,categories(slug)),orders!inner(status)")
+        .eq("id", claims.orderItemId).eq("order_id", claims.orderId).eq("vendor_id", vendorId).eq("outlet_id", outlet.outletId).maybeSingle(),
+      access.access.serviceDb.from("outlets").select("id,name,status,vendor_id").eq("id", outlet.outletId).eq("vendor_id", vendorId).maybeSingle(),
+    ]);
+    if (itemError || outletError) return apiFail("DB_ERROR", "Unable to verify this collection code", 500);
+    if (!item || !outletRow || outletRow.status !== "active") return apiFail("FORBIDDEN", "This collection code is not available at this outlet", 403);
+    const product = Array.isArray(item.products) ? item.products[0] : item.products;
+    const category = Array.isArray(product?.categories) ? product.categories[0] : product?.categories;
+    const order = Array.isArray(item.orders) ? item.orders[0] : item.orders;
+    if (category?.slug !== "retail" || product?.requires_booking !== false || product.product_type !== "product"
+      || item.event_location_id || item.event_listing_id || item.slot_starts_at) return apiFail("INVALID_RETAIL_PICKUP", "This item does not use retail collection", 400);
+    if (!order || !["paid", "completed"].includes(String(order.status).toLowerCase())) return apiFail("ORDER_NOT_PAID", "This order is not available for collection", 409);
+    if (item.retail_qr_scanned_at || item.fulfil_status === "fulfilled") return apiFail("RETAIL_PICKUP_COLLECTED", "This item has already been collected", 409);
+    if (!["pending", "ready"].includes(item.fulfil_status)) return apiFail("RETAIL_PICKUP_UNAVAILABLE", "This item is not available for collection", 409);
+    const { data: refunds, error: refundError } = await access.access.serviceDb.from("refunds")
+      .select("status,provider_refund_id,provider_failure_code,provider_failure_message").eq("order_id", claims.orderId);
+    if (refundError) return apiFail("DB_ERROR", "Unable to verify this order for collection", 500);
+    const refundPaused = (refunds ?? []).some((refund: { status: string; provider_refund_id: string | null; provider_failure_code: string | null; provider_failure_message: string | null }) => {
+      const status = refund.status.toLowerCase();
+      return ["pending", "approved", "processed"].includes(status) || !["failed", "rejected"].includes(status)
+        || Boolean(refund.provider_refund_id || refund.provider_failure_code || refund.provider_failure_message);
+    });
+    if (refundPaused) return apiFail("RETAIL_PICKUP_REFUND_PAUSED", "Collection is paused while this order is being reviewed", 409);
+    const [{ data: vendorRow }, { data: relationOutlet }] = await Promise.all([
+      access.access.serviceDb.from("vendors").select("id,name,status").eq("id", vendorId).maybeSingle(),
+      access.access.serviceDb.from("outlets").select("id,name,vendor_id").eq("id", item.outlet_id).eq("vendor_id", vendorId).maybeSingle(),
+    ]);
+    if (!vendorRow?.name || vendorRow.status !== "approved" || !relationOutlet?.name || relationOutlet.vendor_id !== vendorId) {
+      return apiFail("MERCHANT_IDENTITY_UNAVAILABLE", "Collection merchant details are unavailable", 409);
+    }
+    return apiOk({
+      kind: "retail_pickup", orderId: claims.orderId, orderItemId: item.id, retailToken: retailPickup.retailToken,
+      vendorId, outletId: outlet.outletId, vendorName: vendorRow.name, outletName: relationOutlet.name,
+      status: item.fulfil_status, name: item.product_name, variant: item.variant_name, quantity: item.quantity,
+    });
+  }
 
   const ticket = parseBookingPayload(parsed.data.rawValue);
   if (ticket) {
@@ -217,7 +280,7 @@ export async function POST(request: Request, { params }: Props) {
   }
 
   const voucherToken = verifyVoucherStoreToken(parsed.data.rawValue);
-  if (!voucherToken.valid || !voucherToken.payload) return apiFail("INVALID_CODE", "This code is not a valid MyLawatan voucher or ticket", 400);
+  if (!voucherToken.valid || !voucherToken.payload) return apiFail("INVALID_CODE", "This code is not a valid MYLawatan voucher or ticket", 400);
   const claims = voucherToken.payload;
   if (claims.outletId && claims.outletId !== outlet.outletId) return apiFail("FORBIDDEN", "This voucher is not valid at the selected outlet", 403);
 

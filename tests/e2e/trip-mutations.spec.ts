@@ -37,6 +37,7 @@ test('owned itinerary persists daily starts, rejects invalid origins and preserv
   const time=day.getByLabel('Time for Stop B',{exact:true});
   await time.fill('09:00');
   await expect(page.getByRole('dialog')).toBeVisible({timeout:30_000});
+  await page.screenshot({path:test.info().outputPath('trip-invalid-change.png'),fullPage:true});
   await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).first().click();
   await expect(time).toHaveValue(/^11:00(:00)?$/);
   expect(await rest(request,'GET',`trip_items?select=scheduled_time&id=eq.${b.id}`)).toEqual([{scheduled_time:'11:00:00'}]);
@@ -46,7 +47,7 @@ test('owned itinerary persists daily starts, rejects invalid origins and preserv
   await page.getByPlaceholder('Type your location…').fill('Melaka');
   const originSaved=page.waitForResponse(response=>response.request().method()==='POST' && new URL(response.url()).pathname===`/customer/trip/${tripId}`,{timeout:60_000});
   await page.getByRole('button',{name:'Melaka day start',exact:true}).click();
-  expect(await (await originSaved).finished()).toBeNull();
+  expect((await originSaved).status()).toBe(200);
   await expect.poll(async()=>rest(request,'GET',`trip_items?select=id&trip_id=eq.${tripId}&is_day_origin=eq.true`)).toHaveLength(1);
   const [daily]=await rest<Array<{id:string}>>(request,'GET',`trip_items?select=id&trip_id=eq.${tripId}&is_day_origin=eq.true`);
   await expect(rest(request,'POST','trip_items',{...origin,id:randomUUID(),is_day_origin:true,scheduled_date:day2})).rejects.toThrow();
@@ -73,7 +74,7 @@ test('owned itinerary persists daily starts, rejects invalid origins and preserv
   await page.getByPlaceholder('Type your location…').fill('Melaka');
   const firstDayOriginSaved=page.waitForResponse(response=>response.request().method()==='POST' && new URL(response.url()).pathname===`/customer/trip/${tripId}`,{timeout:60_000});
   await page.getByRole('button',{name:'Melaka day start',exact:true}).click();
-  expect(await (await firstDayOriginSaved).finished()).toBeNull();
+  expect((await firstDayOriginSaved).status()).toBe(200);
   await expect.poll(async()=>rest<Array<{id:string}>>(request,'GET',`trip_items?select=id&trip_id=eq.${tripId}&is_day_origin=eq.true&scheduled_date=eq.${date}`)).toHaveLength(1);
   const [firstDayOrigin]=await rest<Array<{id:string}>>(request,'GET',`trip_items?select=id&trip_id=eq.${tripId}&is_day_origin=eq.true&scheduled_date=eq.${date}`);
   const orderedItems=await rest<Array<{id:string;sequence:number}>>(request,'GET',`trip_items?select=id,sequence&trip_id=eq.${tripId}&order=sequence.asc`);
@@ -85,11 +86,11 @@ test('owned itinerary persists daily starts, rejects invalid origins and preserv
 
   const removeFirstDayOrigin=page.waitForResponse(response=>response.request().method()==='POST' && new URL(response.url()).pathname===`/customer/trip/${tripId}`,{timeout:60_000});
   await page.getByRole('button',{name:'Use trip starting point again',exact:true}).click();
-  expect(await (await removeFirstDayOrigin).finished()).toBeNull();
+  expect((await removeFirstDayOrigin).status()).toBe(200);
   await page.locator('#planner-selected-day').selectOption(day2);
   const originRestored=page.waitForResponse(response=>response.request().method()==='POST' && new URL(response.url()).pathname===`/customer/trip/${tripId}`,{timeout:60_000});
   await page.getByRole('button',{name:'Use trip starting point again',exact:true}).click();
-  expect(await (await originRestored).finished()).toBeNull();
+  expect((await originRestored).status()).toBe(200);
   await expect.poll(async()=>rest(request,'GET',`trip_items?select=id&trip_id=eq.${tripId}&is_day_origin=eq.true`),{timeout:30_000}).toEqual([]);
   await page.setViewportSize({width:390,height:844});
   await expect(page.locator('#planner-selected-day')).toBeVisible();
@@ -98,10 +99,39 @@ test('owned itinerary persists daily starts, rejects invalid origins and preserv
   await expect(page.locator('[data-trip-route-map]')).toBeVisible();
   // Clear belongs to the itinerary panel; mobile tabs intentionally hide the other panels.
   await page.getByRole('button',{name:'Itinerary',exact:true}).click();
+  // Commit a write, then lose only the browser response. Verification reads the
+  // saved state rather than repeating the write or adding another stop.
+  await page.locator('#planner-selected-day').selectOption(date);
+  let loseNextResponse=true;
+  const cdp=await page.context().newCDPSession(page);
+  await cdp.send('Fetch.enable',{patterns:[{urlPattern:page.url().split('?')[0],requestStage:'Response'}]});
+  cdp.on('Fetch.requestPaused',async event=>{
+    if(event.request.method!=='POST' || !loseNextResponse) {
+      await cdp.send('Fetch.continueResponse',{requestId:event.requestId});return;
+    }
+    loseNextResponse=false;
+    await expect.poll(async()=>rest(request,'GET',`trip_items?select=scheduled_time&id=eq.${b.id}`)).toEqual([{scheduled_time:'11:30:00'}]);
+    await cdp.send('Fetch.failRequest',{requestId:event.requestId,errorReason:'Failed'});
+  });
+  await day.getByLabel('Time for Stop B',{exact:true}).fill('11:30');
+  await expect(page.getByRole('dialog')).toContainText('Check the saved trip');
+  await cdp.send('Fetch.disable');
+  await page.screenshot({path:test.info().outputPath('trip-result-unknown.png'),fullPage:true});
+  expect(await rest(request,'GET',`trip_items?select=scheduled_time&id=eq.${b.id}`)).toEqual([{scheduled_time:'11:30:00'}]);
+  await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).first().click();
+  await page.getByRole('button',{name:'Check saved trip',exact:true}).click();
+  await expect(day.getByLabel('Time for Stop B',{exact:true})).toHaveValue(/^11:30(:00)?$/);
+  await rest(request,'PATCH',`trips?id=eq.${tripId}&user_id=eq.${customer.id}`,{updated_at:new Date().toISOString()});
+  await day.getByLabel('Time for Stop B',{exact:true}).fill('11:45');
+  await expect(page.getByRole('dialog')).toContainText('changed in another session');
+  await page.screenshot({path:test.info().outputPath('trip-version-conflict.png'),fullPage:true});
+  await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).first().click();
+  await page.getByRole('button',{name:'Check saved trip',exact:true}).click();
+  await expect(page.locator('main').getByRole('alert')).toHaveCount(0);
   await page.getByRole('button',{name:'Clear itinerary items',exact:true}).click();
   const cleared=page.waitForResponse(response=>response.request().method()==='POST' && new URL(response.url()).pathname===`/customer/trip/${tripId}`,{timeout:60_000});
   await page.getByRole('dialog').getByRole('button',{name:'Confirm',exact:true}).click();
-  expect(await (await cleared).finished()).toBeNull();
+  expect((await cleared).status()).toBe(200);
   await expect.poll(async()=>rest(request,'GET',`trip_items?select=id&trip_id=eq.${tripId}`)).toEqual([]);
   expect(await rest(request,'GET',`trips?select=name&id=eq.${tripId}`)).toEqual([{name:'E2E reliability'}]);
 });

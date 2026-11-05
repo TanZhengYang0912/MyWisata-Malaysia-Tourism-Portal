@@ -15,6 +15,7 @@ import {
   isValidTripCoordinate,
   selectTripDayWeatherAnchor,
   getTripActivitySublabel,
+  hasDistinctTripRoutePoints,
 } from "@/lib/customer/trip-planner";
 
 const trip: Trip = {
@@ -45,6 +46,14 @@ function item(id: string, overrides: Partial<TripItem> = {}): TripItem {
 }
 
 describe("trip planner scheduling helpers", () => {
+  it("detects whether a route contains more than one location", () => {
+    expect(hasDistinctTripRoutePoints([])).toBe(false);
+    expect(hasDistinctTripRoutePoints([[2.1957651, 102.2457348]])).toBe(false);
+    expect(hasDistinctTripRoutePoints([[2.1957651, 102.2457348], [2.1957651, 102.2457348]])).toBe(false);
+    expect(hasDistinctTripRoutePoints([[2, 102], [2, 102], [3, 103]])).toBe(true);
+    expect(hasDistinctTripRoutePoints([[2, 102], [3, 103], [2, 102]])).toBe(true);
+  });
+
   it("uses the valid origin or the selected day's last valid stop for discovery", () => {
     const items = [
       item("other-day", { scheduled_date: "2026-08-16", sequence: 1, lat: 6, lng: 101 }),

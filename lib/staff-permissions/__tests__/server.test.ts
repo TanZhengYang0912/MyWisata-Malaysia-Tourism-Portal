@@ -21,15 +21,6 @@ import {
   requireStaffRoleManagementSuperAdmin,
 } from "@/lib/staff-permissions/server";
 
-function singleQuery(data: unknown, error: unknown = null) {
-  const builder: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "is"]) {
-    builder[method] = vi.fn(() => builder);
-  }
-  builder.maybeSingle = vi.fn(async () => ({ data, error }));
-  return builder;
-}
-
 describe("requireStaffPermission", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -127,12 +118,9 @@ describe("requireStaffRoleManagementSuperAdmin", () => {
       user: { id: "staff-1" },
       response: null,
     });
-    mocks.from.mockImplementation((table: string) => table === "users"
-      ? singleQuery({ id: "staff-1", status: "active" })
-      : singleQuery({ role_id: "role-1", vendor_id: null, outlet_id: null }));
   });
 
-  it("reuses the existing Access Control authentication guard", async () => {
+  it("reuses the strict Access Control guard without repeating database checks", async () => {
     const denied = Response.json({ data: null, error: { code: "UNAUTHORIZED" } }, { status: 401 });
     mocks.requireSuperAdmin.mockResolvedValue({ db: authenticatedDb, user: null, response: denied });
 
@@ -142,42 +130,10 @@ describe("requireStaffRoleManagementSuperAdmin", () => {
     expect(mocks.from).not.toHaveBeenCalled();
   });
 
-  it("returns 503 when current staff governance state cannot be read", async () => {
-    mocks.from.mockImplementation((table: string) => table === "users"
-      ? singleQuery(null, { message: "database unavailable" })
-      : singleQuery(null));
-
-    const result = await requireStaffRoleManagementSuperAdmin();
-
-    expect(result.response?.status).toBe(503);
-  });
-
-  it("denies a suspended actor even if the legacy guard allowed them", async () => {
-    mocks.from.mockImplementation((table: string) => table === "users"
-      ? singleQuery({ id: "staff-1", status: "suspended" })
-      : singleQuery({ role_id: "role-1" }));
-
-    const result = await requireStaffRoleManagementSuperAdmin();
-
-    expect(result.response?.status).toBe(403);
-  });
-
-  it("denies actors without an unscoped global Super Admin assignment", async () => {
-    const roleQuery = singleQuery(null);
-    mocks.from.mockImplementation((table: string) => table === "users"
-      ? singleQuery({ id: "staff-1", status: "active" })
-      : roleQuery);
-
-    const result = await requireStaffRoleManagementSuperAdmin();
-
-    expect(result.response?.status).toBe(403);
-    expect(roleQuery.is).toHaveBeenCalledWith("vendor_id", null);
-    expect(roleQuery.is).toHaveBeenCalledWith("outlet_id", null);
-  });
-
-  it("allows only an active actor with an unscoped global Super Admin role", async () => {
+  it("returns the strict guard's authenticated result", async () => {
     const result = await requireStaffRoleManagementSuperAdmin();
 
     expect(result).toEqual({ db: authenticatedDb, user: { id: "staff-1" }, response: null });
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 });

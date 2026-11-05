@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getActiveTiers, type CommissionTier } from './tier';
 import type { Funnel } from './funnel';
 import { z } from 'zod';
+import { getClearanceDaysForPreview } from './settings';
 
 export interface AffiliateAdminTotals {
   totalAffiliates: number;
@@ -34,6 +35,7 @@ export interface AffiliateAttributionRow {
   reviewStatus: 'pending' | 'released' | 'rejected' | null;
   reviewVersion: number | null;
   reviewEvidence: string | null;
+  releaseCheck: { reason: string | null; orderChecksPassed: boolean; matured: boolean; eligibleAfter: string } | null;
 }
 
 export interface AffiliateAdminStats {
@@ -118,6 +120,11 @@ const attributionPageSchema = z.object({
   })),
 });
 
+const releasePreviewSchema = z.array(z.object({
+  id: z.string(),
+  reason: z.string().nullable(),
+}));
+
 export async function getAdminAffiliateAttributionPage(
   service: SupabaseClient,
   query: AffiliateAdminAttributionQuery = {},
@@ -133,7 +140,26 @@ export async function getAdminAffiliateAttributionPage(
   });
   const page = attributionPageSchema.safeParse(data);
   if (error || !page.success) throw new Error('affiliate_attributions_unavailable');
-  return { ...page.data, items: page.data.items };
+  const pendingIds = page.data.items.filter((item) => item.status === 'pending').map((item) => item.id);
+  if (pendingIds.length === 0) return { ...page.data, items: page.data.items.map((item) => ({ ...item, releaseCheck: null })) };
+
+  const [previewResult, clearanceDays] = await Promise.all([
+    service.rpc('get_affiliate_order_release_preview', { p_attribution_ids: pendingIds }),
+    getClearanceDaysForPreview(service),
+  ]);
+  const preview = releasePreviewSchema.safeParse(previewResult.data);
+  if (previewResult.error || !preview.success) throw new Error('affiliate_order_preview_unavailable');
+  const previewById = new Map(preview.data.map((item) => [item.id, item.reason]));
+  const now = Date.now();
+  return {
+    ...page.data,
+    items: page.data.items.map((item) => {
+      if (item.status !== 'pending') return { ...item, releaseCheck: null };
+      const eligibleAfter = new Date(Date.parse(item.createdAt) + clearanceDays * 86_400_000).toISOString();
+      const reason = previewById.has(item.id) ? previewById.get(item.id)! : 'preview_unavailable';
+      return { ...item, releaseCheck: { reason, orderChecksPassed: reason === null, matured: Date.parse(eligibleAfter) <= now, eligibleAfter } };
+    }),
+  };
 }
 
 export async function getAffiliateAdminStats(

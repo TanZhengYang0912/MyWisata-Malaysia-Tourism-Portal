@@ -130,5 +130,6 @@ describe('GET vendor orders by orderId', () => {
     expect(mocks.select).toHaveBeenCalledWith(expect.stringContaining('stay_details'), expect.anything());
     expect(mocks.select).toHaveBeenCalledWith(expect.stringContaining('categories(slug)'), expect.anything());
     expect(mocks.from).toHaveBeenCalledWith('orders');
+    expect(mocks.authorizeVendor).toHaveBeenCalledWith(VENDOR_ID, undefined, { requireApproved: true });
   });
 });

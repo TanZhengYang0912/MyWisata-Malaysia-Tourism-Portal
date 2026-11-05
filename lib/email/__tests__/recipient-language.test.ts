@@ -6,6 +6,13 @@ const occurredAt = '2026-10-14T12:00:00Z';
 
 describe('recipient-language system mail', () => {
   beforeEach(() => vi.stubEnv('APP_URL', 'https://mylawatan.my'));
+  it('names MYLawatan in English transaction mail', () => {
+    const mail = renderTransactionEmail({ locale: 'en', eventType: 'order_refunded', amountRm: 25, reference: 'MW-123', occurredAt });
+    for (const body of [mail.html, mail.text]) {
+      expect(body).toContain('Your transaction has been updated in MYLawatan.');
+      expect(body).not.toMatch(/mywisata|FYP App/i);
+    }
+  });
   it.each([
     ['zh-CN', '订单退款已完成', '金额', '查看订单'],
     ['ms', 'Bayaran balik pesanan selesai', 'Amaun', 'Lihat pesanan'],

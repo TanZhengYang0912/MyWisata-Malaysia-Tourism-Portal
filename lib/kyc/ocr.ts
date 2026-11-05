@@ -32,6 +32,17 @@ export type KycOcrResult = {
   providerModel: string;
 };
 
+export type KycOcrPreviewResult = {
+  status: 'extracted' | 'unreadable' | 'unavailable';
+  holderName: string | null;
+  documentNumber: string | null;
+  expiryDate: string | null;
+  confidence: number | null;
+  providerModel: string;
+  failureCode?: KycOcrFailureCode;
+  retryable?: boolean;
+};
+
 type ExtractedOcr = {
   holderName?: unknown;
   documentNumber?: unknown;
@@ -119,6 +130,46 @@ export function kycOcrRuntimeConfiguration(): KycOcrRuntimeConfiguration | null 
   if (engine && engine !== 'private-http') return null;
   const configuration = privateKycOcrConfiguration();
   return configuration ? { engine: 'private-http', ...configuration } : null;
+}
+
+/** Return only the temporary preview fields to the authenticated owner. Callers must not persist documentNumber. */
+export async function extractKycPreviewFields(input: Pick<KycOcrInput, 'documentType' | 'front' | 'back'>): Promise<KycOcrPreviewResult> {
+  const configuration = kycOcrRuntimeConfiguration();
+  const providerModel = configuration?.engine === 'tesseract-js' ? 'tesseract-js-7.0.0-v1' : DEFAULT_MODEL;
+  if (!configuration) return { status: 'unavailable', holderName: null, documentNumber: null, expiryDate: null, confidence: null, providerModel, failureCode: 'configuration' };
+  try {
+    let fields: ExtractedOcr | null;
+    if (configuration.engine === 'tesseract-js') {
+      const result = await extractKycFieldsInNode(input, configuration.timeoutMs);
+      if (!result.ok) return { status: 'unavailable', holderName: null, documentNumber: null, expiryDate: null, confidence: null, providerModel, failureCode: result.failureCode, retryable: result.retryable };
+      fields = result.fields;
+    } else {
+      const response = await fetch(configuration.url, {
+        method: 'POST', redirect: 'error',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${configuration.token}` },
+        signal: AbortSignal.timeout(configuration.timeoutMs),
+        body: JSON.stringify({ documentType: input.documentType, front: imagePart(input.front), back: imagePart(input.back) }),
+      });
+      if (!response.ok) {
+        const retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+        return { status: 'unavailable', holderName: null, documentNumber: null, expiryDate: null, confidence: null, providerModel,
+          failureCode: retryable ? 'service_unavailable' : [401, 403].includes(response.status) ? 'service_auth' : 'service_rejected', retryable };
+      }
+      fields = await readPrivateResult(response);
+      if (!fields || (typeof fields.unreadable !== 'boolean' && typeof fields.documentNumber !== 'string')) {
+        return { status: 'unavailable', holderName: null, documentNumber: null, expiryDate: null, confidence: null, providerModel, failureCode: 'invalid_response' };
+      }
+    }
+    const holderName = nullableText(fields.holderName);
+    const documentNumber = nullableText(fields.documentNumber, 40);
+    const confidence = nullableConfidence(fields.confidence);
+    return { status: fields.unreadable === true || !documentNumber ? 'unreadable' : 'extracted', holderName, documentNumber,
+      expiryDate: nullableDate(fields.expiryDate), confidence, providerModel };
+  } catch (error) {
+    const timeout = error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name);
+    return { status: 'unavailable', holderName: null, documentNumber: null, expiryDate: null, confidence: null, providerModel,
+      failureCode: timeout ? 'timeout' : configuration.engine === 'tesseract-js' ? 'invalid_response' : 'network', retryable: timeout || configuration.engine !== 'tesseract-js' };
+  }
 }
 
 async function compareExtractedKycFields(extracted: ExtractedOcr, input: KycOcrInput, providerModel: string): Promise<KycOcrResult> {

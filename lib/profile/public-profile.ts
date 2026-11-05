@@ -8,17 +8,17 @@ export type PublicProfileRow = {
   city: string | null;
   country: string | null;
   bio: string | null;
-  is_kyc_verified: boolean;
+  is_verified_contributor: boolean;
 };
 
 export function mapPublicProfile(row: PublicProfileRow): PublicUser {
   return {
     id: row.id,
-    name: row.display_name?.trim() || row.full_name?.trim() || "MyLawatan member",
+    name: row.display_name?.trim() || row.full_name?.trim() || "MYLawatan member",
     avatarUrl: row.avatar_url ?? undefined,
     city: row.city ?? undefined,
     country: row.country ?? undefined,
     bio: row.bio ?? undefined,
-    isKycVerified: Boolean(row.is_kyc_verified),
+    isVerifiedContributor: Boolean(row.is_verified_contributor),
   };
 }

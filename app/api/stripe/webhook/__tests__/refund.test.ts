@@ -89,7 +89,7 @@ describe('POST /api/stripe/webhook refund outcomes', () => {
     });
   });
 
-  it('acknowledges Stripe refunds outside the MyLawatan refund flow without writing', async () => {
+  it('acknowledges Stripe refunds outside the MYLawatan refund flow without writing', async () => {
     const event = stripeRefundEvent('refund.created', 'pending');
     event.data.object.metadata = {};
     mocks.constructEvent.mockReturnValue(event);

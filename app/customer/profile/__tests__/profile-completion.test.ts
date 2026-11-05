@@ -33,8 +33,9 @@ describe('profile completion display contract', () => {
     expect(kycPage).toContain('title={tCustomer("ui.profileSections.identityVerification")}');
   });
 
-  it('keeps Phone outside the four-step profile flow and returns only after Profile completion', () => {
+  it('keeps Phone outside the three-step Profile flow and Survey in standalone Preferences', () => {
     const page = readFileSync(new URL('../page.tsx', import.meta.url), 'utf8');
+    const wizard = readFileSync(new URL('../wizard-progress.ts', import.meta.url), 'utf8');
 
     expect(page).toContain('<BusinessShareBanner />');
     expect(page).toContain('import { VerificationPathCards }');
@@ -48,12 +49,17 @@ describe('profile completion display contract', () => {
     expect(page).not.toContain('/api/phone/send-otp');
     expect(page).not.toContain('/api/phone/verify-otp');
     expect(page).not.toContain('phoneOnlyIntent');
+    expect(wizard).toContain("{ id: 'identity'");
+    expect(wizard).toContain("{ id: 'avatar'");
+    expect(wizard).toContain("{ id: 'bio'");
+    expect(wizard).not.toContain("{ id: 'survey'");
+    expect(page).toContain('href="/customer/preferences"');
+    expect(page).not.toContain('handlePreferencesSaved');
     const submitBioSource = page.slice(
       page.indexOf('async function submitBio'),
-      page.indexOf('async function handlePreferencesSaved'),
     );
     expect(submitBioSource).not.toContain('router.push(continuation)');
-    expect(page).toMatch(/handlePreferencesSaved[\s\S]*?if \(continuation\) router\.push\(continuation\)/);
+    expect(submitBioSource).not.toContain('preferences/survey');
   });
 
   it('keeps KYC independent while offering optional navigation back to Profile', () => {
@@ -73,9 +79,7 @@ describe('profile completion display contract', () => {
     expect(page).toContain('<ProfilePhotoPicker');
     expect(sections).toContain('import { ProfilePhotoPicker }');
     expect(sections).toContain('<ProfilePhotoPicker');
-    expect(page).toContain('/api/profile/avatar?type=');
-    expect(page).toContain('/api/profile/avatar/confirm');
-    expect(sections).toContain('/api/profile/avatar?type=');
-    expect(sections).toContain('/api/profile/avatar/confirm');
+    expect(page).toContain('uploadProfileAvatar(avatarFile)');
+    expect(sections).toContain('uploadProfileAvatar(avatarFile)');
   });
 });

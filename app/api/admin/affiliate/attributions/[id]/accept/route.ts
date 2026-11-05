@@ -24,8 +24,24 @@ export async function POST(_request: Request, { params }: Props) {
 
   const service = createServiceClient();
   const result = await acceptAttribution(service, id);
-  if (result.outcome === 'error') return apiFail('DB_ERROR', result.error ?? 'Could not accept this commission', 500);
+  if (result.outcome === 'error') {
+    return apiFail(
+      'CLEARING_RESULT_UNCERTAIN',
+      'We could not confirm this commission status. Refresh the attribution list first. If the result is still unclear, contact support with the Request ID before taking another action.',
+      503,
+    );
+  }
   if (result.outcome === 'review_required') return apiFail('INVALID_STATE', 'Resolve the guest commission review first', 409);
+  if (result.outcome === 'order_review_required') {
+    const noShowPolicy = result.reason === 'no_show_policy';
+    return apiFail(
+      noShowPolicy ? 'AFFILIATE_NO_SHOW_POLICY_REVIEW' : 'AFFILIATE_ORDER_REVIEW_REQUIRED',
+      noShowPolicy
+        ? 'This commission remains pending because no Affiliate rule is approved for a verified customer no-show.'
+        : 'This order needs fulfilment or refund review. Resolve it in Reconciliation, then refresh before accepting.',
+      409,
+    );
+  }
 
   return apiOk(result);
 }

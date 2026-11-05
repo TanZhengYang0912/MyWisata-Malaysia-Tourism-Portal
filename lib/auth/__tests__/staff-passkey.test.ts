@@ -5,7 +5,7 @@ import { staffPasskeyConfig, staffPasskeyEnforcementEnabled } from '../staff-pas
 import { passwordSessionClaims } from '../staff-assurance';
 import { authenticationOptions, registrationOptions, verifyStaffAuthentication, verifyStaffRegistration } from '../staff-passkey';
 
-const config = { rpID: 'mylawatan.my', origin: 'https://mylawatan.my', rpName: 'MyWisata' };
+const config = { rpID: 'mylawatan.my', origin: 'https://mylawatan.my', rpName: 'MYLawatan' };
 const user = '11111111-1111-4111-8111-111111111111';
 const session = '22222222-2222-4222-8222-222222222222';
 const b64 = (value: Uint8Array) => Buffer.from(value).toString('base64url');

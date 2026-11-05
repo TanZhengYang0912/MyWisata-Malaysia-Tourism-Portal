@@ -1,6 +1,6 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { redactPII } from '@/lib/chatbot/pii';
+import { prepareExternalText, redactPII } from '@/lib/chatbot/pii';
 import { buildTranslationPrompt, sourceHash } from '@/lib/recommendations/content-localization';
 import { generateAiText, type AiTextResult } from '@/lib/ai/provider';
 import { reserveGuestRateLimit } from '@/lib/checkout/guest-session';
@@ -59,13 +59,18 @@ export async function processClaimedTranslationJob(job: TranslationJob, deps: Tr
     return 'source_matches_locale' as const;
   }
 
+  const preparedSource = prepareExternalText(source.sourceText);
+  if (!preparedSource.allowed) {
+    await deps.supersede(job);
+    return 'sensitive_input' as const;
+  }
+
   if (!await deps.reserveGlobalBudget()) {
     await deps.releaseForBudget(job);
     return 'budget_deferred' as const;
   }
 
   const prompt = buildTranslationPrompt({ field: job.field, sourceText: source.sourceText, locale: job.locale });
-  const redactedSource = redactPII(source.sourceText).clean;
   let result: AiTextResult;
   try {
     const controller = new AbortController();
@@ -73,7 +78,7 @@ export async function processClaimedTranslationJob(job: TranslationJob, deps: Tr
     try {
       result = await deps.generate({
         field: job.field,
-        sourceText: redactedSource,
+        sourceText: preparedSource.clean,
         locale: job.locale,
         prompt,
       }, controller.signal);
@@ -83,6 +88,11 @@ export async function processClaimedTranslationJob(job: TranslationJob, deps: Tr
   } catch {
     await deps.defer(job, 'provider_unavailable');
     return 'deferred' as const;
+  }
+
+  if (!result.available && result.reason === 'sensitive_input') {
+    await deps.supersede(job);
+    return 'sensitive_input' as const;
   }
 
   if (!result.available) {
@@ -99,7 +109,7 @@ export async function processClaimedTranslationJob(job: TranslationJob, deps: Tr
     return 'superseded' as const;
   }
 
-  const translated = safeTranslationOutput(redactedSource.replace(/\b(?:https?:\/\/|www\.)[^\s<>"']+/gi, '[URL]'), result.content);
+  const translated = safeTranslationOutput(preparedSource.clean.replace(/\b(?:https?:\/\/|www\.)[^\s<>"']+/gi, '[URL]'), result.content);
   if (!translated) {
     await deps.defer(job, 'invalid_translation_output');
     return 'deferred' as const;

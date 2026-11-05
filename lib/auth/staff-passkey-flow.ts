@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { walletReasonSchema } from '@/lib/validation/wallet-reason-schemas';
+import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
 import { passwordSessionClaims, staffAssurance } from './staff-assurance';
 import { staffPasskeyConfig } from './staff-passkey-config';
 import { authenticationOptions, registrationOptions, verifyStaffAuthentication, verifyStaffRegistration } from './staff-passkey';
@@ -117,7 +118,7 @@ export async function staffPasskeyChallenge(request: Request) {
     const credentials = await records(user.id);
     const userHandle = credentials[0]?.userHandle ?? randomBytes(32).toString('base64url');
     const options = operation === 'register'
-      ? await registrationOptions(config, 'MyWisata staff', userHandle, credentials)
+      ? await registrationOptions(config, `${BRAND_NAME} staff`, userHandle, credentials)
       : await authenticationOptions(config, credentials);
     const context = await serviceRpc('begin_staff_passkey_challenge', {
       p_user_id: user.id, p_session_id: session!.sessionId, p_operation: operation,

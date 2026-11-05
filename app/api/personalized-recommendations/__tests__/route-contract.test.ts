@@ -21,12 +21,13 @@ describe("personalized recommendations route contract", () => {
     expect(source).not.toContain("PHONE_READY_TIERS");
   });
 
-  it("uses the current canonical Profile evidence rather than trusting a historical timestamp", () => {
+  it("uses Survey answers alone to choose personalization", () => {
     expect(source).not.toContain("PERSONALIZED_TIERS");
     expect(source).not.toContain("select('tier");
-    expect(source).toContain("profile_completed_at");
-    expect(source).toContain("computeProfileVerification");
-    expect(source).toContain("full_name,avatar_url,bio");
-    expect(source).toMatch(/Boolean\(profile\.profile_completed_at\)[\s\S]*profileVerification\.complete/);
+    expect(source).toContain("interests,travel_style");
+    expect(source).toContain("Boolean(survey?.interests?.length)");
+    expect(source).not.toContain("kyc_status");
+    expect(source).not.toContain("profile_completed_at");
+    expect(source).toContain("travelStyle: survey?.travel_style");
   });
 });

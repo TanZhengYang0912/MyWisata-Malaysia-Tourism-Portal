@@ -3,7 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { apiFail, apiOk } from "@/lib/validation/schemas";
 import { auditLogFiltersSchema, parseSearchParams } from "@/lib/validation/entitlement-schemas";
 import { isRecord, validationFailure } from "@/app/api/admin/access-control/_shared";
-import { sanitizeAuditPayload } from "@/app/api/admin/access-control/_audit-sanitizer";
+import { sanitizeAuditPayload, sanitizeGovernanceReason } from "@/app/api/admin/access-control/_audit-sanitizer";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   const offset = (filters.page - 1) * filters.pageSize;
 
   let query = db.from("audit_logs")
-    .select("id,actor_id,action,entity_type,entity_id,before_data,after_data,created_at", { count: "exact" });
+    .select("id,actor_id,action,entity_type,entity_id,before_data,after_data,note,created_at", { count: "exact" });
   if (filters.actorId) query = query.eq("actor_id", filters.actorId);
   if (filters.actionPrefix) {
     query = query.gte("action", filters.actionPrefix).lt("action", `${filters.actionPrefix}\uffff`);
@@ -77,6 +77,19 @@ export async function GET(request: Request) {
     }
   }
 
+  const actorIds = [...new Set(rows.map((row) => row.actor_id).filter((id): id is string => typeof id === "string"))];
+  const actorNames = new Map<string, string>();
+  if (actorIds.length > 0) {
+    const { data: actors } = await createServiceClient().from("users")
+      .select("id,full_name,display_name").in("id", actorIds);
+    for (const actor of actors ?? []) {
+      const name = typeof actor.display_name === "string" && actor.display_name.trim()
+        ? actor.display_name.trim()
+        : typeof actor.full_name === "string" && actor.full_name.trim() ? actor.full_name.trim() : null;
+      if (name) actorNames.set(actor.id, name);
+    }
+  }
+
   const items = rows.map((row) => {
     const kycAction = row.action.startsWith("kyc.") ? row.action.slice(4) : "";
     const reviewEvent = row.entity_type === "kyc_submission"
@@ -95,19 +108,19 @@ export async function GET(request: Request) {
           reasonCode: reviewEvent.reason_category,
         }
       : row.after_data;
-    const before = sanitizeAuditPayload(beforeSource);
-    const after = sanitizeAuditPayload(afterSource);
+    const context = { action: row.action, entityType: row.entity_type };
+    const before = sanitizeAuditPayload(beforeSource, context);
+    const after = sanitizeAuditPayload(afterSource, context);
     return {
       id: row.id,
       actorId: row.actor_id,
+      actorName: typeof row.actor_id === "string" ? actorNames.get(row.actor_id) ?? null : null,
       action: row.action,
       entityType: row.entity_type,
       entityId: row.entity_id,
       before,
       after,
-      reason: typeof after?.reason === "string"
-        ? after.reason
-        : typeof before?.reason === "string" ? before.reason : null,
+      reason: sanitizeGovernanceReason(row.action, row.entity_type, row.note),
       createdAt: row.created_at,
     };
   });

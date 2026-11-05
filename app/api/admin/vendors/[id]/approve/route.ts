@@ -62,7 +62,7 @@ export async function POST(request: Request, { params }: Props) {
   if (!review) return apiFail('RPC_ERROR', 'Vendor review returned no result', 500);
 
   if (action === 'request_information') {
-    await sendNotification({ userId: vendor.owner_id, type: 'vendor_information_requested', title: `More information is needed for "${vendor.name}"`, body: reason ?? 'Please update your vendor application.', link: '/vendor/dashboard' });
+    await sendNotification({ userId: vendor.owner_id, type: 'vendor_information_requested', title: `More information is needed for "${vendor.name}"`, body: reason ?? 'Please update your vendor application.', link: '/vendor/dashboard', metadata: { vendorName: vendor.name } });
     return apiOk({ id: vendorId, status: vendor.status, onboardingStatus: 'needs_information' });
   }
 
@@ -73,6 +73,7 @@ export async function POST(request: Request, { params }: Props) {
       title: `Your vendor "${vendor.name}" has been approved!`,
       body: 'You can now manage your outlets and products.',
       link: '/vendor/dashboard',
+      metadata: { vendorName: vendor.name },
     });
     void emitVendorNotification({
       eventKey: `vendor:approved:${vendorId}`,
@@ -85,7 +86,7 @@ export async function POST(request: Request, { params }: Props) {
       link: '/vendor/dashboard',
       email: true,
       reference: vendorId,
-      metadata: { status: 'approved' },
+      metadata: { vendorName: vendor.name, status: 'approved' },
       serviceDb: createServiceClient(),
     }).catch((notificationError) => console.error('[vendor-notifications] approval event failed', notificationError));
 
@@ -103,6 +104,7 @@ export async function POST(request: Request, { params }: Props) {
       title: `Your vendor "${vendor.name}" was rejected`,
       body: reason ?? 'No reason provided.',
       link: '/vendor/dashboard',
+      metadata: { vendorName: vendor.name },
     });
     void emitVendorNotification({
       eventKey: `vendor:rejected:${vendorId}`,
@@ -115,7 +117,7 @@ export async function POST(request: Request, { params }: Props) {
       link: '/vendor/dashboard',
       email: true,
       reference: vendorId,
-      metadata: { status: 'rejected' },
+      metadata: { vendorName: vendor.name, status: 'rejected' },
       serviceDb: createServiceClient(),
     }).catch((notificationError) => console.error('[vendor-notifications] rejection event failed', notificationError));
 

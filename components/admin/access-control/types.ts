@@ -184,6 +184,7 @@ export type AssignmentRecord = {
 export type AuditRecord = {
   id: string;
   actorId: string | null;
+  actorName?: string | null;
   action: string;
   entityType: string;
   entityId: string | null;
@@ -193,7 +194,7 @@ export type AuditRecord = {
   createdAt: string;
 };
 
-export type AuditFocus = { eventId: string; entityId?: string | null };
+export type AuditFocus = { eventId?: string | null; entityId?: string | null; actionPrefix?: string };
 export type EntityFocus = { tab: Exclude<AccessControlTabId, "overview" | "audit-log">; id: string };
 
 export function buildAccessControlQuery(filters: Record<string, string | number | boolean | null | undefined>) {

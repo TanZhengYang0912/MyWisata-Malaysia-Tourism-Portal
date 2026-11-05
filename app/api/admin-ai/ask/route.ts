@@ -16,6 +16,7 @@ import { answerAdminQuestion } from '@/lib/admin-ai/orchestrate';
 import { cleanUserContent } from '@/lib/moderation/clean';
 import { logModerationFlag } from '@/lib/moderation/flags';
 import { logAdminConductFlagIfNeeded } from '@/lib/moderation/admin-conduct';
+import { prepareExternalText } from '@/lib/chatbot/pii';
 
 export async function POST(request: Request) {
   const parsed = await parseBody(request, adminAiAskSchema);
@@ -27,6 +28,9 @@ export async function POST(request: Request) {
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
   if (!(await isSuperAdmin(authClient, user.id))) {
     return apiFail('FORBIDDEN', 'Admin AI is limited to super admins', 403);
+  }
+  if (!prepareExternalText(question).allowed) {
+    return apiFail('PERSONAL_DATA_WITHHELD', 'Your question was not sent to AI because it may contain personal details. Remove email, phone, identity, bank, or private-address details and ask again. Use the Admin user search to look up an individual account.', 422);
   }
 
   const service = createServiceClient();

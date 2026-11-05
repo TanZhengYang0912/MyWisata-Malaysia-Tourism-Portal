@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatMYR, formatNumber } from '@/lib/i18n/format';
 import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
+import type { DashboardSalesMode } from '@/lib/vendor/dashboard-metrics';
 
 interface ProductSale {
   name: string;
@@ -16,7 +17,7 @@ interface ProductSale {
 const OTHERS_COLOR = '#cbd5e1';
 const TOP_N = 5;
 
-export default function OutletPieChart({ data, total }: { data: ProductSale[]; total: number }) {
+export default function OutletPieChart({ data, total, salesMode = 'live' }: { data: ProductSale[]; total: number; salesMode?: DashboardSalesMode }) {
   const { t, i18n } = useTranslation('vendor');
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -40,7 +41,7 @@ export default function OutletPieChart({ data, total }: { data: ProductSale[]; t
             {t('charts.product.topProducts')}
           </div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-foreground">{t('charts.product.salesByProduct')}</h2>
-          <p className="text-sm text-gray-500 dark:text-muted-foreground">{t('charts.product.revenueDistribution')}</p>
+          <p className="text-sm text-gray-500 dark:text-muted-foreground">{t(salesMode === 'demo' ? 'charts.sales.demoDescription' : 'charts.product.revenueDistribution')}</p>
         </div>
         <div className="rounded-xl bg-secondary p-2 text-primary">
           <ShoppingBag size={20} />
@@ -134,13 +135,13 @@ export default function OutletPieChart({ data, total }: { data: ProductSale[]; t
         </>
       ) : (
         <div className="flex flex-1 items-center justify-center text-sm text-gray-400 dark:text-muted-foreground">
-          {t('charts.product.noPaidSales')}
+          {t(salesMode === 'demo' ? 'charts.sales.noDemoActivity' : 'charts.product.noPaidSales')}
         </div>
       )}
 
       {/* Footer total */}
       <div className="mt-4 border-t border-gray-100 dark:border-border pt-4">
-        <p className="text-xs text-gray-500 dark:text-muted-foreground">{t('charts.product.totalPaidRevenue')}</p>
+        <p className="text-xs text-gray-500 dark:text-muted-foreground">{t(salesMode === 'demo' ? 'ui.dashboard.demoRevenue' : 'charts.product.totalPaidRevenue')}</p>
         <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">
           {formatMYR(total, locale, { minimumFractionDigits: 2 })}
         </p>

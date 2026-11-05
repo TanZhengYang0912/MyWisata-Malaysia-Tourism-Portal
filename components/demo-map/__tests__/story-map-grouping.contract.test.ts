@@ -18,7 +18,8 @@ describe("hotel-first discovery surfaces", () => {
   });
 
   it("groups rooms into hotels on the home pages and For You", () => {
-    expect(read("app/customer/customer-home-client.tsx")).toContain("groupAccommodationByProperty(");
+    expect(read("app/customer/page.tsx")).toContain("groupAccommodationByProperty(activities)");
+    expect(read("app/customer/page.tsx")).toContain("groupAccommodationByProperty(recommended)");
     expect(read("app/customer/home-client.tsx")).toContain("groupAccommodationByProperty(");
     expect(read("app/customer/for-you/for-you-client.tsx")).toContain("groupRankedByProperty(");
   });

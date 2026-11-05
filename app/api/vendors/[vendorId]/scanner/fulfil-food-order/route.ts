@@ -12,7 +12,7 @@ const fulfilSchema = z.object({
 
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId);
+  const access = await authorizeVendor(vendorId, undefined, { requireApproved: true });
   if (!access.ok) return access.response;
   const parsed = await parseBody(request, fulfilSchema);
   if (!parsed.ok) return parsed.response;

@@ -89,6 +89,26 @@ await finish(loginClaim,1,0);
 await assert.rejects(finish(loginClaim,1,0), /challenge_unavailable/);
 await role('authenticated');
 assert.equal((await scalar('SELECT public.staff_passkey_status()')).verified, true);
+await db.exec('RESET ROLE');
+await db.query("INSERT INTO auth.mfa_amr_claims(session_id,authentication_method,updated_at) VALUES($1,'totp',now())", [session]);
+await role('authenticated');
+assert.equal((await scalar('SELECT public.staff_passkey_status()')).passwordAuthenticated, true, 'TOTP supplements the real password source');
+assert.equal((await scalar('SELECT public.staff_passkey_status()')).verified, true, 'TOTP does not invalidate the bound passkey');
+for (const method of ['otp', 'magiclink']) {
+  await db.exec('RESET ROLE');
+  await db.query('INSERT INTO auth.mfa_amr_claims(session_id,authentication_method,updated_at) VALUES($1,$2,now())', [session,method]);
+  await role('authenticated');
+  assert.equal((await scalar('SELECT public.staff_passkey_status()')).passwordAuthenticated, false, `${method} cannot be relabelled as password login`);
+  assert.equal(await scalar('SELECT app_private.is_admin($1)', [user]), false, `${method} session cannot retain staff powers`);
+  await db.exec('RESET ROLE');
+  await db.query('DELETE FROM auth.mfa_amr_claims WHERE session_id=$1 AND authentication_method=$2', [session,method]);
+}
+const freshSession='66666666-6666-4666-8666-666666666666';
+await db.query('INSERT INTO auth.sessions(id,user_id) VALUES($1,$2)', [freshSession,user]);
+await db.query("INSERT INTO auth.mfa_amr_claims(session_id,authentication_method) VALUES($1,'password')", [freshSession]);
+await role('authenticated',user,freshSession);
+assert.equal((await scalar('SELECT public.staff_passkey_status()')).verified, false, 'A new password session cannot borrow another session assurance');
+await role('authenticated');
 const visibleRecord={ amountSen:5000,userId:customer,status:'pending',destinationLabel:'Recipient',destinationProvider:'bank',destinationMaskedRef:'1234',payoutProvider:'stripe_connect' };
 assert.equal(typeof await scalar('SELECT public.staff_withdrawal_authorization_version($1,$2)',[withdrawal,visibleRecord]),'string');
 await assert.rejects(scalar('SELECT public.staff_withdrawal_authorization_version($1,$2)',[withdrawal,{...visibleRecord,amountSen:1}]),/withdrawal_changed/);

@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { Sparkles, RefreshCw } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { Button } from "@/components/ui/button";
+import { ApiErrorNotice } from "@/components/shared/api-error-notice";
 import { useTranslation } from "react-i18next";
 import { formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
@@ -82,6 +83,7 @@ function AffiliateInsightCardContent({ scope, requiredCapability, nextPath, gate
   const [cached, setCached] = useState<CachedInsight | null>(() => readCached(scope, userId));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | null>(null);
   const capabilityAllowed = !requiredCapability || capabilities[requiredCapability]?.allowed === true;
   const visibleCached = capabilityAllowed ? cached : null;
 
@@ -92,12 +94,14 @@ function AffiliateInsightCardContent({ scope, requiredCapability, nextPath, gate
     if (requiredCapability && (!gate || !gate(requiredCapability, nextPath))) return;
     setLoading(true);
     setError(null);
+    setRequestId(null);
     try {
       const res = await fetch(endpoint);
       if (requiredCapability && gate && await gate.handleResponse(res, nextPath)) return;
-      const body = (await res.json()) as { data: { insight: string; mode: InsightMode } | null; error: { message: string } | null };
+      const body = (await res.json()) as { data: { insight: string; mode: InsightMode } | null; error: { message: string; requestId?: string } | null };
       if (!res.ok || !body.data) {
         setError(body.error?.message ?? t("affiliate.insight.generateFailed"));
+        setRequestId(body.error?.requestId ?? null);
         return;
       }
       const next: CachedInsight = { insight: body.data.insight, mode: body.data.mode, generatedAt: new Date().toISOString() };
@@ -107,6 +111,7 @@ function AffiliateInsightCardContent({ scope, requiredCapability, nextPath, gate
       }
     } catch {
       setError(t("affiliate.insight.generateFailed"));
+      setRequestId(null);
     } finally {
       setLoading(false);
     }
@@ -134,7 +139,7 @@ function AffiliateInsightCardContent({ scope, requiredCapability, nextPath, gate
         </Button>
       </div>
 
-      {error && !visibleCached && <p className="text-sm text-destructive">{error}</p>}
+      {error && !visibleCached && <ApiErrorNotice message={error} requestId={requestId ?? undefined} />}
       {!error && !visibleCached && loading && <p className="text-sm text-muted-foreground">{t("affiliate.insight.generatingYourInsight")}</p>}
       {visibleCached && (
         <div>

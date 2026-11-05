@@ -15,7 +15,7 @@ import "server-only";
 // and surface that as an unavailable-assistant response, never let it
 // become an unhandled 500.
 
-import { redactPII } from '@/lib/chatbot/pii';
+import { prepareExternalText } from '@/lib/chatbot/pii';
 
 const GENERATE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 const GENERATE_TIMEOUT_MS = 15_000;
@@ -38,18 +38,16 @@ export interface GeminiInlineImage {
 }
 
 /**
- * Redacts userText before sending — the hard boundary, same as
- * lib/chatbot/embed.ts/generate.ts. systemPrompt is always our own static
- * text, never redacted. Callers that need to know WHETHER anything was
- * found (e.g. to log pii_detected on a message row) should call
- * redactPII() themselves too — redacting already-clean text here is a safe
- * no-op, so double-redaction costs nothing.
+ * Rejects unsafe system or user text before sending. Images remain blocked
+ * until their contents can be checked without exposing identity documents.
  */
 export async function callGemini(systemPrompt: string, userText: string, options: CallGeminiOptions = {}): Promise<string> {
+  const prepared = prepareExternalText(userText);
+  if (!prepared.allowed) throw new Error('sensitive_data_detected');
+  if (options.images?.length) throw new Error('image_privacy_review_required');
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) throw new Error('LLM_API_KEY not configured');
-
-  const { clean, found } = redactPII(userText);
+  const { clean, found } = prepared;
   const parts = [
     { text: clean },
     ...(options.images ?? []).flatMap((image) => [
@@ -91,8 +89,7 @@ export async function callGemini(systemPrompt: string, userText: string, options
     });
 
     if (!res.ok) {
-      const errBody = await res.text().catch(() => '');
-      throw new Error(`Gemini generateContent failed: ${res.status} ${errBody.slice(0, 200)}`);
+      throw new Error(`Gemini generateContent failed: HTTP ${res.status}`);
     }
 
     const body = (await res.json()) as GeminiGenerateResponse;

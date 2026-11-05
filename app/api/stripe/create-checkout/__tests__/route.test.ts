@@ -5,26 +5,22 @@ const mocks = vi.hoisted(() => ({
   from: vi.fn(),
   select: vi.fn(),
   eq: vi.fn(),
-  single: vi.fn(),
-  customersCreate: vi.fn(),
-  sessionsCreate: vi.fn(),
-  resolveEffectiveCapability: vi.fn(),
+  maybeSingle: vi.fn(),
+  resolveServerCustomerCapability: vi.fn(),
+  startOrResumeWalletTopUp: vi.fn(),
+  getActiveWalletTopUp: vi.fn(),
 }));
 
-vi.mock('@/lib/entitlements/server', () => ({ resolveEffectiveCapability: mocks.resolveEffectiveCapability }));
-
+vi.mock('@/lib/auth/customer-capabilities.server', () => ({
+  resolveServerCustomerCapability: mocks.resolveServerCustomerCapability,
+  customerCapabilityFailure: () => null,
+}));
+vi.mock('@/lib/wallet/topup-operations', () => ({
+  startOrResumeWalletTopUp: mocks.startOrResumeWalletTopUp,
+  getActiveWalletTopUp: mocks.getActiveWalletTopUp,
+}));
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(async () => ({
-    auth: { getUser: mocks.getUser },
-    from: mocks.from,
-  })),
-}));
-
-vi.mock('@/lib/stripe', () => ({
-  stripe: {
-    customers: { create: mocks.customersCreate },
-    checkout: { sessions: { create: mocks.sessionsCreate } },
-  },
+  createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, from: mocks.from })),
 }));
 
 import { POST } from '../route';
@@ -33,7 +29,7 @@ function request(amountRm: number) {
   return new Request('http://localhost/api/stripe/create-checkout', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ amount_rm: amountRm }),
+    body: JSON.stringify({ amount_rm: amountRm, operation_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }),
   });
 }
 
@@ -43,60 +39,38 @@ describe('POST /api/stripe/create-checkout amount boundaries', () => {
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'user-1', email: 'user@example.com' } }, error: null });
     mocks.from.mockReturnValue({ select: mocks.select });
     mocks.select.mockReturnValue({ eq: mocks.eq });
-    mocks.eq.mockReturnValue({ single: mocks.single });
-    mocks.single.mockResolvedValue({
-      data: {
-        email: 'user@example.com',
-        full_name: 'Test User',
-        stripe_customer_id: 'cus_test',
-        tier: 'kyc_verified',
-        kyc_status: 'approved',
-        phone_verified_at: '2026-08-20T00:00:00.000Z',
-      },
-      error: null,
-    });
-    mocks.sessionsCreate.mockResolvedValue({ url: 'https://checkout.stripe.test/session' });
-    mocks.resolveEffectiveCapability.mockImplementation(async (_userId: string, capability: string) => ({
-      capability, allowed: true, blockerCode: null, qualificationPaths: [],
-      entitlementGeneration: 7, source: 'policy',
-    }));
+    mocks.eq.mockReturnValue({ maybeSingle: mocks.maybeSingle });
+    mocks.maybeSingle.mockResolvedValue({ data: { email: 'user@example.com', full_name: 'Test User' }, error: null });
+    mocks.startOrResumeWalletTopUp.mockResolvedValue({ state: 'open', operationId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', amountSen: 200, checkoutUrl: 'https://checkout.stripe.test/session' });
+    mocks.resolveServerCustomerCapability.mockResolvedValue({ allowed: true });
   });
 
-  it.each([1.99, 1.999])('rejects RM%s before creating a Stripe session', async (amountRm) => {
+  it.each([1.99, 1.999])('rejects RM%s before preparing a top-up operation', async (amountRm) => {
     const response = await POST(request(amountRm));
-
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: 'Minimum top-up is RM2.00' });
-    expect(mocks.sessionsCreate).not.toHaveBeenCalled();
+    expect(mocks.startOrResumeWalletTopUp).not.toHaveBeenCalled();
   });
 
-  it('accepts the RM2.00 boundary', async () => {
+  it('accepts the RM2.00 boundary as 200 sen', async () => {
     const response = await POST(request(2));
-
     expect(response.status).toBe(200);
-    expect(mocks.sessionsCreate).toHaveBeenCalledOnce();
-    expect(mocks.sessionsCreate).toHaveBeenCalledWith(expect.objectContaining({
-      line_items: [expect.objectContaining({ price_data: expect.objectContaining({ unit_amount: 200 }) })],
-    }));
+    expect(mocks.startOrResumeWalletTopUp).toHaveBeenCalledOnce();
+    expect(mocks.startOrResumeWalletTopUp).toHaveBeenCalledWith(expect.objectContaining({ amountSen: 200 }));
   });
 
-  it.each([1_000_000, 1e55])('rejects an unsupported RM%s amount before creating a Stripe session', async (amountRm) => {
+  it.each([1_000_000, 1e55])('rejects unsupported RM%s before preparing an operation', async (amountRm) => {
     const response = await POST(request(amountRm));
-
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: 'Maximum top-up is RM999,999.99' });
     expect(mocks.from).not.toHaveBeenCalled();
-    expect(mocks.customersCreate).not.toHaveBeenCalled();
-    expect(mocks.sessionsCreate).not.toHaveBeenCalled();
+    expect(mocks.startOrResumeWalletTopUp).not.toHaveBeenCalled();
   });
 
-  it('accepts the RM999,999.99 provider boundary as 99,999,999 sen', async () => {
+  it('accepts the RM999,999.99 boundary as 99,999,999 sen', async () => {
     const response = await POST(request(999_999.99));
-
     expect(response.status).toBe(200);
-    expect(mocks.sessionsCreate).toHaveBeenCalledOnce();
-    expect(mocks.sessionsCreate).toHaveBeenCalledWith(expect.objectContaining({
-      line_items: [expect.objectContaining({ price_data: expect.objectContaining({ unit_amount: 99_999_999 }) })],
-    }));
+    expect(mocks.startOrResumeWalletTopUp).toHaveBeenCalledOnce();
+    expect(mocks.startOrResumeWalletTopUp).toHaveBeenCalledWith(expect.objectContaining({ amountSen: 99_999_999 }));
   });
 });

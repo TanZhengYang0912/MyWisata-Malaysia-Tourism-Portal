@@ -13,30 +13,12 @@
 // classifyTicketSmart() below treats as "use the keyword classifier."
 
 import { classifyTicket, type TicketCategory } from './classify';
+import { prepareExternalText } from './pii';
 
 const CLASSIFY_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 const CLASSIFY_TIMEOUT_MS = 10_000;
 
 const VALID_CATEGORIES: readonly TicketCategory[] = ['booking', 'payment', 'withdrawal', 'kyc', 'technical', 'affiliate', 'vendor', 'general'];
-
-function buildPrompt(subject: string, body: string): string {
-  return `Classify this support ticket into exactly ONE category.
-Reply with only the category word, nothing else.
-
-Categories:
-- booking     : bookings, orders, time slots, QR codes, cancellations
-- payment     : paying, cards, checkout failures, refunds
-- withdrawal  : withdrawing money, payouts, bank details, wallet balance/top-up
-- kyc         : identity verification, ID/passport documents, verification rejected or stuck
-- technical   : app or website errors, bugs, crashes, pages not loading
-- affiliate   : affiliate links, commission, referrals, sharing
-- vendor      : vendors, shops, listings, becoming a vendor
-- general     : anything else
-
-Ticket:
-Subject: ${subject}
-Body: ${body}`;
-}
 
 interface GeminiGenerateResponse {
   candidates?: { content?: { parts?: { text?: string }[] } }[];
@@ -46,6 +28,8 @@ interface GeminiGenerateResponse {
 export async function classifyTicketAI(subject: string, body: string): Promise<TicketCategory | null> {
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) return null;
+  const prepared = prepareExternalText(`Subject: ${subject}\nBody: ${body}`);
+  if (!prepared.allowed) return null;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), CLASSIFY_TIMEOUT_MS);
@@ -55,7 +39,7 @@ export async function classifyTicketAI(subject: string, body: string): Promise<T
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: buildPrompt(subject, body) }] }],
+        contents: [{ role: 'user', parts: [{ text: `Classify this support ticket into exactly ONE category. Reply with only the category word.\n\nCategories: booking, payment, withdrawal, kyc, technical, affiliate, vendor, general.\n\nTicket:\n${prepared.clean}` }] }],
         generationConfig: { temperature: 0, maxOutputTokens: 10 },
       }),
       signal: controller.signal,

@@ -6,12 +6,13 @@ import { useTranslation } from 'react-i18next';
 import {
   createFeedbackNotice,
   feedbackReducer,
+  type FeedbackMessage,
   type FeedbackNotice,
   type FeedbackTone,
 } from '@/lib/feedback/action-feedback';
 
 interface ActionFeedbackContextValue {
-  showFeedback: (tone: FeedbackTone, message: string, duration?: number) => void;
+  showFeedback: (tone: FeedbackTone, message: FeedbackMessage, duration?: number) => void;
 }
 
 const ActionFeedbackContext = createContext<ActionFeedbackContextValue | null>(null);
@@ -28,11 +29,14 @@ function FeedbackToast({ notice, onDismiss }: { notice: FeedbackNotice; onDismis
     error: { container: 'border-red-200 bg-red-50 text-red-900', icon: <AlertCircle size={18} className="text-red-700" /> },
     info: { container: 'border-sky-200 bg-sky-50 text-sky-900', icon: <Info size={18} className="text-sky-700" /> },
   }[notice.tone];
+  const message = typeof notice.message === 'string'
+    ? notice.message
+    : t(notice.message.key, { ns: notice.message.namespace });
 
   return (
     <div role={notice.role} className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg ${styles.container}`}>
       <span className="mt-0.5 shrink-0">{styles.icon}</span>
-      <p className="min-w-0 flex-1 leading-5">{notice.message}</p>
+      <p className="min-w-0 flex-1 leading-5">{message}</p>
       <button type="button" onClick={onDismiss} aria-label={t('accessibility.dismissNotification')} className="shrink-0 rounded-md p-0.5 opacity-60 transition hover:bg-black/5 hover:opacity-100">
         <X size={16} />
       </button>
@@ -43,7 +47,7 @@ function FeedbackToast({ notice, onDismiss }: { notice: FeedbackNotice; onDismis
 export function ActionFeedbackProvider({ children }: { children: React.ReactNode }) {
   const [notices, dispatch] = useReducer(feedbackReducer, []);
 
-  const showFeedback = useCallback((tone: FeedbackTone, message: string, duration?: number) => {
+  const showFeedback = useCallback((tone: FeedbackTone, message: FeedbackMessage, duration?: number) => {
     dispatch({ type: 'add', notice: createFeedbackNotice(tone, message, duration) });
   }, []);
 

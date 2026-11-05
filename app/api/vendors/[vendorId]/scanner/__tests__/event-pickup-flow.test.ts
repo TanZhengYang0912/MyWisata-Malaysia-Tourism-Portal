@@ -9,6 +9,7 @@ const OPERATOR_ID = "66666666-6666-4666-8666-666666666666";
 
 const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), rpc: vi.fn(), authorizeVendor: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, from: mocks.from })) }));
+vi.mock("@/lib/supabase/service", () => ({ createServiceClient: vi.fn(() => ({ from: mocks.from })) }));
 vi.mock("@/lib/vendor-authorization", () => ({ authorizeVendor: mocks.authorizeVendor }));
 
 import { GET as getQrPasses } from "@/app/api/customer/orders/[orderId]/qr-passes/route";
@@ -34,7 +35,7 @@ function tableRows(table: string) {
   if (table === "orders") return [database.order];
   if (table === "bookings") return [];
   if (table === "order_items") return database.orderItems;
-  if (table === "vendors") return [{ id: VENDOR_ID, name: "Event Partner" }];
+  if (table === "vendors") return [{ id: VENDOR_ID, name: "Event Partner", status: "approved", kind: "event" }];
   if (table === "audit_logs") return database.auditLogs;
   if (table === "promotion_campaign_locations") return [database.location];
   if (table === "users") return [
@@ -78,6 +79,16 @@ describe("event partner payment-to-scan flow", () => {
     mocks.getUser.mockResolvedValue({ data: { user: { id: CUSTOMER_ID } }, error: null });
     mocks.from.mockImplementation(from);
     mocks.rpc.mockImplementation(async (name: string, args: Record<string, unknown>) => {
+      if (name === "list_vendor_redemption_history") return { data: {
+        items: [{
+          id: "audit-flow-1", kind: "event_pickup", redeemedAt: new Date().toISOString(),
+          outlet: { id: LOCATION_ID, name: "Main Hall", fullName: "Main Hall", location: "Kuala Lumpur" },
+          item: { name: "Kuih, Teh", details: "Kuih × 2, Teh × 1" },
+          customer: { name: "Aina Customer", email: "aina@example.test" },
+        }],
+        pagination: { page: 1, pageSize: 15, total: 1, totalPages: 1 },
+        stats: { totalCount: 1, retailCount: 0 },
+      }, error: null };
       expect(name).toBe("fulfil_event_pickup");
       expect(args.p_pickup_slot_id).toBe(SLOT_ID);
       const items = database.orderItems.filter((row) => row.pickup_slot_id === args.p_pickup_slot_id && row.fulfil_status === "pending");
@@ -135,6 +146,8 @@ describe("event partner payment-to-scan flow", () => {
       customer: { name: "Aina Customer", email: "aina@example.test" },
     });
     expect(historyPayload.data.items[0].item.details).toContain("Kuih × 2");
-    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    expect(mocks.rpc).toHaveBeenCalledWith("fulfil_event_pickup", expect.any(Object));
+    expect(mocks.rpc).toHaveBeenCalledWith("list_vendor_redemption_history", expect.any(Object));
+    expect(mocks.rpc).toHaveBeenCalledTimes(2);
   });
 });

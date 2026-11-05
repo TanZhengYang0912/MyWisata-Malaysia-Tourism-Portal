@@ -555,6 +555,7 @@ export interface PublicUserRow {
   is_kyc_verified: boolean;
   has_completed_profile: boolean;
   created_at: string;
+  is_verified_contributor: boolean;
 }
 
 export interface KycSubmissionDocumentRow {

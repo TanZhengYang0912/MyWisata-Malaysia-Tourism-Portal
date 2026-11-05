@@ -41,6 +41,7 @@ export async function POST(request: Request, { params }: Props) {
     description: vendor.description,
     contactName: onboarding?.contact_name ?? owner?.full_name ?? null,
   });
+  if (reason && typeof reason === 'object' && 'error' in reason) return apiFail('PERSONAL_DATA_WITHHELD', 'The full draft request was not sent to AI because it may contain personal details. Remove phone, email, identity, bank, or private-address details, or write the reason manually.', 422);
   if (!reason) return apiFail('DRAFT_UNAVAILABLE', 'Could not draft a reason right now — try again, or write one manually.', 502);
 
   return apiOk({ reason });

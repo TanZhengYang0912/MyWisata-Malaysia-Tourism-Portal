@@ -31,6 +31,7 @@ export type WithdrawalReviewDetail = {
     email: string;
     kycStatus: string;
     kycApprovedAt: string | null;
+    kycVerifiedName: string | null;
   };
   wallet: {
     topupSen: number;
@@ -52,6 +53,7 @@ export type WithdrawalReviewDetail = {
   }>;
   riskSnapshot: Record<string, unknown>;
   reviewSources: WithdrawalReviewSources;
+  reviewSourcesStatus: 'ready' | 'unavailable';
   payoutFailure: {
     provider: string | null;
     eventId: string | null;

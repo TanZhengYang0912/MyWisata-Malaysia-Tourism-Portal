@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
   if (error) {
     log('error', '[cron/clear-earnings] confirm_pending_earnings failed', { requestId, error: error.message });
-    return NextResponse.json({ error: error.message, requestId }, { status: 500 });
+    return NextResponse.json({ error: 'The scheduled earnings update could not be completed. Please retry later.', requestId }, { status: 500 });
   }
 
   log('info', '[cron/clear-earnings] confirmed', { requestId, confirmed: data });

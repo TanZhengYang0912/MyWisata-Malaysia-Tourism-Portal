@@ -52,5 +52,5 @@ export default async function SavedPage() {
     ? (await getCachedComputedActivities()).filter((activity) => activity.categorySlug === "accommodation" && savedOutletIds.has(activity.outlet.id))
     : [];
 
-  return <SavedHubClient activities={activities} destinations={destinations} hotelRooms={hotelRooms} />;
+  return <SavedHubClient ownerId={user.id} activities={activities} destinations={destinations} hotelRooms={hotelRooms} />;
 }

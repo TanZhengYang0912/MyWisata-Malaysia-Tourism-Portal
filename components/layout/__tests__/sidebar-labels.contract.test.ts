@@ -54,7 +54,7 @@ const expectedLabels: Record<"vendor" | "admin", Record<Locale, Record<string, s
       "KYC Review": "KYC",
       "Wallet Settings": "Dompet",
       "Wallet Approvers": "Pelulus",
-      "Payout Reports": "Bayaran",
+      "Payout Reports": "Laporan pembayaran",
       Reconciliation: "Pecahan Pesanan",
       "Support Tickets": "Sokongan",
       "Sponsored Placements": "Iklan Ditaja",
@@ -70,7 +70,7 @@ const expectedLabels: Record<"vendor" | "admin", Record<Locale, Record<string, s
       "KYC Review": "KYC",
       "Wallet Settings": "钱包",
       "Wallet Approvers": "审批人",
-      "Payout Reports": "提现",
+      "Payout Reports": "提现报告",
       "Support Tickets": "支持",
       "Sponsored Placements": "赞助广告",
       Reconciliation: "订单分账",
@@ -109,9 +109,11 @@ describe("portal sidebar labels", () => {
     for (const portal of ["vendor", "admin"] as const) {
       for (const locale of ["en", "ms", "zh-CN"] as Locale[]) {
         const navigation = readNavigation(portal, locale).navigation;
-        const maxLength = locale === "zh-CN" ? 8 : 15;
+        // Precise Malay finance labels distinguish approval from payout reports.
+        const financeLabelLimits: Record<string, number> = { Withdrawals: 21, "Payout Reports": 18 };
+        const defaultMaxLength = locale === "zh-CN" ? 8 : 15;
         for (const [key, label] of Object.entries(navigation)) {
-          expect(label.length, `${locale} ${portal} ${key}`).toBeLessThanOrEqual(maxLength);
+          expect(label.length, `${locale} ${portal} ${key}`).toBeLessThanOrEqual(portal === "admin" && locale === "ms" ? financeLabelLimits[key] ?? defaultMaxLength : defaultMaxLength);
         }
       }
     }

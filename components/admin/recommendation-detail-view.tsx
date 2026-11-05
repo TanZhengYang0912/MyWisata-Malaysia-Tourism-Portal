@@ -402,7 +402,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
             <h2 className="font-bold text-foreground">{t("recommendation.detail.contributor")}</h2>
             <div className="mt-4 flex items-center gap-2">
               <p className="text-sm font-semibold text-foreground">{detail.author.name}</p>
-              <VerifiedContributorBadge verified={detail.author.isKycVerified} />
+              <VerifiedContributorBadge verified={detail.author.isVerifiedContributor} />
             </div>
             <p className="mt-1 text-xs text-muted-foreground">{detail.author.email ?? t("recommendation.detail.emailUnavailable")}</p>
           </section>

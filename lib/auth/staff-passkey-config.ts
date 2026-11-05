@@ -1,5 +1,6 @@
 import 'server-only';
 import { isDemoToolRuntimeEnabled } from '@/lib/demo/runtime';
+import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
 
 export type StaffPasskeyConfig = { rpID: string; origin: string; rpName: string };
 
@@ -25,5 +26,5 @@ export function staffPasskeyConfig(env: Record<string, string | undefined> = pro
   if (url.username || url.password || url.pathname !== '/' || url.search || url.hash
     || (url.protocol !== 'https:' && !(local && env.NODE_ENV !== 'production' && url.protocol === 'http:'))
     || (env.NODE_ENV === 'production' && local)) throw new Error('Invalid staff Passkey origin');
-  return { rpID: url.hostname, origin: url.origin, rpName: 'MyWisata' };
+  return { rpID: url.hostname, origin: url.origin, rpName: BRAND_NAME };
 }

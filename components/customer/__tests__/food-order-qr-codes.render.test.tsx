@@ -82,7 +82,7 @@ describe("FoodOrderQrCodes rendered merchant and QR layout", () => {
   it.each([
     { locale: "en", merchant: "Provided by Baboon House", mode: "Takeaway" },
     { locale: "ms", merchant: "Disediakan oleh Baboon House", mode: "Bungkus" },
-    { locale: "zh-CN", merchant: "提供商家：Baboon House", mode: "打包" },
+    { locale: "zh-CN", merchant: "提供方：Baboon House", mode: "打包" },
   ])("renders $locale merchant copy without keys and keeps QR after details", async ({ locale, merchant, mode }) => {
     await act(async () => { await i18n.changeLanguage(locale); });
     await render(<I18nextProvider i18n={i18n}><FoodOrderQrCodes orderId="order-a" /></I18nextProvider>);

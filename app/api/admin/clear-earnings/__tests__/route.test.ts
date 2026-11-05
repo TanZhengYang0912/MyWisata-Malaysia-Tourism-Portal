@@ -48,6 +48,17 @@ describe('POST /api/admin/clear-earnings', () => {
     const response = await POST();
 
     expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toEqual({ error: 'admin_required' });
+    await expect(response.json()).resolves.toEqual({ error: 'You do not have permission to clear earnings.' });
+  });
+
+  it('does not expose database diagnostics when the clearance RPC fails', async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { message: 'function confirm_pending_earnings does not exist in schema cache' } });
+
+    const response = await POST();
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(JSON.stringify(body)).not.toContain('schema cache');
+    expect(JSON.stringify(body)).not.toContain('confirm_pending_earnings');
   });
 });

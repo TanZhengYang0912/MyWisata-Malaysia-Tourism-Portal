@@ -153,7 +153,7 @@
       "google": "Unable to continue with Google. Please try again.",
       "switchAccount": "Unable to switch accounts. Please try again.",
       "load": "We couldn’t load this invitation. Please retry or request a new invitation.",
-      "phoneAlreadyClaimed": "This mobile number is already linked to another MyLawatan account. Use a different number.",
+      "phoneAlreadyClaimed": "This mobile number is already linked to another MYLawatan account. Use a different number.",
       "phoneRateLimited": "Too many codes requested. Try again in 1 hour.",
       "phoneInvalidCode": "That code is invalid or has expired. Request a new code and try again.",
       "phoneInvalidNumber": "Enter a valid mobile number.",
@@ -186,7 +186,7 @@
     },
     "codes": {
       "INVITE_INVALID": "This invitation link is invalid.",
-      "INVITE_EXPIRED": "This vendor invitation has expired. Request a new invitation from MyLawatan.",
+      "INVITE_EXPIRED": "This vendor invitation has expired. Request a new invitation from MYLawatan.",
       "INVITE_CANCELLED": "This vendor invitation was cancelled.",
       "INVITE_ALREADY_CLAIMED": "This vendor invitation has already been claimed.",
       "RECOMMENDATION_NOT_READY": "This recommendation is not ready for vendor claim."
@@ -197,7 +197,7 @@
       "back": "Back",
       "retry": "Retry",
       "requestNew": "Request a new invitation",
-      "contactSupport": "Contact MyLawatan support"
+      "contactSupport": "Contact MYLawatan support"
     },
     "account": {
       "useInvitedAccount": "Use the invited account",
@@ -255,14 +255,14 @@
       "sendOtp": "Send phone OTP",
       "finalReview": "Final review",
       "reviewApplication": "Review your application",
-      "reviewDescription": "Confirm these details before sending them to MyLawatan for review.",
+      "reviewDescription": "Confirm these details before sending them to MYLawatan for review.",
       "ownerAccount": "Owner and account",
       "signedInInvitationEmail": "Signed in with the invitation email",
       "mobileVerified": "Mobile verified",
       "vendor": "Vendor",
       "firstOutlet": "First Outlet",
       "applicationStatus": "Application status",
-      "pendingReview": "Pending MyLawatan review. The Vendor and Outlet stay private until approval.",
+      "pendingReview": "Pending MYLawatan review. The Vendor and Outlet stay private until approval.",
       "authorization": "I confirm that I am authorized to represent this business and submit this Vendor application.",
       "submitting": "Submitting…",
       "submitApplication": "Submit application",
@@ -271,8 +271,8 @@
     },
     "recommendation": {
       "eyebrow": "Recommendation invitation",
-      "title": "You’re invited to join MyLawatan",
-      "description": "A MyLawatan member recommended this business.",
+      "title": "You’re invited to join MYLawatan",
+      "description": "A MYLawatan member recommended this business.",
       "details": "Recommendation details",
       "why": "Why it was recommended",
       "photoAlt": "{{business}} recommendation photo {{index}}",
@@ -288,11 +288,11 @@
     },
     "submitted": {
       "title": "Vendor application submitted",
-      "description": "Your Vendor and first Outlet are private while MyLawatan reviews the application."
+      "description": "Your Vendor and first Outlet are private while MYLawatan reviews the application."
     },
     "inactive": {
       "title": "Vendor invitation inactive",
-      "description": "This vendor invitation is no longer active. Contact MyLawatan support if you need help."
+      "description": "This vendor invitation is no longer active. Contact MYLawatan support if you need help."
     },
     "setupLabel": "Vendor invitation setup",
     "step": "Step {{current}} of {{total}}",
@@ -322,10 +322,9 @@
     "uploadAndSubmitting": "Uploading images and submitting…",
     "required": "Required",
     "optional": "Optional",
-    "phoneHint": "Choose a country; its calling code stays beside the field. Enter only the number after that code. For Malaysia (+60), omit the leading 0 from a local number: 012 345 6789 becomes 12 345 6789. Number grouping follows the selected country.",
     "sections": {
       "businessProfile": "Business profile",
-      "businessProfileDescription": "Business name is how customers see you on MyLawatan. Legal business name below is the name on your registration documents; the two can be the same or different. Choose the closest business type and describe what customers can book or visit.",
+      "businessProfileDescription": "Business name is how customers see you on MYLawatan. Legal business name below is the name on your registration documents; the two can be the same or different. Choose the closest business type and describe what customers can book or visit.",
       "businessProfileHelpLabel": "About your business profile",
       "legalContact": "Legal and contact details",
       "legalContactDescription": "Enter your registered business name and SSM or company registration number if available. These are optional. Your contact details help us follow up about your application.",
@@ -440,11 +439,7 @@
     "placeholders": {
       "businessName": "e.g. Rasa Malaysia Kitchen",
       "description": "Describe your business...",
-      "legalBusinessName": "Registered business name",
-      "registrationNumber": "Enter if available",
-      "contactPerson": "Owner or authorised person",
-      "businessEmail": "business@example.com",
-      "businessAddress": "Registered business address"
+      "businessEmail": "business@example.com"
     },
     "options": {
       "selectType": "Select type...",
@@ -455,7 +450,8 @@
       "wellness": "Wellness & Spa",
       "adventure": "Adventure & Sports",
       "other": "Other"
-    }
+    },
+    "ifAvailable": "If available"
   },
   "ui": {
     "common": {
@@ -523,6 +519,15 @@
       "viewAll": "View all",
       "stockAlerts": "Stock alerts",
       "stockAlertsDescription": "Active, configured inventory appears here when it reaches its low-stock threshold.",
+      "salesScope": "Sales data",
+      "salesMode": {
+        "live": "Real sales",
+        "demo": "Test & Demo"
+      },
+      "demoRevenue": "Test/demo sales",
+      "demoSalesDescription": "Revenue, charts and sales rankings show successful test/demo purchases only. Amounts are for demonstration. Order counts still include all orders.",
+      "includedDemoSales_one": "Included test/demo sales: {{amount}} across {{count}} order",
+      "includedDemoSales_other": "Included test/demo sales: {{amount}} across {{count}} orders",
       "salesProvenanceTitle": "Sales verification",
       "salesProvenanceDescription": "Order count includes demo and test-mode orders. Verified revenue, sales charts and product rankings only include paid or completed orders with successful live payments; simulated and unverified sales appear separately.",
       "simulatedSales_one": "Excluded simulated sales: {{amount}} across {{count}} order",
@@ -691,6 +696,16 @@
       }
     },
     "bookings": {
+      "csv": {
+        "reference": "Reference",
+        "customer": "Customer",
+        "email": "Email",
+        "experience": "Product / experience",
+        "dateTime": "Date and time",
+        "quantity": "Quantity",
+        "status": "Status",
+        "checkInTime": "Check-in time"
+      },
       "loadFailed": "Could not load bookings.",
       "checkInFailed": "Could not check in booking.",
       "checkInTryAgain": "Could not check in booking. Please try again.",
@@ -732,7 +747,7 @@
       "reservationCount": "{{count}} reservations · grouped by outlet",
       "pageSummary": "{{count}} reservations · {{perPage}} per page",
       "malaysia": "Malaysia",
-      "onThisPage": "本页 {{count}} 个",
+      "onThisPage": "{{count}} on this page",
       "outletAgenda": "Outlet agenda",
       "selectBooking": "Select booking {{id}}",
       "guest": "Guest",
@@ -812,8 +827,8 @@
       "reservationCount_other": "{{count}} reservations · grouped by outlet",
       "pageSummary_one": "{{count}} reservation · {{perPage}} per page",
       "pageSummary_other": "{{count}} reservations · {{perPage}} per page",
-      "onThisPage_one": "本页 {{count}} 个",
-      "onThisPage_other": "本页 {{count}} 个"
+      "onThisPage_one": "{{count}} on this page",
+      "onThisPage_other": "{{count}} on this page"
     },
     "inbox": {
       "filter": {
@@ -870,7 +885,7 @@
       "noVendor": "This account has no assigned vendor. Sign in with an outlet manager account.",
       "outletsUnavailable": "Could not load an authorised outlet for scanning. Refresh the page or contact an administrator.",
       "checkCode": "Check code",
-      "invalidCode": "This code is not a valid MyLawatan ticket or voucher.",
+      "invalidCode": "This code is not a valid MYLawatan ticket or voucher.",
       "resolveFailed": "Could not check this code.",
       "cameraUnsupported": "This browser does not provide camera access.",
       "cameraFailed": "Could not open the camera. Check browser permissions and try again.",
@@ -921,7 +936,12 @@
       "eventPickupsOnly": "Event pickups",
       "eventPickupKind": "Event pickup",
       "eventPickupTitle": "Reservation {{order}}",
-      "pickupDate": "Pickup date"
+      "pickupDate": "Pickup date",
+      "retailPickupKind": "Retail pickup",
+      "retailPickupCollected": "{{quantity}} item(s) handed over successfully.",
+      "retailPickupQuantity": "Hand over all {{quantity}} item(s) in this order line.",
+      "confirmRetailPickup": "Confirm handover",
+      "orderReference": "Order #{{order}}"
     },
     "redemptions": {
       "eyebrow": "Store Redemptions",
@@ -932,6 +952,12 @@
       "allTime": "All recorded scans",
       "todayScans": "Today's Scans",
       "redeemedToday": "Redeemed today",
+      "retailPickups": "Retail pickups",
+      "retailItemsHandedOver": "Order lines handed over",
+      "kindRetailPickup": "Retail pickup",
+      "kindEventPickup": "Event pickup",
+      "filteredCount_one": "{{count}} record",
+      "filteredCount_other": "{{count}} records",
       "vouchersUsed": "Vouchers Redeemed",
       "storePromos": "Store vouchers",
       "ticketsAdmitted": "Tickets Admitted",
@@ -947,6 +973,7 @@
       "filters": {
         "all": "All Activity",
         "vouchers": "Vouchers",
+        "retail": "Retail pickups",
         "tickets": "Tickets"
       },
       "table": {
@@ -969,6 +996,17 @@
       "price": "Price"
     },
     "orders": {
+      "csv": {
+        "orderId": "Order ID",
+        "customer": "Customer",
+        "email": "Email",
+        "products": "Products",
+        "outlets": "Outlets",
+        "total": "Total (MYR)",
+        "fulfilmentStatus": "Fulfilment status",
+        "orderStatus": "Order status",
+        "date": "Date"
+      },
       "loadFailed": "Could not load orders.",
       "updateFailed": "Could not update fulfilment.",
       "updateTryAgain": "Could not update fulfilment. Please try again.",
@@ -2112,7 +2150,7 @@
     "invite": "Invite",
     "inviteByEmail": "Invite by email",
     "inviteCreated": "Outlet manager invitation created.",
-    "inviteExisting": "Invitation created for this MyLawatan account.",
+    "inviteExisting": "Invitation created for this MYLawatan account.",
     "inviteFailed": "Could not create invitation.",
     "inviteHint": "The manager accepts with this email before receiving access to this outlet.",
     "inviting": "Inviting…",
@@ -2351,6 +2389,7 @@
     "saving": "Saving…",
     "working": "Working…",
     "exportCsv": "Export CSV",
+    "exportReadableCsv": "Export readable CSV",
     "refresh": "Refresh",
     "tryAgain": "Try again",
     "previous": "Previous",
@@ -2408,6 +2447,8 @@
       "topProductsGrouped_other": "Showing top {{count}} products · others grouped"
     },
     "sales": {
+      "demoDescription": "Successful test/demo purchases · simulated amounts",
+      "noDemoActivity": "No successful test/demo purchases in this period.",
       "description": "Verified sales backed by successful live payments",
       "list": "List",
       "livePerformance": "Live performance",
@@ -2457,7 +2498,7 @@
       "reviews_other": "{{count}} reviews"
     }
   },
-    "transactions": {
+  "transactions": {
     "action": "Action",
     "close": "Close",
     "empty": "No transactions found in this period.",

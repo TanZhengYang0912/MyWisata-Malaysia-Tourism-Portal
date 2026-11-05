@@ -1,6 +1,6 @@
 import type { ComputedActivity } from '@/backend/core/types';
 
-export type TravelPreferences = { interests: string[]; budgetRange: string; mobilityNeeds: string; preferredRadiusKm: number };
+export type TravelPreferences = { interests: string[]; budgetRange: string; mobilityNeeds: string; preferredRadiusKm: number; travelStyle?: string };
 
 // Grounded match reasons — emitted only for signals that actually contributed to
 // the score, so the "why it fits" copy never claims something that didn't match.

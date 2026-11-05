@@ -111,12 +111,13 @@ export async function recordAudit(audit: AuditParams): Promise<AuditResult | nul
 /** Send a single notification. Uses send_notification RPC (no audit row). */
 export async function sendNotification(params: NotifyParams): Promise<string | null> {
   const db = await createClient();
-  const { data, error } = await db.rpc('send_notification', {
+  const { data, error } = await db.rpc(params.metadata ? 'send_notification_with_metadata' : 'send_notification', {
     p_user_id: params.userId,
     p_type:    params.type,
     p_title:   params.title,
     p_body:    params.body ?? null,
     p_link:    params.link ?? null,
+    ...(params.metadata ? { p_metadata: params.metadata } : {}),
   });
 
   if (error) {

@@ -38,7 +38,8 @@ describe("journey canvas integration contract", () => {
   });
 
   it("rolls schedule changes back with an accessible error", () => {
-    expect(hookSource).toContain('strictMigration.tripPlanner.scheduleFailed');
+    expect(hookSource).toContain('ui.trip.invalidChange');
+    expect(hookSource).toContain('ui.trip.resultUnknown');
     expect(hookSource).toContain('ui.trip.versionConflict');
     expect(source).toContain('role={trip.error ? "alert" : "status"}');
   });
@@ -49,6 +50,14 @@ describe("journey canvas integration contract", () => {
     expect(source).toContain("max={timeBounds.max}");
     expect(source).toContain("disabled={timeBounds.disabled}");
     expect(hookSource).toContain("commit(stored(await reorderTripItemsAction");
+  });
+
+  it("exposes keyboard-accessible move controls for itinerary stops", () => {
+    expect(source).toContain('trip.move(itemIndex, earlierIndex)');
+    expect(source).toContain('trip.move(itemIndex, laterIndex)');
+    expect(source).toContain('trip.schedule(item.id, event.target.value === "__unscheduled" ? null : event.target.value, item.scheduled_time)');
+    expect(source).toContain('strictMigration.tripPlanner.moveEarlier');
+    expect(source).toContain('strictMigration.tripPlanner.moveLater');
   });
 
   it("projects only public sponsored fields and vendor suggestion timestamps into the canvas", () => {

@@ -1,11 +1,12 @@
 import 'server-only';
 
 import type { WalletReasonAction } from '@/lib/validation/wallet-reason-schemas';
+import { prepareExternalText } from '@/lib/chatbot/pii';
 
 export type ModerationResult =
   | { flagged: false }
   | { flagged: true; categories: string[] }
-  | { error: 'api_unavailable' };
+  | { error: 'api_unavailable' | 'sensitive_data_detected' };
 
 export type AccountModerationContext =
   | 'suspend_reason'
@@ -28,7 +29,7 @@ export type WalletModerationResult =
     categories: string[];
     advisoryMessage: string | null;
   }
-  | { error: 'api_unavailable' };
+  | { error: 'api_unavailable' | 'sensitive_data_detected' };
 
 function contextDescription(context: AccountModerationContext): string {
   switch (context) {
@@ -47,6 +48,8 @@ function contextDescription(context: AccountModerationContext): string {
 }
 
 async function moderateText(text: string, promptLabel: string): Promise<ModerationResult> {
+  const outbound = prepareExternalText(text);
+  if (!outbound.allowed) return { error: 'sensitive_data_detected' };
   const apiKey = process.env.GOOGLE_AI_KEY;
   if (!apiKey) {
     return { error: 'api_unavailable' };
@@ -63,7 +66,7 @@ async function moderateText(text: string, promptLabel: string): Promise<Moderati
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: `${promptLabel} You are a content moderator for a Malaysia tourism platform. Determine whether the submitted text violates community guidelines (hate speech, explicit content, spam, harassment, threats, or illegal activity). Do not judge the user's account status or the truth of the request; only flag abusive or prohibited content. Respond with valid JSON only, no markdown. Format: {"flagged": boolean, "categories": string[]}\n\nText: ${JSON.stringify(text)}`,
+              text: `${promptLabel} You are a content moderator for a Malaysia tourism platform. Determine whether the submitted text violates community guidelines (hate speech, explicit content, spam, harassment, threats, or illegal activity). Do not judge the user's account status or the truth of the request; only flag abusive or prohibited content. Respond with valid JSON only, no markdown. Format: {"flagged": boolean, "categories": string[]}\n\nText: ${JSON.stringify(outbound.clean)}`,
             }],
           }],
           generationConfig: { responseMimeType: 'application/json' },
@@ -76,8 +79,7 @@ async function moderateText(text: string, promptLabel: string): Promise<Moderati
   }
 
   if (!res.ok) {
-    const errBody = await res.json().catch(() => ({}));
-    console.error('[moderation] Gemini error', res.status, JSON.stringify(errBody));
+    console.error('[moderation] Gemini request failed', res.status);
     return { error: 'api_unavailable' };
   }
 
@@ -118,6 +120,8 @@ export async function moderateWalletReason(
   action: WalletReasonAction,
   reasonCategory: string,
 ): Promise<WalletModerationResult> {
+  const outbound = prepareExternalText(text);
+  if (!outbound.allowed) return { error: 'sensitive_data_detected' };
   const apiKey = process.env.GOOGLE_AI_KEY;
   if (!apiKey) return { error: 'api_unavailable' };
 
@@ -131,7 +135,7 @@ export async function moderateWalletReason(
     'When the text is safe but irrelevant or unprofessional, provide one concise improvement in advisoryMessage; otherwise use null.',
     'Do not decide whether the administrator is factually correct and do not judge the account status; only judge prohibited content and reason relevance.',
     'Respond with valid JSON only, no markdown: {"flagged": boolean, "relevant": boolean, "professional": boolean, "categories": string[], "advisoryMessage": string | null}.',
-    `Text: ${JSON.stringify(text)}`,
+    `Text: ${JSON.stringify(outbound.clean)}`,
   ].join(' ');
 
   let response: Response;
@@ -153,8 +157,7 @@ export async function moderateWalletReason(
   }
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    console.error('[moderation] Gemini Wallet-reason error', response.status, JSON.stringify(errorBody));
+    console.error('[moderation] Gemini Wallet-reason request failed', response.status);
     return { error: 'api_unavailable' };
   }
 

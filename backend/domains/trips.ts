@@ -114,6 +114,8 @@ export async function getTripNameSequence(db: SupabaseClient) {
   return highestDefaultTripNumber(await getTrips(db));
 }
 
+export type TripMutationCode = "TRIP_CHANGED" | "TRIP_INVALID" | "TRIP_NOT_AVAILABLE" | "TRIP_ACCESS_DENIED" | "TRIP_UNAVAILABLE" | "TRIP_RESULT_UNKNOWN";
+
 export type TripWrite<T> = { value: T; version: string };
 export async function writeTrip<T>(db: SupabaseClient, tripId: string, expectedVersion: string, operation: string, input: Record<string, unknown> = {}): Promise<TripWrite<T>> {
   const { data, error } = await db.rpc("mutate_customer_trip", {
@@ -121,10 +123,16 @@ export async function writeTrip<T>(db: SupabaseClient, tripId: string, expectedV
   });
   if (error) {
     const failure = new Error("Trip mutation rejected");
-    Object.assign(failure, { code: error.message.includes("trip_changed") ? "TRIP_CHANGED" : "TRIP_UNAVAILABLE" });
+    const message = error.message ?? "";
+    const code: TripMutationCode = message.includes("trip_changed") ? "TRIP_CHANGED"
+      : /authentication_required/.test(message) || error.code === "42501" ? "TRIP_ACCESS_DENIED"
+      : /trip_(not_found|item_not_found|activity_unavailable|outlet_unavailable|schedule_unavailable)/.test(message) ? "TRIP_NOT_AVAILABLE"
+      : /trip_.*(invalid|limit|non_chronological)/.test(message) || error.code?.startsWith("22") ? "TRIP_INVALID"
+      : error.code ? "TRIP_UNAVAILABLE" : "TRIP_RESULT_UNKNOWN";
+    Object.assign(failure, { code });
     throw failure;
   }
-  if (!data || typeof data.version !== "string") throw new Error("Trip receipt unavailable");
+  if (!data || typeof data.version !== "string") throw Object.assign(new Error("Trip receipt unavailable"), { code: "TRIP_RESULT_UNKNOWN" });
   return data as TripWrite<T>;
 }
 

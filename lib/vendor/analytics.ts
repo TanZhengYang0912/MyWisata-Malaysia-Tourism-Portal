@@ -38,6 +38,8 @@ export type AnalyticsInput = {
 
 export type AnalyticsTrendPoint = {
   label: string;
+  bucketKey?: string;
+  bucketGranularity?: 'week' | 'month';
   revenue: number;
   orders: number;
   averageOrderValue: number;
@@ -171,6 +173,7 @@ function trendLabel(key: string, input: AnalyticsInput) {
     : { timeZone: TIME_ZONE, day: '2-digit', month: 'short' }).format(date);
 }
 
+
 function average(total: number, count: number) {
   return count ? money(total / count) : 0;
 }
@@ -207,6 +210,8 @@ export function buildAnalyticsSnapshot(input: AnalyticsInput, filter: AnalyticsF
   }
   const trend = [...trendMap.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, bucket]) => ({
     label: trendLabel(key, input),
+    bucketKey: key,
+    bucketGranularity: rangeDuration(input.range.start, input.range.end) > 45 * 86400000 ? 'month' as const : 'week' as const,
     revenue: money(bucket.revenue),
     orders: bucket.orders.size,
     averageOrderValue: average(bucket.revenue, bucket.orders.size),

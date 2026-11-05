@@ -17,7 +17,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center' }}>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>Something went wrong</h1>
           <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280', maxWidth: '28rem' }}>
-            An unexpected error occurred while loading MyLawatan. You can try again, or return to the homepage.
+            An unexpected error occurred while loading MYLawatan. You can try again, or return to the homepage.
           </p>
           <div style={{ marginTop: '2rem', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'center' }}>
             <button

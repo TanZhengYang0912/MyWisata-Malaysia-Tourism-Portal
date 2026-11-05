@@ -1,4 +1,4 @@
-import { signIn } from './helpers/demo';
+import { localEnv, signIn } from './helpers/demo';
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 
@@ -176,6 +176,30 @@ test.describe("Sitewide language switching", () => {
   test.describe.configure({ timeout: 60_000 });
 
   test.beforeAll(async ({ request }) => {
+    const supabaseUrl = localEnv('NEXT_PUBLIC_SUPABASE_URL');
+    const projectRef = supabaseUrl
+      ? new URL(supabaseUrl).hostname.match(/^([a-z0-9]{20})\.supabase\.co$/)?.[1]
+      : undefined;
+    test.skip(
+      !projectRef || localEnv('PORTAL_E2E_TEST_DB_CONFIRM') !== projectRef,
+      'Requires PORTAL_E2E_TEST_DB_CONFIRM to match the exact isolated Supabase project; this suite changes seeded account language preferences.',
+    );
+
+    const baseURL = test.info().project.use.baseURL;
+    const configuredSiteUrl = localEnv('NEXT_PUBLIC_SITE_URL');
+    const isLoopback = (value: string | undefined) => {
+      if (!value) return false;
+      try {
+        return ['localhost', '127.0.0.1'].includes(new URL(value).hostname);
+      } catch {
+        return false;
+      }
+    };
+    test.skip(
+      !isLoopback(baseURL) || !isLoopback(configuredSiteUrl),
+      'Language-switching browser tests must target the local application, not the production website.',
+    );
+
     // Compile and prove the locale route before browser interactions so a
     // Next.js dev-server cold start is not charged to the first UI assertion.
     const response = await request.post("/api/locale", { data: { locale: "en" } });

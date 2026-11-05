@@ -1,7 +1,8 @@
 import 'server-only';
+import { prepareExternalText } from '@/lib/chatbot/pii';
 
 export type AiProvider = 'qwencloud' | 'modelscope';
-export type AiUnavailableReason = 'not_configured' | 'authentication_failed' | 'rate_limited' | 'unavailable';
+export type AiUnavailableReason = 'not_configured' | 'authentication_failed' | 'rate_limited' | 'sensitive_input' | 'unavailable';
 
 export type AiTextResult =
   | { available: true; provider: AiProvider; model: string; content: string }
@@ -43,6 +44,8 @@ export async function generateAiText(
   userPrompt: string,
   options: { temperature?: number; maxTokens?: number; signal?: AbortSignal; maxProviderAttempts?: number } = {},
 ): Promise<AiTextResult> {
+  const preparedPrompt = prepareExternalText(userPrompt);
+  if (!preparedPrompt.allowed) return { available: false, reason: 'sensitive_input' };
   const config = providerConfig();
   if (!config) return { available: false, reason: 'not_configured' };
 
@@ -81,8 +84,7 @@ export async function generateAiText(
         return { available: false, reason: 'authentication_failed' };
       }
       if (!response.ok) {
-        const detail = (await response.text().catch(() => '')).replace(/\s+/g, ' ').trim().slice(0, 240);
-        console.warn(`[ai] ${config.provider} request failed for ${model} (HTTP ${response.status})${detail ? `: ${detail}` : ''}`);
+        console.warn(`[ai] ${config.provider} request failed for ${model} (HTTP ${response.status})`);
         continue;
       }
 

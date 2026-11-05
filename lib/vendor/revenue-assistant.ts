@@ -443,7 +443,7 @@ function extractJson(text: string): unknown {
 }
 
 function buildVendorRevenueSystemPrompt(lang: ChatLanguage): string {
-  return `You are an assistant helping a vendor on a Malaysian tourism platform, MyLawatan, improve their listings' operational performance.
+  return `You are an assistant helping a vendor on a Malaysian tourism platform, MYLawatan, improve their listings' operational performance.
 
 Below is REAL, already-computed data about their own listings (already queried — treat every listing, number, and weekday as fact, never invent or change one).
 

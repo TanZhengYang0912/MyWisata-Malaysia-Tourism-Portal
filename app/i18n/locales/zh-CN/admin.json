@@ -24,16 +24,16 @@
     "Catalogue Review": "目录",
     "User Management": "用户",
     "KYC Review": "KYC",
-    "Withdrawals": "提现",
+    "Withdrawals": "提现审批",
     "Refunds": "退款",
     "Wallet Settings": "钱包",
     "Wallet Approvers": "审批人",
-    "Payout Reports": "提现",
+    "Payout Reports": "提现报告",
     "Reconciliation": "订单分账",
     "Recommendations": "推荐",
     "Support Tickets": "支持",
     "Chat Reports": "聊天举报",
-    "Affiliate": "联盟",
+    "Affiliate": "推广",
     "Chatbot": "聊天机器人",
     "AI Assistant": "AI 助手",
     "Staff Conduct": "员工行为",
@@ -149,7 +149,6 @@
   "accessControl": {
     "eyebrow": "安全治理",
     "title": "访问控制",
-    "description": "管理能力元数据、版本化策略、定向分配以及关联的全平台审计历史。",
     "capabilityNames": {
       "platform_browse": "登录后浏览",
       "commerce_booking": "顾客预订",
@@ -157,15 +156,16 @@
       "commerce_checkout": "顾客结账",
       "ai_basic_recommendation": "基础 AI 推荐",
       "recommendation_submit": "提交推荐",
-      "affiliate_limited": "有限联盟权限",
-      "affiliate_full": "完整联盟权限",
-      "affiliate_earn_commission": "赚取联盟佣金",
+      "affiliate_limited": "基础推广权限",
+      "affiliate_full": "完整推广权限",
+      "affiliate_earn_commission": "获取推广佣金",
+      "wallet_top_up": "钱包充值",
       "wallet_request_withdrawal": "申请提现",
       "wallet_approve_withdrawal": "批准提现"
     },
     "tabs": {
       "overview": "概览",
-      "capabilities": "能力",
+      "capabilities": "功能权限",
       "policies": "策略",
       "assignments": "分配",
       "staff-roles": "员工角色",
@@ -193,7 +193,7 @@
     },
     "accessibility": {
       "tabs": "访问控制分区",
-      "capabilityStatus": "能力状态",
+      "capabilityStatus": "功能权限状态",
       "assignmentStatus": "分配状态",
       "previousPage": "上一页",
       "nextPage": "下一页"
@@ -202,7 +202,7 @@
       "loading": "正在加载访问控制数据…",
       "empty": "暂无可用的访问控制数据。",
       "none": "无",
-      "noCapabilities": "没有符合筛选条件的能力。",
+      "noCapabilities": "没有符合筛选条件的功能权限。",
       "noPolicies": "没有符合筛选条件的策略。",
       "noVersions": "此策略尚无版本。",
       "noAssignments": "没有符合筛选条件的分配。",
@@ -211,8 +211,8 @@
     },
     "errors": {
       "load": "无法加载访问控制。",
-      "loadCapabilities": "无法加载能力。",
-      "saveCapability": "无法更新此能力。",
+      "loadCapabilities": "无法加载功能权限。",
+      "saveCapability": "无法更新此功能权限。",
       "loadPolicies": "无法加载策略。",
       "loadVersions": "无法加载策略版本。",
       "createVersion": "无法创建策略版本。",
@@ -223,51 +223,44 @@
       "loadStaffCandidates": "无法搜索符合条件的员工。",
       "saveStaffRole": "无法保存员工角色。",
       "assignStaffRole": "无法分配员工角色。",
-      "loadAudit": "无法加载审计日志。"
+      "loadAudit": "无法加载审计日志。",
+      "invalidAuditDateRange": "请输入有效日期范围。审计日期按马来西亚时间（MYT）筛选。"
     },
     "feedback": {
-      "capabilityUpdated": "能力治理元数据已更新。",
+      "capabilityUpdated": "功能权限设置已更新。",
       "policyUpdated": "策略操作已完成。",
       "assignmentUpdated": "分配操作已完成。",
       "staffRoleUpdated": "员工角色操作已完成。",
       "staffModuleUpdated": "员工模块设置已保存。",
       "staffRoleGranted": "已将“{{role}}”授予 {{employee}}。",
+      "previousMutationReceipt": "最近的权限变更可供审计查证。",
       "committedReceiptUnavailable": "更改已保存，但审计回执或最新状态暂时无法读取。请先刷新页面，再进行其他更改。"
     },
     "filters": {
-      "searchCapabilities": "搜索能力键",
+      "searchCapabilities": "搜索功能权限标识",
       "category": "类别",
       "allCategories": "全部类别",
       "all": "全部",
       "searchPolicies": "搜索策略",
       "policyStatus": "策略状态",
       "allStatuses": "全部状态",
-      "searchAssignments": "搜索主体或能力",
+      "searchAssignments": "搜索主体或功能权限",
       "subjectType": "主体类型",
       "allSubjects": "全部主体类型",
       "actionPrefix": "操作前缀",
       "actorId": "操作者 UUID",
       "entityType": "实体类型",
-      "capability": "能力",
-      "allCapabilities": "全部能力",
+      "capability": "功能权限",
+      "allCapabilities": "全部功能权限",
       "traceReference": "追踪引用",
       "dateFrom": "起始日期",
       "dateTo": "结束日期"
     },
     "overview": {
       "activeVersions": "生效版本",
-      "policiesDetail": "{{count}} 项受治理策略",
-      "policiesDetail_one": "{{count}} 项受治理策略记录",
-      "policiesDetail_other": "共有 {{count}} 项受治理策略",
       "pendingApprovals": "待审批",
       "activeAssignments": "生效分配",
-      "expiringDetail": "{{count}} 项将在 30 天内到期",
-      "expiringDetail_one": "{{count}} 项分配将在 30 天内到期",
-      "expiringDetail_other": "共有 {{count}} 项分配将在 30 天内到期",
       "generation": "策略代次",
-      "capabilitiesDetail": "{{count}} 项已注册能力",
-      "capabilitiesDetail_one": "{{count}} 项能力已经注册",
-      "capabilitiesDetail_other": "共有 {{count}} 项能力已经注册",
       "healthTitle": "评估器健康状态",
       "healthDescription": "警告反映当前治理状态，绝不会削弱硬性保护。",
       "noWarnings": "未发现评估器警告。",
@@ -281,21 +274,21 @@
       "openAudit": "打开全平台审计日志"
     },
     "warnings": {
-      "CAPABILITY_DISABLED": "至少一项能力已停用。受影响的决策将按安全方式拒绝。"
+      "CAPABILITY_DISABLED": "至少一项功能权限已停用。受影响的决策将按安全方式拒绝。"
     },
     "categories": {
       "platform": "平台",
       "commerce": "交易",
       "ai": "人工智能",
       "recommendation": "推荐",
-      "affiliate": "联盟",
+      "affiliate": "推广",
       "wallet": "钱包"
     },
     "risk": {
       "low": "低",
       "medium": "中",
       "high": "高",
-      "critical": "关键"
+      "critical": "极高"
     },
     "status": {
       "enabled": "已启用",
@@ -318,7 +311,7 @@
       "false": "假"
     },
     "forms": {
-      "reason": "治理原因",
+      "reason": "变更原因",
       "reasonPlaceholder": "说明业务或安全原因（至少 10 个字符）。"
     },
     "staffRoles": {
@@ -345,7 +338,7 @@
       "staffMember": "员工",
       "staffSearchPlaceholder": "按姓名或邮箱搜索",
       "searchStaff": "搜索",
-      "searchHelp": "搜索并选择已启用的管理员、审批员或超级管理员。",
+      "searchHelp": "搜索并选择已启用的员工、管理员、审批员或超级管理员。",
       "systemRole": "系统",
       "systemPreset": "系统预设",
       "customRole": "自定义角色",
@@ -366,7 +359,7 @@
       "alreadyAssigned": "该员工已经拥有此角色，请选择其他员工或角色。",
       "stepReason": "3. 填写授予权限的原因",
       "assignmentReasonHelp": "此说明会存入审计日志，不会改变角色名称。",
-      "assignmentReasonPlaceholder": "例如：新增第二位钱包审批员，负责周末提款复核。",
+      "assignmentReasonPlaceholder": "例如：新增第二位钱包审批员，负责周末提现复核。",
       "reviewGrant": "复核授予 {{count}} 项权限",
       "reviewGrant_one": "复核授予 {{count}} 项权限",
       "reviewGrant_other": "复核授予 {{count}} 项权限",
@@ -378,7 +371,7 @@
       "confirmReason": "治理原因",
       "permissionLabels": {
         "kycReview": "审核 KYC 申请",
-        "withdrawalApprove": "审批钱包提款申请",
+        "withdrawalApprove": "审批钱包提现申请",
         "vendorManage": "管理商家",
         "mapCampaignManage": "管理赞助地图活动"
       },
@@ -408,9 +401,12 @@
       "invitationSent": "邀请邮件已发送。",
       "invitationResent": "邀请已用新链接重新发送。",
       "invitationRevoked": "邀请已撤销。",
+      "invitationCommittedDeliveryFailed": "邀请已记录，但邮件未能发送。重试前请先检查邀请状态。",
+      "invitationCommittedDeliveryPending": "邀请已记录，邮件投递仍在确认中。重试前请先检查邀请状态。",
       "invitationError": "无法处理员工邀请。",
       "joinedEmployees": "已加入员工",
       "invitationListEntry": "{{roleName}} · {{status}} · {{delivery}}",
+      "expiresAt": "到期时间：{{value}}",
       "delivery": {
         "pending": "等待中",
         "sending": "发送中",
@@ -441,7 +437,7 @@
       "saveError": "无法保存模块。"
     },
     "confirm": {
-      "capabilityTitle": "确认能力变更",
+      "capabilityTitle": "确认功能权限变更",
       "capabilityDescription": "此治理变更会感知策略代次，并记录到审计日志。",
       "save": "保存治理变更",
       "approveTitle": "审批策略版本",
@@ -459,22 +455,22 @@
       "typePhraseLabel": "输入确认短语"
     },
     "capabilities": {
-      "key": "能力",
+      "key": "功能权限",
       "category": "类别",
       "risk": "风险",
-      "visibility": "客户可见",
+      "visibility": "顾客可见",
       "assignment": "手动分配",
       "status": "状态",
       "actions": "操作",
-      "editTitle": "管理能力元数据",
-      "immutableKey": "能力键永久固定，无法编辑。",
-      "customerVisible": "客户可见",
+      "editTitle": "编辑功能权限设置",
+      "immutableKey": "功能权限标识永久固定，无法编辑。",
+      "customerVisible": "顾客可见",
       "manuallyAssignable": "允许手动分配",
       "enabled": "启用"
     },
     "policies": {
       "name": "策略",
-      "capability": "能力",
+      "capability": "功能权限",
       "scope": "范围",
       "latest": "最新版本",
       "versions": "版本数",
@@ -542,12 +538,12 @@
       "userSearchError": "无法搜索用户。",
       "changeUser": "更换用户",
       "unavailableUser": "用户不可用",
-      "capability": "能力",
-      "selectCapability": "选择可用能力",
+      "capability": "功能权限",
+      "selectCapability": "选择可用功能权限",
       "systemManagedOption": "由系统管理，不能人工允许",
-      "disabledOption": "能力已停用",
-      "allowCapabilityHelp": "“允许”只能选择已启用且允许人工分配的能力。",
-      "denyCapabilityHelp": "“拒绝”可以选择任何已启用能力，包括由系统管理的能力。",
+      "disabledOption": "功能权限已停用",
+      "allowCapabilityHelp": "“允许”只能选择已启用且允许人工分配的功能权限。",
+      "denyCapabilityHelp": "“拒绝”可以选择任何已启用功能权限，包括由系统管理的功能权限。",
       "effect": "效果",
       "startsAt": "开始时间",
       "expiresAt": "到期时间（可选）",
@@ -560,11 +556,13 @@
       "revokeTitle": "撤销分配"
     },
     "audit": {
-      "readOnlyTitle": "只读证据。",
-      "readOnlyDescription": "此全平台审计日志包含访问控制及关联的平台治理事件；目录审核仍是独立工作流程。",
+      "readOnlyTitle": "只读记录。",
+      "readOnlyDescription": "包含权限变更及相关管理操作。",
       "focusedEvent": "已选择审计事件：{{id}}",
+      "focusedEntity": "正在查看 {{id}} 的审计记录",
       "focusNotOnPage": "所选事件不在当前结果页内。",
       "when": "时间",
+      "whenMyt": "时间（马来西亚时间）",
       "actor": "操作者",
       "action": "操作",
       "target": "目标",
@@ -572,6 +570,7 @@
       "trace": "追踪引用",
       "details": "详情",
       "systemActor": "系统",
+      "unknownActor": "未知账号",
       "before": "变更前",
       "after": "变更后",
       "changeSummary": "关键变更",
@@ -579,14 +578,14 @@
       "technicalDetails": "技术详情",
       "actionSummaries": {
         "unknown": "未知审计操作",
-        "affiliateLinkDisabled": "停用了联盟链接",
-        "affiliateLinkReenabled": "重新启用了联盟链接",
+        "affiliateLinkDisabled": "停用了推广链接",
+        "affiliateLinkReenabled": "重新启用了推广链接",
         "contentApprove": "批准了目录内容",
         "contentReject": "拒绝了目录内容",
         "contentRequestChanges": "要求修改目录内容",
         "entitlementAssignmentRevoked": "撤销了授权分配",
         "entitlementAssignmentSet": "设置了授权分配",
-        "entitlementCapabilityUpdated": "更新了能力设置",
+        "entitlementCapabilityUpdated": "更新了功能权限设置",
         "entitlementPolicyRollbackRequested": "请求回滚策略",
         "entitlementPolicyVersionActivated": "启用了策略版本",
         "entitlementPolicyVersionApproved": "批准了策略版本",
@@ -607,6 +606,17 @@
         "staffInvitationDeliverySucceeded": "发送了员工邀请",
         "staffInvitationResent": "重新发送了员工邀请",
         "staffInvitationRevoked": "撤销了员工邀请",
+        "staffModuleCreated": "创建了员工权限模块",
+        "staffModuleUpdated": "更新了员工权限模块",
+        "staffPasskeyApprove": "验证了用于审批的通行密钥",
+        "staffPasskeyEnrollmentGrant": "授予了通行密钥注册权限",
+        "staffPasskeyFraudOverride": "验证了用于反欺诈例外操作的通行密钥",
+        "staffPasskeyLogin": "使用通行密钥登录",
+        "staffPasskeyManage": "验证了用于员工安全管理的通行密钥",
+        "staffPasskeyRecoveryGrant": "授予了通行密钥恢复权限",
+        "staffPasskeyRegister": "注册了通行密钥",
+        "staffPasskeyRetryPayout": "验证了用于重试付款的通行密钥",
+        "staffPasskeyRevoked": "撤销了通行密钥",
         "staffRoleAssigned": "分配了员工角色",
         "staffRoleCreated": "创建了员工角色",
         "staffRoleRevoked": "撤销了员工角色分配",
@@ -642,9 +652,13 @@
         "enabled": "已启用",
         "effect": "效果",
         "riskLevel": "风险等级",
-        "customerVisible": "客户可见",
+        "customerVisible": "顾客可见",
         "manuallyAssignable": "可手动分配",
         "generation": "代次",
+        "assignmentId": "分配记录 ID",
+        "roleId": "角色 ID",
+        "userId": "用户 ID",
+        "revoked": "已撤销",
         "roleName": "角色名称",
         "moduleKeys": "模块",
         "permissionKeys": "权限",
@@ -730,7 +744,7 @@
     "pending": "待处理",
     "approved": "已批准",
     "rejected": "已拒绝",
-    "open": "开放",
+    "open": "未处理",
     "resolved": "已解决",
     "active": "启用",
     "inactive": "未启用",
@@ -754,7 +768,7 @@
     "reactivate": "重新启用",
     "hold": "暂缓",
     "resume": "恢复",
-    "fraud-override": "欺诈覆盖",
+    "fraud-override": "覆盖高风险",
     "resolved": "解决",
     "dismissed": "忽略",
     "dismiss": "忽略",
@@ -778,12 +792,12 @@
       "showing": "显示 {{first}}–{{last}} 条，共 {{total}} 条"
     },
     "guestReview": {
-      "reason": "Guest 联系邮箱与联盟已验证邮箱匹配。这只是待审核信号，不是身份或欺诈结论。",
+      "reason": "Guest 联系邮箱与推广用户的已验证邮箱匹配。这只是待审核信号，不是身份或欺诈结论。",
       "release": "解除拦截并按正常规则清算",
       "reject": "拒绝此佣金"
     },
     "maturityExposure": {
-      "title": "联盟佣金风险敞口",
+      "title": "推广佣金风险敞口",
       "description": "按系统记录的订单状态汇总金额与笔数。订单仍显示已付款时，实际履约状态可能尚未记录。",
       "pending": "待清算佣金",
       "paid": "订单仍标记已付款的已确认佣金",
@@ -802,13 +816,19 @@
       "openPercentage": "{{percent}}% 开放",
       "openVsReviewed": "开放与已审核",
       "selfReferrals": "已阻止自我推荐",
-      "topFlagged": "被标记最多的联盟",
+      "topFlagged": "被标记最多的推广用户",
       "totalFlags": "标记总数",
       "flagCount_one": "{{count}} 个标记",
       "flagCount_other": "{{count}} 个标记"
     },
     "clearing": {
       "errors": "，{{count}} 个错误",
+      "orderReviewRequired": "{{count}} 笔佣金因订单审核仍保持待处理。",
+      "orderReviewRequired_one": "{{count}} 笔佣金因订单审核仍保持待处理。",
+      "orderReviewRequired_other": "{{count}} 笔佣金因订单审核仍保持待处理。",
+      "rowErrors": "有 {{count}} 笔结果需要确认。请先刷新列表再操作；如仍不清楚，请联系支持并提供请求编号：{{requestIds}}。",
+      "rowErrors_one": "有 {{count}} 笔结果需要确认。请先刷新列表再操作；如仍不清楚，请联系支持并提供请求编号：{{requestIds}}。",
+      "rowErrors_other": "有 {{count}} 笔结果需要确认。请先刷新列表再操作；如仍不清楚，请联系支持并提供请求编号：{{requestIds}}。",
       "result": "已清除 {{cleared}} 个，已冲销 {{reversed}} 个，已跳过 {{skipped}} 个{{errors}}",
       "errors_one": "，{{count}} 个错误",
       "errors_other": "，{{count}} 个错误"
@@ -816,7 +836,7 @@
     "columns": {
       "actions": "操作",
       "activity": "活动",
-      "affiliate": "联盟",
+      "affiliate": "推广用户",
       "commission": "佣金",
       "date": "日期",
       "evidence": "证据",
@@ -835,20 +855,24 @@
       "batchFlags": "一个或多个欺诈标记无法更新。",
       "batchFlagUpdate": "批量更新欺诈标记失败。",
       "clearing": "清算运行失败。",
-      "exportRetry": "无法导出联盟报告。请重试。",
+      "clearingUncertain": "无法确认这笔佣金的结果。请先刷新列表再操作；如仍不清楚，请联系支持并提供请求编号 {{requestId}}。",
+      "exportRetry": "无法导出推广报告。请重试。",
       "flagNeedsLink": "停用前，每个选中的开放标记都必须有链接。",
       "fraudSweep": "欺诈扫描失败。",
-      "loadDescription": "加载联盟概览时出错。请尝试刷新页面。",
+      "loadDescription": "加载推广概览时出错。请尝试刷新页面。",
       "loadFraudAnalytics": "无法加载欺诈分析。",
-      "loadTitle": "无法加载联盟统计数据",
-      "reactivateLink": "无法重新启用联盟链接。",
-      "reactivateLinkRetry": "无法重新启用联盟链接。请重试。",
+      "loadTitle": "无法加载推广统计数据",
+      "reactivateLink": "无法重新启用推广链接。",
+      "reactivateLinkRetry": "无法重新启用推广链接。请重试。",
       "reviewFlag": "无法审核欺诈标记。",
       "reviewFlagRetry": "无法审核欺诈标记。请重试。",
-      "saveAffiliateTier": "无法保存联盟等级。",
+      "saveAffiliateTier": "无法保存推广等级。",
       "saveTier": "无法保存等级。",
       "selectOpenFlags": "请先选择开放的欺诈标记。",
       "accept": "无法通过此佣金。",
+      "noShowPolicy": "已核实用户未到场，但尚无批准的 推广 佣金规则；这笔佣金会继续待审。",
+      "orderReview": "此订单仍需处理取货或退款审核。请在对账页面处理后刷新，再接受佣金。",
+      "requestIdUnavailable": "暂不可用",
       "reject": "无法拒绝此佣金。",
       "guestReview": "无法处理 Guest 佣金审核。请刷新后重试。"
     },
@@ -876,13 +900,29 @@
     "loading": "加载中…",
     "loadingFraudAnalytics": "正在加载欺诈分析…",
     "metrics": {
-      "affiliates": "联盟数量",
+      "affiliates": "推广用户数",
       "clicks": "点击",
       "commission": "已承诺佣金",
       "referrals": "推荐"
     },
     "minReferrals": "最低推荐数",
     "noAttributions": "没有符合此筛选条件的归因。",
+    "releasePreview": {
+      "label": "订单只读预演",
+      "orderReference": "订单编号：{{id}}",
+      "openReconciliation": "打开订单对账",
+      "ready": "订单检查和结算期限均已通过。正式清算时仍会重新检查全部资格；此预演没有修改资料。",
+      "waitingForMaturity": "订单检查已通过，等待设定的结算日期：{{date}}；正式清算时仍会重新检查全部资格。",
+      "reasons": {
+        "no_show_policy": "已核实用户未到场，佣金规则仍待决定。",
+        "order_exception_open": "订单异常仍待审核。",
+        "order_missing": "无法确认订单；请保持佣金待审。",
+        "order_not_paid": "订单付款尚未确认；请保持佣金待审。",
+        "pickup_unconfirmed": "尚未记录活动订单已完成取货。",
+        "preview_unavailable": "无法核实订单；请保持佣金待审。",
+        "refund_review": "退款状态仍需审核。"
+      }
+    },
     "noCommissions": "尚未获得佣金。",
     "noDisabledLinks": "当前没有停用的链接。",
     "noFlags": "没有标记内容。",
@@ -916,8 +956,8 @@
       "batchFlags": "{{count}} 个欺诈标记已处理。",
       "flagConfirmed": "欺诈标记已确认。",
       "flagDismissed": "欺诈标记已忽略。",
-      "linkReactivated": "联盟链接已重新启用。",
-      "tierSaved": "联盟等级已保存。",
+      "linkReactivated": "推广链接已重新启用。",
+      "tierSaved": "推广等级已保存。",
       "batchFlags_one": "{{count}} 个欺诈标记已处理。",
       "batchFlags_other": "{{count}} 个欺诈标记已处理。",
       "accepted": "佣金已通过。",
@@ -927,7 +967,7 @@
     "sweep": {
       "result": "已扫描 {{links}} 个链接，发现 {{flags}} 个新标记"
     },
-    "title": "联盟运营监管",
+    "title": "推广运营监管",
     "topEarners": "收入最高者",
     "qr": {
       "errors": {
@@ -971,7 +1011,6 @@
       "restoring": "正在恢复对话…",
       "title": "询问平台指标"
     },
-    "description": "平台分析。不会读取原始客户记录——指标来自一组固定的已注册聚合查询。",
     "errors": {
       "unavailable": "助手目前不可用。"
     },
@@ -999,7 +1038,6 @@
       "type": "类型",
       "vendorLocation": "商家 / 位置"
     },
-    "description": "在这些更改对客户可见之前，审核门店、商品和促销内容。",
     "empty": "没有内容等待审核。",
     "entity": {
       "listing": "商品",
@@ -1089,7 +1127,7 @@
     },
     "categories": {
       "account": "账户",
-      "affiliate": "联盟",
+      "affiliate": "推广",
       "booking": "预订",
       "general": "一般",
       "payment": "付款",
@@ -1105,6 +1143,7 @@
       "batchFailed": "批量更新知识库文件失败。",
       "batchUpdate": "一个或多个知识库文件无法更新。",
       "draft": "暂时无法起草知识库条目。",
+      "privacyBlocked": "完整请求没有发送给 AI，因为可能包含个人资料。请移除电话、邮箱、证件、银行资料或私人地址，或手动编写知识库条目。关键词答复仍可使用。",
       "loadDescription": "加载聊天机器人概览时出错。请尝试刷新页面。",
       "loadTitle": "无法加载聊天机器人统计数据",
       "reindex": "重新索引失败。",
@@ -1363,7 +1402,7 @@
       "withdrawalRequests_other": "{{count}} 个提现请求"
     },
     "oldestWithdrawal": "最早提现",
-    "openApprovals": "开放审批",
+    "openApprovals": "查看审批",
     "openItems": "{{count}} 个待处理项目",
     "priorityLanes": "优先队列",
     "queueActivity": "队列活动",
@@ -1406,6 +1445,26 @@
     "confirm": {
       "approve": "确认批准",
       "approveDescription": "这会将客户标记为 KYC 已验证，并关闭当前提交。",
+      "actualType": "证件上的实际类型",
+      "documentNumber": "证件号码（仅用于生成受保护的匹配键）",
+      "holderName": "证件上显示的姓名",
+      "identityEvidenceHint": "打开当前证件正反面，核对实际姓名和号码。号码不会以明文保存。",
+      "independentEvidenceHint": "请独立检查证件正反面，并填写你看到的姓名和号码。",
+      "independentReview": "作为第二审核员独立确认此案件",
+      "issuerCountry": "签发国家（两位字母代码）",
+      "manualReason": "需要人工确认的原因",
+      "nameMismatch": "姓名与 OCR 不一致",
+      "numberMismatch": "号码与 OCR 不一致",
+      "ocrUnavailable": "OCR 无法使用",
+      "ocrUnreadable": "OCR 无法识别",
+      "openBothDocuments": "请先打开证件正反面图片，再进行确认。",
+      "secondaryReviewer": "独立第二审核员",
+      "secondaryReviewerRequired": "请先选择一名符合条件的第二审核员。",
+      "loadingReviewers": "正在加载符合条件的审核员…",
+      "selectReviewer": "选择审核员",
+      "secondReviewRecorded": "独立复核已记录。案件指派审核员可以继续完成决定。",
+      "secondReviewReady": "当前证据的两项确认都已记录，可以提交批准。",
+      "waitingForSecondReview": "你的确认已保存。所选第二审核员确认相同证据后，才能继续批准。",
       "approveTitle": "批准 KYC 提交？",
       "info": "发送请求",
       "infoDescription": "这会通知客户，在完成 KYC 前需要提供更多信息。",
@@ -1414,7 +1473,6 @@
       "rejectDescription": "这会拒绝该提交，并将所选原因记录在审核历史中。",
       "rejectTitle": "拒绝 KYC 提交？"
     },
-    "description": "审核身份文件、处理例外情况，并确保验证决定可审计。",
     "detail": {
       "approve": "批准 KYC",
       "automatedChecks": "自动检查",
@@ -1457,7 +1515,8 @@
       "previewAlt": "用于身份资料对照的{{side}}证件",
       "closePreview": "关闭证件预览",
       "openPdf": "在浏览器中查看 PDF",
-      "pdfNote": "这份历史提交包含 PDF，请通过受保护的证件查看入口打开。"
+      "pdfNote": "这份历史提交包含 PDF，请通过受保护的证件查看入口打开。",
+      "viewDetails": "查看详情"
     },
     "documents": {
       "driving_license": "驾驶执照 / MyPolis",
@@ -1494,18 +1553,13 @@
     },
     "metrics": {
       "infoRequested": "已请求补充信息",
-      "infoRequestedNote": "等待客户操作",
       "oldest": "队列中最早的项目",
       "pending": "待审核",
-      "pendingNote": "等待决定",
-      "queueClear": "队列已清空",
-      "submittedFirst": "最早提交",
-      "verified": "已验证用户",
-      "verifiedNote": "当前已通过 KYC 验证的账户"
+      "verified": "已验证用户"
     },
     "ocr": {
       "check": "OCR 检查：",
-      "documentEnding": "文件编号末尾：{{number}}",
+      "documentEnding": "证件号码后四位：{{number}}",
       "expiryDate": "到期日：{{date}}",
       "extractedName": "提取的姓名：{{name}}",
       "mismatch": "不匹配：{{fields}}",
@@ -1522,10 +1576,19 @@
       "reasonCode": "原因代码（{{reasons}}）："
     },
     "queue": {
-      "description": "打开每份提交以检查文件，然后采取操作。",
       "oldestFirst": "最早优先",
       "selectAll": "全选待处理提交",
-      "title": "审核队列"
+      "title": "审核队列",
+      "nextApplicant": "下一位申请人",
+      "currentReview": "当前审核",
+      "startReview": "开始审核",
+      "startReviewFor": "开始审核 {{name}} 的申请",
+      "continueReview": "继续审核",
+      "continueReviewFor": "继续审核 {{name}} 的申请",
+      "unnamedApplicant": "未提供姓名的申请人",
+      "candidateUnavailable": "暂时无法加载下一位申请人，请刷新重试。",
+      "noAvailable": "暂无可供你审核的案件。",
+      "securityAttention": "需要处理"
     },
     "reasons": {
       "document_expired": "文件已过期",
@@ -1574,6 +1637,10 @@
       "verify": "验证并继续",
       "cancel": "取消绑定",
       "setupError": "无法开始验证器验证。请重试或刷新页面。",
+      "staffAccountRequired": "当前账号无法进行员工验证。请点击“切换账号”，使用有效的管理员或员工账号登录。",
+      "switchAccount": "切换账号",
+      "switchAccountError": "退出登录失败，当前账号仍处于登录状态。请再次点击“切换账号”。",
+      "retry": "重新检查",
       "verifyError": "验证失败。请输入新的验证码再试。",
       "cancelError": "无法取消绑定，请重试。",
       "recovery": "如果遗失验证器，请联系项目管理员，在核实身份后恢复访问。不要向客服发送二维码、密钥或验证码。"
@@ -1599,6 +1666,49 @@
       "noEmailRecipients": "目前没有使用真实邮箱的合资格审核人员。请配置接收账号后再依赖邮件告警。",
       "pending_one": "{{count}} 条安全告警正在等待符合权限的接收者。",
       "pending_other": "{{count}} 条安全告警正在等待符合权限的接收者。"
+    },
+    "resolution": {
+      "title": "身份处置",
+      "description": "用于身份冲突和更正的受控双人流程。应用后只会保留或转移身份键供重新核验，不会释放身份号码。",
+      "kind": "处置类型",
+      "legacyConflict": "历史身份冲突",
+      "ownershipCorrection": "冻结存在争议的历史归属记录",
+      "replacement": "更换账号原有身份",
+      "start": "发起处置",
+      "secondReviewer": "独立处置审核员",
+      "selectReviewer": "选择符合条件的审核员",
+      "assignSecond": "请求第二人复核",
+      "evidenceHint": "两位审核员都必须检查当前证件正反面，并独立确认实际马来西亚身份资料。",
+      "documentsViewed_one": "已打开当前证件：{{count}} / 2",
+      "documentsViewed_other": "已打开当前证件：{{count}} / 2",
+      "reason": "为什么需要更正这项身份决定？",
+      "confirmEvidence": "以当前审核员身份确认材料",
+      "confirmations": "主审核员：{{primary}} · 第二审核员：{{secondary}}",
+      "confirmed": "已确认",
+      "pending": "待确认",
+      "apply": "应用受控处置",
+      "cancel": "取消本次处置",
+      "cancelConfirm": "取消这次身份处置？系统会作废本次确认，并保持所有身份绑定不变。",
+      "cancelReason": "取消原因",
+      "cancelReasons": {
+        "reviewer_declined": "审核员决定不继续",
+        "evidence_unavailable": "无法取得所需证据",
+        "case_changed": "案件或证据已变化",
+        "other": "其他操作原因"
+      },
+      "cancelledNote": "处置已取消。本次确认已作废，身份绑定保持不变。",
+      "appliedNote": "处置已记录。普通 KYC 审批成功前，账号仍保持未验证。",
+      "conflictHeldNote": "该身份仍以冲突状态保留。系统没有替双方选择身份归属，仍需人工调查裁定。",
+      "status": "状态：{{status}}",
+      "error": "无法完成身份处置。请刷新案件并检查当前状态。",
+      "statuses": {
+        "open": "等待独立审核员",
+        "second_review": "等待两人确认",
+        "applied": "已应用",
+        "evidence_required": "需要证据",
+        "declined": "已拒绝",
+        "cancelled": "已取消"
+      }
     },
     "operations": {
       "title": "KYC 运营 · 今日（马来西亚时间）",
@@ -1645,14 +1755,14 @@
       "recording": "正在记录此区间。离开窗口会暂停，返回后请手动继续。",
       "notRecording": "区间记录已暂停。开始审核时可开启，不影响审核决定。",
       "recordingInterrupted": "无法确认暂停成功。未结束区间不会计入时间统计。",
-      "continueNext": "保存本次决定后，打开下一单",
-      "intervalMeans": "记录区间均值：初审 {{first}} 秒 · 补件重审 {{repeat}} 秒（不等于单份处理时间）"
+      "continueNext": "保存决定后，审核下一位申请人",
+      "intervalMeans": "记录区间均值：初审 {{first}} 秒 · 补件重审 {{repeat}} 秒"
     }
   },
   "reconciliation": {
     "eyebrow": "资金去向",
     "title": "订单资金明细",
-    "description": "逐单明细：客户付款额、商家净额、平台佣金，以及其中有多少用于支付推广联盟和推荐佣金。",
+    "description": "逐单明细：客户付款额、商家净额、平台佣金，以及其中有多少用于支付推广佣金和推荐佣金。",
     "month": "月份",
     "reload": "重新加载",
     "loading": "加载中…",
@@ -1668,7 +1778,7 @@
       "gross": "客户付款",
       "platformFee": "平台佣金",
       "vendorNet": "商家净额",
-      "affiliate": "联盟佣金支出",
+      "affiliate": "推广佣金支出",
       "recommendation": "推荐佣金支出",
       "platformNet": "平台净额"
     },
@@ -1678,8 +1788,8 @@
       "gross": "总额",
       "fee": "佣金",
       "vendorNet": "商家净额",
-      "affiliate": "联盟",
-      "recommendation": "推荐",
+      "affiliate": "推广佣金",
+      "recommendation": "推荐佣金",
       "platformNet": "平台净额"
     },
     "filters": {
@@ -1745,6 +1855,19 @@
     }
   },
   "payouts": {
+    "csv": {
+      "summary": "汇总",
+      "detail": "详情",
+      "headers": {
+        "section": "类别",
+        "date_or_metric": "日期或指标",
+        "user_or_source": "用户或来源",
+        "source_or_value": "来源或数值",
+        "count": "数量",
+        "amount_rm": "金额（RM）",
+        "payout_fees_rm": "提现手续费（RM）"
+      }
+    },
     "allSources": "全部来源",
     "amountMetrics": {
       "amount_approved_rm": "已批准 RM",
@@ -1785,6 +1908,7 @@
       "load": "无法加载提现报告"
     },
     "exportCsv": "导出 CSV",
+    "exportReadableCsv": "导出可读 CSV",
     "eyebrow": "财务运营",
     "financialDescription": "所有金额均以马来西亚林吉特显示。",
     "financialDetails": "财务详情",
@@ -1803,7 +1927,7 @@
     "requestStatus": "请求状态",
     "requestStatusDescription": "月度提现队列的快速概览。",
     "riskExposureTitle": "已记录的商家追回风险敞口",
-    "riskExposureDescription": "这里只统计已记录的商家结算追回缺口，不代表平台或联盟营销的全部损失，也不是已批准的准备金金额。",
+    "riskExposureDescription": "这里只统计已记录的商家结算追回缺口，不代表平台或推广业务相关的全部损失，也不是已批准的准备金金额。",
     "riskExposure": {
       "month": "本月记录的缺口",
       "open": "报告生成时尚未解决的缺口",
@@ -1840,7 +1964,7 @@
       "tier": "等级"
     },
     "confirmed": "已确认 {{count}} 条归因。",
-    "description": "将联盟佣金从待处理状态转入可用收益。",
+    "description": "将推广佣金从待处理状态转入可用收益。",
     "errors": {
       "clearanceFailed": "清算失败",
       "unknown": "未知错误"
@@ -1852,7 +1976,7 @@
     "runDescription": "处理所有持有窗口已到期的待处理佣金。Vercel Cron 也会在 MYT 午夜自动运行。",
     "running": "运行中…",
     "runNow": "立即运行清算",
-    "tierRates": "联盟等级费率",
+    "tierRates": "推广等级费率",
     "title": "奖励结算",
     "totalValue": "总价值",
     "confirmed_one": "已确认 {{count}} 条归因。",
@@ -1927,7 +2051,7 @@
       "contributorLine": "顾客推荐 · {{category}} · {{state}} · 推荐人：{{author}}",
       "description": "在联系商家前审核社区推荐。",
       "duplicate": "重复",
-      "member": "MyLawatan 会员",
+      "member": "MYLawatan 会员",
       "noPending": "没有待审核推荐",
       "pending": "待审核（{{count}}）",
       "pendingLabel": "待审核推荐",
@@ -2107,18 +2231,14 @@
       },
       "rows": "行数",
       "rowsPerPage": "每页行数",
-      "searchHint": "按下“搜索”后应用搜索条件。筛选会自动更新。",
       "searchPlaceholder": "搜索姓名、电子邮件或用户 ID",
       "selectAllVisible": "选择所有可见用户",
       "selectUser": "选择用户 {{name}}",
       "stats": {
-        "attention": "需要关注",
-        "attentionNote": "已暂停、已删除或简介受限",
+        "attention": "需要关注（已暂停、已删除或简介受限）",
         "incomplete": "资料不完整",
-        "pageNote": "本页",
         "pendingKyc": "待审核 KYC",
-        "total": "用户总数",
-        "totalNote": "符合当前筛选条件的所有用户"
+        "total": "用户总数"
       },
       "status": {
         "active": "活跃",
@@ -2195,7 +2315,7 @@
       "errors": {
         "action": "操作失败",
         "load": "无法加载商家",
-        "ownerKycRequired": "活动商家获批前，所有人必须通过身份验证（KYC）。"
+        "ownerKycRequired": "活动商家获批前，负责人必须通过身份验证（KYC）。"
       },
       "export": "导出当前视图",
       "eyebrow": "马来西亚商家网络",
@@ -2296,10 +2416,9 @@
     },
     "walletApprovers": {
       "active": "账户正常",
-      "backToSettings": "返回钱包设置",
       "currentDescription": "每次角色更改都必须单独填写理由并确认。",
       "currentTitle": "当前审批人",
-      "description": "管理可以批准钱包提款的人员，同时保留最后一名审批人的安全保护。",
+      "description": "管理可以批准钱包提现的人员，同时保留最后一名审批人的安全保护。",
       "eyebrow": "钱包治理",
       "grant": "授予权限",
       "grantDescription": "选择一名活跃用户，并记录授予审批权限的原因。",
@@ -2321,7 +2440,6 @@
     "systemSettings": {
       "eyebrow": "平台控制",
       "title": "系统设置",
-      "description": "在事故或计划维护期间，暂时暂停指定的顾客操作。",
       "loading": "正在读取系统设置…",
       "retry": "重试",
       "unsaved": "有未保存的更改",
@@ -2331,10 +2449,6 @@
       "unknownActor": "未知管理员",
       "updated": "最近由 {{by}} 于 {{date}} 修改",
       "saved": "系统设置已保存并记录。",
-      "controls": {
-        "title": "平台控制",
-        "description": "保存后会影响新的操作。"
-      },
       "orders": {
         "title": "暂停顾客新订单",
         "description": "阻止新的购物车、活动预订及订单付款结账请求。",
@@ -2348,10 +2462,6 @@
       "reasonLabel": "更改原因",
       "reasonPlaceholder": "说明事故或维护原因（至少 10 个字符）。",
       "impact": {
-        "title": "更改影响",
-        "description": "这些控制用于临时事故处理和维护。",
-        "orders": "暂停订单：阻止顾客创建新订单，不会取消已创建订单。",
-        "email": "暂停邮件：邮件保留在待发送队列，恢复后继续发送。",
         "audit": "每次保存都会记录 Super Admin、时间、修改前后内容及原因。"
       },
       "confirm": {
@@ -2394,16 +2504,16 @@
             "title": "撤销钱包审批人权限？"
           }
         },
-        "saveDescription": "新数值将适用于未来的奖励和提款请求。现有请求保留其记录状态，此更改将写入审计日志。",
+        "saveDescription": "新数值将适用于未来的奖励和提现请求。现有请求保留其记录状态，此更改将写入审计日志。",
         "saveTitle": "保存钱包政策更改？"
       },
       "currentStored": "以仙为单位精确存储 · 当前：{{value}}",
       "currentUnit": "当前值（{{unit}}）",
-      "description": "管理付款政策、升级时限及有权批准钱包请求的人员。",
+      "description": "管理提现政策、升级时限及有权批准钱包请求的人员。",
       "effective": {
         "days": "{{count}} 天",
         "description": "以下数值是当前生效的配置。",
-        "existingState": "政策设置更改时，现有提款请求保留其记录状态。",
+        "existingState": "政策设置更改时，现有提现请求保留其记录状态。",
         "hours": "{{count}} 小时",
         "title": "生效政策",
         "days_one": "{{count}} 天",
@@ -2425,7 +2535,7 @@
         "loadGovernance": "无法加载钱包治理设置",
         "loadSettings": "无法加载钱包设置",
         "negative": "数值不能为负数。",
-        "minimumWithdrawal": "最低提款金额必须至少为 RM1.00。",
+        "minimumWithdrawal": "最低提现金额必须至少为 RM1.00。",
         "reasonBeforeSave": "保存前，请添加至少 10 个字符的更改理由。",
         "roleReason": "继续前，请添加至少 10 个字符的角色更改理由。",
         "save": "无法保存设置"
@@ -2435,7 +2545,7 @@
         "clearanceDays": "奖励清算天数",
         "dualApprovalThreshold": "双人审批门槛",
         "holdEscalation": "暂停升级",
-        "minimumWithdrawal": "最低提款额",
+        "minimumWithdrawal": "最低提现额",
         "pendingEscalation": "待处理升级",
         "rewardClearance": "奖励清算",
         "twoPersonApproval": "双人审批"
@@ -2446,8 +2556,8 @@
           "title": "审批与升级"
         },
         "earnings": {
-          "description": "控制奖励何时可用以及用户可提款的最低金额。",
-          "title": "收益与提款"
+          "description": "控制奖励何时可用以及用户可提现的最低金额。",
+          "title": "收益与提现"
         }
       },
       "lastUpdated": "最后更新：{{date}} MYT",
@@ -2456,7 +2566,7 @@
       "retry": "重试",
       "policy": {
         "description": "这些数值适用于新的请求和奖励。现有请求保留其记录状态。",
-        "title": "提款政策"
+        "title": "提现政策"
       },
       "reasonCategories": {
         "clearance_window_change": "清算窗口更改",
@@ -2491,7 +2601,7 @@
       "saved": "平台费用已保存，将适用于此后付款的订单。",
       "perItem": "件",
       "readOnly": "您可以查看这些费用，只有超级管理员可以修改。",
-      "howItWorks": "商家每晚根据最近 90 天的销售额调整等级。修改仅适用于此后付款的订单，过往订单保留原收费。若订单有联盟或推荐奖励，费用会自动提高以覆盖该奖励。",
+      "howItWorks": "商家每晚根据最近 90 天的销售额调整等级。修改仅适用于此后付款的订单，过往订单保留原收费。若订单有推广或推荐奖励，费用会自动提高以覆盖该奖励。",
       "tiers": {
         "title": "商家等级",
         "description": "每个等级按商品价格的百分比收费，或按每件商品收取固定金额。",
@@ -2642,7 +2752,6 @@
       "reportedChat": "被举报聊天",
       "highSeverity": "高严重性",
       "reviewed": "已审核",
-      "openRecords": "待处理记录",
       "reviewedRecords": "已审核记录"
     },
     "kindLabel": {
@@ -2736,7 +2845,9 @@
       "analysisUnavailable": "AI 分析不可用，以下仍显示确定性证据检查结果。",
       "confidence": "{{value}} 置信度",
       "errors": {
-        "unavailable": "AI 审核暂时不可用。"
+        "unavailable": "AI 审核暂时不可用。",
+        "privacyBlocked": "推荐内容可能含有电话、邮箱、证件、银行资料或私人地址，因此没有发送给 AI。请删除这些资料后重试，也可以不使用 AI，继续人工审核。",
+        "imagesWithheld": "推荐图片没有发送给 AI，因为图片可能包含个人资料。你可以直接继续人工审核，或移除图片后重试。"
       },
       "evidence": "证据",
       "kind": "类型",
@@ -3009,7 +3120,7 @@
     "enumValues": {
       "accountDisabled": "账户已停用",
       "adjustment": "调整",
-      "affiliateCommission": "联盟佣金",
+      "affiliateCommission": "推广佣金",
       "credit": "入账",
       "debit": "扣款",
       "earnings": "收益",
@@ -3104,6 +3215,9 @@
     "detail": {
       "amount": "金额",
       "appKyc": "应用 KYC",
+      "profileName": "可编辑的个人资料姓名",
+      "verifiedKycName": "已批准 KYC 中的姓名",
+      "verifiedKycNameUnavailable": "没有已批准的姓名记录",
       "backToQueue": "返回提现队列",
       "eyebrow": "提现审核",
       "notSupplied": "未提供",
@@ -3120,6 +3234,7 @@
     },
     "errors": {
       "actionFailed": "操作失败",
+      "actionOutcomeUnknown": "暂时无法确认审核操作是否已保存。请先查看当前提现状态，再进行其他操作。",
       "batchActionFailed": "一个或多个提现操作失败。",
       "chooseDecisionReason": "请选择此决策的原因。",
       "invalidReasonCategory": "请选择适用于此提现操作的有效原因类别。",
@@ -3129,10 +3244,11 @@
       "minimumNote": "备注至少需要 10 个字符。"
     },
     "evidence": {
-      "affiliateSources": "联盟来源",
+      "affiliateSources": "推广来源",
       "doNotApprove": "数据可用前请勿批准。",
+      "retrySources": "来源记录暂时无法读取。请重试查看。",
       "fraudFlags": "欺诈标记",
-      "noAffiliateTransactions": "未找到联盟交易。",
+      "noAffiliateTransactions": "未找到推广交易。",
       "noFraudFlags": "未记录欺诈标记。",
       "noRewardTransactions": "未找到奖励交易。",
       "noWalletTransactions": "未找到钱包交易。",
@@ -3175,7 +3291,6 @@
       "overdue": "逾期",
       "pendingPayoutValue": "待打款金额",
       "requestsInQueue": "队列中的申请",
-      "visiblePageTotal": "当前页合计",
       "waitingForSecondApprover": "等待第二位审批人"
     },
     "pagination": {
@@ -3211,7 +3326,7 @@
       "eventStatus": "服务商状态",
       "amount": "金额",
       "providerTime": "服务商时间",
-      "receivedTime": "MyLawatan 接收时间",
+      "receivedTime": "MYLawatan 接收时间",
       "signatureVerified": "签名已验证",
       "payloadHash": "载荷 SHA-256",
       "deliveryStatus": "Callback 投递状态",
@@ -3251,6 +3366,7 @@
       "singleApproval": "单次审批",
       "title": "决策准备情况",
       "unavailable": "不可用",
+      "noRelatedTransactions": "未找到相关交易",
       "walletEvidence": "钱包证据"
     },
     "reasons": {
@@ -3380,13 +3496,12 @@
       "pendingRefundValue": "待退款金额",
       "processed": "已处理",
       "requestsInQueue": "队列中的申请",
-      "simulatedProviders": "模拟服务商",
-      "visiblePageTotal": "当前页总数"
+      "simulatedProviders": "模拟服务商"
     },
     "providers": {
       "bankTransferSimulator": "银行转账 — 模拟器",
       "grabpaySimulator": "GrabPay — 模拟器",
-      "mylawatanWallet": "MyLawatan 钱包",
+      "mylawatanWallet": "MYLawatan 钱包",
       "stripeSandbox": "Stripe 沙盒",
       "tngSimulator": "Touch ’n Go 电子钱包 — 模拟器",
       "unknown": "未知服务商"
@@ -3429,7 +3544,6 @@
       "eyebrow": "治理运营",
       "restricted": "员工行为审核仅限超级管理员。",
       "title": "员工行为",
-      "description": "供超级管理员审核的管理员行为标记和人工提交的聊天举报。",
       "flagSummary": "{{admin}} · {{source}} · 目标：{{target}}"
     },
     "moderationFlagSummary": "{{user}} · {{source}} · {{flagType}}",
@@ -3507,7 +3621,6 @@
   "moderationWords": {
     "eyebrow": "内容审核",
     "title": "审核词库",
-    "description": "添加需要在工单、评论、聊天机器人和聊天中自动屏蔽的词语——用于补充内置词库，尤其是其他语言的词汇。",
     "loading": "加载中…",
     "empty": "尚未添加自定义词语。",
     "confirmDelete": "确定要从自动屏蔽列表中移除“{{term}}”吗？",
@@ -3516,7 +3629,8 @@
       "termPlaceholder": "输入要屏蔽的词语",
       "category": "类别",
       "language": "语言（可选）",
-      "languagePlaceholder": "例如：ms、zh",
+      "languageNotSpecified": "未指定",
+      "otherLanguage": "其他语言",
       "add": "添加词语"
     },
     "category": {
@@ -3837,7 +3951,7 @@
     "confirmedStall": "正式分配摊位号",
     "confirmedStallRequired": "请填写正式分配的摊位号，再批准。",
     "preferredStall": "希望的摊位号：{{number}}",
-    "adminAllocate": "由 Admin 分配"
+    "adminAllocate": "等待 Admin 分配"
   },
   "announcements": {
     "eyebrow": "治理",

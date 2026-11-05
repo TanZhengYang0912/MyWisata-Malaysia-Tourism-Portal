@@ -16,10 +16,10 @@ function mapRpcError(message: string) {
   if (message.includes("reason_too_short")) return apiFail("VALIDATION_FAILED", "Reason must be at least 10 characters", 422);
   if (message.includes("user_must_be_")) return apiFail("INVALID_STATE", "This user is not in a state eligible for that action", 409);
   if (message.includes("admin_manage_user") && (message.includes("schema cache") || message.includes("permission denied"))) {
-    return apiFail("ACCOUNT_ACTIONS_NOT_CONFIGURED", "Account actions are not configured. Apply supabase/migrations/054_account_moderation_rpc.sql, then reload the Supabase schema.", 503);
+    return apiFail("ACCOUNT_ACTIONS_NOT_CONFIGURED", "Account actions are temporarily unavailable. Please contact support.", 503);
   }
   if (message.includes("account_lifecycle_fields_are_server_managed")) {
-    return apiFail("ACCOUNT_LIFECYCLE_NOT_CONFIGURED", "Account lifecycle actions need a database update. Apply supabase/migrations/055_admin_account_lifecycle_context.sql, then reload the Supabase schema.", 503);
+    return apiFail("ACCOUNT_LIFECYCLE_NOT_CONFIGURED", "This account action is temporarily unavailable. Please contact support.", 503);
   }
   const diagnostic = message.replace(/\s+/g, " ").trim().slice(0, 240);
   console.error("[user-management] account mutation failed", diagnostic);
@@ -63,6 +63,9 @@ export async function POST(request: Request, { params }: Props) {
   const context = moderationContext[parsed.data.action as keyof typeof moderationContext];
   if (context) {
     const moderation = await moderateAccountText(parsed.data.reason, context);
+    if ("error" in moderation && moderation.error === "sensitive_data_detected") {
+      return apiFail("PERSONAL_DATA_REMOVE", "Your full explanation was not sent to AI review because it may contain personal details. Remove identity, bank, phone, email, or private-address details and submit it again; this action still requires review.", 422);
+    }
     if ("error" in moderation && moderation.error === "api_unavailable") {
       return apiFail("MODERATION_UNAVAILABLE", "Content review is temporarily unavailable; please try again", 503);
     }

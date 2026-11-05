@@ -27,8 +27,8 @@ const ibmPlexMono = IBM_Plex_Mono({ variable: "--font-ibm-plex-mono", subsets: [
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
-  applicationName: "MyLawatan",
-  title: "MyLawatan — Malaysia Tourism Portal",
+  applicationName: "MYLawatan",
+  title: "MYLawatan — Malaysia Tourism Portal",
   description: "Discover, book and share authentic Malaysian tourism experiences.",
   icons: {
     icon: [{ url: "/icon.png?v=2", type: "image/png" }],
@@ -36,9 +36,9 @@ export const metadata: Metadata = {
     apple: ["/icon.png?v=2"],
   },
   openGraph: {
-    title: "MyLawatan — Malaysia Tourism Portal",
+    title: "MYLawatan — Malaysia Tourism Portal",
     description: "Discover, book and share authentic Malaysian tourism experiences.",
-    siteName: "MyLawatan",
+    siteName: "MYLawatan",
     type: "website",
   },
 };

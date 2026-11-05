@@ -68,6 +68,7 @@ vi.mock('@/backend/core/helpers', async (importOriginal) => ({
 vi.mock('@/lib/stripe', () => ({ stripe: { checkout: { sessions: { create: mocks.stripeCreate } } } }));
 
 import { POST } from '../prepare/route';
+import { getCheckoutErrorCode } from '@/lib/checkout/errors';
 
 function request(provider = 'tng_ewallet_simulator', voucherCode?: string) {
   return new Request('http://localhost/api/checkout/prepare', {
@@ -456,6 +457,18 @@ describe('POST /api/checkout/prepare simulator provider', () => {
     expect(response.status).toBe(503);
     expect(body.error.code).toBe('PRODUCT_LOOKUP_FAILED');
     expect(mocks.rpc).not.toHaveBeenCalledWith('account_prepare_checkout', expect.anything());
+  });
+
+  it.each([['', 'CONTACT_EMAIL_REQUIRED'], ['invalid-email', 'CONTACT_EMAIL_INVALID']])('identifies invalid contact email before reserving stock or creating a payment: %s', async (email, code) => {
+    const response = await POST(new Request('http://localhost/api/checkout/prepare', {
+      method: 'POST', headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({ paymentMethod: 'ewallet', paymentProvider: 'tng_ewallet_simulator', idempotencyKey: 'checkout-contact-test-123456', contact: { email } }),
+    }));
+    expect(response.status).toBe(422);
+    const body = await response.json();
+    expect(body.error.code).toBe('VALIDATION_FAILED');
+    expect(getCheckoutErrorCode(body.error)).toBe(code);
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
   it('fails closed when simulator configuration is unavailable', async () => {

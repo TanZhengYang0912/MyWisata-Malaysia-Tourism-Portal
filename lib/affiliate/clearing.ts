@@ -96,6 +96,8 @@ export interface ClearingResult {
   skipped: number; // already claimed by a concurrent/prior run
   errors: ClearingError[];
   reviewRequired?: boolean;
+  orderReviewRequired?: number;
+  orderReviewReasons?: string[];
   hasMore?: boolean;
   busy?: boolean;
 }
@@ -151,6 +153,12 @@ async function processAttribution(
     const credit = await creditAffiliateCommission(service, attribution.id, maturedBefore);
     if (credit.outcome === 'review_required') {
       result.reviewRequired = true;
+      result.skipped++;
+      return;
+    }
+    if (credit.outcome === 'order_review_required') {
+      result.orderReviewRequired = (result.orderReviewRequired ?? 0) + 1;
+      result.orderReviewReasons = [...(result.orderReviewReasons ?? []), credit.reason];
       result.skipped++;
       return;
     }
@@ -260,11 +268,12 @@ export async function clearMaturedCommissions(
   return result;
 }
 
-export type AcceptOutcome = 'confirmed' | 'reversed' | 'review_required' | 'skipped' | 'error';
+export type AcceptOutcome = 'confirmed' | 'reversed' | 'review_required' | 'order_review_required' | 'skipped' | 'error';
 
 export interface AcceptResult {
   outcome: AcceptOutcome;
   amountRM?: number;
+  reason?: string;
   error?: string;
 }
 
@@ -293,6 +302,9 @@ export async function acceptAttribution(service: SupabaseClient, attributionId: 
 
   if (result.errors.length > 0) return { outcome: 'error', error: result.errors[0].error };
   if (result.reviewRequired) return { outcome: 'review_required', error: 'Resolve the guest commission review first' };
+  if ((result.orderReviewRequired ?? 0) > 0) {
+    return { outcome: 'order_review_required', reason: result.orderReviewReasons?.[0] ?? 'order_review' };
+  }
   if (result.reversed.length > 0) return { outcome: 'reversed' }; // the order turned out to be cancelled/refunded
   if (result.cleared.length > 0) return { outcome: 'confirmed', amountRM: result.cleared[0].amountRM };
   return { outcome: 'skipped', error: 'Not eligible yet (owner has not completed KYC)' };

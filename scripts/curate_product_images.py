@@ -61,7 +61,7 @@ CACHE_PATH = Path("/tmp/mylawatan-product-commons-cache.json")
 PROGRESS_PATH = Path("/tmp/mylawatan-product-image-progress.json")
 QUERY_LIMIT = 0
 ALLOW_EXISTING_FALLBACK = False
-USER_AGENT = "MyLawatan-product-image-curator/1.0 (local development; Wikimedia Commons attribution recorded)"
+USER_AGENT = "MYLawatan-product-image-curator/1.0 (local development; Wikimedia Commons attribution recorded)"
 CACHE_QUERY_DELAY_SECONDS = 2.5
 
 CATEGORY_TERMS = {

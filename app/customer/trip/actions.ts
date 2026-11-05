@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createTrip, deleteTrip, getTripById, getTripItems, getTripNameSequence, getTrips } from "@/backend/domains/trips";
-import type { AddTripItemInput, TripWrite } from "@/backend/domains/trips";
+import type { AddTripItemInput, TripWrite, TripMutationCode } from "@/backend/domains/trips";
 import { searchTripActivities } from "@/backend/domains/catalogue";
 import { getCachedDiscoveryActivityData } from "@/lib/cache/catalogue-cache";
 import { getTripDiscoveryAnchor } from "@/lib/customer/trip-planner";
@@ -62,7 +62,7 @@ export async function deleteTripAction(tripId: string, version: string) {
   return mutateTrip(tripId,"delete",async()=>deleteTrip(tripId,await createClient(),version));
 }
 
-export type TripMutationResult<T> = {ok:true;value:T;version:string;refreshRequired?:true} | {ok:false;code?:"TRIP_CHANGED"};
+export type TripMutationResult<T> = {ok:true;value:T;version:string;refreshRequired?:true} | {ok:false;code:TripMutationCode};
 
 async function mutateTrip<T>(tripId:string,operation:string,write:()=>Promise<TripWrite<T>>):Promise<TripMutationResult<T>> {
   try {
@@ -79,7 +79,8 @@ async function mutateTrip<T>(tripId:string,operation:string,write:()=>Promise<Tr
     // Never log database messages or transport headers: they may contain private input or credentials.
     const code=typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
     console.warn("Trip mutation rejected",{operation,code:/^[A-Z0-9_]{2,32}$/.test(code) ? code : "UNAVAILABLE"});
-    return {ok:false,...(code === "TRIP_CHANGED" ? {code:"TRIP_CHANGED" as const} : {})};
+    const known: TripMutationCode[] = ["TRIP_CHANGED", "TRIP_INVALID", "TRIP_NOT_AVAILABLE", "TRIP_ACCESS_DENIED", "TRIP_UNAVAILABLE", "TRIP_RESULT_UNKNOWN"];
+    return {ok:false,code:known.includes(code as TripMutationCode) ? code as TripMutationCode : "TRIP_RESULT_UNKNOWN"};
   }
 }
 
@@ -139,4 +140,17 @@ export async function restoreLegacyTripsAction() {
     revalidatePath("/customer/trip");
     return {ok:true as const,trips:await getTrips(db)};
   } catch {return {ok:false as const};}
+}
+
+/** Read-only reconciliation: never repeat a write whose response was lost. */
+export async function getTripItemsStateAction(tripId: string) {
+  try {
+    const db = await createClient();
+    const before = await getTripById(tripId, db);
+    if (!before) return { ok: false as const };
+    const items = await getTripItems(tripId, db);
+    const after = await getTripById(tripId, db);
+    if (!after || after.updated_at !== before.updated_at) return { ok: false as const };
+    return { ok: true as const, items, version: after.updated_at };
+  } catch { return { ok: false as const }; }
 }

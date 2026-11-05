@@ -5,7 +5,27 @@ const summarizeDashboardPayments = (dashboardMetrics as unknown as {
   summarizeDashboardPayments?: (payments: Array<{ status: string; provider: string; is_live: boolean }>) => unknown;
 }).summarizeDashboardPayments;
 const summarizePaymentRecords = (payments: Array<{ status: string; provider: string; is_live: boolean }>) => summarizeDashboardPayments?.(payments);
-const { allocateDashboardRevenue, classifyDashboardSale } = dashboardMetrics;
+const { allocateDashboardRevenue, classifyDashboardSale, matchesDashboardSalesMode, normalizeDashboardSalesMode } = dashboardMetrics;
+
+describe('dashboard sales modes', () => {
+  it('defaults absent, malformed and repeated mode parameters to real sales', () => {
+    for (const value of [undefined, null, '', 'all', 'DEMO', ['demo', 'live']]) {
+      expect(normalizeDashboardSalesMode(value)).toBe('live');
+    }
+    expect(normalizeDashboardSalesMode('demo')).toBe('demo');
+  });
+
+  it('keeps live and test/demo views separate and excludes unresolved sales', () => {
+    expect(matchesDashboardSalesMode('verified', 'live')).toBe(true);
+    expect(matchesDashboardSalesMode('simulated', 'demo')).toBe(true);
+    expect(matchesDashboardSalesMode('verified', 'demo')).toBe(false);
+    expect(matchesDashboardSalesMode('simulated', 'live')).toBe(false);
+    for (const sale of ['unverified', 'excluded'] as const) {
+      expect(matchesDashboardSalesMode(sale, 'live')).toBe(false);
+      expect(matchesDashboardSalesMode(sale, 'demo')).toBe(false);
+    }
+  });
+});
 
 describe('classifyDashboardSale', () => {
   it('counts only paid or completed orders with a successful live payment as verified', () => {
@@ -22,6 +42,23 @@ describe('classifyDashboardSale', () => {
   it('does not report paid/completed orders without a successful payment as sales', () => {
     expect(classifyDashboardSale('paid', [])).toBe('unverified');
     expect(classifyDashboardSale('completed', [{ status: 'pending', is_live: true, provider: 'stripe' }])).toBe('unverified');
+  });
+
+  it('requires explicit payment provenance, normalizes demo providers, and accepts test plus demo', () => {
+    for (const payment of [
+      { status: 'succeeded', provider: 'other' },
+      { status: 'succeeded', is_live: true },
+      { status: 'succeeded', provider: ' ', is_live: false },
+    ]) expect(classifyDashboardSale('paid', [payment])).toBe('unverified');
+    expect(classifyDashboardSale('paid', [{ status: 'succeeded', provider: ' DEMO ', is_live: true }])).toBe('simulated');
+    expect(classifyDashboardSale('paid', [
+      { status: 'succeeded', provider: 'demo', is_live: false },
+      { status: 'succeeded', provider: 'test-provider', is_live: false },
+    ])).toBe('simulated');
+    expect(classifyDashboardSale('paid', [
+      { status: 'succeeded', provider: 'test-provider', is_live: false },
+      { status: 'succeeded', provider: 'unknown' },
+    ])).toBe('unverified');
   });
 
   it('excludes cancelled, refunded, and unpaid orders from every sales class', () => {

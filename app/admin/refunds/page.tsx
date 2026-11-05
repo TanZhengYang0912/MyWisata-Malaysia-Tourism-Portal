@@ -96,7 +96,7 @@ export default function AdminRefundsPage() {
 
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [summary, setSummary] = useState({ pendingCount: 0, pendingValue: 0, processedCount: 0, failedCount: 0, oldestCreatedAt: null as string | null });
+  const [summary, setSummary] = useState({ pendingCount: 0, pendingValue: 0, processedCount: 0, failedCount: 0 });
 
   const load = useCallback(async (signal?: AbortSignal) => {
     if (!signal) setLoading(true);
@@ -115,7 +115,7 @@ export default function AdminRefundsPage() {
       setRefunds(body.data?.refunds ?? []);
       setTotal(body.data?.total ?? 0);
       setTotalPages(Math.max(1,body.data?.totalPages ?? 0));
-      setSummary(body.data?.summary ?? { pendingCount: 0, pendingValue: 0, processedCount: 0, failedCount: 0, oldestCreatedAt: null });
+      setSummary(body.data?.summary ?? { pendingCount: 0, pendingValue: 0, processedCount: 0, failedCount: 0 });
       if (body.data?.page && body.data.page !== page) setPage(body.data.page);
       setReferenceNow(new Date().getTime());
     } catch (loadError) {
@@ -140,7 +140,6 @@ export default function AdminRefundsPage() {
   const visiblePendingValue = summary.pendingValue;
   const processedCount = summary.processedCount;
   const failedCount = summary.failedCount;
-  const oldestRefund = summary.oldestCreatedAt ? { createdAt: summary.oldestCreatedAt } : null;
 
   function formatAge(createdAt: string) {
     const createdAtTime = new Date(createdAt).getTime();
@@ -235,42 +234,32 @@ export default function AdminRefundsPage() {
 
   return (
     <AdminPageShell>
-      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground"><Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>{t("actions.refresh")}</Button><span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {reviewRefresh.lastSuccessAt ? new Date(reviewRefresh.lastSuccessAt).toLocaleTimeString() : "—"}</span></div>
-        <AdminPageHeader
-          eyebrow={<><RotateCcw size={14} /> {t("refunds.header.eyebrow")}</>}
-          title={t("refunds.header.title")}
-          description={t("refunds.header.description")}
-          actions={<div className="rounded-xl border border-border bg-card px-4 py-3 text-right shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-              {t("refunds.header.reviewPriority")}
-            </p>
-            <p className="mt-1 text-sm font-semibold text-foreground">
-              {total > 0
-                ? t("refunds.header.oldestFirst")
-                : t("refunds.header.queueClear")}
-            </p>
-          </div>}
-        />
+      <AdminPageHeader
+        eyebrow={<><RotateCcw size={14} /> {t("refunds.header.eyebrow")}</>}
+        title={t("refunds.header.title")}
+        actions={<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span role="status">{reviewRefresh.hasRefreshError ? t("reviewRefresh.stale") : t("dashboard.lastRefreshed")} · {referenceNow ? new Date(referenceNow).toLocaleTimeString(locale) : "—"}</span>
+          <Button type="button" size="sm" variant="outline" onClick={reviewRefresh.refresh}>
+            <RefreshCw size={14} /> {t("actions.refresh")}
+          </Button>
+        </div>}
+      />
         <AdminMetricGrid items={[
             {
               label: t("refunds.metrics.needsAction"),
               value: summary.pendingCount,
-              detail: t("refunds.metrics.requestsInQueue"),
             },
             {
               label: t("refunds.metrics.pendingRefundValue"),
               value: formatMYR(visiblePendingValue, locale),
-              detail: t("refunds.metrics.visiblePageTotal"),
             },
             {
               label: t("refunds.metrics.processed"),
               value: processedCount,
-              detail: t("refunds.metrics.completed"),
             },
             {
               label: t("refunds.metrics.failed"),
               value: failedCount,
-              detail: t("refunds.metrics.needsAttention"),
             },
           ]} />
         <section className="rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-sm text-amber-950 dark:text-amber-200">
@@ -332,33 +321,14 @@ export default function AdminRefundsPage() {
               </option>
             ))}
           </select>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => void load()}
-            disabled={loading}
-          >
-            <RefreshCw className={loading ? "animate-spin" : ""} />{" "}
-            {t("refunds.actions.refresh")}
-          </Button>
         </AdminFilterBar>
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_10px_rgba(1,0,102,0.06)]">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <div className="border-b border-border px-5 py-4">
             <div>
               <h2 className="font-bold text-foreground">
                 {t("refunds.queue.title", { count: total })}
               </h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t("refunds.queue.description")}
-              </p>
             </div>
-            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-              {oldestRefund
-                ? t("refunds.queue.oldestRequest", {
-                    age: formatAge(oldestRefund.createdAt),
-                  })
-                : t("refunds.queue.noOpenRequests")}
-            </span>
           </div>
           <div className="overflow-x-auto">
             <div className="min-w-[980px]">
@@ -380,11 +350,6 @@ export default function AdminRefundsPage() {
                     search || status
                       ? t("refunds.empty.noMatches")
                       : t("refunds.empty.title")
-                  }
-                  description={
-                    search || status
-                      ? undefined
-                      : t("refunds.empty.description")
                   }
                 />
               ) : (

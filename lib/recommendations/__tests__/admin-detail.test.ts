@@ -36,7 +36,7 @@ describe('buildAdminRecommendationDetail', () => {
         id: 'user-1',
         full_name: 'Contributor One',
         email: 'contributor@example.com',
-        kyc_status: 'approved',
+        is_verified_contributor: true,
       },
       reviewer: {
         id: 'admin-1',
@@ -57,7 +57,7 @@ describe('buildAdminRecommendationDetail', () => {
       id: 'user-1',
       name: 'Contributor One',
       email: 'contributor@example.com',
-      isKycVerified: true,
+      isVerifiedContributor: true,
     });
     expect(detail.review?.reason).toBe('Insufficient evidence');
     expect(detail.images).toEqual([{
@@ -108,7 +108,7 @@ describe('buildAdminRecommendationDetail', () => {
     expect(detail.location).toBeNull();
     expect(detail.review).toBeNull();
     expect(detail.images).toEqual([]);
-    expect(detail.author.name).toBe('MyLawatan member');
+    expect(detail.author.name).toBe('MYLawatan member');
   });
 
   it('exposes only translation drafts and internal Place summaries to the authorized admin view', () => {

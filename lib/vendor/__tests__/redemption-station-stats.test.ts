@@ -8,11 +8,13 @@ describe("mapRedemptionStationStats", () => {
       todayCount: 2,
       voucherCount: 1,
       ticketCount: 1,
+      retailCount: 3,
       activeOutletsCount: 1,
     })).toEqual({
       todayScans: 2,
       ticketAdmissions: 1,
       voucherRedemptions: 1,
+      retailPickups: 3,
     });
   });
 
@@ -21,6 +23,7 @@ describe("mapRedemptionStationStats", () => {
       todayScans: 0,
       ticketAdmissions: 0,
       voucherRedemptions: 0,
+      retailPickups: 0,
     });
   });
 });

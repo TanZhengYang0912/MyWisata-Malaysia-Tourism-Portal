@@ -73,7 +73,8 @@ export function staffNavigationSections(modules: readonly StaffModule[]): StaffN
       sortOrder: staffModule.sectionSortOrder,
       items: [],
     };
-    section.items.push({ ...staffModule, icon: staffNavigationIcon(staffModule.iconKey) });
+    const labelKey = staffModule.labelKey ?? (staffModule.key === "moderation_words" ? "moderationWords.title" : null);
+    section.items.push({ ...staffModule, labelKey, icon: staffNavigationIcon(staffModule.iconKey) });
     grouped.set(staffModule.sectionKey, section);
   }
 

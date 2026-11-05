@@ -34,6 +34,8 @@ describe("application dialog contract", () => {
     expect(source).toContain('kind: "prompt"');
     expect(source).toContain('kind: "alert"');
     expect(source).toContain("DialogContent");
+    expect(source).toContain('actionAlignment?: "center"');
+    expect(source).toContain('current.kind === "alert" && current.actionAlignment === "center"');
   });
 
   it("wires the provider above every application role", () => {

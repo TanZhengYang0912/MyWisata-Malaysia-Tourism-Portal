@@ -206,7 +206,7 @@ export default function AdminAiAssistantPage() {
 
   return (
     <AdminPageShell>
-      <AdminPageHeader eyebrow={<span className="flex items-center gap-2"><Bot size={14} /> {t("aiAssistant.title")}</span>} title={t("aiAssistant.title")} description={t("aiAssistant.description")} />
+      <AdminPageHeader eyebrow={<span className="flex items-center gap-2"><Bot size={14} /> {t("aiAssistant.title")}</span>} title={t("aiAssistant.title")} />
       <AskPanel />
     </AdminPageShell>
   );

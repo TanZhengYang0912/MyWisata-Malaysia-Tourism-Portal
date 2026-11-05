@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { redactPII } from '@/lib/chatbot/pii';
+import { prepareExternalText } from '@/lib/chatbot/pii';
 import type { AppLocale } from '@/lib/i18n/locale';
 import type { PublicTranslationField } from '@/lib/content-translations/contract';
 
@@ -17,7 +17,9 @@ export function buildTranslationPrompt(input: {
   sourceText: string;
   locale: TranslationLocale;
 }) {
-  const source = redactPII(input.sourceText).clean.replace(URL_PATTERN, '[URL]').slice(0, 2000);
+  const preparedSource = prepareExternalText(input.sourceText);
+  if (!preparedSource.allowed) throw new Error('sensitive_data_detected');
+  const source = preparedSource.clean.replace(URL_PATTERN, '[URL]').slice(0, 2000);
   const targetLanguage = input.locale === 'zh-CN'
     ? 'Simplified Chinese'
     : input.locale === 'ms' ? 'Bahasa Melayu' : 'English';

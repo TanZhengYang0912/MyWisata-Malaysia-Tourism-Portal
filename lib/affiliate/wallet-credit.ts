@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export type AffiliateCreditResult =
   | { outcome: 'skipped' }
   | { outcome: 'review_required' }
+  | { outcome: 'order_review_required'; reason: string }
   | { outcome: 'reversed'; reason: string }
   | { outcome: 'confirmed'; userId: string; orderId: string; amountRM: number };
 
@@ -22,6 +23,9 @@ export async function creditAffiliateCommission(
   if (!result || typeof result !== 'object' || !('outcome' in result)) throw new Error('Invalid affiliate clearing response');
   if (result.outcome === 'skipped') return { outcome: 'skipped' };
   if (result.outcome === 'review_required') return { outcome: 'review_required' };
+  if (result.outcome === 'order_review_required' && 'reason' in result && typeof result.reason === 'string') {
+    return { outcome: 'order_review_required', reason: result.reason };
+  }
   if (result.outcome === 'reversed' && 'reason' in result && typeof result.reason === 'string') {
     return { outcome: 'reversed', reason: result.reason };
   }

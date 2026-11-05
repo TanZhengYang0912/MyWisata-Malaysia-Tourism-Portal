@@ -1,10 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ComputedActivity } from '@/backend/core/types';
 
-const mocks = vi.hoisted(() => ({ searchActivities: vi.fn() }));
-vi.mock('@/backend/domains/catalogue', () => ({ searchActivities: mocks.searchActivities }));
+const mocks = vi.hoisted(() => ({ searchActivities: vi.fn(), searchExploreActivities: vi.fn() }));
+vi.mock('@/backend/domains/catalogue', () => ({ searchActivities: mocks.searchActivities, searchExploreActivities: mocks.searchExploreActivities }));
 
-const { getTripCopilotCandidates } = await import('../trip-copilot');
+const { getTripCopilotCandidates, resolveTripSuggestionScope } = await import('../trip-copilot');
+
+beforeEach(() => vi.clearAllMocks());
 
 function activity(overrides: Partial<ComputedActivity> = {}): ComputedActivity {
   return {
@@ -29,11 +31,11 @@ function activity(overrides: Partial<ComputedActivity> = {}): ComputedActivity {
 
 describe('getTripCopilotCandidates', () => {
   it('maps real catalogue listings into candidates, filtered by state and sorted by rating', async () => {
-    mocks.searchActivities.mockResolvedValue([activity()]);
+    mocks.searchExploreActivities.mockResolvedValue([activity()]);
 
     const result = await getTripCopilotCandidates({ state: 'Penang' }, {} as never);
 
-    expect(mocks.searchActivities).toHaveBeenCalledWith({ state: 'Penang', categorySlug: null, sort: 'rating_desc' }, {});
+    expect(mocks.searchExploreActivities).toHaveBeenCalledWith({ state: 'Penang', categorySlug: null, sort: 'rating_desc' }, {});
     expect(result).toEqual([{
       productId: 'p1',
       name: 'Penang Hill Funicular',
@@ -93,10 +95,36 @@ describe('getTripCopilotCandidates', () => {
   });
 
   it('returns an empty list when nothing real matches', async () => {
-    mocks.searchActivities.mockResolvedValue([]);
+    mocks.searchExploreActivities.mockResolvedValue([]);
 
     const result = await getTripCopilotCandidates({ state: 'Sabah' }, {} as never);
 
     expect(result).toEqual([]);
+  });
+
+  it('uses outlet-scoped discovery when a state is explicit so shared products choose a matching outlet', async () => {
+    mocks.searchExploreActivities.mockResolvedValue([activity()]);
+
+    const result = await getTripCopilotCandidates({ state: 'Penang', categorySlug: 'food' }, {} as never);
+
+    expect(mocks.searchExploreActivities).toHaveBeenCalledWith({ state: 'Penang', categorySlug: 'food', sort: 'rating_desc' }, {});
+    expect(mocks.searchActivities).not.toHaveBeenCalled();
+    expect(result[0].state).toBe('Penang');
+  });
+});
+
+describe('resolveTripSuggestionScope', () => {
+  it.each([
+    ['沙巴美食', 'Penang weekend', { state: 'Sabah', categorySlug: 'food', ambiguousStates: [] }],
+    ['Sabah food', 'Penang weekend', { state: 'Sabah', categorySlug: 'food', ambiguousStates: [] }],
+    ['makanan di Sabah', 'Penang weekend', { state: 'Sabah', categorySlug: 'food', ambiguousStates: [] }],
+    ['', '沙巴之旅', { state: 'Sabah', categorySlug: null, ambiguousStates: [] }],
+    ['沙巴与槟城美食', 'Penang weekend', { state: null, categorySlug: 'food', ambiguousStates: ['Penang', 'Sabah'] }],
+  ])('resolves explicit scope from %s and title %s', (preference, tripName, expected) => {
+    expect(resolveTripSuggestionScope(preference, tripName)).toEqual(expected);
+  });
+
+  it('lets an explicit preference state override a state inferred from the trip title', () => {
+    expect(resolveTripSuggestionScope('Sabah hotel', 'Penang Weekend')).toMatchObject({ state: 'Sabah', categorySlug: 'accommodation' });
   });
 });

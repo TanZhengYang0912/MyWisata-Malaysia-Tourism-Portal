@@ -131,10 +131,10 @@ export function PlaceInformationalActivitySection({
                     {selectedActivity.activityType === "informational_paid_activity" ? ticketLabel : informationLabel}
                   </span>
                   <DialogTitle className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight sm:text-3xl">
-                    {selectedActivity.title}
+                    <LocalizedContent entityType="place_informational_activity" entityId={selectedActivity.id} field="title" sourceText={selectedActivity.title} />
                   </DialogTitle>
                   <DialogDescription className="text-sm leading-6 sm:text-base">
-                    {selectedActivity.description}
+                    <LocalizedContent entityType="place_informational_activity" entityId={selectedActivity.id} field="description" sourceText={selectedActivity.description} />
                   </DialogDescription>
                 </DialogHeader>
 

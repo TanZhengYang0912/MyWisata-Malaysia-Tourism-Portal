@@ -29,19 +29,29 @@ Three separate routes, each owning its own Zod schema and authorization:
 
 **Why not one PATCH /api/profile**: a single endpoint requires knowing which fields changed, deciding whether to re-run moderation on unchanged bio, and handling partial avatar upload state. Split endpoints each have a single responsibility. The tier promotion RPC (`promote_to_profile_complete`) is called by whichever route completes the final missing field — the RPC's precondition guard makes concurrent race-to-complete safe.
 
-### Avatar Storage — Signed URL Pattern
+### Avatar Storage — Original Signed URL Pattern (Superseded)
 
-Avatar upload is a two-step flow:
+The original design used a signed upload URL. The code change prepared on 2026-11-05 replaces this flow; the original behavior below is historical and must not be treated as the current target:
 
 1. Client calls `PUT /api/profile/avatar` to get a short-lived Supabase Storage signed upload URL (60 s TTL, max 2 MB, MIME whitelist: `image/jpeg`, `image/png`, `image/webp`).
 2. Client uploads directly to the signed URL (no proxy through Next.js server — avoids buffering large binaries through serverless functions).
 3. On upload completion, client calls `POST /api/profile/avatar/confirm` which records the object path in `profiles.avatar_url` and, if it completes the profile, calls the promotion RPC.
 
-Storage bucket: `avatars`, public (avatar URLs are displayed to other users). RLS: `INSERT/UPDATE` only via signed URL (no direct browser upload with anon key).
+Storage bucket: `avatars`, public (avatar URLs are displayed to other users). The old browser upload policy is not removed by the local code change alone; deployment must apply and verify the migration and storage/database permissions.
 
-**Resize on confirm**: the confirm route triggers a Supabase Edge Function (`resize-avatar`) that creates a 256×256 WebP thumbnail and updates `profiles.avatar_url` to the thumbnail path. The original is discarded. This is fire-and-forget — the profile proceeds even if the resize function is slow.
+**Resize on confirm**: the prior plan referred to a Supabase Edge Function (`resize-avatar`). Its production deployment and behavior have not been verified. The new code does not rely on it.
+
+### Avatar Storage — Current Local Implementation
+
+The implementation prepared on 2026-11-05 accepts the final image through the authenticated Next.js route, validates the actual bytes and computes a server-side SHA-256 digest. A private `app_private.profile_avatar_assets` manifest scopes exact-byte reuse to one account. Existing same-account public avatar objects are considered only when their URL matches the configured Supabase origin, the `avatars` public-object path, and that account's storage prefix; the server downloads that exact object through Supabase Storage and verifies its digest before registering it. It does not fetch arbitrary avatar URLs or compare across accounts.
+
+New assets use immutable, unique object paths with overwrite disabled. The database binds the active asset to `users.avatar_url` only if the previously read value has not changed. A bounded cron route claims stale unreferenced assets, deletes them through the Storage API, and records completion or retry. The former client-controlled `/api/profile/avatar/confirm` endpoint now returns `410` so an untrusted path cannot directly bind a public object.
+
+**Deployment state:** these are local application and migration changes only. The migration, grants, policies, cron schedule, and runtime behavior have not been applied or verified against a local or hosted Supabase database. Until then, production continues to use its deployed implementation.
 
 ### Bio Moderation — OpenAI Moderation API
+
+**2026-10-27 refinement:** Short Bio remains required. New or edited biographies must contain 3–30 trimmed characters. Previously completed profiles may retain an accepted 31–200 character biography until it is edited; profile completion still requires all other evidence. This replaces the implementation's former 30–200 range and does not adopt the optional-bio proposal. See `docs/plans/2026-10-27-1648-required-short-bio-length.md` and migration `20261027085814_required_short_bio_length.sql`.
 
 All bio submissions pass through OpenAI's free Moderation API (`POST https://api.openai.com/v1/moderations`) before being written to the database. This is **synchronous and fail-closed**:
 
@@ -64,10 +74,10 @@ Violation count is stored in `profiles.bio_violation_count`. The escalation logi
 
 ## Scope
 
-- **Migration**: `profiles.bio_violation_count` column; `profiles.bio_cooldown_until` column; `profiles.avatar_url` already exists.
+- **Migration**: `users.bio_violation_count` and `users.bio_cooldown_until`; `users.avatar_url` already exists. The new private asset manifest is defined in `docs/plans/2026-11-04-2020-profile-storage-and-write-efficiency.md` and its local migration; deployment is pending.
 - **`app/api/profile/identity/route.ts`**: new route.
-- **`app/api/profile/avatar/route.ts`** + **`app/api/profile/avatar/confirm/route.ts`**: new routes.
+- **`app/api/profile/avatar/route.ts`** + **`app/api/profile/avatar/confirm/route.ts`**: existing routes; the current local implementation accepts validated bytes server-side and retires client-controlled confirmation.
 - **`app/api/profile/bio/route.ts`**: new route with moderation call.
 - **`lib/moderation.ts`**: `moderateBio(text: string): Promise<{ flagged: boolean }>` wrapper.
 - **`lib/validation/profile-schemas.ts`**: schemas for all three endpoint bodies.
-- **Supabase Edge Function**: `resize-avatar` (async, not blocking the API response).
+- **Supabase Edge Function**: legacy design referenced `resize-avatar`; deployment and current use remain unverified.

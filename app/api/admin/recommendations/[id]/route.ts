@@ -5,6 +5,7 @@ import {
   type RecommendationDetailRow,
 } from '@/lib/recommendations/admin-detail';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
+import { isVerifiedContributor } from '@/lib/verification/eligibility';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,7 +78,7 @@ export async function GET(
     { data: reviewEventRows, error: reviewEventsError },
   ] = await Promise.all([
     userIds.length > 0
-      ? service.from('users').select('id,full_name,email,kyc_status').in('id', userIds)
+      ? service.from('users').select('id,full_name,email,kyc_status,email_verified_at,phone_verified_at,profile_completed_at,avatar_url,bio,city,country').in('id', userIds)
       : Promise.resolve({ data: [] }),
     service
       .from('recommendation_images')
@@ -141,7 +142,23 @@ export async function GET(
     full_name: string | null;
     email: string | null;
     kyc_status: string | null;
+    email_verified_at: string | null;
+    phone_verified_at: string | null;
+    profile_completed_at: string | null;
+    avatar_url: string | null;
+    bio: string | null;
+    city: string | null;
+    country: string | null;
   }>;
+  const usersWithContributorStatus = userRows.map((entry) => ({
+    ...entry,
+    is_verified_contributor: isVerifiedContributor({
+      emailVerifiedAt: entry.email_verified_at,
+      phoneVerifiedAt: entry.phone_verified_at,
+      kycStatus: entry.kyc_status,
+      profile: { fullName: entry.full_name, avatarUrl: entry.avatar_url, bio: entry.bio, city: entry.city, country: entry.country, profileCompletedAt: entry.profile_completed_at },
+    }),
+  }));
   const reviewEvents = ((reviewEventRows ?? []) as unknown as Array<{
     id: string;
     from_status: string;
@@ -166,8 +183,8 @@ export async function GET(
 
   return apiOk(buildAdminRecommendationDetail({
     recommendation: row,
-    recommender: userRows.find((entry) => entry.id === row.recommender_id) ?? null,
-    reviewer: userRows.find((entry) => entry.id === row.reviewer_id) ?? null,
+    recommender: usersWithContributorStatus.find((entry) => entry.id === row.recommender_id) ?? null,
+    reviewer: usersWithContributorStatus.find((entry) => entry.id === row.reviewer_id) ?? null,
     convertedVendor: convertedVendorResult.data as { id: string; name: string | null } | null,
     images: signedImages.filter((image): image is NonNullable<typeof image> => image != null),
     suggestedPlace: (places ?? []).find((place) => place.id === row.suggested_place_id) as { id: string; name: string; level: string } | null,
