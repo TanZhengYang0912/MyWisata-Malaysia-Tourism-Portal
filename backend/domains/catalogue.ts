@@ -2,6 +2,7 @@ import { getOutletStock } from '@/lib/vendor/product-scope';
 // Owner: Member 2 / catalogue side (Vendor/Outlet/Product)
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/backend/supabase";
+import { postgrestSearchTerm } from "@/lib/validation/postgrest-filter";
 import { haversineKm } from "@/backend/core/helpers";
 import type { Activity, BookingSlot, ComputedActivity, OperatingHourWeekday, OperatingHours, Outlet, PlaceLocation, PriceRule, ProductReview, VendorSummary, Voucher } from "@/backend/core/types";
 import type { ReviewMetric } from "@/backend/domains/review-metrics";
@@ -44,12 +45,28 @@ type VendorWithOutletsRow = {
   }[] | null;
 };
 
-export async function getVendors(db: SupabaseClient = supabase): Promise<VendorSummary[]> {
+/** `vendorIds` limits the read to those vendors (global search candidates). */
+/** Long ID lists go to PostgREST in batches so no request URL grows unbounded. */
+const ID_BATCH = 100;
+async function readInBatches<T>(ids: string[], read: (batch: string[]) => PromiseLike<{ data: unknown; error: unknown }>): Promise<{ data: T[]; error: unknown }> {
+  const rows: T[] = [];
+  for (let offset = 0; offset < ids.length; offset += ID_BATCH) {
+    const { data, error } = await read(ids.slice(offset, offset + ID_BATCH));
+    if (error) return { data: rows, error };
+    rows.push(...((data ?? []) as T[]));
+  }
+  return { data: rows, error: null };
+}
+
+export async function getVendors(db: SupabaseClient = supabase, vendorIds?: string[]): Promise<VendorSummary[]> {
   const selectVendors = async (includeOutletBadges: boolean) => {
-    const { data, error } = await db.from("vendors").select(includeOutletBadges
+    const select = () => db.from("vendors").select(includeOutletBadges
       ? "id,name,status,kind,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours,badge_slugs)"
       : "id,name,status,kind,logo_url,cover_url,outlets(id,name,city,state,status,review_status,operating_hours)");
-    return { data: data as unknown as VendorWithOutletsRow[] | null, error };
+    const { data, error } = vendorIds
+      ? await readInBatches<VendorWithOutletsRow>(vendorIds, (batch) => select().in("id", batch))
+      : await select();
+    return { data: data as unknown as VendorWithOutletsRow[] | null, error: error as { code?: string; message?: string } | null };
   };
   let { data, error } = await selectVendors(true);
   if (isMissingOutletColumn(error, "badge_slugs")) ({ data, error } = await selectVendors(false));
@@ -575,8 +592,9 @@ export type DiscoveryActivityData = {
 async function loadDiscoveryActivityData(
   db: SupabaseClient,
   outletBadgeSlugs: string[] = [],
+  onlyProductIds?: string[],
 ): Promise<DiscoveryActivityData & { outletMap: Map<string, Outlet> }> {
-  const activities = await getDiscoveryProductActivities(db);
+  const activities = await getDiscoveryProductActivities(db, onlyProductIds);
   if (activities.length === 0) return { activities: [], outlets: [], outletMap: new Map() };
 
   const productIds = activities.map((activity) => activity.id);
@@ -593,15 +611,23 @@ async function loadDiscoveryActivityData(
   };
 }
 
-export async function getDiscoveryProductActivities(db: SupabaseClient = supabase): Promise<Activity[]> {
+/** `productIds` limits the read to those products (global search candidates). */
+export async function getDiscoveryProductActivities(db: SupabaseClient = supabase, productIds?: string[]): Promise<Activity[]> {
+  const activeProducts = () => db
+    .from("products")
+    .select(DISCOVERY_ACTIVITY_SELECT)
+    .eq("status", "active")
+    .eq("review_status", "approved");
+  if (productIds) {
+    // Sorted like the full read below, so ties in later sorting break the same way.
+    const { data, error } = await readInBatches<ProductRow>([...productIds].sort(), (batch) => activeProducts().in("id", batch).order("id", { ascending: true }));
+    if (error) throw error;
+    return data.map((row) => mapActivity(row));
+  }
   const rows: ProductRow[] = [];
   const pageSize = 1000;
   for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await db
-      .from("products")
-      .select(DISCOVERY_ACTIVITY_SELECT)
-      .eq("status", "active")
-      .eq("review_status", "approved")
+    const { data, error } = await activeProducts()
       .order("id", { ascending: true })
       .range(offset, offset + pageSize - 1);
     if (error) throw error;
@@ -1239,13 +1265,70 @@ export async function searchExploreActivities(filters: SearchFilters, db: Supaba
   return sortExploreActivities(filters, matchingActivities);
 }
 
-export async function searchActivities(filters: SearchFilters, db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
+const GLOBAL_SEARCH_CANDIDATE_LIMIT = 1000;
+type IdRows = { data: { id?: string; product_id?: string }[] | null; error: unknown };
+const NO_ROWS: Promise<IdRows> = Promise.resolve({ data: [], error: null });
+
+/**
+ * Global search narrows to candidate products and vendors in the database
+ * (name, category label, outlet city or state) instead of loading the whole
+ * catalogue on every keystroke. Callers still apply the usual text filter to
+ * what loads, so the matching rules are unchanged.
+ * Every match up to 1,000 per source loads, so the top results are the same
+ * as a full-catalogue read. ponytail: a term matching more than 1,000 items
+ * in one source is answered from that subset; move to a search RPC then.
+ */
+export async function findGlobalSearchCandidates(query: string, db: SupabaseClient = supabase): Promise<{ productIds: string[]; vendorIds: string[] }> {
+  const term = postgrestSearchTerm(query);
+  if (!term) return { productIds: [], vendorIds: [] };
+  const pattern = `%${term}%`;
+  const needle = query.trim().toLowerCase();
+  const limit = GLOBAL_SEARCH_CANDIDATE_LIMIT;
+  const activeProducts = () => db.from("products").select("id").eq("status", "active").eq("review_status", "approved");
+
+  const [byName, vendorsByName, placeOutlets, categories] = await Promise.all([
+    activeProducts().ilike("name", pattern).limit(limit),
+    db.from("vendors").select("id").ilike("name", pattern).limit(limit),
+    db.from("outlets").select("id,vendor_id").or(`city.ilike.${pattern},state.ilike.${pattern}`).limit(limit),
+    db.from("categories").select("id,name,slug"),
+  ]);
+  for (const result of [byName, vendorsByName, placeOutlets, categories]) if (result.error) throw result.error;
+
+  // Same label the discovery filter matches on (see mapActivity).
+  const categoryIds = ((categories.data ?? []) as { id: string; name: string | null; slug: string | null }[])
+    .filter((category) => (canonicalCategorySlug(category.slug) ? getDiscoveryCategoryLabel(category.slug) : category.name ?? "").toLowerCase().includes(needle))
+    .map((category) => category.id);
+  const outlets = (placeOutlets.data ?? []) as { id: string; vendor_id: string | null }[];
+  const outletIds = outlets.map((outlet) => outlet.id);
+
+  const [byCategory, byOutlet, byOffer] = await Promise.all([
+    categoryIds.length ? activeProducts().in("category_id", categoryIds).limit(limit) as unknown as Promise<IdRows> : NO_ROWS,
+    readInBatches<{ id: string }>(outletIds, (batch) => activeProducts().in("outlet_id", batch).limit(limit)) as Promise<IdRows>,
+    readInBatches<{ product_id: string }>(outletIds, (batch) => db.from("outlet_offers").select("product_id").in("outlet_id", batch).limit(limit)) as Promise<IdRows>,
+  ]);
+  for (const result of [byCategory, byOutlet, byOffer]) if (result.error) throw result.error;
+
+  const productIds = [...new Set([
+    ...((byName.data ?? []) as { id: string }[]).map((row) => row.id),
+    ...(byCategory.data ?? []).map((row) => row.id),
+    ...(byOutlet.data ?? []).map((row) => row.id),
+    ...(byOffer.data ?? []).map((row) => row.product_id),
+  ].filter((id): id is string => Boolean(id)))].slice(0, limit);
+  const vendorIds = [...new Set([
+    ...((vendorsByName.data ?? []) as { id: string }[]).map((row) => row.id),
+    ...outlets.map((outlet) => outlet.vendor_id),
+  ].filter((id): id is string => Boolean(id)))].slice(0, limit);
+  return { productIds, vendorIds };
+}
+
+/** `productIds` limits the catalogue read to those products (global search candidates). */
+export async function searchActivities(filters: SearchFilters, db: SupabaseClient = supabase, productIds?: string[]): Promise<ComputedActivity[]> {
   const selectedBadgeSlugs = [
     ...(filters.hiddenGemOnly ? ["hidden_gem"] : []),
     ...(filters.familyFriendlyOnly ? ["family_friendly"] : []),
     ...(filters.coupleFriendlyOnly ? ["couple_friendly"] : []),
   ];
-  const { activities, outletMap } = await loadDiscoveryActivityData(db, selectedBadgeSlugs);
+  const { activities, outletMap } = await loadDiscoveryActivityData(db, selectedBadgeSlugs, productIds);
   const computedActivities = activities
     .map((activity) => toComputed(activity, outletMap, filters.near))
     .filter((activity): activity is ComputedActivity => activity !== null);
