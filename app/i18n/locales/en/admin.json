@@ -2101,6 +2101,7 @@
       "errors": {
         "batchUpdate": "One or more tickets could not be updated.",
         "batchUpdateFailed": "Batch ticket update failed.",
+        "loadTickets": "Could not load support tickets.",
         "sendReply": "Could not send reply.",
         "sendReplyTryAgain": "Could not send reply. Please try again.",
         "updateCategory": "Could not update ticket category.",
@@ -2139,6 +2140,8 @@
       "statusLabel": "Status",
       "ticketMarked": "Ticket marked {{status}}.",
       "title": "Support Tickets",
+      "retry": "Try again",
+      "unknownUser": "Unknown user",
       "unanswered": "Unanswered",
       "unansweredLower": "unanswered",
       "unreadOnly": "Unread only",

@@ -6,7 +6,7 @@
 // routes rather than identity.ts::getSupportTickets() (that function's
 // `category` field is stale — see Step 8's note).
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, FileText, MessageSquare, Mic, MicOff, Paperclip, Send, X } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
@@ -36,22 +36,16 @@ const SPEECH_ERROR_TEXT: Record<SpeechInputErrorKind, string> = {
 
 interface AdminTicket {
   id: string;
-  userId: string | null;
-  userName: string;
-  sessionId: string | null;
+  userName: string | null;
   subject: string;
-  body: string;
   category: string;
   classificationMethod: "ai" | "keyword" | "manual" | null;
   team: string;
   status: "open" | "in_progress" | "resolved" | "closed";
-  assignedTo: string | null;
   createdAt: string;
-  resolvedAt: string | null;
   lastActivityAt: string;
   unread: boolean;
   unanswered: boolean;
-  firstAdminReplyAt: string | null;
 }
 
 interface QueueStats {
@@ -102,11 +96,15 @@ function AdminSupportContent() {
   const { t, i18n } = useTranslation("admin");
   const [tickets, setTickets] = useState<AdminTicket[] | null>(null);
   const [stats, setStats] = useState<QueueStats | null>(null);
+  const [totalTickets, setTotalTickets] = useState(0);
+  const [totalTicketPages, setTotalTicketPages] = useState(1);
+  const [queueError, setQueueError] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [assignedToMeFilter, setAssignedToMeFilter] = useState(false);
   const [unreadOnlyFilter, setUnreadOnlyFilter] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("default");
   const [ticketPage, setTicketPage] = useState(1);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -121,59 +119,42 @@ function AdminSupportContent() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchBusy, setBatchBusy] = useState(false);
 
-  async function loadTickets() {
-    const params = new URLSearchParams();
+  const loadTickets = useCallback(async (signal?: AbortSignal) => {
+    const params = new URLSearchParams({ page: String(ticketPage), search: debouncedSearch, sort: sortKey });
     if (categoryFilter !== "all") params.set("category", categoryFilter);
     if (statusFilter !== "all") params.set("status", statusFilter);
     if (assignedToMeFilter) params.set("assignedToMe", "true");
     if (unreadOnlyFilter) params.set("unreadOnly", "true");
     try {
-      const res = await fetch(`/api/admin/tickets?${params.toString()}`);
-      const result = (await res.json()) as { data: { tickets: AdminTicket[]; stats: QueueStats } | null };
-      setTickets(res.ok && result.data ? result.data.tickets : []);
-      setStats(res.ok && result.data ? result.data.stats : null);
-    } catch {
-      setTickets([]);
-      setStats(null);
+      const res = await fetch(`/api/admin/tickets?${params.toString()}`, { cache: "no-store", signal });
+      const result = (await res.json().catch(() => ({}))) as { data?: { tickets: AdminTicket[]; stats: QueueStats; total: number; totalPages: number; page: number } | null; error?: { message?: string } };
+      if (!res.ok || !result.data) throw new Error(result.error?.message ?? t("ui.support.errors.loadTickets"));
+      setTickets(result.data.tickets);
+      setStats(result.data.stats);
+      setTotalTickets(result.data.total);
+      setTotalTicketPages(result.data.totalPages);
+      setQueueError(null);
+      if (result.data.page !== ticketPage) setTicketPage(result.data.page);
+    } catch (error) {
+      if (signal?.aborted) return;
+      setQueueError(error instanceof Error ? error.message : t("ui.support.errors.loadTickets"));
     }
-  }
+  }, [assignedToMeFilter, categoryFilter, debouncedSearch, sortKey, statusFilter, t, ticketPage, unreadOnlyFilter]);
 
   useEffect(() => {
-    (async () => {
-      await loadTickets();
-    })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryFilter, statusFilter, assignedToMeFilter, unreadOnlyFilter]);
+    const timer = window.setTimeout(() => setDebouncedSearch(searchQuery.trim()), 250);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
 
-  // Default queue ordering: unanswered tickets first (oldest waiting first
-  // within that group) — "that's the real work queue" (CLAUDE-FIXES-2.md
-  // item 3). Every other sort option is a plain single-key comparator.
-  const sortedTickets = tickets
-    ? tickets
-        .filter((ticket) => {
-          const query = searchQuery.trim().toLowerCase();
-          return !query || [ticket.subject, ticket.body, ticket.userName, ticket.category]
-            .some((value) => value.toLowerCase().includes(query));
-        })
-        .sort((a, b) => {
-        if (sortKey === "default") {
-          if (a.unanswered !== b.unanswered) return a.unanswered ? -1 : 1;
-          return a.createdAt < b.createdAt ? -1 : 1;
-        }
-        if (sortKey === "created") return a.createdAt < b.createdAt ? 1 : -1;
-        if (sortKey === "lastActivity") return a.lastActivityAt < b.lastActivityAt ? 1 : -1;
-        if (sortKey === "status") return a.status.localeCompare(b.status);
-        if (sortKey === "category") return a.category.localeCompare(b.category);
-        // unread
-        if (a.unread !== b.unread) return a.unread ? -1 : 1;
-        return a.createdAt < b.createdAt ? 1 : -1;
-      })
-    : [];
-  const totalTicketPages = Math.max(1, Math.ceil(sortedTickets.length / TICKETS_PER_PAGE));
-  const visibleTickets = sortedTickets.slice(
-    (ticketPage - 1) * TICKETS_PER_PAGE,
-    ticketPage * TICKETS_PER_PAGE,
-  );
+  useEffect(() => {
+    const controller = new AbortController();
+    void (async () => {
+      await loadTickets(controller.signal);
+    })();
+    return () => controller.abort();
+  }, [loadTickets]);
+
+  const visibleTickets = tickets ?? [];
 
   async function loadDetail(id: string) {
     try {
@@ -228,6 +209,7 @@ function AdminSupportContent() {
       if (!response.ok) { const body = await response.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? t("ui.support.errors.updateStatus")); return; }
       setTickets((prev) => prev?.map((t) => (t.id === id ? { ...t, status: status as AdminTicket["status"] } : t)) ?? null);
       if (detail?.id === id) setDetail((d) => (d ? { ...d, status: status as TicketDetail["status"] } : d));
+      await loadTickets();
       showFeedback("success", t("ui.support.ticketMarked", { status: t(STATUS_LABEL[status] ?? "ui.support.status.unknown") }));
     } catch {
       showFeedback("error", t("ui.support.errors.updateStatusTryAgain"));
@@ -249,6 +231,7 @@ function AdminSupportContent() {
       });
       if (!response.ok) { const body = await response.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? t("ui.support.errors.updateCategory")); return; }
       setTickets((prev) => prev?.map((t) => (t.id === id ? { ...t, category, classificationMethod: "manual", team: teamForCategory(category) } : t)) ?? null);
+      await loadTickets();
       showFeedback("success", t("ui.support.categoryUpdated"));
     } catch {
       showFeedback("error", t("ui.support.errors.updateCategoryTryAgain"));
@@ -275,6 +258,7 @@ function AdminSupportContent() {
       }
       setTickets((previous) => previous?.map((ticket) => selected.some((item) => item.id === ticket.id) ? { ...ticket, status: "resolved" } : ticket) ?? null);
       setSelectedIds(new Set());
+      await loadTickets();
       showFeedback("success", t("ui.support.batchResolved", { count: selected.length }));
     } catch (error) {
       showFeedback("error", error instanceof Error ? error.message : t("ui.support.errors.batchUpdateFailed"));
@@ -357,32 +341,32 @@ function AdminSupportContent() {
       <AdminFilterBar className="mb-6">
         <input
           value={searchQuery}
-          onChange={(event) => { setSearchQuery(event.target.value); setTicketPage(1); }}
+          onChange={(event) => { setSearchQuery(event.target.value); setTicketPage(1); setSelectedIds(new Set()); }}
           placeholder={t("ui.support.searchPlaceholder")}
           aria-label={t("ui.support.searchPlaceholder")}
           className={`${adminFilterControlClassName} min-w-[220px] flex-1`}
         />
         <div className="flex items-center gap-3 text-xs">
           <label className="flex items-center gap-1.5 text-foreground">
-            <input type="checkbox" checked={assignedToMeFilter} onChange={(e) => { setAssignedToMeFilter(e.target.checked); setTicketPage(1); }} />
+            <input type="checkbox" checked={assignedToMeFilter} onChange={(e) => { setAssignedToMeFilter(e.target.checked); setTicketPage(1); setSelectedIds(new Set()); }} />
             {t("ui.support.assignedToMe")}
           </label>
           <label className="flex items-center gap-1.5 text-foreground">
-            <input type="checkbox" checked={unreadOnlyFilter} onChange={(e) => { setUnreadOnlyFilter(e.target.checked); setTicketPage(1); }} />
+            <input type="checkbox" checked={unreadOnlyFilter} onChange={(e) => { setUnreadOnlyFilter(e.target.checked); setTicketPage(1); setSelectedIds(new Set()); }} />
             {t("ui.support.unreadOnly")}
           </label>
         </div>
         <div className="flex items-center gap-2">
           <select
             value={sortKey}
-            onChange={(e) => { setSortKey(e.target.value as SortKey); setTicketPage(1); }}
+            onChange={(e) => { setSortKey(e.target.value as SortKey); setTicketPage(1); setSelectedIds(new Set()); }}
             className={adminFilterControlClassName}
           >
             {(Object.keys(SORT_LABEL) as SortKey[]).map((k) => (
               <option key={k} value={k}>{t(SORT_LABEL[k])}</option>
             ))}
           </select>
-          <Select value={categoryFilter} onValueChange={(value) => { setCategoryFilter(value); setTicketPage(1); }}>
+          <Select value={categoryFilter} onValueChange={(value) => { setCategoryFilter(value); setTicketPage(1); setSelectedIds(new Set()); }}>
             <SelectTrigger className={`${adminFilterControlClassName} w-40`}>
               <SelectValue placeholder={t("ui.support.category")} />
             </SelectTrigger>
@@ -393,7 +377,7 @@ function AdminSupportContent() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setTicketPage(1); }}>
+          <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setTicketPage(1); setSelectedIds(new Set()); }}>
             <SelectTrigger className={`${adminFilterControlClassName} w-36`}>
               <SelectValue placeholder={t("ui.support.statusLabel")} />
             </SelectTrigger>
@@ -409,10 +393,17 @@ function AdminSupportContent() {
 
       <ModerationFlagsPanel onOpenTicket={openTicket} />
 
+      {queueError && (
+        <div role="alert" className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <span>{queueError}</span>
+          <Button type="button" size="sm" variant="outline" onClick={() => void loadTickets()}>{t("ui.support.retry")}</Button>
+        </div>
+      )}
+
       {tickets === null ? (
-        <p className="text-sm text-muted-foreground">{t("ui.states.loadingEllipsis")}</p>
+        queueError ? null : <p className="text-sm text-muted-foreground">{t("ui.states.loadingEllipsis")}</p>
       ) : tickets.length === 0 ? (
-        <EmptyState title={t("ui.support.empty")} />
+        queueError ? null : <EmptyState title={t("ui.support.empty")} />
       ) : (
         <div className="overflow-hidden rounded-2xl border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <div className="flex items-center gap-2 border-b border-border px-6 py-3 text-xs"><input type="checkbox" aria-label={t("ui.support.selectAllVisible")} checked={visibleTickets.length > 0 && visibleTickets.every((ticket) => selectedIds.has(ticket.id))} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); visibleTickets.forEach((ticket) => event.target.checked ? next.add(ticket.id) : next.delete(ticket.id)); return next; })} /><span className="text-muted-foreground">{t("ui.batch.selectAllOnPage")}</span></div>
@@ -434,7 +425,7 @@ function AdminSupportContent() {
                     {ticket.classificationMethod && (
                       <span className="text-[0.5625rem] uppercase tracking-wide opacity-70"> ({ticket.classificationMethod})</span>
                     )}
-                    {" "}{t("ui.support.fromUser", { user: ticket.userName })} · {new Date(ticket.createdAt).toLocaleDateString()}
+                    {" "}{t("ui.support.fromUser", { user: ticket.userName ?? t("ui.support.unknownUser") })} · {new Date(ticket.createdAt).toLocaleDateString()}
                     {ticket.unanswered && <span className="text-destructive font-medium"> · {t("ui.support.unansweredLower")}</span>}
                   </p>
                 </button>
@@ -462,14 +453,14 @@ function AdminSupportContent() {
               </div>
             ))}
           </div>
-          {sortedTickets.length > 0 && (
+          {totalTickets > 0 && (
             <nav aria-label={t("ui.support.pagination")} className="flex flex-col gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-              <span>{t("ui.support.range", { first: (ticketPage - 1) * TICKETS_PER_PAGE + 1, last: Math.min(ticketPage * TICKETS_PER_PAGE, sortedTickets.length), total: sortedTickets.length })}</span>
+              <span>{t("ui.support.range", { first: (ticketPage - 1) * TICKETS_PER_PAGE + 1, last: Math.min(ticketPage * TICKETS_PER_PAGE, totalTickets), total: totalTickets })}</span>
               {totalTicketPages > 1 && <div className="flex items-center gap-2">
                 <button
                   type="button"
                   aria-label={t("ui.pagination.previousPage")}
-                  onClick={() => setTicketPage((page) => Math.max(1, page - 1))}
+                  onClick={() => { setTicketPage((page) => Math.max(1, page - 1)); setSelectedIds(new Set()); }}
                   disabled={ticketPage === 1}
                   className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -479,7 +470,7 @@ function AdminSupportContent() {
                 <button
                   type="button"
                   aria-label={t("ui.pagination.nextPage")}
-                  onClick={() => setTicketPage((page) => Math.min(totalTicketPages, page + 1))}
+                  onClick={() => { setTicketPage((page) => Math.min(totalTicketPages, page + 1)); setSelectedIds(new Set()); }}
                   disabled={ticketPage === totalTicketPages}
                   className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
                 >

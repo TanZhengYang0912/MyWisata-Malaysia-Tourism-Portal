@@ -2101,6 +2101,7 @@
       "errors": {
         "batchUpdate": "一个或多个工单无法更新。",
         "batchUpdateFailed": "批量更新工单失败。",
+        "loadTickets": "无法加载客服工单。",
         "sendReply": "无法发送回复。",
         "sendReplyTryAgain": "无法发送回复，请重试。",
         "updateCategory": "无法更新工单类别。",
@@ -2139,6 +2140,8 @@
       "statusLabel": "状态",
       "ticketMarked": "工单已标记为{{status}}。",
       "title": "支持工单",
+      "retry": "重试",
+      "unknownUser": "未知用户",
       "unanswered": "未回复",
       "unansweredLower": "未回复",
       "unreadOnly": "仅未读",

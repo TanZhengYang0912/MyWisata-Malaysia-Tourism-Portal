@@ -2101,6 +2101,7 @@
       "errors": {
         "batchUpdate": "Satu atau lebih tiket tidak dapat dikemas kini.",
         "batchUpdateFailed": "Kemas kini tiket secara pukal gagal.",
+        "loadTickets": "Tiket sokongan tidak dapat dimuatkan.",
         "sendReply": "Tidak dapat menghantar balasan.",
         "sendReplyTryAgain": "Tidak dapat menghantar balasan. Sila cuba lagi.",
         "updateCategory": "Tidak dapat mengemas kini kategori tiket.",
@@ -2139,6 +2140,8 @@
       "statusLabel": "Status",
       "ticketMarked": "Tiket ditandai {{status}}.",
       "title": "Tiket Sokongan",
+      "retry": "Cuba lagi",
+      "unknownUser": "Pengguna tidak diketahui",
       "unanswered": "Belum dijawab",
       "unansweredLower": "belum dijawab",
       "unreadOnly": "Belum dibaca sahaja",
