@@ -417,6 +417,7 @@
       "roomsCount_other": "{{count}} bilik"
     },
     "labels": {
+      "all": "Semua",
       "hiddenGem": "Permata Tersembunyi",
       "sponsored": "Ditaja",
       "featured": "Pilihan",
@@ -926,6 +927,7 @@
       "savedHotels": "Hotel disimpan"
     },
     "activity": {
+      "noReviewsYet": "Belum ada ulasan",
       "notFound": "Pengalaman tidak ditemui",
       "removed": "Penyenaraian ini mungkin telah dialih keluar.",
       "noVendorBooking": "Tiada tempahan vendor disenaraikan untuk tempat awam ini.",
@@ -1634,6 +1636,32 @@
       }
     },
     "vendor": {
+      "hours": {
+        "dayShort": {
+          "mon": "Isn",
+          "tue": "Sel",
+          "wed": "Rab",
+          "thu": "Kha",
+          "fri": "Jum",
+          "sat": "Sab",
+          "sun": "Aha"
+        }
+      },
+      "viewPhotos": "Lihat foto",
+      "reviewsNav": "Ulasan ({{count}})",
+      "sectionNav": "Bahagian halaman",
+      "showingCount": "Menunjukkan {{shown}} daripada {{total}}",
+      "showAllExperiences": "Tunjuk semua {{count}} pengalaman",
+      "showAllExperiences_one": "Tunjuk semua {{count}} pengalaman",
+      "showAllExperiences_other": "Tunjuk semua {{count}} pengalaman",
+      "showAllLocations": "Tunjuk semua {{count}} lokasi",
+      "showAllLocations_one": "Tunjuk semua {{count}} lokasi",
+      "showAllLocations_other": "Tunjuk semua {{count}} lokasi",
+      "opensAt": "Dibuka {{day}} {{time}}",
+      "today": "hari ini",
+      "tomorrow": "esok",
+      "directions": "Arah",
+      "popular": "Popular",
       "notFound": "Vendor tidak ditemui",
       "metadataDescription": "Terokai cawangan dan pengalaman {{vendor}}.",
       "localExperiencePartner": "Rakan pengalaman tempatan",
@@ -2729,6 +2757,10 @@
       "moreProducts_other": "+{{count}} lagi"
     },
     "promotionCampaigns": {
+      "stallsJoining": "{{count}} gerai menyertai",
+      "stallsJoining_one": "{{count}} gerai menyertai",
+      "stallsJoining_other": "{{count}} gerai menyertai",
+      "viewAllStalls": "Lihat semua",
       "operating": "Sedang dibuka",
       "betweenSessions": "Antara sesi pembukaan",
       "eyebrow": "Acara masa terhad",
@@ -2757,7 +2789,6 @@
       "viewAllVendors": "Lihat vendor",
       "viewAllVendors_one": "Lihat vendor",
       "viewAllVendors_other": "Lihat semua {{count}} vendor",
-      "previewVendorCount": "Menunjukkan {{shown}} daripada {{total}} vendor",
       "detailTitle": "Butiran kempen",
       "detailDescription": "Lihat tempoh kempen dan vendor yang mengambil bahagian.",
       "backToEvents": "Kembali ke acara",

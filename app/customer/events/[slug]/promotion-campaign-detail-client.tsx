@@ -189,11 +189,11 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
             </p>
           ) : campaign.vendors.length === 1 ? (
             <div className="grid min-w-0 gap-4">
-              {visibleVendorCards.map(({ vendor, matchingStallNumbers }) => <PromotionCampaignVendorCard key={vendor.vendorId} vendor={vendor} campaignSlug={campaign.slug} mode="detail" layout="featured" matchingStallNumbers={matchingStallNumbers} />)}
+              {visibleVendorCards.map(({ vendor, matchingStallNumbers }) => <PromotionCampaignVendorCard key={vendor.vendorId} vendor={vendor} campaignSlug={campaign.slug} layout="featured" matchingStallNumbers={matchingStallNumbers} />)}
             </div>
           ) : (
             <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {visibleVendorCards.map(({ vendor, matchingStallNumbers }) => <PromotionCampaignVendorCard key={vendor.vendorId} vendor={vendor} campaignSlug={campaign.slug} mode="detail" matchingStallNumbers={matchingStallNumbers} />)}
+              {visibleVendorCards.map(({ vendor, matchingStallNumbers }) => <PromotionCampaignVendorCard key={vendor.vendorId} vendor={vendor} campaignSlug={campaign.slug} matchingStallNumbers={matchingStallNumbers} />)}
             </div>
           )}
 

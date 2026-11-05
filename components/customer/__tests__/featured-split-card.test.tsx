@@ -11,4 +11,12 @@ describe("FeaturedSplitCard", () => {
     expect(pass).toContain('data-slot="featured-end"');
     expect(pass).toContain("44%");
   });
+
+  it("renders a footer under the grid and only then clips the grid", () => {
+    const plain = renderToStaticMarkup(<FeaturedSplitCard variant="event-pass" media={<span>Photo</span>}>Content</FeaturedSplitCard>);
+    const withFooter = renderToStaticMarkup(<FeaturedSplitCard variant="event-pass" media={<span>Photo</span>} footer={<p>Stalls</p>}>Content</FeaturedSplitCard>);
+    expect(plain.match(/class="grid [^"]*"/)?.[0]).not.toContain("overflow-hidden");
+    expect(withFooter.match(/class="grid [^"]*"/)?.[0]).toContain("overflow-hidden");
+    expect(withFooter.indexOf("<p>Stalls</p>")).toBeGreaterThan(withFooter.indexOf('data-slot="featured-end"'));
+  });
 });

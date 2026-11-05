@@ -60,7 +60,9 @@ describe('vendor storefront presentation', () => {
     expect(pageSource).toContain("t('ui.vendor.policiesSupport')");
     expect(pageSource).toContain('id="experiences"');
     expect(pageSource).toContain('id="locations"');
-    expect(pageSource).toContain('selectFeaturedVendorProducts(catalogue, 4, explicitFeaturedIds)');
+    expect(pageSource).toContain('selectFeaturedVendorProducts(catalogue, catalogue.length, explicitFeaturedIds)');
+    expect(pageSource).toContain('id="about"');
+    expect(pageSource).toContain('id="reviews"');
     expect(pageSource).not.toContain('id="all-products-heading"');
   });
 

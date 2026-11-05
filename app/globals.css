@@ -44,6 +44,13 @@
   --cta-orange: #f97316;
   --cta-orange-foreground: #0f172a;
   --highlight-yellow: #ffcc00;
+  --mw-hours-open: #6cc36a;
+  --mw-hours-closed: #d14a4a;
+  --mw-hours-unknown: #cbd5e1;
+  --mw-hours-track: #eceef4;
+  --mw-hours-segment: #a7e8a5;
+  --mw-hours-hatch: #fde2e2;
+  --mw-hours-hatch-border: #fecaca;
   --highlight-yellow-foreground: #010066;
   --ai-purple: #7c3aed;
   --ai-purple-surface: #f3e8ff;
@@ -102,6 +109,13 @@
   --cta-orange: #fb923c;
   --cta-orange-foreground: #1a0f00;
   --highlight-yellow: #ffd84d;
+  --mw-hours-open: #4ade80;
+  --mw-hours-closed: #f87171;
+  --mw-hours-unknown: #475569;
+  --mw-hours-track: #263042;
+  --mw-hours-segment: #3f9d5a;
+  --mw-hours-hatch: #4c1d1d;
+  --mw-hours-hatch-border: #7f1d1d;
   --highlight-yellow-foreground: #1a1600;
   --ai-purple: #a78bfa;
   --ai-purple-surface: #241a3d;
@@ -238,7 +252,7 @@ body {
 }
 
 .mw-card-body-compact {
-  min-height: 7rem;
+  min-height: 0;
 }
 
 .mw-card-title {
@@ -279,9 +293,34 @@ body {
 
 /* The details and CTA float over the next row on hover, focus, or touch. */
 .mw-card-expand-card {
+  --mw-card-title-lh: calc(0.875rem * 1.375);
   position: relative;
   z-index: 0;
   overflow: visible;
+}
+
+/* Closed: the name is one line. Open: it wraps to two lines, and a card whose
+   name overflows (data-title-wraps, set by ExpandCard) grows by that line and
+   hands it back as a negative margin, so the grid row never moves. */
+.mw-card-expand-card .mw-card-title {
+  min-height: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.mw-card-expand-card:focus-within .mw-card-title,
+.mw-card-expand-card[data-open="true"] .mw-card-title {
+  display: -webkit-box;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.mw-card-expand-card[data-title-wraps="true"]:focus-within,
+.mw-card-expand-card[data-title-wraps="true"][data-open="true"] {
+  height: calc(100% + var(--mw-card-title-lh));
+  margin-bottom: calc(-1 * var(--mw-card-title-lh));
 }
 
 .mw-card-expand-card .mw-card-media {
@@ -350,6 +389,18 @@ body {
   .mw-card-expand-card:hover .mw-card-details-expand {
     grid-template-rows: 1fr;
     opacity: 1;
+  }
+
+  .mw-card-expand-card:hover .mw-card-title {
+    display: -webkit-box;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .mw-card-expand-card[data-title-wraps="true"]:hover {
+    height: calc(100% + var(--mw-card-title-lh));
+    margin-bottom: calc(-1 * var(--mw-card-title-lh));
   }
 }
 

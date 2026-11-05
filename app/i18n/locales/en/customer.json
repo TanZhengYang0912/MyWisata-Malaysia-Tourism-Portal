@@ -417,6 +417,7 @@
       "roomsCount_other": "{{count}} rooms"
     },
     "labels": {
+      "all": "All",
       "hiddenGem": "Hidden Gem",
       "sponsored": "Sponsored",
       "featured": "Featured",
@@ -926,6 +927,7 @@
       "savedHotels": "Saved hotels"
     },
     "activity": {
+      "noReviewsYet": "No reviews yet",
       "notFound": "Experience not found",
       "removed": "This listing may have been removed.",
       "noVendorBooking": "No vendor booking is listed for this public place.",
@@ -1634,6 +1636,32 @@
       }
     },
     "vendor": {
+      "hours": {
+        "dayShort": {
+          "mon": "Mon",
+          "tue": "Tues",
+          "wed": "Wed",
+          "thu": "Thur",
+          "fri": "Fri",
+          "sat": "Sat",
+          "sun": "Sun"
+        }
+      },
+      "viewPhotos": "View photos",
+      "reviewsNav": "Reviews ({{count}})",
+      "sectionNav": "Page sections",
+      "showingCount": "Showing {{shown}} of {{total}}",
+      "showAllExperiences": "Show all {{count}} experiences",
+      "showAllExperiences_one": "Show all {{count}} experience",
+      "showAllExperiences_other": "Show all {{count}} experiences",
+      "showAllLocations": "Show all {{count}} locations",
+      "showAllLocations_one": "Show all {{count}} location",
+      "showAllLocations_other": "Show all {{count}} locations",
+      "opensAt": "Opens {{day}} {{time}}",
+      "today": "today",
+      "tomorrow": "tomorrow",
+      "directions": "Directions",
+      "popular": "Popular",
       "notFound": "Vendor not found",
       "metadataDescription": "Explore {{vendor}} outlets and experiences.",
       "localExperiencePartner": "Local experience partner",
@@ -1706,7 +1734,7 @@
       "travellerFavourites": "Traveller favourites",
       "trustedByTravellers": "Trusted by people who have been there",
       "combinedScore": "A combined score from visible reviews across this vendor's published listings.",
-      "locationCount_one": "{{count}} locations",
+      "locationCount_one": "{{count}} location",
       "locationCount_other": "{{count}} locations",
       "publishedExperienceCount_one": "{{count}} published experiences",
       "publishedExperienceCount_other": "{{count}} published experiences",
@@ -2729,6 +2757,10 @@
       "moreProducts_other": "+{{count}} more"
     },
     "promotionCampaigns": {
+      "stallsJoining": "{{count}} stalls joining",
+      "stallsJoining_one": "{{count}} stall joining",
+      "stallsJoining_other": "{{count}} stalls joining",
+      "viewAllStalls": "View all",
       "operating": "Open now",
       "betweenSessions": "Between opening sessions",
       "eyebrow": "Limited-time events",
@@ -2757,7 +2789,6 @@
       "viewAllVendors": "View vendor",
       "viewAllVendors_one": "View vendor",
       "viewAllVendors_other": "View all {{count}} vendors",
-      "previewVendorCount": "Showing {{shown}} of {{total}} vendors",
       "detailTitle": "Campaign details",
       "detailDescription": "See the campaign period and participating vendors.",
       "backToEvents": "Back to events",

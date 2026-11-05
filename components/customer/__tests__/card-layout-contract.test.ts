@@ -53,6 +53,19 @@ describe("shared card layout contract", () => {
     expect(styles).toContain('.mw-card-expand-card[data-open="true"] .mw-card-details-expand');
   });
 
+  it("gives an opened two-line name room without moving the grid row", () => {
+    const styles = read("app/globals.css");
+    const compactRule = styles.match(/\.mw-card-body-compact \{([^}]*)\}/)?.[1] ?? "";
+    const wrapsRule = styles.match(/\.mw-card-expand-card\[data-title-wraps="true"\]\[data-open="true"\] \{([^}]*)\}/)?.[1] ?? "";
+    const hoverBlock = styles.slice(styles.indexOf("@media (hover: hover) and (pointer: fine)"));
+
+    expect(compactRule).toContain("min-height: 0;");
+    expect(wrapsRule).toContain("height: calc(100% + var(--mw-card-title-lh));");
+    expect(wrapsRule).toContain("margin-bottom: calc(-1 * var(--mw-card-title-lh));");
+    expect(styles.indexOf(".mw-card-expand-card:hover .mw-card-title")).toBeGreaterThan(styles.indexOf("@media (hover: hover) and (pointer: fine)"));
+    expect(hoverBlock).toContain('.mw-card-expand-card[data-title-wraps="true"]:hover {');
+  });
+
   it("keeps media consumer backgrounds from being overwritten", () => {
     const styles = read("app/globals.css");
     const mediaRule = styles.match(/\.mw-card-media\s*\{([^}]*)\}/)?.[1] ?? "";
@@ -66,11 +79,11 @@ describe("shared card layout contract", () => {
       "components/customer/activity-card.tsx",
       "components/guest/guest-catalogue.tsx",
       "app/customer/for-you/for-you-client.tsx",
-      "app/customer/vendor/[vendorId]/page.tsx",
+      "components/customer/vendor-listing-grid.tsx",
     ];
 
     for (const file of cardConsumers) {
-      if (file === "app/customer/for-you/for-you-client.tsx") {
+      if (file === "app/customer/for-you/for-you-client.tsx" || file === "components/customer/vendor-listing-grid.tsx") {
         expect(read(file), file).toContain("ActivityCard");
       } else {
         expect(read(file), file).toContain("mw-card");

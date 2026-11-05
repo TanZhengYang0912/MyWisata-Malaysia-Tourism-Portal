@@ -26,7 +26,8 @@ describe("customer product save entry points", () => {
   });
 
   it("uses the shared card for vendor featured products", () => {
-    expect(read("app/customer/vendor/[vendorId]/page.tsx")).toContain("<ActivityCard");
+    expect(read("app/customer/vendor/[vendorId]/page.tsx")).toContain("<VendorListingGrid");
+    expect(read("components/customer/vendor-listing-grid.tsx")).toContain("<ActivityCard");
   });
 
   it("keeps saved product cards in sync when a customer removes an item", () => {

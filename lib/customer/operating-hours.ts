@@ -120,6 +120,37 @@ export function isOperatingHoursOpenNow(hours: OperatingHours | null | undefined
   return isOperatingHoursMinuteAvailable(getMalaysiaTime(date), hours, [getMalaysiaTodayKey(date)]);
 }
 
+/** Open stretches inside one day, in minutes 0–1440: a period from the night before shows from 00:00, one past midnight stops at 24:00. */
+export function getDayTrackSegments(hours: OperatingHours, day: OperatingHourWeekday): Array<{ start: number; end: number }> {
+  const clipped = rangesAroundDay(hours, day)
+    .map((range) => ({ start: Math.max(range.start, 0), end: Math.min(range.end, 1440) }))
+    .filter((range) => range.start < range.end)
+    .sort((left, right) => left.start - right.start);
+  const merged: Array<{ start: number; end: number }> = [];
+  for (const range of clipped) {
+    const last = merged[merged.length - 1];
+    if (last && range.start <= last.end) last.end = Math.max(last.end, range.end);
+    else merged.push({ ...range });
+  }
+  return merged;
+}
+
+/** The next opening after `date` in Malaysia time, up to a week ahead; offsetDays 0 is later today. */
+export function getNextOpening(hours: OperatingHours | null | undefined, date: Date = new Date()): { day: OperatingHourWeekday; time: string; offsetDays: number } | null {
+  if (!hours) return null;
+  const now = getMalaysiaTime(date);
+  const todayIndex = WEEKDAY_INDEX.get(getMalaysiaTodayKey(date)) ?? 0;
+  for (let offsetDays = 0; offsetDays <= 7; offsetDays += 1) {
+    const day = weekdayAt(todayIndex + offsetDays);
+    const opening = getOperatingHoursPeriods(hours[day])
+      .map((period) => ({ time: period.open ?? "", minutes: parseClockMinutes(period.open) ?? 0 }))
+      .filter((period) => offsetDays > 0 || period.minutes > now)
+      .sort((left, right) => left.minutes - right.minutes)[0];
+    if (opening) return { day, time: opening.time, offsetDays };
+  }
+  return null;
+}
+
 export type OutletContentHoursCopy = {
   scheduleUnavailable?: string;
   closed?: string;

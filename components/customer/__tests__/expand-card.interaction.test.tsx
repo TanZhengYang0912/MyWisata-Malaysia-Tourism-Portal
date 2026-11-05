@@ -1,6 +1,6 @@
 import React, { act } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { findOne, installTestDom, TestEvent, type TestDocument, type TestElement } from "@/components/shared/__tests__/render-test-dom";
+import { findElements, findOne, installTestDom, TestElement, TestEvent, type TestDocument } from "@/components/shared/__tests__/render-test-dom";
 
 vi.mock("next/link", () => ({ default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => <a href={href} {...props}>{children}</a> }));
 import { ExpandCard } from "@/components/customer/expand-card";
@@ -80,5 +80,48 @@ describe("ExpandCard touch interactions", () => {
     await act(async () => { cta().dispatchEvent(event); });
     expect(event.defaultPrevented).toBe(false);
     expect(onAction).toHaveBeenCalledOnce();
+  });
+});
+
+describe("ExpandCard title overflow", () => {
+  const observerCallbacks: Array<() => void> = [];
+  class FakeObserver { constructor(callback: () => void) { observerCallbacks.push(callback); } observe() {} disconnect() {} }
+  const prototype = TestElement.prototype as unknown as Record<string, unknown>;
+  beforeAll(async () => { document = installTestDom(); ({ createRoot } = await import("react-dom/client")); });
+  beforeEach(() => {
+    observerCallbacks.length = 0;
+    vi.stubGlobal("ResizeObserver", FakeObserver);
+    vi.stubGlobal("MutationObserver", FakeObserver);
+    // The test DOM has no selectors or layout; give the card just what the measurement reads.
+    prototype.querySelector = function (this: TestElement, selector: string) { return findElements(this, (element) => element.className.includes(selector.slice(1)))[0] ?? null; };
+    prototype.matches = () => false;
+    container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container as unknown as Element);
+  });
+  afterEach(() => { act(() => root.unmount()); document.body.removeChild(container); vi.unstubAllGlobals(); delete prototype.querySelector; delete prototype.matches; });
+  const article = () => findOne(container, (element) => element.tagName === "ARTICLE");
+  const heading = () => findOne(container, (element) => element.tagName === "H3");
+  function setWidths(scrollWidth: number, clientWidth: number) {
+    Object.defineProperties(heading(), { scrollWidth: { configurable: true, value: scrollWidth }, clientWidth: { configurable: true, value: clientWidth } });
+  }
+  async function remeasure() { await act(async () => { observerCallbacks.forEach((callback) => callback()); }); }
+  const titled = () => <ExpandCard media={null} title={<h3 className="mw-card-title">A very long card title</h3>} details={<p>Details</p>} detailsId="title-details" action={{ href: "/card", label: "Book Now" }} />;
+
+  it("marks a card whose name overflows its one line, and clears it once the name fits", async () => {
+    await render(titled());
+    setWidths(400, 200);
+    await remeasure();
+    expect(article().getAttribute("data-title-wraps")).toBe("true");
+    setWidths(200, 200);
+    await remeasure();
+    expect(article().getAttribute("data-title-wraps")).toBeNull();
+  });
+  it("keeps the closed answer while the card is open", async () => {
+    await render(titled());
+    setWidths(400, 200);
+    await remeasure();
+    article().setAttribute("data-open", "true");
+    setWidths(200, 200);
+    await remeasure();
+    expect(article().getAttribute("data-title-wraps")).toBe("true");
   });
 });

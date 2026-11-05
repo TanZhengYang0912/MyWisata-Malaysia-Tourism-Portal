@@ -36,6 +36,32 @@ export function ExpandCard({ media, title, price, details, detailsId, action }: 
     return () => document.removeEventListener("pointerdown", closeOutside);
   }, [open]);
 
+  useEffect(() => {
+    const article = articleRef.current;
+    if (typeof ResizeObserver === "undefined" || typeof MutationObserver === "undefined" || !article) return;
+    const title = article.querySelector<HTMLElement>(".mw-card-title");
+    if (!title) return;
+    const card = article;
+    const heading = title;
+    // Marks a name that overflows its one closed line, so the open card can make room for the second line.
+    function measure() {
+      // An open card shows the wrapped name, which no longer overflows; keep the closed answer.
+      if (card.getAttribute("data-open") === "true" || card.matches(":hover, :focus-within")) return;
+      if (heading.scrollWidth > heading.clientWidth + 1) card.setAttribute("data-title-wraps", "true");
+      else card.removeAttribute("data-title-wraps");
+    }
+    measure();
+    const resize = new ResizeObserver(measure);
+    resize.observe(card);
+    // LocalizedContent swaps the name without resizing the card.
+    const mutation = new MutationObserver(measure);
+    mutation.observe(heading, { childList: true, characterData: true, subtree: true });
+    return () => {
+      resize.disconnect();
+      mutation.disconnect();
+    };
+  }, []);
+
   function handleCardClickCapture(event: React.MouseEvent<HTMLElement>) {
     if (event.detail === 0 || !window.matchMedia?.("(hover: none)").matches) return;
 

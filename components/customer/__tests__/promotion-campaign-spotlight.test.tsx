@@ -60,7 +60,7 @@ describe("promotion campaign home spotlight", () => {
     expect(stub).toContain("ui.promotionCampaigns.startsAt");
     expect(stub).toContain(">25<");
     expect(stub).toContain(">2026<");
-    expect(markup.indexOf("ui.promotionCampaigns.upcoming")).toBeLessThan(markup.indexOf("promotion-campaign-spotlight-title"));
+    expect(markup.indexOf("ui.promotionCampaigns.upcoming")).toBeLessThan(markup.indexOf("-title\""));
   });
 
   it("shows dates for a full-day event and retains the precise time for a legacy event", () => {

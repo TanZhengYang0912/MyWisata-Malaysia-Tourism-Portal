@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { MouseEvent } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Accessibility, BedDouble, CheckCircle, Clock, ImageOff, MapPin, Star, Store } from "lucide-react";
 import { useOptionalWishlist, useWishlist } from "@/components/providers/wishlist";
@@ -22,7 +22,8 @@ import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { OperatingHoursSummary } from "@/components/customer/operating-hours-summary";
 import { LocalizedContent } from "@/components/customer/localized-content";
 import { ProductSaveButton } from "@/components/customer/product-save-button";
-import { vendorProductDetailHref, type VendorProductCardData } from "@/lib/customer/vendor-page";
+import { getVendorProductTypeLabel, vendorProductDetailHref, type VendorProductCardData } from "@/lib/customer/vendor-page";
+import { isOperatingHoursOpenNow } from "@/lib/customer/operating-hours";
 
 type ActivityCardItem = ComputedActivity & {
   sponsorship?: { placementId: string; label: "Sponsored" } | null;
@@ -31,6 +32,21 @@ type ActivityCardItem = ComputedActivity & {
 
 type DiscoveryCardProps = { activity: ActivityCardItem; recommendationReason?: string; returnTo?: string; outletId?: string; source?: string; onSponsoredClick?: () => void; hideDiscoveryBadges?: boolean };
 type VendorListingProps = { vendorListing: VendorProductCardData; returnTo: string };
+
+const badgeClass = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]";
+
+// The badge row sits right under the name: at most three pills on one line, in priority order.
+function CardBadges({ badges }: { badges: ReactNode[] }) {
+  const shown = badges.filter(Boolean).slice(0, 3);
+  return shown.length > 0 ? <div className="flex max-h-5 flex-wrap gap-1.5 overflow-hidden">{shown}</div> : null;
+}
+
+function CardRating({ rating, reviews }: { rating: number; reviews: number }) {
+  const { t } = useTranslation("customer");
+  return <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+    {reviews > 0 ? <><Star size={11} aria-hidden="true" fill="var(--highlight-yellow)" stroke="none" /><span className="font-semibold text-foreground">{rating}</span><span>({reviews})</span></> : t("ui.activity.noReviewsYet")}
+  </div>;
+}
 
 export function ActivityCard(props: DiscoveryCardProps | VendorListingProps) {
   return "vendorListing" in props ? <VendorListingCard {...props} /> : <DiscoveryActivityCard {...props} />;
@@ -42,6 +58,10 @@ function VendorListingCard({ vendorListing: product }: VendorListingProps) {
   const single = product.soldAt.length === 1 ? product.soldAt[0] : undefined;
   const href = vendorProductDetailHref(product.id, product.vendorId, single?.id);
   const location = single ? [single.city, single.state].filter(Boolean).join(", ") : "";
+  const badges = [
+    single?.operatingHours && !isOperatingHoursOpenNow(single.operatingHours) && <span key="closed" className={`${badgeClass} bg-slate-800 font-semibold text-white`}>{t("ui.labels.closed")}</span>,
+    <span key="type" className={`${badgeClass} bg-secondary font-bold text-primary`}>{getVendorProductTypeLabel(product.productType)}</span>,
+  ];
   return <ExpandCard
     media={<>
       <Link href={href} aria-label={t("ui.vendor.viewProductDetails")} className="block h-full">
@@ -50,19 +70,18 @@ function VendorListingCard({ vendorListing: product }: VendorListingProps) {
           <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
         ) : <div className="flex h-full items-center justify-center bg-secondary text-xs font-semibold text-primary">{t("ui.vendor.photoComingSoon")}</div>}
       </Link>
-      <ProductSaveButton productId={product.id} productName={product.name} className="absolute right-3 top-3 z-20" />
-      {wishlist && <div className="absolute right-3 top-14 z-20"><ShareButton compact shareType="product" contentId={product.id} title={product.name} /></div>}
+      <ProductSaveButton productId={product.id} productName={product.name} compact className="absolute right-3 top-3 z-20" />
+      {wishlist && <div className="absolute right-3 top-12 z-20"><ShareButton compact shareType="product" contentId={product.id} title={product.name} /></div>}
     </>}
     title={<LocalizedContent entityType="product" entityId={product.id} field="name" sourceText={product.name}>
-      {({ text, control }) => <><Link href={href}><h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={text}>{text}</h3></Link>{control}</>}
+      {({ text, control }) => <><Link href={href}><h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={text}>{text}</h3></Link>{control}<CardBadges badges={badges} /></>}
     </LocalizedContent>}
-    price={<>{product.soldAt.length > 1 && <span className="mr-1 text-xs text-muted-foreground">{t("ui.vendor.from")}</span>}<ReferencePrice amountMYR={product.fromPrice} className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary" /></>}
+    price={<>{product.soldAt.length > 1 && <span className="mr-1 text-xs text-muted-foreground">{t("ui.vendor.from")}</span>}<ReferencePrice amountMYR={product.fromPrice} className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary" /><CardRating rating={product.rating} reviews={product.reviews} /></>}
     details={<>
       {location && <p className="text-xs text-muted-foreground"><MapPin size={12} className="mr-1 inline" aria-hidden="true" />{location}</p>}
       {!single && <p className="text-xs text-muted-foreground">{t("ui.vendor.locationCount", { count: product.soldAt.length })}</p>}
       {single?.operatingHours && <OperatingHoursSummary hours={single.operatingHours} compact />}
       {product.description && <p className="break-words text-xs text-muted-foreground"><LocalizedContent entityType="product" entityId={product.id} field="description" sourceText={product.description} /></p>}
-      {product.reviews > 0 && <p className="text-xs text-muted-foreground">{product.rating.toFixed(1)} ({product.reviews})</p>}
     </>}
     detailsId={`vendor-product-details-${product.id}`}
     action={{ href, label: product.requiresBooking ? t("ui.actions.bookNow") : t("ui.actions.buyNow") }}
@@ -86,24 +105,23 @@ function DiscoveryActivityCard({ activity, recommendationReason, returnTo, outle
   const categoryLabel = t(getDiscoveryCategoryLabelKey(categorySlug));
   const detailsId = `activity-card-details-${activity.id}`;
   // Details stay hidden until hover, keyboard focus or a first tap on a touch screen opens the drawer.
+  const badges = [
+    !isStayCard && !(activity.outlet.currentlyOpen ?? activity.outlet.open) && <span key="closed" className={`${badgeClass} bg-slate-800 font-semibold text-white`}>{t("ui.labels.closed")}</span>,
+    !hideDiscoveryBadges && <span key="category" className={`${badgeClass} bg-secondary font-bold text-primary`}><CategoryIcon category={categorySlug} size={11} /> {categoryLabel}</span>,
+    activity.outlet.verified && <span key="verified" className={`${badgeClass} bg-primary font-semibold text-white`}><CheckCircle size={9} aria-hidden="true" /> {t("ui.labels.verified")}</span>,
+    !hideDiscoveryBadges && activity.hot && <span key="trending" className={`${badgeClass} bg-destructive font-bold text-white`}>{TRENDING_SYMBOL} {t("ui.labels.trending")}</span>,
+    activity.outlet.wheelchairAccessible === true && <span key="accessible" className={`${badgeClass} bg-emerald-600 font-semibold text-white`} title={t("ui.labels.wheelchairAccessible")}><Accessibility size={9} aria-hidden="true" /> {t("ui.labels.accessible")}</span>,
+  ];
   const detailContent = (
     <>
-      <div className="flex flex-wrap gap-1.5">
-        {!hideDiscoveryBadges && <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold text-primary"><CategoryIcon category={categorySlug} size={11} /> {categoryLabel}</span>}
-        {!hideDiscoveryBadges && activity.hot && <span className="inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">{TRENDING_SYMBOL} {t("ui.labels.trending")}</span>}
-        {activity.outlet.verified && <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-white"><CheckCircle size={9} aria-hidden="true" /> {t("ui.labels.verified")}</span>}
-        {activity.outlet.wheelchairAccessible === true && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white" title={t("ui.labels.wheelchairAccessible")}><Accessibility size={9} aria-hidden="true" /> {t("ui.labels.accessible")}</span>}
-        {!isStayCard && !(activity.outlet.currentlyOpen ?? activity.outlet.open) && <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-white">{t("ui.labels.closed")}</span>}
-      </div>
       <Link href={activityHref} onClick={onSponsoredClick} className="flex items-start gap-1.5 text-xs text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"><MapPin size={12} className="mt-0.5 shrink-0" aria-hidden="true" /> {activity.outlet.city}, {activity.outlet.state}</Link>
       <Link href={getOutletShopHref(activity.outlet.id)} className="flex items-start gap-1.5 text-xs text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"><Store size={12} className="mt-0.5 shrink-0" aria-hidden="true" /> {t("ui.activity.visitShop", { vendor: activity.outlet.vendorName ?? t("ui.labels.localVendor") })}</Link>
       {isStayCard ? null : activity.outlet.operatingHours ? <OperatingHoursSummary hours={activity.outlet.operatingHours} currentlyOpen={activity.outlet.currentlyOpen ?? activity.outlet.open} compact /> : activity.outlet.hours && <p className="text-xs text-muted-foreground"><span className="font-semibold text-foreground">{t("ui.labels.operatingHours")}:</span> {activity.outlet.hours}</p>}
-      <div className="flex min-h-5 flex-wrap items-center gap-3 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1"><Star size={11} aria-hidden="true" fill="var(--highlight-yellow)" stroke="none" /><span className="font-semibold text-foreground">{activity.rating}</span><span>({activity.reviews})</span></div>
+      {(activity.property || activity.duration || activity.distanceKm !== undefined) && <div className="flex min-h-5 flex-wrap items-center gap-3 text-xs text-muted-foreground">
         {activity.property && <div className="flex items-center gap-1"><BedDouble size={11} aria-hidden="true" />{t("ui.property.roomTypes", { count: activity.property.roomTypeCount })}</div>}
-        <div className="flex items-center gap-1"><Clock size={10} aria-hidden="true" /> {activity.duration}</div>
+        {activity.duration && <div className="flex items-center gap-1"><Clock size={10} aria-hidden="true" /> {activity.duration}</div>}
         {activity.distanceKm !== undefined && <div>{activity.distanceKm} {DISTANCE_UNIT_KM}</div>}
-      </div>
+      </div>}
       {(activity.aiTag || recommendationReason) && <AiTag text={recommendationReason ?? activity.aiTag ?? ""} />}
     </>
   );
@@ -167,17 +185,19 @@ function DiscoveryActivityCard({ activity, recommendationReason, returnTo, outle
           <ShareButton compact shareType={isProperty ? "outlet" : "product"} contentId={isProperty ? activity.outlet.id : activity.id} title={cardName} />
         </div>
       </>}
-      title={isProperty ? (
+      title={isProperty ? (<>
           <Link href={activityHref} onClick={handleCardNavigation} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30">
             <h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={cardName}>{cardName}</h3>
           </Link>
-        ) : (
+          <CardBadges badges={badges} />
+        </>) : (
           <LocalizedContent entityType="product" entityId={activity.id} field="name" sourceText={activity.name}>
             {({ text, control }) => <>
               <Link href={activityHref} onClick={handleCardNavigation} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30">
                 <h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={text}>{text}</h3>
               </Link>
               {control}
+              <CardBadges badges={badges} />
             </>}
           </LocalizedContent>
         )}
@@ -188,6 +208,7 @@ function DiscoveryActivityCard({ activity, recommendationReason, returnTo, outle
         ) : (activity.categorySlug === "activity" || activity.requiresBooking) && (
           <span className="ml-1 text-xs text-muted-foreground">/ {t("ui.labels.person")}</span>
         )}
+        <CardRating rating={activity.rating} reviews={activity.reviews} />
       </>}
       details={detailContent}
       detailsId={detailsId}

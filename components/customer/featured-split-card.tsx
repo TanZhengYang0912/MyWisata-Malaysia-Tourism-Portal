@@ -5,6 +5,8 @@ import { CardMediaHoverCaption } from "@/components/customer/card-media-hover-ca
 type FeaturedSplitCardProps = {
   variant?: "split" | "event-pass";
   endContent?: ReactNode;
+  /** Full-width row under the grid, inside the card (the events page stall strip). */
+  footer?: ReactNode;
   media: ReactNode;
   mediaCaption?: ReactNode;
   children: ReactNode;
@@ -21,6 +23,7 @@ type FeaturedSplitCardProps = {
 export function FeaturedSplitCard({
   variant = "split",
   endContent,
+  footer,
   media,
   mediaCaption,
   children,
@@ -33,9 +36,10 @@ export function FeaturedSplitCard({
   mediaClassName = "",
   contentClassName = "",
 }: FeaturedSplitCardProps) {
-  const gridClassName = variant === "event-pass"
+  // With a footer below, the grid clips the stub's bottom notch itself.
+  const gridClassName = `${variant === "event-pass"
     ? "grid w-full grid-cols-1 lg:min-h-[310px] lg:grid-cols-[44%_minmax(0,1fr)_9rem]"
-    : "grid min-h-[320px] w-full grid-cols-1 md:min-h-[410px] md:grid-cols-[52%_48%]";
+    : "grid min-h-[320px] w-full grid-cols-1 md:min-h-[410px] md:grid-cols-[52%_48%]"}${footer ? " overflow-hidden" : ""}`;
   const content = (
     <>
       <div
@@ -73,6 +77,7 @@ export function FeaturedSplitCard({
       ) : (
         <div className={gridClassName}>{content}</div>
       )}
+      {footer}
     </article>
   );
 }
