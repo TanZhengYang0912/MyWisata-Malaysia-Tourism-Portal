@@ -856,6 +856,7 @@
       "noMatchingConversations": "没有匹配的对话。",
       "selectConversation": "选择一个对话",
       "loadFailed": "无法加载对话，请重试。",
+      "loadOlder": "加载更早的消息",
       "aiUnavailable": "AI 写作暂不可用。",
       "traveller": "旅客",
       "online": "在线",

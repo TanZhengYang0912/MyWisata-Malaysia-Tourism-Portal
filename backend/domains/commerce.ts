@@ -2,7 +2,7 @@ import { WITHDRAWAL_IN_PROGRESS_STATUSES } from "@/lib/wallet/withdrawal-display
 import type { SupabaseClient } from "@supabase/supabase-js";
 // Owner: Member 2/4 (Cart/Order/Booking/Wallet)
 import { supabase } from "@/backend/supabase";
-import { assertCartItemHasBackingRecord, canMergeCartItemLines, cartItemKey, cartTotals, unitPrice } from "@/backend/core/helpers";
+import { assertCartItemHasBackingRecord, canMergeCartItemLines, cartItemKey, cartTotals, sameStayDetails, unitPrice } from "@/backend/core/helpers";
 import { emit } from "@/backend/core/events";
 import { getActivities, getVoucherByCode } from "./catalogue";
 import type { PaymentMethod } from "@/lib/constants";
@@ -101,7 +101,7 @@ export async function updateCartStayDetails(userId: string, cartItemId: string, 
   const details = stayBookingDetailsSchema.parse(input);
   const cart = await getOrCreateCart(userId);
   const { data: row, error: rowError } = await supabase.from("cart_items")
-    .select("id,variant_id,slot_id,product_variants(product_id),booking_slots(product_id)")
+    .select("id,variant_id,slot_id,stay_details,product_variants(product_id),booking_slots(product_id)")
     .eq("cart_id", cart.id).eq("id", cartItemId).maybeSingle();
   if (rowError) throw rowError;
   if (!row) throw new Error("cart_item_not_found");
@@ -113,6 +113,7 @@ export async function updateCartStayDetails(userId: string, cartItemId: string, 
   if (relation(product?.categories as { slug: string } | { slug: string }[] | null)?.slug !== "accommodation") {
     throw new Error("stay_details_not_allowed");
   }
+  if (sameStayDetails(row.stay_details as StayBookingDetails | null, details)) return getCart(userId);
   const { data: updated, error: updateError } = await supabase.from("cart_items").update({ stay_details: details }).eq("cart_id", cart.id).eq("id", cartItemId).select("id").maybeSingle();
   if (updateError) throw updateError;
   if (!updated) throw new Error("cart_item_not_found");
@@ -123,7 +124,8 @@ export async function updateCartQty(userId: string, cartItemId: string, qty: num
   const cart = await getOrCreateCart(userId);
   const { error } = qty <= 0
     ? await supabase.from("cart_items").delete().eq("id", cartItemId).eq("cart_id", cart.id)
-    : await supabase.from("cart_items").update({ quantity: qty }).eq("id", cartItemId).eq("cart_id", cart.id);
+    // neq: an unchanged quantity matches no row, so Postgres writes nothing.
+    : await supabase.from("cart_items").update({ quantity: qty }).eq("id", cartItemId).eq("cart_id", cart.id).neq("quantity", qty);
   if (error) throw error;
   return getCart(userId);
 }

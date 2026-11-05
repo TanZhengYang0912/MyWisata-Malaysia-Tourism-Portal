@@ -10,6 +10,8 @@ import type { StayBookingDetails } from '@/backend/core/types';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
+const SEARCH_ID_LIMIT = 200;
+
 export async function GET(request: Request, { params }: Props) {
   const { vendorId } = await params;
   const url = new URL(request.url);
@@ -61,24 +63,34 @@ export async function GET(request: Request, { params }: Props) {
   }
   if (orderStatus && orderStatus !== 'all') query = query.eq('status', orderStatus);
   if (q) {
-    const [{ data: vendorItems }, { data: matchingUsers }, { data: matchingOrders }] = await Promise.all([
-      supabase.from('order_items').select('id,order_id,product_name,variant_name').eq('vendor_id', vendorId).limit(10000),
-      supabase.from('users').select('id').or(`full_name.ilike.%${q}%,email.ilike.%${q}%`).limit(100),
-      supabase.from('orders').select('id').ilike('display_id', `%${q}%`).limit(100)
+    // The database matches product names and is scoped to this vendor's
+    // outlets, instead of loading up to 10,000 order items to filter here.
+    // ponytail: matching order IDs are capped (they travel in one id.in.(...)
+    // filter, which must stay a sane URL length); a broader search returns the
+    // newest SEARCH_ID_LIMIT matches. Move to a search RPC if vendors need more.
+    const pattern = `%${q}%`;
+    const [{ data: itemMatches }, { data: matchingUsers }, { data: matchingOrders }] = await Promise.all([
+      supabase.from('order_items').select('order_id').eq('vendor_id', vendorId).in('outlet_id', outletIds)
+        .or(`product_name.ilike.${pattern},variant_name.ilike.${pattern}`)
+        .order('created_at', { ascending: false }).limit(SEARCH_ID_LIMIT),
+      supabase.from('users').select('id').or(`full_name.ilike.${pattern},email.ilike.${pattern}`).limit(100),
+      supabase.from('orders').select('id').ilike('display_id', pattern).limit(100),
     ]);
-    const searchTerm = rawQ.toLowerCase();
     const matchingOrderIds = [
-      ...(vendorItems || []).filter((item: { order_id: string; product_name: string | null; variant_name: string | null }) => String(item.product_name || '').toLowerCase().includes(searchTerm) || String(item.variant_name || '').toLowerCase().includes(searchTerm)).map((item: { order_id: string }) => item.order_id),
-      ...(matchingOrders || []).map((item: { id: string }) => item.id)
+      ...(itemMatches || []).map((item: { order_id: string }) => item.order_id),
+      ...(matchingOrders || []).map((item: { id: string }) => item.id),
     ];
     const userIds = (matchingUsers || []).map((item: { id: string }) => item.id);
     if (userIds.length) {
-      const { data: userOrders } = await supabase.from('orders').select('id').in('user_id', userIds).limit(10000);
+      // Only this vendor's orders from the matching customers.
+      const { data: userOrders } = await supabase.from('orders').select('id, order_items!inner(vendor_id)')
+        .in('user_id', userIds).eq('order_items.vendor_id', vendorId)
+        .order('created_at', { ascending: false }).limit(SEARCH_ID_LIMIT);
       matchingOrderIds.push(...(userOrders || []).map((item: { id: string }) => item.id));
     }
-    const conditions = [`contact_name.ilike.%${q}%`, `contact_email.ilike.%${q}%`];
-    if (matchingOrderIds.length) conditions.push(`id.in.(${[...new Set(matchingOrderIds)].join(',')})`);
-    if (!conditions.length) return apiOk({ items: [], pagination: { page, pageSize, total: 0, totalPages: 1 } });
+    const conditions = [`contact_name.ilike.${pattern}`, `contact_email.ilike.${pattern}`];
+    const orderIds = [...new Set(matchingOrderIds)].slice(0, SEARCH_ID_LIMIT);
+    if (orderIds.length) conditions.push(`id.in.(${orderIds.join(',')})`);
     query = query.or(conditions.join(','));
   }
   if (from) query = query.gte('created_at', from);

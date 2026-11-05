@@ -4,6 +4,7 @@ import { authorizeVendor } from '@/lib/vendor-authorization';
 import { maskChatBody } from '@/lib/chat/moderation';
 import { buildOrderContextSnapshot } from '@/lib/chat/context';
 import { notifyNewChatMessage } from '@/lib/chat/notify';
+import { toChatThreadSummaries } from '@/lib/chat/thread-summaries';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -13,16 +14,22 @@ async function authorize(vendorId: string) {
   return { user: { id: access.access.userId }, service: access.access.serviceDb, outletIds: access.access.outletIds };
 }
 
+// Thread summaries only (latest message, unread count for this staff member,
+// muted). The open thread's messages load from ./[threadId]. authorizeVendor
+// has already resolved the outlets this user may see; the RPC is
+// service-role only and is scoped to exactly those outlets.
 export async function GET(_request: Request, { params }: Props) {
   const { vendorId } = await params;
   const access = await authorize(vendorId);
   if ('error' in access) return access.error;
   const outletIds = access.outletIds;
   if (!outletIds.length) return apiOk([]);
-  const { data, error } = await access.service.from('chat_threads').select('id,customer_id,outlet_id,status,last_message_at,created_at,customer:users!chat_threads_customer_id_fkey(full_name,email),outlets(id,name,city,state),chat_messages(id,sender_id,body,created_at,attachment_url,reply_to_message_id,context_product_id,context_snapshot)').in('outlet_id', outletIds).order('last_message_at', { ascending: false });
+  const { data, error } = await access.service.rpc('get_chat_thread_summaries', { p_user_id: access.user.id, p_outlet_ids: outletIds });
   if (error) return apiFail('DB_ERROR', error.message, 500);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return apiOk((data || []).map((thread: any) => ({ ...thread, outlets: thread.outlets ? { ...thread.outlets, full_name: thread.outlets.name, name: outletShortName(thread.outlets.name) } : thread.outlets })));
+  return apiOk(toChatThreadSummaries(data, true).map((thread) => ({
+    ...thread,
+    outlets: { ...thread.outlets, full_name: thread.outlets.name, name: outletShortName(thread.outlets.name ?? '') },
+  })));
 }
 
 export async function POST(request: Request, { params }: Props) {

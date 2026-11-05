@@ -1,6 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
-import { getVendors, searchActivities, STATES_MY } from "./catalogue";
+import { findGlobalSearchCandidates, getVendors, searchActivities, STATES_MY } from "./catalogue";
 import { ComputedActivity, VendorSummary } from "../core/types";
 
 export type GlobalSearchResult = {
@@ -21,11 +21,13 @@ export async function performGlobalSearch(query: string, db: SupabaseClient): Pr
     state.toLowerCase().includes(normalizedQuery) && state !== "All Malaysia"
   );
 
-  // Independent reads share the caller's permissions and need not wait for
-  // each other. Keep the existing projection and result ordering unchanged.
+  // The database picks candidate products and vendors first; only those load
+  // and go through the usual filters below. Reads share the caller's
+  // permissions and run together.
+  const { productIds, vendorIds } = await findGlobalSearchCandidates(query, db);
   const [experiences, allVendors] = await Promise.all([
-    searchActivities({ q: query }, db),
-    getVendors(db),
+    productIds.length ? searchActivities({ q: query.trim() }, db, productIds) : [],
+    vendorIds.length ? getVendors(db, vendorIds) : [],
   ]);
   const vendors = allVendors.filter(vendor => vendor.kind !== "event" && (
     vendor.name.toLowerCase().includes(normalizedQuery) ||

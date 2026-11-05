@@ -1,16 +1,20 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const catalogue = vi.hoisted(() => ({ activities: vi.fn(), vendors: vi.fn() }));
+const catalogue = vi.hoisted(() => ({ activities: vi.fn(), vendors: vi.fn(), candidates: vi.fn() }));
 vi.mock('../catalogue', () => ({
   searchActivities: catalogue.activities,
   getVendors: catalogue.vendors,
+  findGlobalSearchCandidates: catalogue.candidates,
   STATES_MY: ['All Malaysia', 'Penang', 'Perak'],
 }));
 import { performGlobalSearch } from '../search';
 
 const db = {} as SupabaseClient;
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => {
+  vi.clearAllMocks();
+  catalogue.candidates.mockResolvedValue({ productIds: ['p1'], vendorIds: ['v1'] });
+});
 
 describe('global search', () => {
   it('starts independent catalogue reads together on the same caller-scoped client', async () => {
@@ -20,8 +24,11 @@ describe('global search', () => {
     catalogue.vendors.mockReturnValue(new Promise<[]>((resolve) => { finishVendors = resolve; }));
     const pending = performGlobalSearch('Penang', db);
     try {
-      expect(catalogue.activities).toHaveBeenCalledWith({ q: 'Penang' }, db);
-      expect(catalogue.vendors).toHaveBeenCalledWith(db);
+      // Both reads start once the candidates arrive, before either finishes.
+      await vi.waitFor(() => {
+        expect(catalogue.activities).toHaveBeenCalledWith({ q: 'Penang' }, db, ['p1']);
+        expect(catalogue.vendors).toHaveBeenCalledWith(db, ['v1']);
+      });
     } finally {
       finishActivities([]);
       finishVendors?.([]);
@@ -42,6 +49,21 @@ describe('global search', () => {
     expect(result.destinations).toEqual(['Penang']);
     expect(result.experiences).toEqual(activities.slice(0, 5));
     expect(result.vendors).toEqual(vendors.slice(0, 5));
+  });
+
+  it('only loads the candidates the database picked, with the trimmed query', async () => {
+    catalogue.activities.mockResolvedValue([]);
+    catalogue.vendors.mockResolvedValue([]);
+    await performGlobalSearch('  Penang ', db);
+    expect(catalogue.candidates).toHaveBeenCalledWith('  Penang ', db);
+    expect(catalogue.activities).toHaveBeenCalledWith({ q: 'Penang' }, db, ['p1']);
+  });
+
+  it('skips the catalogue reads when the database finds no candidates', async () => {
+    catalogue.candidates.mockResolvedValue({ productIds: [], vendorIds: [] });
+    expect(await performGlobalSearch('zzzz', db)).toEqual({ destinations: [], experiences: [], vendors: [] });
+    expect(catalogue.activities).not.toHaveBeenCalled();
+    expect(catalogue.vendors).not.toHaveBeenCalled();
   });
 
   it('does not issue catalogue reads for an empty query', async () => {

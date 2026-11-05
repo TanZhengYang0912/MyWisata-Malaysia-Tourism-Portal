@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
+import { toChatThreadSummaries } from '@/lib/chat/thread-summaries';
 
 type CreateThreadBody = { outletId?: string };
 
@@ -11,31 +12,18 @@ async function getAuthenticatedCustomer() {
   return user;
 }
 
+// One summary row per thread (latest message, unread count, muted) from
+// get_chat_thread_summaries, instead of every message and every read row on
+// each 3s poll. The RPC is service-role only; the caller is the signed-in
+// customer resolved above.
 export async function GET() {
   const user = await getAuthenticatedCustomer();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
   const service = createServiceClient();
-  const { data, error } = await service
-    .from('chat_threads')
-    .select('id,customer_id,outlet_id,vendor_id,last_message_at,created_at,outlets(id,name,city,state),chat_messages(id,sender_id,body,created_at,attachment_url,reply_to_message_id,context_product_id,context_snapshot)')
-    .eq('customer_id', user.id)
-    .order('last_message_at', { ascending: false });
+  const { data, error } = await service.rpc('get_chat_thread_summaries', { p_user_id: user.id });
   if (error) return apiFail('DB_ERROR', error.message, 500);
-
-  const messageIds = (data ?? []).flatMap((thread) => (thread.chat_messages ?? []).map((message) => message.id));
-  let readMessageIds: string[] = [];
-  if (messageIds.length > 0) {
-    const { data: reads, error: readsError } = await service
-      .from('chat_message_reads')
-      .select('message_id')
-      .eq('user_id', user.id)
-      .in('message_id', messageIds);
-    if (readsError) return apiFail('DB_ERROR', readsError.message, 500);
-    readMessageIds = (reads ?? []).map((read) => read.message_id);
-  }
-
-  return apiOk({ threads: data ?? [], readMessageIds });
+  return apiOk({ threads: toChatThreadSummaries(data) });
 }
 
 export async function POST(request: Request) {

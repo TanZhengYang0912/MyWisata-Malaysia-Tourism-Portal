@@ -856,6 +856,7 @@
       "noMatchingConversations": "No matching conversations.",
       "selectConversation": "Select a conversation",
       "loadFailed": "Could not load conversations. Please try again.",
+      "loadOlder": "Load earlier messages",
       "aiUnavailable": "AI writing is unavailable.",
       "traveller": "Traveller",
       "online": "Online",

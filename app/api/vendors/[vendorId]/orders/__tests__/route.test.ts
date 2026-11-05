@@ -133,3 +133,38 @@ describe('GET vendor orders by orderId', () => {
     expect(mocks.authorizeVendor).toHaveBeenCalledWith(VENDOR_ID, undefined, { requireApproved: true });
   });
 });
+
+describe('GET vendor orders search', () => {
+  it('matches product names in the database, scoped to this vendor, instead of loading 10,000 items', async () => {
+    vi.clearAllMocks();
+    const builders: Record<string, Record<string, ReturnType<typeof vi.fn>>> = {};
+    const builder = (table: string, rows: unknown[]) => {
+      const b: Record<string, ReturnType<typeof vi.fn>> = {};
+      for (const method of ['select', 'eq', 'in', 'or', 'ilike', 'order']) b[method] = vi.fn(() => b);
+      b.limit = vi.fn(async () => ({ data: rows, error: null }));
+      b.range = vi.fn(async () => ({ data: [], error: null, count: 0 }));
+      builders[table] = b;
+      return b;
+    };
+    let ordersCalls = 0;
+    const serviceDb = {
+      from: (table: string) => {
+        if (table === 'order_items') return builder('order_items', [{ order_id: ORDER_ID }]);
+        if (table === 'users') return builder('users', []);
+        ordersCalls += 1;
+        return builder(ordersCalls === 1 ? 'orders_main' : 'orders_display', []);
+      },
+    };
+    mocks.authorizeVendor.mockResolvedValue({ ok: true, access: { vendorId: VENDOR_ID, outletIds: [OUTLET_ID], serviceDb } });
+
+    const response = await GET(new Request(`http://localhost/api/vendors/${VENDOR_ID}/orders?q=wantan`), { params: Promise.resolve({ vendorId: VENDOR_ID }) });
+
+    expect(response.status).toBe(200);
+    const items = builders.order_items;
+    expect(items.eq).toHaveBeenCalledWith('vendor_id', VENDOR_ID);
+    expect(items.in).toHaveBeenCalledWith('outlet_id', [OUTLET_ID]);
+    expect(items.or).toHaveBeenCalledWith('product_name.ilike.%wantan%,variant_name.ilike.%wantan%');
+    expect(items.limit).toHaveBeenCalledWith(200);
+    expect(builders.orders_main.or).toHaveBeenCalledWith(`contact_name.ilike.%wantan%,contact_email.ilike.%wantan%,id.in.(${ORDER_ID})`);
+  });
+});

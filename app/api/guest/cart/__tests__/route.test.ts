@@ -45,3 +45,43 @@ describe('guest cart server boundary',()=>{
  });
  it('returns an empty private response without creating a subject for anonymous reads',async()=>{mocks.guest.mockResolvedValue(null);const response=await GET(new Request('https://mylawatan.example/api/guest/cart'));expect(await response.json()).toEqual({data:{items:[]},error:null});expect(response.headers.get('cache-control')).toContain('no-store');expect(mocks.upsert).not.toHaveBeenCalled();});
 });
+
+describe('guest cart skips unchanged PATCH writes',()=>{
+ const ROW='4d4057cf-c821-4b05-a454-61dbdc42d32c';
+ const stay={primaryGuestName:'Nur Aisyah',adults:1,estimatedArrival:'unknown'};
+ let orderCalls=0;
+ function useRow(category:string,stay_details:unknown=null){
+  orderCalls=0;
+  mocks.from.mockImplementation((table:string)=>{
+   const b:Record<string,unknown>={};for(const key of ['select','eq','is','gt'])b[key]=()=>b;
+   b.update=mocks.update.mockReturnValue(b);b.delete=()=>b;
+   b.maybeSingle=async()=>({data:table==='products'?{id:ID,categories:{slug:category}}:{id:ID},error:null});
+   b.then=(resolve:(value:unknown)=>unknown)=>resolve({error:null});
+   b.order=async()=>{orderCalls++;return {data:[{id:ROW,variant_id:variant,slot_id:null,outlet_id:ID,quantity:2,nights:1,unit_price:12,stay_details,product_variants:{product_id:ID},booking_slots:null}],error:null};};
+   return b;
+  });
+ }
+ function patch(body:unknown){return PATCH(new Request('https://mylawatan.example/api/guest/cart',{method:'PATCH',headers:{origin:'https://mylawatan.example','content-type':'application/json'},body:JSON.stringify(body)}));}
+ const key=async()=>{const {cartItemKey}=await import('@/backend/core/helpers');const {mapCartItem}=await import('@/backend/domains/commerce');return cartItemKey(mapCartItem({id:ROW,variant_id:variant,slot_id:null,outlet_id:ID,quantity:2,nights:1,unit_price:12,stay_details:null,product_variants:{product_id:ID},booking_slots:null} as never));};
+
+ it('does not write or re-read when the quantity is unchanged',async()=>{
+  useRow('food');
+  const response=await patch({key:await key(),quantity:2});
+  expect(response.status).toBe(200);
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect(orderCalls).toBe(1);
+  expect((await response.json()).data.items).toHaveLength(1);
+ });
+ it('writes a changed quantity',async()=>{
+  useRow('food');
+  expect((await patch({key:await key(),quantity:3})).status).toBe(200);
+  expect(mocks.update).toHaveBeenCalledWith({quantity:3});
+ });
+ it('does not write identical stay details, but writes changed ones',async()=>{
+  useRow('accommodation',stay);
+  expect((await patch({cartItemId:ROW,stayDetails:stay})).status).toBe(200);
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect((await patch({cartItemId:ROW,stayDetails:{...stay,specialRequest:'Late check-in'}})).status).toBe(200);
+  expect(mocks.update).toHaveBeenCalledWith({stay_details:{...stay,specialRequest:'Late check-in'}});
+ });
+});
