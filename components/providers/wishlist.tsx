@@ -137,3 +137,8 @@ export function useWishlist() {
   if (!context) throw new Error("useWishlist must be used within WishlistProvider");
   return context;
 }
+
+/** Null outside WishlistProvider, e.g. the vendor shop preview, which reuses customer product cards. */
+export function useOptionalWishlist() {
+  return useContext(WishlistContext);
+}

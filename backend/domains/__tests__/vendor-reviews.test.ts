@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/backend/supabase", () => ({ supabase: {} }));
 
-import { getReviewRatingSummary, getScopedReviewPage } from "@/backend/domains/vendor-reviews";
+import { getReviewRatingSummary, getScopedReviewPage, getVendorRatingSummaries } from "@/backend/domains/vendor-reviews";
 
 type Row = Record<string, unknown>;
 
@@ -73,6 +73,25 @@ describe("scoped customer review reads", () => {
     expect(trace).toContainEqual({ table: "review_rating_metrics_by_scope", column: "scope_type", value: "vendor" });
     expect(trace).toContainEqual({ table: "review_rating_metrics_by_scope", column: "scope_id", value: "vendor-1" });
     expect(trace.some((entry) => entry.table === "reviews")).toBe(false);
+  });
+
+  it("summarises many vendors in one query, matching the single-vendor summary", async () => {
+    const trace: Array<Record<string, unknown>> = [];
+    const rows = [
+      { scope_type: "vendor", scope_id: "vendor-1", rating: 5, review_count: 3 },
+      { scope_type: "vendor", scope_id: "vendor-1", rating: 4, review_count: 1 },
+      { scope_type: "vendor", scope_id: "vendor-2", rating: 3, review_count: 2 },
+      { scope_type: "outlet", scope_id: "vendor-3", rating: 5, review_count: 9 },
+    ];
+    const db = makeDb({ review_rating_metrics_by_scope: rows }, trace);
+
+    const summaries = await getVendorRatingSummaries(["vendor-1", "vendor-2", "vendor-3"], db);
+    const single = await getReviewRatingSummary("vendor", "vendor-1", makeDb({ review_rating_metrics_by_scope: rows }));
+
+    expect(summaries.get("vendor-1")).toEqual({ value: single.rating, count: single.total });
+    expect(summaries.get("vendor-2")).toEqual({ value: 3, count: 2 });
+    expect(summaries.has("vendor-3")).toBe(false);
+    expect(trace.filter((entry) => entry.columns)).toHaveLength(1);
   });
 
   it("filters, orders, and bounds a scoped page before returning it", async () => {

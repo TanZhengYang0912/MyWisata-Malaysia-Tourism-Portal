@@ -16,16 +16,14 @@ describe("customer header reference contract", () => {
     expect(customerLayoutSource).not.toContain('data-customer-header="true"');
     expect(customerLayoutSource).toContain("h-17");
     expect(customerLayoutSource).toContain("max-w-7xl mx-auto");
-    expect(customerLayoutSource).toContain("text-sm font-medium");
     expect(customerLayoutSource).toContain("ml-auto flex shrink-0");
     expect(customerLayoutSource).not.toContain("h-[104px]");
     expect(customerLayoutSource).not.toContain("markSize={56}");
-    expect(customerLayoutSource.match(/CUSTOMER_NAV\.map/g) ?? []).toHaveLength(2);
-    expect(customerLayoutSource).toContain("<item.icon size={16}");
+    expect(customerLayoutSource.match(/<CustomerPrimaryNavigation /g) ?? []).toHaveLength(2);
   });
 
   it("keeps the shared Customer header fixed at the top while routes scroll", () => {
-    expect(customerLayoutSource).toMatch(/<nav className="sticky top-0 z-40\b/);
+    expect(customerLayoutSource).toMatch(/<nav ref={headerRef} className="group\/header sticky top-0 z-40\b/);
   });
 
   it("uses the supplied logo asset without changing the header row geometry", () => {
@@ -48,9 +46,26 @@ describe("customer header reference contract", () => {
   });
 
   it("keeps the latest commit utility visibility rules", () => {
-    expect(customerLayoutSource).toContain('className="hidden md:flex w-28"');
+    expect(customerLayoutSource).toContain('className="hidden w-28 xl:flex group-data-[layout=single]/header:flex group-data-[layout=stacked]/header:hidden"');
     expect(customerLayoutSource).not.toContain('className="hidden md:block"');
     expect(customerLayoutSource).not.toContain("max-md:hidden");
+  });
+
+  it("uses one header row only when it fits, decided by measuring rather than a breakpoint", () => {
+    const hookSource = readFileSync(resolve(process.cwd(), "components/customer/use-customer-header-layout.ts"), "utf8");
+    expect(customerLayoutSource).toContain("useCustomerHeaderLayout(");
+    expect(customerLayoutSource).toContain("group/header");
+    // data-layout comes from the hook only, never from React props (no hydration mismatch).
+    expect(customerLayoutSource).not.toContain("data-layout=");
+    expect(customerLayoutSource).toContain(
+      'className="hidden min-w-0 flex-1 items-center gap-5 overflow-hidden xl:flex xl:gap-6 group-data-[layout=single]/header:flex group-data-[layout=stacked]/header:hidden"',
+    );
+    expect(customerLayoutSource).toContain(
+      'className="flex items-center gap-4 overflow-x-auto px-4 py-2 hide-scrollbar xl:hidden group-data-[layout=single]/header:hidden group-data-[layout=stacked]/header:flex"',
+    );
+    expect(customerLayoutSource).not.toMatch(/\bmd:(hidden|flex)\b/);
+    expect(hookSource).toContain("--customer-header-h");
+    expect(hookSource).not.toContain("innerWidth");
   });
 
   it("keeps Saved in the account menu and removes mobile-only Saved and Trip shortcuts", () => {

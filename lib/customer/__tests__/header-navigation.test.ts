@@ -93,6 +93,16 @@ describe("customer header navigation", () => {
     expect(isCustomerNavActive("/customer/trip", "/customer")).toBe(false);
   });
 
+  it("matches primary sections for detail routes without trusting unknown sources", () => {
+    expect(isCustomerNavActive("/customer/activity/p1", "/customer/partners", "vendor")).toBe(true);
+    expect(isCustomerNavActive("/customer/activity/p1", "/customer/explore", "unexpected")).toBe(true);
+    expect(isCustomerNavActive("/customer/vendor/v1/outlet/o1", "/customer/partners")).toBe(true);
+    expect(isCustomerNavActive("/customer/events/event/vendor", "/customer/events")).toBe(true);
+    expect(isCustomerNavActive("/customer/place/penang", "/customer/explore")).toBe(true);
+    expect(isCustomerNavActive("/customer/vendorish", "/customer/partners")).toBe(false);
+    expect(isCustomerNavActive("/customer/activity", "/customer/explore")).toBe(false);
+  });
+
   it("localizes the reused My Orders account entry", () => {
     const locales = {
       en: JSON.parse(readFileSync(resolve(process.cwd(), "app/i18n/locales/en/customer.json"), "utf8")),

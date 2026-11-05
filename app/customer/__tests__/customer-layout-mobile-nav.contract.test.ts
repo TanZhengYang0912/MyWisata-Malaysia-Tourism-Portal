@@ -15,8 +15,7 @@ describe("customer mobile navigation", () => {
   });
 
   it("renders the same shared five destinations on mobile without mobile-only counters", () => {
-    expect(mobileRow).toContain("CUSTOMER_NAV.map");
-    expect(mobileRow).toContain("<item.icon size={16}");
+    expect(mobileRow).toContain('<CustomerPrimaryNavigation pathname={pathname} layout="stacked" />');
     expect(mobileRow).not.toContain("tripCount");
     expect(mobileRow).not.toContain('href="/customer/saved"');
   });

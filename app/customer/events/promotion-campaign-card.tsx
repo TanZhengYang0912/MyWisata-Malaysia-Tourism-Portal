@@ -5,7 +5,8 @@ import Link from "next/link";
 import { ArrowRight, CalendarDays } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { PromotionCampaignVendorCard } from "@/components/customer/promotion-campaign-vendor-card";
+import { CampaignEventPass } from "@/components/customer/campaign-event-pass";
+import { CampaignStallStrip } from "@/components/customer/campaign-stall-strip";
 import { formatDate, formatDateTime } from "@/lib/i18n/format";
 import { isMalaysiaFullDayRange } from "@/lib/datetime/malaysia";
 import { getEventOperationalLabelKey } from "@/lib/promotion-campaigns/locations";
@@ -54,7 +55,6 @@ export function PromotionCampaignCard({
   const isLive = campaign.visibility === "live";
   const isOperating = campaign.operationalStatus ? campaign.operationalStatus === "operating" : isLive;
   const formatCampaignDate = isMalaysiaFullDayRange(campaign.startsAt, campaign.endsAt) ? formatDate : formatDateTime;
-  const previewVendors = campaign.vendors.slice(0, 3);
 
   if (variant === "compact") {
     return (
@@ -96,62 +96,11 @@ export function PromotionCampaignCard({
   }
 
   return (
-    <section aria-labelledby={`campaign-${campaign.id}`} className="overflow-hidden rounded-3xl border border-border/70 bg-card shadow-sm">
-      <div className="grid min-w-0 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]">
-        <div className="flex min-w-0 flex-col border-b border-border/70 lg:border-b-0 lg:border-r">
-          <CampaignPoster campaign={campaign} className="aspect-[16/9] lg:aspect-[4/3]" sizes="(max-width: 1023px) 100vw, 40vw" />
-          <div className="flex min-w-0 flex-1 flex-col p-5 sm:p-6 lg:p-7">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ${isOperating ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" : "bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200"}`}>
-                {t(getEventOperationalLabelKey(campaign))}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                {t(isLive ? "ui.promotionCampaigns.endsAt" : "ui.promotionCampaigns.startsAt", {
-                  date: formatCampaignDate(isLive ? campaign.endsAt : campaign.startsAt, locale, {
-                    timeZone: "Asia/Kuala_Lumpur",
-                  }),
-                })}
-              </span>
-              <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground">
-                {t("ui.promotionCampaigns.vendorCount", { count: campaign.vendors.length })}
-              </span>
-            </div>
-            <h2
-              id={`campaign-${campaign.id}`}
-              className="mt-4 break-words font-[family-name:var(--font-display)] text-2xl font-bold leading-tight text-foreground sm:text-3xl"
-            >
-              <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title} />
-            </h2>
-            <p className="mt-3 break-words text-sm leading-6 text-muted-foreground">
-              <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="summary" sourceText={campaign.summary} />
-            </p>
-            <Button asChild className="group mt-5 min-h-11 w-full shrink-0 rounded-full hover:-translate-y-0.5 hover:shadow-md sm:w-auto lg:mt-auto lg:self-start">
-              <Link href={`/customer/events/${encodeURIComponent(campaign.slug)}`}>
-                {t("ui.promotionCampaigns.viewAllVendors", { count: campaign.vendors.length })}
-                <ArrowRight size={16} aria-hidden="true" className="transition-transform group-hover:translate-x-1" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-        <div data-slot="campaign-stalls" className="grid min-w-0 content-start grid-cols-1 gap-4 bg-secondary/30 p-5 sm:grid-cols-2 sm:p-6 lg:p-7">
-          {previewVendors.map((vendor) => (
-            <PromotionCampaignVendorCard
-              key={vendor.vendorId}
-              vendor={vendor}
-              campaignSlug={campaign.slug}
-              mode="preview"
-            />
-          ))}
-          {campaign.vendors.length > 3 && (
-            <p className="col-span-full text-right text-sm font-medium text-muted-foreground">
-              {t("ui.promotionCampaigns.previewVendorCount", {
-                shown: previewVendors.length,
-                total: campaign.vendors.length,
-              })}
-            </p>
-          )}
-        </div>
-      </div>
-    </section>
+    <CampaignEventPass
+      campaign={campaign}
+      headingLevel="h2"
+      imageSizes="(max-width: 1023px) 100vw, 40vw"
+      footer={<CampaignStallStrip campaign={campaign} />}
+    />
   );
 }

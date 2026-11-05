@@ -4,10 +4,13 @@ const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   getNearbyOutlets: vi.fn(),
   cityCentre: vi.fn(),
+  getVendorRatingSummaries: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 vi.mock("@/backend/domains/places", () => ({ getNearbyOutlets: mocks.getNearbyOutlets }));
+vi.mock("@/backend/domains/vendor-reviews", () => ({ getVendorRatingSummaries: mocks.getVendorRatingSummaries }));
+vi.mock("@/lib/supabase/service", () => ({ createServiceClient: () => ({}) }));
 vi.mock("@/lib/personalization/location", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/personalization/location")>();
   return { ...actual, cityCentre: mocks.cityCentre };
@@ -72,6 +75,7 @@ describe("POST /api/customer/nearby-partners", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.cityCentre.mockResolvedValue(null);
+    mocks.getVendorRatingSummaries.mockResolvedValue(new Map());
   });
 
   afterEach(() => vi.restoreAllMocks());
@@ -87,8 +91,9 @@ describe("POST /api/customer/nearby-partners", () => {
       kind: "shop",
     }));
     const { vendorQuery } = configureClient({ vendors });
+    mocks.getVendorRatingSummaries.mockResolvedValue(new Map([["v1", { value: 4.5, count: 8 }]]));
     mocks.getNearbyOutlets.mockResolvedValue([
-      outlet("o1-near", "v1", 0.5),
+      { ...outlet("o1-near", "v1", 0.5), outlet: { ...outlet("o1-near", "v1", 0.5).outlet, currentlyOpen: true } },
       outlet("o2", "v2", 1.2),
       outlet("o1-far", "v1", 2.4),
       outlet("o3", "v3", 3.1),
@@ -108,6 +113,8 @@ describe("POST /api/customer/nearby-partners", () => {
     expect(body.data.partners.map((partner: { id: string }) => partner.id)).toEqual(["v1", "v2", "v3", "v4"]);
     expect(body.data.partners[0]).toEqual(expect.objectContaining({
       distanceKm: 0.5,
+      rating: { value: 4.5, count: 8 },
+      openNow: true,
       outlets: [expect.objectContaining({ id: "o1-near", city: "George Town", state: "Penang" })],
     }));
   });

@@ -77,7 +77,7 @@ function EventPartnerCard({ partner, locale, featured = false }: { partner: Even
   return (
     <ExpandCard
       media={
-        <Link href={href} data-card-preview-trigger="true" aria-haspopup="dialog" className="group/partner-media absolute inset-0 block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-[#ffcc00]/60">
+        <Link href={href} className="group/partner-media absolute inset-0 block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-[#ffcc00]/60">
           {visual.coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={visual.coverUrl} alt={t("ui.search.businessCover", { vendor: partner.name })} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover/partner-media:scale-105" />
@@ -98,7 +98,7 @@ function EventPartnerCard({ partner, locale, featured = false }: { partner: Even
         </Link>
       }
       title={
-        <Link href={href} data-card-preview-trigger="true" aria-haspopup="dialog" className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30">
+        <Link href={href} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30">
           <h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={partner.name}>{partner.name}</h3>
         </Link>
       }
@@ -108,8 +108,6 @@ function EventPartnerCard({ partner, locale, featured = false }: { partner: Even
         {partner.description?.trim() && <p className="break-words whitespace-normal text-xs leading-5 text-foreground/80">{partner.description}</p>}
       </>}
       detailsId={`event-partner-details-${partner.id}`}
-      previewTitle={partner.name}
-      previewLabel={t("ui.actions.viewDetails")}
       action={{ href, label: t("ui.eventPartners.view") }}
     />
   );

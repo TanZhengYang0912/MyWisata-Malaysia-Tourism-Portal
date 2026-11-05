@@ -1,80 +1,109 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 /**
  * Shared card shell for discovery cards (ActivityCard, VendorCard): media, title, optional price,
- * and a details drawer that opens on hover or keyboard focus and floats over the next grid row.
+ * and a details drawer that opens on hover, keyboard focus, or a first tap on touch screens.
  * Each card keeps its own data and links and only passes content in.
  * The drawer styles are the `.mw-card-expand-card` rules in app/globals.css.
  */
-export function ExpandCard({ media, title, previewTitle, previewLabel, price, details, detailsId, action }: {
+export function ExpandCard({ media, title, price, details, detailsId, action }: {
   media: ReactNode;
   title: ReactNode;
-  previewTitle: string;
-  previewLabel: string;
   price?: ReactNode;
   details: ReactNode;
   detailsId: string;
   action: { href: string; label: string; onClick?: () => void };
 }) {
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const articleRef = useRef<HTMLElement>(null);
+  const ctaRef = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function closeOutside(event: PointerEvent) {
+      if (!articleRef.current?.contains(event.target as Node)) {
+        const focused = document.activeElement;
+        if (focused instanceof HTMLElement && articleRef.current?.contains(focused)) focused.blur();
+        setOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, [open]);
+
+  useEffect(() => {
+    const article = articleRef.current;
+    if (typeof ResizeObserver === "undefined" || typeof MutationObserver === "undefined" || !article) return;
+    const title = article.querySelector<HTMLElement>(".mw-card-title");
+    if (!title) return;
+    const card = article;
+    const heading = title;
+    // Marks a name that overflows its one closed line, so the open card can make room for the second line.
+    function measure() {
+      // An open card shows the wrapped name, which no longer overflows; keep the closed answer.
+      if (card.getAttribute("data-open") === "true" || card.matches(":hover, :focus-within")) return;
+      if (heading.scrollWidth > heading.clientWidth + 1) card.setAttribute("data-title-wraps", "true");
+      else card.removeAttribute("data-title-wraps");
+    }
+    measure();
+    const resize = new ResizeObserver(measure);
+    resize.observe(card);
+    // LocalizedContent swaps the name without resizing the card.
+    const mutation = new MutationObserver(measure);
+    mutation.observe(heading, { childList: true, characterData: true, subtree: true });
+    return () => {
+      resize.disconnect();
+      mutation.disconnect();
+    };
+  }, []);
 
   function handleCardClickCapture(event: React.MouseEvent<HTMLElement>) {
-    if (typeof window === "undefined" || !window.matchMedia("(max-width: 767px)").matches) return;
+    if (event.detail === 0 || !window.matchMedia?.("(hover: none)").matches) return;
 
     let target = event.target as Node | null;
+    let link = false;
     while (target && target !== event.currentTarget) {
       if (target.nodeType === 1) {
         const element = target as Element;
-        if (element.tagName === "BUTTON" || element.hasAttribute("data-card-primary-cta")) return;
-        if (element.tagName === "A") {
-          if (!element.hasAttribute("data-card-preview-trigger")) return;
-          event.preventDefault();
-          setPreviewOpen(true);
-          return;
-        }
+        if (element.tagName === "BUTTON") return;
+        if (element.tagName === "A") link = true;
       }
       target = target.parentNode;
     }
 
-    setPreviewOpen(true);
+    if (!open) {
+      event.preventDefault();
+      event.stopPropagation();
+      setOpen(true);
+    } else if (!link) {
+      ctaRef.current?.click();
+    }
   }
 
   return (
-    <article className="mw-card mw-card-expand-card group" onClickCapture={handleCardClickCapture}>
+    <article ref={articleRef} data-open={open ? "true" : undefined} className="mw-card mw-card-expand-card group" onClickCapture={handleCardClickCapture}>
       <div className="mw-card-media">{media}</div>
       <div className="mw-card-body mw-card-body-compact space-y-2 p-4">
         {title}
         <div className="mw-card-footer mw-card-footer-stacked pt-1">
           {price && <div className="mw-card-price-row">{price}</div>}
           <div className="mw-card-cta-row">
-            <Button asChild size="sm" className="h-9 w-full rounded-full px-3 text-center text-xs font-bold">
-              <Link href={action.href} onClick={action.onClick} data-card-primary-cta="true">{action.label}</Link>
-            </Button>
             <div className="mw-card-cta-drawer">
               <div id={detailsId} data-card-details-inline="true" className="mw-card-details-expand">
                 <div className="mw-card-details-expand-inner"><div className="space-y-2 border-t border-dashed border-border pb-3 pt-3">{details}</div></div>
               </div>
+              <Button asChild size="sm" className="h-9 w-full rounded-full px-3 text-center text-xs font-bold">
+                <Link ref={ctaRef} href={action.href} onClick={action.onClick} data-card-primary-cta="true">{action.label}</Link>
+              </Button>
             </div>
           </div>
         </div>
       </div>
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="fixed inset-x-0 top-auto bottom-0 left-0 z-50 grid max-h-[85dvh] w-full max-w-none translate-x-0 translate-y-0 gap-4 overflow-y-auto rounded-t-2xl rounded-b-none border-x-0 border-b-0 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl duration-200 md:inset-auto md:top-1/2 md:left-1/2 md:w-[calc(100%-2rem)] md:max-w-lg md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-lg md:border-b md:p-6">
-          <DialogHeader className="pr-8 text-left">
-            <DialogTitle>{previewTitle}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">{details}</div>
-          <Button asChild className="w-full rounded-full">
-            <Link href={action.href} onClick={action.onClick}>{previewLabel}</Link>
-          </Button>
-        </DialogContent>
-      </Dialog>
     </article>
   );
 }

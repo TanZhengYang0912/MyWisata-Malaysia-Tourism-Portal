@@ -1,8 +1,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { vendorProductDetailHref } from "@/lib/customer/vendor-page";
 
 const pageSource = readFileSync(resolve(process.cwd(), "app/customer/vendor/[vendorId]/page.tsx"), "utf8");
+const listingSource = readFileSync(resolve(process.cwd(), "components/customer/vendor-listing-grid.tsx"), "utf8");
+const locationSource = readFileSync(resolve(process.cwd(), "components/customer/vendor-location-list.tsx"), "utf8");
 
 describe("customer vendor profile image contract", () => {
   it("uses only the vendor cover for the vendor hero", () => {
@@ -17,26 +20,14 @@ describe("customer vendor profile image contract", () => {
     expect(pageSource).toContain("outlet_pages(hero_url)");
   });
 
-  it("keeps outlet cards static with an image fallback", () => {
-    // The outlet card is not one link, so it has no hover lift (coding-standards hover rule).
-    expect(pageSource).toContain('return <article className="mw-card min-w-0">');
-    expect(pageSource).not.toContain("hover:-translate-y-1 hover:border-primary/40");
-    expect(pageSource).toContain("location.coverUrl ? <img");
-  });
-
-  it("keeps outlet identity text readable", () => {
-    expect(pageSource).toContain("from-black/80 via-black/20 to-transparent");
-    expect(pageSource).toContain("text-white/90");
-  });
 });
 
 describe("customer vendor commerce boundary", () => {
   it("preserves a single product outlet in the vendor detail link", () => {
-    expect(pageSource).toContain("function vendorProductDetailHref");
-    expect(pageSource).toContain("source=vendor");
-    expect(pageSource).toContain("outletId");
-    expect(pageSource).toContain("ui.vendor.viewProductDetails");
-    expect(pageSource).toContain("product.soldAt.length");
+    expect(vendorProductDetailHref("p1", "v1", "o1")).toContain("outletId=o1");
+    expect(vendorProductDetailHref("p1", "v1")).not.toContain("outletId=");
+    expect(pageSource).toContain("<VendorListingGrid");
+    expect(listingSource).toContain("vendorListing={product}");
   });
 
   it("keeps location copy singular when a vendor has one outlet", () => {
@@ -44,11 +35,12 @@ describe("customer vendor commerce boundary", () => {
     expect(pageSource).toContain("ui.vendor.chooseLocationTitle");
   });
 
-  it("uses a compact single-outlet summary and reserves location cards for multiple outlets", () => {
-    expect(pageSource).toContain("function SingleLocationSummary");
-    expect(pageSource).toContain("<SingleLocationSummary location={locations[0]}");
-    expect(pageSource).toContain("hasMultipleLocations ? (");
-    expect(pageSource).toContain("locations.map((location) => <LocationCard");
+  it("shows every outlet as one row with directions and a link to the outlet", () => {
+    expect(pageSource).toContain("<VendorLocationList locations={locationRows} />");
+    expect(pageSource).not.toContain("function LocationCard");
+    expect(pageSource).not.toContain("function SingleLocationSummary");
+    expect(locationSource).toContain("ui.vendor.directions");
+    expect(locationSource).toContain("ui.vendor.viewOutlet");
   });
 
   it("keeps the vendor gallery distinct from the cover hero", () => {
@@ -58,30 +50,32 @@ describe("customer vendor commerce boundary", () => {
 });
 
 describe("customer vendor server module boundaries", () => {
-  it("imports formatHours from server-safe operating-hours module rather than client components", () => {
-    expect(pageSource).toContain("from '@/lib/customer/operating-hours'");
+  it("does not import the outlet block renderer client module", () => {
     expect(pageSource).not.toContain("from '@/components/outlet/outlet-block-renderer'");
   });
 
   it("passes serializable title props to the localized heading client component", () => {
-    expect(pageSource).toContain("<LocalizedContentHeading");
-    expect(pageSource).toContain("showTitleAttribute");
     expect(pageSource).not.toContain("{({ text, control }) =>");
   });
 });
 
-describe("customer vendor template consistency with outlet template", () => {
-  it("uses the unified top context bar with share button", () => {
+describe("customer vendor page layout", () => {
+  it("puts the name in the header as the only h1, with Share as the only action", () => {
     expect(pageSource).toContain('<ShareButton shareType="vendor"');
     expect(pageSource).toContain("t('ui.vendor.partnerProfile')");
-    expect(pageSource).toContain("border-b border-border pb-4");
+    expect(pageSource.match(/<h1/g)).toHaveLength(1);
+    expect(pageSource.indexOf("<h1")).toBeLessThan(pageSource.indexOf("{/* Hero: the cover image only. */}"));
+    expect(pageSource).not.toContain("ProductSaveButton");
+    expect(pageSource).not.toContain("ChatButton");
   });
 
-  it("uses the contained rounded hero card and unified summary card", () => {
-    expect(pageSource).toContain("rounded-[1.75rem] border border-border bg-primary shadow-lg");
-    expect(pageSource).toContain("relative z-10 -mt-8 mb-8 rounded-3xl border border-border bg-card p-5 shadow-lg sm:p-6");
-    expect(pageSource).toContain("rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary/90");
-    expect(pageSource).toContain("rounded-full border border-primary/20 px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-secondary");
+  it("renders the facts strip, hours widget, section nav, listing grid and location list", () => {
+    expect(pageSource).toContain("<VendorOperatingHours hours={hoursSource} />");
+    expect(pageSource).toContain("<VendorSectionNav items={sectionNavItems} />");
+    expect(pageSource).toContain("<VendorListingGrid");
+    expect(pageSource).toContain("<VendorLocationList");
+    expect(pageSource).toContain('href="#gallery"');
+    expect(pageSource).toContain('id="gallery"');
     expect(pageSource).toContain("max-w-7xl");
   });
 });

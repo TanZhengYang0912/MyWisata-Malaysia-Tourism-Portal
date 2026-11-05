@@ -13,9 +13,10 @@ const text: Record<string, string> = {
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) => key === "ui.search.outletCount" ? `${options?.count} outlets` : text[key] ?? key,
+    t: (key: string, options?: Record<string, unknown>) => key === "ui.vendor.locationCount" ? `${options?.count} locations` : text[key] ?? key,
   }),
 }));
+vi.mock("@/components/shared/share-button", () => ({ ShareButton: () => <button type="button" data-share>Share</button> }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => <a href={href} {...props}>{children}</a> }));
 
 import { VendorCard } from "@/components/customer/vendor-card";
@@ -35,7 +36,7 @@ const vendor = {
 const drawerOf = (markup: string) => markup.slice(markup.indexOf('data-card-details-inline="true"'));
 
 describe("VendorCard on the shared ExpandCard", () => {
-  it("puts location, distance, description, outlet count and categories in the drawer", () => {
+  it("puts location, distance and description in the drawer, and leaves a nearby card's location count out", () => {
     const markup = renderToStaticMarkup(<VendorCard vendor={vendor} description={vendor.description} distanceLabel="2.1 km away" categories={["food"]} />);
     const drawer = drawerOf(markup);
 
@@ -43,7 +44,7 @@ describe("VendorCard on the shared ExpandCard", () => {
     expect(drawer).toContain("George Town, Penang");
     expect(drawer).toContain("2.1 km away");
     expect(drawer).toContain("charcoal-roasted coffee");
-    expect(drawer).toContain("2 outlets");
+    expect(markup).not.toContain("2 locations");
     expect(markup).toMatch(/<a [^>]*href="\/customer\/vendor\/v1"[^>]*data-card-primary-cta="true"[^>]*>Explore vendor<\/a>/);
   });
 
@@ -52,7 +53,7 @@ describe("VendorCard on the shared ExpandCard", () => {
 
     expect(markup).not.toContain("aria-expanded");
     expect(markup).not.toContain("View Details");
-    expect(markup).toContain('data-card-preview-trigger="true" aria-haspopup="dialog"');
+    expect(markup).not.toContain('aria-haspopup="dialog"');
   });
 
   it("renders the initials tile when the vendor has no cover", () => {
@@ -69,5 +70,41 @@ describe("VendorCard on the shared ExpandCard", () => {
     expect(drawer).toContain("worth reading in full.");
     expect(drawer).not.toContain("line-clamp");
     expect(drawer).not.toContain("truncate");
+  });
+
+  it("shows the rating, status, location count and popular products when they are known", () => {
+    const markup = renderToStaticMarkup(<VendorCard vendor={{
+      ...vendor,
+      rating: { value: 4.56, count: 12 },
+      openNow: true,
+      popularProducts: [1, 2, 3, 4].map((index) => ({ id: `p${index}`, name: `Product ${index}`, imageUrl: index === 2 ? null : `https://img.test/${index}.jpg`, href: `/customer/activity/p${index}` })),
+    }} categories={["food"]} />);
+    const body = markup.slice(markup.indexOf("mw-card-body"), markup.indexOf('data-card-details-inline="true"'));
+    const drawer = drawerOf(markup);
+
+    expect(body).toContain(">4.6<");
+    expect(body).toContain("(12)");
+    expect(body).toContain("ui.operatingHours.openNow");
+    expect(body).toContain("2 locations");
+    expect(drawer).toContain("ui.vendor.popular");
+    expect(drawer.match(/href="\/customer\/activity\/p\d"/g)).toHaveLength(3);
+    expect(drawer).toContain("bg-secondary");
+  });
+
+  it("leaves out the rating, status and popular lines when the data is missing", () => {
+    const markup = renderToStaticMarkup(<VendorCard vendor={vendor} distanceLabel="1 km away" />);
+
+    expect(markup).not.toContain("fill=\"var(--highlight-yellow)\"");
+    expect(markup).not.toContain("ui.operatingHours");
+    expect(markup).not.toContain("ui.vendor.popular");
+    expect(markup).not.toContain('<p class="text-xs text-muted-foreground"></p>');
+  });
+
+  it("tags only featured vendors as featured, shares the vendor and offers no save button", () => {
+    expect(renderToStaticMarkup(<VendorCard vendor={vendor} isFeatured />)).toContain("Featured partner");
+    const plain = renderToStaticMarkup(<VendorCard vendor={vendor} />);
+    expect(plain).toContain("Verified local partner");
+    expect(plain).toContain("data-share");
+    expect(plain).not.toContain("aria-pressed");
   });
 });

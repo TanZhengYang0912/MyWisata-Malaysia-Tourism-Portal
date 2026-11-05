@@ -104,6 +104,8 @@ const priorTaskFiles = new Set([
   'components/shared/appearance-control.tsx',
   'components/shared/auth-page-shell.tsx',
   'components/shared/back-link.tsx',
+  // Breadcrumbs receive all translated labels from their consumers.
+  'components/shared/breadcrumbs.tsx',
   'components/shared/chat-widget/chat-widget-inbox.tsx',
   'components/shared/chat-widget/chat-widget-vendor-thread.tsx',
   'components/shared/chatbot-widget.tsx',

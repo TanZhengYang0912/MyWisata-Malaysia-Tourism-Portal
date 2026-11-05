@@ -239,6 +239,37 @@ describe("AuthProvider request ownership", () => {
     });
   });
 
+  it("refreshes the same account in the background when the tab becomes visible again", async () => {
+    const refresh = deferred<Response>();
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify(profile("user-a")), { status: 200 }))
+      .mockReturnValueOnce(refresh.promise);
+
+    await act(async () => {
+      root?.render(<AuthProvider><AuthSnapshot /></AuthProvider>);
+      await settle();
+    });
+    expect(latestAuth.currentUser?.id).toBe("user-a");
+    expect(latestAuth.staffPermissionKeys).toEqual(["user-a.permission"]);
+    expect(latestAuth.loading).toBe(false);
+
+    // Supabase emits SIGNED_IN for the unchanged session on every tab focus.
+    act(() => {
+      sharedAuthMocks.listener?.("SIGNED_IN", { user: { id: "user-a" } });
+    });
+    await settle();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(latestAuth.currentUser?.id).toBe("user-a");
+    expect(latestAuth.loading).toBe(false);
+
+    await act(async () => {
+      refresh.resolve(new Response(JSON.stringify(profile("user-a")), { status: 200 }));
+      await settle();
+    });
+    expect(latestAuth.currentUser?.id).toBe("user-a");
+    expect(latestAuth.loading).toBe(false);
+  });
+
   it("publishes the saved avatar when the current account is refreshed", async () => {
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(profile("user-a", undefined, null)), { status: 200 }));
 

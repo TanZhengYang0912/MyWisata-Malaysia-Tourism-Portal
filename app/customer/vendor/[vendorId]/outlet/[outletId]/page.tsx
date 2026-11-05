@@ -8,6 +8,7 @@ import { getOutletProductIds } from "@/backend/domains/catalogue";
 import { addDays, buildPublicOutletProfile, resolveStaySearch, stayNightStartsAt, getActiveDefaultOutletVariant, getOutletAvailableStock, getOutletNavigationModel, getOutletVariantPrice, relationOne, selectFullOutletMenu } from "@/lib/customer/outlet-shop";
 import { OutletPageRenderer } from "@/components/outlet/outlet-page-renderer";
 import { ShareButton } from "@/components/shared/share-button";
+import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { OutletChatButton } from "@/components/customer/outlet-chat-button";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { productImageUrl } from "@/lib/storage/product-image";
@@ -94,7 +95,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { t } = await getServerTranslation("customer");
   if (!outlet) return { title: t("ui.outletPage.notFound") };
   const document = selectPublicDocument(page || {});
-  const vendor = Array.isArray(outlet.vendors) ? outlet.vendors[0] : undefined;
+  const vendor = relationOne(outlet.vendors);
 
   // Hotel metadata uses the same accommodation-only aggregate as its review section.
   const reviewSummary = await getReviewRatingSummary("outlet_accommodation", outletId, createServiceClient());
@@ -125,7 +126,7 @@ export default async function VendorOutletPage({ params, searchParams }: Props) 
   const outletNavigation = getOutletNavigationModel(outlets, outlet.id);
 
   const document = selectPublicDocument(page || {});
-  const vendor = Array.isArray(outlet.vendors) ? outlet.vendors[0] : undefined;
+  const vendor = relationOne(outlet.vendors);
   const profile = buildPublicOutletProfile({
     outletName: outlet.name,
     vendorName: vendor?.name,
@@ -291,6 +292,12 @@ export default async function VendorOutletPage({ params, searchParams }: Props) 
 
   return (
     <main className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8"><Breadcrumbs label={t("ui.place.breadcrumb")} items={[
+        { label: t("navigation.home"), href: "/customer" },
+        { label: t("navigation.search"), href: "/customer/partners" },
+        ...(vendor ? [{ label: vendor.name, href: `/customer/vendor/${vendorId}` }] : []),
+        { label: outlet.name },
+      ]} /></div>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       {!stayIds.length && <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
