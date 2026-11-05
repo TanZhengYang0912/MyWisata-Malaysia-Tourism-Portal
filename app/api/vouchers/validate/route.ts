@@ -28,7 +28,19 @@ export async function POST(request: Request) {
   }
 
   async function recordEvent(eventType: 'viewed' | 'entered' | 'apply_success' | 'apply_failed', metadata: Record<string, unknown> = {}) {
-    if (user) await supabase.from('voucher_events').insert({ voucher_id: voucher.id, user_id: user.id, event_type: eventType, metadata });
+    if (!user) return;
+    // The cart re-checks every candidate voucher whenever its total or
+    // selection changes, so a "view" per check inflated vendor analytics.
+    // Count one view per customer per voucher per 24 hours.
+    // ponytail: read-then-insert, so two simultaneous checks can still both
+    // insert; a partial unique index would make it exact if that shows up.
+    if (eventType === 'viewed') {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: seen } = await supabase.from('voucher_events').select('id')
+        .eq('voucher_id', voucher.id).eq('user_id', user.id).eq('event_type', 'viewed').gte('created_at', since).limit(1);
+      if (seen?.length) return;
+    }
+    await supabase.from('voucher_events').insert({ voucher_id: voucher.id, user_id: user.id, event_type: eventType, metadata });
   }
 
   async function invalid(reason: string) {

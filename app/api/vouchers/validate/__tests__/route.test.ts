@@ -69,3 +69,34 @@ describe("POST voucher validation", () => {
     expect((await response.json()).data).toMatchObject({ valid: true, discountAmount: 10 });
   });
 });
+
+describe("voucher view events", () => {
+  async function viewAsCustomer(recentView: boolean) {
+    const { createClient } = await import("@/lib/supabase/server");
+    const insert = vi.fn(async () => ({ error: null }));
+    const lookup = vi.fn(async () => ({ data: recentView ? [{ id: "event-1" }] : [], error: null }));
+    const events: Record<string, unknown> = { insert };
+    for (const method of ["select", "eq", "gte"]) events[method] = vi.fn(() => events);
+    events.limit = lookup;
+    vi.mocked(createClient).mockResolvedValueOnce({
+      auth: { getUser: vi.fn(async () => ({ data: { user: { id: "customer-a" } } })) },
+      from: (table: string) => table === "vouchers" ? query({ ...voucherBase, redemption_mode: "in_store" }) : table === "voucher_events" ? events : query([]),
+    } as never);
+    await POST(new Request("http://localhost/api/vouchers/validate", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code: "SAVE10", cartSubtotal: 100, intent: "view", items: [{ productId: "00000000-0000-4000-8000-000000000001", outletId: "00000000-0000-4000-8000-000000000011", quantity: 1, unitPrice: 100 }] }),
+    }));
+    return { insert, lookup };
+  }
+
+  it("records the first view of the day", async () => {
+    const { insert } = await viewAsCustomer(false);
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ voucher_id: "voucher-a", user_id: "customer-a", event_type: "viewed" }));
+  });
+
+  it("skips another view within 24 hours", async () => {
+    const { insert, lookup } = await viewAsCustomer(true);
+    expect(lookup).toHaveBeenCalledTimes(1);
+    expect(insert).not.toHaveBeenCalled();
+  });
+});
