@@ -8,11 +8,12 @@
 // ChatThreadPanel already supports it and the mute endpoints already exist).
 
 import { useTranslation } from "react-i18next";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useChatPresence } from "@/hooks/use-chat-presence";
 import { ChatThreadPanel } from "@/components/customer/chat-thread-panel";
 import { useSupportChat } from "@/components/providers/support-chat";
+import { useVisibleReviewRefresh } from "@/hooks/use-visible-review-refresh";
 import type { ChatMessage, ChatMessageContext, ChatThread } from "@/backend/core/types";
 
 type ChatOutlet = { id: string; name: string; city: string; state: string };
@@ -67,6 +68,13 @@ function normalizeApiThread(row: ApiThread) {
   return { thread, outlet, messages };
 }
 
+// Refresh cadence while a conversation is open and the tab is visible.
+const THREAD_REFRESH_MS = 2500;
+
+const withIds = (current: Set<string>, ids: unknown) => Array.isArray(ids) && ids.some((id) => !current.has(id))
+  ? new Set([...current, ...(ids as string[])])
+  : current;
+
 interface ChatWidgetVendorThreadProps {
   threadId: string;
   currentUserId: string;
@@ -89,47 +97,68 @@ export function ChatWidgetVendorThread({ threadId, currentUserId, onBack }: Chat
   const presence = useChatPresence(thread ? `chat-presence-vendor-${thread.vendorId}` : undefined, currentUserId, "customer");
   const vendorOnline = presence.some((p) => p.role === "vendor");
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadConversation() {
-      try {
-        const response = await fetch(`/api/customer/chat/${threadId}`, { cache: "no-store" });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          if (response.status === 404) {
-            if (!cancelled) setThread(null);
-            return;
-          }
-          throw new Error(tCustomer("ui.chat.loadingConversation"));
+  // Opening loads the whole thread; each refresh asks only for messages from
+  // the newest one held (inclusive, merged by id). Receipts only ever grow:
+  // a message never becomes unread or undelivered again.
+  const newestSentAt = useRef<string | null>(null);
+  const loadConversation = useCallback(async (signal?: AbortSignal, incremental = false) => {
+    const after = incremental ? newestSentAt.current : null;
+    try {
+      const response = await fetch(`/api/customer/chat/${threadId}${after ? `?after=${encodeURIComponent(after)}` : ""}`, { cache: "no-store", signal });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 404) {
+          if (!signal?.aborted) setThread(null);
+          return;
         }
-        const normalized = normalizeApiThread(payload.data as ApiThread);
-        if (cancelled) return;
-        setThread(normalized.thread);
-        setOutlet(normalized.outlet);
-        setMessages(normalized.messages);
-        setReadByOthers(new Set(Array.isArray(payload.data?.readByOthers) ? payload.data.readByOthers : []));
-        setDeliveredByOthers(new Set(Array.isArray(payload.data?.deliveredByOthers) ? payload.data.deliveredByOthers : []));
-        setReportedByMe(Boolean(payload.data?.reportedByMe));
-        setLoadError(null);
-      } catch {
-        if (!cancelled) setLoadError(tCustomer("ui.chat.conversationMissing"));
+        throw new Error(tCustomer("ui.chat.loadingConversation"));
       }
+      const normalized = normalizeApiThread(payload.data as ApiThread);
+      if (signal?.aborted || normalized.thread.id !== threadId) return;
+      const newest = normalized.messages[normalized.messages.length - 1]?.sentAt;
+      if (!after || (newest && newest > after)) newestSentAt.current = newest ?? null;
+      setThread((current) => current?.id === normalized.thread.id && current.lastMessageAt === normalized.thread.lastMessageAt ? current : normalized.thread);
+      if (!after) setOutlet(normalized.outlet);
+      setMessages((current) => {
+        if (!after) return normalized.messages;
+        const known = new Set(current.map((message) => message.id));
+        const added = normalized.messages.filter((message) => !known.has(message.id));
+        return added.length ? [...current, ...added].sort((a, b) => a.sentAt.localeCompare(b.sentAt)) : current;
+      });
+      setReadByOthers((current) => withIds(after ? current : new Set(), payload.data?.readByOthers));
+      setDeliveredByOthers((current) => withIds(after ? current : new Set(), payload.data?.deliveredByOthers));
+      setReportedByMe(Boolean(payload.data?.reportedByMe));
+      setLoadError(null);
+    } catch {
+      if (!signal?.aborted) setLoadError(tCustomer("ui.chat.conversationMissing"));
     }
-
-    void loadConversation();
-    const timer = window.setInterval(() => void loadConversation(), 2500);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
   }, [threadId, tCustomer]);
 
   useEffect(() => {
-    if (!thread) return;
+    newestSentAt.current = null;
+    const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- full load when a conversation opens
+    void loadConversation(controller.signal);
+    return () => controller.abort();
+  }, [loadConversation]);
+
+  useVisibleReviewRefresh({
+    enabled: Boolean(thread),
+    onRefresh: (signal) => loadConversation(signal, true),
+    intervalMs: THREAD_REFRESH_MS,
+  });
+
+  // Mark read/delivered when the conversation opens and when a new vendor
+  // message arrives, not on every refresh.
+  const newestVendorMessageId = useMemo(
+    () => [...messages].reverse().find((message) => message.senderRole !== "customer")?.id ?? null,
+    [messages],
+  );
+  useEffect(() => {
+    if (!thread?.id) return;
     void fetch(`/api/chat/${thread.id}/read`, { method: "POST" });
     void fetch(`/api/chat/${thread.id}/delivered`, { method: "POST" });
-  }, [thread]);
+  }, [thread?.id, newestVendorMessageId]);
 
   useEffect(() => {
     let cancelled = false;
