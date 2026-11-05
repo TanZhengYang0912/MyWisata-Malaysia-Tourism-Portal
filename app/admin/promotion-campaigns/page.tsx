@@ -297,7 +297,7 @@ export default function PromotionCampaignsPage() {
     setBusy(true); setError(null);
     let saved = editing;
     try {
-      if (!awaitingApproval) {
+      if (!awaitingApproval && (!editing || dirty || editing.status === "rejected")) {
         const datesUnchanged = editing && form.startsAt === malaysiaLocalDateTime(editing.starts_at).slice(0, 10) && form.endsAt === malaysiaLocalDateTime(editing.ends_at).slice(0, 10);
         const campaignPayload = { ...parsedFields.data!, startsAt: datesUnchanged ? editing.starts_at : malaysiaCalendarDateToIso(form.startsAt, "start"), endsAt: datesUnchanged ? editing.ends_at : malaysiaCalendarDateToIso(form.endsAt, "end") };
         const response = await fetch(editing ? `/api/admin/promotion-campaigns/${editing.id}` : "/api/admin/promotion-campaigns", { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editing ? { action: "save_draft", campaign: { ...campaignPayload, expectedUpdatedAt: editing.updated_at } } : campaignPayload) });

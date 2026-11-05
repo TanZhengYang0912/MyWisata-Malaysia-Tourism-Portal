@@ -33,7 +33,7 @@ function response(body: unknown) {
   return { ok: true, status: 200, json: async () => body } as Response;
 }
 
-function campaignPayload(status: "draft" | "pending_approval" | "approved" | "paused" | "archived" = "draft") {
+function campaignPayload(status: "draft" | "rejected" | "pending_approval" | "approved" | "paused" | "archived" = "draft") {
   return response({ data: {
     campaigns: [{
       id: "campaign-1", slug: "heritage-walk-kl-current-offers", title: "Heritage Walk KL — Local Explorer Picks",
@@ -155,6 +155,31 @@ describe("Admin promotion campaign workbench", () => {
     const actions = mocks.fetch.mock.calls.filter(([, init]) => init?.method === 'PATCH').map(([, init]) => JSON.parse(String(init.body)));
     expect(actions).toHaveLength(1);
     expect(actions[0]).toMatchObject({ action: 'save_draft', campaign: { posterUrl: null } });
+  });
+
+  it('skips the draft API write when an existing campaign is unchanged', async () => {
+    await renderLoadedPage();
+    await click(findOne(container, element => element.tagName === 'BUTTON' && element.textContent.includes('promotionCampaigns.actions.edit')));
+    await act(async () => {
+      findOne(container, element => element.tagName === 'FORM').dispatchEvent(new TestEvent('submit', { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(mocks.fetch.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
+  });
+
+  it('saves an unchanged rejected campaign to clear its rejection state', async () => {
+    mocks.fetch.mockResolvedValue(campaignPayload('rejected'));
+    await renderLoadedPage();
+    await click(findOne(container, element => element.tagName === 'BUTTON' && element.textContent.includes('promotionCampaigns.actions.edit')));
+    await act(async () => {
+      findOne(container, element => element.tagName === 'FORM').dispatchEvent(new TestEvent('submit', { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const patch = mocks.fetch.mock.calls.find(([, init]) => init?.method === 'PATCH');
+    expect(patch).toBeDefined();
+    expect(JSON.parse(String(patch?.[1]?.body))).toMatchObject({ action: 'save_draft' });
   });
 
   it('retains the pending state after approval fails, allowing a single approve retry', async () => {
@@ -319,7 +344,7 @@ describe("Admin promotion campaign workbench", () => {
     expect(container.textContent).not.toContain("promotionCampaigns.form.checklistTitle");
   });
 
-  it("asks before saving a live event and sends the unchanged address", async () => {
+  it("asks before saving a live event and skips the no-op update", async () => {
     mocks.fetch.mockResolvedValue(campaignPayload("approved"));
     await renderLoadedPage();
     await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("promotionCampaigns.actions.edit")));
@@ -336,8 +361,7 @@ describe("Admin promotion campaign workbench", () => {
     expect(patches()).toHaveLength(0);
 
     await submit();
-    expect(patches()).toHaveLength(1);
-    expect(JSON.parse(String((patches()[0][1] as RequestInit).body))).toMatchObject({ action: "save_draft", campaign: { slug: "heritage-walk-kl-current-offers" } });
+    expect(patches()).toHaveLength(0);
   });
 
   it.each(["pending_approval", "archived"] as const)("keeps a %s event locked with no Edit action", async (status) => {
@@ -366,7 +390,7 @@ describe("Admin promotion campaign workbench", () => {
     expect(container.textContent).not.toContain("promotionCampaigns.form.invalidOperatingHours");
   });
 
-  it("preserves legacy timestamps when editing copy without changing event dates", async () => {
+  it("skips a no-op save while preserving legacy timestamps", async () => {
     await renderLoadedPage();
     await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("promotionCampaigns.actions.edit")));
     const dates = findElements(findOne(container, element => element.tagName === "FORM"), (element) => element.tagName === "INPUT" && element.type === "date");
@@ -378,11 +402,7 @@ describe("Admin promotion campaign workbench", () => {
       await Promise.resolve();
     });
     const patch = mocks.fetch.mock.calls.find(([url, init]) => url === "/api/admin/promotion-campaigns/campaign-1" && (init as RequestInit | undefined)?.method === "PATCH");
-    expect(patch).toBeDefined();
-    expect(JSON.parse(String((patch![1] as RequestInit).body)).campaign).toMatchObject({
-      startsAt: "2026-09-25T10:50:00.000Z",
-      endsAt: "2027-03-12T23:00:00.000Z",
-    });
+    expect(patch).toBeUndefined();
   });
 
   it("normalizes both boundaries when an admin changes a legacy event date", async () => {
