@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, ArrowUpRight, CalendarDays, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { CampaignEventPass } from "@/components/customer/campaign-event-pass";
+import { CampaignEnvelope } from "@/components/customer/campaign-envelope";
 import { FeaturedSplitCard } from "@/components/customer/featured-split-card";
 import { FeaturedRecommendationsFrame } from "@/components/customer/featured-recommendations-frame";
 import { Button } from "@/components/ui/button";
@@ -92,6 +92,7 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
         hasMultipleSlides={hasMultiple}
         onPrevious={() => move(-1)}
         onNext={() => move(1)}
+        clip={!displayCampaign}
         action={displayCampaign && (
           <Link href="/customer/events" className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
             {t("ui.promotionCampaigns.allCampaigns")} <ArrowUpRight size={15} aria-hidden="true" />
@@ -99,9 +100,7 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
         )}
       >
         {displayCampaign ? (
-          <CampaignEventPass campaign={displayCampaign} headingLevel="h2" imageSizes="(max-width: 767px) 100vw, 52vw" imagePriority>
-            {actions}
-          </CampaignEventPass>
+          <CampaignEnvelope key={displayCampaign.id} campaign={displayCampaign} imagePriority />
         ) : (
           <FeaturedSplitCard
             mediaSlot="promotion-campaign-image"

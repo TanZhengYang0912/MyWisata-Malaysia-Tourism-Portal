@@ -1,7 +1,7 @@
 import { formatDate } from "@/lib/i18n/format";
 import type { AppLocale } from "@/lib/i18n/locale";
-import type { PromotionCampaignPublic } from "./types";
-import { getMalaysiaDateTimeLocalValue } from "@/lib/datetime/date-input";
+import type { PromotionCampaignPublic, PromotionCampaignPublicLocation } from "./types";
+import { addMalaysiaCalendarDays, getMalaysiaDateTimeLocalValue } from "@/lib/datetime/date-input";
 import { malaysiaDateTimeLocalToIso } from "@/lib/datetime/malaysia";
 
 export type AdminEventScheduleStatus = 'unconfigured' | 'upcoming' | 'operating' | 'between_sessions' | 'ended';
@@ -17,6 +17,22 @@ export function getAdminEventScheduleStatus(campaign: { starts_at: string; ends_
   if (windows.every(window => window.end <= now.getTime())) return 'ended';
   if (Date.parse(campaign.starts_at) > now.getTime() || windows.every(window => window.start > now.getTime())) return 'upcoming';
   return active.some(location => day >= location.starts_on && day <= location.ends_on && time >= location.opens_at.slice(0, 5) && time < location.closes_at.slice(0, 5)) ? 'operating' : 'between_sessions';
+}
+
+/** The session a visitor can go to next: today's if it has not closed yet, otherwise the earliest upcoming one. */
+export function getNextEventSession(locations: PromotionCampaignPublicLocation[], now = new Date()): { location: PromotionCampaignPublicLocation; date: string; openNow: boolean } | null {
+  const local = getMalaysiaDateTimeLocalValue(now), day = local.slice(0, 10), time = local.slice(11, 16);
+  const tomorrow = addMalaysiaCalendarDays(day, 1);
+  let next: { location: PromotionCampaignPublicLocation; date: string; openNow: boolean } | null = null;
+  for (const location of locations) {
+    const opens = location.opensAt.slice(0, 5), closes = location.closesAt.slice(0, 5);
+    let candidate: { date: string; openNow: boolean } | null = null;
+    if (day < location.startsOn) candidate = { date: location.startsOn, openNow: false };
+    else if (day <= location.endsOn && time < closes) candidate = { date: day, openNow: time >= opens };
+    else if (day <= location.endsOn && tomorrow <= location.endsOn) candidate = { date: tomorrow, openNow: false };
+    if (candidate && (!next || `${candidate.date}T${opens}` < `${next.date}T${next.location.opensAt.slice(0, 5)}`)) next = { location, ...candidate };
+  }
+  return next;
 }
 
 export function getEventOperationalLabelKey(campaign: Pick<PromotionCampaignPublic, "visibility" | "operationalStatus">): string {

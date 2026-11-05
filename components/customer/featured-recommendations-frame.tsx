@@ -14,6 +14,8 @@ type FeaturedRecommendationsFrameProps = {
   onPrevious: () => void;
   onNext: () => void;
   action?: ReactNode;
+  /** Clip slides to the rounded frame. The home campaign envelope turns this off so its letter can float out. */
+  clip?: boolean;
   children: ReactNode;
 };
 
@@ -30,6 +32,7 @@ export function FeaturedRecommendationsFrame({
   onPrevious,
   onNext,
   action,
+  clip = true,
   children,
 }: FeaturedRecommendationsFrameProps) {
   return (
@@ -47,7 +50,7 @@ export function FeaturedRecommendationsFrame({
 
       <div
         data-testid={carouselTestId}
-        className="group/carousel relative w-full overflow-hidden rounded-[28px]"
+        className={`group/carousel relative w-full rounded-[28px] ${clip ? "overflow-hidden" : ""}`}
         aria-roledescription={carouselLabel}
       >
         {children}

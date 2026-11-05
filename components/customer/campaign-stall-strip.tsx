@@ -6,7 +6,7 @@ import { ArrowUpRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 
-function initials(name: string) {
+export function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]).join("").toUpperCase();
 }
 
