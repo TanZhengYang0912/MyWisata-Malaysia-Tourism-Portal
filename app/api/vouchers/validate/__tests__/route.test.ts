@@ -86,7 +86,7 @@ describe("voucher view events", () => {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ code: "SAVE10", cartSubtotal: 100, intent: "view", items: [{ productId: "00000000-0000-4000-8000-000000000001", outletId: "00000000-0000-4000-8000-000000000011", quantity: 1, unitPrice: 100 }] }),
     }));
-    return { insert, lookup };
+    return { insert, lookup, gte: events.gte as ReturnType<typeof vi.fn> };
   }
 
   it("records the first view of the day", async () => {
@@ -94,9 +94,20 @@ describe("voucher view events", () => {
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ voucher_id: "voucher-a", user_id: "customer-a", event_type: "viewed" }));
   });
 
-  it("skips another view within 24 hours", async () => {
+  it("skips another view on the same day", async () => {
     const { insert, lookup } = await viewAsCustomer(true);
     expect(lookup).toHaveBeenCalledTimes(1);
     expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("looks back to midnight in Malaysia, not a rolling 24 hours", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-06T17:30:00Z")); // 01:30 on 7 Nov in Malaysia
+    try {
+      const { gte } = await viewAsCustomer(false);
+      expect(gte).toHaveBeenCalledWith("created_at", "2026-11-06T16:00:00.000Z");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

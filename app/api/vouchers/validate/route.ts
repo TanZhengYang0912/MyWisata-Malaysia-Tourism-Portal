@@ -31,11 +31,14 @@ export async function POST(request: Request) {
     if (!user) return;
     // The cart re-checks every candidate voucher whenever its total or
     // selection changes, so a "view" per check inflated vendor analytics.
-    // Count one view per customer per voucher per 24 hours.
-    // ponytail: read-then-insert, so two simultaneous checks can still both
-    // insert; a partial unique index would make it exact if that shows up.
+    // Count one view per customer per voucher per Malaysian calendar day.
+    // This read skips the usual repeat; the unique index from migration
+    // 20261106010022_voucher_view_once_per_day refuses the rare simultaneous
+    // one, and that insert error is deliberately ignored below.
     if (eventType === 'viewed') {
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const MYT_OFFSET_MS = 8 * 60 * 60 * 1000; // Malaysia has no daylight saving.
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      const since = new Date(Math.floor((Date.now() + MYT_OFFSET_MS) / DAY_MS) * DAY_MS - MYT_OFFSET_MS).toISOString();
       const { data: seen } = await supabase.from('voucher_events').select('id')
         .eq('voucher_id', voucher.id).eq('user_id', user.id).eq('event_type', 'viewed').gte('created_at', since).limit(1);
       if (seen?.length) return;
