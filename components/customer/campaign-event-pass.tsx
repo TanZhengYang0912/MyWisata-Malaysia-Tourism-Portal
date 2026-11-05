@@ -101,7 +101,7 @@ export function CampaignEventPass({ campaign, headingLevel = "h2", imageSizes, i
         </p>
         <p className="flex items-start gap-2">
           <MapPin size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
-          <span>{t("ui.promotionCampaigns.locationCount", { count: campaign.locations.length })} · {t("ui.promotionCampaigns.vendorCount", { count: campaign.vendors.length })}</span>
+          <span>{t("ui.promotionCampaigns.locationVendorSummary", { locations: t("ui.promotionCampaigns.locationCount", { count: campaign.locations.length }), vendors: t("ui.promotionCampaigns.vendorCount", { count: campaign.vendors.length }) })}</span>
         </p>
         {campaign.operatingHours && <p className="flex items-start gap-2"><Clock3 size={16} className="mt-0.5 shrink-0" aria-hidden="true" /><span>{campaign.operatingHours}</span></p>}
       </div>

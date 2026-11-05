@@ -1713,7 +1713,8 @@
         }
       },
       "viewPhotos": "查看照片",
-      "reviewsNav": "评价（{{count}}）",
+      "reviewsNav_one": "评价（{{count}}）",
+      "reviewsNav_other": "评价（{{count}}）",
       "sectionNav": "页面分区",
       "showingCount": "显示 {{shown}} / 共 {{total}}",
       "showAllExperiences": "显示全部 {{count}} 个体验",
@@ -2874,6 +2875,7 @@
       "moreProducts_other": "另有 {{count}} 件"
     },
     "promotionCampaigns": {
+      "locationVendorSummary": "{{locations}} · {{vendors}}",
       "stallsJoining": "{{count}} 个摊位参与",
       "stallsJoining_one": "{{count}} 个摊位参与",
       "stallsJoining_other": "{{count}} 个摊位参与",

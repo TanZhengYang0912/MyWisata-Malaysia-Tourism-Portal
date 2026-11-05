@@ -1708,7 +1708,8 @@
         }
       },
       "viewPhotos": "View photos",
-      "reviewsNav": "Reviews ({{count}})",
+      "reviewsNav_one": "Reviews ({{count}})",
+      "reviewsNav_other": "Reviews ({{count}})",
       "sectionNav": "Page sections",
       "showingCount": "Showing {{shown}} of {{total}}",
       "showAllExperiences": "Show all {{count}} experiences",
@@ -2869,6 +2870,7 @@
       "moreProducts_other": "+{{count}} more"
     },
     "promotionCampaigns": {
+      "locationVendorSummary": "{{locations}} · {{vendors}}",
       "stallsJoining": "{{count}} stalls joining",
       "stallsJoining_one": "{{count}} stall joining",
       "stallsJoining_other": "{{count}} stalls joining",

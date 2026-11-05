@@ -1713,7 +1713,8 @@
         }
       },
       "viewPhotos": "Lihat foto",
-      "reviewsNav": "Ulasan ({{count}})",
+      "reviewsNav_one": "Ulasan ({{count}})",
+      "reviewsNav_other": "Ulasan ({{count}})",
       "sectionNav": "Bahagian halaman",
       "showingCount": "Menunjukkan {{shown}} daripada {{total}}",
       "showAllExperiences": "Tunjuk semua {{count}} pengalaman",
@@ -2874,6 +2875,7 @@
       "moreProducts_other": "+{{count}} lagi"
     },
     "promotionCampaigns": {
+      "locationVendorSummary": "{{locations}} · {{vendors}}",
       "stallsJoining": "{{count}} gerai menyertai",
       "stallsJoining_one": "{{count}} gerai menyertai",
       "stallsJoining_other": "{{count}} gerai menyertai",
