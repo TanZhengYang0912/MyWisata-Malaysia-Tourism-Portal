@@ -212,7 +212,7 @@ export function TripBudgetGuard({
                             lng: message.alternativeLng,
                             label: message.alternativeName,
                             sublabel: t("ui.tripBudget.savings", { amount: formatMYR(message.savingsRM) }),
-                            href: `/customer/activity/${message.alternativeProductId}`,
+                            href: `/customer/products/${message.alternativeProductId}`,
                             imageUrl: message.alternativeImage,
                             replacesId: message.originalProductId,
                           })}
@@ -221,7 +221,7 @@ export function TripBudgetGuard({
                           <MapPinIcon size={11} /> {t("ui.tripBudget.showOnMap")}
                         </button>
                       )}
-                      <a href={`/customer/activity/${message.alternativeProductId}`} className="text-[10px] font-semibold text-primary hover:underline">{t("ui.tripBudget.viewAlternative")}</a>
+                      <a href={`/customer/products/${message.alternativeProductId}`} className="text-[10px] font-semibold text-primary hover:underline">{t("ui.tripBudget.viewAlternative")}</a>
                     </div>
                   </div>
                 </li>

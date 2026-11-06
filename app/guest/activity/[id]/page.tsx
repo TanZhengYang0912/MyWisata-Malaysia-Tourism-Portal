@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
+import { appendCustomerQuery } from "@/lib/customer/navigation-context";
 
-export default async function GuestActivityPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function GuestActivityPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
-  redirect(`/customer/activity/${encodeURIComponent(id)}`);
+  redirect(appendCustomerQuery(`/customer/products/${encodeURIComponent(id)}`, await searchParams));
 }

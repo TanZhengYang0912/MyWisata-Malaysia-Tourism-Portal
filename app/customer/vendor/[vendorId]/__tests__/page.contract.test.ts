@@ -27,7 +27,7 @@ describe("customer vendor commerce boundary", () => {
     expect(vendorProductDetailHref("p1", "v1", "o1")).toContain("outletId=o1");
     expect(vendorProductDetailHref("p1", "v1")).not.toContain("outletId=");
     expect(pageSource).toContain("<VendorListingGrid");
-    expect(listingSource).toContain("vendorListing={product}");
+    expect(listingSource).toContain("listing={toVendorCatalogueCard(product)}");
   });
 
   it("keeps location copy singular when a vendor has one outlet", () => {

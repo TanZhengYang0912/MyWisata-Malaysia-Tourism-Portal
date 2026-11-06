@@ -212,7 +212,7 @@ describe("SponsoredPartnerRail", () => {
     expect(container.textContent).toContain("George Town Walks");
     expect(container.textContent).toContain("George Town, Penang");
     const cardLink = findOne(container, (element) => element.tagName === "A");
-    expect(cardLink.getAttribute("href")).toBe("/customer/activity/activity-1");
+    expect(cardLink.getAttribute("href")).toBe("/customer/products/activity-1");
     expect(cardLink.className).toContain("md:grid-cols-[52%_48%]");
     expect(cardLink.className).toContain("md:min-h-[410px]");
     const cards = findElements(container, (element) => element.tagName === "ARTICLE");

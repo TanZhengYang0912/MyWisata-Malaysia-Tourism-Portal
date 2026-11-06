@@ -334,6 +334,14 @@ describe("Explore facet filters", () => {
     },
   }) as never;
 
+  it('orders ordinary results naturally by name independently of popularity', () => {
+    const results = filterExploreActivities({}, [
+      computed({ id: 'Tea 10', categorySlug: 'food' }),
+      computed({ id: 'Tea 2', categorySlug: 'food' }),
+    ]);
+    expect(results.map(({ id }) => id)).toEqual(['Tea 2', 'Tea 10']);
+  });
+
   it("matches any selected category when no type is selected", () => {
     const results = filterExploreActivities(
       { categories: ["food", "activity"] },
@@ -344,7 +352,7 @@ describe("Explore facet filters", () => {
       ],
     );
 
-    expect(results.map(({ id }) => id)).toEqual(["food", "activity"]);
+    expect(results.map(({ id }) => id)).toEqual(["activity", "food"]);
   });
 
   it("matches any selected category, then intersects selected types with that category set", () => {
@@ -371,7 +379,7 @@ describe("Explore facet filters", () => {
       ],
     );
 
-    expect(results.map(({ id }) => id)).toEqual(["nature", "adventure"]);
+    expect(results.map(({ id }) => id)).toEqual(["adventure", "nature"]);
   });
 
   it("combines category/type, OR-ed badges, state, and Open Now as ANDed groups", () => {
@@ -439,7 +447,7 @@ describe("Explore facet filters", () => {
       ],
     );
 
-    expect(results.map(({ id }) => id)).toEqual(["place-in-sabah", "outlet-in-sabah"]);
+    expect(results.map(({ id }) => id)).toEqual(["outlet-in-sabah", "place-in-sabah"]);
   });
 });
 
@@ -548,12 +556,11 @@ describe("related activity discovery reads", () => {
     );
 
     expect(activities.map((activity) => activity.id)).toEqual([
-      "vendor-shared",
       "vendor-direct-2",
+      "vendor-direct-4",
       "vendor-direct-3",
     ]);
     expect(activities[0].outlet.id).toBe("outlet-johor");
-    expect(activities[0].price).toBe(25);
     expect(selectedFields.products?.[0]).not.toMatch(/product_variants|price_rules/);
   });
 });

@@ -1,9 +1,22 @@
 export type CustomerBreadcrumbToken = { labelKey: string; href?: string };
 export type CustomerBreadcrumbModel = { mode: "automatic" | "page-owned" | "hidden"; items: readonly CustomerBreadcrumbToken[] };
 
+export function getProductBreadcrumbAncestors(
+  outlet: { vendorId: string; vendorName: string; outletId: string; outletName: string },
+  outletSelectionRequired: boolean,
+  publicPlace: boolean,
+): Array<{ label: string; href: string }> {
+  if (publicPlace) return [{ label: 'explore', href: '/customer/explore?tab=experiences' }];
+  return [
+    { label: 'vendors', href: '/customer/vendors' },
+    { label: outlet.vendorName, href: `/customer/vendors/${encodeURIComponent(outlet.vendorId)}` },
+    ...(!outletSelectionRequired ? [{ label: outlet.outletName, href: `/customer/outlets/${encodeURIComponent(outlet.outletId)}` }] : []),
+  ];
+}
+
 const home = { labelKey: "navigation.home", href: "/customer" };
 const topLevel: Record<string, string> = {
-  explore: "navigation.explore", partners: "navigation.search", events: "navigation.events", trip: "navigation.trip",
+  explore: "navigation.explore", partners: "navigation.search", vendors: "navigation.search", events: "navigation.events", trip: "navigation.trip",
   activity: "navigation.activity", orders: "accountItems.orders.label", saved: "accountItems.saved.label",
   vouchers: "accountItems.vouchers.label", wallet: "accountItems.wallet.label", notifications: "accountItems.notifications.label",
   profile: "accountItems.profile.label", preferences: "accountItems.preferences.label", support: "accountItems.support.label",
@@ -30,7 +43,7 @@ export function getCustomerBreadcrumbModel(pathname: string): CustomerBreadcrumb
   if (pathname === "/customer" || /^\/customer\/(cart|checkout)(\/|$)/.test(pathname)
     || /^\/customer\/trip\/[^/]+/.test(pathname)
     || /^\/customer\/(outlet|wishlist|search|verification)(\/|$)/.test(pathname)) return hidden;
-  if (/^\/customer\/(place|destination|vendor|activity|experience|events)\/[^/]+/.test(pathname)) return owned;
+  if (/^\/customer\/(place|destination|vendor|vendors|outlets|products|activity|experience|events)\/[^/]+/.test(pathname)) return owned;
   const nestedMatch = nested.find(({ pattern }) => pattern.test(pathname));
   if (nestedMatch) return { mode: "automatic", items: [
     home,

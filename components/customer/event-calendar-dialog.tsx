@@ -107,7 +107,7 @@ export function EventCalendarDialog({ open, onOpenChange }: { open: boolean; onO
   const selectedProps = selectedEvent?.extendedProps;
   const selectedImage = selectedProps?.image?.trim() || null;
   const selectedLink = selectedProps
-    ? `/customer/activity/${selectedProps.activityId}?outletId=${encodeURIComponent(selectedProps.outletId)}&returnTo=${encodeURIComponent("/customer")}`
+    ? `/customer/products/${selectedProps.activityId}?outletId=${encodeURIComponent(selectedProps.outletId)}&returnTo=${encodeURIComponent("/customer")}`
     : "/customer";
 
   function renderEventContent(arg: EventContentArg) {

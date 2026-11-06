@@ -11,7 +11,7 @@ const homePageSource = readFileSync(
   "utf8",
 );
 const activityCardSource = readFileSync(
-  resolve(process.cwd(), "components/customer/activity-card.tsx"),
+  resolve(process.cwd(), "components/customer/product-card.tsx"),
   "utf8",
 );
 const vendorCardSource = readFileSync(
@@ -174,10 +174,8 @@ describe("customer home first viewport", () => {
   });
 
   it("keeps the homepage discovery shelf under the Featured Highlights label", () => {
-    expect(homePageSource).toContain("const highlightItems = groupAccommodationByProperty(activities).slice(0, 4)");
-    expect(homePageSource).toContain("groupAccommodationByProperty(recommended)");
-    expect(homePageSource).toContain(".filter((activity) => !highlightIds.has(activity.id)");
-    expect(homeSource).toContain("highlightItems: ComputedActivity[]");
+    expect(homePageSource).toContain("selectHomeDiscoverySections(activities, recommended)");
+    expect(homeSource).toContain("highlightItems: (ComputedActivity & { property?: DiscoveryPropertySummary })[]");
     expect(homeSource).toContain("forYouItems: ComputedActivity[]");
     expect(homeSource).not.toContain("groupAccommodationByProperty(popular)");
     expect(homeSource).toContain('t("ui.home.featuredHighlights")');
@@ -214,7 +212,7 @@ describe("customer home first viewport", () => {
     expect(homeSource).toContain('fetch("/api/customer/nearby-partners"');
     expect(homeSource).toContain("navigator.geolocation.getCurrentPosition");
     expect(homeSource).toContain("nearbyPartners.slice(0, 4)");
-    expect(homeSource).toContain('href="/customer/partners"');
+    expect(homeSource).toContain('href="/customer/vendors"');
     expect(homeSource).not.toContain("detailsRevealStyle");
   });
 

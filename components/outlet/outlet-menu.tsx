@@ -19,7 +19,7 @@ function productDetailHref(productId: string, outletId: string) {
   // Always navigate with outlet scope: outletId pre-selects the outlet in the
   // product detail page and returnTo points back to the outlet shop so that
   // relatedScope resolves to "outlet" (not "vendor") on the server.
-  return `/customer/activity/${productId}?outletId=${encodeURIComponent(outletId)}&returnTo=${encodeURIComponent(`/customer/outlet/${outletId}`)}`;
+  return `/customer/products/${productId}?outletId=${encodeURIComponent(outletId)}&returnTo=${encodeURIComponent(`/customer/outlets/${outletId}`)}`;
 }
 
 function fallbackImage(categoryLabel: string, photoComingSoon: string) {

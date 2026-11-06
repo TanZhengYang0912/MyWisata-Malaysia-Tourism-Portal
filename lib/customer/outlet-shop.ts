@@ -1,5 +1,6 @@
 import { formatMYRNumber } from "@/lib/i18n/format";
 import { round2 } from "@/backend/core/money";
+import { orderProductCatalogue } from '@/lib/customer/product-catalogue';
 
 export interface PublicOutletEmptyState {
   title: string;
@@ -255,11 +256,11 @@ export function buildOutletProductCardModel(input: OutletProductCardModelInput):
   };
 }
 
-export function selectFullOutletMenu<T extends { id: string }>(products: T[], featuredIds: string[]) {
+export function selectFullOutletMenu<T extends { id: string; name: string }>(products: T[], featuredIds: string[]) {
   const featured = new Set(featuredIds);
-  return products
-    .map((product) => ({ ...product, featured: featured.has(product.id) }))
-    .sort((left, right) => Number(right.featured) - Number(left.featured));
+  const sorted = orderProductCatalogue(products);
+  return [...sorted.filter((product) => featured.has(product.id)), ...sorted.filter((product) => !featured.has(product.id))]
+    .map((product) => ({ ...product, featured: featured.has(product.id) }));
 }
 
 export function selectPublicOutletProductIds(featuredIds: string[], sellableIds: string[]) {

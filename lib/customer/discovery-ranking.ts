@@ -5,6 +5,7 @@ import type {
   SponsoredPlacement,
 } from "@/backend/core/types";
 import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
+import { orderProductCatalogue } from "@/lib/customer/product-catalogue";
 import {
   compareEligibleSponsoredPlacements,
   getSponsoredSpecificity,
@@ -112,6 +113,18 @@ export function groupAccommodationByProperty<T extends ComputedActivity & { prop
       },
     }];
   });
+}
+
+export function selectHomeDiscoverySections(activities: ComputedActivity[], recommended: ComputedActivity[]) {
+  const grouped = groupAccommodationByProperty(activities);
+  const oldHighlightIds = new Set(grouped.slice(0, 4).map((activity) => activity.id));
+  const seen = new Set<string>();
+  const uniqueActivities = activities.filter((activity) => !seen.has(activity.id) && Boolean(seen.add(activity.id)));
+  const ordinary = groupAccommodationByProperty<ComputedActivity & { property?: DiscoveryPropertySummary }>(uniqueActivities);
+  return {
+    highlightItems: orderProductCatalogue(ordinary.filter((activity) => activity.salesSummary?.outletCount !== 0)).slice(0, 4),
+    forYouItems: groupAccommodationByProperty(recommended).filter((activity) => !oldHighlightIds.has(activity.id)).slice(0, 4),
+  };
 }
 
 /** Same grouping for ranked items that carry extra data (e.g. For You's reasons): the best-ranked room keeps its slot. */

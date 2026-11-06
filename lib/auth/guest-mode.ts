@@ -31,8 +31,7 @@ export function guestVendorHref(vendorId: string): string {
 /**
  * Maps the current /guest/* page to its logged-in /customer/* equivalent,
  * for the guest layout's generic header "Sign In" link — every /guest route
- * has a 1:1 /customer counterpart (activity/[id], vendor/[vendorId], explore),
- * so a plain prefix swap is correct and doesn't need a per-route table.
+ * has a public customer counterpart; catalogue entities use canonical paths.
  * Falls back to /customer/explore for a pathname that isn't under /guest at
  * all (shouldn't happen from within GuestLayout, but never build a broken
  * `next` value from it).
@@ -40,5 +39,7 @@ export function guestVendorHref(vendorId: string): string {
 export function guestPathToCustomerPath(pathname: string): string {
   if (!pathname.startsWith("/guest")) return "/customer/explore";
   const rest = pathname.slice("/guest".length);
+  if (rest.startsWith('/activity/')) return `/customer/products/${rest.slice('/activity/'.length)}`;
+  if (rest.startsWith('/vendor/')) return `/customer/vendors/${rest.slice('/vendor/'.length)}`;
   return `/customer${rest}` || "/customer/explore";
 }

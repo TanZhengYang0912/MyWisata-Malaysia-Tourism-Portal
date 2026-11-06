@@ -241,7 +241,7 @@ export function SponsoredPartnerRail({ advertisements, eventPromotions = [] }: {
                 key={activeSlide.id}
                 articleRef={articleRef}
                 dataPlacementId={placementId}
-                href={`/customer/activity/${ad.id}`}
+                href={`/customer/products/${ad.id}`}
                 onClick={() => recordEvent(ad, "click")}
                 media={(
                   <>

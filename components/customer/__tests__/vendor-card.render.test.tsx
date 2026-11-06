@@ -45,7 +45,7 @@ describe("VendorCard on the shared ExpandCard", () => {
     expect(drawer).toContain("2.1 km away");
     expect(drawer).toContain("charcoal-roasted coffee");
     expect(markup).not.toContain("2 locations");
-    expect(markup).toMatch(/<a [^>]*href="\/customer\/vendor\/v1"[^>]*data-card-primary-cta="true"[^>]*>Explore vendor<\/a>/);
+    expect(markup).toMatch(/<a [^>]*href="\/customer\/vendors\/v1"[^>]*data-card-primary-cta="true"[^>]*>Explore vendor<\/a>/);
   });
 
   it("has no info button and no caption strip", () => {
@@ -77,7 +77,7 @@ describe("VendorCard on the shared ExpandCard", () => {
       ...vendor,
       rating: { value: 4.56, count: 12 },
       openNow: true,
-      popularProducts: [1, 2, 3, 4].map((index) => ({ id: `p${index}`, name: `Product ${index}`, imageUrl: index === 2 ? null : `https://img.test/${index}.jpg`, href: `/customer/activity/p${index}` })),
+      popularProducts: [1, 2, 3, 4].map((index) => ({ id: `p${index}`, name: `Product ${index}`, imageUrl: index === 2 ? null : `https://img.test/${index}.jpg`, href: `/customer/products/p${index}` })),
     }} categories={["food"]} />);
     const body = markup.slice(markup.indexOf("mw-card-body"), markup.indexOf('data-card-details-inline="true"'));
     const drawer = drawerOf(markup);
@@ -87,7 +87,7 @@ describe("VendorCard on the shared ExpandCard", () => {
     expect(body).toContain("ui.operatingHours.openNow");
     expect(body).toContain("2 locations");
     expect(drawer).toContain("ui.vendor.popular");
-    expect(drawer.match(/href="\/customer\/activity\/p\d"/g)).toHaveLength(3);
+    expect(drawer.match(/href="\/customer\/products\/p\d"/g)).toHaveLength(3);
     expect(drawer).toContain("bg-secondary");
   });
 

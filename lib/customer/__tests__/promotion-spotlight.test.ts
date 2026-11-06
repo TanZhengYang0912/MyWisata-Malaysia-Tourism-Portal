@@ -53,7 +53,7 @@ describe("buildPromotionSpotlight", () => {
     ]);
 
     expect(promotions).toHaveLength(3);
-    expect(promotions.every((promotion) => promotion.href.startsWith("/customer/activity/"))).toBe(true);
+    expect(promotions.every((promotion) => promotion.href.startsWith("/customer/products/"))).toBe(true);
     expect(new Set(promotions.map((promotion) => promotion.activityId)).size).toBe(3);
   });
 

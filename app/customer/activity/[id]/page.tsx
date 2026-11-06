@@ -24,7 +24,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  return buildActivityMetadata(id, `/customer/activity/${id}`);
+  return buildActivityMetadata(id, `/customer/products/${encodeURIComponent(id)}`);
 }
 
 export default async function ActivityDetailPage({ params, searchParams }: Props) {
@@ -49,7 +49,7 @@ export default async function ActivityDetailPage({ params, searchParams }: Props
   const selectedOutletId = requestedOutletId && outletChoices.some((choice) => choice.outletId === requestedOutletId)
     ? requestedOutletId
     : activity?.outletId;
-  const returnToParam = sp?.returnTo ? decodeURIComponent(sp.returnTo) : "";
+  const returnToParam = sp?.returnTo ?? "";
   const isVendorSource = sp?.source === "vendor" || returnToParam.includes("/customer/vendor");
   const vendorId = activity?.outlet.vendorId;
   const relatedProducts = (

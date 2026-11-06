@@ -51,7 +51,7 @@ export function VendorCard({
 }: VendorCardProps) {
   const { t } = useTranslation("customer");
   const visual = getVendorVisual(vendor);
-  const vendorHref = destinationHref ?? `/customer/vendor/${vendor.id}`;
+  const vendorHref = destinationHref ?? `/customer/vendors/${vendor.id}`;
   const outlet = vendor.outlets[0];
   const location = [outlet?.city, outlet?.state].filter(Boolean).join(", ") || t("ui.labels.malaysia");
   const cardDescription = description?.trim() || descriptionFallback || t("ui.search.approvedPartnerDescription");

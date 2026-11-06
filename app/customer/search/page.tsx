@@ -1,8 +1,5 @@
 import { redirect } from "next/navigation";
-
-// /customer/search is now /customer/partners per the restructure plan.
-// Preserve any existing bookmarks or inbound links by redirecting permanently.
-export default function SearchRedirectPage() {
-  redirect("/customer/partners");
+import { appendCustomerQuery } from "@/lib/customer/navigation-context";
+export default async function SearchRedirectPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+  redirect(appendCustomerQuery('/customer/vendors', await searchParams));
 }
-

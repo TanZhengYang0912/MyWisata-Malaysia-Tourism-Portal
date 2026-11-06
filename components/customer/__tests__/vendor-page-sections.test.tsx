@@ -5,7 +5,7 @@ import { findElements, findOne, installTestDom, TestEvent, type TestDocument, ty
 
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string, options?: Record<string, unknown>) => (options ? `${key} ${JSON.stringify(options)}` : key) }) }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => <a href={href} {...props}>{children}</a> }));
-vi.mock("@/components/customer/activity-card", () => ({ ActivityCard: ({ vendorListing }: { vendorListing: { name: string } }) => <article data-card>{vendorListing.name}</article> }));
+vi.mock("@/components/customer/product-card", () => ({ ProductCard: ({ listing }: { listing: { name: string } }) => <article data-card>{listing.name}</article> }));
 
 import { VendorListingGrid } from "@/components/customer/vendor-listing-grid";
 import { VendorLocationList, type VendorLocationRow } from "@/components/customer/vendor-location-list";

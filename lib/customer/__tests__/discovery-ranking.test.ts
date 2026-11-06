@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ComputedActivity, SponsoredPlacement } from "@/backend/core/types";
 import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
-import { rankDiscoveryResults } from "@/lib/customer/discovery-ranking";
+import { rankDiscoveryResults, selectHomeDiscoverySections } from "@/lib/customer/discovery-ranking";
 
 function activity(id: string, overrides: Partial<ComputedActivity> = {}): ComputedActivity {
   return {
@@ -75,6 +75,23 @@ const filters: DiscoveryQuery = {
   familyFriendlyOnly: false,
   coupleFriendlyOnly: false,
 };
+
+describe('home highlights and recommendations', () => {
+  it('sorts highlights without changing the old recommendation exclusion or reasons', () => {
+    const activities = [activity('z', { name: 'Zulu' }), activity('y', { name: 'Yankee' }), activity('x', { name: 'Xray' }), activity('w', { name: 'Whisky' }), activity('a', { name: 'Alpha' })];
+    const recommended = [activity('z', { aiTag: 'near you' }), activity('a', { name: 'Alpha', aiTag: 'interests' }), activity('b', { aiTag: 'similar' })];
+    const result = selectHomeDiscoverySections(activities, recommended);
+    expect(result.highlightItems.map((item) => item.id)).toEqual(['a', 'w', 'x', 'y']);
+    expect(result.forYouItems.map((item) => [item.id, item.aiTag])).toEqual([['a', 'interests'], ['b', 'similar']]);
+  });
+  it('counts duplicate accommodation product ids once when grouping a property', () => {
+    const hotel = activity('room-1', { name: 'Room 1', categorySlug: 'accommodation' });
+    const secondRoom = activity('room-2', { name: 'Room 2', categorySlug: 'accommodation', outlet: hotel.outlet });
+    const result = selectHomeDiscoverySections([hotel, hotel, secondRoom], []);
+    expect(result.highlightItems).toHaveLength(1);
+    expect(result.highlightItems[0].property?.roomTypeCount).toBe(2);
+  });
+});
 
 describe("rankDiscoveryResults", () => {
   it("caps eligible placements to four unique sponsored products in one-based position order", () => {

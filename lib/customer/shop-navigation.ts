@@ -1,3 +1,3 @@
 export function getOutletShopHref(outletId: string): string {
-  return `/customer/outlet/${outletId}`;
+  return `/customer/outlets/${encodeURIComponent(outletId)}`;
 }

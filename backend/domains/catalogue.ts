@@ -1,3 +1,4 @@
+import { orderProductCatalogue } from "@/lib/customer/product-catalogue";
 import { getOutletStock } from '@/lib/vendor/product-scope';
 // Owner: Member 2 / catalogue side (Vendor/Outlet/Product)
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -842,7 +843,8 @@ function toComputed(
   if (candidates.length === 0) {
     const outlet = outletMap.get(activity.outletId);
     if (!outlet) return null;
-    return { ...activity, outlet, distanceKm: from ? haversineKm(from, { lat: outlet.lat, lng: outlet.lng }) : undefined };
+    const valid = outlet.verified && Number.isFinite(activity.price) && activity.price >= 0;
+    return { ...activity, outlet, salesSummary: { outletCount: valid ? 1 : 0, fromPrice: valid ? activity.price : 0 }, distanceKm: from ? haversineKm(from, { lat: outlet.lat, lng: outlet.lng }) : undefined };
   }
 
   const scored = candidates.map((candidate) => ({
@@ -853,12 +855,20 @@ function toComputed(
     ? scored.reduce((a, b) => ((b.distanceKm ?? Infinity) < (a.distanceKm ?? Infinity) ? b : a))
     : scored.reduce((a, b) => (b.offer.price < a.offer.price ? b : a)));
 
+  const eligiblePrices = new Map<string, number>();
+  for (const { offer, outlet } of candidates) {
+    if (!outlet.verified || offer.status !== 'active' || !Number.isFinite(offer.price) || offer.price < 0) continue;
+    eligiblePrices.set(outlet.id, Math.min(eligiblePrices.get(outlet.id) ?? Infinity, offer.price));
+  }
+  const prices = [...eligiblePrices.values()];
+
   return {
     ...activity,
     outletId: best.outlet.id,
     price: best.offer.price,
     outlet: best.outlet,
     distanceKm: best.distanceKm,
+    salesSummary: { outletCount: prices.length, fromPrice: prices.length ? Math.min(...prices) : 0 },
   };
 }
 
@@ -943,7 +953,7 @@ export async function getOutletActivities(outletId: string, excludeProductId?: s
   const outlet = outletMap.get(outletId);
   if (!outlet) return [];
 
-  return activities
+  return orderProductCatalogue(activities
     .filter((activity) => activity.id !== excludeProductId)
     .map((activity) => {
       const offer = activity.offers?.find((candidate) => candidate.outletId === outletId);
@@ -955,7 +965,7 @@ export async function getOutletActivities(outletId: string, excludeProductId?: s
         outlet,
       } satisfies ComputedActivity;
     })
-    .filter((activity): activity is ComputedActivity => activity !== null);
+    .filter((activity): activity is ComputedActivity => activity !== null));
 }
 
 /**
@@ -970,7 +980,7 @@ export async function getVendorActivities(vendorId: string, excludeProductId?: s
   if (vendorOutlets.length === 0) return [];
   const vendorOutletIds = new Set(vendorOutlets.map((o) => o.id));
 
-  return activities
+  return orderProductCatalogue(activities
     .filter((activity) => activity.id !== excludeProductId)
     .map((activity): ComputedActivity | null => {
       // Include activities that belong to any outlet of this vendor (via offers
@@ -986,7 +996,7 @@ export async function getVendorActivities(vendorId: string, excludeProductId?: s
         outlet,
       } satisfies ComputedActivity;
     })
-    .filter((activity): activity is ComputedActivity => activity !== null)
+    .filter((activity): activity is ComputedActivity => activity !== null))
     .slice(0, 3);
 }
 
@@ -1191,7 +1201,7 @@ function sortExploreActivities(filters: SearchFilters, activities: ComputedActiv
       activities.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
       break;
     default:
-      activities.sort((a, b) => b.rating * b.reviews - a.rating * a.reviews);
+      return orderProductCatalogue(activities);
   }
   return activities;
 }

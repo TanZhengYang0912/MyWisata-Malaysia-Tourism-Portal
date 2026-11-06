@@ -213,6 +213,7 @@ export interface OutletOffer {
 export interface ComputedActivity extends Activity {
   outlet: Outlet;
   distanceKm?: number;
+  salesSummary?: { outletCount: number; fromPrice: number };
 }
 
 export interface DiscoveryPropertySummary {

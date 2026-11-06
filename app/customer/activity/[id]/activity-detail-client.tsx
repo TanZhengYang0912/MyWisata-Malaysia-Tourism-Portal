@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BackLink } from "@/components/shared/back-link";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
+import { getProductBreadcrumbAncestors } from "@/lib/customer/breadcrumbs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, CheckCircle, Clock3, ImageOff, MapPin, MessageCircle, Sparkles, Star, Store } from "lucide-react";
@@ -192,9 +193,7 @@ export function ActivityDetailClient({
     <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7">
       <Breadcrumbs className="mb-3" label={t("ui.place.breadcrumb")} items={[
         { label: t("navigation.home"), href: "/customer" },
-        ...(vendorDiscovery && selectedOutlet?.vendorName
-          ? [{ label: t("navigation.search"), href: "/customer/partners" }, { label: selectedOutlet.vendorName, href: `/customer/vendor/${selectedOutlet.vendorId}` }]
-          : [{ label: t("navigation.explore"), href: "/customer/explore?tab=experiences" }]),
+        ...getProductBreadcrumbAncestors({ vendorId: selectedOutlet?.vendorId ?? "", vendorName: selectedOutlet?.vendorName ?? t("ui.labels.localVendor"), outletId: selectedOutlet?.outletId ?? "", outletName: selectedOutlet?.outletName ?? "" }, outletSelectionRequired, publicPlace).map((item, index) => ({ ...item, label: index === 0 ? t(publicPlace ? "navigation.explore" : "navigation.search") : item.label })),
         { label: <LocalizedContent entityType="product" entityId={activity.id} field="name" sourceText={activity.name} /> },
       ]} />
       <div className="mb-4">
@@ -309,7 +308,7 @@ export function ActivityDetailClient({
                {placeBound ? <MapPin size={12} className="mr-1 inline align-[-1px]" /> : <Store size={12} className="mr-1 inline align-[-1px]" />}
                {publicPlace ? t("strictMigration.activityDetail.noVendorRequired") : placeBound ? t("strictMigration.activityDetail.placeDetails") : (selectedOutlet!.vendorName ?? t("strictMigration.activityDetail.localVendor"))}
              </span>
-             {!placeBound && <Link href={`/customer/vendor/${selectedOutlet!.vendorId}`} className="shrink-0 font-semibold text-primary hover:underline">{t("ui.actions.visitVendor")}</Link>}
+             {!placeBound && <Link href={`/customer/vendors/${selectedOutlet!.vendorId}`} className="shrink-0 font-semibold text-primary hover:underline">{t("ui.actions.visitVendor")}</Link>}
            </div>
 
           {publicPlace ? <div className="rounded-2xl border border-[#cbd7f2] bg-[#f3f5ff] p-4 text-sm text-muted-foreground">{t("ui.activity.publicPlaceAccess")}</div> : outletSelectionRequired ? <div className="rounded-2xl border border-primary/15 bg-secondary/35 p-4">
@@ -497,18 +496,18 @@ export function ActivityDetailClient({
               )}
             </div>
             {relatedScope === "vendor" ? (
-              <Link href={returnTo !== "/customer" ? returnTo : `/customer/vendor/${selectedOutlet.vendorId}`} className="text-sm font-bold text-primary hover:underline">{t("ui.actions.visitVendor")} →</Link>
+              <Link href={returnTo !== "/customer" ? returnTo : `/customer/vendors/${selectedOutlet.vendorId}`} className="text-sm font-bold text-primary hover:underline">{t("ui.actions.visitVendor")} →</Link>
             ) : (
               <Link href={getOutletShopHref(selectedOutlet.outletId)} className="text-sm font-bold text-primary hover:underline">{t("ui.actions.visitOutlet")} →</Link>
             )}
           </div>
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-3">
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
             {relatedProducts.map((product) => (
               <ActivityCard
                 key={product.id}
                 activity={product}
                 outletId={selectedOutlet.outletId}
-                returnTo={returnTo !== "/customer" ? returnTo : `/customer/vendor/${selectedOutlet.vendorId}`}
+                returnTo={returnTo !== "/customer" ? returnTo : `/customer/vendors/${selectedOutlet.vendorId}`}
                 source={relatedScope === "vendor" ? "vendor" : undefined}
               />
             ))}

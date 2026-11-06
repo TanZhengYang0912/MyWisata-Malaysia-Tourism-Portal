@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityCard } from "@/components/customer/activity-card";
+import { ProductCard } from "@/components/customer/product-card";
+import { toVendorCatalogueCard } from "@/lib/customer/product-catalogue";
 import { Button } from "@/components/ui/button";
 import { getVendorProductTypeLabel, type VendorProductCardData } from "@/lib/customer/vendor-page";
 
@@ -38,7 +39,7 @@ export function VendorListingGrid({ products, returnTo }: { products: VendorProd
         <span className="text-sm font-semibold text-muted-foreground">{t("ui.vendor.showingCount", { shown: shown.length, total: filtered.length })}</span>
       </div>
       <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
-        {shown.map((product) => <ActivityCard key={product.id} returnTo={returnTo} vendorListing={product} />)}
+        {shown.map((product) => <ProductCard key={product.id} returnTo={returnTo} listing={toVendorCatalogueCard(product)} source="vendor" />)}
       </div>
       {shown.length < filtered.length && (
         <div className="mt-6 flex justify-center">

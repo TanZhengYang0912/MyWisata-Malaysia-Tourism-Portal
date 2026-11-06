@@ -1,0 +1,61 @@
+import type { ComputedActivity, OperatingHours } from '@/backend/core/types';
+import type { VendorProductCardData } from '@/lib/customer/vendor-page';
+
+export type ProductCatalogueOrderItem = { id: string; name: string };
+export type ProductSalesSummary = { outletCount: number; fromPrice: number };
+export type ProductCatalogueCardData = {
+  id: string; vendorId: string; name: string; description: string | null;
+  productType: string | null; imageUrl: string | null;
+  requiresBooking: boolean; rating: number; reviews: number;
+  sales: ProductSalesSummary;
+  singleOutlet?: { id: string; city: string | null; state: string | null; operatingHours: OperatingHours | null };
+};
+
+export function toVendorCatalogueCard(product: VendorProductCardData): ProductCatalogueCardData {
+  const outlets = new Map<string, VendorProductCardData['soldAt'][number]>();
+  for (const outlet of product.soldAt) {
+    if (!Number.isFinite(outlet.price) || outlet.price < 0) continue;
+    const existing = outlets.get(outlet.id);
+    if (!existing || outlet.price < existing.price) outlets.set(outlet.id, outlet);
+  }
+  const valid = [...outlets.values()];
+  const singleOutlet = valid.length === 1 ? valid[0] : undefined;
+  return {
+    id: product.id, vendorId: product.vendorId, name: product.name,
+    description: product.description, productType: product.productType, imageUrl: product.imageUrl,
+    requiresBooking: product.requiresBooking, rating: product.rating, reviews: product.reviews,
+    sales: { outletCount: valid.length, fromPrice: valid.length ? Math.min(...valid.map((outlet) => outlet.price)) : product.fromPrice },
+    ...(singleOutlet ? { singleOutlet } : {}),
+  };
+}
+
+export function toDiscoveryCatalogueCard(product: ComputedActivity): ProductCatalogueCardData {
+  const sales = product.salesSummary ?? { outletCount: 1, fromPrice: product.price };
+  return {
+    id: product.id, vendorId: product.vendorId ?? product.outlet.vendorId, name: product.name,
+    description: product.description, productType: product.categorySlug ?? null, imageUrl: product.image,
+    requiresBooking: product.requiresBooking, rating: product.rating, reviews: product.reviews, sales,
+    ...(sales.outletCount === 1 && product.outlet.verified ? { singleOutlet: { id: product.outlet.id, city: product.outlet.city, state: product.outlet.state, operatingHours: product.outlet.operatingHours ?? null } } : {}),
+  };
+}
+
+const nameCollator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+
+export function orderProductCatalogue<T extends ProductCatalogueOrderItem>(
+  products: readonly T[], featuredIds: readonly string[] = [],
+): T[] {
+  const unique = new Map<string, T>();
+  for (const product of products) {
+    if (!unique.has(product.id)) unique.set(product.id, product);
+  }
+  const featured: T[] = [];
+  for (const id of featuredIds) {
+    const product = unique.get(id);
+    if (product) {
+      featured.push(product);
+      unique.delete(id);
+    }
+  }
+  return [...featured, ...Array.from(unique.values()).sort((left, right) =>
+    nameCollator.compare(left.name, right.name) || left.id.localeCompare(right.id, 'en'))];
+}

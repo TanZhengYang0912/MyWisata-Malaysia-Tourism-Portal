@@ -18,7 +18,7 @@ describe("customer product save entry points", () => {
 
   it.each([
     ["outlet food and product cards", "components/outlet/outlet-menu.tsx"],
-    ["vendor featured product cards", "components/customer/activity-card.tsx"],
+    ["vendor featured product cards", "components/customer/product-card.tsx"],
     ["product detail pages", "app/customer/activity/[id]/activity-detail-client.tsx"],
   ])("offers saving from %s", (_surface, path) => {
     const source = read(path);
@@ -27,7 +27,7 @@ describe("customer product save entry points", () => {
 
   it("uses the shared card for vendor featured products", () => {
     expect(read("app/customer/vendor/[vendorId]/page.tsx")).toContain("<VendorListingGrid");
-    expect(read("components/customer/vendor-listing-grid.tsx")).toContain("<ActivityCard");
+    expect(read("components/customer/vendor-listing-grid.tsx")).toContain("<ProductCard");
   });
 
   it("keeps saved product cards in sync when a customer removes an item", () => {

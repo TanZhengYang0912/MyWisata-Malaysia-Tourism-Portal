@@ -10,6 +10,7 @@ vi.mock("@/components/customer/product-save-button", () => ({ ProductSaveButton:
 vi.mock("@/components/customer/localized-content", () => ({ LocalizedContent: ({ sourceText, children }: { sourceText: string; children?: (value: { text: string; control: null }) => React.ReactNode }) => children ? children({ text: sourceText, control: null }) : <span>{sourceText}</span> }));
 vi.mock("@/components/shared/reference-price", () => ({ ReferencePrice: ({ amountMYR }: { amountMYR: number }) => <span>RM{amountMYR}</span> }));
 import { ActivityCard } from "@/components/customer/activity-card";
+import { toVendorCatalogueCard } from "@/lib/customer/product-catalogue";
 
 const product: VendorProductCardData = {
   id: "p1", vendorId: "v1", name: "A local experience", description: null, productType: "activity",
@@ -30,5 +31,19 @@ describe("vendor product cards", () => {
     expect(markup).toContain("ui.vendor.locationCount:2");
     expect(markup).toContain("RM12");
     expect(markup).not.toContain("0.0");
+  });
+  it("uses the same aggregate presentation while retaining home and vendor navigation modes", () => {
+    const listing = toVendorCatalogueCard({ ...product, rating: 4.5, reviews: 7, soldAt: [...product.soldAt, { ...product.soldAt[0], id: 'o2', price: 5 }] });
+    const home = renderToStaticMarkup(<ActivityCard listing={listing} source="home" returnTo="/customer" />);
+    const vendor = renderToStaticMarkup(<ActivityCard listing={listing} source="vendor" returnTo="/customer/vendor/v1" />);
+    for (const markup of [home, vendor]) {
+      expect(markup).toContain('RM5');
+      expect(markup).toContain('ui.vendor.locationCount:2');
+      expect(markup).toContain('4.5');
+      expect(markup).not.toContain('Melaka');
+      expect(markup).not.toContain('outletId=');
+    }
+    expect(home).toContain('source=home');
+    expect(vendor).toContain('source=vendor');
   });
 });

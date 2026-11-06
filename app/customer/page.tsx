@@ -17,7 +17,7 @@ import { resolvePromotionCampaignImages } from "@/lib/promotion-campaigns/images
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 import type { EventPartner } from "@/components/customer/event-partners-section";
 import { getMalaysiaDateInputValue } from "@/lib/datetime/date-input";
-import { groupAccommodationByProperty } from "@/lib/customer/discovery-ranking";
+import { selectHomeDiscoverySections } from "@/lib/customer/discovery-ranking";
 import { nextVendorEvent } from "@/lib/promotion-campaigns/vendor-events";
 import { Instrument_Serif } from "next/font/google";
 
@@ -87,11 +87,7 @@ export default async function CustomerHomePage() {
     ...item.activity,
     aiTag: reasonLabel(item.reason),
   })) as ComputedActivity[];
-  const highlightItems = groupAccommodationByProperty(activities).slice(0, 4);
-  const highlightIds = new Set(highlightItems.map((activity) => activity.id));
-  const forYouItems = groupAccommodationByProperty(recommended)
-    .filter((activity) => !highlightIds.has(activity.id))
-    .slice(0, 4);
+  const { highlightItems, forYouItems } = selectHomeDiscoverySections(activities, recommended);
 
   const mediaByVendorId = new Map<string, EntityMediaRow[]>();
   for (const row of vendorMediaRows) {
