@@ -1,6 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import type { OperatingHours } from "@/backend/core/types";
 import type { VendorProductCardData } from "@/lib/customer/vendor-page";
 
 vi.mock("next/link", () => ({ default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => <a href={href} {...props}>{children}</a> }));
@@ -8,10 +9,12 @@ vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string, opti
 vi.mock("@/components/providers/wishlist", () => ({ useOptionalWishlist: () => null }));
 vi.mock("@/components/customer/product-save-button", () => ({ ProductSaveButton: () => null }));
 vi.mock("@/components/customer/localized-content", () => ({ LocalizedContent: ({ sourceText, children }: { sourceText: string; children?: (value: { text: string; control: null }) => React.ReactNode }) => children ? children({ text: sourceText, control: null }) : <span>{sourceText}</span> }));
+vi.mock("@/components/customer/operating-hours-summary", () => ({ OperatingHoursSummary: () => <span>hours-summary</span> }));
 vi.mock("@/components/shared/reference-price", () => ({ ReferencePrice: ({ amountMYR }: { amountMYR: number }) => <span>RM{amountMYR}</span> }));
 import { ActivityCard } from "@/components/customer/activity-card";
 import { toVendorCatalogueCard } from "@/lib/customer/product-catalogue";
 
+const closedAllWeek: OperatingHours = Object.fromEntries(["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map((day) => [day, { closed: true }]));
 const product: VendorProductCardData = {
   id: "p1", vendorId: "v1", name: "A local experience", description: null, productType: "activity",
   imageUrl: null, fromPrice: 12, requiresBooking: true, rating: 0, reviews: 0,
@@ -45,5 +48,22 @@ describe("vendor product cards", () => {
     }
     expect(home).toContain('source=home');
     expect(vendor).toContain('source=vendor');
+  });
+  it("shows a single outlet's exact price, place, hours and Closed badge without From", () => {
+    const markup = renderToStaticMarkup(<ActivityCard listing={toVendorCatalogueCard({ ...product, soldAt: [{ ...product.soldAt[0], operatingHours: closedAllWeek }] })} source="home" returnTo="/customer" />);
+    expect(markup).toContain("RM12");
+    expect(markup).not.toContain("ui.vendor.from");
+    expect(markup).toContain("Melaka");
+    expect(markup).toContain("hours-summary");
+    expect(markup).toContain("ui.labels.closed");
+  });
+  it("never presents one branch's place, hours or Closed badge as a multi-outlet product's", () => {
+    const closedOutlet = { ...product.soldAt[0], operatingHours: closedAllWeek };
+    const markup = renderToStaticMarkup(<ActivityCard listing={toVendorCatalogueCard({ ...product, soldAt: [closedOutlet, { ...closedOutlet, id: "o2", price: 8 }] })} source="home" returnTo="/customer" />);
+    expect(markup).toContain("ui.vendor.from");
+    expect(markup).toContain("RM8");
+    expect(markup).not.toContain("Melaka");
+    expect(markup).not.toContain("hours-summary");
+    expect(markup).not.toContain("ui.labels.closed");
   });
 });

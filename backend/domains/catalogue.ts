@@ -997,7 +997,7 @@ export async function getVendorActivities(vendorId: string, excludeProductId?: s
       } satisfies ComputedActivity;
     })
     .filter((activity): activity is ComputedActivity => activity !== null))
-    .slice(0, 3);
+    .slice(0, 4); // Fills one row of the four-column related grid.
 }
 
 export interface SearchFilters {

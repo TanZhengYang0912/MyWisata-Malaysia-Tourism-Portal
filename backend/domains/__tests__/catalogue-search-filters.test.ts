@@ -342,6 +342,17 @@ describe("Explore facet filters", () => {
     expect(results.map(({ id }) => id)).toEqual(['Tea 2', 'Tea 10']);
   });
 
+  it('keeps the explicit price and rating sorts while the legacy recommended value means name order', () => {
+    const items = () => [
+      Object.assign(computed({ id: 'Charlie', categorySlug: 'food' }), { price: 20, rating: 3 }),
+      Object.assign(computed({ id: 'Alpha', categorySlug: 'food' }), { price: 30, rating: 5 }),
+      Object.assign(computed({ id: 'Bravo', categorySlug: 'food' }), { price: 10, rating: 1 }),
+    ];
+    expect(filterExploreActivities({ sort: 'price_asc' }, items()).map(({ id }) => id)).toEqual(['Bravo', 'Charlie', 'Alpha']);
+    expect(filterExploreActivities({ sort: 'rating_desc' }, items()).map(({ id }) => id)).toEqual(['Alpha', 'Charlie', 'Bravo']);
+    expect(filterExploreActivities({ sort: 'recommended' }, items()).map(({ id }) => id)).toEqual(['Alpha', 'Bravo', 'Charlie']);
+  });
+
   it("matches any selected category when no type is selected", () => {
     const results = filterExploreActivities(
       { categories: ["food", "activity"] },
@@ -414,6 +425,12 @@ describe("Explore facet filters", () => {
     );
 
     expect(results.map(({ id }) => id)).toEqual(["resort"]);
+  });
+
+  it("orders the refreshed Explore read by name, like the initial-candidate path", async () => {
+    const results = await searchExploreActivities({}, makeDb(OUTLETS, [...PRODUCTS].reverse()));
+    expect(results.map(({ name }) => name)).toEqual([...results.map(({ name }) => name)].sort((a, b) => a.localeCompare(b, "en")));
+    expect(results.map(({ id }) => id)).toEqual(filterExploreActivities({}, [...results].reverse()).map(({ id }) => id));
   });
 
   it("keeps one shared product and displays an outlet matching the selected badge and state", async () => {
@@ -529,7 +546,7 @@ describe("related activity discovery reads", () => {
     expect(selectedFields.products?.[0]).not.toMatch(/product_variants|price_rules/);
   });
 
-  it("keeps vendor matching, exclusion, order, and the three-card cap with discovery fields", async () => {
+  it("keeps vendor matching, exclusion, order, and the four-card cap with discovery fields", async () => {
     const selectedFields: Record<string, string[]> = {};
     const otherVendorOutlet = {
       ...OUTLET_FIELDS,
@@ -559,8 +576,12 @@ describe("related activity discovery reads", () => {
       "vendor-direct-2",
       "vendor-direct-4",
       "vendor-direct-3",
+      "vendor-shared",
     ]);
     expect(activities[0].outlet.id).toBe("outlet-johor");
+    // A shared product shows this vendor's outlet offer price, not another vendor's.
+    expect(activities[3].outlet.id).toBe("outlet-johor");
+    expect(activities[3].price).toBe(25);
     expect(selectedFields.products?.[0]).not.toMatch(/product_variants|price_rules/);
   });
 });
