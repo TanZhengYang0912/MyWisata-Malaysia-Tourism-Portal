@@ -33,6 +33,7 @@ const vendor = {
   ],
 };
 
+const mediaOf = (markup: string) => markup.slice(markup.indexOf("mw-card-media"), markup.indexOf("mw-card-body"));
 const drawerOf = (markup: string) => markup.slice(markup.indexOf('data-card-details-inline="true"'));
 
 describe("VendorCard on the shared ExpandCard", () => {
@@ -82,8 +83,10 @@ describe("VendorCard on the shared ExpandCard", () => {
     const body = markup.slice(markup.indexOf("mw-card-body"), markup.indexOf('data-card-details-inline="true"'));
     const drawer = drawerOf(markup);
 
-    expect(body).toContain(">4.6<");
-    expect(body).toContain("(12)");
+    expect(mediaOf(markup)).toContain(">4.6<");
+    expect(mediaOf(markup)).toContain("(12)");
+    expect(body).not.toContain("(12)");
+    expect(body).toContain("categories.food");
     expect(body).toContain("ui.operatingHours.openNow");
     expect(body).toContain("2 locations");
     expect(drawer).toContain("ui.vendor.popular");
@@ -94,10 +97,26 @@ describe("VendorCard on the shared ExpandCard", () => {
   it("leaves out the rating, status and popular lines when the data is missing", () => {
     const markup = renderToStaticMarkup(<VendorCard vendor={vendor} distanceLabel="1 km away" />);
 
-    expect(markup).not.toContain("fill=\"var(--highlight-yellow)\"");
+    expect(markup).not.toContain('data-slot="photo-rating-badge"');
     expect(markup).not.toContain("ui.operatingHours");
     expect(markup).not.toContain("ui.vendor.popular");
     expect(markup).not.toContain('<p class="text-xs text-muted-foreground"></p>');
+  });
+
+  it("says No reviews yet on the photo when the lookup worked but found no reviews", () => {
+    const markup = renderToStaticMarkup(<VendorCard vendor={{ ...vendor, rating: null }} />);
+    expect(mediaOf(markup)).toContain('data-slot="photo-rating-badge"');
+    expect(mediaOf(markup)).toContain("ui.activity.noReviewsYet");
+    expect(markup).toContain("Local partner");
+  });
+
+  it("shows only the empty star on phones for an unreviewed vendor, so it clears the logo", () => {
+    const unreviewed = mediaOf(renderToStaticMarkup(<VendorCard vendor={{ ...vendor, rating: null }} />));
+    expect(unreviewed).toContain("sr-only sm:not-sr-only");
+    expect(unreviewed).toContain("max-sm:pr-1");
+    const reviewed = mediaOf(renderToStaticMarkup(<VendorCard vendor={{ ...vendor, rating: { value: 4.56, count: 12 } }} />));
+    expect(reviewed).not.toContain("sr-only");
+    expect(reviewed).not.toContain("max-sm:pr-1");
   });
 
   it("tags only featured vendors as featured, shares the vendor and offers no save button", () => {

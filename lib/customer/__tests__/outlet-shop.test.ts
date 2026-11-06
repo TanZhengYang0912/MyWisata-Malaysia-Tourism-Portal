@@ -33,15 +33,12 @@ describe('professional outlet product cards', () => {
       category: 'Activity',
       requiresBooking: true,
       availableStock: null,
-      rating: 4.6,
-      reviews: 76,
       hasCartAction: true,
     })).toEqual({
       categoryLabel: 'Activity',
       priceLabel: 'From RM146.00',
       descriptionFallback: 'A local favourite from Kuah.',
       availabilityLabel: 'Booking required',
-      ratingLabel: '4.6 (76)',
       locationLabel: 'Available at Kuah',
       primaryActionLabel: 'Add booking',
       secondaryActionLabel: 'Book now',
@@ -56,8 +53,6 @@ describe('professional outlet product cards', () => {
       category: 'Retail',
       requiresBooking: false,
       availableStock: 0,
-      rating: 0,
-      reviews: 0,
       hasCartAction: false,
     });
 

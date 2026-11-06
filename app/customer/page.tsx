@@ -114,9 +114,9 @@ export default async function CustomerHomePage() {
     .filter((vendor) => vendor.outlets.length > 0);
 
   const rankedVendors = rankFeaturedVendors(vendors, activities, 24);
-  // Ratings read the review metrics view with the service client, as the vendor page does; a failure only hides the line.
-  const vendorRatings = await getVendorRatingSummaries(rankedVendors.map((vendor) => vendor.id), createServiceClient()).catch(() => new Map<string, { value: number; count: number }>());
-  const featuredVendors = rankedVendors.map((vendor) => ({ ...vendor, rating: vendorRatings.get(vendor.id), popularProducts: popularVendorProducts(activities, vendor.id) }));
+  // Ratings read the review metrics view with the service client, as the vendor page does; a failure (unknown rating) hides the badge, while no reviews shows "No reviews yet".
+  const vendorRatings = await getVendorRatingSummaries(rankedVendors.map((vendor) => vendor.id), createServiceClient()).catch(() => null);
+  const featuredVendors = rankedVendors.map((vendor) => ({ ...vendor, rating: vendorRatings ? vendorRatings.get(vendor.id) ?? null : undefined, popularProducts: popularVendorProducts(activities, vendor.id) }));
   const featuredCampaigns = selectFeaturedPublicCampaigns(publicCampaigns);
   const today = getMalaysiaDateInputValue();
   const featuredEventPartners: EventPartner[] = (eventPartnerVendorResult.data ?? [])

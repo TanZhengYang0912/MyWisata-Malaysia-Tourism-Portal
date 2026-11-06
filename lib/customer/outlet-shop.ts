@@ -75,8 +75,6 @@ export interface OutletProductCardModelInput {
   productType?: string | null;
   requiresBooking?: boolean;
   availableStock?: number | null;
-  rating?: number;
-  reviews?: number;
   hasCartAction: boolean;
 }
 
@@ -85,7 +83,6 @@ export interface OutletProductCardModel {
   priceLabel: string;
   descriptionFallback: string;
   availabilityLabel: string;
-  ratingLabel?: string;
   locationLabel: string;
   primaryActionLabel: string;
   secondaryActionLabel?: string;
@@ -237,9 +234,6 @@ export function buildOutletProductCardModel(input: OutletProductCardModelInput):
       : input.availableStock != null
         ? `${input.availableStock} available`
         : 'Available to explore';
-  const ratingLabel = input.rating && input.rating > 0
-    ? `${input.rating.toFixed(1)} (${input.reviews ?? 0})`
-    : undefined;
   const actionLabel = input.hasCartAction
     ? requiresBooking ? 'Add booking' : 'Add to cart'
     : 'View details';
@@ -249,7 +243,6 @@ export function buildOutletProductCardModel(input: OutletProductCardModelInput):
     priceLabel: `From RM${formatMYRNumber(Number(input.basePrice))}`,
     descriptionFallback: `A local favourite from ${input.outletName}.`,
     availabilityLabel,
-    ratingLabel,
     locationLabel: `Available at ${input.outletName}`,
     primaryActionLabel: actionLabel,
     ...(input.hasCartAction ? { secondaryActionLabel: requiresBooking ? 'Book now' : 'Buy now' } : {}),

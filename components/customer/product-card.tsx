@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Accessibility, BedDouble, CheckCircle, Clock, ImageOff, MapPin, Star, Store } from "lucide-react";
+import { Accessibility, BedDouble, CheckCircle, Clock, ImageOff, MapPin, Store } from "lucide-react";
 import { useOptionalWishlist, useWishlist } from "@/components/providers/wishlist";
 import { CategoryIcon } from "@/components/customer/category-icon";
 import { SaveToggleButton } from "@/components/customer/save-toggle-button";
@@ -21,6 +21,7 @@ import { useCustomerCapabilityGate } from "@/components/customer/use-customer-ca
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { OperatingHoursSummary } from "@/components/customer/operating-hours-summary";
 import { LocalizedContent } from "@/components/customer/localized-content";
+import { PhotoRatingBadge } from "@/components/customer/photo-rating-badge";
 import { ProductSaveButton } from "@/components/customer/product-save-button";
 import { getVendorProductTypeLabel, type VendorProductCardData } from "@/lib/customer/vendor-page";
 import { toVendorCatalogueCard, type ProductCatalogueCardData } from "@/lib/customer/product-catalogue";
@@ -41,13 +42,6 @@ const badgeClass = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text
 function CardBadges({ badges }: { badges: ReactNode[] }) {
   const shown = badges.filter(Boolean).slice(0, 3);
   return shown.length > 0 ? <div className="flex max-h-5 flex-wrap gap-1.5 overflow-hidden">{shown}</div> : null;
-}
-
-function CardRating({ rating, reviews }: { rating: number; reviews: number }) {
-  const { t } = useTranslation("customer");
-  return <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-    {reviews > 0 ? <><Star size={11} aria-hidden="true" fill="var(--highlight-yellow)" stroke="none" /><span className="font-semibold text-foreground">{rating}</span><span>({reviews})</span></> : t("ui.activity.noReviewsYet")}
-  </div>;
 }
 
 export function ProductCard(props: DiscoveryCardProps | VendorListingProps | CatalogueProductCardProps) {
@@ -76,11 +70,12 @@ function VendorListingCard({ listing: product, returnTo, source }: CatalogueProd
       </Link>
       <ProductSaveButton productId={product.id} productName={product.name} compact className="absolute right-3 top-3 z-20" />
       {wishlist && <div className="absolute right-3 top-12 z-20"><ShareButton compact shareType="product" contentId={product.id} title={product.name} /></div>}
+      <PhotoRatingBadge rating={product.rating} reviews={product.reviews} className="absolute bottom-3 right-3 z-10" />
     </>}
     title={<LocalizedContent entityType="product" entityId={product.id} field="name" sourceText={product.name}>
       {({ text, control }) => <><Link href={href}><h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={text}>{text}</h3></Link>{control}<CardBadges badges={badges} /></>}
     </LocalizedContent>}
-    price={<>{product.sales.outletCount > 1 && <span className="mr-1 text-xs text-muted-foreground">{t("ui.vendor.from")}</span>}<ReferencePrice amountMYR={product.sales.fromPrice} className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary" /><CardRating rating={product.rating} reviews={product.reviews} /></>}
+    price={<>{product.sales.outletCount > 1 && <span className="mr-1 text-xs text-muted-foreground">{t("ui.vendor.from")}</span>}<ReferencePrice amountMYR={product.sales.fromPrice} className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary" /></>}
     details={<>
       {location && <p className="text-xs text-muted-foreground"><MapPin size={12} className="mr-1 inline" aria-hidden="true" />{location}</p>}
       {!single && <p className="text-xs text-muted-foreground">{t("ui.vendor.locationCount", { count: product.sales.outletCount })}</p>}
@@ -188,6 +183,7 @@ function DiscoveryActivityCard({ activity, recommendationReason, returnTo, outle
         <div className="absolute right-3 top-12 z-20">
           <ShareButton compact shareType={isProperty ? "outlet" : "product"} contentId={isProperty ? activity.outlet.id : activity.id} title={cardName} />
         </div>
+        <PhotoRatingBadge rating={activity.rating} reviews={activity.reviews} className="absolute bottom-3 right-3 z-10" />
       </>}
       title={isProperty ? (<>
           <Link href={activityHref} onClick={handleCardNavigation} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30">
@@ -212,7 +208,6 @@ function DiscoveryActivityCard({ activity, recommendationReason, returnTo, outle
         ) : (activity.categorySlug === "activity" || activity.requiresBooking) && (
           <span className="ml-1 text-xs text-muted-foreground">/ {t("ui.labels.person")}</span>
         )}
-        <CardRating rating={activity.rating} reviews={activity.reviews} />
       </>}
       details={detailContent}
       detailsId={detailsId}

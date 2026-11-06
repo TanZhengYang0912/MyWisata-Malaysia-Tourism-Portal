@@ -151,14 +151,26 @@ describe("ActivityCard expanding details", () => {
     expect(details.textContent).not.toContain("(4)");
   });
 
-  it("puts the rating under the price, or No reviews yet when there are none", async () => {
+  const media = () => findOne(container, (element) => element.className.includes("mw-card-media"));
+  const priceRow = () => findOne(container, (element) => element.className.includes("mw-card-price-row"));
+
+  it("puts the rating on the photo, or No reviews yet when there are none", async () => {
     await renderCard();
-    const priceRow = findOne(container, (element) => element.className.includes("mw-card-price-row"));
-    expect(priceRow.textContent).toContain("4.5");
-    expect(priceRow.textContent).toContain("(4)");
+    expect(media().textContent).toContain("4.5");
+    expect(media().textContent).toContain("(4)");
+    expect(priceRow().textContent).not.toContain("(4)");
 
     await renderCard({ ...(activity as object), reviews: 0 });
-    expect(findOne(container, (element) => element.className.includes("mw-card-price-row")).textContent).toContain("No reviews yet");
+    expect(media().textContent).toContain("No reviews yet");
+    expect(priceRow().textContent).not.toContain("No reviews yet");
+  });
+
+  it("puts the vendor listing card's rating on the photo too", async () => {
+    const listing = { id: "p1", vendorId: "v1", name: "Batik class", description: null, productType: "activity", imageUrl: null, fromPrice: 50, requiresBooking: true, rating: 4.5, reviews: 7, soldAt: [] };
+    await act(async () => { root?.render(<ActivityCard vendorListing={listing} returnTo="/customer/vendor/v1" />); });
+    expect(media().textContent).toContain("4.5");
+    expect(media().textContent).toContain("(7)");
+    expect(priceRow().textContent).not.toContain("(7)");
   });
 
   it("makes the vendor listing card's save button the same 32px as its share button", async () => {
