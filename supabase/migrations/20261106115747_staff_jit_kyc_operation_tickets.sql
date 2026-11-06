@@ -354,7 +354,14 @@ BEGIN
   END IF;
   RETURN app_private.get_kyc_review_confirmation_ids(p_submission_id,p_expected_version,p_evidence_revision,p_primary_actor_id,p_primary_session_id);
 END; $$;
-REVOKE ALL ON FUNCTION public.get_kyc_review_confirmation_ids(uuid,bigint,text,uuid,uuid) FROM PUBLIC,anon,authenticated,service_role;
+REVOKE ALL ON FUNCTION app_private.get_kyc_review_confirmation_ids(uuid,bigint,text,uuid,uuid) FROM PUBLIC,anon,authenticated,service_role;
+DO $migration$
+BEGIN
+  IF to_regprocedure('public.get_kyc_review_confirmation_ids(uuid,bigint,text,uuid,uuid)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.get_kyc_review_confirmation_ids(uuid,bigint,text,uuid,uuid) FROM PUBLIC,anon,authenticated,service_role';
+  END IF;
+END;
+$migration$;
 REVOKE ALL ON FUNCTION public.get_kyc_review_confirmation_ids_v2(uuid,uuid,bigint,text,uuid,uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.get_kyc_review_confirmation_ids_v2(uuid,uuid,bigint,text,uuid,uuid) TO service_role;
 
