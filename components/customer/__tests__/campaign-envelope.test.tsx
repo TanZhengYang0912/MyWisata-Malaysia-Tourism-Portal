@@ -7,8 +7,9 @@ import { findOne, installTestDom, TestElement, TestEvent, type TestDocument } fr
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 
 const push = vi.fn();
+const router = { push };
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { resolvedLanguage: "en" } }) }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("next/link", () => {
   const MockLink = React.forwardRef<HTMLAnchorElement, React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }>(({ href, children, ...props }, ref) => <a ref={ref} href={href} {...props}>{children}</a>);
   MockLink.displayName = "MockLink";
@@ -97,6 +98,8 @@ describe("campaign envelope interactions", () => {
     document = installTestDom();
     ({ createRoot } = await import("react-dom/client"));
     const proto = TestElement.prototype as unknown as Record<string, unknown>;
+    proto.append = function (this: TestElement, node: TestElement) { this.appendChild(node); };
+    proto.remove = function (this: TestElement) { this.parentNode?.removeChild(this); };
     proto.animate = () => {
       // Pending animations only settle when cancelled, which rejects `finished` like the real WAAPI.
       let reject: (error: Error) => void = () => {};
@@ -140,6 +143,69 @@ describe("campaign envelope interactions", () => {
   };
   const wait = async (ms: number) => { await act(async () => { vi.advanceTimersByTime(ms); }); await act(async () => {}); };
   const render = async () => { await act(async () => { root.render(<CampaignEnvelope campaign={campaign} />); }); };
+
+  it("keeps the envelope drawable through StrictMode ref replay", async () => {
+    await act(async () => {
+      root.render(<React.StrictMode><CampaignEnvelope campaign={campaign} /></React.StrictMode>);
+    });
+    expect(article().style.height).toBe("440px");
+    await fire(article(), "pointerenter", { pointerType: "mouse" });
+    expect(state()).toBe("open");
+    await fire(article(), "pointerleave", { pointerType: "mouse" });
+    expect(state()).toBe("closed");
+  });
+
+  it("ignores a queued resize callback after the envelope unmounts", async () => {
+    await render();
+    const detachedArticle = article();
+    const queuedResize = resizeCallback;
+    await act(async () => { root.render(<></>); });
+    width = 500;
+    expect(() => queuedResize?.()).not.toThrow();
+    expect(detachedArticle.style.height).toBe("440px");
+  });
+
+  it("does not draw or queue another frame when a stale animation frame arrives", async () => {
+    window.matchMedia = ((query: string) => ({ matches: false, media: query })) as typeof window.matchMedia;
+    let queuedFrame: FrameRequestCallback | undefined;
+    const requestFrame = vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((callback) => {
+      queuedFrame = callback;
+      return 1;
+    });
+    try {
+      await render();
+      await fire(article(), "pointerenter", { pointerType: "mouse" });
+      expect(state()).toBe("busy");
+      expect(queuedFrame).toBeDefined();
+      await act(async () => { root.render(<></>); });
+      expect(() => queuedFrame?.(performance.now())).not.toThrow();
+      expect(requestFrame).toHaveBeenCalledTimes(1);
+      expect(push).not.toHaveBeenCalled();
+    } finally {
+      requestFrame.mockRestore();
+    }
+  });
+
+  it("finishes a running tear after the same campaign re-renders", async () => {
+    window.matchMedia = ((query: string) => ({ matches: false, media: query })) as typeof window.matchMedia;
+    const clock = vi.spyOn(performance, "now").mockImplementation(() => Date.now());
+    const requestFrame = vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((callback) =>
+      setTimeout(() => callback(performance.now()), 16) as unknown as number);
+    try {
+      await render();
+      await fire(article(), "pointerenter", { pointerType: "mouse" });
+      await wait(32);
+      await act(async () => { root.render(<CampaignEnvelope campaign={{ ...campaign }} />); });
+      await wait(500);
+      expect(state()).toBe("open");
+      await fire(article(), "pointerleave", { pointerType: "mouse" });
+      await wait(700);
+      expect(state()).toBe("closed");
+    } finally {
+      requestFrame.mockRestore();
+      clock.mockRestore();
+    }
+  });
 
   it("opens on hover and closes when the mouse leaves, keeping its height", async () => {
     await render();

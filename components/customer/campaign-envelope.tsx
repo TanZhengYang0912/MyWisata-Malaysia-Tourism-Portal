@@ -52,22 +52,30 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
 
   useEffect(() => {
     const root = rootRef.current, under = underRef.current, letter = letterRef.current, bits = bitsRef.current;
-    const part = <T extends Element>(k: string, name: string) => partRefs.current[`${k}:${name}`] as T;
-    const pieces = { bottom: part<HTMLElement>("bottom", "pc"), top: part<HTMLElement>("top", "pc"), flap: part<HTMLElement>("flap", "pc") };
-    if (!root || !under || !letter || !bits || !pieces.bottom || !pieces.top || !pieces.flap) return;
+    const part = <T extends Element>(k: string, name: string) => partRefs.current[`${k}:${name}`] as T | null | undefined;
+    const captureParts = (k: string) => {
+      const pc = part<HTMLElement>(k, "pc"), fold = part<HTMLElement>(k, "fold"), art = part<HTMLElement>(k, "art"), shade = part<HTMLElement>(k, "shade");
+      const svg = part<SVGElement>(k, "svg"), roll = part<SVGElement>(k, "roll"), gradient = part<SVGElement>(k, "gradient");
+      return pc && fold && art && shade && svg && roll && gradient ? { pc, fold, art, shade, svg, roll, gradient } : null;
+    };
+    const bottom = captureParts("bottom"), top = captureParts("top"), flap = captureParts("flap");
+    if (!root || !under || !letter || !bits || !bottom || !top || !flap) return;
+    // Callback refs can be cleared on re-render or unmount; one effect owns one complete snapshot.
+    const parts = { bottom, top, flap };
+    const pieces = { bottom: bottom.pc, top: top.pc, flap: flap.pc };
     const media = (query: string) => window.matchMedia?.(query).matches ?? false;
     const tapMode = () => media("(hover: none)");
     const reduce = () => media("(prefers-reduced-motion: reduce)");
 
     let geo: EnvelopeGeometry, progress = 0, state: EnvelopeState = "closed", rise = 0, raf = 0, clickTimer: ReturnType<typeof setTimeout> | undefined, navTimer: ReturnType<typeof setTimeout> | undefined;
-    let hovering = false, focusInside = false, tapOpen = false, openAnims: Animation[] = [];
+    let disposed = false, hovering = false, focusInside = false, tapOpen = false, openAnims: Animation[] = [];
     const setState = (next: EnvelopeState) => { state = next; root.setAttribute("data-state", next); };
 
     function draw(value: number) {
+      if (disposed) return;
       progress = value;
       for (const piece of buildZipStrip(value, geo)) {
-        const el = pieces[piece.k], fold = part<HTMLElement>(piece.k, "fold"), art = part<HTMLElement>(piece.k, "art"), shade = part<HTMLElement>(piece.k, "shade");
-        const svg = part<SVGElement>(piece.k, "svg"), roll = part<SVGElement>(piece.k, "roll"), gradient = part<SVGElement>(piece.k, "gradient");
+        const { pc: el, fold, art, shade, svg, roll, gradient } = parts[piece.k];
         if (!piece.outer || !piece.inner) { el.style.display = "none"; continue; }
         el.style.display = "";
         fold.style.clipPath = toPolygon(piece.outer);
@@ -97,6 +105,7 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
     }
 
     function layout() {
+      if (disposed) return;
       const width = root!.clientWidth || 0, narrow = width < 640;
       geo = createEnvelopeGeometry(width, narrow);
       root!.setAttribute("data-narrow", String(narrow));
@@ -111,6 +120,7 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
       return new Promise<void>((done) => {
         if (reduce()) { draw(to); done(); return; }
         const tick = (now: number) => {
+          if (disposed) return;
           // A frame's timestamp can predate `start`; clamp so progress never goes negative.
           const x = Math.max(0, Math.min(1, (now - start) / duration));
           draw(from + (to - from) * easing(x));
@@ -137,6 +147,7 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
     const run = (task: Promise<void>) => { task.catch(() => {}); };
     const wantOpen = () => (tapMode() ? tapOpen : hovering) || focusInside;
     function sync() {
+      if (disposed) return;
       const action = nextEnvelopeAction(state, wantOpen());
       if (action === "open") run(openEnvelope());
       else if (action === "close") run(closeEnvelope());
@@ -144,8 +155,10 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
 
     /** `settle: false` leaves it open without re-checking the wish, for a navigation that follows at once. */
     async function openEnvelope(fast = false, settle = true) {
+      if (disposed) return;
       setState("busy");
       await tween(1, fast ? 300 : 480, (x) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2));
+      if (disposed) return;
       const end = geo.L1.pts[geo.L1.n];
       burst(end.x, end.y);
       const headerBottom = parseFloat(window.getComputedStyle?.(document.documentElement)?.getPropertyValue?.("--customer-header-h") ?? "") || 0;
@@ -156,33 +169,36 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
         play(letter!, [{ transform: "none" }, { transform: `translateY(${rise}px)` }], 760),
       ];
       await Promise.all(openAnims.map((animation) => animation.finished));
-      if (state !== "busy") return;
+      if (disposed || state !== "busy") return;
       setState("open");
       if (settle) sync();
     }
 
     async function closeEnvelope() {
+      if (disposed) return;
       setState("busy");
       for (const animation of openAnims) { animation.updatePlaybackRate(1.3); animation.reverse(); }
       await Promise.all(openAnims.map((animation) => animation.finished));
-      if (state !== "busy") return;
+      if (disposed || state !== "busy") return;
       openAnims.forEach((animation) => animation.cancel());
       openAnims = [];
       await tween(0, 650);
+      if (disposed) return;
       setState("closed");
       sync();
     }
 
     async function go() {
-      if (state === "busy" || state === "gone") return;
+      if (disposed || state === "busy" || state === "gone") return;
       if (state === "closed") await openEnvelope(true, false);
+      if (disposed) return;
       setState("gone");
       const drop: KeyframeAnimationOptions = { easing: "cubic-bezier(.5,0,.75,.15)" };
       play(pieces.bottom, [{ transform: "none" }, { transform: `translateY(${window.innerHeight}px) rotate(5deg)` }], 760, drop);
       play(under!, [{ transform: "none" }, { transform: `translateY(${window.innerHeight}px) rotate(5deg)` }], 760, drop);
       play(letter!, [{ transform: `translateY(${rise}px)` }, { transform: `translateY(${rise - 16}px) scale(1.04)`, offset: 0.3 }, { transform: `translateY(${rise - 40}px) scale(1.2)`, opacity: 0 }], 760, { easing: "ease-in" });
       if (reduce()) router.push(href);
-      else navTimer = setTimeout(() => router.push(href), NAVIGATE_AFTER_MS);
+      else navTimer = setTimeout(() => { if (!disposed) router.push(href); }, NAVIGATE_AFTER_MS);
     }
 
     const isMouse = (event: Event) => (event as PointerEvent).pointerType === "mouse" && !tapMode();
@@ -226,6 +242,7 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
     resize?.observe(root);
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(raf);
       clearTimeout(clickTimer);
       clearTimeout(navTimer);
