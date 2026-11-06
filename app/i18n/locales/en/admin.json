@@ -1374,7 +1374,7 @@
       },
       "vendors": {
         "cta": "Open vendor queue",
-        "detail": "Unverified outlets in the platform queue",
+        "detail": "Vendor applications awaiting review",
         "title": "Vendor approvals"
       },
       "withdrawals": {
@@ -1399,7 +1399,8 @@
       "twoApprovers": "Waiting for two approvers",
       "withdrawalRequests": "{{count}} withdrawal requests",
       "withdrawalRequests_one": "{{count}} withdrawal requests",
-      "withdrawalRequests_other": "{{count}} withdrawal requests"
+      "withdrawalRequests_other": "{{count}} withdrawal requests",
+      "authorizedQueues": "Queues you can access"
     },
     "oldestWithdrawal": "Oldest withdrawal",
     "openApprovals": "Open approvals",
@@ -1419,7 +1420,9 @@
     "openItems_one": "{{count}} open items",
     "openItems_other": "{{count}} open items",
     "walletPending_one": "{{count}} requests need a decision, with {{amount}} in review.",
-    "walletPending_other": "{{count}} requests need a decision, with {{amount}} in review."
+    "walletPending_other": "{{count}} requests need a decision, with {{amount}} in review.",
+    "queueUnavailable": "Queue data temporarily unavailable",
+    "staleData": "Refresh failed. Showing the last successful results."
   },
   "kyc": {
     "accessibility": {
@@ -3619,6 +3622,61 @@
     "next": "Next",
     "errors": {
       "load": "Could not load orders. Try again."
+    },
+    "detail": {
+      "eyebrow": "Order operations",
+      "title": "Order details",
+      "customerType": "{{type}} order",
+      "customerTypes": {
+        "account": "Account",
+        "guest": "Guest"
+      },
+      "back": "Back to orders",
+      "status": "Status",
+      "total": "Order total",
+      "paymentMethod": "Payment method",
+      "created": "Created",
+      "paid": "Paid",
+      "completed": "Completed",
+      "customerTypeLabel": "Customer type",
+      "updated": "Last updated",
+      "items": "Items and fulfilment",
+      "noItems": "No items recorded.",
+      "payments": "Payments",
+      "processed": "Processed",
+      "noPayments": "No payment records.",
+      "bookings": "Bookings",
+      "checkedIn": "Checked in",
+      "noBookings": "No bookings recorded.",
+      "passes": "Ticket passes",
+      "checkIns": "Check-ins",
+      "refunds": "Refunds",
+      "noRefunds": "No refunds recorded.",
+      "moreInTimeline": "Some records are shown in the timeline below.",
+      "timeline": "Order timeline",
+      "noTimeline": "No timeline events recorded.",
+      "loading": "Loading order details…",
+      "loadError": "Unable to load order details. Try again.",
+      "retry": "Retry",
+      "loadMore": "Load more",
+      "eventKinds": {
+        "order": "Order",
+        "fulfilment": "Fulfilment",
+        "payment": "Payment",
+        "refund": "Refund",
+        "booking": "Booking",
+        "check_in": "Check-in"
+      },
+      "itemContext": "{{quantity}} · {{vendor}} · {{outlet}}",
+      "fulfilmentContext": "{{status}} · {{date}}",
+      "paymentContext": "{{method}} · {{status}}",
+      "processedAt": "Processed: {{date}}",
+      "checkedInAt": "Checked in: {{date}}",
+      "passCounts": "Ticket passes: {{passes}} · Check-ins: {{checkIns}}",
+      "statusAt": "Status: {{status}}",
+      "refundDates": "{{created}} · {{processed}}",
+      "quantity_one": "{{count}} unit",
+      "quantity_other": "{{count}} units"
     }
   },
   "moderationWords": {

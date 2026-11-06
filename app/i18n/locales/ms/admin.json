@@ -1374,7 +1374,7 @@
       },
       "vendors": {
         "cta": "Buka barisan vendor",
-        "detail": "Outlet belum disahkan dalam barisan platform",
+        "detail": "Permohonan vendor menunggu semakan",
         "title": "Kelulusan vendor"
       },
       "withdrawals": {
@@ -1399,7 +1399,8 @@
       "twoApprovers": "Menunggu dua pelulus",
       "withdrawalRequests": "{{count}} permintaan pengeluaran",
       "withdrawalRequests_one": "{{count}} permintaan pengeluaran",
-      "withdrawalRequests_other": "{{count}} permintaan pengeluaran"
+      "withdrawalRequests_other": "{{count}} permintaan pengeluaran",
+      "authorizedQueues": "Barisan yang boleh anda akses"
     },
     "oldestWithdrawal": "Pengeluaran paling lama",
     "openApprovals": "Buka kelulusan",
@@ -1419,7 +1420,9 @@
     "openItems_one": "{{count}} item terbuka",
     "openItems_other": "{{count}} item terbuka",
     "walletPending_one": "{{count}} permintaan memerlukan keputusan, dengan {{amount}} dalam semakan.",
-    "walletPending_other": "{{count}} permintaan memerlukan keputusan, dengan {{amount}} dalam semakan."
+    "walletPending_other": "{{count}} permintaan memerlukan keputusan, dengan {{amount}} dalam semakan.",
+    "queueUnavailable": "Data barisan tidak tersedia buat sementara waktu",
+    "staleData": "Muat semula gagal. Memaparkan hasil terakhir yang berjaya."
   },
   "kyc": {
     "accessibility": {
@@ -3619,6 +3622,61 @@
     "next": "Seterusnya",
     "errors": {
       "load": "Tidak dapat memuatkan pesanan. Cuba lagi."
+    },
+    "detail": {
+      "eyebrow": "Operasi pesanan",
+      "title": "Butiran pesanan",
+      "customerType": "Pesanan {{type}}",
+      "customerTypes": {
+        "account": "Akaun",
+        "guest": "Tetamu"
+      },
+      "back": "Kembali ke pesanan",
+      "status": "Status",
+      "total": "Jumlah pesanan",
+      "paymentMethod": "Kaedah pembayaran",
+      "created": "Dicipta",
+      "paid": "Dibayar",
+      "completed": "Selesai",
+      "customerTypeLabel": "Jenis pelanggan",
+      "updated": "Kemas kini terakhir",
+      "items": "Item dan pemenuhan",
+      "noItems": "Tiada item direkodkan.",
+      "payments": "Pembayaran",
+      "processed": "Diproses",
+      "noPayments": "Tiada rekod pembayaran.",
+      "bookings": "Tempahan",
+      "checkedIn": "Daftar masuk",
+      "noBookings": "Tiada tempahan direkodkan.",
+      "passes": "Pas tiket",
+      "checkIns": "Rekod masuk",
+      "refunds": "Bayaran balik",
+      "noRefunds": "Tiada bayaran balik direkodkan.",
+      "moreInTimeline": "Rekod tambahan dipaparkan dalam garis masa di bawah.",
+      "timeline": "Garis masa pesanan",
+      "noTimeline": "Tiada peristiwa garis masa direkodkan.",
+      "loading": "Memuatkan butiran pesanan…",
+      "loadError": "Tidak dapat memuatkan butiran pesanan. Cuba lagi.",
+      "retry": "Cuba lagi",
+      "loadMore": "Muatkan lagi",
+      "eventKinds": {
+        "order": "Pesanan",
+        "fulfilment": "Pemenuhan",
+        "payment": "Pembayaran",
+        "refund": "Bayaran balik",
+        "booking": "Tempahan",
+        "check_in": "Daftar masuk"
+      },
+      "itemContext": "{{quantity}} · {{vendor}} · {{outlet}}",
+      "fulfilmentContext": "{{status}} · {{date}}",
+      "paymentContext": "{{method}} · {{status}}",
+      "processedAt": "Diproses: {{date}}",
+      "checkedInAt": "Daftar masuk: {{date}}",
+      "passCounts": "Pas tiket: {{passes}} · Rekod masuk: {{checkIns}}",
+      "statusAt": "Status: {{status}}",
+      "refundDates": "{{created}} · {{processed}}",
+      "quantity_one": "{{count}} unit",
+      "quantity_other": "{{count}} unit"
     }
   },
   "moderationWords": {

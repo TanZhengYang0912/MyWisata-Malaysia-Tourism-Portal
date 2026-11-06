@@ -10,6 +10,8 @@ describe('Admin orders page contract', () => {
     expect(page).toContain("cache: 'no-store'");
     expect(page).toContain('AdminPageShell');
     expect(page).toContain('AdminFilterBar');
+    expect(page).toContain('href={`/admin/orders/${order.id}?returnTo=');
+    expect(page).toContain('encodeURIComponent(`/admin/orders?search=');
     const mutations = [...page.matchAll(/fetch\(['"]([^'"]+)['"],\s*\{\s*method:\s*['"](POST|PATCH|PUT|DELETE)['"]/g)];
     expect(mutations).toHaveLength(2);
     expect(mutations.map(match => [match[1], match[2]])).toEqual([

@@ -1374,7 +1374,7 @@
       },
       "vendors": {
         "cta": "打开商家队列",
-        "detail": "平台中未验证的门店",
+        "detail": "等待审核的商家申请",
         "title": "商家审批"
       },
       "withdrawals": {
@@ -1399,7 +1399,8 @@
       "twoApprovers": "等待两位审批人",
       "withdrawalRequests": "{{count}} 个提现请求",
       "withdrawalRequests_one": "{{count}} 个提现请求",
-      "withdrawalRequests_other": "{{count}} 个提现请求"
+      "withdrawalRequests_other": "{{count}} 个提现请求",
+      "authorizedQueues": "你有权查看的待办队列"
     },
     "oldestWithdrawal": "最早提现",
     "openApprovals": "查看审批",
@@ -1419,7 +1420,9 @@
     "openItems_one": "{{count}} 个待处理项目",
     "openItems_other": "{{count}} 个待处理项目",
     "walletPending_one": "{{count}} 个请求需要决定，{{amount}} 正在审核中。",
-    "walletPending_other": "{{count}} 个请求需要决定，{{amount}} 正在审核中。"
+    "walletPending_other": "{{count}} 个请求需要决定，{{amount}} 正在审核中。",
+    "queueUnavailable": "待办数据暂时不可用",
+    "staleData": "刷新失败，当前显示上次成功加载的数据。"
   },
   "kyc": {
     "accessibility": {
@@ -3619,6 +3622,61 @@
     "next": "下一页",
     "errors": {
       "load": "无法加载订单，请重试。"
+    },
+    "detail": {
+      "eyebrow": "订单运营",
+      "title": "订单详情",
+      "customerType": "{{type}}订单",
+      "customerTypes": {
+        "account": "账户用户",
+        "guest": "访客"
+      },
+      "back": "返回订单列表",
+      "status": "状态",
+      "total": "订单总额",
+      "paymentMethod": "付款方式",
+      "created": "创建时间",
+      "paid": "付款时间",
+      "completed": "完成时间",
+      "customerTypeLabel": "顾客类型",
+      "updated": "最后更新",
+      "items": "商品与履约",
+      "noItems": "没有商品记录。",
+      "payments": "付款记录",
+      "processed": "处理时间",
+      "noPayments": "没有付款记录。",
+      "bookings": "预约",
+      "checkedIn": "核销时间",
+      "noBookings": "没有预约记录。",
+      "passes": "门票",
+      "checkIns": "核销记录",
+      "refunds": "退款",
+      "noRefunds": "没有退款记录。",
+      "moreInTimeline": "部分记录显示在下方时间线中。",
+      "timeline": "订单时间线",
+      "noTimeline": "没有时间线记录。",
+      "loading": "正在加载订单详情…",
+      "loadError": "无法加载订单详情，请重试。",
+      "retry": "重试",
+      "loadMore": "加载更多",
+      "eventKinds": {
+        "order": "订单",
+        "fulfilment": "履约",
+        "payment": "付款",
+        "refund": "退款",
+        "booking": "预约",
+        "check_in": "核销"
+      },
+      "itemContext": "{{quantity}} · {{vendor}} · {{outlet}}",
+      "fulfilmentContext": "{{status}} · {{date}}",
+      "paymentContext": "{{method}} · {{status}}",
+      "processedAt": "处理时间：{{date}}",
+      "checkedInAt": "核销时间：{{date}}",
+      "passCounts": "门票：{{passes}} · 核销记录：{{checkIns}}",
+      "statusAt": "状态：{{status}}",
+      "refundDates": "{{created}} · {{processed}}",
+      "quantity_one": "{{count}} 件",
+      "quantity_other": "{{count}} 件"
     }
   },
   "moderationWords": {

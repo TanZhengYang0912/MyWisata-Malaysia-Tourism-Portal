@@ -15,6 +15,8 @@ import { staffNavigationSections } from "@/lib/staff-permissions/navigation";
 import { useCommandShortcutLabel } from "@/components/shared/command-shortcut";
 import { PortalSidebar, type PortalSidebarSection } from "@/components/layout/portal-sidebar";
 import { NotificationBell } from "@/components/shared/notification-bell";
+import { AdminQueueSummaryProvider } from "@/app/admin/admin-queue-summary-context";
+import type { AdminDashboardSummary } from "@/lib/admin/queue-summary";
 
 const UNREAD_POLL_MS = 30_000;
 
@@ -75,6 +77,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [unreadTickets, setUnreadTickets] = useState(0);
   const [pendingCounts, setPendingCounts] = useState<PendingCounts>(EMPTY_PENDING_COUNTS);
   const [pendingCountsReady, setPendingCountsReady] = useState(false);
+  const [dashboardSummary, setDashboardSummary] = useState<AdminDashboardSummary | null>(null);
+  const [dashboardSummaryError, setDashboardSummaryError] = useState(false);
+  const [dashboardSummaryOwner, setDashboardSummaryOwner] = useState<string | null>(null);
+  const [dashboardErrorOwner, setDashboardErrorOwner] = useState<string | null>(null);
+  const [pendingCountsOwner, setPendingCountsOwner] = useState<string | null>(null);
+  const pendingPollRef = useRef<(() => void) | null>(null);
   const [unreadRecommendations, setUnreadRecommendations] = useState(0);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
@@ -122,21 +130,50 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [currentUser, staffAccessReady]);
 
   useEffect(() => {
-    if (!staffAccessReady || !currentUser) return;
+    if (!staffAccessReady || !currentUser) {
+      pendingPollRef.current = null;
+      return;
+    }
     let cancelled = false;
+    let inFlight = false;
+    const controller = new AbortController();
+    const includeSummary = pathname === "/admin" || pathname === "/admin/dashboard";
+    const currentUserId = currentUser.id;
     async function pollPendingCounts() {
+      if (inFlight) return;
+      inFlight = true;
       try {
-        const response = await fetch("/api/admin/navigation/counts");
-        const body = (await response.json()) as { data?: Partial<PendingCounts> | null };
+        const response = await fetch(`/api/admin/navigation/counts${includeSummary ? "?view=dashboard" : ""}`, { signal: controller.signal, cache: "no-store" });
+        const body = (await response.json()) as { data?: (Partial<PendingCounts> & { summary?: AdminDashboardSummary }) | null };
         if (!cancelled && response.ok && body.data) {
           setPendingCounts({ ...EMPTY_PENDING_COUNTS, ...body.data });
+          setPendingCountsOwner(currentUserId);
           setPendingCountsReady(true);
+          if (includeSummary && body.data.summary) {
+            setDashboardSummary(body.data.summary);
+            setDashboardSummaryOwner(currentUserId);
+            setDashboardSummaryError(false);
+            setDashboardErrorOwner(currentUserId);
+          } else if (includeSummary) {
+            setDashboardSummaryError(true);
+            setDashboardErrorOwner(currentUserId);
+          }
+        } else if (!cancelled && includeSummary) {
+          setDashboardSummaryError(true);
+          setDashboardErrorOwner(currentUserId);
         }
       } catch {
         // best-effort — a failed poll leaves the last-known counts showing
+        if (!cancelled && includeSummary) {
+          setDashboardSummaryError(true);
+          setDashboardErrorOwner(currentUserId);
+        }
+      } finally {
+        inFlight = false;
       }
     }
 
+    pendingPollRef.current = () => { void pollPendingCounts(); };
     void pollPendingCounts();
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") {
@@ -152,10 +189,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     return () => {
       cancelled = true;
+      controller.abort();
+      pendingPollRef.current = null;
       clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [currentUser, staffAccessReady]);
+  }, [currentUser, pathname, staffAccessReady]);
 
   useEffect(() => {
     if (!staffAccessReady || currentUser?.role !== "super_admin") return;
@@ -193,19 +232,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
   }, [currentUser?.role, staffAccessReady]);
 
+  const dashboardContext = useMemo(() => ({
+    summary: pathname === "/admin" || pathname === "/admin/dashboard"
+      ? dashboardSummaryOwner === currentUser?.id ? dashboardSummary : null
+      : null,
+    error: dashboardErrorOwner === currentUser?.id && dashboardSummaryError,
+    refresh: () => pendingPollRef.current?.(),
+  }), [currentUser?.id, dashboardErrorOwner, dashboardSummary, dashboardSummaryError, dashboardSummaryOwner, pathname]);
+
   if (loading || !currentUser || !staffAccessReady || outsideAssignedWork) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis")}</div>;
   }
+  const activeUser = currentUser;
 
   function pendingCountFor(href: string) {
-    if (href === "/admin/vendors") return pendingCounts.vendors;
-    if (href === "/admin/catalogue") return pendingCounts.catalogue;
-    if (href === "/admin/kyc") return pendingCounts.kyc;
-    if (href === "/admin/withdrawals") return pendingCounts.withdrawals;
-    if (href === "/admin/refunds") return pendingCounts.refunds;
-    if (href === "/admin/chat-reports") return pendingCounts.chatReports;
+    const currentCounts = pendingCountsOwner === activeUser.id ? pendingCounts : EMPTY_PENDING_COUNTS;
+    if (href === "/admin/vendors") return currentCounts.vendors;
+    if (href === "/admin/catalogue") return currentCounts.catalogue;
+    if (href === "/admin/kyc") return currentCounts.kyc;
+    if (href === "/admin/withdrawals") return currentCounts.withdrawals;
+    if (href === "/admin/refunds") return currentCounts.refunds;
+    if (href === "/admin/chat-reports") return currentCounts.chatReports;
     if (href === "/admin/recommendations") {
-      return pendingCountsReady ? pendingCounts.recommendations : currentUser?.role === "super_admin" ? unreadRecommendations : 0;
+      return pendingCountsOwner === activeUser.id && pendingCountsReady ? currentCounts.recommendations : activeUser.role === "super_admin" ? unreadRecommendations : 0;
     }
     return 0;
   }
@@ -243,6 +292,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         : tAdmin("shell.context.admin");
 
   return (
+    <AdminQueueSummaryProvider value={dashboardContext}>
     <div className="flex h-screen overflow-hidden">
       <PortalSidebar
         portalName={tAdmin("shell.portal")}
@@ -301,5 +351,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         />}
       </div>
     </div>
+    </AdminQueueSummaryProvider>
   );
 }
