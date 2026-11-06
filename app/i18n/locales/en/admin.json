@@ -101,6 +101,7 @@
       "submit": "Submit",
       "approve": "Approve",
       "reject": "Reject",
+      "stateDuration": "{{state}} · {{duration}}",
       "pause": "Pause"
     },
     "categories": {
@@ -169,6 +170,7 @@
       "policies": "Policies",
       "assignments": "Assignments",
       "staff-roles": "Staff Roles",
+      "jit-approvals": "JIT approvals",
       "audit-log": "Audit Log"
     },
     "actions": {
@@ -189,7 +191,25 @@
       "revoke": "Revoke",
       "openTarget": "Open target",
       "hide": "Hide",
-      "inspect": "Inspect"
+      "inspect": "Inspect",
+      "loadMore": "Load more"
+    },
+    "jit": {
+      "title": "Temporary access requests",
+      "description": "Review eligible staff requests for short lived permissions.",
+      "decisionReason": "Decision reason",
+      "minutes": "{{count}} minutes",
+      "minutes_one": "{{count}} minute",
+      "minutes_other": "{{count}} minutes",
+      "stateDuration": "{{state}} · {{duration}}",
+      "permissionLabel": "KYC review",
+      "staffMember": "Staff member",
+      "approve": "Approve",
+      "reject": "Reject",
+      "loading": "Loading requests…",
+      "empty": "No requests are waiting for review.",
+      "updated": "Request updated.",
+      "error": "Unable to update or load temporary access requests. Refresh and check the latest status."
     },
     "accessibility": {
       "tabs": "Access Control sections",
@@ -323,6 +343,9 @@
       "active": "Role is active",
       "permissions": "Permissions by module",
       "modules": "Modules",
+      "jitPermissions": "Temporary permissions available to this role",
+      "jitPermissionHelp": "Eligible staff can request this permission for 30 or 60 minutes. It does not grant permanent access.",
+      "jitLabel": "Temporary request: {{permission}}",
       "lockedGroup": "Bundled module: {{group}}",
       "reviewSave": "Review role change",
       "rolesTitle": "Available permission roles",

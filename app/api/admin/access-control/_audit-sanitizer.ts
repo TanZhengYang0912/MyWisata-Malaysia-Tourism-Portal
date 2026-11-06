@@ -29,6 +29,9 @@ const AUDIT_PAYLOAD_ALLOWLIST = new Set([
   "permissionKeys",
   "isActive",
   "expiresAt",
+  "permissionKey",
+  "durationMinutes",
+  "state",
   "attempt",
 ]);
 
@@ -40,6 +43,12 @@ const GOVERNANCE_NOTES = new Map([
   ["staff.role.revoked:staff_role_assignment", true],
   ["staff.module.created:staff_module", true],
   ["staff.module.updated:staff_module", true],
+  ["staff.jit.requested:staff_jit_request", true],
+  ["staff.jit.approved:staff_jit_request", true],
+  ["staff.jit.rejected:staff_jit_request", true],
+  ["staff.jit.activated:staff_jit_request", true],
+  ["staff.jit.ended:staff_jit_request", true],
+  ["staff.jit.revoked:staff_jit_request", true],
 ]);
 const PRIVATE_REASON_TERMS = /\b(?:address|alamat|passport|pasport|identity card|kad pengenalan|bank account|akaun bank|account number|routing number|phone|telefon|mobile|handphone|nric|ic number)\b|(?:地址|住址|护照|身份证|身分证|银行卡|银行账户|银行账号|电话号码|手机号码|手机号)/i;
 
@@ -109,6 +118,20 @@ export function sanitizeAuditPayload(value: unknown, context?: { action: string;
     if (key === "attempt") {
       if (context?.entityType === "staff_invitation" && context.action === "staff.invitation.resent"
         && typeof nestedValue === "number" && Number.isInteger(nestedValue) && nestedValue >= 1 && nestedValue <= 10_000) output[key] = nestedValue;
+      continue;
+    }
+    if (key === "permissionKey") {
+      if (context?.entityType === "staff_jit_request" && typeof nestedValue === "string"
+        && nestedValue === "admin.kyc.review") output[key] = nestedValue;
+      continue;
+    }
+    if (key === "durationMinutes") {
+      if (context?.entityType === "staff_jit_request" && [30, 60].includes(Number(nestedValue))) output[key] = nestedValue;
+      continue;
+    }
+    if (key === "state") {
+      if (context?.entityType === "staff_jit_request" && typeof nestedValue === "string"
+        && ["pending", "approved", "rejected", "withdrawn", "active", "expired", "revoked"].includes(nestedValue)) output[key] = nestedValue;
       continue;
     }
     if (key === "revoked") {

@@ -14,6 +14,7 @@ import { buildAccessControlQuery, errorMessage } from "@/components/admin/access
 import type { ApiEnvelope, AuditFocus, CapabilityRecord, MutationReceipt, PageResult } from "@/components/admin/access-control/types";
 
 const PAGE_SIZE = 25;
+const PAGE_SIZES = [25, 50, 100];
 const CATEGORIES = ["", "platform", "commerce", "ai", "recommendation", "affiliate", "wallet"];
 const RISK_LEVELS = ["low", "medium", "high", "critical"];
 
@@ -26,6 +27,7 @@ export function CapabilitiesTab({ focusId, onViewAudit }: { focusId: string | nu
   const [category, setCategory] = useState("");
   const [enabled, setEnabled] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [edit, setEdit] = useState<EditState | null>(null);
@@ -34,7 +36,7 @@ export function CapabilitiesTab({ focusId, onViewAudit }: { focusId: string | nu
   const [saving, setSaving] = useState(false);
   const [receipt, setReceipt] = useState<MutationReceipt | null>(null);
 
-  const query = useMemo(() => buildAccessControlQuery({ page, pageSize: PAGE_SIZE, search, category, enabled }), [category, enabled, page, search]);
+  const query = useMemo(() => buildAccessControlQuery({ page, pageSize, search, category, enabled }), [category, enabled, page, pageSize, search]);
   const load = useCallback(async () => {
     setLoading(true); setError("");
     try {
@@ -104,7 +106,7 @@ export function CapabilitiesTab({ focusId, onViewAudit }: { focusId: string | nu
             </tbody>
           </table>
         </div>
-        {loading && result.items.length === 0 ? <StateRow text={t("accessControl.states.loading")} /> : result.items.length === 0 ? <StateRow text={t("accessControl.states.noCapabilities")} /> : <Pagination page={result.page} totalPages={result.totalPages} loading={loading} setPage={setPage} />}
+        {loading && result.items.length === 0 ? <StateRow text={t("accessControl.states.loading")} /> : result.items.length === 0 ? <StateRow text={t("accessControl.states.noCapabilities")} /> : <Pagination page={result.page} pageSize={pageSize} pageSizes={PAGE_SIZES} totalPages={result.totalPages} loading={loading} setPage={setPage} setPageSize={setPageSize} />}
       </section>
 
       <Dialog open={editorOpen && Boolean(edit)} onOpenChange={(open) => { setEditorOpen(open); if (!open && !confirmOpen) setEdit(null); }}>
@@ -132,4 +134,4 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 function ToneBadge({ value, label }: { value: string; label: string }) { const tone = value === "critical" || value === "disabled" ? "bg-destructive/10 text-destructive" : value === "high" ? "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300" : "bg-primary/10 text-primary"; return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${tone}`}>{label}</span>; }
 function StateRow({ text }: { text: string }) { return <div className="border-t border-border px-5 py-12 text-center text-sm text-muted-foreground">{text}</div>; }
 function SuccessReceipt({ text, onClick }: { text: string; onClick?: () => void }) { const { t } = useTranslation("admin"); return <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-primary"><span>{text}</span>{onClick && <Button size="sm" variant="outline" onClick={onClick}>{t("accessControl.actions.viewAuditEvent")}</Button>}</div>; }
-function Pagination({ page, totalPages, loading, setPage }: { page: number; totalPages: number; loading: boolean; setPage: React.Dispatch<React.SetStateAction<number>> }) { const { t } = useTranslation("admin"); return <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground"><span>{t("accessControl.pagination.pageOf", { page, total: Math.max(totalPages, 1) })}</span><div className="flex gap-2"><Button size="sm" variant="outline" aria-label={t("accessControl.accessibility.previousPage")} disabled={loading || page <= 1} onClick={() => setPage((value) => value - 1)}><ChevronLeft /></Button><Button size="sm" variant="outline" aria-label={t("accessControl.accessibility.nextPage")} disabled={loading || page >= totalPages} onClick={() => setPage((value) => value + 1)}><ChevronRight /></Button></div></div>; }
+function Pagination({ page, pageSize, pageSizes, totalPages, loading, setPage, setPageSize }: { page: number; pageSize: number; pageSizes: number[]; totalPages: number; loading: boolean; setPage: React.Dispatch<React.SetStateAction<number>>; setPageSize: React.Dispatch<React.SetStateAction<number>> }) { const { t } = useTranslation("admin"); return <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground"><span>{t("accessControl.pagination.pageOf", { page, total: Math.max(totalPages, 1) })}</span><div className="flex items-center gap-2"><select aria-label={t("accessControl.staffEmployees.pageSize")} value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }} className={adminFilterControlClassName}>{pageSizes.map((size) => <option key={size} value={size}>{size}</option>)}</select><Button size="sm" variant="outline" aria-label={t("accessControl.accessibility.previousPage")} disabled={loading || page <= 1} onClick={() => setPage((value) => value - 1)}><ChevronLeft /></Button><Button size="sm" variant="outline" aria-label={t("accessControl.accessibility.nextPage")} disabled={loading || page >= totalPages} onClick={() => setPage((value) => value + 1)}><ChevronRight /></Button></div></div>; }

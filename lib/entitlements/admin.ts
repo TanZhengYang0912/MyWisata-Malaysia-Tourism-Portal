@@ -62,6 +62,107 @@ export interface AccessControlState {
   generation: number;
 }
 
+export type AccessControlPage = {
+  items: Record<string, unknown>[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  generation: number;
+};
+
+function parseAccessControlPage(value: unknown): AccessControlPage | null {
+  if (!isRecord(value) || !isRecordArray(value.items)
+      || !Number.isSafeInteger(value.page) || (value.page as number) < 1
+      || !Number.isSafeInteger(value.pageSize) || (value.pageSize as number) < 1
+      || !Number.isSafeInteger(value.total) || (value.total as number) < 0
+      || !Number.isSafeInteger(value.totalPages) || (value.totalPages as number) < 0
+      || !Number.isSafeInteger(value.generation) || (value.generation as number) < 0) return null;
+  return {
+    items: value.items,
+    page: value.page as number,
+    pageSize: value.pageSize as number,
+    total: value.total as number,
+    totalPages: value.totalPages as number,
+    generation: value.generation as number,
+  };
+}
+
+export type AccessControlFilters = {
+  page: number;
+  pageSize: number;
+  search?: string;
+  category?: string;
+  riskLevel?: string;
+  enabled?: boolean;
+  customerVisible?: boolean;
+  key?: string;
+  manuallyAssignable?: boolean;
+  capabilityKey?: string;
+  scope?: string;
+  status?: string;
+  subjectType?: string;
+  effect?: string;
+};
+
+export async function listAccessControlCapabilities(filters: AccessControlFilters): Promise<AccessControlPage> {
+  return callRpc("list_access_control_capabilities", {
+    p_page: filters.page,
+    p_page_size: filters.pageSize,
+    p_search: filters.search ?? "",
+    p_category: filters.category ?? null,
+    p_risk_level: filters.riskLevel ?? null,
+    p_enabled: filters.enabled ?? null,
+    p_customer_visible: filters.customerVisible ?? null,
+    p_key: filters.key ?? null,
+    p_manually_assignable: filters.manuallyAssignable ?? null,
+  }, parseAccessControlPage);
+}
+
+export async function listAccessControlPolicies(filters: AccessControlFilters): Promise<AccessControlPage> {
+  return callRpc("list_access_control_policies", {
+    p_page: filters.page,
+    p_page_size: filters.pageSize,
+    p_search: filters.search ?? "",
+    p_capability_key: filters.capabilityKey ?? null,
+    p_scope: filters.scope ?? null,
+    p_status: filters.status ?? null,
+  }, parseAccessControlPage);
+}
+
+export async function listAccessControlAssignments(filters: AccessControlFilters): Promise<AccessControlPage> {
+  return callRpc("list_access_control_assignments", {
+    p_page: filters.page,
+    p_page_size: filters.pageSize,
+    p_search: filters.search ?? "",
+    p_subject_type: filters.subjectType ?? null,
+    p_capability_key: filters.capabilityKey ?? null,
+    p_effect: filters.effect ?? null,
+    p_status: filters.status ?? null,
+  }, parseAccessControlPage);
+}
+
+export async function getAccessControlOverview(): Promise<Record<string, unknown>> {
+  return callRpc("get_access_control_overview", {}, (value) => isRecord(value) ? value : null);
+}
+
+export async function listAccessControlPolicyVersions(input: {
+  policyId: string;
+  pageSize: number;
+  beforeVersion?: number;
+}): Promise<Record<string, unknown>> {
+  return callRpc("list_access_control_policy_versions", {
+    p_policy_id: input.policyId,
+    p_page_size: input.pageSize,
+    p_before_version: input.beforeVersion ?? null,
+  }, (value) => isRecord(value) ? value : null);
+}
+
+export async function getAccessControlGeneration(): Promise<number> {
+  return callRpc("get_access_control_generation", {}, (value) =>
+    Number.isSafeInteger(value) && (value as number) >= 0 ? value as number : null);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

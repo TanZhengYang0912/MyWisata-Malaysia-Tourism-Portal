@@ -19,6 +19,12 @@ export async function GET(request: Request, { params }: Props) {
   const { submissionId } = await params;
   if (!UUID.test(submissionId)) return apiFail('NOT_FOUND', 'KYC submission not found', 404);
 
+  const isRefresh = new URL(request.url).searchParams.get('refresh') === '1';
+  const { data: claimData, error: claimError } = isRefresh
+    ? await authenticated.rpc('read_staff_review_assignment', { p_domain: 'kyc', p_id: submissionId })
+    : await authenticated.rpc('claim_kyc_submission', { p_submission_id: submissionId });
+  if (claimError) return apiFail('ASSIGNMENT_FAILED', 'Unable to claim KYC submission', 409);
+
   const service = createServiceClient();
   const { data: submissionRow, error: submissionError } = await service
     .from('kyc_submissions')
@@ -36,12 +42,6 @@ export async function GET(request: Request, { params }: Props) {
     .maybeSingle();
   if (customerError) return apiFail('CUSTOMER_LOOKUP_FAILED', 'Unable to load KYC customer', 500);
   if (!customerRow) return apiFail('NOT_FOUND', 'KYC submission not found', 404);
-
-  const isRefresh = new URL(request.url).searchParams.get('refresh') === '1';
-  const { data: claimData, error: claimError } = isRefresh
-    ? await authenticated.rpc('read_staff_review_assignment', { p_domain: 'kyc', p_id: submissionId })
-    : await authenticated.rpc('claim_kyc_submission', { p_submission_id: submissionId });
-  if (claimError) return apiFail('ASSIGNMENT_FAILED', 'Unable to claim KYC submission', 409);
 
   const { data: eventRows, error: eventsError } = await service
     .from('kyc_review_events')

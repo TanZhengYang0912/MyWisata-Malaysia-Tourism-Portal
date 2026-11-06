@@ -101,6 +101,7 @@
       "submit": "Hantar",
       "approve": "Luluskan",
       "reject": "Tolak",
+      "stateDuration": "{{state}} · {{duration}}",
       "pause": "Jeda"
     },
     "categories": {
@@ -169,6 +170,7 @@
       "policies": "Polisi",
       "assignments": "Tugasan",
       "staff-roles": "Peranan Kakitangan",
+      "jit-approvals": "Kelulusan JIT",
       "audit-log": "Log Audit"
     },
     "actions": {
@@ -189,7 +191,25 @@
       "revoke": "Tarik balik",
       "openTarget": "Buka sasaran",
       "hide": "Sembunyikan",
-      "inspect": "Periksa"
+      "inspect": "Periksa",
+      "loadMore": "Muatkan lagi"
+    },
+    "jit": {
+      "title": "Permohonan akses sementara",
+      "description": "Semak permohonan kebenaran sementara daripada kakitangan yang layak.",
+      "decisionReason": "Sebab keputusan",
+      "minutes": "{{count}} minit",
+      "minutes_one": "{{count}} minit",
+      "minutes_other": "{{count}} minit",
+      "stateDuration": "{{state}} · {{duration}}",
+      "permissionLabel": "Semakan KYC",
+      "staffMember": "Kakitangan",
+      "approve": "Luluskan",
+      "reject": "Tolak",
+      "loading": "Memuatkan permohonan…",
+      "empty": "Tiada permohonan untuk disemak.",
+      "updated": "Permohonan dikemas kini.",
+      "error": "Tidak dapat memuatkan atau mengemas kini permohonan. Segarkan semula dan semak status terkini."
     },
     "accessibility": {
       "tabs": "Bahagian kawalan akses",
@@ -323,6 +343,9 @@
       "active": "Peranan aktif",
       "permissions": "Kebenaran mengikut modul",
       "modules": "Modul",
+      "jitPermissions": "Kebenaran sementara untuk peranan ini",
+      "jitPermissionHelp": "Kakitangan yang layak boleh memohon kebenaran ini selama 30 atau 60 minit. Ini tidak memberikan akses kekal.",
+      "jitLabel": "Permohonan sementara: {{permission}}",
       "lockedGroup": "Modul tergabung: {{group}}",
       "reviewSave": "Semak perubahan peranan",
       "rolesTitle": "Peranan kebenaran tersedia",

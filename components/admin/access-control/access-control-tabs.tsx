@@ -13,9 +13,10 @@ import { CapabilitiesTab } from "@/components/admin/access-control/capabilities-
 import { OverviewTab } from "@/components/admin/access-control/overview-tab";
 import { PoliciesTab } from "@/components/admin/access-control/policies-tab";
 import { StaffRolesTab } from "@/components/admin/access-control/staff-roles-tab";
+import { JitApprovalsTab } from "@/components/admin/access-control/jit-approvals-tab";
 import type { AccessControlTabId, AuditFocus, EntityFocus, MutationReceipt } from "@/components/admin/access-control/types";
 
-const TAB_IDS: AccessControlTabId[] = ["overview", "capabilities", "policies", "assignments", "staff-roles", "audit-log"];
+const TAB_IDS: AccessControlTabId[] = ["overview", "capabilities", "policies", "assignments", "staff-roles", "jit-approvals", "audit-log"];
 const RECEIPT_STORAGE_PREFIX = "access-control.mutation-receipt.v1";
 
 function safeStoredReceipt(value: unknown): MutationReceipt | null {
@@ -100,6 +101,7 @@ export function AccessControlTabs() {
       {activeTab === "policies" && <PoliciesTab focusId={entityFocus?.tab === "policies" ? entityFocus.id : null} onViewAudit={viewAuditEvent} />}
       {activeTab === "assignments" && <AssignmentsTab focusId={entityFocus?.tab === "assignments" ? entityFocus.id : null} onViewAudit={viewAuditEvent} />}
       {activeTab === "staff-roles" && <StaffRolesTab onMutation={recordMutation} />}
+      {activeTab === "jit-approvals" && <JitApprovalsTab />}
       {activeTab === "audit-log" && <AuditLogTab focus={auditFocus} onViewEntity={viewEntity} />}
     </section>
   );

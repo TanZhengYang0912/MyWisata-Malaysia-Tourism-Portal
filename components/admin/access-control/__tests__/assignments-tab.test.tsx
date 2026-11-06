@@ -83,7 +83,7 @@ describe("AssignmentsTab capability eligibility", () => {
           error: null,
         });
       }
-      if (url === "/api/admin/access-control/capabilities?page=1&pageSize=100") {
+      if (url.startsWith("/api/admin/access-control/capabilities?")) {
         return response({
           data: {
             items: [
@@ -123,13 +123,14 @@ describe("AssignmentsTab capability eligibility", () => {
       await Promise.resolve();
     });
 
-    expect(mocks.fetch).toHaveBeenCalledWith(
-      "/api/admin/access-control/capabilities?page=1&pageSize=100",
-      { cache: "no-store" },
-    );
-
     await click(findOne(container, (element) =>
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.newAssignment")));
+
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 200)); });
+    expect(mocks.fetch).toHaveBeenCalledWith(
+      "/api/admin/access-control/capabilities?page=1&pageSize=100&manuallyAssignable=true",
+      expect.objectContaining({ cache: "no-store" }),
+    );
 
     const selects = findElements(container, (element) => element.tagName === "SELECT");
     const capabilitySelect = findOne(container, (element) =>
@@ -198,7 +199,7 @@ describe("AssignmentsTab capability eligibility", () => {
           error: null,
         });
       }
-      if (url === "/api/admin/access-control/capabilities?page=1&pageSize=100") {
+      if (url.startsWith("/api/admin/access-control/capabilities?")) {
         capabilityRequestCount += 1;
         if (capabilityRequestCount > 1) {
           return response({ data: null, error: { message: "Capability catalogue unavailable" } }, 503);
@@ -227,24 +228,13 @@ describe("AssignmentsTab capability eligibility", () => {
     });
     await click(findOne(container, (element) =>
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.newAssignment")));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 200)); });
 
-    const subjectTypeSelect = findElements(container, (element) =>
-      element.tagName === "SELECT" && element.textContent.includes("accessControl.subjectTypes.role")).at(-1)!;
-    await selectValue(subjectTypeSelect, "role");
-    const subjectInput = findOne(container, (element) =>
-      element.tagName === "INPUT" && element.getAttribute("placeholder") === "accessControl.assignments.subjectPlaceholder");
-    const reasonInput = findOne(container, (element) => element.tagName === "TEXTAREA");
-    await selectValue(subjectInput, "customer");
-    await selectValue(reasonInput, "Temporary customer support exception");
-    await click(findOne(container, (element) =>
-      element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.reviewAssignment")));
-    expect(container.textContent).toContain("confirm-assignment");
-
-    const refreshButton = findOne(container, (element) =>
-      element.tagName === "BUTTON" && element.textContent.trim() === "");
-    await click(refreshButton);
+    const capabilitySearch = findOne(container, (element) =>
+      element.tagName === "INPUT" && element.getAttribute("placeholder") === "accessControl.filters.searchCapabilities");
+    await selectValue(capabilitySearch, "trigger-refresh");
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 200));
     });
 
     const capabilitySelect = findOne(container, (element) =>
@@ -254,7 +244,7 @@ describe("AssignmentsTab capability eligibility", () => {
     expect(findElements(capabilitySelect, (element) =>
       element.tagName === "OPTION" && element.value === "recommendation.submit")).toHaveLength(0);
     expect(container.textContent).toContain("Capability catalogue unavailable");
-    expect(container.textContent).not.toContain("confirm-assignment");
+    expect(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.reviewAssignment")).disabled).toBe(true);
     expect(mocks.fetch.mock.calls.filter(([url, init]) =>
       url === "/api/admin/access-control/assignments" && init?.method === "POST")).toHaveLength(0);
   });
@@ -269,7 +259,7 @@ describe("AssignmentsTab capability eligibility", () => {
           error: null,
         });
       }
-      if (url === "/api/admin/access-control/capabilities?page=1&pageSize=100") {
+      if (url.startsWith("/api/admin/access-control/capabilities?")) {
         capabilityRequestCount += 1;
         if (capabilityRequestCount === 1) {
           return response({
@@ -296,19 +286,20 @@ describe("AssignmentsTab capability eligibility", () => {
     await act(async () => {
       root?.render(<AssignmentsTab focusId={null} onViewAudit={vi.fn()} />);
     });
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); });
+    await click(findOne(container, (element) =>
+      element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.newAssignment")));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 200)); });
 
     const searchInput = findOne(container, (element) =>
-      element.tagName === "INPUT" && element.getAttribute("placeholder") === "accessControl.filters.searchAssignments");
+      element.tagName === "INPUT" && element.getAttribute("placeholder") === "accessControl.filters.searchCapabilities");
     await selectValue(searchInput, "first");
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
+      await new Promise((resolve) => setTimeout(resolve, 200));
     });
     await selectValue(searchInput, "second");
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 200));
     });
 
     await act(async () => {
@@ -328,8 +319,6 @@ describe("AssignmentsTab capability eligibility", () => {
       await Promise.resolve();
     });
 
-    await click(findOne(container, (element) =>
-      element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.newAssignment")));
     const capabilitySelect = findOne(container, (element) =>
       element.tagName === "SELECT"
       && element.textContent.includes("accessControl.assignments.selectCapability"));

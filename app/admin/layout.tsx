@@ -41,7 +41,7 @@ const EMPTY_PENDING_COUNTS: PendingCounts = {
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { currentUser, staffPermissionKeys = [], staffModules = [], staffVerified, staffPasskeyRequired = true, staffMfaRequired = false, loading } = useRequireRole(["admin", "approver", "staff", "super_admin"]);
+  const { currentUser, staffPermissionKeys = [], staffModules = [], staffPermissionExpiresAt, refreshUser, staffVerified, staffPasskeyRequired = true, staffMfaRequired = false, loading } = useRequireRole(["admin", "approver", "staff", "super_admin"]);
   const staffAccessReady = !staffMfaRequired && (!staffPasskeyRequired || staffVerified);
   const { t: tAdmin } = useTranslation("admin");
   const { t: tCommon } = useTranslation("common");
@@ -72,6 +72,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     && !pathname.startsWith("/admin/help/")
     && !navigationHrefs.some((href) => pathname === href || pathname.startsWith(`${href}/`));
   const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
+    if (!staffPermissionExpiresAt) return;
+    const expiresAt = Date.parse(staffPermissionExpiresAt);
+    if (!Number.isFinite(expiresAt)) return;
+    const refreshIfExpired = () => {
+      if (document.visibilityState === "visible" && Date.now() >= expiresAt) void refreshUser();
+    };
+    const timeout = window.setTimeout(() => { void refreshUser(); }, Math.max(0, expiresAt - Date.now() + 50));
+    window.addEventListener("focus", refreshIfExpired);
+    document.addEventListener("visibilitychange", refreshIfExpired);
+    return () => {
+      window.clearTimeout(timeout);
+      window.removeEventListener("focus", refreshIfExpired);
+      document.removeEventListener("visibilitychange", refreshIfExpired);
+    };
+  }, [refreshUser, staffPermissionExpiresAt]);
   // CLAUDE-FIXES-2.md item 1: a count on the Support Tickets nav item —
   // queue-wide, any ticket with an unread customer reply, not just mine.
   const [unreadTickets, setUnreadTickets] = useState(0);

@@ -24,8 +24,10 @@ describe('POST /api/admin/kyc/review', () => {
     rpc.mockReset();
     serviceRpc.mockReset();
     requireStaffPermission.mockReset();
-    rpc.mockResolvedValue({ data: null, error: null });
-    serviceRpc.mockResolvedValueOnce({ data: 'evidence-v1', error: null }).mockResolvedValueOnce({
+    rpc.mockImplementation(async (name: string) => name === 'issue_kyc_service_operation_ticket'
+      ? { data: { ticketId: '88888888-8888-4888-8888-888888888888', reviewVersion: 7, evidenceRevision: 'evidence-v1' }, error: null }
+      : { data: null, error: null });
+    serviceRpc.mockResolvedValue({
       data: { primaryConfirmationId: '44444444-4444-4444-8444-444444444444', secondaryConfirmationId: '55555555-5555-4555-8555-555555555555' }, error: null,
     });
     requireStaffPermission.mockResolvedValue({ db, user: { id: '22222222-2222-4222-8222-222222222222' }, response: null });
@@ -100,7 +102,9 @@ describe('POST /api/admin/kyc/review', () => {
 
   it('returns a conflict when a reviewer tries to decide another reviewer assignment', async () => {
     getUser.mockResolvedValue({ data: { user: { id: '22222222-2222-4222-8222-222222222222' } } });
-    rpc.mockResolvedValueOnce({ data: null, error: { message: 'kyc_not_assigned' } });
+    rpc.mockImplementation(async (name: string) => name === 'issue_kyc_service_operation_ticket'
+      ? { data: { ticketId: '88888888-8888-4888-8888-888888888888', reviewVersion: 7, evidenceRevision: 'evidence-v1' }, error: null }
+      : { data: null, error: { message: 'kyc_not_assigned' } });
 
     const response = await POST(new Request('http://localhost', {
       method: 'POST',
@@ -122,7 +126,9 @@ describe('POST /api/admin/kyc/review', () => {
     ['invalid_reason_code', 422, 'VALIDATION_FAILED'],
     ['reason_detail_too_short', 422, 'VALIDATION_FAILED'],
   ])('maps the known database error %s without exposing raw details', async (databaseError, status, code) => {
-    rpc.mockResolvedValueOnce({ data: null, error: { message: `${databaseError}: internal relation detail` } });
+    rpc.mockImplementation(async (name: string) => name === 'issue_kyc_service_operation_ticket'
+      ? { data: { ticketId: '88888888-8888-4888-8888-888888888888', reviewVersion: 7, evidenceRevision: 'evidence-v1' }, error: null }
+      : { data: null, error: { message: `${databaseError}: internal relation detail` } });
 
     const response = await POST(new Request('http://localhost', {
       method: 'POST',
@@ -141,7 +147,9 @@ describe('POST /api/admin/kyc/review', () => {
   });
 
   it('returns a generic safe 500 for unknown database errors', async () => {
-    rpc.mockResolvedValueOnce({ data: null, error: { message: 'sensitive_table secret diagnostic' } });
+    rpc.mockImplementation(async (name: string) => name === 'issue_kyc_service_operation_ticket'
+      ? { data: { ticketId: '88888888-8888-4888-8888-888888888888', reviewVersion: 7, evidenceRevision: 'evidence-v1' }, error: null }
+      : { data: null, error: { message: 'sensitive_table secret diagnostic' } });
 
     const response = await POST(new Request('http://localhost', {
       method: 'POST',
@@ -181,9 +189,11 @@ describe('POST /api/admin/kyc/review', () => {
     const body = await response.json();
     expect(body).toMatchObject({ data: { userId, kycStatus: 'approved', action: 'approve' } });
     expect(body.data).not.toHaveProperty('tier');
-    expect(serviceRpc).toHaveBeenNthCalledWith(2, 'get_kyc_review_confirmation_ids', expect.objectContaining({
+    expect(serviceRpc).toHaveBeenCalledWith('get_kyc_review_confirmation_ids_v2', expect.objectContaining({
+      p_ticket_id: '88888888-8888-4888-8888-888888888888',
       p_submission_id: '33333333-3333-4333-8333-333333333333',
       p_expected_version: 7,
+      p_evidence_revision: 'evidence-v1',
       p_primary_actor_id: '22222222-2222-4222-8222-222222222222',
       p_primary_session_id: '77777777-7777-4777-8777-777777777777',
     }));
@@ -202,7 +212,7 @@ describe('POST /api/admin/kyc/review', () => {
 
   it('blocks approval until a current independent confirmation exists', async () => {
     serviceRpc.mockReset();
-    serviceRpc.mockResolvedValueOnce({ data: 'evidence-v1', error: null }).mockResolvedValueOnce({
+    serviceRpc.mockResolvedValueOnce({
       data: { primaryConfirmationId: '44444444-4444-4444-8444-444444444444', secondaryConfirmationId: null }, error: null,
     });
     const response = await POST(new Request('http://localhost', {
@@ -210,6 +220,7 @@ describe('POST /api/admin/kyc/review', () => {
       body: JSON.stringify({ submissionId: '33333333-3333-4333-8333-333333333333', userId, expectedVersion: 7, action: 'approve', operationId: '66666666-6666-4666-8666-666666666666' }),
     }));
     expect(response.status).toBe(422);
-    expect(rpc).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).not.toHaveBeenCalledWith('review_kyc_case_v2', expect.anything());
   });
 });

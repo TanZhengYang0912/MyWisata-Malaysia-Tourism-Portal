@@ -13,7 +13,7 @@ import { staffPasskeyConfig } from './staff-passkey-config';
 import { authenticationOptions, registrationOptions, verifyStaffAuthentication, verifyStaffRegistration } from './staff-passkey';
 
 const challengeSchema = z.object({
-  operation: z.enum(['register', 'login', 'manage', 'approve', 'retry-payout', 'fraud-override']),
+  operation: z.enum(['register', 'login', 'manage', 'approve', 'retry-payout', 'fraud-override', 'jit-activate']),
   label: z.string().trim().min(1).max(80).optional(),
   grant: z.string().regex(/^[A-Za-z0-9_-]{32,128}$/).optional(),
   withdrawalId: z.string().uuid().optional(),
@@ -24,6 +24,7 @@ const verifySchema = z.object({ challengeId: z.string().uuid(), credential: z.re
 const revokeSchema = z.object({ credentialId: z.string().min(1).max(2048) }).strict();
 const financialPayloadSchema = z.object({ note: z.string().trim().min(10).max(500), reasonCategory: z.string().trim().min(1).max(100) }).strict();
 const riskPayloadSchema = z.object({ reason: z.string().trim().min(10).max(500), reasonCategory: z.string().trim().min(1).max(100) }).strict();
+const jitPayloadSchema = z.object({ requestId: z.string().uuid(), requestVersion: z.number().int().positive() }).strict();
 type CredentialRecord = { id: string; label: string; publicKey: string; counter: number; transports: WebAuthnCredential['transports']; userHandle: string };
 
 class PasskeyError extends Error {
@@ -69,6 +70,7 @@ async function serviceRpc(name: string, args: Record<string, unknown>) {
     if (/password_session_required|staff_passkey_required|fresh_passkey_required/.test(message)) throw new PasskeyError('STAFF_PASSKEY_REQUIRED', 403);
     if (/challenge_unavailable|credential_unavailable|withdrawal_changed|withdrawal_not_authorizable|last_credential|too_many_credentials/.test(message)) throw new PasskeyError('STAFF_PASSKEY_RETRY_REQUIRED', 409);
     if (/withdrawal_permission_required|super_admin_required/.test(message)) throw new PasskeyError('FORBIDDEN', 403);
+    if (/staff_jit_(request_unavailable|ineligible|disabled)/.test(message)) throw new PasskeyError('STAFF_JIT_REQUEST_UNAVAILABLE', 409);
     throw new PasskeyError('STAFF_PASSKEY_UNAVAILABLE', 503);
   }
   return data;
@@ -114,19 +116,30 @@ export async function staffPasskeyChallenge(request: Request) {
       payload = payloadResult.data;
       const reason = operation === 'fraud-override' ? payload.reason : payload.note;
       if (!walletReasonSchema.safeParse({ action: operation === 'fraud-override' ? 'fraud_override' : 'approve', reason, reasonCategory: payload.reasonCategory }).success) throw new PasskeyError('VALIDATION_FAILED', 422);
+    } else if (operation === 'jit-activate') {
+      if (withdrawalId || expectedVersion) throw new PasskeyError('VALIDATION_FAILED', 422);
+      const payloadResult = jitPayloadSchema.safeParse(parsed.data.payload);
+      if (!payloadResult.success) throw new PasskeyError('VALIDATION_FAILED', 422);
+      payload = payloadResult.data;
     } else if (withdrawalId || expectedVersion || parsed.data.payload) throw new PasskeyError('VALIDATION_FAILED', 422);
     const credentials = await records(user.id);
     const userHandle = credentials[0]?.userHandle ?? randomBytes(32).toString('base64url');
     const options = operation === 'register'
       ? await registrationOptions(config, `${BRAND_NAME} staff`, userHandle, credentials)
       : await authenticationOptions(config, credentials);
-    const context = await serviceRpc('begin_staff_passkey_challenge', {
-      p_user_id: user.id, p_session_id: session!.sessionId, p_operation: operation,
-      p_challenge: options.challenge, p_user_handle: userHandle, p_label: label ?? 'Passkey',
-      p_withdrawal_id: withdrawalId ?? null, p_payload: payload,
-      p_grant_hash: grant ? createHash('sha256').update(grant).digest('hex') : null,
-      p_expected_version: expectedVersion ?? null,
-    });
+    const context = operation === 'jit-activate'
+      ? await serviceRpc('begin_staff_jit_passkey_challenge', {
+        p_user_id: user.id, p_session_id: session!.sessionId,
+        p_challenge: options.challenge, p_user_handle: userHandle,
+        p_request_id: payload.requestId, p_request_version: payload.requestVersion,
+      })
+      : await serviceRpc('begin_staff_passkey_challenge', {
+        p_user_id: user.id, p_session_id: session!.sessionId, p_operation: operation,
+        p_challenge: options.challenge, p_user_handle: userHandle, p_label: label ?? 'Passkey',
+        p_withdrawal_id: withdrawalId ?? null, p_payload: payload,
+        p_grant_hash: grant ? createHash('sha256').update(grant).digest('hex') : null,
+        p_expected_version: expectedVersion ?? null,
+      });
     if (!context?.id) throw new PasskeyError('STAFF_PASSKEY_UNAVAILABLE', 503);
     if ('user' in options) options.user.id = context.userHandle;
     return noStore(apiOk({ challengeId: context.id, options }));
@@ -161,11 +174,18 @@ export async function staffPasskeyVerify(request: Request) {
         transports = stored.transports; deviceType = result.authenticationInfo.credentialDeviceType; backedUp = result.authenticationInfo.credentialBackedUp;
       }
     } catch { throw new PasskeyError('STAFF_PASSKEY_FAILED', 400); }
-    const result = await serviceRpc('finish_staff_passkey_challenge', {
+    const finishArgs = {
       p_user_id: user.id, p_session_id: session!.sessionId, p_challenge_id: context.id, p_reservation_token: context.reservation_token,
       p_credential_id: credentialId, p_public_key: publicKey, p_counter: counter, p_previous_counter: previousCounter,
       p_transports: transports ?? [], p_device_type: deviceType, p_backed_up: backedUp,
-    });
+    };
+    const result = context.operation === 'jit-activate'
+      ? await serviceRpc('finish_staff_jit_passkey_challenge', {
+        p_user_id: user.id, p_session_id: session!.sessionId, p_challenge_id: context.id,
+        p_reservation_token: context.reservation_token, p_credential_id: credentialId,
+        p_counter: counter, p_previous_counter: previousCounter, p_device_type: deviceType, p_backed_up: backedUp,
+      })
+      : await serviceRpc('finish_staff_passkey_challenge', finishArgs);
     return noStore(apiOk(result));
   } catch (error) { return passkeyFailure(error); }
 }

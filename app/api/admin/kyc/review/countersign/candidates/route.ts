@@ -1,6 +1,7 @@
 import { requireKycReviewer } from '@/lib/kyc/reviewer-auth';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { createServiceClient } from '@/lib/supabase/service';
+import { issueKycServiceOperationTicket } from '@/lib/kyc/service-operation-ticket';
 
 export async function GET(request: Request) {
   const { db, user, response } = await requireKycReviewer();
@@ -37,12 +38,17 @@ export async function GET(request: Request) {
   const sessionId = claims?.claims?.session_id;
   if (claimsError || typeof sessionId !== 'string') return apiFail('AUTHORIZATION_UNAVAILABLE', 'Unable to verify reviewer session', 503);
   const service = createServiceClient();
-  const { data: revision, error: revisionError } = await service.rpc('get_kyc_evidence_revision', { p_submission_id: submissionId });
-  if (revisionError || typeof revision !== 'string') return apiFail('KYC_CASE_UNAVAILABLE', 'KYC case is temporarily unavailable', 503);
-  const { data: confirmations, error: confirmationsError } = await service.rpc('get_kyc_review_confirmation_ids', {
+  const ticket = await issueKycServiceOperationTicket(db, {
+    submissionId,
+    action: 'confirmation.lookup',
+    expectedVersion,
+  });
+  if (!ticket) return apiFail('CONFIRMATION_UNAVAILABLE', 'Current evidence confirmation could not be checked', 503);
+  const { data: confirmations, error: confirmationsError } = await service.rpc('get_kyc_review_confirmation_ids_v2', {
+    p_ticket_id: ticket.ticketId,
     p_submission_id: submissionId,
     p_expected_version: expectedVersion,
-    p_evidence_revision: revision,
+    p_evidence_revision: ticket.evidenceRevision,
     p_primary_actor_id: user.id,
     p_primary_session_id: sessionId,
   });

@@ -4,6 +4,12 @@ const mocks = vi.hoisted(() => ({
   requireSuperAdmin: vi.fn(),
   createServiceClient: vi.fn(),
   listState: vi.fn(),
+  listCapabilities: vi.fn(),
+  listPolicies: vi.fn(),
+  listAssignments: vi.fn(),
+  getOverview: vi.fn(),
+  listVersions: vi.fn(),
+  getGeneration: vi.fn(),
   createVersion: vi.fn(),
   approveVersion: vi.fn(),
   activateVersion: vi.fn(),
@@ -23,6 +29,12 @@ vi.mock("@/lib/supabase/service", () => ({
 
 vi.mock("@/lib/entitlements/admin", () => ({
   listAccessControlState: mocks.listState,
+  listAccessControlCapabilities: mocks.listCapabilities,
+  listAccessControlPolicies: mocks.listPolicies,
+  listAccessControlAssignments: mocks.listAssignments,
+  getAccessControlOverview: mocks.getOverview,
+  listAccessControlPolicyVersions: mocks.listVersions,
+  getAccessControlGeneration: mocks.getGeneration,
   createPolicyVersion: mocks.createVersion,
   approvePolicyVersion: mocks.approveVersion,
   activatePolicyVersion: mocks.activateVersion,
@@ -168,6 +180,12 @@ describe("Access Control route authorization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.listState.mockResolvedValue(state);
+    mocks.listCapabilities.mockResolvedValue({ items: state.capabilities, page: 1, pageSize: 25, total: 1, totalPages: 1, generation: 19 });
+    mocks.listPolicies.mockResolvedValue({ items: [], page: 1, pageSize: 25, total: 0, totalPages: 0, generation: 19 });
+    mocks.listAssignments.mockResolvedValue({ items: [], page: 1, pageSize: 25, total: 0, totalPages: 0, generation: 19 });
+    mocks.getOverview.mockResolvedValue({ generation: 19, counts: {} });
+    mocks.listVersions.mockResolvedValue({ items: [], pageSize: 25, hasMore: false, nextCursor: null, generation: 19, policy: null });
+    mocks.getGeneration.mockResolvedValue(19);
     mocks.createVersion.mockResolvedValue(VERSION_ID);
     mocks.approveVersion.mockResolvedValue(undefined);
     mocks.activateVersion.mockResolvedValue(undefined);
@@ -210,6 +228,12 @@ describe("Access Control validation and governed mutations", () => {
     vi.clearAllMocks();
     allowSuperAdmin();
     mocks.listState.mockResolvedValue(state);
+    mocks.listCapabilities.mockResolvedValue({ items: state.capabilities, page: 1, pageSize: 25, total: 1, totalPages: 1, generation: 19 });
+    mocks.listPolicies.mockResolvedValue({ items: [], page: 1, pageSize: 25, total: 0, totalPages: 0, generation: 19 });
+    mocks.listAssignments.mockResolvedValue({ items: [], page: 1, pageSize: 25, total: 0, totalPages: 0, generation: 19 });
+    mocks.getOverview.mockResolvedValue({ generation: 19, counts: {} });
+    mocks.listVersions.mockResolvedValue({ items: [], pageSize: 25, hasMore: false, nextCursor: null, generation: 19, policy: null });
+    mocks.getGeneration.mockResolvedValue(19);
     mocks.createVersion.mockResolvedValue(VERSION_ID);
     mocks.approveVersion.mockResolvedValue(undefined);
     mocks.activateVersion.mockResolvedValue(undefined);

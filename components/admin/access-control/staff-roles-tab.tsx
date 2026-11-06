@@ -27,6 +27,7 @@ import { StaffModulesPanel } from "@/components/admin/access-control/staff-modul
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/i18n/format";
 import { isAppLocale } from "@/lib/i18n/locale";
+import { runStaffPasskey } from "@/lib/auth/staff-passkey-browser";
 
 type RolesPayload = {
   roles: StaffRoleRecord[];
@@ -46,6 +47,7 @@ type RoleForm = {
   name: string;
   description: string;
   moduleKeys: string[];
+  jitPermissionKeys: string[];
   active: boolean;
   reason: string;
   updatedAt: string | null;
@@ -56,6 +58,7 @@ const EMPTY_FORM: RoleForm = {
   name: "",
   description: "",
   moduleKeys: [],
+  jitPermissionKeys: [],
   active: true,
   reason: "",
   updatedAt: null,
@@ -206,6 +209,7 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
       name: role.name,
       description: role.description ?? "",
       moduleKeys: [...role.moduleKeys],
+      jitPermissionKeys: [...(role.jitPermissionKeys ?? [])],
       active: role.isActive,
       reason: "",
       updatedAt: role.updatedAt,
@@ -244,6 +248,7 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
     setError("");
     try {
       const editing = Boolean(form.id);
+      if (editing) await runStaffPasskey({ operation: "manage" });
       const response = await fetch(
         editing ? `/api/admin/access-control/staff-roles/${form.id}` : "/api/admin/access-control/staff-roles",
         {
@@ -253,6 +258,7 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
             name: form.name.trim(),
             description: form.description.trim(),
             moduleKeys: [...form.moduleKeys].sort(),
+            ...(editing ? { jitPermissionKeys: [...form.jitPermissionKeys].sort() } : {}),
             ...(editing ? { active: form.active } : {}),
             ...(editing ? { updatedAt: form.updatedAt } : {}),
             reason: form.reason.trim(),
@@ -433,6 +439,13 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
             </label>)}</div>
           </div>)}
         </fieldset>
+        {form.id && <fieldset className="mt-4 rounded-xl border border-border p-4" disabled={roles.find((role) => role.id === form.id)?.isSystem}>
+          <legend className="px-1 text-sm font-semibold">{t("accessControl.staffRoles.jitPermissions")}</legend>
+          <label className="flex items-start gap-3 rounded-lg bg-muted/30 p-3 text-sm">
+            <input type="checkbox" checked={form.jitPermissionKeys.includes("admin.kyc.review")} onChange={(event) => setForm((current) => ({ ...current, jitPermissionKeys: event.target.checked ? ["admin.kyc.review"] : [] }))} />
+            <span><span className="block font-medium">{permissionLabel("admin.kyc.review")}</span><span className="mt-1 block text-xs text-muted-foreground">{t("accessControl.staffRoles.jitPermissionHelp")}</span></span>
+          </label>
+        </fieldset>}
         <Field htmlFor="role-reason" label={t("accessControl.forms.reason")}><textarea id="role-reason" name="role-reason" value={form.reason} onChange={(event) => setForm({ ...form, reason: event.target.value })} maxLength={500} className="min-h-24 w-full rounded-xl border border-border bg-background p-3 text-sm" placeholder={t("accessControl.forms.reasonPlaceholder")} /></Field>
         <div className="mt-4 flex justify-end gap-2">{form.id && <Button variant="outline" onClick={() => setForm(EMPTY_FORM)}>{t("accessControl.actions.cancel")}</Button>}<Button disabled={roleSaveDisabled || saving} onClick={() => setConfirmOpen(true)}><ShieldCheck />{t("accessControl.staffRoles.reviewSave")}</Button></div>
       </section>
@@ -453,6 +466,7 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
               <span className="block text-xs font-medium">{modules.find((module) => module.key === key)?.label ?? key.replace(/[._]/g, " ")}</span>
             </li>)}</ul>
             <ul className="mt-2 space-y-1">{role.permissionKeys.map((key) => <li key={key} className="text-xs text-muted-foreground">{permissionLabel(key)}</li>)}</ul>
+            {(role.jitPermissionKeys ?? []).length > 0 && <ul className="mt-2 space-y-1">{(role.jitPermissionKeys ?? []).map((key) => <li key={key} className="text-xs text-primary">{t("accessControl.staffRoles.jitLabel", { permission: permissionLabel(key) })}</li>)}</ul>}
             <div className="mt-3 flex justify-end gap-2">
               {!role.isSystem && <Button size="sm" variant="outline" onClick={() => editRole(role)}>{t("accessControl.staffRoles.editRole")}</Button>}
               <Button size="sm" variant="outline" disabled={!role.isActive} onClick={() => copyRoleTemplate(role)}>{t("accessControl.staffRoles.useTemplate")}</Button>

@@ -3,6 +3,7 @@ import { requireKycReviewer } from '@/lib/kyc/reviewer-auth';
 import { createServiceClient } from '@/lib/supabase/service';
 import { hashICWithHmac } from '@/lib/kyc/hash';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
+import { issueKycServiceOperationTicket } from '@/lib/kyc/service-operation-ticket';
 
 const uuid = z.string().uuid();
 const schema = z.object({
@@ -36,12 +37,18 @@ export async function POST(request: Request) {
     return apiFail('AUTHORIZATION_UNAVAILABLE', 'Unable to verify reviewer session', 503);
   }
 
+  const ticket = await issueKycServiceOperationTicket(db, {
+    submissionId: value.submissionId,
+    action: 'confirmation.stage',
+    expectedVersion: value.expectedVersion,
+    purpose: value.purpose,
+  });
+  if (!ticket) return apiFail('AUTHORIZATION_UNAVAILABLE', 'Unable to authorize evidence confirmation', 503);
+
   const service = createServiceClient();
-  const [{ data: submission, error: submissionError }, { data: revision, error: revisionError }] = await Promise.all([
-    service.from('kyc_submissions').select('user_id,document_type,review_version').eq('id', value.submissionId).maybeSingle(),
-    service.rpc('get_kyc_evidence_revision', { p_submission_id: value.submissionId }),
-  ]);
-  if (submissionError || revisionError || !submission || typeof revision !== 'string') {
+  const { data: submission, error: submissionError } = await service
+    .from('kyc_submissions').select('user_id,document_type,review_version').eq('id', value.submissionId).maybeSingle();
+  if (submissionError || !submission) {
     return apiFail('KYC_CASE_UNAVAILABLE', 'KYC case is temporarily unavailable', 503);
   }
   if (submission.review_version !== value.expectedVersion) return apiFail('CONFLICT', 'Reload this case before confirming evidence', 409);
@@ -56,12 +63,13 @@ export async function POST(request: Request) {
   try { fingerprint = await hashICWithHmac(value.documentNumber); }
   catch { return apiFail('SERVER_CONFIGURATION', 'KYC review is temporarily unavailable', 503); }
 
-  const { data: confirmationId, error: stageError } = await service.rpc('stage_kyc_identity_confirmation', {
+  const { data: confirmationId, error: stageError } = await service.rpc('stage_kyc_identity_confirmation_with_ticket', {
+    p_ticket_id: ticket.ticketId,
     p_expected_actor_id: user.id,
     p_expected_session_id: sessionId,
     p_submission_id: value.submissionId,
     p_review_version: value.expectedVersion,
-    p_evidence_revision: revision,
+    p_evidence_revision: ticket.evidenceRevision,
     p_actual_document_type: value.actualDocumentType,
     p_issuer_country: value.issuerCountry.toUpperCase(),
     p_identifier_kind: value.identifierKind,

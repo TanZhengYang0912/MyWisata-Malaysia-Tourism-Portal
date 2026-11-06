@@ -101,6 +101,7 @@
       "submit": "提交",
       "approve": "批准",
       "reject": "拒绝",
+      "stateDuration": "{{state}} · {{duration}}",
       "pause": "暂停"
     },
     "categories": {
@@ -169,6 +170,7 @@
       "policies": "策略",
       "assignments": "分配",
       "staff-roles": "员工角色",
+      "jit-approvals": "临时权限审批",
       "audit-log": "审计日志"
     },
     "actions": {
@@ -189,7 +191,25 @@
       "revoke": "撤销",
       "openTarget": "打开目标",
       "hide": "收起",
-      "inspect": "查看详情"
+      "inspect": "查看详情",
+      "loadMore": "加载更多"
+    },
+    "jit": {
+      "title": "临时权限申请",
+      "description": "审核符合资格的员工提出的限时权限申请。",
+      "decisionReason": "审批原因",
+      "minutes": "{{count}} 分钟",
+      "minutes_one": "{{count}} 分钟",
+      "minutes_other": "{{count}} 分钟",
+      "stateDuration": "{{state}} · {{duration}}",
+      "permissionLabel": "KYC 审核",
+      "staffMember": "员工",
+      "approve": "批准",
+      "reject": "拒绝",
+      "loading": "正在加载申请…",
+      "empty": "目前没有待审核的申请。",
+      "updated": "申请已更新。",
+      "error": "无法加载或更新临时权限申请。请刷新并查看最新状态。"
     },
     "accessibility": {
       "tabs": "访问控制分区",
@@ -323,6 +343,9 @@
       "active": "角色已启用",
       "permissions": "按模块划分的权限",
       "modules": "模块",
+      "jitPermissions": "此角色可申请的临时权限",
+      "jitPermissionHelp": "符合条件的员工可申请此权限 30 或 60 分钟；这不会授予永久权限。",
+      "jitLabel": "可申请临时权限：{{permission}}",
       "lockedGroup": "不可拆分模块组合：{{group}}",
       "reviewSave": "复核角色变更",
       "rolesTitle": "可用权限角色",

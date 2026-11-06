@@ -3,7 +3,7 @@
 import { startAuthentication, startRegistration, type PublicKeyCredentialCreationOptionsJSON, type PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
 
 export type StaffPasskeyRequest = {
-  operation: 'register' | 'login' | 'manage' | 'approve' | 'retry-payout' | 'fraud-override';
+  operation: 'register' | 'login' | 'manage' | 'approve' | 'retry-payout' | 'fraud-override' | 'jit-activate';
   label?: string; grant?: string; withdrawalId?: string; expectedVersion?: string; payload?: Record<string, unknown>;
 };
 
@@ -18,6 +18,6 @@ export async function runStaffPasskey(input: StaffPasskeyRequest): Promise<{ reg
   const verification = await fetch('/api/auth/staff-passkey/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ challengeId: body.data.challengeId, credential }) });
   const result = await verification.json();
   if (!verification.ok || !result.data) throw new Error(result.error?.code ?? 'STAFF_PASSKEY_FAILED');
-  if (['approve', 'retry-payout', 'fraud-override'].includes(input.operation) && typeof result.data.proofId !== 'string') throw new Error('STAFF_PASSKEY_FAILED');
+  if (['approve', 'retry-payout', 'fraud-override', 'jit-activate'].includes(input.operation) && typeof result.data.proofId !== 'string') throw new Error('STAFF_PASSKEY_FAILED');
   return result.data;
 }
