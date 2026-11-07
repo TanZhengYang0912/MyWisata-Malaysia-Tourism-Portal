@@ -18,7 +18,7 @@ describe("hotel-first discovery surfaces", () => {
   });
 
   it("groups rooms into hotels on the home pages and For You", () => {
-    expect(read("app/customer/page.tsx")).toContain("selectHomeDiscoverySections(activities, recommended)");
+    expect(read("app/customer/page.tsx")).toContain("selectHomeDiscoverySections(activities, recommended, placements, requestedAt)");
     expect(read("lib/customer/discovery-ranking.ts")).toContain("groupAccommodationByProperty(activities)");
     expect(read("lib/customer/discovery-ranking.ts")).toContain("groupAccommodationByProperty(recommended)");
     expect(read("app/customer/home-client.tsx")).toContain("groupAccommodationByProperty(");

@@ -35,6 +35,14 @@ import { ProductChatButton } from "@/components/customer/product-chat-button";
 import { LocalizedContent } from "@/components/customer/localized-content";
 import { OperatingHoursSummary } from "@/components/customer/operating-hours-summary";
 import { ProductSaveButton } from "@/components/customer/product-save-button";
+import { useOutletOpenStatus } from "@/components/customer/vendor-location-list";
+
+/** City, then the outlet's live status; before mount (or without hours) only the server's closed flag. */
+function OutletChoiceStatus({ choice, status }: { choice: OutletChoice; status: ReturnType<typeof useOutletOpenStatus> }) {
+  const { t } = useTranslation("customer");
+  const live = choice.operatingHours ? status(choice.operatingHours) : null;
+  return <>{choice.city}{live ? <> · {live}</> : !choice.open && ` · ${t("ui.labels.currentlyClosed")}`}</>;
+}
 
 export function ActivityDetailClient({
   initialActivity,
@@ -54,6 +62,7 @@ export function ActivityDetailClient({
   relatedScope?: "vendor" | "outlet";
 }) {
   const { t } = useTranslation("customer");
+  const outletStatus = useOutletOpenStatus();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser } = useAuth();
@@ -317,7 +326,7 @@ export function ActivityDetailClient({
             <div className="mt-4 flex flex-col gap-2">
               {outletChoices.length > 0 ? outletChoices.map((choice) => (
                 <Link key={choice.outletId} href={`${getOutletShopHref(choice.outletId)}#full-menu`} className="flex items-start justify-between gap-3 rounded-xl border border-primary/15 bg-card px-3 py-2.5 text-left transition hover:border-primary/40 hover:bg-primary/5">
-                  <span className="min-w-0"><span className="block break-words whitespace-normal text-sm font-semibold text-foreground">{t("strictMigration.activityDetail.viewOutlet", { name: outletShortName(choice.outletName, choice.vendorName) })}</span><span className="break-words whitespace-normal text-xs text-muted-foreground">{choice.city}{!choice.open && ` · ${t("ui.labels.currentlyClosed")}`}</span></span>
+                  <span className="min-w-0"><span className="block break-words whitespace-normal text-sm font-semibold text-foreground">{t("strictMigration.activityDetail.viewOutlet", { name: outletShortName(choice.outletName, choice.vendorName) })}</span><span className="break-words whitespace-normal text-xs text-muted-foreground"><OutletChoiceStatus choice={choice} status={outletStatus} /></span></span>
                   <span className="shrink-0 text-primary" aria-hidden="true">→</span>
                 </Link>
               )) : <Link href={`${getOutletShopHref(activity.outletId)}#full-menu`} className="inline-flex items-center justify-between rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-white hover:bg-primary/90">{t("ui.cart.viewOutlet")} <span aria-hidden="true">→</span></Link>}
@@ -346,8 +355,7 @@ export function ActivityDetailClient({
                       <span className="min-w-0">
                         <span className="block break-words whitespace-normal text-sm font-semibold text-foreground">{outletShortName(choice.outletName, choice.vendorName)}</span>
                         <span className="text-xs text-muted-foreground">
-                          {choice.city}
-                          {!choice.open && ` · ${t("ui.labels.currentlyClosed")}`}
+                          <OutletChoiceStatus choice={choice} status={outletStatus} />
                         </span>
                       </span>
                       <span className="shrink-0 text-sm font-bold text-primary font-[family-name:var(--font-mono)]">

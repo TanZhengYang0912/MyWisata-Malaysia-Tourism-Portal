@@ -68,6 +68,8 @@ describe("vendor page sections", () => {
     await render(<VendorLocationList locations={[open, closed]} />);
     expect(container.textContent).toContain("ui.operatingHours.openNow · 09:00–17:00");
     expect(container.textContent).toContain('ui.vendor.opensAt {"day":"ui.vendor.tomorrow","time":"09:00"}');
+    expect(findElements(container, (element) => (element.getAttribute("class") ?? "").includes("bg-emerald-500"))).toHaveLength(1);
+    expect(findElements(container, (element) => (element.getAttribute("class") ?? "").includes("bg-slate-400"))).toHaveLength(1);
   });
 
   it("lists only the sections it is given, and hides with fewer than two", () => {

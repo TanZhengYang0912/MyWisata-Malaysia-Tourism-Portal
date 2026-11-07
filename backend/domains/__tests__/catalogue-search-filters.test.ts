@@ -14,6 +14,7 @@ const {
   searchActivities,
   searchExploreActivities,
   searchTripActivities,
+  sortExploreActivities,
 } = await import("@/backend/domains/catalogue");
 
 const OUTLET_FIELDS = {
@@ -353,6 +354,17 @@ describe("Explore facet filters", () => {
     expect(filterExploreActivities({ sort: 'recommended' }, items()).map(({ id }) => id)).toEqual(['Alpha', 'Bravo', 'Charlie']);
   });
 
+  it("puts merchant-featured products first on the default name sort only", () => {
+    const items = () => [
+      Object.assign(computed({ id: "Zulu", categorySlug: "food" }), { tags: ["featured"], price: 30 }),
+      Object.assign(computed({ id: "Alpha", categorySlug: "food" }), { price: 10 }),
+      Object.assign(computed({ id: "Mike", categorySlug: "food" }), { tags: ["featured"], price: 20 }),
+    ];
+    expect(filterExploreActivities({}, items()).map(({ id }) => id)).toEqual(["Mike", "Zulu", "Alpha"]);
+    expect(filterExploreActivities({ sort: "price_asc" }, items()).map(({ id }) => id)).toEqual(["Alpha", "Mike", "Zulu"]);
+    expect(sortExploreActivities({}, items()).map(({ id }) => id)).toEqual(["Mike", "Zulu", "Alpha"]);
+  });
+
   it("matches any selected category when no type is selected", () => {
     const results = filterExploreActivities(
       { categories: ["food", "activity"] },
@@ -452,6 +464,32 @@ describe("Explore facet filters", () => {
     expect(results).toHaveLength(1);
     expect(results[0]).toMatchObject({ id: "shared-offer", outletId: "outlet-kuala-lumpur", price: 30 });
     expect(results[0].outlet.badgeSlugs).toEqual(["family_friendly"]);
+  });
+
+  it("prices an Open now result from its open outlets and counts open against all matching outlets", async () => {
+    const days = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+    const allDay = Object.fromEntries(days.map((day) => [day, { open: "00:00", close: "24:00" }]));
+    const closed = Object.fromEntries(days.map((day) => [day, { closed: true }]));
+    const outlets = [
+      { ...OUTLETS[1], id: "closed-cheap", operating_hours: closed },
+      { ...OUTLETS[1], id: "closed-mid", operating_hours: closed },
+      { ...OUTLETS[1], id: "open-a", operating_hours: allDay },
+      { ...OUTLETS[1], id: "open-b", operating_hours: allDay },
+    ];
+    const product = { ...SHARED_PRODUCT, outlet_offers: [
+      { outlet_id: "closed-cheap", price: 9.9, status: "active" },
+      { outlet_id: "closed-mid", price: 10.5, status: "active" },
+      { outlet_id: "open-a", price: 11.9, status: "active" },
+      { outlet_id: "open-b", price: 12.5, status: "active" },
+    ] };
+
+    const [open] = await searchExploreActivities({ openNow: true }, makeDb(outlets, [product]));
+    expect(open).toMatchObject({ price: 11.9, outlet: { id: "open-a" }, salesSummary: { outletCount: 2, fromPrice: 11.9 } });
+    expect(open.openNowSummary).toEqual({ totalOutletCount: 4, openOutletCount: 2 });
+
+    const [all] = await searchExploreActivities({}, makeDb(outlets, [product]));
+    expect(all.price).toBe(9.9);
+    expect(all.openNowSummary).toBeUndefined();
   });
 
   it("uses a place-bound state instead of a seller outlet state", () => {

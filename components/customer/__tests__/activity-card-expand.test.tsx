@@ -25,7 +25,7 @@ vi.mock("react-i18next", () => ({
 vi.mock("next/link", () => ({ default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => <a href={href} {...props}>{children}</a> }));
 vi.mock("lucide-react", () => {
   const Icon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />;
-  return { Accessibility: Icon, BedDouble: Icon, CheckCircle: Icon, Clock: Icon, Clock3: Icon, ImageOff: Icon, Info: Icon, MapPin: Icon, Star: Icon, Store: Icon, XIcon: Icon };
+  return { Accessibility: Icon, BedDouble: Icon, CheckCircle: Icon, Clock: Icon, Clock3: Icon, ImageOff: Icon, Info: Icon, MapPin: Icon, MapPinned: Icon, Star: Icon, Store: Icon, XIcon: Icon };
 });
 vi.mock("@/components/providers/wishlist", () => ({
   useOptionalWishlist: () => ({}),

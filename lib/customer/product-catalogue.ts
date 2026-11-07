@@ -9,7 +9,18 @@ export type ProductCatalogueCardData = {
   requiresBooking: boolean; rating: number; reviews: number;
   sales: ProductSalesSummary;
   singleOutlet?: { id: string; city: string | null; state: string | null; operatingHours: OperatingHours | null };
+  /** Home/Explore only: a paid placement and/or the merchant's ⭐ pick. Vendor-page cards never carry them. */
+  sponsored?: boolean;
+  featured?: boolean;
+  openNowSummary?: { totalOutletCount: number; openOutletCount: number };
+  /** The open outlet an Open now result was priced from; the card link preselects it. */
+  pinnedOutletId?: string;
 };
+
+/** The merchant's ⭐ pick; the featured-products save route keeps this tag in sync. */
+export function isMerchantFeatured(product: { tags?: string[] | null }): boolean {
+  return product.tags?.includes('featured') ?? false;
+}
 
 export function toVendorCatalogueCard(product: VendorProductCardData): ProductCatalogueCardData {
   const outlets = new Map<string, VendorProductCardData['soldAt'][number]>();
@@ -29,12 +40,14 @@ export function toVendorCatalogueCard(product: VendorProductCardData): ProductCa
   };
 }
 
-export function toDiscoveryCatalogueCard(product: ComputedActivity): ProductCatalogueCardData {
+export function toDiscoveryCatalogueCard(product: ComputedActivity & { sponsorship?: { placementId: string } | null }): ProductCatalogueCardData {
   const sales = product.salesSummary ?? { outletCount: 1, fromPrice: product.price };
   return {
     id: product.id, vendorId: product.vendorId ?? product.outlet.vendorId, name: product.name,
     description: product.description, productType: product.categorySlug ?? null, imageUrl: product.image,
     requiresBooking: product.requiresBooking, rating: product.rating, reviews: product.reviews, sales,
+    sponsored: Boolean(product.sponsorship), featured: isMerchantFeatured(product),
+    ...(product.openNowSummary ? { openNowSummary: product.openNowSummary, pinnedOutletId: product.outlet.id } : {}),
     ...(sales.outletCount === 1 && product.outlet.verified ? { singleOutlet: { id: product.outlet.id, city: product.outlet.city, state: product.outlet.state, operatingHours: product.outlet.operatingHours ?? null } } : {}),
   };
 }

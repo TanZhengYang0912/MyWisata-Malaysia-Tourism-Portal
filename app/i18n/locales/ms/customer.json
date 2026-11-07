@@ -1802,6 +1802,8 @@
       "combinedScore": "Skor gabungan daripada ulasan yang dipaparkan bagi penyenaraian vendor ini.",
       "locationCount_one": "{{count}} lokasi",
       "locationCount_other": "{{count}} lokasi",
+      "openNowCount_one": "{{count}} dibuka sekarang",
+      "openNowCount_other": "{{count}} dibuka sekarang",
       "publishedExperienceCount_one": "{{count}} pengalaman diterbitkan",
       "publishedExperienceCount_other": "{{count}} pengalaman diterbitkan",
       "listingCount_one": "{{count}} penyenaraian",

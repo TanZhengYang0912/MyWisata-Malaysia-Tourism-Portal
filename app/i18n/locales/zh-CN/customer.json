@@ -1802,6 +1802,8 @@
       "combinedScore": "综合此商家已发布项目中的公开评价得分。",
       "locationCount_one": "{{count}} 个地点",
       "locationCount_other": "{{count}} 个地点",
+      "openNowCount_one": "{{count}} 家营业中",
+      "openNowCount_other": "{{count}} 家营业中",
       "publishedExperienceCount_one": "{{count}} 个已发布体验",
       "publishedExperienceCount_other": "{{count}} 个已发布体验",
       "listingCount_one": "{{count}} 个项目",

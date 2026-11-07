@@ -1,4 +1,4 @@
-import { orderProductCatalogue } from "@/lib/customer/product-catalogue";
+import { isMerchantFeatured, orderProductCatalogue } from "@/lib/customer/product-catalogue";
 import { getOutletStock } from '@/lib/vendor/product-scope';
 // Owner: Member 2 / catalogue side (Vendor/Outlet/Product)
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -1189,7 +1189,8 @@ function matchesExploreActivity(
   return true;
 }
 
-function sortExploreActivities(filters: SearchFilters, activities: ComputedActivity[]): ComputedActivity[] {
+/** Explicit sorts reorder in place; the default name order puts merchant ⭐ picks first and returns a new array. */
+export function sortExploreActivities(filters: SearchFilters, activities: ComputedActivity[]): ComputedActivity[] {
   switch (filters.sort) {
     case "price_asc":
       activities.sort((a, b) => a.price - b.price);
@@ -1201,7 +1202,7 @@ function sortExploreActivities(filters: SearchFilters, activities: ComputedActiv
       activities.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
       break;
     default:
-      return orderProductCatalogue(activities);
+      return orderProductCatalogue(activities, orderProductCatalogue(activities.filter(isMerchantFeatured)).map(({ id }) => id));
   }
   return activities;
 }
@@ -1237,14 +1238,22 @@ export async function searchExploreActivities(filters: SearchFilters, db: Supaba
       activity.outletId,
     ].filter(Boolean))];
     const matchingOutlets = new Map<string, Outlet>();
+    const matchingAnyHours = new Map<string, Outlet>();
     for (const outletId of candidateOutletIds) {
       const outlet = outletMap.get(outletId);
       if (outlet && matchesExploreActivity(activity, outlet, filters, categorySelections, typeSelections, badgeSelections)) {
         matchingOutlets.set(outlet.id, outlet);
       }
+      if (filters.openNow && outlet && matchesExploreActivity(activity, outlet, { ...filters, openNow: false }, categorySelections, typeSelections, badgeSelections)) {
+        matchingAnyHours.set(outlet.id, outlet);
+      }
     }
     const computed = toComputed(activity, matchingOutlets, filters.near);
-    return computed ? [computed] : [];
+    if (!computed) return [];
+    if (!filters.openNow) return [computed];
+    const openOutletCount = computed.salesSummary?.outletCount ?? matchingOutlets.size;
+    const totalOutletCount = toComputed(activity, matchingAnyHours, filters.near)?.salesSummary?.outletCount ?? openOutletCount;
+    return [{ ...computed, openNowSummary: { totalOutletCount, openOutletCount } }];
   });
   return sortExploreActivities(filters, matchingActivities);
 }

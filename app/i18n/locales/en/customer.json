@@ -1797,6 +1797,8 @@
       "combinedScore": "A combined score from visible reviews across this vendor's published listings.",
       "locationCount_one": "{{count}} location",
       "locationCount_other": "{{count}} locations",
+      "openNowCount_one": "{{count}} open now",
+      "openNowCount_other": "{{count}} open now",
       "publishedExperienceCount_one": "{{count}} published experiences",
       "publishedExperienceCount_other": "{{count}} published experiences",
       "listingCount_one": "{{count}} listings",

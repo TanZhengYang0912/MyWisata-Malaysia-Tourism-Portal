@@ -174,8 +174,8 @@ describe("customer home first viewport", () => {
   });
 
   it("keeps the homepage discovery shelf under the Featured Highlights label", () => {
-    expect(homePageSource).toContain("selectHomeDiscoverySections(activities, recommended)");
-    expect(homeSource).toContain("highlightItems: (ComputedActivity & { property?: DiscoveryPropertySummary })[]");
+    expect(homePageSource).toContain("selectHomeDiscoverySections(activities, recommended, placements, requestedAt)");
+    expect(homeSource).toContain("highlightItems: (DiscoveryResult & { property?: DiscoveryPropertySummary })[]");
     expect(homeSource).toContain("forYouItems: ComputedActivity[]");
     expect(homeSource).not.toContain("groupAccommodationByProperty(popular)");
     expect(homeSource).toContain('t("ui.home.featuredHighlights")');

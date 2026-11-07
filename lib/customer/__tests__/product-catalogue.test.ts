@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ComputedActivity } from '@/backend/core/types';
-import { orderProductCatalogue, toDiscoveryCatalogueCard, toVendorCatalogueCard } from '@/lib/customer/product-catalogue';
+import { isMerchantFeatured, orderProductCatalogue, toDiscoveryCatalogueCard, toVendorCatalogueCard } from '@/lib/customer/product-catalogue';
 
 describe('ordinary product ordering', () => {
   it('orders names naturally with deterministic id ties without mutating input', () => {
@@ -12,6 +12,13 @@ describe('ordinary product ordering', () => {
   it('deduplicates products and featured ids, ignoring unavailable selections', () => {
     const items = [{ id: 'b', name: 'Tea 10' }, { id: 'a', name: 'Tea 2' }, { id: 'a', name: 'Duplicate' }];
     expect(orderProductCatalogue(items, ['b', 'b', 'missing']).map((item) => item.id)).toEqual(['b', 'a']);
+  });
+});
+
+describe('merchant featured tag', () => {
+  it('only treats the exact featured tag as a merchant star', () => {
+    expect(isMerchantFeatured({ tags: ['featured'] })).toBe(true);
+    for (const tags of [['Featured'], [], undefined, null]) expect(isMerchantFeatured({ tags })).toBe(false);
   });
 });
 
@@ -43,5 +50,26 @@ describe('home discovery card adapter', () => {
   it("keeps a single verified outlet's place and hours, but never an unverified one's", () => {
     expect(toDiscoveryCatalogueCard(activity({ outletCount: 1, fromPrice: 9 })).singleOutlet).toEqual({ id: 'o1', city: 'Ipoh', state: 'Perak', operatingHours: null });
     expect(toDiscoveryCatalogueCard(activity({ outletCount: 1, fromPrice: 9 }, false)).singleOutlet).toBeUndefined();
+  });
+
+  it('marks paid and merchant-featured products, and pins the open outlet only under Open now', () => {
+    const plain = toDiscoveryCatalogueCard(activity({ outletCount: 4, fromPrice: 3 }));
+    expect(plain).not.toHaveProperty('sponsored', true);
+    expect(plain.featured).toBe(false);
+    expect(plain.pinnedOutletId).toBeUndefined();
+    const both = toDiscoveryCatalogueCard(Object.assign(activity({ outletCount: 2, fromPrice: 11.9 }), {
+      tags: ['featured'], sponsorship: { placementId: 'pl1', label: 'Sponsored' as const },
+      openNowSummary: { totalOutletCount: 4, openOutletCount: 2 },
+    }));
+    expect(both.sponsored).toBe(true);
+    expect(both.featured).toBe(true);
+    expect(both.openNowSummary).toEqual({ totalOutletCount: 4, openOutletCount: 2 });
+    expect(both.pinnedOutletId).toBe('o1');
+  });
+
+  it('never labels vendor-page cards', () => {
+    const card = toVendorCatalogueCard({ id: 'p', vendorId: 'v', name: 'Tea', description: null, productType: 'food', imageUrl: null, fromPrice: 1, requiresBooking: false, rating: 0, reviews: 0, soldAt: [] });
+    expect(card.sponsored).toBeUndefined();
+    expect(card.featured).toBeUndefined();
   });
 });

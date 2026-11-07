@@ -35,6 +35,12 @@ describe("vendor-to-outlet commerce boundary", () => {
     expect(source).toContain('t("ui.labels.priceAvailability")');
   });
 
+  it("shows each outlet choice's live open status, falling back to the server's closed flag", () => {
+    expect(source).toContain("const outletStatus = useOutletOpenStatus();");
+    expect(source.match(/<OutletChoiceStatus choice=\{choice\} status=\{outletStatus\} \/>/g)).toHaveLength(2);
+    expect(source).not.toContain('{!choice.open && ` · ${t("ui.labels.currentlyClosed")}`}');
+  });
+
   it("preserves an outlet selected by an outlet-originated detail link", () => {
     expect(source).toContain('const requestedOutletId = searchParams.get("outletId");');
     expect(source).toContain("outletChoices.some((choice) => choice.outletId === requestedOutletId)");
