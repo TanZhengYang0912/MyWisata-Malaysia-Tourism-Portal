@@ -8,7 +8,8 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, FileText, MessageSquare, Mic, MicOff, Paperclip, Send, X } from "lucide-react";
+import { FileText, MessageSquare, Mic, MicOff, Paperclip, Send, X } from "lucide-react";
+import { Pagination } from "@/components/shared/pagination";
 import { useAuth } from "@/components/providers/auth";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -462,32 +463,7 @@ function AdminSupportContent() {
               </div>
             ))}
           </div>
-          {sortedTickets.length > 0 && (
-            <nav aria-label={t("ui.support.pagination")} className="flex flex-col gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-              <span>{t("ui.support.range", { first: (ticketPage - 1) * TICKETS_PER_PAGE + 1, last: Math.min(ticketPage * TICKETS_PER_PAGE, sortedTickets.length), total: sortedTickets.length })}</span>
-              {totalTicketPages > 1 && <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-label={t("ui.pagination.previousPage")}
-                  onClick={() => setTicketPage((page) => Math.max(1, page - 1))}
-                  disabled={ticketPage === 1}
-                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <ChevronLeft size={14} /> {t("ui.pagination.previous")}
-                </button>
-                <span className="min-w-20 text-center font-semibold text-foreground">{t("ui.pagination.pageOf", { page: ticketPage, total: totalTicketPages })}</span>
-                <button
-                  type="button"
-                  aria-label={t("ui.pagination.nextPage")}
-                  onClick={() => setTicketPage((page) => Math.min(totalTicketPages, page + 1))}
-                  disabled={ticketPage === totalTicketPages}
-                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {t("ui.pagination.next")} <ChevronRight size={14} />
-                </button>
-              </div>}
-            </nav>
-          )}
+          <Pagination ariaLabel={t("ui.support.pagination")} currentPage={ticketPage} totalPages={totalTicketPages} totalItems={sortedTickets.length} pageSize={TICKETS_PER_PAGE} onPageChange={setTicketPage} className="mt-0 border-t border-border px-5 py-3" />
         </div>
       )}
 

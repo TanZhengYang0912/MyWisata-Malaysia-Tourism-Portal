@@ -4,11 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { KycSecurityStatus } from "@/lib/kyc/types";
-import { Clock3, FileCheck2, Search, ShieldCheck, ChevronLeft, ChevronRight, ArrowRight, ChevronDown } from "lucide-react";
+import { Clock3, FileCheck2, Search, ShieldCheck, ArrowRight, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { User } from "@/backend/core/types";
 import { KYC_PAGE_SIZES, type KycQueueResult, type KycOperations, type KycReviewCandidate } from "@/lib/kyc/operations";
+import { Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
@@ -190,13 +191,7 @@ export default function AdminKycPage() {
             })}
           </div>
         )}
-        {queue && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3">
-          <span className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
-            <span>{t("kyc.operations.range", { first: queue.total ? (actualPage - 1) * pageSize + 1 : 0, last: Math.min(actualPage * pageSize, queue.total), total: queue.total })}</span>
-            <span>{t("ui.pagination.pageOf", { page: actualPage, total: Math.max(1, queue.totalPages) })}</span>
-          </span>
-          <div className="flex gap-2"><Button size="sm" variant="outline" aria-label={t("ui.pagination.previousPage")} disabled={loading || actualPage <= 1} onClick={() => { setPage(actualPage - 1); setLoading(true); }}><ChevronLeft size={14} /></Button><Button size="sm" variant="outline" aria-label={t("ui.pagination.nextPage")} disabled={loading || actualPage >= queue.totalPages} onClick={() => { setPage(actualPage + 1); setLoading(true); }}><ChevronRight size={14} /></Button></div>
-        </div>}
+        {queue && <Pagination currentPage={actualPage} totalPages={queue.totalPages} totalItems={queue.total} pageSize={pageSize} onPageChange={(next) => { setPage(next); setLoading(true); }} disabled={loading} className="mt-0 border-t border-border px-5 py-3" />}
       </section>
 
       <div className="grid items-start gap-4 lg:grid-cols-2">

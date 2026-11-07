@@ -4,6 +4,7 @@ import { RefreshCw, Search, ShieldCheck, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Pagination } from "@/components/shared/pagination";
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
 import { useAppDialog } from "@/components/providers/app-dialog";
 import { adminFilterControlClassName } from "@/components/admin/filter-bar";
@@ -478,7 +479,7 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
             </div>
             <p className="text-xs text-muted-foreground">{t("accessControl.staffEmployees.total", { count: invitationTotal })}</p>
             {invitations.length === 0 ? <p className="text-xs text-muted-foreground">{t("accessControl.staffRoles.noPendingInvitations")}</p> : <ul className="space-y-2">{invitations.map((item) => <li key={item.id} className="rounded-xl border border-border p-3 text-xs"><p className="font-semibold">{item.invitedEmail}</p><p>{t("accessControl.staffRoles.invitationListEntry", { roleName: item.roleName, status: t(`accessControl.staffEmployees.invitationStatuses.${item.status}`), delivery: t(`accessControl.staffRoles.delivery.${item.deliveryStatus}`) })}</p><p className="mt-1 text-muted-foreground">{t("accessControl.staffRoles.expiresAt", { value: `${formatDateTime(item.expiresAt, locale, { timeZone: "Asia/Kuala_Lumpur" })} MYT` })}</p>{["pending", "expired"].includes(item.status) && <div className="mt-2 flex gap-2"><Button size="sm" variant="outline" disabled={saving} onClick={() => void resendInvitation(item.id)}>{t("accessControl.staffRoles.resendInvitation")}</Button><Button size="sm" variant="outline" disabled={saving} onClick={() => void revokeInvitation(item.id)}>{t("accessControl.staffRoles.revokeInvitation")}</Button></div>}</li>)}</ul>}
-            <div className="flex items-center justify-between text-xs"><span>{t("accessControl.pagination.pageOf", { page: invitationPage, total: Math.max(invitationTotalPages, 1) })}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={loading || invitationPage <= 1} onClick={() => setInvitationPage((value) => value - 1)}>{t("accessControl.accessibility.previousPage")}</Button><Button size="sm" variant="outline" disabled={loading || invitationPage >= invitationTotalPages} onClick={() => setInvitationPage((value) => value + 1)}>{t("accessControl.accessibility.nextPage")}</Button></div></div>
+            <Pagination currentPage={invitationPage} totalPages={invitationTotalPages} totalItems={invitationTotal} pageSize={invitationPageSize} onPageChange={setInvitationPage} disabled={loading} className="mt-0" />
           </div>
         </section>
 

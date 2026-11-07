@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { ArrowUpRight, MapPin, Store } from "lucide-react";
-import { DirectoryPagination } from "@/components/customer/directory-pagination";
+import { Pagination } from "@/components/shared/pagination";
 import { DISCOVERY_CATEGORIES, getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import type { Outlet } from "@/backend/core/types";
@@ -216,10 +216,9 @@ export function NearbyOutlets({
               <OutletRow key={entry.outlet.id} outlet={entry.outlet} km={entry.km} />
             ))}
           </div>
-          <DirectoryPagination
+          <Pagination
             ariaLabel={t("ui.nearbyOutlets.paginationLabel")}
             currentPage={safePage}
-            itemLabel={t("ui.nearbyOutlets.itemLabel")}
             onPageChange={setPage}
             pageSize={PAGE_SIZE}
             totalItems={filtered.length}

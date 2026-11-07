@@ -268,6 +268,20 @@ describe("ExploreClient URL-backed advanced filters", () => {
     expect(findElements(container, (element) => /\b\d+\s+results\b/i.test(element.textContent ?? ""))).toHaveLength(0);
   });
 
+  it("shows one removable chip per applied facet and counts them on the Filters trigger", async () => {
+    await render(root, <ExploreClient initialActivities={activities} />);
+    const chipRow = findOne(container, (element) => element.getAttribute("data-testid") === "experience-active-filters");
+    const chips = findElements(chipRow, (element) => element.getAttribute("aria-label") === "ui.discovery.removeFilter");
+    expect(chips.map((chip) => chip.textContent)).toEqual(["Sabah", "Activity", "Nature", "Hidden Gem", "Family Friendly", "Couple Friendly"]);
+    expect(findOne(container, (element) => element.getAttribute("data-testid") === "experience-filter-trigger").textContent).toBe("Filters6");
+
+    await click(chips[0]);
+    const url = new URL(String(mocks.replace.mock.lastCall?.[0]), "https://mylawatan.test");
+    expect(url.searchParams.has("state")).toBe(false);
+    expect(url.searchParams.getAll("category")).toEqual(["activity"]);
+    expect(findOne(container, (element) => element.getAttribute("data-testid") === "experience-filter-trigger").textContent).toBe("Filters5");
+  });
+
   it("shows the unfiltered default view in the default Explore order, not the cached popularity order", async () => {
     mocks.params = new URLSearchParams("tab=experiences");
     mocks.sortExploreActivities.mockImplementation((_filters, candidates) => [...candidates].reverse());
@@ -308,7 +322,7 @@ describe("ExploreClient URL-backed advanced filters", () => {
     mocks.params = new URLSearchParams("tab=experiences");
     await render(root, <ExploreClient initialActivities={activities} />);
 
-    await click(button(container, "2"));
+    await click(labelled(container, "accessibility.nextPage"));
 
     const pageUrl = new URL(String(mocks.replace.mock.lastCall?.[0]), "https://mylawatan.test");
     expect(pageUrl.searchParams.get("tab")).toBe("experiences");
@@ -332,7 +346,7 @@ describe("ExploreClient URL-backed advanced filters", () => {
     expect(new URL(String(mocks.replace.mock.lastCall?.[0]), "https://mylawatan.test").searchParams.has("page")).toBe(false);
     expect(findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false).length).toBe(8);
 
-    await click(button(container, "2"));
+    await click(labelled(container, "accessibility.nextPage"));
     await setSelectValue(labelled(container, "Sort by"), "price_asc");
     expect(new URL(String(mocks.replace.mock.lastCall?.[0]), "https://mylawatan.test").searchParams.get("sort")).toBe("price_asc");
     expect(new URL(String(mocks.replace.mock.lastCall?.[0]), "https://mylawatan.test").searchParams.has("page")).toBe(false);

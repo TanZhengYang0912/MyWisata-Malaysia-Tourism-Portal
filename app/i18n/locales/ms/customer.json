@@ -2335,6 +2335,7 @@
       "filterDrawerTitle": "Tapis Pengalaman",
       "filterDrawerDescription": "Pilih negeri, kategori, jenis atau ciri untuk menapis senarai.",
       "showExperienceResults": "Tunjukkan Hasil",
+      "showResultsCount": "Tunjukkan {{count}} hasil",
       "destinations": "Destinasi",
       "experiences": "Pengalaman",
       "statesAndCities": "Negeri & Bandar",
@@ -2609,6 +2610,8 @@
     },
     "discovery": {
       "searchLabel": "Cari tempat dan pengalaman",
+      "searchPlaceholder": "Taip sebarang kata kunci…",
+      "removeFilter": "Buang penapis {{label}}",
       "advancedFilters": "Penapis lanjutan",
       "openingHours": "Waktu operasi",
       "locationAndPrice": "Lokasi dan bajet",

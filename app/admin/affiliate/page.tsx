@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, ChevronLeft, ChevronRight, Download, RefreshCw, Share2, TrendingUp } from "lucide-react";
+import { Pagination } from "@/components/shared/pagination";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
 import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
@@ -854,13 +855,7 @@ export default function AdminAffiliatePage() {
             </div>
           )}
           {disabledLinksTotal > disabledLinksPageSize && (
-            <div className="mt-3 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span>{t("affiliate.pagination.showing", { first: (disabledLinksPage - 1) * disabledLinksPageSize + 1, last: Math.min(disabledLinksPage * disabledLinksPageSize, disabledLinksTotal), total: disabledLinksTotal })}</span>
-              <div className="flex items-center gap-1">
-                <Button size="sm" variant="outline" aria-label={t("affiliate.pagination.previous")} disabled={disabledLinksPage <= 1} onClick={() => setDisabledLinksPage((page) => Math.max(1, page - 1))}><ChevronLeft size={14} /></Button>
-                <Button size="sm" variant="outline" aria-label={t("affiliate.pagination.next")} disabled={disabledLinksPage >= Math.ceil(disabledLinksTotal / disabledLinksPageSize)} onClick={() => setDisabledLinksPage((page) => page + 1)}><ChevronRight size={14} /></Button>
-              </div>
-            </div>
+            <Pagination currentPage={disabledLinksPage} totalPages={Math.ceil(disabledLinksTotal / disabledLinksPageSize)} totalItems={disabledLinksTotal} pageSize={disabledLinksPageSize} onPageChange={setDisabledLinksPage} className="mt-3" />
           )}
         </div>
       </div>
@@ -1063,18 +1058,7 @@ export default function AdminAffiliatePage() {
           </tbody>
         </table>
       </div>
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>{t("affiliate.pagination.showing", { first: fraudTotal ? (fraudPage - 1) * fraudPageSize + 1 : 0, last: Math.min(fraudPage * fraudPageSize, fraudTotal), total: fraudTotal })}</span>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" disabled={fraudPage <= 1} aria-label={t("affiliate.pagination.previous")} onClick={() => { setFraudPage((page) => Math.max(1, page - 1)); setSelectedFlagIds(new Set()); }}>
-            <ChevronLeft size={14} /> {t("affiliate.pagination.previous")}
-          </Button>
-          <span className="min-w-24 text-center">{t("affiliate.pagination.pageOf", { page: fraudPage, total: Math.max(1, fraudTotalPages) })}</span>
-          <Button variant="outline" size="sm" disabled={fraudPage >= fraudTotalPages || fraudTotalPages === 0} aria-label={t("affiliate.pagination.next")} onClick={() => { setFraudPage((page) => page + 1); setSelectedFlagIds(new Set()); }}>
-            {t("affiliate.pagination.next")} <ChevronRight size={14} />
-          </Button>
-        </div>
-      </div>
+      <Pagination currentPage={fraudPage} totalPages={fraudTotalPages} totalItems={fraudTotal} pageSize={fraudPageSize} onPageChange={(next) => { setFraudPage(next); setSelectedFlagIds(new Set()); }} className="mb-8 mt-3" />
 
       <AdminFilterBar className="mb-3">
         <p className="text-xs font-bold uppercase tracking-wider text-primary">{t("affiliate.allAttributions")}</p>

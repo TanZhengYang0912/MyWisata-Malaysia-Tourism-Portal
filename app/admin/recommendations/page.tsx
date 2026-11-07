@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ArrowUpRight, CheckCircle2, ChevronLeft, ChevronRight, Filter, Gift, Search } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Filter, Gift, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Pagination } from "@/components/shared/pagination";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { useAuth } from "@/components/providers/auth";
@@ -167,10 +168,7 @@ export default function AdminRecommendationsPage() {
           </div>
         )}
 
-        <div className="flex items-center justify-between border-t border-border px-5 py-3">
-          <span className="text-xs text-muted-foreground">{t("ui.recommendations.range", { first: data.total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1, last: Math.min(page * PAGE_SIZE, data.total), total: data.total, kind: t("ui.recommendations.queueItems") })}</span>
-          <div className="flex gap-2"><Button size="sm" variant="outline" aria-label={t("ui.pagination.previousPage")} disabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={14} /></Button><Button size="sm" variant="outline" aria-label={t("ui.pagination.nextPage")} disabled={page >= data.totalPages || loading} onClick={() => setPage((value) => value + 1)}><ChevronRight size={14} /></Button></div>
-        </div>
+        <Pagination currentPage={page} totalPages={data.totalPages} totalItems={data.total} pageSize={PAGE_SIZE} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-5 py-3" />
       </section>
     </AdminPageShell>
   );

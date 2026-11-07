@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Pagination } from "@/components/shared/pagination";
 import { useActionFeedback } from "@/components/providers/action-feedback";
-import { CalendarClock, ChevronLeft, ChevronRight, ImagePlus, Loader2, MapPin, Megaphone, RefreshCw, Save, Send, ShieldCheck, X } from "lucide-react";
+import { CalendarClock, ImagePlus, Loader2, MapPin, Megaphone, RefreshCw, Save, Send, ShieldCheck, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { Button } from "@/components/ui/button";
@@ -488,10 +489,7 @@ export default function PromotionCampaignsPage() {
               {campaign.locations?.length && campaign.locations.every((location) => location.status === "cancelled") ? <p className="text-xs text-destructive">{t("promotionCampaigns.allLocationsCancelled")}</p> : null}</div>
               <div className="flex flex-wrap gap-2 xl:justify-end"><Button type="button" variant="outline" size="sm" disabled={childEditing || busy || uploading} aria-expanded={openLocationsFor === campaign.id} onClick={() => setOpenLocationsFor((current) => (current === campaign.id ? null : campaign.id))}><MapPin size={14} /> {t("promotionCampaigns.locations.toggle", { count: campaign.locations?.length ?? 0 })}</Button>{(campaign.status === "draft" || campaign.status === "rejected" || campaign.status === "approved" || campaign.status === "paused") && <Button type="button" variant="outline" size="sm" disabled={busy || childEditing || uploading} onClick={() => void editCampaign(campaign)}><Save size={14} /> {t("promotionCampaigns.actions.edit")}</Button>}{actionForStatus(campaign.status).map((action) => <Button key={action} type="button" size="sm" variant={action === "reject" || action === "archive" ? "outline" : "default"} disabled={busy || childEditing || uploading || editing?.id === campaign.id || ((action === "submit" || action === "approve" || action === "resume") && !canPublishRow(campaign))} title={(action === "submit" || action === "approve" || action === "resume") && !canPublishRow(campaign) ? t("promotionCampaigns.form.rowNotReady") : undefined} onClick={() => void transition(campaign, action)}>{action === "approve" ? <ShieldCheck size={14} /> : action === "submit" ? <Send size={14} /> : null}{t(`promotionCampaigns.actions.${action}`)}</Button>)}</div>
             </article>)}</div>}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
-              <span>{tCommon("pagination.showing", { first: filteredCampaigns.length ? (pagedCampaigns.page - 1) * pageSize + 1 : 0, last: Math.min(pagedCampaigns.page * pageSize, filteredCampaigns.length), total: filteredCampaigns.length })}</span>
-              <div className="flex items-center gap-2"><span>{t("ui.pagination.pageOf", { page: pagedCampaigns.page, total: pagedCampaigns.totalPages })}</span>{pagedCampaigns.totalPages > 1 && <><Button type="button" variant="outline" size="sm" aria-label={tCommon("accessibility.previousPage")} disabled={pagedCampaigns.page <= 1 || childEditing} onClick={() => setPage(pagedCampaigns.page - 1)}><ChevronLeft size={14} /></Button><Button type="button" variant="outline" size="sm" aria-label={tCommon("accessibility.nextPage")} disabled={pagedCampaigns.page >= pagedCampaigns.totalPages || childEditing} onClick={() => setPage(pagedCampaigns.page + 1)}><ChevronRight size={14} /></Button></>}</div>
-            </div>
+            <Pagination currentPage={pagedCampaigns.page} totalPages={pagedCampaigns.totalPages} totalItems={filteredCampaigns.length} pageSize={pageSize} onPageChange={setPage} disabled={childEditing} className="mt-0 border-t border-border px-5 py-3" />
           </section>
 
           <Dialog open={Boolean(previewUrl)} onOpenChange={(open) => { if (!open) setPreviewUrl(null); }}>

@@ -12,7 +12,7 @@ import ProductForm from '@/components/vendor/product-form';
 import ProductDetailsPage from '@/components/vendor/product-details-page';
 import CompactFilterBar from '@/components/vendor/compact-filter-bar';
 import CompactThumbnail from '@/components/vendor/compact-thumbnail';
-import PaginationControls from '@/components/vendor/pagination-controls';
+import { Pagination as SharedPagination } from '@/components/shared/pagination';
 import BatchActionBar from '@/components/vendor/batch-action-bar';
 import { outletLocation, outletShortName, outletIdLabel } from '@/lib/outlet-display';
 import { useActionFeedback } from '@/components/providers/action-feedback';
@@ -651,7 +651,7 @@ export default function VendorProductsPage() {
               ))}
             </div>
           </div>
-          <PaginationControls page={pagination.page} totalPages={pagination.totalPages} total={pagination.total} pageSize={pagination.pageSize} onPageChange={(page) => { setPagination((current) => ({ ...current, page })); loadProducts(page); }} />
+          <SharedPagination currentPage={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.total} pageSize={pagination.pageSize} onPageChange={(page) => { setPagination((current) => ({ ...current, page })); loadProducts(page); }} className="mt-0 border-t border-border px-4 py-3" />
         </>}
       </section>
       </>}

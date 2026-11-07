@@ -8,7 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { AlertTriangle, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Map as MapIcon, Navigation, Pencil, Plus, Search, ShoppingCart, SlidersHorizontal, Sparkles, Star, X } from "lucide-react";
 import { MapView, type MapPin } from "@/components/map/map-view";
-import { DirectoryPagination } from "@/components/customer/directory-pagination";
+import { Pagination } from "@/components/shared/pagination";
 import { CATEGORIES, getBookingSlots, getOutlet } from "@/backend/domains/catalogue";
 import { TRAVEL_MODES, buildGoogleMapsDirectionsUrl, type TravelModeId } from "@/lib/travel-modes";
 import { ROUTE_TRAFFIC_COLORS, buildRouteDepartureTime, type GeoHit } from "@/lib/routing";
@@ -1399,15 +1399,15 @@ export function MapClient({
             </ul>
             {filteredActivities.length === 0 && <div className="rounded-2xl border border-dashed border-border px-4 py-10 text-center"><Search size={22} className="mx-auto mb-2 text-muted-foreground" /><p className="text-xs font-bold text-foreground">{tCustomer("ui.map.noPlacesRadius")}</p><p className="mt-1 text-[11px] text-muted-foreground">{tCustomer("ui.map.noPlacesRadius")}</p></div>}
           </div>
-          <DirectoryPagination
+          <Pagination
             ariaLabel={tCustomer("strictMigration.tripPlanner.placePagination")}
             currentPage={safePlacesPage}
-            itemLabel={tCustomer("strictMigration.tripPlanner.placeItemLabel")}
             onPageChange={setPlacesPage}
             pageSize={PLACES_PAGE_SIZE}
             totalItems={filteredActivities.length}
             totalPages={placesTotalPages}
-            variant="compact"
+            showSummary={false}
+            className="mt-0 border-t border-border bg-card px-3 py-1"
           />
           </>}
           </div>

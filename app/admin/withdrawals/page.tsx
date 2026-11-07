@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { formatMYRFromSen } from "@/lib/i18n/format";
+import { Pagination } from "@/components/shared/pagination";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { WithdrawalReviewQueueRow } from "@/components/admin/withdrawal-review-queue-row";
@@ -38,7 +39,6 @@ const ENUM_VALUE_KEYS: Record<string, string> = {
 
 export default function AdminWithdrawalsPage() {
   const { t, i18n } = useTranslation("admin");
-  const { t: tCommon } = useTranslation("common");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const { showFeedback } = useActionFeedback();
   const [items, setItems] = useState<WithdrawalListItem[]>([]);
@@ -131,7 +131,7 @@ export default function AdminWithdrawalsPage() {
             {loading && items.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">{t("withdrawals.loading")}</div> : items.length === 0 ? <EmptyState title={t("withdrawals.empty.noRequests")} /> : <div className="divide-y divide-border">{items.map((item) => <WithdrawalReviewQueueRow key={item.id} item={item} locale={locale} t={(key, options) => t(key, options)} formatAmount={formatMYRFromSen} formatAge={formatAge} displayStatus={displayStatus} />)}</div>}
           </div>
         </div>
-        <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground"><span>{t("withdrawals.pagination.pageOf", { page, totalPages: Math.max(totalPages, 1) })}</span>{totalPages > 1 && <div className="flex gap-2"><Button size="sm" variant="outline" aria-label={tCommon("accessibility.previousPage")} disabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={14} /></Button><Button size="sm" variant="outline" aria-label={tCommon("accessibility.nextPage")} disabled={page >= totalPages || loading} onClick={() => setPage((value) => value + 1)}><ChevronRight size={14} /></Button></div>}</div>
+        <Pagination currentPage={page} totalPages={totalPages} totalItems={total} pageSize={pageSize} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-5 py-3" />
       </section>
     </AdminPageShell>
   );

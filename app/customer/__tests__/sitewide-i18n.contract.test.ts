@@ -120,7 +120,6 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/kyc-photo-preview.tsx",
   "components/customer/customer-qr-pass-card.tsx",
   "components/customer/destination-preview-modal.tsx",
-  "components/customer/directory-pagination.tsx",
   "components/customer/discovery-filters.tsx",
   "components/customer/event-calendar-dialog.tsx",
   "components/customer/event-items-table.tsx",

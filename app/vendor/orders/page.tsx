@@ -16,7 +16,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { StatusBadge } from "@/components/ui/badge";
 import CompactThumbnail from "@/components/vendor/compact-thumbnail";
-import PaginationControls from "@/components/vendor/pagination-controls";
+import { Pagination as SharedPagination } from "@/components/shared/pagination";
 import BatchActionBar from "@/components/vendor/batch-action-bar";
 import ActionConfirmationDialog from "@/components/vendor/action-confirmation-dialog";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -1132,16 +1132,15 @@ export default function VendorOrdersPage() {
                 </div>
               </div>
             </div>
-            <PaginationControls
-              page={pagination.page}
+            <SharedPagination
+              currentPage={pagination.page}
               totalPages={pagination.totalPages}
-              total={pagination.total}
+              totalItems={pagination.total}
               pageSize={pagination.pageSize}
               onPageChange={(page) => {
                 setPagination((current) => ({ ...current, page }));
                 loadOrders(page);
-              }}
-            />
+              }} className="mt-0 border-t border-border px-4 py-3" />
           </>
         )}
       </section>

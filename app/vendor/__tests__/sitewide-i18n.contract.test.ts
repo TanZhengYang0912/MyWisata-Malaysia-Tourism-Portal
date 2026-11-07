@@ -85,7 +85,7 @@ const priorTaskFiles = new Set([
   'components/layout/portal-sidebar.tsx',
   'components/layout/vendor-sidebar.tsx',
   'components/vendor/compact-filter-bar.tsx',
-  'components/vendor/pagination-controls.tsx',
+  'components/shared/pagination.tsx',
   'components/vendor/redemption-scanner.tsx',
   'components/vendor/register-vendor-form.tsx',
   'components/vendor/vendor-invite-account-step.tsx',

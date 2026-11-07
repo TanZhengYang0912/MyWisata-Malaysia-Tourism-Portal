@@ -2330,6 +2330,7 @@
       "filterDrawerTitle": "Filter Experiences",
       "filterDrawerDescription": "Choose a state, category, type, or feature to narrow the listings.",
       "showExperienceResults": "Show Results",
+      "showResultsCount": "Show {{count}} results",
       "destinations": "Destinations",
       "experiences": "Experiences",
       "statesAndCities": "States & Cities",
@@ -2604,6 +2605,8 @@
     },
     "discovery": {
       "searchLabel": "Search places and experiences",
+      "searchPlaceholder": "Type any keyword…",
+      "removeFilter": "Remove {{label}} filter",
       "advancedFilters": "Advanced filters",
       "openingHours": "Opening hours",
       "locationAndPrice": "Location and budget",

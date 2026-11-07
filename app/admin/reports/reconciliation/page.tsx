@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight, Download, RefreshCw, Scale } from "lucide-react";
+import { AlertTriangle, Download, RefreshCw, Scale } from "lucide-react";
+import { Pagination } from "@/components/shared/pagination";
 import { useAppDialog } from "@/components/providers/app-dialog";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
@@ -36,7 +37,6 @@ function futureDeadlineIso(value: string | undefined): string | null {
 export default function ReconciliationPage() {
   const { prompt, confirm } = useAppDialog();
   const { t, i18n } = useTranslation("admin");
-  const { t: tCommon } = useTranslation("common");
   const locale = i18n.language === "zh-CN" ? "zh-CN" : i18n.language === "ms" ? "ms-MY" : "en-MY";
   const [period, setPeriod] = useState(currentMonth);
   const [data, setData] = useState<(OrderReconciliation & { eventOperations: EventOperations }) | null>(null);
@@ -331,16 +331,7 @@ export default function ReconciliationPage() {
                 </table>
               </div>
             )}
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3 text-xs text-muted-foreground">
-              <span>{tCommon('pagination.showing', { first: filteredRows.length ? (pagedRows.page - 1) * financialPageSize + 1 : 0, last: Math.min(pagedRows.page * financialPageSize, filteredRows.length), total: filteredRows.length })}</span>
-              <div className="flex items-center gap-2">
-                <span>{t('ui.pagination.pageOf', { page: pagedRows.page, total: pagedRows.totalPages })}</span>
-                {pagedRows.totalPages > 1 && <div className="flex gap-2">
-                  <Button size="sm" variant="outline" aria-label={tCommon('accessibility.previousPage')} disabled={pagedRows.page <= 1 || loading} onClick={() => setFinancialPage(pagedRows.page - 1)}><ChevronLeft size={14} /></Button>
-                  <Button size="sm" variant="outline" aria-label={tCommon('accessibility.nextPage')} disabled={pagedRows.page >= pagedRows.totalPages || loading} onClick={() => setFinancialPage(pagedRows.page + 1)}><ChevronRight size={14} /></Button>
-                </div>}
-              </div>
-            </div>
+            <Pagination currentPage={pagedRows.page} totalPages={pagedRows.totalPages} totalItems={filteredRows.length} pageSize={financialPageSize} onPageChange={setFinancialPage} disabled={loading} className="mt-4 border-t border-border pt-3" />
           </div>
           </>}
         </section>

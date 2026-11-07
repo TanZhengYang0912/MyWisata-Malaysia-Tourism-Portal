@@ -71,7 +71,11 @@
   "pagination": {
     "page": "第 {{current}} 页，共 {{total}} 页",
     "items": "{{count}} 项",
-    "showing": "显示第 {{first}}–{{last}} 项，共 {{total}} 项"
+    "showing": "显示第 {{first}}–{{last}} 项，共 {{total}} 项",
+    "range": "第 {{from}}–{{to}} 条，共 {{total}} 条结果",
+    "navLabel": "分页",
+    "goToPage": "跳转到页面",
+    "ofTotal": "共 {{total}} 页"
   },
   "statuses": {
     "draft": "草稿",
@@ -115,7 +119,9 @@
     "search": "搜索",
     "previousPage": "上一页",
     "nextPage": "下一页",
-    "openNavigation": "打开导航菜单"
+    "openNavigation": "打开导航菜单",
+    "firstPage": "第一页",
+    "lastPage": "最后一页"
   },
   "filters": {
     "searchByName": "按名称搜索…",

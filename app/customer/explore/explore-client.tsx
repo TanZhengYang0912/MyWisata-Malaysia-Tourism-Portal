@@ -4,13 +4,13 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import Image from "next/image";
-import { Compass, Map, SlidersHorizontal } from "lucide-react";
+import { ArrowUpDown, ChevronDown, Compass, Map, MapPin, SlidersHorizontal, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import * as catalogueDomain from "@/backend/domains/catalogue";
 import { ActivityCard } from "@/components/customer/activity-card";
 import { toDiscoveryCatalogueCard } from "@/lib/customer/product-catalogue";
 import { CustomerDiscoveryFilterPanel, DiscoverySearchField } from "@/components/customer/discovery-filters";
-import { DirectoryPagination } from "@/components/customer/directory-pagination";
+import { Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
@@ -298,6 +298,20 @@ export function ExploreClient({
     filters.freeOnly || filters.bookableOnly || filters.hiddenGemOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly,
   );
 
+  // One removable chip per applied experience facet; the Filters count is the chip count.
+  const experienceChips: { key: string; label: string; icon?: boolean; remove: Partial<DiscoveryQuery> }[] = [
+    ...(filters.state && filters.state !== "All Malaysia" ? [{ key: "state", label: filters.state, icon: true, remove: { state: null } }] : []),
+    ...filters.categories.map((category) => ({
+      key: `category-${category}`,
+      label: t(`categories.${category}`),
+      remove: { categories: filters.categories.filter((item) => item !== category), types: filters.types.filter((item) => !item.startsWith(`${category}:`)) },
+    })),
+    ...filters.types.map((token) => ({ key: `type-${token}`, label: t(`ui.map.types.${token.split(":")[1]}`), remove: { types: filters.types.filter((item) => item !== token) } })),
+    ...(filters.openNow ? [{ key: "openNow", label: t("ui.labels.openNow"), remove: { openNow: false } }] : []),
+    ...(["hiddenGemOnly", "familyFriendlyOnly", "coupleFriendlyOnly"] as const)
+      .filter((key) => filters[key])
+      .map((key) => ({ key, label: t(`ui.discovery.${key}`), remove: { [key]: false } })),
+  ];
   const updateFilters = (patch: Partial<DiscoveryQuery>) => {
     const merged = { ...filters, ...patch };
     const next = tab === "experiences" ? normalizeExperienceFilters(merged) : merged;
@@ -449,35 +463,60 @@ export function ExploreClient({
         <Dialog open={experienceFiltersOpen} onOpenChange={setExperienceFiltersOpen}>
           <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
             <section className="min-w-0">
-              <div data-testid="experience-toolbar" className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <DiscoverySearchField value={filters.q} onChange={(q) => updateFilters({ q })} placeholder={t("ui.map.searchExperience")} />
-                <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
+              <div data-testid="experience-toolbar" className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-end sm:gap-8">
+                <DiscoverySearchField value={filters.q} onChange={(q) => updateFilters({ q })} />
+                <div className="flex shrink-0 items-end gap-5 sm:gap-8">
                   <DialogTrigger asChild>
-                    <Button
+                    <button
                       type="button"
-                      variant="outline"
-                      size="sm"
                       data-testid="experience-filter-trigger"
+                      className={`inline-flex min-h-12 items-center gap-2.5 border-b-2 px-1 text-[15px] font-bold text-primary transition-colors focus-visible:border-primary focus-visible:outline-none ${experienceChips.length > 0 ? "border-primary" : "border-primary/15 hover:border-primary/40"}`}
                     >
-                      <SlidersHorizontal aria-hidden="true" />
+                      <SlidersHorizontal size={18} aria-hidden="true" />
                       {t("ui.explore.filters")}
-                    </Button>
+                      {experienceChips.length > 0 && (
+                        <span className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full border-[1.5px] border-primary/30 px-1.5 text-xs font-extrabold text-primary">
+                          {experienceChips.length}
+                        </span>
+                      )}
+                    </button>
                   </DialogTrigger>
-                  <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-                    <span>{t("ui.explore.sortBy")}</span>
+                  <label className={`relative inline-flex min-h-12 min-w-0 flex-1 items-center gap-2.5 border-b-2 px-1 text-primary transition-colors focus-within:border-primary sm:w-[220px] sm:flex-none ${sort !== "recommended" ? "border-primary" : "border-primary/15 hover:border-primary/40"}`}>
+                    <ArrowUpDown size={18} aria-hidden="true" className="shrink-0" />
                     <select
                       aria-label={t("ui.explore.sortBy")}
                       value={sort}
                       onChange={(event) => changeExperienceSort(readExperienceSort(event.target.value))}
-                      className="min-h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground"
+                      className="min-w-0 flex-1 cursor-pointer appearance-none bg-transparent pr-6 text-[15px] font-bold text-primary outline-none"
                     >
                       <option value="recommended">{t("ui.explore.sortRecommended")}</option>
                       <option value="price_asc">{t("ui.explore.sortPriceAsc")}</option>
                       <option value="rating_desc">{t("ui.explore.sortRatingDesc")}</option>
                     </select>
+                    <ChevronDown size={14} aria-hidden="true" className="pointer-events-none absolute right-1" />
                   </label>
                 </div>
               </div>
+              {experienceChips.length > 0 && (
+                <div data-testid="experience-active-filters" className="-mt-2 mb-6 flex flex-wrap items-center gap-2.5">
+                  {experienceChips.map((chip) => (
+                    <button
+                      key={chip.key}
+                      type="button"
+                      aria-label={t("ui.discovery.removeFilter", { label: chip.label })}
+                      onClick={() => updateFilters(chip.remove)}
+                      className="inline-flex h-[34px] items-center gap-2 rounded-full border-[1.5px] border-primary pl-3 pr-2.5 text-[13px] font-bold text-primary transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    >
+                      {chip.icon && <MapPin size={15} aria-hidden="true" />}
+                      {chip.label}
+                      <X size={15} aria-hidden="true" />
+                    </button>
+                  ))}
+                  <button type="button" onClick={clearFilters} className="px-0.5 py-1.5 text-[13px] font-bold text-primary underline underline-offset-4 hover:text-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                    {t("ui.actions.clearFilters")}
+                  </button>
+                </div>
+              )}
               {displayActivities.length === 0 ? (
                 dataUnavailable ? null : (
                   <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
@@ -496,16 +535,13 @@ export function ExploreClient({
                 </div>
               )}
               {displayActivities.length > 0 && (
-                <DirectoryPagination
+                <Pagination
                   ariaLabel={t("ui.pagination.experiencePages")}
                   currentPage={currentExperiencePage}
-                  itemLabel={t("ui.pagination.experienceItems")}
                   onPageChange={changeExperiencePage}
                   pageSize={EXPERIENCE_PAGE_SIZE}
                   totalItems={displayActivities.length}
                   totalPages={totalExperiencePages}
-                  variant="marketplace"
-                  showSummary={false}
                 />
               )}
             </section>
@@ -518,7 +554,7 @@ export function ExploreClient({
             className="fixed inset-y-0 right-0 left-auto top-0 z-50 flex h-dvh max-h-dvh w-full max-w-[430px] translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-y-0 border-r-0 p-0 shadow-xl duration-200 data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right sm:max-w-[430px]"
           >
             <DialogHeader className="shrink-0 border-b border-border px-5 py-5 pr-14">
-              <DialogTitle id="experience-filter-title">{t("ui.explore.filterDrawerTitle")}</DialogTitle>
+              <DialogTitle id="experience-filter-title" className="text-primary">{t("ui.explore.filterDrawerTitle")}</DialogTitle>
               <DialogDescription id="experience-filter-description" className="text-sm text-muted-foreground">
                 {t("ui.explore.filterDrawerDescription")}
               </DialogDescription>
@@ -531,17 +567,16 @@ export function ExploreClient({
                   hasActiveFilters={hasActiveFilters}
                   onChange={updateFilters}
                   onClear={clearFilters}
-                  placeholder={t("ui.map.searchExperience")}
                   category={null}
                   onCategoryChange={() => undefined}
                 />
             </div>
-            <div className="flex shrink-0 gap-3 border-t border-border bg-background px-5 py-4">
-              <Button type="button" variant="outline" className="flex-1" onClick={clearFilters}>
+            <div className="flex shrink-0 items-center gap-4 border-t border-border bg-background px-5 py-4">
+              <button type="button" onClick={clearFilters} className="px-0.5 py-1.5 text-[13px] font-bold text-primary underline underline-offset-4 hover:text-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
                 {t("ui.actions.clearFilters")}
-              </Button>
-              <Button type="button" className="flex-1" onClick={() => setExperienceFiltersOpen(false)}>
-                {t("ui.explore.showExperienceResults")}
+              </button>
+              <Button type="button" className="h-11 flex-1 rounded-xl font-bold" onClick={() => setExperienceFiltersOpen(false)}>
+                {t("ui.explore.showResultsCount", { count: displayActivities.length })}
               </Button>
             </div>
           </DialogContent>

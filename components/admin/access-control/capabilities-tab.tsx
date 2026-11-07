@@ -1,9 +1,10 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Edit3, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { Edit3, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Pagination } from "@/components/shared/pagination";
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
 import { capabilityLabel } from "@/components/admin/access-control/capability-label";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
@@ -104,7 +105,7 @@ export function CapabilitiesTab({ focusId, onViewAudit }: { focusId: string | nu
             </tbody>
           </table>
         </div>
-        {loading && result.items.length === 0 ? <StateRow text={t("accessControl.states.loading")} /> : result.items.length === 0 ? <StateRow text={t("accessControl.states.noCapabilities")} /> : <Pagination page={result.page} totalPages={result.totalPages} loading={loading} setPage={setPage} />}
+        {loading && result.items.length === 0 ? <StateRow text={t("accessControl.states.loading")} /> : result.items.length === 0 ? <StateRow text={t("accessControl.states.noCapabilities")} /> : <Pagination currentPage={result.page} totalPages={result.totalPages} totalItems={result.total} pageSize={result.pageSize} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-5 py-3" />}
       </section>
 
       <Dialog open={editorOpen && Boolean(edit)} onOpenChange={(open) => { setEditorOpen(open); if (!open && !confirmOpen) setEdit(null); }}>
@@ -132,4 +133,3 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 function ToneBadge({ value, label }: { value: string; label: string }) { const tone = value === "critical" || value === "disabled" ? "bg-destructive/10 text-destructive" : value === "high" ? "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300" : "bg-primary/10 text-primary"; return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${tone}`}>{label}</span>; }
 function StateRow({ text }: { text: string }) { return <div className="border-t border-border px-5 py-12 text-center text-sm text-muted-foreground">{text}</div>; }
 function SuccessReceipt({ text, onClick }: { text: string; onClick?: () => void }) { const { t } = useTranslation("admin"); return <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-primary"><span>{text}</span>{onClick && <Button size="sm" variant="outline" onClick={onClick}>{t("accessControl.actions.viewAuditEvent")}</Button>}</div>; }
-function Pagination({ page, totalPages, loading, setPage }: { page: number; totalPages: number; loading: boolean; setPage: React.Dispatch<React.SetStateAction<number>> }) { const { t } = useTranslation("admin"); return <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground"><span>{t("accessControl.pagination.pageOf", { page, total: Math.max(totalPages, 1) })}</span><div className="flex gap-2"><Button size="sm" variant="outline" aria-label={t("accessControl.accessibility.previousPage")} disabled={loading || page <= 1} onClick={() => setPage((value) => value - 1)}><ChevronLeft /></Button><Button size="sm" variant="outline" aria-label={t("accessControl.accessibility.nextPage")} disabled={loading || page >= totalPages} onClick={() => setPage((value) => value + 1)}><ChevronRight /></Button></div></div>; }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
+import { Pagination } from "@/components/shared/pagination";
 import { Star } from "lucide-react";
 import type { ScopedReviewItem, ReviewRatingBucket } from "@/backend/domains/vendor-reviews";
 import { FeedbackCollection, type FeedbackReviewItem } from "@/components/customer/feedback/feedback-collection";
@@ -116,15 +117,8 @@ export function VendorReviewsList({ reviews: initialReviews, ratingBuckets: init
       ) : (
         <FeedbackCollection mode="reviews" items={reviews.map(reviewPresentation)} controls={controls} />
       )}
-      {!loading && totalPages > 1 && (
-        <nav aria-label={t("ui.reviews.pages")} className="flex items-center justify-between border-t border-border pt-4">
-          <Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => void loadPage(page - 1)}>{t("actions.previous", { ns: "common" })}</Button>
-          <span className="text-xs text-muted-foreground">{t("ui.reviews.paginationSummary", {
-            pageLabel: t("ui.reviews.pageOf", { page, total: totalPages }),
-            reviewCountLabel: t("ui.reviews.count", { count: total }),
-          })}</span>
-          <Button type="button" size="sm" variant="outline" disabled={page >= totalPages} onClick={() => void loadPage(page + 1)}>{t("actions.next", { ns: "common" })}</Button>
-        </nav>
+      {!loading && (
+        <Pagination ariaLabel={t("ui.reviews.pages")} currentPage={page} totalPages={totalPages} totalItems={total} pageSize={PAGE_SIZE} onPageChange={(nextPage) => void loadPage(nextPage)} />
       )}
     </div>
   );

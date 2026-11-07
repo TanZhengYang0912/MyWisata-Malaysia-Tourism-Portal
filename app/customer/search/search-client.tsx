@@ -3,9 +3,9 @@
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowRight, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
+import { ArrowRight, MapPin } from "lucide-react";
 import type { ComputedActivity, SponsoredPlacement, VendorSummary } from "@/backend/core/types";
-import { getPageItems } from "@/components/customer/directory-pagination";
+import { Pagination } from "@/components/shared/pagination";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PromotionSpotlight } from "@/components/customer/promotion-spotlight";
 import { getActivityCommerceMode, getActivityDiscoveryMode } from "@/lib/customer/category-details";
@@ -217,7 +217,6 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
   const safePage = Math.min(currentPage, totalPages);
   const pageStart = (safePage - 1) * RESULTS_PER_PAGE;
   const visibleVendors = filteredVendors.slice(pageStart, pageStart + RESULTS_PER_PAGE);
-  const pageItems = getPageItems(safePage, totalPages);
   const hasActiveFilters = Boolean(query.trim() || category || state || filters.types.length || filters.priceMax !== null || filters.operatingDays.length || filters.hoursMode !== "during" || filters.timeAt || timeFrom || timeTo || filters.overnight || openNow || filters.freeOnly || filters.bookableOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly);
   const categoryLabel = category
     ? (() => {
@@ -250,7 +249,6 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
               hasActiveFilters={hasActiveFilters}
               onChange={updateFilters}
               onClear={clearFilters}
-              placeholder={t("ui.search.searchVendors")}
               category={category}
               onCategoryChange={(nextCategory) => updateFilters({ categories: nextCategory ? [nextCategory] : [], types: [], hiddenGemOnly: false })}
               categoryVariant="cards"
@@ -340,17 +338,16 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
            </div>
         )}
 
-        {filteredVendors.length > 0 && totalPages > 1 && (
-          <nav aria-label={t("ui.search.vendorPages")} className="mt-10 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-muted-foreground">
-              {t("ui.search.showing", { start: pageStart + 1, end: Math.min(pageStart + RESULTS_PER_PAGE, filteredVendors.length), total: filteredVendors.length, items: t("ui.search.vendors") })}
-            </p>
-            <div className="flex items-center gap-1.5">
-              <button type="button" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage === 1} aria-label={t("ui.search.previousVendorPage")} className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-primary disabled:opacity-35"><ChevronLeft size={15} /></button>
-              {pageItems.map((item, index) => item === "ellipsis" ? <span key={`ellipsis-${index}`} className="flex h-9 w-6 items-center justify-center text-xs text-muted-foreground">…</span> : <button key={item} type="button" onClick={() => setCurrentPage(item)} className={`h-9 min-w-9 rounded-full px-2 text-xs font-bold ${safePage === item ? "bg-primary text-white border-primary" : "border border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>{item}</button>)}
-              <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} aria-label={t("ui.search.nextVendorPage")} className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-primary disabled:opacity-35"><ChevronRight size={15} /></button>
-            </div>
-          </nav>
+        {filteredVendors.length > 0 && (
+          <Pagination
+            ariaLabel={t("ui.search.vendorPages")}
+            currentPage={safePage}
+            onPageChange={setCurrentPage}
+            pageSize={RESULTS_PER_PAGE}
+            totalItems={filteredVendors.length}
+            totalPages={totalPages}
+            className="mt-10"
+          />
         )}
       </section>
     </div>

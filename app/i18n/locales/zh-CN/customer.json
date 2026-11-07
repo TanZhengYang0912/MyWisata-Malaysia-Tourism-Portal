@@ -2335,6 +2335,7 @@
       "filterDrawerTitle": "筛选体验",
       "filterDrawerDescription": "选择州属、类别、类型或特色来缩小结果范围。",
       "showExperienceResults": "显示结果",
+      "showResultsCount": "显示 {{count}} 个结果",
       "destinations": "目的地",
       "experiences": "体验",
       "statesAndCities": "州和城市",
@@ -2609,6 +2610,8 @@
     },
     "discovery": {
       "searchLabel": "搜索地点和体验",
+      "searchPlaceholder": "输入任意关键词…",
+      "removeFilter": "移除筛选条件：{{label}}",
       "advancedFilters": "高级筛选",
       "openingHours": "营业时间",
       "locationAndPrice": "地点与预算",
