@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ComputedActivity } from '@/backend/core/types';
-import { isMerchantFeatured, orderProductCatalogue, toDiscoveryCatalogueCard, toVendorCatalogueCard } from '@/lib/customer/product-catalogue';
+import { isMerchantFeatured, orderProductCatalogue, toDiscoveryCatalogueCard, toOutletCatalogueCard, toVendorCatalogueCard } from '@/lib/customer/product-catalogue';
 
 describe('ordinary product ordering', () => {
   it('orders names naturally with deterministic id ties without mutating input', () => {
@@ -71,5 +71,32 @@ describe('home discovery card adapter', () => {
     const card = toVendorCatalogueCard({ id: 'p', vendorId: 'v', name: 'Tea', description: null, productType: 'food', imageUrl: null, fromPrice: 1, requiresBooking: false, rating: 0, reviews: 0, soldAt: [] });
     expect(card.sponsored).toBeUndefined();
     expect(card.featured).toBeUndefined();
+  });
+});
+
+describe('outlet offer card adapter', () => {
+  const offer = Object.assign({
+    id: 'p', vendorId: 'v', name: 'Briyani', description: null, categorySlug: 'food', image: null, requiresBooking: false,
+    rating: 4, reviews: 3, price: 8.48, tags: ['featured'], salesSummary: { outletCount: 4, fromPrice: 6 },
+    openNowSummary: { totalOutletCount: 4, openOutletCount: 2 },
+    outlet: { id: 'o-annexe', name: 'Hameediyah — Campbell Annexe', vendorId: 'v', city: 'George Town', state: 'Penang', operatingHours: null, verified: true },
+  }, { sponsorship: { placementId: 'pl' } }) as unknown as ComputedActivity;
+
+  it("presents one outlet's exact offer with no labels", () => {
+    const card = toOutletCatalogueCard(offer);
+    expect(card.sales).toEqual({ outletCount: 1, fromPrice: 8.48 });
+    expect(card.pinnedOutletId).toBe('o-annexe');
+    expect(card.pinnedOutletName).toBe('Hameediyah — Campbell Annexe');
+    expect(card.sponsored).toBe(false);
+    expect(card.featured).toBe(false);
+    expect(card.openNowSummary).toBeUndefined();
+  });
+
+  it('can drop the discovery labels from a discovery card', () => {
+    const card = toDiscoveryCatalogueCard(offer, { labels: false });
+    expect(card.sponsored).toBe(false);
+    expect(card.featured).toBe(false);
+    expect(card.sales).toEqual({ outletCount: 4, fromPrice: 6 });
+    expect(toDiscoveryCatalogueCard(offer).featured).toBe(true);
   });
 });

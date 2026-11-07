@@ -15,6 +15,8 @@ export type ProductCatalogueCardData = {
   openNowSummary?: { totalOutletCount: number; openOutletCount: number };
   /** The open outlet an Open now result was priced from; the card link preselects it. */
   pinnedOutletId?: string;
+  /** Set when the card stands for one outlet's offer: the drawer names that outlet instead of counting locations. */
+  pinnedOutletName?: string;
 };
 
 /** The merchant's ⭐ pick; the featured-products save route keeps this tag in sync. */
@@ -40,16 +42,22 @@ export function toVendorCatalogueCard(product: VendorProductCardData): ProductCa
   };
 }
 
-export function toDiscoveryCatalogueCard(product: ComputedActivity & { sponsorship?: { placementId: string } | null }): ProductCatalogueCardData {
+export function toDiscoveryCatalogueCard(product: ComputedActivity & { sponsorship?: { placementId: string } | null }, { labels = true }: { labels?: boolean } = {}): ProductCatalogueCardData {
   const sales = product.salesSummary ?? { outletCount: 1, fromPrice: product.price };
-  return {
+  const card: ProductCatalogueCardData = {
     id: product.id, vendorId: product.vendorId ?? product.outlet.vendorId, name: product.name,
     description: product.description, productType: product.categorySlug ?? null, imageUrl: product.image,
     requiresBooking: product.requiresBooking, rating: product.rating, reviews: product.reviews, sales,
-    sponsored: Boolean(product.sponsorship), featured: isMerchantFeatured(product),
+    sponsored: labels && Boolean(product.sponsorship), featured: labels && isMerchantFeatured(product),
     ...(product.openNowSummary ? { openNowSummary: product.openNowSummary, pinnedOutletId: product.outlet.id } : {}),
     ...(sales.outletCount === 1 && product.outlet.verified ? { singleOutlet: { id: product.outlet.id, city: product.outlet.city, state: product.outlet.state, operatingHours: product.outlet.operatingHours ?? null } } : {}),
   };
+  return card;
+}
+
+/** A related-row card: one outlet's exact offer, unlabelled, linking to that outlet. */
+export function toOutletCatalogueCard(product: ComputedActivity): ProductCatalogueCardData {
+  return { ...toDiscoveryCatalogueCard(product, { labels: false }), openNowSummary: undefined, sales: { outletCount: 1, fromPrice: product.price }, pinnedOutletId: product.outlet.id, pinnedOutletName: product.outlet.name };
 }
 
 const nameCollator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });

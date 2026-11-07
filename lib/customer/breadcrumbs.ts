@@ -3,14 +3,13 @@ export type CustomerBreadcrumbModel = { mode: "automatic" | "page-owned" | "hidd
 
 export function getProductBreadcrumbAncestors(
   outlet: { vendorId: string; vendorName: string; outletId: string; outletName: string },
-  outletSelectionRequired: boolean,
   publicPlace: boolean,
 ): Array<{ label: string; href: string }> {
   if (publicPlace) return [{ label: 'explore', href: '/customer/explore?tab=experiences' }];
   return [
     { label: 'vendors', href: '/customer/vendors' },
     { label: outlet.vendorName, href: `/customer/vendors/${encodeURIComponent(outlet.vendorId)}` },
-    ...(!outletSelectionRequired ? [{ label: outlet.outletName, href: `/customer/outlets/${encodeURIComponent(outlet.outletId)}` }] : []),
+    { label: outlet.outletName, href: `/customer/outlets/${encodeURIComponent(outlet.outletId)}` },
   ];
 }
 

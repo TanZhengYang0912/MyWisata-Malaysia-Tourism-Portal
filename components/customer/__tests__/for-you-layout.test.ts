@@ -10,6 +10,8 @@ describe("For You discovery layout contract", () => {
     expect(source).toContain("grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4");
     expect(source).not.toContain("md:grid-cols-3");
     expect(source).toContain("<ActivityCard");
+    expect(source).toContain("<ProductCard");
+    expect(source).toContain("listing={toDiscoveryCatalogueCard(activity, { labels: false })}");
   });
 
   it("keeps personalized recommendation context on the shared card", () => {

@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin, ShieldCheck, Sparkles } from "lucide-react";
+import { MapPin, MapPinned } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import { ExpandCard } from "@/components/customer/expand-card";
 import { ShareButton } from "@/components/shared/share-button";
-import { PhotoRatingBadge } from "@/components/customer/photo-rating-badge";
+import { PhotoCardLabels, PhotoRatingBadge } from "@/components/customer/photo-rating-badge";
+import { badgeClass, CardBadges } from "@/components/customer/product-card";
 
 export type CustomerVendorCardVendor = {
   id: string;
@@ -56,15 +57,14 @@ export function VendorCard({
   const outlet = vendor.outlets[0];
   const location = [outlet?.city, outlet?.state].filter(Boolean).join(", ") || t("ui.labels.malaysia");
   const cardDescription = description?.trim() || descriptionFallback || t("ui.search.approvedPartnerDescription");
-  const categoryLabel = categories.length
-    ? categories.map((category) => {
+  const categoryLabels = categories.length
+    ? categories.slice(0, 2).map((category) => {
         const key = getOptionalDiscoveryCategoryLabelKey(category);
         return key ? t(key) : category;
-      }).join(" · ")
-    : t("ui.search.localPartner");
+      })
+    : [t("ui.search.localPartner")];
   // Nearby cards carry only the closest outlet, so a location count would always read 1.
   const showLocationCount = distanceLabel === undefined;
-  const badgeLabel = isFeatured ? t("ui.search.featuredPartner") : t("ui.search.verifiedLocalPartner");
 
   return (
     <ExpandCard
@@ -79,8 +79,8 @@ export function VendorCard({
             <span className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/25 bg-white/10 dark:bg-card/10 text-2xl font-black tracking-tight shadow-xl backdrop-blur-sm">{visual.initials}</span>
             <span className="mt-4 text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">{t("ui.search.localPartner")}</span>
           </div>}
-          <span className={`absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${isFeatured ? "bg-[#ffcc00] text-[#010066]" : "bg-card/95 text-foreground"}`}>{isFeatured ? <Sparkles size={12} /> : <ShieldCheck size={12} className="text-primary" />} {badgeLabel}</span>
         </Link>
+        <PhotoCardLabels featured={isFeatured} />
         <div className="absolute right-3 top-3 z-20"><ShareButton compact shareType="vendor" contentId={vendor.id} title={vendor.name} /></div>
         {vendor.rating !== undefined && <PhotoRatingBadge rating={vendor.rating?.value ?? 0} reviews={vendor.rating?.count ?? 0} compactOnPhone className="absolute bottom-3 right-3 z-10" />}
       </>}
@@ -92,15 +92,15 @@ export function VendorCard({
         </span>
         <Link href={vendorHref} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"><h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={vendor.name}>{vendor.name}</h3></Link>
         <span className="sr-only">{t("ui.search.vendorCard", { index: index + 1 })}</span>
-        <p className="text-xs text-muted-foreground">{categoryLabel}</p>
-        {(vendor.openNow !== undefined || showLocationCount) && <p className="text-xs text-muted-foreground">
-          {vendor.openNow !== undefined && <span className={`font-bold ${vendor.openNow ? "text-emerald-700 dark:text-emerald-300" : "text-red-600 dark:text-red-300"}`}>{t(vendor.openNow ? "ui.operatingHours.openNow" : "ui.operatingHours.closedNow")}</span>}
-          {vendor.openNow !== undefined && showLocationCount && " · "}
-          {showLocationCount && t("ui.vendor.locationCount", { count: vendor.outlets.length })}
+        <CardBadges badges={categoryLabels.map((label) => <span key={label} className={`${badgeClass} bg-secondary font-bold text-primary`}>{label}</span>)} />
+        {vendor.openNow !== undefined && <p className="text-xs text-muted-foreground">
+          <span className={`font-bold ${vendor.openNow ? "text-emerald-700 dark:text-emerald-300" : "text-red-600 dark:text-red-300"}`}>{t(vendor.openNow ? "ui.operatingHours.openNow" : "ui.operatingHours.closedNow")}</span>
         </p>}
       </>}
       details={<>
-        <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><MapPin size={12} className="mt-0.5 shrink-0" aria-hidden="true" /> <span>{location}{distanceLabel && <> · {distanceLabel}</>}</span></p>
+        {showLocationCount
+          ? <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><MapPinned size={12} className="shrink-0" aria-hidden="true" /> {t("ui.vendor.locationCount", { count: vendor.outlets.length })}</p>
+          : <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><MapPin size={12} className="mt-0.5 shrink-0" aria-hidden="true" /> <span>{location} · {distanceLabel}</span></p>}
         <p className="break-words whitespace-normal text-xs leading-5 text-foreground/80">{cardDescription}</p>
         {vendor.popularProducts && vendor.popularProducts.length > 0 && <div>
           <p className="text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-muted-foreground">{t("ui.vendor.popular")}</p>

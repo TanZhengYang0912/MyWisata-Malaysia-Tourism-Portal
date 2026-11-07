@@ -78,7 +78,7 @@ export function CustomerHomeClient({
   titleFontClassName = "",
 }: {
   highlightItems: (DiscoveryResult & { property?: DiscoveryPropertySummary })[];
-  forYouItems: ComputedActivity[];
+  forYouItems: (ComputedActivity & { property?: DiscoveryPropertySummary })[];
   vendors: DemoVendor[];
   eventPartners?: EventPartner[];
   campaign: PromotionCampaignPublic | null;
@@ -390,7 +390,9 @@ export function CustomerHomeClient({
             </div>
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
               {forYouItems.map((activity) => (
-                <ActivityCard key={activity.id} activity={activity} recommendationReason={activity.aiTag ?? undefined} />
+                activity.property
+                  ? <ActivityCard key={activity.id} activity={activity} recommendationReason={activity.aiTag ?? undefined} />
+                  : <ProductCard key={activity.id} listing={toDiscoveryCatalogueCard(activity, { labels: false })} returnTo="/customer" recommendationReason={activity.aiTag ?? undefined} />
               ))}
             </div>
           </section>

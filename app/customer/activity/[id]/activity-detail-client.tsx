@@ -16,7 +16,8 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { ShareButton } from "@/components/shared/share-button";
 import { Button } from "@/components/ui/button";
 import { ActivityReviews } from "@/components/customer/activity-reviews";
-import { ActivityCard } from "@/components/customer/activity-card";
+import { ProductCard } from "@/components/customer/product-card";
+import { toOutletCatalogueCard } from "@/lib/customer/product-catalogue";
 import type { BookingSlot, ComputedActivity, ProductReview } from "@/backend/core/types";
 import type { OutletChoice } from "@/backend/domains/catalogue";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
@@ -24,7 +25,7 @@ import { getActivityCommerceMode, getCategoryChips, getPriceUnit, isPlaceBound }
 import { outletShortName } from "@/lib/outlet-display";
 import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { buildActivityPath, getCustomerReturnPath } from "@/lib/customer/navigation-context";
-import { getEffectiveOutletCount, shouldRequireOutletSelection } from "@/lib/customer/activity-commerce";
+import { getEffectiveOutletCount } from "@/lib/customer/activity-commerce";
 import { getSelectedOutletStock } from "@/lib/customer/outlet-shop";
 import { formatMYR } from "@/lib/i18n/format";
 import { getDetailBody } from "./bodies";
@@ -71,7 +72,6 @@ export function ActivityDetailClient({
   const returnTo = getCustomerReturnPath(searchParams.get("returnTo"));
   const vendorDiscovery = searchParams.get("source") === "vendor";
   const effectiveOutletCount = getEffectiveOutletCount(initialActivity?.outletId ?? "", outletChoices);
-  const outletSelectionRequired = shouldRequireOutletSelection(searchParams.get("source"), effectiveOutletCount);
   const requestedOutletId = searchParams.get("outletId");
   const initialOutletId = requestedOutletId && outletChoices.some((choice) => choice.outletId === requestedOutletId)
     ? requestedOutletId
@@ -202,7 +202,7 @@ export function ActivityDetailClient({
     <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7">
       <Breadcrumbs className="mb-3" label={t("ui.place.breadcrumb")} items={[
         { label: t("navigation.home"), href: "/customer" },
-        ...getProductBreadcrumbAncestors({ vendorId: selectedOutlet?.vendorId ?? "", vendorName: selectedOutlet?.vendorName ?? t("ui.labels.localVendor"), outletId: selectedOutlet?.outletId ?? "", outletName: selectedOutlet?.outletName ?? "" }, outletSelectionRequired, publicPlace).map((item, index) => ({ ...item, label: index === 0 ? t(publicPlace ? "navigation.explore" : "navigation.search") : item.label })),
+        ...getProductBreadcrumbAncestors({ vendorId: selectedOutlet?.vendorId ?? "", vendorName: selectedOutlet?.vendorName ?? t("ui.labels.localVendor"), outletId: selectedOutlet?.outletId ?? "", outletName: selectedOutlet?.outletName ?? "" }, publicPlace).map((item, index) => ({ ...item, label: index === 0 ? t(publicPlace ? "navigation.explore" : "navigation.search") : item.label })),
         { label: <LocalizedContent entityType="product" entityId={activity.id} field="name" sourceText={activity.name} /> },
       ]} />
       <div className="mb-4">
@@ -268,7 +268,7 @@ export function ActivityDetailClient({
                 </p>
               )}
               <div className="flex items-center gap-4 flex-wrap text-sm">
-                {outletSelectionRequired ? <div className="flex items-center gap-1.5 text-muted-foreground"><MapPin size={13} /> {t("strictMigration.activityDetail.availableAtOutlets", { count: effectiveOutletCount })}</div> : <div className="flex items-center gap-1.5 text-muted-foreground"><MapPin size={13} /> {selectedOutlet!.city}, {selectedOutlet!.state}</div>}
+                <div className="flex items-center gap-1.5 text-muted-foreground"><MapPin size={13} /> {selectedOutlet!.city}, {selectedOutlet!.state}</div>
                 {publicPlace ? <div className="font-semibold text-primary">{t("ui.labels.publicAccess")}</div> : <>
                   <div className="flex items-center gap-1.5">
                     <Star size={13} fill="var(--highlight-yellow)" stroke="none" />
@@ -308,7 +308,7 @@ export function ActivityDetailClient({
               <h2 className="mt-1 text-lg font-bold text-foreground">{t(body.panelTitleKey(activity))}</h2>
             </div>
             <div className="text-right">
-              {publicPlace ? <><p className="text-lg font-bold text-primary">{t("ui.labels.freeToExplore")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.publicAccess")}</p></> : outletSelectionRequired ? <><p className="text-sm font-bold text-primary">{t("ui.labels.chooseOutlet")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.priceAvailability")}</p></> : <><ReferencePrice amountMYR={price} className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary" /><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug, t)}</p></>}
+              {publicPlace ? <><p className="text-lg font-bold text-primary">{t("ui.labels.freeToExplore")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.publicAccess")}</p></> : <><ReferencePrice amountMYR={price} className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary" /><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug, t)}</p></>}
             </div>
           </div>
 
@@ -320,18 +320,7 @@ export function ActivityDetailClient({
              {!placeBound && <Link href={`/customer/vendors/${selectedOutlet!.vendorId}`} className="shrink-0 font-semibold text-primary hover:underline">{t("ui.actions.visitVendor")}</Link>}
            </div>
 
-          {publicPlace ? <div className="rounded-2xl border border-[#cbd7f2] bg-[#f3f5ff] p-4 text-sm text-muted-foreground">{t("ui.activity.publicPlaceAccess")}</div> : outletSelectionRequired ? <div className="rounded-2xl border border-primary/15 bg-secondary/35 p-4">
-            <p className="text-sm font-bold text-foreground">{t("ui.activity.chooseOutletContinue")}</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("ui.activity.outletBookingDetails")}</p>
-            <div className="mt-4 flex flex-col gap-2">
-              {outletChoices.length > 0 ? outletChoices.map((choice) => (
-                <Link key={choice.outletId} href={`${getOutletShopHref(choice.outletId)}#full-menu`} className="flex items-start justify-between gap-3 rounded-xl border border-primary/15 bg-card px-3 py-2.5 text-left transition hover:border-primary/40 hover:bg-primary/5">
-                  <span className="min-w-0"><span className="block break-words whitespace-normal text-sm font-semibold text-foreground">{t("strictMigration.activityDetail.viewOutlet", { name: outletShortName(choice.outletName, choice.vendorName) })}</span><span className="break-words whitespace-normal text-xs text-muted-foreground"><OutletChoiceStatus choice={choice} status={outletStatus} /></span></span>
-                  <span className="shrink-0 text-primary" aria-hidden="true">→</span>
-                </Link>
-              )) : <Link href={`${getOutletShopHref(activity.outletId)}#full-menu`} className="inline-flex items-center justify-between rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-white hover:bg-primary/90">{t("ui.cart.viewOutlet")} <span aria-hidden="true">→</span></Link>}
-            </div>
-          </div> : <>
+          {publicPlace ? <div className="rounded-2xl border border-[#cbd7f2] bg-[#f3f5ff] p-4 text-sm text-muted-foreground">{t("ui.activity.publicPlaceAccess")}</div> : <>
           {effectiveOutletCount > 1 && outletChoices.length > 0 && (
             <div className="mb-4">
               <label className="mb-2 block text-xs font-semibold text-muted-foreground">
@@ -511,10 +500,9 @@ export function ActivityDetailClient({
           </div>
           <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
             {relatedProducts.map((product) => (
-              <ActivityCard
+              <ProductCard
                 key={product.id}
-                activity={product}
-                outletId={selectedOutlet.outletId}
+                listing={toOutletCatalogueCard(product)}
                 returnTo={returnTo !== "/customer" ? returnTo : `/customer/vendors/${selectedOutlet.vendorId}`}
                 source={relatedScope === "vendor" ? "vendor" : undefined}
               />
@@ -523,7 +511,7 @@ export function ActivityDetailClient({
         </section>
       )}
 
-       {!publicPlace && !outletSelectionRequired && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 p-3 shadow-[0_-8px_24px_rgba(1,0,102,0.12)] backdrop-blur-md md:hidden">
+       {!publicPlace && <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 p-3 shadow-[0_-8px_24px_rgba(1,0,102,0.12)] backdrop-blur-md md:hidden">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
           <div className="min-w-0">
             <p className="break-words whitespace-normal text-xs text-muted-foreground">{t(body.quantityLabelKey, { count: qty })}</p>

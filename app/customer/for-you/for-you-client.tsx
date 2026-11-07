@@ -5,7 +5,9 @@ import { useCallback, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, MapPin } from 'lucide-react';
 import { ActivityCard } from '@/components/customer/activity-card';
-import type { ComputedActivity } from '@/backend/core/types';
+import { ProductCard } from '@/components/customer/product-card';
+import { toDiscoveryCatalogueCard } from '@/lib/customer/product-catalogue';
+import type { ComputedActivity, DiscoveryPropertySummary } from '@/backend/core/types';
 import type { PersonalizationReason } from '@/lib/personalization/scorer';
 import { getOptionalDiscoveryCategoryLabelKey } from '@/lib/customer/discovery-categories';
 import { Button } from '@/components/ui/button';
@@ -14,7 +16,7 @@ import { useCustomerCapabilityGate } from '@/components/customer/use-customer-ca
 import { CUSTOMER_CAPABILITY } from '@/lib/auth/customer-capabilities';
 import type { TFunction } from 'i18next';
 
-type Card = { activity: ComputedActivity; score?: number; whyItFits?: string; reasons?: PersonalizationReason[] };
+type Card = { activity: ComputedActivity & { property?: DiscoveryPropertySummary }; score?: number; whyItFits?: string; reasons?: PersonalizationReason[] };
 
 // Compose a localized, grounded "why it fits" line from the signals that fired.
 // Falls back to a generic key when nothing scored (rare for a ranked card).
@@ -83,7 +85,7 @@ export default function ForYouClient() {
     {error && <p className="mt-5 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
     {result?.locationSource === 'city' && <p className="mt-4 text-xs text-muted-foreground">{t('ui.forYou.profileCityDistance')}</p>}
     {!personalized && !loading && <p className="mt-5 rounded-xl bg-secondary p-4 text-sm text-muted-foreground">{t('ui.forYou.unlock')} <Link href="/customer/profile" className="font-semibold text-primary">{t('ui.forYou.continueVerification')}</Link></p>}
-    {loading ? <div role="status" aria-live="polite" className="flex min-h-64 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 animate-spin" size={18} aria-hidden="true" /> {t('ui.states.loading')}</div> : result && <div className="mt-8 grid items-stretch grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">{groupRankedByProperty(result.activities).map(({ activity, reasons }) => <ActivityCard key={activity.id} activity={activity} recommendationReason={personalized ? composeReasonText(reasons, t) : undefined} returnTo="/customer/for-you" />)}</div>}
+    {loading ? <div role="status" aria-live="polite" className="flex min-h-64 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 animate-spin" size={18} aria-hidden="true" /> {t('ui.states.loading')}</div> : result && <div className="mt-8 grid items-stretch grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">{groupRankedByProperty(result.activities).map(({ activity, reasons }) => activity.property ? <ActivityCard key={activity.id} activity={activity} recommendationReason={personalized ? composeReasonText(reasons, t) : undefined} returnTo="/customer/for-you" /> : <ProductCard key={activity.id} listing={toDiscoveryCatalogueCard(activity, { labels: false })} recommendationReason={personalized ? composeReasonText(reasons, t) : undefined} returnTo="/customer/for-you" />)}</div>}
     <Link href="/customer/profile#preferences" className="mt-8 inline-block font-semibold text-primary">{t('ui.forYou.editPreferences')}</Link>
   </div>;
 }

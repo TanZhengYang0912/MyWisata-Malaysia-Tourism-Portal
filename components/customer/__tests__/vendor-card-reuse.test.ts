@@ -34,10 +34,9 @@ describe("customer vendor card reuse", () => {
     expect(partnersSource).not.toContain("function VendorDirectoryCard");
   });
 
-  it("uses the verified partner badge consistently and keeps featured ranking separate", () => {
+  it("labels featured partners with the shared photo label and keeps featured ranking separate", () => {
     expect(sharedCardSource).toContain("isFeatured?: boolean");
-    expect(sharedCardSource).toContain('t("ui.search.verifiedLocalPartner")');
-    expect(sharedCardSource).toContain('t("ui.search.featuredPartner")');
+    expect(sharedCardSource).toContain("<PhotoCardLabels featured={isFeatured} />");
     expect(partnersSource).toContain("featuredVendorIds");
     expect(partnersSource).toContain("rankPartnerDirectory");
     expect(partnersSource).toContain("isFeatured={featuredVendorIds.has(vendor.id)}");

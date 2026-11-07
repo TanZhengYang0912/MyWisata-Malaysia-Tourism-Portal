@@ -30,7 +30,7 @@ describe("customer activity image handling", () => {
   it("can hide discovery taxonomy and promotional badges in dense listing views", () => {
     expect(cardSource).toContain("hideDiscoveryBadges = false");
     expect(cardSource).toContain("!hideDiscoveryBadges && activity.hot");
-    expect(cardSource).toContain("activity.sponsorship && <span");
+    expect(cardSource).toContain("<PhotoCardLabels sponsored={Boolean(activity.sponsorship)} />");
     expect(cardSource).toContain('t("ui.labels.verified")');
   });
 
@@ -38,13 +38,14 @@ describe("customer activity image handling", () => {
     const discovery = cardSource.slice(cardSource.indexOf("function DiscoveryActivityCard"));
     const media = discovery.slice(discovery.indexOf("media={<>"), discovery.indexOf("<SaveToggleButton"));
     expect(media).toContain("<img");
-    expect(media).toContain('t("ui.labels.sponsored")');
+    expect(media).toContain("<PhotoCardLabels sponsored={Boolean(activity.sponsorship)} />");
+    expect(media).not.toContain("featured=");
     expect(media).not.toContain('t("ui.labels.verified")');
     expect(media).not.toContain('t("ui.labels.closed")');
   });
 
   it("labels sponsored activities and shows the outlet's operating hours", () => {
-    expect(cardSource).toContain('t("ui.labels.sponsored")');
+    expect(cardSource).toContain("<PhotoCardLabels sponsored={Boolean(activity.sponsorship)} />");
     expect(cardSource).toContain("onSponsoredClick");
     expect(cardSource).toContain('t("ui.labels.operatingHours")');
     expect(cardSource).toContain("activity.outlet.hours");

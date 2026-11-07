@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { getEffectiveOutletCount, shouldRequireOutletSelection } from "@/lib/customer/activity-commerce";
+import * as commerce from "@/lib/customer/activity-commerce";
+import { getEffectiveOutletCount } from "@/lib/customer/activity-commerce";
 
 describe("activity outlet commerce rules", () => {
   it("treats a direct product outlet as one effective outlet", () => {
@@ -14,9 +15,7 @@ describe("activity outlet commerce rules", () => {
     expect(getEffectiveOutletCount("outlet-a", [{ outletId: "outlet-a" }, { outletId: "outlet-b" }])).toBe(2);
   });
 
-  it("requires selection only for vendor discovery with multiple outlets", () => {
-    expect(shouldRequireOutletSelection("vendor", 1)).toBe(false);
-    expect(shouldRequireOutletSelection("vendor", 2)).toBe(true);
-    expect(shouldRequireOutletSelection(null, 2)).toBe(false);
+  it("has no separate outlet-selection step: every entry gets a default purchase outlet", () => {
+    expect(Object.keys(commerce)).not.toContain("shouldRequireOutletSelection");
   });
 });

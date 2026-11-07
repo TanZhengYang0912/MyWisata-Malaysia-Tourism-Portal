@@ -176,7 +176,7 @@ describe("customer home first viewport", () => {
   it("keeps the homepage discovery shelf under the Featured Highlights label", () => {
     expect(homePageSource).toContain("selectHomeDiscoverySections(activities, recommended, placements, requestedAt)");
     expect(homeSource).toContain("highlightItems: (DiscoveryResult & { property?: DiscoveryPropertySummary })[]");
-    expect(homeSource).toContain("forYouItems: ComputedActivity[]");
+    expect(homeSource).toContain("forYouItems: (ComputedActivity & { property?: DiscoveryPropertySummary })[]");
     expect(homeSource).not.toContain("groupAccommodationByProperty(popular)");
     expect(homeSource).toContain('t("ui.home.featuredHighlights")');
     expect(homeSource).toContain('t("ui.home.forYou")');
@@ -241,6 +241,7 @@ describe("customer home first viewport", () => {
 
     expect(forYouSection).toContain("forYouItems.map((activity)");
     expect(forYouSection).toContain("<ActivityCard");
+    expect(forYouSection).toContain('<ProductCard key={activity.id} listing={toDiscoveryCatalogueCard(activity, { labels: false })} returnTo="/customer" recommendationReason={activity.aiTag ?? undefined} />');
     expect(forYouSection).not.toContain("detailsRevealStyle");
     expect(highlightsSection).toContain("<ActivityCard");
     expect(highlightsSection).not.toContain("detailsRevealStyle");
