@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { initials } from "@/components/customer/campaign-stall-strip";
 import { LocalizedContent } from "@/components/customer/localized-content";
 import { Button } from "@/components/ui/button";
-import { buildZipStrip, createEnvelopeGeometry, foldMatrix, letterRise, nextEnvelopeAction, toPolygon, type EnvelopeGeometry, type EnvelopeState } from "@/lib/customer/envelope-tear";
+import { buildZipStrip, createEnvelopeGeometry, foldMatrix, nextEnvelopeAction, splitOpenLayout, toPolygon, type EnvelopeGeometry, type EnvelopeState } from "@/lib/customer/envelope-tear";
 import { isMalaysiaFullDayRange } from "@/lib/datetime/malaysia";
 import { formatDate, formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
@@ -19,10 +19,12 @@ import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 const PIECES = ["bottom", "top", "flap"] as const;
 const DOUBLE_CLICK_MS = 260;
 const NAVIGATE_AFTER_MS = 300;
+/** How long the mouse may cross the gaps between the split halves and the letter before it closes. */
+const LEAVE_GRACE_MS = 150;
 
 /**
  * The home spotlight's campaign card: an airmail envelope whose strip tears off
- * and whose letter floats up with the details. Hover (or a tap on touch screens)
+ * across the middle; the halves part and the letter comes out between them. Hover (or a tap on touch screens)
  * opens it; a double click or double tap goes to the event page.
  */
 export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign: PromotionCampaignPublic; imagePriority?: boolean }) {
@@ -67,7 +69,8 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
     const tapMode = () => media("(hover: none)");
     const reduce = () => media("(prefers-reduced-motion: reduce)");
 
-    let geo: EnvelopeGeometry, progress = 0, state: EnvelopeState = "closed", rise = 0, raf = 0, clickTimer: ReturnType<typeof setTimeout> | undefined, navTimer: ReturnType<typeof setTimeout> | undefined;
+    let geo: EnvelopeGeometry, progress = 0, state: EnvelopeState = "closed", split = { letterTop: 0, topShift: 0, bottomShift: 0 }, raf = 0;
+    let clickTimer: ReturnType<typeof setTimeout> | undefined, navTimer: ReturnType<typeof setTimeout> | undefined, leaveTimer: ReturnType<typeof setTimeout> | undefined;
     let disposed = false, hovering = false, focusInside = false, tapOpen = false, openAnims: Animation[] = [];
     const setState = (next: EnvelopeState) => { state = next; root.setAttribute("data-state", next); };
 
@@ -109,9 +112,16 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
       const width = root!.clientWidth || 0, narrow = width < 640;
       geo = createEnvelopeGeometry(width, narrow);
       root!.setAttribute("data-narrow", String(narrow));
-      for (const [name, value] of Object.entries({ h0: geo.H, a: geo.a, sh: geo.sh, tuck: geo.tuck })) root!.style.setProperty(`--${name}`, `${value}px`);
+      for (const [name, value] of Object.entries({ h0: geo.H, a: geo.a, sh: geo.sh })) root!.style.setProperty(`--${name}`, `${value}px`);
       root!.style.height = `${geo.H}px`;
+      if (state === "closed") Object.assign(letter!.style, restingLetter());
       draw(progress);
+    }
+
+    /** The closed letter sits centred on the strip and shows only the band the strip uncovers. */
+    function restingLetter() {
+      const height = letter!.offsetHeight || 0, rest = geo.a + geo.sh / 2 - height / 2;
+      return { transform: `translateY(${rest}px)`, clipPath: `inset(${geo.a - rest}px 0px ${height - (geo.a + geo.sh - rest)}px 0px round 16px)` };
     }
 
     function tween(to: number, duration: number, easing = (x: number) => 1 - Math.pow(1 - x, 3)) {
@@ -162,11 +172,15 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
       const end = geo.L1.pts[geo.L1.n];
       burst(end.x, end.y);
       const headerBottom = parseFloat(window.getComputedStyle?.(document.documentElement)?.getPropertyValue?.("--customer-header-h") ?? "") || 0;
-      rise = letterRise({ a: geo.a, sh: geo.sh, tuck: geo.tuck, letterHeight: letter!.offsetHeight || 0, cardTop: root!.getBoundingClientRect?.().top ?? 0, headerBottom });
+      const rest = restingLetter();
+      split = splitOpenLayout({ tearTop: geo.a, tearBottom: geo.a + geo.sh, letterHeight: letter!.offsetHeight || 0, cardTop: root!.getBoundingClientRect?.().top ?? 0, headerBottom, viewportHeight: window.innerHeight });
       openAnims = [
         play(pieces.flap, [{ transform: "none", opacity: 1 }, { transform: `translate(${geo.W * 0.12}px,-40px) rotate(12deg)`, opacity: 0 }], 460, { easing: "cubic-bezier(.4,0,.6,1)" }),
-        play(pieces.top, [{ transform: "none", opacity: 1 }, { transform: "translate(-10px,-46px) rotate(-4deg)", opacity: 0 }], 440, { easing: "ease-in" }),
-        play(letter!, [{ transform: "none" }, { transform: `translateY(${rise}px)` }], 760),
+        play(pieces.top, [{ transform: "none" }, { transform: `translateY(${split.topShift}px)` }], 640),
+        play(pieces.bottom, [{ transform: "none" }, { transform: `translateY(${split.bottomShift}px)` }], 640),
+        play(under!, [{ opacity: 1 }, { opacity: 0 }], 640),
+        // The negative inset keeps the letter's shadow once it is fully out.
+        play(letter!, [rest, { transform: `translateY(${split.letterTop}px)`, clipPath: "inset(-48px -48px -48px -48px round 16px)" }], 640),
       ];
       await Promise.all(openAnims.map((animation) => animation.finished));
       if (disposed || state !== "busy") return;
@@ -180,6 +194,7 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
       for (const animation of openAnims) { animation.updatePlaybackRate(1.3); animation.reverse(); }
       await Promise.all(openAnims.map((animation) => animation.finished));
       if (disposed || state !== "busy") return;
+      Object.assign(letter!.style, restingLetter()); // re-measured: a resize may have happened while open
       openAnims.forEach((animation) => animation.cancel());
       openAnims = [];
       await tween(0, 650);
@@ -194,16 +209,21 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
       if (disposed) return;
       setState("gone");
       const drop: KeyframeAnimationOptions = { easing: "cubic-bezier(.5,0,.75,.15)" };
-      play(pieces.bottom, [{ transform: "none" }, { transform: `translateY(${window.innerHeight}px) rotate(5deg)` }], 760, drop);
-      play(under!, [{ transform: "none" }, { transform: `translateY(${window.innerHeight}px) rotate(5deg)` }], 760, drop);
-      play(letter!, [{ transform: `translateY(${rise}px)` }, { transform: `translateY(${rise - 16}px) scale(1.04)`, offset: 0.3 }, { transform: `translateY(${rise - 40}px) scale(1.2)`, opacity: 0 }], 760, { easing: "ease-in" });
+      const { letterTop, topShift, bottomShift } = split;
+      play(pieces.top, [{ transform: `translateY(${topShift}px)` }, { transform: `translateY(${topShift - window.innerHeight}px)` }], 760, drop);
+      play(pieces.bottom, [{ transform: `translateY(${bottomShift}px)` }, { transform: `translateY(${bottomShift + window.innerHeight}px) rotate(5deg)` }], 760, drop);
+      play(letter!, [{ transform: `translateY(${letterTop}px)` }, { transform: `translateY(${letterTop - 16}px) scale(1.04)`, offset: 0.3 }, { transform: `translateY(${letterTop - 40}px) scale(1.2)`, opacity: 0 }], 760, { easing: "ease-in" });
       if (reduce()) router.push(href);
       else navTimer = setTimeout(() => { if (!disposed) router.push(href); }, NAVIGATE_AFTER_MS);
     }
 
     const isMouse = (event: Event) => (event as PointerEvent).pointerType === "mouse" && !tapMode();
-    const onEnter = (event: Event) => { if (!isMouse(event)) return; hovering = true; sync(); };
-    const onLeave = (event: Event) => { if (!isMouse(event)) return; hovering = false; sync(); };
+    const onEnter = (event: Event) => { if (!isMouse(event)) return; clearTimeout(leaveTimer); hovering = true; sync(); };
+    const onLeave = (event: Event) => {
+      if (!isMouse(event)) return;
+      clearTimeout(leaveTimer);
+      leaveTimer = setTimeout(() => { hovering = false; sync(); }, LEAVE_GRACE_MS);
+    };
     const onFocusIn = () => { focusInside = true; sync(); };
     const onFocusOut = (event: Event) => {
       const next = (event as FocusEvent).relatedTarget as Node | null;
@@ -246,6 +266,7 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
       cancelAnimationFrame(raf);
       clearTimeout(clickTimer);
       clearTimeout(navTimer);
+      clearTimeout(leaveTimer);
       resize?.disconnect();
       root.removeEventListener("pointerenter", onEnter);
       root.removeEventListener("pointerleave", onLeave);
@@ -260,16 +281,19 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
   const front = (k: (typeof PIECES)[number]) => (
     <div ref={partRef(`${k}:art`)} className="mw-envelope__art" data-slot={k === "bottom" ? "campaign-envelope-front" : undefined}>
       <div className="mw-envelope__bg" />
-      <div className="mw-envelope__from"><span className="block">{t("ui.promotionCampaigns.envelopeFrom")}</span><span className="block">{t("ui.promotionCampaigns.envelopeTo")}</span></div>
+      {/* Assistive tech reads From/To and the title from the top half, the rows from the bottom half. */}
+      <div className="mw-envelope__from" aria-hidden={k === "top" ? undefined : true}><span className="block">{t("ui.promotionCampaigns.envelopeFrom")}</span><span className="block">{t("ui.promotionCampaigns.envelopeTo")}</span></div>
       <div className="mw-envelope__strip" aria-hidden="true">
         <span className="mw-envelope__tab"><ArrowRight size={16} /></span>
         {Array.from({ length: 9 }, (_, index) => <span key={index}>{t("ui.promotionCampaigns.pullToOpen")} ✂</span>)}
       </div>
-      <div className="mw-envelope__body">
+      <div className="mw-envelope__head" aria-hidden={k === "top" ? undefined : true}>
         <span className="mw-envelope__eyebrow">{t("ui.promotionCampaigns.invitedTo")}</span>
-        {k === "bottom"
+        {k === "top"
           ? <h2 id={titleId} className="mw-envelope__title"><LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title} /></h2>
           : <p className="mw-envelope__title"><LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title}>{({ text }) => text}</LocalizedContent></p>}
+      </div>
+      <div className="mw-envelope__body" aria-hidden={k === "bottom" ? undefined : true}>
         <p className="mw-envelope__row"><CalendarDays size={18} aria-hidden="true" /><span>{startLabel}{" – "}{endLabel}</span></p>
         {placeNames.length > 0 && (
           <p className="mw-envelope__row">
@@ -365,7 +389,7 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
         </div>
       </div>
       {PIECES.map((k) => (
-        <div key={k} ref={partRef(`${k}:pc`)} className="mw-envelope__pc" data-k={k} aria-hidden={k === "bottom" ? undefined : true}>
+        <div key={k} ref={partRef(`${k}:pc`)} className="mw-envelope__pc" data-k={k} aria-hidden={k === "flap" ? true : undefined}>
           <div ref={partRef(`${k}:fold`)} className="mw-envelope__fold">
             <div className="mw-envelope__artwrap">{front(k)}</div>
             <div ref={partRef(`${k}:shade`)} className="mw-envelope__shade" />

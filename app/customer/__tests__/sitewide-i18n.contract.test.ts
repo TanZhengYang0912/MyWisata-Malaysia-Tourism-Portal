@@ -134,6 +134,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/feedback/feedback-collection.tsx",
   "components/customer/event-reserve-dialog.tsx",
   "components/customer/expand-card.tsx",
+  "components/customer/explore-postcard-board.tsx",
   "components/customer/food-order-qr-codes.tsx",
   "components/customer/guest-account-empty-state.tsx",
   "components/customer/home-destination-worm-indicator.tsx",

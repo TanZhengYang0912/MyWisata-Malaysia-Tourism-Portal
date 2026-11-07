@@ -44,12 +44,16 @@ describe("campaign envelope markup", () => {
     expect(markup).toContain('href="/customer/events/sample-event"');
   });
 
-  it("exposes one heading to assistive tech; the two visual copies are hidden", () => {
+  it("exposes one heading to assistive tech; the hidden parts of each copy stay hidden", () => {
     const markup = renderToStaticMarkup(<CampaignEnvelope campaign={campaign} />);
     expect(markup.match(/<h2/g)).toHaveLength(1);
     expect(markup.match(/id="campaign-envelope-campaign-title"/g)).toHaveLength(1);
-    expect(markup.match(/data-k="(top|flap)" aria-hidden="true"/g)).toHaveLength(2);
-    expect(markup).not.toMatch(/data-k="bottom" aria-hidden/);
+    // The title sits on the top half and the rows on the bottom half, so each is read from where it shows.
+    expect(markup.match(/data-k="flap" aria-hidden="true"/g)).toHaveLength(1);
+    expect(markup).not.toMatch(/data-k="(top|bottom)" aria-hidden/);
+    expect(markup.match(/class="mw-envelope__head"(?! aria-hidden)/g)).toHaveLength(1);
+    expect(markup.match(/class="mw-envelope__body"(?! aria-hidden)/g)).toHaveLength(1);
+    expect(markup.match(/class="mw-envelope__from"(?! aria-hidden)/g)).toHaveLength(1);
   });
 
   it("keeps translation controls out of the two hidden copies", () => {
@@ -74,7 +78,7 @@ describe("campaign envelope stylesheet contract", () => {
     // A piece's own box spans the whole card; only its clipped fold may take pointer events.
     expect(css).toContain(".mw-envelope__pc { position: absolute; left: 0; right: 0; top: 0; height: var(--h0); pointer-events: none; }");
     expect(css).toContain(".mw-envelope__fold { transform-origin: 0 0; background: #fffdf6; pointer-events: auto; }");
-    expect(css).toContain('.mw-envelope[data-state="open"] .mw-envelope__pc:is([data-k="top"], [data-k="flap"]) .mw-envelope__fold { pointer-events: none; }');
+    expect(css).toContain('.mw-envelope[data-state="open"] .mw-envelope__pc[data-k="flap"] .mw-envelope__fold { pointer-events: none; }');
   });
   it("never lifts the envelope above the carousel arrows", () => {
     expect(rules.length).toBeGreaterThan(10);
@@ -148,10 +152,11 @@ describe("campaign envelope interactions", () => {
     await act(async () => {
       root.render(<React.StrictMode><CampaignEnvelope campaign={campaign} /></React.StrictMode>);
     });
-    expect(article().style.height).toBe("440px");
+    expect(article().style.height).toBe("460px");
     await fire(article(), "pointerenter", { pointerType: "mouse" });
     expect(state()).toBe("open");
     await fire(article(), "pointerleave", { pointerType: "mouse" });
+    await wait(150);
     expect(state()).toBe("closed");
   });
 
@@ -162,7 +167,7 @@ describe("campaign envelope interactions", () => {
     await act(async () => { root.render(<></>); });
     width = 500;
     expect(() => queuedResize?.()).not.toThrow();
-    expect(detachedArticle.style.height).toBe("440px");
+    expect(detachedArticle.style.height).toBe("460px");
   });
 
   it("does not draw or queue another frame when a stale animation frame arrives", async () => {
@@ -199,6 +204,7 @@ describe("campaign envelope interactions", () => {
       await wait(500);
       expect(state()).toBe("open");
       await fire(article(), "pointerleave", { pointerType: "mouse" });
+      await wait(150); // leave grace
       await wait(700);
       expect(state()).toBe("closed");
     } finally {
@@ -210,13 +216,32 @@ describe("campaign envelope interactions", () => {
   it("opens on hover and closes when the mouse leaves, keeping its height", async () => {
     await render();
     const height = article().style.height;
-    expect(height).toBe("440px");
+    expect(height).toBe("460px");
     await fire(article(), "pointerenter", { pointerType: "mouse" });
     expect(state()).toBe("open");
     expect(article().style.height).toBe(height);
     await fire(article(), "pointerleave", { pointerType: "mouse" });
+    await wait(150);
     expect(state()).toBe("closed");
     expect(article().style.height).toBe(height);
+  });
+
+  it("stays open when the mouse crosses the gap between a half and the letter", async () => {
+    await render();
+    await fire(article(), "pointerenter", { pointerType: "mouse" });
+    await fire(article(), "pointerleave", { pointerType: "mouse" });
+    await wait(100);
+    await fire(article(), "pointerenter", { pointerType: "mouse" });
+    await wait(200);
+    expect(state()).toBe("open");
+  });
+
+  it("rests the closed letter on the strip, showing only the band under it", async () => {
+    await render();
+    const letter = findOne(container, (element) => element.getAttribute("data-slot") === "campaign-envelope-letter");
+    // offsetHeight is 0 in the test DOM: rest = a + sh / 2 = 288, band = a..a + sh.
+    expect(letter.style.transform).toBe("translateY(288px)");
+    expect(letter.style.clipPath).toBe("inset(-24px 0px -24px 0px round 16px)");
   });
 
   it("ignores a single mouse click and opens the event page on a double click", async () => {
@@ -293,6 +318,7 @@ describe("campaign envelope interactions", () => {
     width = 500;
     await act(async () => { resizeCallback?.(); });
     await fire(article(), "pointerleave", { pointerType: "mouse" });
+    await wait(150);
     expect(state()).toBe("closed");
     expect(article().getAttribute("data-narrow")).toBe("true");
     expect(article().style.height).toBe("480px");

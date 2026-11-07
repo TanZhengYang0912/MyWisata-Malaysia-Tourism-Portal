@@ -17,6 +17,15 @@
   --popover-foreground: #0f172a;
   --primary: #010066;
   --primary-foreground: #f8fafc;
+  /* Explore postcard board (components/customer/explore-postcard-board.tsx) */
+  --mw-cork: #c39563;
+  --mw-cork-grain: rgb(0 0 0 / 0.08);
+  --mw-cork-frame: #6b4426;
+  --mw-string: #b3261e;
+  --mw-pin: #d92d20;
+  --mw-paper: #fbf6ea;
+  --mw-paper-ink: #22264a;
+  --mw-paper-accent: #b3261e; /* text on the paper; the paper stays cream in dark mode, so this does not change */
   --wallet-debit: #4f46e5;
   --secondary: #eef2ff;
   --secondary-foreground: #010066;
@@ -82,6 +91,11 @@
   --popover: #131b2e;
   --popover-foreground: #e8ecf5;
   --primary: #7c8bff;
+  --mw-cork: #8a6440;
+  --mw-cork-grain: rgb(0 0 0 / 0.18);
+  --mw-cork-frame: #3e2614;
+  --mw-string: #f0645a;
+  --mw-pin: #ff6b5e;
   --primary-foreground: #0b1120;
   --wallet-debit: #7c8bff;
   --secondary: #1d2740;
@@ -418,10 +432,9 @@ body {
 .mw-envelope {
   --env-navy: #010066;
   --env-yellow: #ffcc00;
-  --h0: 440px;
-  --a: 84px;
-  --sh: 64px;
-  --tuck: 40px;
+  --h0: 460px;
+  --a: 264px;
+  --sh: 48px;
   position: relative;
   min-width: 0;
   height: var(--h0);
@@ -445,8 +458,8 @@ body {
 .mw-envelope__roll { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 /* The torn strip curls off past the right edge instead of hanging outside the card. */
 .mw-envelope__pc[data-k="flap"] { clip-path: inset(-200px 0 -200px -200px); }
-/* Once flown off, the invisible top and strip must not cover the letter link. */
-.mw-envelope[data-state="open"] .mw-envelope__pc:is([data-k="top"], [data-k="flap"]) .mw-envelope__fold { pointer-events: none; }
+/* Once flown off, the invisible strip must not cover the letter link; the parted halves stay part of the hover area. */
+.mw-envelope[data-state="open"] .mw-envelope__pc[data-k="flap"] .mw-envelope__fold { pointer-events: none; }
 .mw-envelope__bits { position: absolute; inset: 0; pointer-events: none; }
 .mw-envelope__bits i { position: absolute; width: 5px; height: 9px; border: 1px solid rgba(1, 0, 102, .18); border-radius: 1px; background: #fffdf6; }
 
@@ -466,10 +479,11 @@ body {
   background: var(--env-yellow); color: var(--env-navy); font-size: 12px; font-weight: 800; letter-spacing: .26em; text-transform: uppercase;
 }
 .mw-envelope__tab { display: grid; flex: none; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--env-navy); color: var(--env-yellow); }
-.mw-envelope__body { position: absolute; left: 44px; right: 300px; top: calc(var(--a) + var(--sh) + 30px); color: #fff; }
+.mw-envelope__head { position: absolute; left: 44px; right: 300px; bottom: calc(100% - var(--a) + 18px); color: #fff; }
+.mw-envelope__body { position: absolute; left: 44px; right: 300px; top: calc(var(--a) + var(--sh) + 18px); color: #fff; }
 .mw-envelope__eyebrow { color: var(--env-yellow); font-size: 13px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
 .mw-envelope__title {
-  display: -webkit-box; overflow: hidden; margin: 6px 0 14px; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  display: -webkit-box; overflow: hidden; margin: 6px 0 0; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
   font-family: var(--font-display); font-size: clamp(3rem, 5.5vw, 4.5rem); font-weight: 800; line-height: .95; letter-spacing: -.02em; overflow-wrap: anywhere;
 }
 .mw-envelope__row { display: flex; align-items: center; gap: 10px; min-width: 0; margin: 0 0 6px; font-size: 18px; font-weight: 600; }
@@ -484,23 +498,23 @@ body {
   .mw-envelope__hint-tap { display: none; }
 }
 .mw-envelope__stamp {
-  position: absolute; right: 54px; top: calc(var(--a) + var(--sh) + 34px); width: 132px; height: 162px; padding: 9px; background: #fff; transform: rotate(4deg);
+  position: absolute; right: 54px; top: 34px; width: 132px; height: 162px; padding: 9px; background: #fff; transform: rotate(4deg);
   -webkit-mask: radial-gradient(circle 5px at 50% 50%, transparent 98%, #000) -5px -5px / 13px 13px, linear-gradient(#000 0 0) content-box;
   mask: radial-gradient(circle 5px at 50% 50%, transparent 98%, #000) -5px -5px / 13px 13px, linear-gradient(#000 0 0) content-box;
 }
 .mw-envelope__stamp-img { position: relative; height: 112px; overflow: hidden; background: linear-gradient(160deg, #2b2b9e, var(--env-navy)); }
 .mw-envelope__stamp-caption { display: block; margin-top: 6px; color: var(--env-navy); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-align: right; }
 .mw-envelope__postmark {
-  position: absolute; right: 140px; top: calc(var(--a) + var(--sh) + 112px); display: grid; place-content: center; width: 116px; height: 116px; padding: 12px;
+  position: absolute; right: 140px; top: calc(var(--a) + var(--sh) + 16px); display: grid; place-content: center; width: 116px; height: 116px; padding: 12px;
   border: 2px solid rgba(255, 255, 255, .55); border-radius: 50%; color: rgba(255, 255, 255, .55); font-size: 9.5px; font-weight: 800; letter-spacing: .14em;
   line-height: 1.6; text-align: center; text-transform: uppercase; transform: rotate(-14deg); overflow: hidden;
 }
 
-/* Inside: the lining and the letter. The pocket opens upward only, so the
-   letter can float over the content above while its bottom stays tucked in. */
+/* Inside: the lining and the letter. The runtime positions and clips the letter:
+   a band under the strip while closed, fully out between the halves when open. */
 .mw-envelope__under { overflow: hidden; border-radius: 22px; background: repeating-linear-gradient(45deg, #17178e 0 10px, #0b0b6e 10px 20px); box-shadow: inset 0 16px 30px rgba(0, 0, 0, .35); }
-.mw-envelope__pocket { position: absolute; inset: 0; pointer-events: none; clip-path: inset(-100vh 0 0 0 round 0 0 22px 22px); }
-.mw-envelope__letter { position: absolute; left: 4%; right: 4%; top: calc(var(--a) - 8px); overflow: hidden; padding-bottom: var(--tuck); border-radius: 16px; pointer-events: auto; box-shadow: 0 -10px 34px rgba(0, 0, 0, .32); }
+.mw-envelope__pocket { position: absolute; inset: 0; pointer-events: none; }
+.mw-envelope__letter { position: absolute; left: 4%; right: 4%; top: 0; overflow: hidden; border-radius: 16px; pointer-events: auto; box-shadow: 0 -10px 34px rgba(0, 0, 0, .32); }
 .mw-envelope__lhead { position: relative; height: calc(var(--sh) + 16px); background: linear-gradient(160deg, #2b2b9e, var(--env-navy)); }
 .mw-envelope__band { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 18px; padding: 0 16px; overflow: hidden; white-space: nowrap;
   background: color-mix(in srgb, var(--env-navy) 72%, transparent); color: #fff; font-size: 13px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
@@ -509,9 +523,9 @@ body {
 .mw-envelope__more-narrow { display: none; }
 
 /* Phone-width card (set by the runtime from the measured width). */
-.mw-envelope[data-narrow="true"] { --h0: 480px; --a: 96px; --sh: 56px; }
+.mw-envelope[data-narrow="true"] { --h0: 480px; --a: 236px; --sh: 44px; }
 .mw-envelope[data-narrow="true"] .mw-envelope__from { left: 22px; top: 22px; font-size: 10.5px; }
-.mw-envelope[data-narrow="true"] .mw-envelope__body { left: 22px; right: 22px; top: calc(var(--a) + var(--sh) + 24px); }
+.mw-envelope[data-narrow="true"] :is(.mw-envelope__head, .mw-envelope__body) { left: 22px; right: 22px; }
 .mw-envelope[data-narrow="true"] .mw-envelope__title { font-size: 3rem; }
 .mw-envelope[data-narrow="true"] .mw-envelope__row { font-size: 15px; }
 .mw-envelope[data-narrow="true"] .mw-envelope__stamp { right: 16px; top: 14px; width: 70px; height: 86px; padding: 6px; }

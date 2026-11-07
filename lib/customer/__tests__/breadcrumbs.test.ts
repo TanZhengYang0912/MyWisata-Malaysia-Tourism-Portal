@@ -7,6 +7,10 @@ describe("customer breadcrumb routes", () => {
     expect(getProductBreadcrumbAncestors(outlet, false).map((item) => item.href)).toEqual(['/customer/vendors', '/customer/vendors/v', '/customer/outlets/o']);
     expect(getProductBreadcrumbAncestors(outlet, true).map((item) => item.href)).toEqual(['/customer/explore?tab=experiences']);
   });
+  it('drops the outlet crumb when it only repeats the vendor name', () => {
+    const outlet = { vendorId: 'v', vendorName: 'Yati Ayam Percik', outletId: 'o', outletName: 'Yati Ayam Percik' };
+    expect(getProductBreadcrumbAncestors(outlet, false).map((item) => item.href)).toEqual(['/customer/vendors', '/customer/vendors/v']);
+  });
   it("separates automatic, page-owned and hidden routes", () => {
     expect(getCustomerBreadcrumbModel("/customer/explore").mode).toBe("automatic");
     expect(getCustomerBreadcrumbModel("/customer/vendor/v1").mode).toBe("page-owned");

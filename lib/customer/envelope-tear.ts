@@ -4,7 +4,7 @@
 export type Pt = { x: number; y: number };
 export type TearLine = { pts: Pt[]; vx: number; vy: number; n: number };
 export type EnvelopeGeometry = {
-  W: number; H: number; a: number; sh: number; tuck: number;
+  W: number; H: number; a: number; sh: number;
   L1: TearLine; L2: TearLine;
   c1t: number[]; c1f: number[]; c2f: number[]; c2b: number[];
 };
@@ -72,11 +72,11 @@ const two = (fn: (inner: boolean) => [number, number][]) => ({ outer: fn(false),
 const shift = (pt: Pt, n: Pt): [number, number] => [pt.x + n.x * OV, pt.y + n.y * OV];
 
 export function createEnvelopeGeometry(W: number, narrow: boolean): EnvelopeGeometry {
-  const H = narrow ? 480 : 440, a = narrow ? 96 : 84, sh = narrow ? 56 : 64, tuck = 40;
+  const H = narrow ? 480 : 460, a = narrow ? 236 : 264, sh = narrow ? 44 : 48;
   const L1 = rag({ x: -30, y: a }, { x: W, y: a }, 3, 1.6, 11);
   const L2 = rag({ x: -30, y: a + sh }, { x: W, y: a + sh }, 3, 1.6, 12);
   const n = L1.n;
-  return { W, H, a, sh, tuck, L1, L2, c1t: coreOf(n, 2, 10, 41), c1f: coreOf(n, 1, 3, 42), c2f: coreOf(n, 1, 3, 43), c2b: coreOf(n, 2, 10, 44) };
+  return { W, H, a, sh, L1, L2, c1t: coreOf(n, 2, 10, 41), c1f: coreOf(n, 1, 3, 42), c2f: coreOf(n, 1, 3, 43), c2b: coreOf(n, 2, 10, 44) };
 }
 
 /** The envelope cut into the part above the strip, the part below it, and the torn strip curling back over its hinge. */
@@ -111,12 +111,15 @@ export function foldMatrix(a: Pt, b: Pt, phiRad: number) {
 export const toPolygon = (list: [number, number][]) => `polygon(${list.map(([x, y]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`).join(",")})`;
 
 /**
- * translateY for the letter: it floats up until only its bottom `tuck` px stay
- * inside the envelope, but never above the sticky header (then more stays tucked in).
+ * Where the letter sits once the envelope splits open, in px from the card top:
+ * centred on the tear, but kept inside the screen below the sticky header (the
+ * header wins when both limits clash). The two halves follow with an 8px gap.
  */
-export function letterRise(o: { a: number; sh: number; tuck: number; letterHeight: number; cardTop: number; headerBottom: number }) {
-  const wanted = o.a + o.sh + o.tuck - o.letterHeight, allowed = o.headerBottom + 8 - o.cardTop;
-  return Math.min(0, Math.max(wanted, allowed)) - (o.a - 8);
+export function splitOpenLayout(o: { tearTop: number; tearBottom: number; letterHeight: number; cardTop: number; headerBottom: number; viewportHeight: number }) {
+  const preferred = (o.tearTop + o.tearBottom) / 2 - o.letterHeight / 2;
+  const lo = o.headerBottom + 12 - o.cardTop, hi = o.viewportHeight - 12 - o.letterHeight - o.cardTop;
+  const letterTop = Math.round(lo > hi ? lo : Math.min(hi, Math.max(lo, preferred)));
+  return { letterTop, topShift: letterTop - 8 - o.tearTop, bottomShift: letterTop + o.letterHeight + 8 - o.tearBottom };
 }
 
 /** What to do once the pointer/focus wish and the animation state disagree. */

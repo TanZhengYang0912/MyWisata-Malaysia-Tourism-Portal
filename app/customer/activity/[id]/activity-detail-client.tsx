@@ -22,7 +22,7 @@ import type { BookingSlot, ComputedActivity, ProductReview } from "@/backend/cor
 import type { OutletChoice } from "@/backend/domains/catalogue";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import { getActivityCommerceMode, getCategoryChips, getPriceUnit, isPlaceBound } from "@/lib/customer/category-details";
-import { outletShortName } from "@/lib/outlet-display";
+import { outletRepeatsVendor, outletShortName } from "@/lib/outlet-display";
 import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { buildActivityPath, getCustomerReturnPath } from "@/lib/customer/navigation-context";
 import { getEffectiveOutletCount } from "@/lib/customer/activity-commerce";
@@ -157,7 +157,7 @@ export function ActivityDetailClient({
   const chips = useMemo(() => (activity ? getCategoryChips(activity, t, selectedOutlet ?? undefined) : []), [activity, selectedOutlet, t]);
   // What varies by category lives in the body; everything around it is shared.
   const body = getDetailBody(activity?.categorySlug);
-  const namesOutlet = activity ? !placeBound : true;
+  const namesOutlet = activity ? !placeBound && !outletRepeatsVendor(selectedOutlet?.outletName, selectedOutlet?.vendorName) : true;
 
   if (activity === null) {
     return <EmptyState title={t("ui.activity.notFound")} description={t("ui.activity.removed")} />;
@@ -275,11 +275,13 @@ export function ActivityDetailClient({
                     <span className="font-bold text-foreground">{selectedOutlet!.rating}</span>
                     <span className="text-muted-foreground">{t("strictMigration.activityDetail.reviewCount", { count: selectedOutlet!.reviews })}</span>
                   </div>
-                   <div className="flex items-center gap-1.5" style={{ color: (selectedOutlet!.currentlyOpen ?? selectedOutlet!.open) ? "var(--nature-green-ink)" : "#64748b" }}>
-                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: (selectedOutlet!.currentlyOpen ?? selectedOutlet!.open) ? "var(--nature-green)" : "#94a3b8" }} />
-                     {(selectedOutlet!.currentlyOpen ?? selectedOutlet!.open) ? t("ui.labels.openNow") : t("ui.labels.currentlyClosed")}
-                   </div>
-                   {selectedOutlet!.operatingHours ? <OperatingHoursSummary hours={selectedOutlet!.operatingHours} currentlyOpen={selectedOutlet!.currentlyOpen ?? selectedOutlet!.open} compact /> : selectedOutlet!.hours && <div className="flex items-center gap-1.5 text-muted-foreground"><Clock3 size={13} /> <span><span className="font-semibold text-foreground">{t("ui.labels.operatingHours")}:</span> {selectedOutlet!.hours}</span></div>}
+                   {selectedOutlet!.operatingHours ? <OperatingHoursSummary hours={selectedOutlet!.operatingHours} currentlyOpen={selectedOutlet!.currentlyOpen ?? selectedOutlet!.open} compact /> : <>
+                     <div className="flex items-center gap-1.5" style={{ color: (selectedOutlet!.currentlyOpen ?? selectedOutlet!.open) ? "var(--nature-green-ink)" : "#64748b" }}>
+                       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: (selectedOutlet!.currentlyOpen ?? selectedOutlet!.open) ? "var(--nature-green)" : "#94a3b8" }} />
+                       {(selectedOutlet!.currentlyOpen ?? selectedOutlet!.open) ? t("ui.labels.openNow") : t("ui.labels.currentlyClosed")}
+                     </div>
+                     {selectedOutlet!.hours && <div className="flex items-center gap-1.5 text-muted-foreground"><Clock3 size={13} /> <span><span className="font-semibold text-foreground">{t("ui.labels.operatingHours")}:</span> {selectedOutlet!.hours}</span></div>}
+                   </>}
                  </>}
               </div>
         </div>

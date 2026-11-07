@@ -2335,6 +2335,16 @@
       "experiences": "Experiences",
       "statesAndCities": "States & Cities",
       "exploreByDestination": "Explore by Destination",
+      "postcard": {
+        "greetingsFrom": "Greetings from",
+        "wishYouWereHere": "Wish you were here!",
+        "seeAll": "See all {{count}} in {{state}}",
+        "ps": "P.S. Try {{name}}",
+        "flip": "Flip",
+        "previous": "Previous postcard",
+        "next": "Next postcard",
+        "open": "Open the {{state}} postcard"
+      },
       "filterByCategory": "Filter by Category",
       "clear": "Clear",
       "categoryExperiences": "{{category}} listings",

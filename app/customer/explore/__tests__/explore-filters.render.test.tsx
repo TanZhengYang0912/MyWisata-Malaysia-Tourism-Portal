@@ -109,7 +109,7 @@ vi.mock("@/backend/domains/catalogue", () => ({
   sortExploreActivities: mocks.sortExploreActivities,
 }));
 vi.mock("@/components/customer/activity-card", () => ({ ActivityCard: ({ activity, listing, returnTo, hideDiscoveryBadges }: { activity?: { id: string; name: string }; listing?: { id: string; name: string }; returnTo?: string; hideDiscoveryBadges?: boolean }) => { const item = (activity ?? listing)!; return <article data-testid={`activity-${item.id}`} data-card={listing ? "catalogue" : "discovery"} data-hide-discovery-badges={hideDiscoveryBadges ? "true" : "false"}>{item.name}|{returnTo}</article>; } }));
-vi.mock("@/components/demo-map/story-map", () => ({ StoryMap: ({ activities }: { activities: { id: string }[] }) => <output data-testid="story-map-ids">{activities.map((activity) => activity.id).join(",")}</output> }));
+vi.mock("@/components/customer/explore-postcard-board", () => ({ ExplorePostcardBoard: ({ activities }: { activities: { id: string }[] }) => <output data-testid="postcard-board-ids">{activities.map((activity) => activity.id).join(",")}</output> }));
 vi.mock("@/components/ui/checkbox", () => ({
   Checkbox: ({
     id,
@@ -291,11 +291,18 @@ describe("ExploreClient URL-backed advanced filters", () => {
     expect(ids[0]).toBe("activity-result-10");
   });
 
+  it("clears Experiences filters when switching to Destinations, which has no filter controls", async () => {
+    mocks.params = new URLSearchParams("tab=experiences&q=durian&state=Sabah&category=activity");
+    await render(root, <ExploreClient initialActivities={activities} />);
+    await click(button(container, "Destinations"));
+    expect(mocks.replace).toHaveBeenLastCalledWith("/customer/explore");
+  });
+
   it("restores the Experiences tab from the URL", async () => {
     mocks.params = new URLSearchParams("tab=experiences");
     await render(root, <ExploreClient initialActivities={activities} />);
 
-    expect(findElements(container, (element) => element.getAttribute("data-testid") === "story-map-ids").length).toBe(0);
+    expect(findElements(container, (element) => element.getAttribute("data-testid") === "postcard-board-ids").length).toBe(0);
     expect(findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false)).toHaveLength(8);
   });
 

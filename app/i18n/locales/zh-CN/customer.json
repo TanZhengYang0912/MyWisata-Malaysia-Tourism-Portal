@@ -2340,6 +2340,16 @@
       "experiences": "体验",
       "statesAndCities": "州和城市",
       "exploreByDestination": "按目的地探索",
+      "postcard": {
+        "greetingsFrom": "寄自",
+        "wishYouWereHere": "真希望你也在这里！",
+        "seeAll": "查看{{state}}全部 {{count}} 个",
+        "ps": "附言：试试{{name}}",
+        "flip": "翻面",
+        "previous": "上一张明信片",
+        "next": "下一张明信片",
+        "open": "打开{{state}}明信片"
+      },
       "filterByCategory": "按类别筛选",
       "clear": "清除",
       "categoryExperiences": "{{category}}列表",

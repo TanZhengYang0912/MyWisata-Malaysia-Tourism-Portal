@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import Link from "next/link";
-import Image from "next/image";
 import { ArrowUpDown, ChevronDown, Compass, Map, MapPin, SlidersHorizontal, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import * as catalogueDomain from "@/backend/domains/catalogue";
@@ -13,8 +11,7 @@ import { CustomerDiscoveryFilterPanel, DiscoverySearchField } from "@/components
 import { Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
-import { StoryMap } from "@/components/demo-map/story-map";
+import { ExplorePostcardBoard } from "@/components/customer/explore-postcard-board";
 import type { ComputedActivity } from "@/backend/core/types";
 import { parseDiscoveryQuery, serializeDiscoveryQuery, type DiscoveryQuery } from "@/lib/customer/discovery-query";
 import { createClient } from "@/lib/supabase/client";
@@ -26,15 +23,6 @@ import { canonicalCategorySlug, type RealCategorySlug } from "@/lib/customer/dis
 type ExploreTab = "destinations" | "experiences";
 type ExperienceSort = "recommended" | "price_asc" | "rating_desc";
 const EXPERIENCE_PAGE_SIZE = 8;
-
-const ZONE_ORDER = [
-  "Federal Territory",
-  "Northern Malaysia",
-  "Central Malaysia",
-  "Southern Malaysia",
-  "Borneo Malaysia",
-  "East Coast Malaysia",
-];
 
 function buildExploreHref(filters: DiscoveryQuery, tab: ExploreTab, sort: ExperienceSort = "recommended", page = 1) {
   const params = serializeDiscoveryQuery(filters);
@@ -91,12 +79,10 @@ function normalizeExperienceFilters(filters: DiscoveryQuery): DiscoveryQuery {
 export function ExploreClient({
   initialActivities,
   statesWithPlaces = [],
-  placeCountByState = {},
   dataUnavailable = false,
 }: {
   initialActivities: ComputedActivity[];
   statesWithPlaces?: string[];
-  placeCountByState?: Record<string, number>;
   dataUnavailable?: boolean;
 }) {
   const { t } = useTranslation("customer");
@@ -320,7 +306,8 @@ export function ExploreClient({
   };
 
   const changeTab = (nextTab: ExploreTab) => {
-    const nextFilters = nextTab === "experiences" ? normalizeExperienceFilters(filters) : filters;
+    // Destinations has no filter controls, so filters set on Experiences must not silently shape the postcard board.
+    const nextFilters = nextTab === "experiences" ? normalizeExperienceFilters(filters) : parseDiscoveryQuery(new URLSearchParams());
     setTab(nextTab);
     setFilters(nextFilters);
     router.replace(buildExploreHref(nextFilters, nextTab, nextTab === "experiences" ? sort : "recommended"));
@@ -394,68 +381,7 @@ export function ExploreClient({
 
       {/* Destinations tab */}
       {tab === "destinations" && (
-        <div>
-          {/* Malaysia map + state cards via existing StoryMap */}
-          <StoryMap activities={displayActivities} filters={filters} onFilterChange={updateFilters} onSponsoredClick={(activity) => recordSponsoredEvent(activity, "click")} />
-
-          {/* Destination cards grid */}
-          <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-            <div className="mb-6 flex items-end justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.explore.statesAndCities")}</p>
-                <h2 className="mt-1 text-2xl font-bold text-foreground">{t("ui.explore.exploreByDestination")}</h2>
-              </div>
-            </div>
-            <div className="space-y-12">
-              {ZONE_ORDER.map((zone) => {
-                const zoneDestinations = MALAYSIA_DESTINATIONS.filter((d) => d.zone === zone);
-                if (zoneDestinations.length === 0) return null;
-
-                return (
-                  <div key={zone}>
-                    <h3 className="mb-4 text-xl font-bold text-foreground">{zone}</h3>
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:gap-6">
-                      {zoneDestinations.map((dest) => {
-                        const stateSlug = dest.state.toLowerCase().replace(/\s+/g, "-");
-                        const hasPlaces = statesWithPlaces.includes(dest.state);
-                        const placeCount = placeCountByState[dest.state] ?? 0;
-                        return (
-                          <Link
-                            key={dest.state}
-                            href={hasPlaces ? `/customer/place/${stateSlug}` : `/customer/destination/${encodeURIComponent(stateSlug)}`}
-                            className="group relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                          >
-                            <div className="relative aspect-[0.9] overflow-hidden">
-                              <Image
-                                src={dest.image}
-                                alt={dest.state}
-                                fill
-                                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
-                                className="object-cover object-top transition duration-500 group-hover:scale-105"
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                              <div className="absolute inset-x-3 bottom-3">
-                                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary-foreground/70 dark:text-white/70">
-                                  {dest.zone}
-                                </p>
-                                <p className="mt-0.5 text-sm font-bold text-white">{dest.state}</p>
-                                {hasPlaces && placeCount > 0 && (
-                                  <p className="mt-0.5 text-[10px] font-semibold text-white/80">
-                                    {t("ui.place.placesToVisit", { count: placeCount })}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        </div>
+        <ExplorePostcardBoard activities={displayActivities} statesWithPlaces={statesWithPlaces} returnTo={buildExploreHref(filters, tab)} onSponsoredClick={(activity) => recordSponsoredEvent(activity, "click")} />
       )}
 
       {/* Experiences tab */}

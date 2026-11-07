@@ -2340,6 +2340,16 @@
       "experiences": "Pengalaman",
       "statesAndCities": "Negeri & Bandar",
       "exploreByDestination": "Teroka mengikut Destinasi",
+      "postcard": {
+        "greetingsFrom": "Salam dari",
+        "wishYouWereHere": "Alangkah baiknya jika anda di sini!",
+        "seeAll": "Lihat semua {{count}} di {{state}}",
+        "ps": "P.S. Cubalah {{name}}",
+        "flip": "Terbalikkan",
+        "previous": "Poskad sebelumnya",
+        "next": "Poskad seterusnya",
+        "open": "Buka poskad {{state}}"
+      },
       "filterByCategory": "Tapis mengikut Kategori",
       "clear": "Kosongkan",
       "categoryExperiences": "Senarai {{category}}",
