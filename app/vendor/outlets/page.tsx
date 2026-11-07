@@ -11,7 +11,6 @@ import {
   MapPinned,
   Pencil,
   Store,
-  TicketPercent,
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
@@ -27,6 +26,8 @@ import { HotelProfileEditor } from '@/components/vendor/hotel-profile-editor';
 import OutletShopPreview from '@/components/vendor/outlet-shop-preview';
 import CenteredDetailModal from '@/components/ui/centered-detail-modal';
 import OutletActionGroup from '@/components/vendor/outlet-action-group';
+import { VendorMobileRecordCard } from '@/components/vendor/mobile-record-card';
+import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
 import ActionConfirmationDialog from '@/components/vendor/action-confirmation-dialog';
 import {
   outletLocation,
@@ -111,8 +112,6 @@ export default function VendorOutletsPage() {
     isOutletManager,
     searchParams.get('edit'),
   );
-  const canManageOutlet =
-    isOwner || (user?.roles.includes('outlet_manager') ?? false);
   const [builderOutlet, setBuilderOutlet] = useState<OutletData | null>(null);
 
   const loadOutlets = useCallback(
@@ -208,11 +207,6 @@ export default function VendorOutletsPage() {
           operating_hours: outlets[0].operating_hours,
         }}
         onEdit={() => router.push(getOutletManagerEditorDestination(true))}
-        onCreateVoucher={() =>
-          router.push(
-            `/vendor/vouchers?create=1&outletId=${encodeURIComponent(outlets[0].id)}`,
-          )
-        }
       />
     );
 
@@ -293,31 +287,22 @@ export default function VendorOutletsPage() {
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            <MapPinned size={15} /> {t('ui.outlets.malaysiaNetwork')}
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground">
-            {t('ui.outlets.title')}
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">
-            {t('ui.outlets.description')}
-          </p>
-        </div>
-        {isOwner && (
+      <VendorPageHeader
+        eyebrow={<><MapPinned size={15} aria-hidden="true" /> {t('ui.outlets.malaysiaNetwork')}</>}
+        title={t('ui.outlets.title')}
+        actions={isOwner && (
           <button
             type="button"
             onClick={() => {
               setEditingOutlet(null);
               setShowForm(true);
             }}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
           >
             <CirclePlus size={17} /> {t('ui.outlets.add')}
           </button>
         )}
-      </header>
+      />
 
       <CompactFilterBar
         search={filters.q}
@@ -346,6 +331,7 @@ export default function VendorOutletsPage() {
           },
         ]}
         onClear={clearFilters}
+        collapsibleOnMobile
       />
       {isOwner && (
         <BatchActionBar
@@ -430,111 +416,105 @@ export default function VendorOutletsPage() {
           </div>
           <section className="grid gap-3 md:grid-cols-2">
             {outlets.map((outlet) => (
-              <article
+              <VendorMobileRecordCard
                 key={outlet.id}
-                className="group flex min-w-0 gap-4 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm"
-              >
-                {isOwner && (
-                  <div className="pt-1">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(outlet.id)}
-                      onChange={() => toggleSelected(outlet.id)}
-                      aria-label={t('ui.outlets.selectOutlet', {
-                        name: outlet.name,
-                      })}
+                className="group rounded-2xl border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm"
+                header={
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    {isOwner && (
+                      <div className="pt-1">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(outlet.id)}
+                          onChange={() => toggleSelected(outlet.id)}
+                          aria-label={t('ui.outlets.selectOutlet', {
+                            name: outlet.name,
+                          })}
+                        />
+                      </div>
+                    )}
+                    <CompactThumbnail
+                      src={outlet.coverUrl}
+                      alt={outlet.name}
+                      kind="outlet"
+                      size="md"
                     />
-                  </div>
-                )}
-                <CompactThumbnail
-                  src={outlet.coverUrl}
-                  alt={outlet.name}
-                  kind="outlet"
-                  size="md"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedOutlet(outlet)}
-                        className="block max-w-full truncate text-left font-semibold text-gray-900 dark:text-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                      >
-                        {outletShortName(outlet.name)}
-                      </button>
-                      <p className="mt-1 flex items-center gap-1 truncate text-xs text-gray-500 dark:text-muted-foreground">
-                        <MapPinned size={12} aria-hidden="true" />{' '}
-                        {outletLocation(outlet.city, outlet.state)}
-                      </p>
-                      <p className="mt-1 font-mono text-[11px] text-gray-400 dark:text-muted-foreground">
-                        {outlet.display_id || outletIdLabel(outlet.id)}
-                      </p>
+                    <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedOutlet(outlet)}
+                          className="block max-w-full break-words text-left font-semibold text-gray-900 dark:text-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        >
+                          {outletShortName(outlet.name)}
+                        </button>
+                        <p className="mt-1 flex items-start gap-1 break-words text-xs text-gray-500 dark:text-muted-foreground">
+                          <MapPinned size={12} aria-hidden="true" />{' '}
+                          {outletLocation(outlet.city, outlet.state)}
+                        </p>
+                        <p className="mt-1 break-all font-mono text-[11px] text-gray-400 dark:text-muted-foreground">
+                          {outlet.display_id || outletIdLabel(outlet.id)}
+                        </p>
+                      </div>
+                      <div className="shrink-0 pt-1">
+                        <StatusBadge status={outlet.status} />
+                      </div>
                     </div>
-                    <StatusBadge status={outlet.status} />
                   </div>
-                  <div className="mt-4 flex flex-col items-start gap-3 border-t border-gray-100 dark:border-border pt-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-                    <span className="text-xs text-gray-500 dark:text-muted-foreground">
-                      {outlet.productsCount > 0 ? (
-                        <>
-                          <strong className="text-gray-800 dark:text-foreground">
-                            {outlet.productsCount}
-                          </strong>{' '}
-                          {t('ui.outlets.listings')}
-                        </>
-                      ) : (
-                        <span className="font-medium text-gray-600 dark:text-muted-foreground">
-                          {t('ui.outlets.noListings')}
-                        </span>
-                      )}
+                }
+                footer={
+                  <OutletActionGroup
+                    ariaLabel={t(
+                      'ui.outlets.outletActions',
+                      'Outlet actions',
+                    )}
+                    actions={[
+                      {
+                        id: 'view-details',
+                        label: t('ui.outlets.viewDetails'),
+                        onSelect: () => setSelectedOutlet(outlet),
+                        variant: 'secondary' as const,
+                        icon: Eye,
+                        ariaLabel: t('ui.outlets.viewDetailsFor', {
+                          name: outletShortName(outlet.name),
+                        }),
+                      },
+                      ...(isOwner
+                        ? [
+                            {
+                              id: 'edit-outlet',
+                              label: t('ui.outlets.editOutlet'),
+                              onSelect: () => {
+                                setEditingOutlet(outlet);
+                                setShowForm(true);
+                              },
+                              variant: 'tertiary' as const,
+                              icon: Pencil,
+                              ariaLabel: t('ui.outlets.editOutletNamed', {
+                                name: outletShortName(outlet.name),
+                              }),
+                            },
+                          ]
+                        : []),
+                    ]}
+                  />
+                }
+              >
+                <span className="text-xs text-gray-500 dark:text-muted-foreground">
+                  {outlet.productsCount > 0 ? (
+                    <>
+                      <strong className="text-gray-800 dark:text-foreground">
+                        {outlet.productsCount}
+                      </strong>{' '}
+                      {t('ui.outlets.listings')}
+                    </>
+                  ) : (
+                    <span className="font-medium text-gray-600 dark:text-muted-foreground">
+                      {t('ui.outlets.noListings')}
                     </span>
-                    <OutletActionGroup
-                      ariaLabel={t(
-                        'ui.outlets.outletActions',
-                        'Outlet actions',
-                      )}
-                      actions={[
-                        ...(outlet.productsCount === 0 && canManageOutlet
-                          ? [
-                              {
-                                id: 'manage-listings',
-                                label: t('ui.outlets.manageListings'),
-                                onSelect: () => router.push('/vendor/products'),
-                                variant: 'primary' as const,
-                              },
-                            ]
-                          : []),
-                        {
-                          id: 'view-details',
-                          label: t('ui.outlets.viewDetails'),
-                          onSelect: () => setSelectedOutlet(outlet),
-                          variant: 'secondary' as const,
-                          icon: Eye,
-                          ariaLabel: t('ui.outlets.viewDetailsFor', {
-                            name: outletShortName(outlet.name),
-                          }),
-                        },
-                        ...(isOwner
-                          ? [
-                              {
-                                id: 'edit-outlet',
-                                label: t('ui.outlets.editOutlet'),
-                                onSelect: () => {
-                                  setEditingOutlet(outlet);
-                                  setShowForm(true);
-                                },
-                                variant: 'tertiary' as const,
-                                icon: Pencil,
-                                ariaLabel: t('ui.outlets.editOutletNamed', {
-                                  name: outletShortName(outlet.name),
-                                }),
-                              },
-                            ]
-                          : []),
-                      ]}
-                    />
-                  </div>
-                </div>
-              </article>
+                  )}
+                </span>
+              </VendorMobileRecordCard>
             ))}
           </section>
           {pagination.totalPages > 1 && (
@@ -555,58 +535,67 @@ export default function VendorOutletsPage() {
       )}
 
       {isOwner && (showForm || editingOutlet) && vendorId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white dark:bg-card p-6 shadow-2xl">
-            <OutletForm
-              vendorId={vendorId}
-              showAccommodationTypes={editingOutlet?.isAccommodationOutlet}
-              initialData={
-                editingOutlet
-                  ? {
-                      id: editingOutlet.id,
-                      name: editingOutlet.name,
-                      address: editingOutlet.address || undefined,
-                      city: editingOutlet.city || undefined,
-                      state: editingOutlet.state || undefined,
-                      postcode: editingOutlet.postcode || undefined,
-                      country: editingOutlet.country || undefined,
-                      phone: editingOutlet.phone || undefined,
-                      email: editingOutlet.email || undefined,
-                      lat: editingOutlet.lat || undefined,
-                      lng: editingOutlet.lng || undefined,
-                      welcomeMessage:
-                        editingOutlet.welcome_message || undefined,
-                      welcomeEnabled: editingOutlet.welcome_enabled ?? true,
-                      foodServiceModes: editingOutlet.food_service_modes ?? ["dine_in", "takeaway"],
-                      badgeSlugs: editingOutlet.badge_slugs ?? [],
-                      accommodationTypeSlugs: editingOutlet.accommodation_type_slugs ?? [],
-                    }
-                  : undefined
-              }
-              onSuccess={() => {
-                setShowForm(false);
-                setEditingOutlet(null);
-                loadOutlets(pagination.page);
-              }}
-              onClose={() => {
-                setShowForm(false);
-                setEditingOutlet(null);
-              }}
-            />
-          </div>
-        </div>
+        <CenteredDetailModal
+          title={t(editingOutlet ? 'outletForm.editTitle' : 'outletForm.addTitle')}
+          closeLabel={t('ui.outlets.close')}
+          onClose={() => {
+            setShowForm(false);
+            setEditingOutlet(null);
+          }}
+          size="xl"
+          layout="fixed"
+          headerClassName="shrink-0 border-b border-border px-4 pb-3 pt-4 sm:px-6 sm:pt-5"
+          className="!p-0"
+          overlayClassName="z-50 !p-0 sm:!p-4"
+        >
+          <OutletForm
+            vendorId={vendorId}
+            showAccommodationTypes={editingOutlet?.isAccommodationOutlet}
+            initialData={
+              editingOutlet
+                ? {
+                    id: editingOutlet.id,
+                    name: editingOutlet.name,
+                    address: editingOutlet.address || undefined,
+                    city: editingOutlet.city || undefined,
+                    state: editingOutlet.state || undefined,
+                    postcode: editingOutlet.postcode || undefined,
+                    country: editingOutlet.country || undefined,
+                    phone: editingOutlet.phone || undefined,
+                    email: editingOutlet.email || undefined,
+                    lat: editingOutlet.lat || undefined,
+                    lng: editingOutlet.lng || undefined,
+                    welcomeMessage:
+                      editingOutlet.welcome_message || undefined,
+                    welcomeEnabled: editingOutlet.welcome_enabled ?? true,
+                    foodServiceModes: editingOutlet.food_service_modes ?? ["dine_in", "takeaway"],
+                    badgeSlugs: editingOutlet.badge_slugs ?? [],
+                    accommodationTypeSlugs: editingOutlet.accommodation_type_slugs ?? [],
+                  }
+                : undefined
+            }
+            onSuccess={() => {
+              setShowForm(false);
+              setEditingOutlet(null);
+              loadOutlets(pagination.page);
+            }}
+            onClose={() => {
+              setShowForm(false);
+              setEditingOutlet(null);
+            }}
+          />
+        </CenteredDetailModal>
       )}
 
       {selectedOutlet && (
         <CenteredDetailModal
           eyebrow={t('ui.outlets.outletDetails')}
           title={outletShortName(selectedOutlet.name)}
-          subtitle={outletLocation(selectedOutlet.city, selectedOutlet.state)}
           closeLabel={t('ui.outlets.closeDetails')}
           onClose={() => setSelectedOutlet(null)}
           size="lg"
         >
-          <div className="mt-6 grid gap-4 rounded-2xl border border-primary/10 bg-secondary/35 p-4 sm:grid-cols-[auto_1fr] sm:items-center">
+          <div className="mt-4 grid gap-3 rounded-2xl border border-primary/10 bg-secondary/35 p-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:p-4">
             <CompactThumbnail
               src={selectedOutlet.coverUrl}
               alt={selectedOutlet.name}
@@ -614,25 +603,22 @@ export default function VendorOutletsPage() {
               size="md"
             />
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
-                {t('ui.outlets.location')}
-              </p>
-              <p className="mt-1 text-base font-semibold text-gray-950 dark:text-foreground">
-                {outletLocation(selectedOutlet.city, selectedOutlet.state)}
-              </p>
-              <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">
-                {selectedOutlet.address || t('ui.outlets.noAddress')}
-              </p>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="text-xs font-semibold text-gray-500 dark:text-muted-foreground">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
                   {t('ui.outlets.status')}
-                </span>
+                </p>
                 <StatusBadge status={selectedOutlet.status} />
               </div>
+              <p className="mt-2 text-base font-semibold text-gray-950 dark:text-foreground">
+                {outletLocation(selectedOutlet.city, selectedOutlet.state)}
+              </p>
+              <p className="mt-1 break-words text-sm text-gray-500 dark:text-muted-foreground">
+                {selectedOutlet.address || t('ui.outlets.noAddress')}
+              </p>
             </div>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl bg-gray-50 dark:bg-muted/50 p-4">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="min-w-0 rounded-xl bg-gray-50 dark:bg-muted/50 p-3 sm:p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground">
                 {t('ui.outlets.outletId')}
               </p>
@@ -653,7 +639,7 @@ export default function VendorOutletsPage() {
                 </button>
               </div>
             </div>
-            <div className="rounded-xl bg-gray-50 dark:bg-muted/50 p-4">
+            <div className="rounded-xl bg-gray-50 dark:bg-muted/50 p-3 sm:p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground">
                 {t('ui.outlets.listedProducts')}
               </p>
@@ -663,7 +649,7 @@ export default function VendorOutletsPage() {
             </div>
           </div>
           {isOwner && vendorId && (
-            <div className="mt-4">
+            <div className="mt-3">
               <OutletManagerPanel
                 vendorId={vendorId}
                 outletId={selectedOutlet.id}
@@ -676,43 +662,47 @@ export default function VendorOutletsPage() {
               />
             </div>
           )}
-          {(selectedOutlet.phone || selectedOutlet.email) && (
-            <div className="mt-4 rounded-xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 ring-1 ring-gray-100">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground">
-                {t('ui.outlets.contactDetails')}
-              </p>
-              <div className="mt-2 grid gap-2 text-sm text-gray-700 dark:text-foreground sm:grid-cols-2">
-                {selectedOutlet.phone && (
-                  <p>
-                    {t('ui.outlets.phone', { value: selectedOutlet.phone })}
+          {(selectedOutlet.phone || selectedOutlet.email || (selectedOutlet.lat && selectedOutlet.lng)) && (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {(selectedOutlet.phone || selectedOutlet.email) && (
+                <div className="min-w-0 rounded-xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 sm:p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground">
+                    {t('ui.outlets.contactDetails')}
                   </p>
-                )}
-                {selectedOutlet.email && (
-                  <p className="break-all">
-                    {t('ui.outlets.email', { value: selectedOutlet.email })}
-                  </p>
-                )}
-              </div>
+                  <div className="mt-2 space-y-1 break-words text-sm text-gray-700 dark:text-foreground">
+                    {selectedOutlet.phone && (
+                      <p>{t('ui.outlets.phone', { value: selectedOutlet.phone })}</p>
+                    )}
+                    {selectedOutlet.email && (
+                      <p className="break-all">
+                        {t('ui.outlets.email', { value: selectedOutlet.email })}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              {selectedOutlet.lat && selectedOutlet.lng && (
+                <a
+                  className="inline-flex min-h-14 items-center justify-between gap-2 rounded-xl border border-gray-100 dark:border-border px-4 py-3 font-semibold text-primary hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  href={
+                    'https://www.google.com/maps/dir/?api=1&destination=' +
+                    selectedOutlet.lat +
+                    ',' +
+                    selectedOutlet.lng
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Landmark size={15} aria-hidden="true" />
+                    {t('ui.outlets.getDirections')}
+                  </span>
+                  <ArrowUpRight size={15} aria-hidden="true" />
+                </a>
+              )}
             </div>
           )}
-          {selectedOutlet.lat && selectedOutlet.lng && (
-            <a
-              className="mt-4 inline-flex items-center gap-1 font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-              href={
-                'https://www.google.com/maps/dir/?api=1&destination=' +
-                selectedOutlet.lat +
-                ',' +
-                selectedOutlet.lng
-              }
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Landmark size={15} aria-hidden="true" />{' '}
-              {t('ui.outlets.getDirections')}{' '}
-              <ArrowUpRight size={15} aria-hidden="true" />
-            </a>
-          )}
-          <div className="mt-7 border-t border-gray-100 dark:border-border pt-5">
+          <div className="mt-5 border-t border-gray-100 dark:border-border pt-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-muted-foreground">
               {t('ui.outlets.actions')}
             </p>
@@ -747,18 +737,6 @@ export default function VendorOutletsPage() {
                         },
                       ]
                     : []),
-                {
-                  id: 'create-voucher',
-                  label: t('ui.outlets.createVoucher'),
-                  onSelect: () => {
-                    setSelectedOutlet(null);
-                    router.push(
-                      `/vendor/vouchers?create=1&outletId=${encodeURIComponent(selectedOutlet.id)}`,
-                    );
-                  },
-                  variant: 'secondary' as const,
-                  icon: TicketPercent,
-                },
                 ...(isOwner && selectedOutlet.status === 'active'
                   ? [
                       {

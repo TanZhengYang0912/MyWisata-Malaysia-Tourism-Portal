@@ -44,6 +44,33 @@ describe("PortalSidebar", () => {
     expect(markup).toContain('aria-current="page"');
     expect(markup).toContain('aria-label="3 pending orders"');
     expect(markup).toContain("focus-visible:ring-2");
+    expect(markup).toContain("text-slate-200");
+    expect(markup).toContain("bg-indigo-300/20");
+    expect(markup).toContain("ring-1 ring-inset ring-indigo-200/35");
+  });
+
+  it("gives every category a consistent non-button heading and divider", () => {
+    const categoryLabels = ["Communication", "Workspace", "Operations", "Finance", "Insights", "Promotion"];
+    const markup = renderToStaticMarkup(
+      <PortalSidebar
+        portalName="Vendor Portal"
+        brandName="Malaysia Tourism"
+        navigationLabel="Portal navigation"
+        contextLabel="Vendor Owner"
+        sections={categoryLabels.map((label, index) => ({
+          label,
+          items: [{ href: `/vendor/section-${index}`, label: `Item ${index + 1}`, icon: Package }],
+        }))}
+      />,
+    );
+    const headingClassNames = [...markup.matchAll(/<h2[^>]*data-sidebar-category-heading="true"[^>]*class="([^"]+)"/g)]
+      .map((match) => match[1] ?? "");
+
+    expect(headingClassNames).toHaveLength(categoryLabels.length);
+    expect(new Set(headingClassNames).size).toBe(1);
+    expect(markup.match(/data-sidebar-category-divider="true"/g)).toHaveLength(categoryLabels.length);
+    expect(markup.match(/<h2/g)).toHaveLength(categoryLabels.length);
+    expect(headingClassNames.every((className) => !className.includes("rounded-lg"))).toBe(true);
   });
 
   it("wraps the full active outlet name instead of truncating it", () => {
@@ -58,6 +85,6 @@ describe("PortalSidebar", () => {
       />,
     );
 
-    expect(markup).toContain('class="mt-0.5 whitespace-normal break-words text-xs text-slate-400">Heritage Hotel Cameron Highlands</p>');
+    expect(markup).toContain('class="mt-0.5 whitespace-normal break-words text-xs text-slate-300">Heritage Hotel Cameron Highlands</p>');
   });
 });

@@ -11,6 +11,7 @@ describe('admin filter bar presentation', () => {
   it('provides a responsive card wrapper for filter controls', () => {
     expect(componentSource).toContain('rounded-xl border border-border bg-card');
     expect(componentSource).toContain('flex flex-wrap');
+    expect(componentSource).toContain('min-w-0');
     expect(componentSource).toContain('gap-2.5');
   });
 
@@ -19,6 +20,7 @@ describe('admin filter bar presentation', () => {
     expect(componentSource).toContain('h-10');
     expect(componentSource).toContain('rounded-xl');
     expect(componentSource).toContain('bg-card');
+    expect(componentSource).toContain('max-w-full');
     expect(componentSource).toContain('focus:ring-2');
   });
 });

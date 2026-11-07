@@ -59,14 +59,15 @@ describe("currency switcher preference save", () => {
   });
 });
 
-describe("currency switcher mobile code", () => {
+describe("currency switcher mobile label", () => {
   const source = readFileSync(resolve(process.cwd(), "components/shared/currency-switcher.tsx"), "utf8");
 
-  it("can hide the code visually below md in the trigger only, keeping it for screen readers", () => {
-    expect(source).toContain("codeHiddenOnMobile?: boolean");
-    // sr-only keeps the code in the accessible name of the trigger.
-    expect(source).toContain('hideCode ? "max-md:sr-only" : undefined');
-    expect(source).toContain("<CurrencyOption currency={currency} hideCode={codeHiddenOnMobile} />");
+  it("keeps the selected code visible and hides only the flag on narrow mobile screens", () => {
+    expect(source).toContain("hideFlagOnNarrowMobile?: boolean");
+    expect(source).toContain('hideFlagOnNarrowMobile ? "max-[419px]:hidden" : undefined');
+    expect(source).toContain("<CurrencyOption currency={currency} hideFlagOnNarrowMobile={hideFlagOnNarrowMobile} />");
+    expect(source).not.toContain("codeHiddenOnMobile");
+    expect(source).not.toContain("max-md:sr-only");
     // The dropdown list always shows flag + code.
     expect(source).toContain("<CurrencyOption currency={code} />");
   });

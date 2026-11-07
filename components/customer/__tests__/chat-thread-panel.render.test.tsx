@@ -10,16 +10,18 @@ vi.mock("next/link", () => ({ default: (props: React.AnchorHTMLAttributes<HTMLAn
 vi.mock("lucide-react", () => {
   const Icon = (p: Record<string, unknown>) => <svg {...p} />;
   return Object.fromEntries(
-    ["ArrowLeft", "Bell", "BellOff", "Check", "CheckCheck", "FileText", "Flag", "Languages", "MessageCircle", "Mic", "MicOff", "Paperclip", "Receipt", "Reply", "Send", "Tag", "X"].map((name) => [name, Icon]),
+    ["ArrowLeft", "Bell", "BellOff", "Check", "CheckCheck", "FileText", "Flag", "Languages", "MessageCircle", "Mic", "MicOff", "Paperclip", "Plus", "Receipt", "Reply", "Send", "Tag", "X"].map((name) => [name, Icon]),
   );
 });
 vi.mock("@/components/vendor/ai-writing-assistant", () => ({ default: () => null }));
 vi.mock("@/hooks/use-speech-input", () => ({
-  useSpeechInput: () => ({ isSupported: false, isListening: false, transcript: "", start: () => {}, stop: () => {}, error: null }),
+  useSpeechInput: () => ({ isSupported: speechMockState.isSupported, isListening: speechMockState.isListening, transcript: "", start: () => {}, stop: () => {}, error: null }),
   resolveRecognitionLang: () => "en-US",
 }));
 
-import { ChatThreadPanel } from "@/components/customer/chat-thread-panel";
+import { ChatThreadPanel, fitChatTextarea } from "@/components/customer/chat-thread-panel";
+
+const speechMockState = vi.hoisted(() => ({ isSupported: false, isListening: false }));
 
 const base = {
   threadId: "t1",
@@ -79,4 +81,44 @@ describe("ChatThreadPanel context + receipts", () => {
     const withoutButton = renderToStaticMarkup(<ChatThreadPanel {...base} messages={[]} />);
     expect(withoutButton).not.toContain("ui.chat.attachOrder");
   });
+  it("groups attachment actions inside the mobile composer disclosure", () => {
+    const markup = renderToStaticMarkup(<ChatThreadPanel {...base} messages={[]} onAttachOrder={() => {}} />);
+    expect(markup).toContain("<details");
+    expect(markup).toContain('aria-label="ui.chat.moreActions"');
+    expect(markup).toContain('aria-label="strictMigration.chat.attachFile"');
+    expect(markup).toContain('aria-label="ui.chat.attachOrder"');
+  });
+
+  it("shows mobile voice input while keeping desktop send available for an empty composer", () => {
+    speechMockState.isSupported = true;
+    let markup = "";
+    try {
+      markup = renderToStaticMarkup(<ChatThreadPanel {...base} messages={[]} />);
+    } finally {
+      speechMockState.isSupported = false;
+    }
+    expect(markup).toContain('aria-label="Speak your message"');
+    const sendButton = markup.match(/<button[^>]*aria-label="ui.actions.send"[^>]*>/)?.[0] ?? "";
+    expect(sendButton).toContain("hidden md:flex");
+  });
+
+  it("lets a multiline message grow to a bounded height and shrink again", () => {
+    const markup = renderToStaticMarkup(<ChatThreadPanel {...base} messages={[]} />);
+    const textareaTag = markup.match(/<textarea[^>]*>/)?.[0] ?? "";
+    expect(textareaTag).toContain("max-h-30");
+    expect(textareaTag).toContain("overflow-y-auto");
+
+    const measurement = { scrollHeight: 164 };
+    const textarea = {
+      style: { height: "" },
+      get scrollHeight() { return measurement.scrollHeight; },
+    } as unknown as HTMLTextAreaElement;
+    fitChatTextarea(textarea);
+    expect(textarea.style.height).toBe("120px");
+
+    measurement.scrollHeight = 52;
+    fitChatTextarea(textarea);
+    expect(textarea.style.height).toBe("52px");
+  });
+
 });

@@ -10,6 +10,7 @@ import { formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { notificationPollDelay } from "@/lib/notifications/polling";
 import { localizeNotification } from "@/lib/notifications/localize";
+import { useViewportClampedPopoverPosition } from "@/components/shared/use-viewport-clamped-popover-position";
 
 export type NotificationScope = "customer" | "vendor" | "staff";
 export type NotificationCategoryOption = { value: string; label: string; labelKey?: string };
@@ -95,6 +96,9 @@ export function NotificationBell({ scope = "customer", vendorId = null, allHref,
   const [nextPage, setNextPage] = useState(2);
   const [loadingMore, setLoadingMore] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const popoverPosition = useViewportClampedPopoverPosition(open, triggerRef, panelRef);
   const visibleItems = feedIdentityKey === identityKey ? items : [];
   const visibleUnread = unreadIdentityKey === identityKey ? unread : 0;
   const visibleTotal = feedIdentityKey === identityKey ? total : 0;
@@ -243,10 +247,10 @@ export function NotificationBell({ scope = "customer", vendorId = null, allHref,
     }
   }
   return <div ref={ref} className="relative shrink-0">
-    <button type="button" aria-label={t("accessibility.notifications")} aria-expanded={open} onClick={() => setOpen((value) => !value)} className={HEADER_ICON_BUTTON_CLASS}>
+    <button ref={triggerRef} type="button" aria-label={t("accessibility.notifications")} aria-expanded={open} onClick={() => setOpen((value) => !value)} className={HEADER_ICON_BUTTON_CLASS}>
       <Bell size={18} />{visibleUnread > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{visibleUnread > 99 ? "99+" : visibleUnread}</span>}
     </button>
-    {open && <div className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-[min(26rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_45px_rgba(1,0,102,0.16)]">
+    {open && <div ref={panelRef} style={popoverPosition ?? { visibility: "hidden" }} className="fixed z-50 w-[min(26rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto rounded-2xl border border-border bg-card shadow-[0_18px_45px_rgba(1,0,102,0.16)]">
       <div className="flex items-center justify-between border-b border-border px-4 py-3"><p className="font-semibold">{t("notifications.title")}</p><button type="button" onClick={() => void markAll()} className="flex items-center gap-1 text-xs text-primary"><CheckCheck size={14} /> {t("notifications.markAllAsRead")}</button></div>
       <div className="flex gap-1 overflow-x-auto border-b border-border px-3 py-2"><button type="button" onClick={() => { setCategory("all"); setReadFilter("unread"); }} className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[0.6875rem] font-semibold ${readFilter === "unread" ? "border-primary bg-primary text-white" : "border-border text-muted-foreground"}`}>{t("notifications.unread")}</button>{props.categories.filter((option) => option.value !== "unread").map((option) => <button key={option.value} type="button" onClick={() => { setCategory(option.value); setReadFilter("all"); }} className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[0.6875rem] font-semibold ${readFilter === "all" && category === option.value ? "border-primary bg-primary text-white" : "border-border text-muted-foreground"}`}>{t(option.labelKey ?? CATEGORY_LABEL_KEYS[option.value] ?? option.label)}</button>)}</div>
       <div className="max-h-96 overflow-y-auto">{visibleItems.length === 0 ? <p className="p-5 text-sm text-muted-foreground">{t("notifications.noNotificationsYet")}</p> : visibleItems.map((item) => { const localized = localizeNotification(item, (key, options) => t(key, options)); return <div key={item.id} className={`border-b border-border px-4 py-3 ${item.readAt ? "" : "bg-primary/5"}`}><button type="button" onClick={() => void markRead(item.id)} className="w-full text-left"><p className="text-sm font-semibold">{localized.title}</p><p className="mt-1 text-xs text-muted-foreground">{localized.body}</p><p className="mt-1 text-[0.6875rem] text-muted-foreground">{formatDateTime(item.createdAt, locale)}</p></button>{item.link && <Link href={item.link} onClick={() => { if (!item.readAt) void markRead(item.id); setOpen(false); }} className="mt-1 inline-block text-xs font-semibold text-primary">{t("notifications.open")}</Link>}</div>; })}</div>

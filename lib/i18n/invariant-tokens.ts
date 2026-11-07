@@ -3,6 +3,7 @@
  * identical in every locale. Human-readable UI copy must not be added here.
  */
 export const BRAND_NAME = "MYLawatan";
+export const BRAND_DOMAIN = "mylawatan.my";
 export const LOGO_BRAND_NAME = BRAND_NAME;
 export const ATLAS_BRAND_NAME = "MYLawatan / Atlas";
 export const ATLAS_PRODUCT_NAME = "Atlas";

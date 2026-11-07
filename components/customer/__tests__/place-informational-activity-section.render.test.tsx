@@ -108,6 +108,8 @@ describe("place informational activity details", () => {
   it("opens the selected activity and the same venue context in an in-system dialog", async () => {
     await render();
 
+    expect(container.textContent).not.toContain("See local art and creative studios.");
+
     const detailsButtons = findElements(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("View details"));
     expect(detailsButtons).toHaveLength(2);
 

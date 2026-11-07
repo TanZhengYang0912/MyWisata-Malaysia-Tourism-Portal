@@ -10,6 +10,7 @@ import {
   outletCreateSchema,
   outletUpdateSchema,
   vendorRegisterSchema,
+  vendorUpdateSchema,
   voucherCreateSchema,
   voucherValidateSchema,
 } from '@/lib/validation/vendor-schemas';
@@ -107,6 +108,12 @@ describe('contentReviewSchema', () => {
 });
 
 describe('vendorRegisterSchema', () => {
+  it('defaults legacy applications to shop and accepts event vendor applications', () => {
+    expect(vendorRegisterSchema.parse({ name: 'Valid Vendor' }).vendorKind).toBe('shop');
+    expect(vendorRegisterSchema.parse({ name: 'Event Vendor', vendorKind: 'event' }).vendorKind).toBe('event');
+    expect(vendorRegisterSchema.safeParse({ name: 'Invalid Vendor', vendorKind: 'staff' }).success).toBe(false);
+  });
+
   it('accepts an international contact number for the selected country', () => {
     const results = ['+12025550142', '+60177143951', '+601123456789', '0177143951'].map((contactPhone) => (
       vendorRegisterSchema.safeParse({ name: 'Valid Vendor', contactPhone })
@@ -134,6 +141,12 @@ describe('vendorRegisterSchema', () => {
       expect(invalidFormats.error.issues.find((issue) => issue.path[0] === 'logoUrl')?.message).toBe('registration.validation.logoUrl.format');
       expect(invalidFormats.error.issues.find((issue) => issue.path[0] === 'coverUrl')?.message).toBe('registration.validation.coverUrl.format');
     }
+  });
+});
+
+describe('vendorUpdateSchema', () => {
+  it('does not allow an existing vendor to change its immutable kind', () => {
+    expect(vendorUpdateSchema.safeParse({ vendorKind: 'event' }).success).toBe(false);
   });
 });
 

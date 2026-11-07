@@ -42,11 +42,11 @@ describe("post-login destination", () => {
     expect(postLoginDestination("customer", null)).toBe("/customer");
   });
 
-  it("lands vendors strictly on their fixed /vendor/dashboard home page", () => {
-    expect(postLoginDestination("vendor_owner", "/vendor/outlets")).toBe("/vendor/dashboard");
-    expect(postLoginDestination("vendor_owner", "/vendor/products")).toBe("/vendor/dashboard");
-    expect(postLoginDestination("outlet_manager", "/vendor/bookings")).toBe("/vendor/dashboard");
-    expect(postLoginDestination("outlet_manager", "/customer/explore")).toBe("/vendor/dashboard");
+  it("lands vendors strictly on their fixed Announcements home page", () => {
+    expect(postLoginDestination("vendor_owner", "/vendor/outlets")).toBe("/vendor/announcements");
+    expect(postLoginDestination("vendor_owner", "/vendor/products")).toBe("/vendor/announcements");
+    expect(postLoginDestination("outlet_manager", "/vendor/bookings")).toBe("/vendor/announcements");
+    expect(postLoginDestination("outlet_manager", "/customer/explore")).toBe("/vendor/announcements");
   });
 
   it("preserves only essential authentication actions", () => {

@@ -8,11 +8,18 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { formatMYR } from "@/lib/i18n/format";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
+import { AdminMobileRecordCard } from "@/components/admin/admin-mobile-record-card";
 
 interface PendingSummary {
   count: number;
   totalRM: number;
 }
+
+const REWARD_TIERS = [
+  { tier: "Bronze", range: "0 – 3", rate: "3%" },
+  { tier: "Silver", range: "4 – 7", rate: "4%" },
+  { tier: "Gold", range: "8+", rate: "5%" },
+];
 
 export default function AdminRewardsPage() {
   const { currentUser } = useAuth();
@@ -75,7 +82,6 @@ export default function AdminRewardsPage() {
         <AdminPageHeader
           eyebrow={<span className="flex items-center gap-2"><Award size={14} /> {t("rewards.title")}</span>}
           title={t("rewards.title")}
-          description={t("rewards.description")}
         />
 
       {/* Pending summary */}
@@ -135,7 +141,13 @@ export default function AdminRewardsPage() {
       {/* Commission tiers info */}
       <div className="rounded-2xl border border-border bg-card p-6">
         <p className="text-sm font-semibold text-foreground mb-3">{t("rewards.tierRates")}</p>
-        <table className="w-full text-sm">
+        <div className="space-y-3 lg:hidden">
+          {REWARD_TIERS.map((row) => <AdminMobileRecordCard key={row.tier} header={<p className="font-semibold">{row.tier}</p>}>
+            <div><p className="text-xs text-muted-foreground">{t("rewards.columns.rollingConfirmed")}</p><p>{row.range}</p></div>
+            <div><p className="text-xs text-muted-foreground">{t("rewards.columns.rate")}</p><p className="font-mono">{row.rate}</p></div>
+          </AdminMobileRecordCard>)}
+        </div>
+        <table className="hidden w-full text-sm lg:table">
           <thead>
             <tr className="text-xs uppercase tracking-wide text-muted-foreground border-b border-border">
               <th className="text-left pb-2">{t("rewards.columns.tier")}</th>
@@ -144,11 +156,7 @@ export default function AdminRewardsPage() {
             </tr>
           </thead>
           <tbody className="text-foreground">
-            {[
-              { tier: "Bronze", range: "0 – 3", rate: "3%" },
-              { tier: "Silver", range: "4 – 7", rate: "4%" },
-              { tier: "Gold",   range: "8+",    rate: "5%" },
-            ].map((row) => (
+            {REWARD_TIERS.map((row) => (
               <tr key={row.tier} className="border-b border-border last:border-0">
                 <td className="py-2 font-medium">{row.tier}</td>
                 <td className="py-2 text-muted-foreground">{row.range}</td>

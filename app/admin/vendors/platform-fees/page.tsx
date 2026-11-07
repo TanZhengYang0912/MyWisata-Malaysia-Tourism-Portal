@@ -130,7 +130,6 @@ export default function PlatformFeesPage() {
     <AdminPageHeader
       eyebrow={<span className="flex items-center gap-2"><Layers size={14} /> {t("ui.platformFees.eyebrow")}</span>}
       title={t("ui.platformFees.title")}
-      description={t("ui.platformFees.description")}
       actions={<Link href="/admin/vendors" className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground shadow-sm transition hover:border-ring hover:text-primary"><ArrowLeft size={16} /> {t("ui.platformFees.back")}</Link>}
     />
     {error && <p role="alert" className="mb-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle size={16} /> {error}</p>}

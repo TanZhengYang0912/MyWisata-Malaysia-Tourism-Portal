@@ -32,4 +32,12 @@ describe('withdrawal review queue contract', () => {
     expect(pageSource).toContain('withdrawals.table.ageSla');
     expect(rowSource).toContain('priority.labelKey');
   });
+
+  it('renders a labelled mobile detail card while preserving the desktop queue', () => {
+    expect(pageSource).toContain('<WithdrawalReviewQueueRow');
+    expect(pageSource).toContain('compact');
+    expect(pageSource).toContain('lg:hidden');
+    expect(pageSource).toContain('lg:block');
+    expect(rowSource).toContain('AdminMobileRecordCard');
+  });
 });

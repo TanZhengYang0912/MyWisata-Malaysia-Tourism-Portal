@@ -16,6 +16,7 @@ export interface AuthUser {
   profileComplete: boolean;
   roles: RoleName[];
   activeVendorId: string | null;
+  vendorName?: string | null;
   activeOutletIds: string[];
   activeOutletName?: string | null;
 }

@@ -13,6 +13,7 @@ const OUTLET_MANAGER_PATHS = [
   '/vendor/vouchers',
   '/vendor/orders',
   '/vendor/inbox',
+  '/vendor/announcements',
   '/vendor/analytics',
 ];
 
@@ -43,10 +44,10 @@ export default function VendorAccessGate({ children }: { children: React.ReactNo
         : !isVendor
           ? '/customer'
           : isEventVendor
-            ? '/vendor/events'
+            ? '/vendor/announcements'
             : isScannerRoute
             ? '/vendor/outlets'
-            : '/vendor/dashboard';
+            : '/vendor/announcements';
       router.replace(destination);
     }
   }, [allowed, isEventVendor, isScannerRoute, isVendor, loading, router, user]);

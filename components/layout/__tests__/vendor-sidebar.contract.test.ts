@@ -11,6 +11,8 @@ describe("Outlet Manager navigation", () => {
     expect(source).toContain("getVendorNavigationSections(isOutletManager, isEventVendor)");
     expect(source).not.toContain("const OUTLET_MANAGER_SECTIONS");
     expect(getVendorNavigationSections(false).flatMap((section) => section.items.map((item) => item.href))).toEqual([
+      "/vendor/announcements",
+      "/vendor/inbox",
       "/vendor/dashboard",
       "/vendor/outlets",
       "/vendor/profile",
@@ -20,14 +22,14 @@ describe("Outlet Manager navigation", () => {
       "/vendor/vouchers",
       "/vendor/orders",
       "/vendor/wallet",
-      "/vendor/inbox",
-      "/vendor/announcements",
       "/vendor/analytics",
       "/vendor/event-promotions",
       "/vendor/events",
       "/vendor/event-orders",
     ]);
     expect(getVendorNavigationSections(true).flatMap((section) => section.items.map((item) => item.href))).toEqual([
+      "/vendor/announcements",
+      "/vendor/inbox",
       "/vendor/dashboard",
       "/vendor/outlets?mode=shop",
       "/vendor/products",
@@ -35,16 +37,15 @@ describe("Outlet Manager navigation", () => {
       "/vendor/scanner",
       "/vendor/vouchers",
       "/vendor/orders",
-      "/vendor/inbox",
       "/vendor/analytics",
     ]);
     // Event vendors: events, payouts and invitations only — no shop pages.
     expect(getVendorNavigationSections(false, true).flatMap((section) => section.items.map((item) => item.href))).toEqual([
+      "/vendor/announcements",
       "/vendor/events",
       "/vendor/event-orders",
       "/vendor/scanner",
       "/vendor/wallet",
-      "/vendor/announcements",
     ]);
   });
 
@@ -62,5 +63,9 @@ describe("Outlet Manager navigation", () => {
     expect(source).toContain("@/lib/vendor/navigation");
     expect(gateSource).toContain("'/vendor/vouchers'");
     expect(gateSource).toContain("'/vendor/analytics'");
+  });
+
+  it("leaves category headings to the shared uniform sidebar presentation", () => {
+    expect(source).not.toContain("emphasis: section.labelKey === 'workspace' ? 'primary' : undefined");
   });
 });

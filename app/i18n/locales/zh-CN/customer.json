@@ -197,7 +197,8 @@
       "pending": "正在准备翻译"
     },
     "accessibility": {
-      "carousel": "轮播图"
+      "carousel": "轮播图",
+      "carouselSlide": "第 {{page}} 张，共 {{total}} 张"
     },
     "capabilityGate": {
       "notNow": "暂时不要",
@@ -887,12 +888,6 @@
       "vendorApplication": "商家申请",
       "vendorApplicationDescription": "申请上架旅游、餐饮、住宿或本地体验。所有内容须经管理员批准后才会向旅客显示。",
       "openVendorDashboard": "打开商家后台",
-      "vendorStepApply": "1. 提交申请",
-      "vendorStepApplyHint": "介绍你的业务。",
-      "vendorStepReview": "2. 管理员审核",
-      "vendorStepReviewHint": "我们会核实申请资料。",
-      "vendorStepLive": "3. 正式上线",
-      "vendorStepLiveHint": "批准后设置门店和商品。",
       "vendorStatus": {
         "pending": "你的申请正在等待管理员审核。",
         "approved": "你的商家账户已获批准。",
@@ -1005,6 +1000,7 @@
         "failed": "无法翻译",
         "privacyBlocked": "这条消息没有发送给 AI，因为可能包含个人资料。请移除电话、邮箱、证件、银行资料或私人地址后重试；也可以直接阅读原文，不使用翻译。"
       },
+      "moreActions": "更多聊天操作",
       "attachOrder": "附加订单",
       "underReview": "已举报——我们的团队正在审核此对话。"
     },
@@ -1014,7 +1010,7 @@
       "actions": "日历操作",
       "filters": "筛选",
       "searchBookings": "搜索预订",
-      "searchActivity": "搜索体验、门店或订单 ID",
+      "searchActivity": "搜索体验、门店、预订编号或订单 ID",
       "bookingScope": "预订范围",
       "bookingOutlet": "预订门店",
       "bookingActivity": "预订体验",
@@ -1029,6 +1025,7 @@
       "selectMonth": "选择 {{month}}",
       "itineraryItems": "{{count}} 个行程项目",
       "inMonth": "本月 {{monthCount}} 个 · 共匹配 {{totalCount}} 个",
+      "otherBookings": "其他预订",
       "showItinerary": "查看 {{activity}} 行程详情",
       "showMore": "查看 {{date}} 的另外 {{count}} 个行程项目",
       "more": "+{{count}} 个",
@@ -1073,7 +1070,6 @@
         "all": "预订总览"
       },
       "scopeDescriptions": {
-        "upcoming": "查看您已安排的体验。",
         "past": "查看您已完成或错过的体验。",
         "all": "同时查看过去和即将到来的体验。"
       }
@@ -1501,7 +1497,6 @@
       "submitted": "商家推荐已提交审核。",
       "community": "社区",
       "title": "推荐商家",
-      "description": "商家须经管理员批准后上线。商家通过你的推荐加入后，你可能获得佣金。",
       "recommend": "推荐",
       "new": "新推荐",
       "vendorBusinessName": "商家 / 企业名称",
@@ -2788,8 +2783,6 @@
       "eyebrow": "MYLawatan 优惠券",
       "dealsTitle": "用更少预算探索更多",
       "mineTitle": "你的优惠券",
-      "dealsDescription": "领取合作伙伴和门店优惠，为下一次马来西亚体验做好准备。",
-      "mineDescription": "查看已领取的优惠券，并在需要时使用。",
       "viewsLabel": "优惠券视图",
       "browseDeals": "浏览优惠",
       "myVouchers": "我的优惠券",

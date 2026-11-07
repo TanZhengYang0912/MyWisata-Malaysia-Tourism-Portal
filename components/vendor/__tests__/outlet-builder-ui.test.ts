@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   duplicateOutletPageBlock,
@@ -14,6 +16,18 @@ import {
 } from "@/components/vendor/outlet-builder-palette";
 
 describe("outlet builder UI rules", () => {
+  it("keeps preview, add-elements, and edit panels available as mobile tabs", () => {
+    const source = readFileSync(resolve(process.cwd(), "components/vendor/outlet-page-builder.tsx"), "utf8");
+
+    expect(source).toContain('<TabsTrigger value="preview">');
+    expect(source).toContain('<TabsTrigger value="blocks">');
+    expect(source).toContain('<TabsTrigger value="edit">');
+    expect(source).toContain('setMobilePanel("edit")');
+    expect(source).toContain('onSelect={selectBlock}');
+    expect(source).toContain('onClick={() => void saveDraft()}');
+    expect(source).toContain('onClick={() => requestConfirmation("publish")}');
+  });
+
   it("uses explicit preview widths for desktop, tablet, and mobile", () => {
     expect(getBuilderViewportConfig("desktop").width).toBe(1120);
     expect(getBuilderViewportConfig("tablet").width).toBe(768);

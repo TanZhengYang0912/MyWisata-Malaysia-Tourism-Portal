@@ -490,11 +490,7 @@ export function ActivityDetailClient({
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               {relatedScope === "vendor" ? (
-                <>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("ui.activity.moreFromVendor")}</p>
-                  <h2 id="more-from-outlet-heading" className="mt-2 text-2xl font-black tracking-tight">{t("ui.activity.moreFromVendor")}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{t("ui.activity.moreFromVendorSubtitle", { vendor: selectedOutlet.vendorName ?? t("ui.labels.localVendor") })}</p>
-                </>
+                <h2 id="more-from-outlet-heading" className="text-xl font-black tracking-tight sm:text-2xl">{t("ui.activity.moreFromVendor")}</h2>
               ) : (
                 <>
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("ui.activity.moreFromOutlet")}</p>

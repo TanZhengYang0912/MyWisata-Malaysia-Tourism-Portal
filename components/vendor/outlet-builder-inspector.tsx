@@ -149,7 +149,7 @@ export default function OutletBuilderInspector({
 }: Props) {
   const { t } = useTranslation(["vendor", "customer"]);
   const panelClassName =
-    "min-h-0 max-h-[42vh] overflow-y-auto border-t border-primary/10 bg-white p-5 lg:sticky lg:top-0 lg:max-h-none lg:border-l lg:border-t-0";
+    "min-h-0 h-full overflow-y-auto border-t border-primary/10 bg-white p-4 sm:p-5 lg:sticky lg:top-0 lg:border-l lg:border-t-0";
 
   if (hero)
     return (

@@ -106,6 +106,16 @@ export async function GET() {
       return outlet?.vendor_id;
     }),
   ].filter((id): id is string => Boolean(id)))];
+  const activeVendorId = vendorIds[0] || null;
+  let activeVendorName: string | null = null;
+  if (activeVendorId && roles.some((role) => role === 'vendor_owner' || role === 'event_vendor')) {
+    const { data: activeVendor } = await supabase
+      .from('vendors')
+      .select('name')
+      .eq('id', activeVendorId)
+      .maybeSingle();
+    activeVendorName = activeVendor?.name || null;
+  }
   const outletIds = [...new Set(managerAssignments.map((row) => row.outlet_id))];
   const assignedOutletRelation = managerAssignments[0] ? (Array.isArray(managerAssignments[0].outlets) ? managerAssignments[0].outlets[0] : managerAssignments[0].outlets) : null;
   const profileVerification = computeProfileVerification({
@@ -147,7 +157,8 @@ export async function GET() {
       profileComplete: verificationFacts.profileComplete,
       verificationFacts,
       roles,
-      activeVendorId: vendorIds[0] || null,
+      activeVendorId,
+      activeVendorName,
       activeOutletIds: outletIds,
       activeOutletName: assignedOutletRelation?.name || null,
       city: profileRow?.city || null,

@@ -38,14 +38,14 @@ export function AdminConfirmDialog({ open, title, titleIsTranslated = false, des
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 p-4" role="presentation">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl" role="alertdialog" aria-modal="true" aria-labelledby="admin-confirm-title" aria-describedby="admin-confirm-description">
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-5 shadow-2xl" role="alertdialog" aria-modal="true" aria-labelledby="admin-confirm-title" aria-describedby="admin-confirm-description">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-200">
             <AlertTriangle size={19} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-3">
-              <h2 id="admin-confirm-title" className="text-base font-semibold text-foreground">{titleIsTranslated ? title : tAdmin(title)}</h2>
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <h2 id="admin-confirm-title" className="break-words text-base font-semibold text-foreground">{titleIsTranslated ? title : tAdmin(title)}</h2>
               <button type="button" aria-label={tCommon("accessibility.closeConfirmation")} onClick={onCancel} disabled={busy} className="rounded-md p-1 text-muted-foreground hover:bg-secondary disabled:opacity-50">
                 <X size={17} />
               </button>
@@ -81,7 +81,7 @@ function ConfirmationActions({ phrase, confirmLabel, confirmVariant, busy, onCan
       <span className="block text-muted-foreground">{tAdmin("accessControl.confirm.typePhrase", { phrase })}</span>
       <input aria-label={tAdmin("accessControl.confirm.typePhraseLabel")} value={typedConfirmation} onChange={(event) => setTypedConfirmation(event.target.value)} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2" autoComplete="off" />
     </label>}
-    <div className="mt-5 flex justify-end gap-2">
+    <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
       <Button autoFocus variant="outline" onClick={onCancel} disabled={busy}>{tCommon("actions.cancel")}</Button>
       {confirmControl ?? <Button variant={confirmVariant} onClick={onConfirm} disabled={busy || Boolean(phrase && typedConfirmation !== phrase)}>{busy ? tCommon("states.processingEllipsis") : tAdmin(confirmLabel)}</Button>}
     </div>

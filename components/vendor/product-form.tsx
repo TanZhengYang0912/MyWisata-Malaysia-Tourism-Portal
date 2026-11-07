@@ -427,7 +427,6 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('productForm.availability')}</p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-muted-foreground">{t('productForm.availabilityHint')}</p>
             </div>
             <span className="rounded-full bg-gray-100 dark:bg-muted px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-muted-foreground">{productType}</span>
           </div>

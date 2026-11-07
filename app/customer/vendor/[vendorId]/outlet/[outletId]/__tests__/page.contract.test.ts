@@ -18,4 +18,9 @@ describe("customer public outlet media hierarchy", () => {
     expect(pageSource).toContain("relationOne(p.categories)?.slug === STAY_SLUG");
     expect(pageSource).toContain("category: relationOne(product.categories)?.name ?? null");
   });
+
+  it("does not read rating metrics that are no longer shown on public product cards", () => {
+    expect(pageSource).not.toContain('from("product_review_metrics")');
+    expect(pageSource).not.toContain("metricByProduct");
+  });
 });

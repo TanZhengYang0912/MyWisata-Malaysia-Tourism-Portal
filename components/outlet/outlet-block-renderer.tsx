@@ -140,12 +140,12 @@ interface HeroProps {
 export function OutletHeroRenderer({ hero, outlet, brandColour = '#0f172a', mode = 'public', selected = false, onSelect, onEditHero, onEditEnd }: HeroProps) {
   const heroStyle = hero.imageUrl ? { backgroundImage: `linear-gradient(90deg, rgba(0,0,0,.82), rgba(0,0,0,.2)), url(${hero.imageUrl})`, backgroundSize: 'cover', backgroundPosition: hero.imagePosition || 'center' } : undefined;
   const { t } = useTranslation('customer');
-  const section = <section className={`relative overflow-hidden ${mode === 'public' ? 'min-h-[280px] sm:min-h-[340px] lg:min-h-[360px]' : ''} ${selected ? 'ring-4 ring-amber-300' : ''}`} style={{ backgroundColor: brandColour, ...heroStyle }}>
-    {outlet.logoUrl && <div className="absolute right-6 top-6 z-10 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-white/95 p-2 shadow-xl">
+  const section = <section className={`relative overflow-hidden ${mode === 'public' ? 'min-h-[240px] sm:min-h-[320px] lg:min-h-[360px]' : ''} ${selected ? 'ring-4 ring-amber-300' : ''}`} style={{ backgroundColor: brandColour, ...heroStyle }}>
+    {outlet.logoUrl && <div className="absolute right-4 top-4 z-10 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-white/95 p-1.5 shadow-xl sm:right-6 sm:top-6 sm:h-16 sm:w-16 sm:rounded-2xl sm:p-2">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={outlet.logoUrl} alt={t('ui.vendor.logoAlt', { vendor: outlet.name })} className="h-full w-full object-contain" />
     </div>}
-    <div className={`relative mx-auto max-w-7xl px-6 text-white ${mode === 'public' ? 'flex min-h-[280px] flex-col justify-end py-12 sm:min-h-[340px] sm:py-14 lg:min-h-[360px] lg:py-16' : 'py-24'}`} style={{ textAlign: hero.textAlign || 'left' }}>
+    <div className={`relative mx-auto max-w-7xl px-5 text-white sm:px-6 ${mode === 'public' ? 'flex min-h-[240px] flex-col justify-end py-10 sm:min-h-[320px] sm:py-14 lg:min-h-[360px] lg:py-16' : 'py-24'}`} style={{ textAlign: hero.textAlign || 'left' }}>
       <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-80">{t('ui.outlet.verifiedMyLawatan')}</p>
       {mode === 'editor' && onEditHero ? (
         <input
@@ -157,7 +157,7 @@ export function OutletHeroRenderer({ hero, outlet, brandColour = '#0f172a', mode
           className="mt-3 block w-full max-w-3xl rounded-lg border border-white/30 bg-black/10 px-2 py-1 text-4xl font-black tracking-tight text-white outline-none ring-amber-300 placeholder:text-white/60 focus:ring-2 sm:text-6xl"
         />
       ) : (
-        <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-tight sm:text-6xl">{hero.title}</h1>
+        <h1 className="mt-3 max-w-3xl break-words text-3xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl">{hero.title}</h1>
       )}
       {mode === 'editor' && onEditHero ? (
         <textarea
@@ -170,7 +170,7 @@ export function OutletHeroRenderer({ hero, outlet, brandColour = '#0f172a', mode
           className="mt-4 block w-full max-w-2xl resize-none rounded-lg border border-white/25 bg-black/10 px-2 py-1 text-sm text-white outline-none ring-amber-300 placeholder:text-white/60 focus:ring-2"
         />
       ) : (
-        hero.body && <p className="mt-4 max-w-2xl text-sm opacity-90">{hero.body}</p>
+        hero.body && <p className="mt-3 max-w-2xl break-words text-sm leading-6 opacity-90 sm:mt-4 sm:text-base">{hero.body}</p>
       )}
     </div>
   </section>;
@@ -202,7 +202,7 @@ export function OutletBlockRenderer({ block, outlet, products = [], gallery = []
   const productIds = block.type === 'product_grid' && block.productIds?.length ? block.productIds : featuredIds;
   const visibleProducts = products.filter((product) => !productIds.length || productIds.includes(product.id));
   const editorProductLimit = mode === 'editor' ? tile.columns : tile.items;
-  const wrapperClass = `rounded-2xl border bg-card p-6 shadow-sm ${selected ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-primary/10'}`;
+  const wrapperClass = `rounded-2xl border bg-card p-4 shadow-sm sm:p-6 ${selected ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-primary/10'}`;
   if (mode === 'public' && block.type === 'product_grid') return null;
   const content = (
     <>

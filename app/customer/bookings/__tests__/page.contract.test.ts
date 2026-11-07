@@ -49,15 +49,23 @@ describe("customer booking details", () => {
     }
   });
 
-  it("uses the shared card with a right-side QR column that can grow with its controls", () => {
+  it("keeps booking facts compact and easy to scan on mobile", () => {
+    expect(pageSource).toContain('className="grid gap-x-4 gap-y-4 p-4 min-[380px]:grid-cols-2 sm:gap-x-6 sm:gap-y-5 sm:p-7"');
+    expect(pageSource).toContain("break-words text-sm font-bold text-foreground");
+    expect(pageSource).not.toContain('tCustomer("ui.booking.confirmedInfo")');
+  });
+
+  it("uses the shared pass card with a stacked mobile QR and desktop side column", () => {
     const sharedCard = readFileSync(
       resolve(process.cwd(), "components/customer/customer-qr-pass-card.tsx"),
       "utf8",
     );
     expect(pageSource).toContain("CustomerQrPassCard");
-    expect(sharedCard).toContain("grid-cols-[minmax(0,1fr)_8rem]");
+    expect(pageSource).toContain("mobileStacked");
+    expect(sharedCard).toContain('mobileStacked ? "grid-cols-1 p-4 sm:grid-cols-[minmax(0,1fr)_11rem]"');
     expect(sharedCard).toContain("sm:grid-cols-[minmax(0,1fr)_11rem]");
-    expect(sharedCard).toContain("justify-self-end");
+    expect(sharedCard).toContain("max-w-60");
+    expect(sharedCard).toContain("sm:justify-self-end");
     expect(sharedCard).not.toContain("h-32 w-32");
   });
 });

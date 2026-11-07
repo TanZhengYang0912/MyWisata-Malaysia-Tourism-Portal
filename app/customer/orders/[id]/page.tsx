@@ -432,10 +432,9 @@ export default function OrderDetailPage() {
                     return (
                       <article
                         key={index}
-                        className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5 sm:gap-5 transition hover:bg-secondary/20"
+                        className="grid grid-cols-[4rem_minmax(0,1fr)] items-start gap-x-3 gap-y-3 p-4 transition hover:bg-secondary/20 sm:flex sm:items-center sm:gap-5 sm:p-5"
                       >
-                        {/* Thumbnail Image matching Figure 1 */}
-                        <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-secondary text-primary shadow-sm sm:h-24 sm:w-24">
+                        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-secondary text-primary shadow-sm sm:h-24 sm:w-24">
                           {item.imageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -454,9 +453,8 @@ export default function OrderDetailPage() {
                           )}
                         </div>
 
-                        {/* Middle Details */}
                         <div className="min-w-0 flex-1">
-                          <h3 className="text-base font-bold text-foreground sm:text-lg">
+                          <h3 className="break-words text-base font-bold text-foreground sm:text-lg">
                             {item.activityName}
                           </h3>
                           <p className="mt-1 text-xs font-semibold text-muted-foreground">
@@ -483,8 +481,7 @@ export default function OrderDetailPage() {
                           )}
                         </div>
 
-                        {/* Far Right Line Price */}
-                        <div className="text-left sm:text-right">
+                        <div className="col-span-2 text-left sm:text-right">
                           <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground sm:text-lg">
                             {formatMYR(item.unitPrice * item.qty)}
                           </span>

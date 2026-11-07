@@ -125,7 +125,7 @@ export function StaffPasskey({ operation = 'login', withdrawalId, expectedVersio
       <label className="block text-sm font-medium" htmlFor="staff-passkey-label">{t('passkey.deviceLabel')}</label>
       <Input id="staff-passkey-label" maxLength={80} value={label} onChange={event => setLabel(event.target.value)} disabled={busy} />
       <Button type="button" variant="outline" disabled={busy || (devices.length === 0 && !grant.trim())} onClick={() => void register()}>{t('passkey.register')}</Button>
-      {devices.map(device => <div key={device.id} className="flex items-center justify-between gap-3 text-sm"><span>{device.label}</span><Button type="button" variant="outline" disabled={busy || devices.length <= 1} onClick={() => void revoke(device.id)}>{t('passkey.remove')}</Button></div>)}
+      {devices.map(device => <div key={device.id} className="flex flex-wrap items-center justify-between gap-3 text-sm"><span className="min-w-0 flex-1 break-words">{device.label}</span><Button type="button" variant="outline" disabled={busy || devices.length <= 1} onClick={() => void revoke(device.id)}>{t('passkey.remove')}</Button></div>)}
       <p className="text-xs text-muted-foreground">{t('passkey.recovery')}</p>
     </div>}
     <div className="flex flex-wrap gap-2">{devices.length > 0 && <Button type="button" variant="outline" disabled={busy} onClick={() => setManage(!manage)}>{t('passkey.manage')}</Button>}<Button type="button" variant="ghost" disabled={busy} onClick={() => void passwordLogin()}>{t('passkey.passwordLogin')}</Button></div>

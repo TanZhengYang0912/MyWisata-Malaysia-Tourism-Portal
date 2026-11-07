@@ -8,55 +8,49 @@ import { useTranslation } from 'react-i18next';
 export interface BuilderPaletteItem {
   type: OutletPageBlockType;
   label: string;
-  hint: string;
   icon: LucideIcon;
 }
 
 export interface BuilderPaletteGroup {
   id: string;
   label: string;
-  hint: string;
   items: BuilderPaletteItem[];
   defaultOpen?: boolean;
 }
 
 export const BUILDER_PALETTE: BuilderPaletteItem[] = [
-  { type: 'text', label: 'Text', hint: 'Add a heading and story.', icon: FileText },
-  { type: 'image_text', label: 'Photo', hint: 'Add a photo, caption or story.', icon: ImagePlus },
-  { type: 'product_grid', label: 'Product cards', hint: 'Feature this outlet’s listings.', icon: Package },
-  { type: 'gallery', label: 'Gallery', hint: 'Show several images.', icon: GalleryHorizontal },
-  { type: 'hours', label: 'Opening hours', hint: 'Use the outlet schedule.', icon: Store },
-  { type: 'contact', label: 'Map and contact', hint: 'Help travellers find you.', icon: MapPinned },
-  { type: 'voucher_banner', label: 'Voucher banner', hint: 'Promote an offer.', icon: Ticket },
-  { type: 'review_highlight', label: 'Guest review', hint: 'Build trust with feedback.', icon: MessageSquareQuote },
-  { type: 'social_proof', label: 'Social proof', hint: 'Show a trusted signal.', icon: Percent },
-  { type: 'cta', label: 'Call to action', hint: 'Move guests toward booking.', icon: MousePointerClick },
+  { type: 'text', label: 'Text', icon: FileText },
+  { type: 'image_text', label: 'Photo', icon: ImagePlus },
+  { type: 'product_grid', label: 'Product cards', icon: Package },
+  { type: 'gallery', label: 'Gallery', icon: GalleryHorizontal },
+  { type: 'hours', label: 'Opening hours', icon: Store },
+  { type: 'contact', label: 'Map and contact', icon: MapPinned },
+  { type: 'voucher_banner', label: 'Voucher banner', icon: Ticket },
+  { type: 'review_highlight', label: 'Guest review', icon: MessageSquareQuote },
+  { type: 'social_proof', label: 'Social proof', icon: Percent },
+  { type: 'cta', label: 'Call to action', icon: MousePointerClick },
 ];
 
 export const BUILDER_PALETTE_GROUPS: BuilderPaletteGroup[] = [
   {
     id: 'common-content',
     label: 'Common content',
-    hint: 'Tell your story with visuals.',
     defaultOpen: true,
     items: BUILDER_PALETTE.filter((item) => ['text', 'image_text', 'gallery'].includes(item.type)),
   },
   {
     id: 'products-sales',
     label: 'Products & sales',
-    hint: 'Help guests choose and book.',
     items: BUILDER_PALETTE.filter((item) => ['product_grid', 'voucher_banner', 'cta'].includes(item.type)),
   },
   {
     id: 'outlet-information',
     label: 'Outlet information',
-    hint: 'Make the visit easy to plan.',
     items: BUILDER_PALETTE.filter((item) => ['hours', 'contact'].includes(item.type)),
   },
   {
     id: 'trust-reviews',
     label: 'Trust & reviews',
-    hint: 'Show why travellers can trust you.',
     items: BUILDER_PALETTE.filter((item) => ['review_highlight', 'social_proof'].includes(item.type)),
   },
 ];
@@ -71,9 +65,7 @@ export default function OutletBuilderPalette({ onAddBlock, onBeginDrag }: Props)
   const translateOrFallback = (key: string, fallback: string) =>
     i18n.exists(key, { ns: 'vendor' }) ? t(key) : fallback;
   const groupLabel = (id: string, fallback: string) => translateOrFallback(`builder.palette.groups.${id}.label`, fallback);
-  const groupHint = (id: string, fallback: string) => translateOrFallback(`builder.palette.groups.${id}.hint`, fallback);
   const itemLabel = (type: string, fallback: string) => translateOrFallback(`builder.palette.items.${type}.label`, fallback);
-  const itemHint = (type: string, fallback: string) => translateOrFallback(`builder.palette.items.${type}.hint`, fallback);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(BUILDER_PALETTE_GROUPS.map((group) => [group.id, Boolean(group.defaultOpen)])),
   );
@@ -93,15 +85,14 @@ export default function OutletBuilderPalette({ onAddBlock, onBeginDrag }: Props)
           >
             <span className="min-w-0 flex-1">
               <span className="block text-xs font-bold text-gray-900">{groupLabel(group.id, group.label)}</span>
-              <span className="mt-0.5 block text-[10px] leading-4 text-gray-500">{groupHint(group.id, group.hint)}</span>
             </span>
             <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-gray-400">{group.items.length}</span>
             <ChevronDown size={15} className={`shrink-0 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </button>
           {isOpen && <div className="mt-1 grid gap-1.5">
-            {group.items.map(({ type, label, hint, icon: Icon }) => <button key={type} type="button" draggable onDragStart={(event) => { event.dataTransfer.setData('outlet-block-type', type); onBeginDrag(type); }} onClick={() => onAddBlock(type)} className="group flex items-center gap-3 rounded-xl border border-transparent bg-white px-2.5 py-2.5 text-left transition hover:border-primary/30 hover:bg-secondary">
+            {group.items.map(({ type, label, icon: Icon }) => <button key={type} type="button" draggable onDragStart={(event) => { event.dataTransfer.setData('outlet-block-type', type); onBeginDrag(type); }} onClick={() => onAddBlock(type)} className="group flex items-center gap-3 rounded-xl border border-transparent bg-white px-2.5 py-2.5 text-left transition hover:border-primary/30 hover:bg-secondary">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary group-hover:bg-white"><Icon size={16} /></span>
-              <span className="min-w-0"><span className="block text-xs font-bold text-gray-900">{itemLabel(type, label)}</span><span className="mt-0.5 block text-[10px] leading-4 text-gray-500">{itemHint(type, hint)}</span></span>
+              <span className="min-w-0"><span className="block text-xs font-bold text-gray-900">{itemLabel(type, label)}</span></span>
               <Plus size={14} className="ml-auto shrink-0 text-gray-300 group-hover:text-primary" />
             </button>)}
           </div>}

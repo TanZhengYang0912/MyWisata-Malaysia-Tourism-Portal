@@ -3,6 +3,9 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(resolve(process.cwd(), "components/customer/place-activity-card.tsx"), "utf8");
+const placeActivitySource = readFileSync(resolve(process.cwd(), "components/customer/place-activity-section.tsx"), "utf8");
+const placeAccessSource = readFileSync(resolve(process.cwd(), "components/customer/place-access-section.tsx"), "utf8");
+const placeInformationSource = readFileSync(resolve(process.cwd(), "components/customer/place-informational-activity-section.tsx"), "utf8");
 
 describe("place activity card", () => {
   it("provides the shared horizontal card frame for free and paid activities", () => {
@@ -23,10 +26,14 @@ describe("place activity card", () => {
     expect(source).not.toContain('target="_blank"');
   });
 
-  it("shows full activity titles and descriptions on place detail cards", () => {
-    expect(source).not.toContain("line-clamp-2");
+  it("keeps item descriptions out of all shared place activity cards", () => {
+    expect(source).not.toContain("description");
+    expect(placeActivitySource).not.toContain("description={");
+    expect(placeAccessSource).not.toContain("description={");
+    expect(placeInformationSource).not.toContain("description={");
     expect(source).toContain("text-lg font-bold leading-tight text-foreground");
-    expect(source).toContain("mb-5 mt-3 break-words whitespace-normal text-xs leading-5 text-muted-foreground");
+    expect(source).toContain("price: ReactNode");
+    expect(source).toContain("footer: ReactNode");
   });
 
   it("uses serializable localized heading props for translated activity titles", () => {

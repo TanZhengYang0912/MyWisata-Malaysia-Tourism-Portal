@@ -28,4 +28,15 @@ describe('admin refund simulator UI', () => {
     expect(pageSource).toContain('{refund.failureMessage}');
     expect(pageSource).toContain('aria-label={refund.failureMessage}');
   });
+
+  it('keeps refund amount, provider, attempts, age, evidence, status, and review actions in mobile cards', () => {
+    expect(pageSource).toContain('AdminMobileRecordCard');
+    expect(pageSource).toContain('lg:hidden');
+    expect(pageSource).toContain('lg:block');
+    expect(pageSource).toContain('refunds.table.amount');
+    expect(pageSource).toContain('refunds.table.provider');
+    expect(pageSource).toContain('refunds.table.attempts');
+    expect(pageSource).toContain('review(refund, "approve")');
+    expect(pageSource).toContain('simulate(refund.id, "succeeded")');
+  });
 });

@@ -13,7 +13,6 @@ type PlaceActivityCardProps = {
   titleTranslation?: { entityType: PublicTranslationEntity; entityId: string; field: PublicTranslationField; sourceText: string };
   supportingText?: ReactNode;
   price: ReactNode;
-  description: ReactNode;
   footer: ReactNode;
   action?: ReactNode;
 };
@@ -29,7 +28,6 @@ export function PlaceActivityCard({
   titleTranslation,
   supportingText,
   price,
-  description,
   footer,
   action,
 }: PlaceActivityCardProps) {
@@ -76,8 +74,6 @@ export function PlaceActivityCard({
           </div>
           <div className="shrink-0 text-right text-sm font-bold text-foreground">{price}</div>
         </div>
-
-        <p className="mb-5 mt-3 break-words whitespace-normal text-xs leading-5 text-muted-foreground">{description}</p>
 
         <div className="mt-auto flex items-center justify-between gap-4 border-t border-border pt-4">
           <span className="break-words whitespace-normal text-xs font-semibold text-muted-foreground">{footer}</span>

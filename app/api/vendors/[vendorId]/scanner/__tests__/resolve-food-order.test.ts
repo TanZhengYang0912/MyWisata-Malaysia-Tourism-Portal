@@ -41,10 +41,12 @@ describe("vendor scanner food order resolution", () => {
   let ticketPass: { id: string; policy: string; entry_limit: number; entries_used: number; status: string; valid_from: string | null; valid_until: string | null };
   let ticketSlotStartsAt: string | null;
   let ticketBookingStatus: string;
+  let ticketProduct: { requires_booking: boolean } | null;
   beforeEach(() => {
     vi.clearAllMocks();
     ticketSlotStartsAt = null;
     ticketBookingStatus = "confirmed";
+    ticketProduct = { requires_booking: true };
     ticketPass = { id: "66666666-6666-4666-8666-666666666666", policy: "single_entry", entry_limit: 1, entries_used: 0, status: "active", valid_from: null, valid_until: null };
     mocks.authorizeVendor.mockResolvedValue({
       ok: true,
@@ -59,7 +61,7 @@ describe("vendor scanner food order resolution", () => {
             id: "55555555-5555-4555-8555-555555555555",
             status: ticketBookingStatus,
         slot_id: ticketSlotStartsAt ? "slot-1" : null,
-        order_items: { order_id: ids.order, vendor_id: ids.vendor, outlet_id: ids.outlet, quantity: 1, product_name: "Garden Entry", outlets: { id: ids.outlet, name: "North Outlet", vendor_id: ids.vendor, vendors: { id: ids.vendor, name: "Vendor A" } } },
+        order_items: { order_id: ids.order, vendor_id: ids.vendor, outlet_id: ids.outlet, quantity: 1, product_name: "Garden Entry", products: ticketProduct, outlets: { id: ids.outlet, name: "North Outlet", vendor_id: ids.vendor, vendors: { id: ids.vendor, name: "Vendor A" } } },
         ticket_passes: [ticketPass],
       })
       : table === "booking_slots"
@@ -142,6 +144,21 @@ describe("vendor scanner food order resolution", () => {
     }), { params: Promise.resolve({ vendorId: ids.vendor }) });
     expect(response.status).toBe(200);
     expect((await response.json()).data).toMatchObject({ kind: "ticket", vendorName: "Vendor A", outletName: "North Outlet", pass: { id: passId, entries_used: 0, entry_limit: 1 } });
+  });
+
+  it("rejects an existing ticket pass when its product no longer requires booking", async () => {
+    if (!ticketProduct) throw new Error("Expected a product projection");
+    ticketProduct.requires_booking = false;
+    const bookingId = "55555555-5555-4555-8555-555555555555";
+    const passToken = signTicketPassToken({ passId: ticketPass.id, bookingId, outletId: ids.outlet, issuedAt: Date.now() });
+    const response = await POST(new Request("http://localhost", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ outletId: ids.outlet, rawValue: "http://localhost/customer/bookings/" + bookingId + "?t=" + passToken }),
+    }), { params: Promise.resolve({ vendorId: ids.vendor }) });
+
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.code).toBe("INVALID_TICKET");
   });
 
   it("does not resolve a future-slot ticket as scannable before the booked time", async () => {

@@ -85,8 +85,23 @@ describe('admin navigation shell', () => {
   it('keeps the sidebar separators subtle and leaves the toolbar visually open', () => {
     expect(sharedSidebarSource).toContain('border-b border-white/10 px-4 py-4');
     expect(sharedSidebarSource).toContain('data-portal-sidebar="true"');
-    expect(sharedSidebarSource).toContain('bg-slate-950');
+    expect(sharedSidebarSource).toContain('bg-slate-800');
     expect(layoutSource).toContain('className="sticky top-0 z-40 flex h-16 items-center justify-end gap-2 bg-background/95 pl-16 pr-4 backdrop-blur-md sm:pr-6 lg:pl-6"');
     expect(layoutSource).not.toContain('border-b-2 border-gray-200');
+  });
+
+  it('keeps search and permitted notifications reachable beside compact mobile actions', () => {
+    expect(layoutSource).toContain('<AdminMobileActions');
+    expect(layoutSource).toContain('lg:hidden');
+    expect(layoutSource).toContain('hidden items-center gap-2 lg:flex');
+    expect(layoutSource).toContain('aria-label={tCommon("command.openPalette")}');
+    expect(layoutSource).toContain('staffPermissionKeys.includes("admin.withdrawal.approve") && <NotificationBell scope="staff" allHref="/admin/notifications" />');
+  });
+
+  it('keeps the responsive breakpoint and staff security destination connected', () => {
+    expect(layoutSource).toContain('<div className="lg:hidden">');
+    expect(layoutSource).toContain('manageDevicesHref={staffPasskeyRequired ? staffVerificationDestination(pathname) : ""}');
+    expect(layoutSource).toContain('<div className="hidden items-center gap-2 lg:flex">');
+    expect(readFileSync(resolve(process.cwd(), 'components/admin/admin-mobile-actions.tsx'), 'utf8')).toContain('href={manageDevicesHref}');
   });
 });

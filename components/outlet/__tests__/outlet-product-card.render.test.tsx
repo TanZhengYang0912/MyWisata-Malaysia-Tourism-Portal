@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { OutletRendererOutlet, OutletRendererProduct } from "@/components/outlet/outlet-block-types";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string, options?: Record<string, unknown>) => options?.count !== undefined ? `${key}:${options.count}` : key, i18n: { language: "en" } }),
+  useTranslation: () => ({ t: (key: string, options?: Record<string, unknown>) => options?.price !== undefined ? `${key}:${options.price}` : options?.count !== undefined ? `${key}:${options.count}` : key, i18n: { language: "en" } }),
 }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => <a href={href} {...props}>{children}</a> }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -22,31 +22,28 @@ const product: OutletRendererProduct = {
 };
 
 const render = (overrides: Partial<OutletRendererProduct>) => renderToStaticMarkup(<OutletProductCard outlet={outlet} product={{ ...product, ...overrides }} />);
-const badgeOf = (markup: string) => markup.match(/<div[^>]*data-slot="photo-rating-badge"[\s\S]*?<\/div>/)?.[0] ?? "";
-const footerOf = (markup: string) => markup.slice(markup.indexOf("border-t border-border pt-3"));
 
-describe("outlet menu product card rating", () => {
-  it("shows the rating on the photo and not in the footer", () => {
+describe("compact outlet menu product card", () => {
+  it("keeps the product name, price, and detail action without rating or category metadata", () => {
     const markup = render({ rating: 4.6, reviews: 76 });
-    expect(badgeOf(markup)).toContain(">4.6<");
-    expect(badgeOf(markup)).toContain("(76)");
-    expect(footerOf(markup)).not.toContain("(76)");
+    expect(markup).toContain("Kayak");
+    expect(markup).toContain("146");
+    expect(markup).toContain("ui.outletMenu.chooseTime");
+    expect(markup).not.toContain('data-slot="photo-rating-badge"');
+    expect(markup).not.toContain("Activity");
   });
 
-  it("says No reviews yet on the photo when the product has no reviews", () => {
-    expect(badgeOf(render({ rating: 0, reviews: 0 }))).toContain("ui.activity.noReviewsYet");
+  it("does not show a rating badge when the product has no reviews", () => {
+    const markup = render({ rating: 0, reviews: 0 });
+    expect(markup).toContain("Kayak");
+    expect(markup).not.toContain('data-slot="photo-rating-badge"');
+    expect(markup).not.toContain("ui.activity.noReviewsYet");
   });
 
-  it("shows no badge when the rating is not provided, as in the vendor previews", () => {
-    expect(render({})).not.toContain('data-slot="photo-rating-badge"');
-  });
-
-  it("keeps Featured beside the category chip, away from the badge", () => {
+  it("hides featured and category chips from the compact product card", () => {
     const markup = render({ featured: true, rating: 4.6, reviews: 76 });
-    const group = markup.match(/<div class="flex min-w-0 flex-wrap items-end gap-1\.5">([\s\S]*?)<\/div>/)?.[1] ?? "";
-    expect(group).toContain("Activity");
-    expect(group).toContain("ui.map.featured");
-    expect(group).not.toContain("photo-rating-badge");
-    expect(markup.indexOf("ui.map.featured")).toBeLessThan(markup.indexOf('data-slot="photo-rating-badge"'));
+    expect(markup).not.toContain("Activity");
+    expect(markup).not.toContain("ui.map.featured");
+    expect(markup).not.toContain('data-slot="photo-rating-badge"');
   });
 });

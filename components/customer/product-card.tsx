@@ -8,7 +8,6 @@ import { Accessibility, BedDouble, CheckCircle, Clock, ImageOff, MapPin, MapPinn
 import { useOptionalWishlist, useWishlist } from "@/components/providers/wishlist";
 import { CategoryIcon } from "@/components/customer/category-icon";
 import { SaveToggleButton } from "@/components/customer/save-toggle-button";
-import { AiTag } from "./ai-tag";
 import { ShareButton } from "@/components/shared/share-button";
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { ExpandCard } from "@/components/customer/expand-card";
@@ -31,7 +30,7 @@ type ActivityCardItem = ComputedActivity & {
   property?: DiscoveryPropertySummary;
 };
 
-type DiscoveryCardProps = { activity: ActivityCardItem; recommendationReason?: string; returnTo?: string; outletId?: string; source?: string; onSponsoredClick?: () => void; hideDiscoveryBadges?: boolean };
+type DiscoveryCardProps = { activity: ActivityCardItem; returnTo?: string; outletId?: string; source?: string; onSponsoredClick?: () => void; hideDiscoveryBadges?: boolean };
 type VendorListingProps = { vendorListing: VendorProductCardData; returnTo: string };
 type CatalogueProductCardProps = { listing: ProductCatalogueCardData; returnTo: string; source?: "home" | "vendor"; onSponsoredClick?: () => void };
 
@@ -91,7 +90,7 @@ function VendorListingCard({ listing: product, returnTo, source, onSponsoredClic
   />;
 }
 
-function DiscoveryActivityCard({ activity, recommendationReason, returnTo, outletId, source, onSponsoredClick, hideDiscoveryBadges = false }: DiscoveryCardProps) {
+function DiscoveryActivityCard({ activity, returnTo, outletId, source, onSponsoredClick, hideDiscoveryBadges = false }: DiscoveryCardProps) {
   const { t } = useTranslation("customer");
   const [saving, setSaving] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
@@ -125,7 +124,6 @@ function DiscoveryActivityCard({ activity, recommendationReason, returnTo, outle
         {activity.duration && <div className="flex items-center gap-1"><Clock size={10} aria-hidden="true" /> {activity.duration}</div>}
         {activity.distanceKm !== undefined && <div>{activity.distanceKm} {DISTANCE_UNIT_KM}</div>}
       </div>}
-      {(activity.aiTag || recommendationReason) && <AiTag text={recommendationReason ?? activity.aiTag ?? ""} />}
     </>
   );
 

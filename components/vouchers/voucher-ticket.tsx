@@ -84,7 +84,7 @@ function VoucherCodeDisplay({ code, label, copyLabels }: { code: string; label?:
 export function VoucherTicket({ offer, children, className }: VoucherTicketProps) {
   return (
     <article data-voucher-ticket className={cn("group relative flex overflow-hidden rounded-[1.75rem] border border-border bg-card shadow-[0_12px_32px_rgba(1,0,102,0.08)] max-sm:flex-col", className)}>
-      <div className="relative flex min-h-48 shrink-0 overflow-hidden bg-gradient-to-br from-primary via-[#15158a] to-[#31537b] text-white sm:w-[34%] sm:max-w-72">
+      <div className="relative flex min-h-40 shrink-0 overflow-hidden bg-gradient-to-br from-primary via-[#15158a] to-[#31537b] text-white sm:min-h-48 sm:w-[34%] sm:max-w-72">
         {offer.images !== undefined ? (
           offer.images.length > 0 ? (
             <div className={`absolute inset-0 grid gap-px ${offer.images.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
@@ -110,7 +110,7 @@ export function VoucherTicket({ offer, children, className }: VoucherTicketProps
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#01003f]/90 via-[#01003f]/10 to-[#01003f]/15" />
-        <div className="relative flex w-full flex-col justify-between p-5">
+        <div className="relative flex w-full flex-col justify-between p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             {offer.identityLabel ? <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[#010066]/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.13em] backdrop-blur-sm">{offer.identityLabel}</span> : <span />}
             {offer.status}
@@ -122,7 +122,7 @@ export function VoucherTicket({ offer, children, className }: VoucherTicketProps
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col p-5 sm:p-6">
+      <div className="flex min-w-0 flex-1 flex-col p-4 sm:p-6">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             {offer.outletBadge && (
@@ -138,21 +138,21 @@ export function VoucherTicket({ offer, children, className }: VoucherTicketProps
           <h2 className="mt-2 text-xl font-bold leading-tight text-foreground sm:text-2xl">{offer.name}</h2>
           <p className="mt-3 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-primary sm:text-4xl">{offer.discountLabel}</p>
           {offer.minSpendLabel && <p className="mt-2 text-sm font-semibold text-muted-foreground">{offer.minSpendLabel}</p>}
-          {offer.scopeDetail && <div className="mt-4">{offer.scopeDetail}</div>}
+          {offer.scopeDetail && <div className="mt-3 sm:mt-4">{offer.scopeDetail}</div>}
         </div>
-        <div className="mt-auto flex items-center gap-2 pt-5 text-xs text-muted-foreground">
+        <div className="mt-auto flex items-center gap-2 pt-4 text-xs text-muted-foreground sm:pt-5">
           <Ticket size={14} aria-hidden="true" className="shrink-0 text-primary" />
           <span className="truncate">{offer.expiryLabel}</span>
         </div>
       </div>
 
-      <div className="relative flex shrink-0 flex-col justify-between border-t border-dashed border-border bg-secondary/40 px-5 py-5 sm:w-60 sm:border-l sm:border-t-0 sm:px-6">
+      <div className="relative flex shrink-0 flex-col justify-between border-t border-dashed border-border bg-secondary/40 px-4 py-4 sm:w-60 sm:border-l sm:border-t-0 sm:px-6 sm:py-5">
         <span aria-hidden="true" className="absolute -left-3 -top-3 hidden h-6 w-6 rounded-full bg-background sm:block" />
         <span aria-hidden="true" className="absolute -bottom-3 -left-3 hidden h-6 w-6 rounded-full bg-background sm:block" />
         <div>
           {offer.code && <VoucherCodeDisplay code={offer.code} label={offer.codeLabel} copyLabels={offer.codeCopyLabels} />}
           {offer.barcodeValue && (
-            <div className="mb-4">
+            <div className="mb-4 max-sm:hidden">
               <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{offer.barcodeLabel}</p>
               <div
                 onClick={offer.onBarcodeClick}
