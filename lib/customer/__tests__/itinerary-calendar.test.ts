@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { Booking } from "@/backend/core/types";
+import * as itineraryCalendar from "@/lib/customer/itinerary-calendar";
 import {
   countItineraryGroupsInMonth,
+  getUniqueItineraryActivityNames,
   getHiddenItineraryGroupCount,
   groupBookings,
   groupBookingsByDay,
 } from "@/lib/customer/itinerary-calendar";
+import type { BookingItineraryGroup } from "@/lib/customer/itinerary-calendar";
 
 const booking = (id: string, slotStartsAt: string): Booking => ({
   id,
@@ -47,6 +50,17 @@ describe("itinerary calendar helpers", () => {
     expect(groupBookings([sameActivityDifferentTime, differentActivity, differentOutlet])).toHaveLength(3);
   });
 
+  it("returns one filter option for identical activity names across distinct IDs", () => {
+    const first = bookingWith({ id: "chicken-rice-a", activityId: "product-a", activityName: "Chicken Rice Set" });
+    const repeated = bookingWith({ id: "chicken-rice-b", activityId: "product-b", activityName: " Chicken Rice Set " });
+    const other = bookingWith({ id: "child-admission", activityId: "product-c", activityName: "Child Admission" });
+
+    expect(getUniqueItineraryActivityNames([first, repeated, other])).toEqual([
+      "Chicken Rice Set",
+      "Child Admission",
+    ]);
+  });
+
   it("groups itinerary entries by calendar day while preserving group order", () => {
     const first = booking("first", "2026-08-03T01:57:00+08:00");
     const second = booking("second", "2026-08-03T10:57:00+08:00");
@@ -75,6 +89,59 @@ describe("itinerary calendar helpers", () => {
     const september = booking("september", "2026-09-03T01:57:00+08:00");
 
     expect(countItineraryGroupsInMonth([august, september], new Date(2026, 7, 1))).toBe(1);
+  });
+
+  it("keeps undated and other-month itinerary groups available to the desktop view", () => {
+    const groups = groupBookings([
+      booking("november", "2026-11-03T01:57:00+08:00"),
+      booking("october", "2026-10-03T01:57:00+08:00"),
+      bookingWith({ id: "pending", slotStartsAt: undefined }),
+      booking("december", "2026-12-03T01:57:00+08:00"),
+    ]);
+    const selector = Reflect.get(itineraryCalendar, "getItineraryGroupsOutsideMonth");
+
+    expect(selector).toBeTypeOf("function");
+    if (typeof selector !== "function") return;
+
+    const outsideGroups = Reflect.apply(selector, undefined, [groups, new Date(2026, 10, 1)]) as BookingItineraryGroup[];
+    expect(outsideGroups.map((group) => group.bookings[0].id)).toEqual([
+      "october",
+      "pending",
+      "december",
+    ]);
+  });
+
+  it("sorts upcoming, past, and all bookings by the most relevant date", () => {
+    const sorter = Reflect.get(itineraryCalendar, "sortBookingsForCalendar") as
+      | ((bookings: Booking[], scope: "upcoming" | "past" | "all", now: number) => Booking[])
+      | undefined;
+    const now = Date.parse("2026-11-07T12:00:00Z");
+    const upcoming = bookingWith({ id: "upcoming", slotStartsAt: "2026-11-08T12:00:00Z" });
+    const past = bookingWith({ id: "past", slotStartsAt: "2026-11-06T12:00:00Z" });
+    const futureFar = bookingWith({ id: "future-far", slotStartsAt: "2026-12-07T12:00:00Z" });
+    const pastFar = bookingWith({ id: "past-far", slotStartsAt: "2026-10-08T12:00:00Z" });
+    const undated = bookingWith({ id: "undated", slotStartsAt: undefined });
+
+    expect(sorter).toBeTypeOf("function");
+    if (!sorter) return;
+
+    expect(sorter([futureFar, upcoming, undated], "upcoming", now).map((item) => item.id)).toEqual([
+      "upcoming",
+      "future-far",
+      "undated",
+    ]);
+    expect(sorter([pastFar, undated, past], "past", now).map((item) => item.id)).toEqual([
+      "past",
+      "past-far",
+      "undated",
+    ]);
+    expect(sorter([pastFar, upcoming, undated, past, futureFar], "all", now).map((item) => item.id)).toEqual([
+      "upcoming",
+      "past",
+      "future-far",
+      "past-far",
+      "undated",
+    ]);
   });
 
   it("uses Malaysia calendar boundaries regardless of the runtime timezone", () => {

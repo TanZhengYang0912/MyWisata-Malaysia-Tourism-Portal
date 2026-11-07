@@ -3,7 +3,7 @@
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowRight, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, MapPin, SlidersHorizontal } from "lucide-react";
 import type { ComputedActivity, SponsoredPlacement, VendorSummary } from "@/backend/core/types";
 import { getPageItems } from "@/components/customer/directory-pagination";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -13,7 +13,9 @@ import { getActivityCommerceMode, getActivityDiscoveryMode } from "@/lib/custome
 import { canonicalCategorySlug, getDiscoverySearchFilter, getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { ReferencePrice } from "@/components/shared/reference-price";
-import { CustomerDiscoveryFilterPanel } from "@/components/customer/discovery-filters";
+import { CustomerDiscoveryFilterPanel, DiscoverySearchField } from "@/components/customer/discovery-filters";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { VendorCard } from "@/components/customer/vendor-card";
 import {
   rankPartnerDirectory,
@@ -121,6 +123,7 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
   const [currentPage, setCurrentPage] = useState(1);
   const [partnerView, setPartnerView] = useState<PartnerView>("all");
   const [partnerSort, setPartnerSort] = useState<PartnerSort>("featured");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [advertisementRankingTimestamp] = useState(() => new Date().toISOString());
 
   const categoriesByVendor = useMemo(() => {
@@ -206,19 +209,18 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
     now: advertisementRankingTimestamp,
   }), [advertisementRankingTimestamp, initialResults, sponsoredPlacements]);
 
-  const query = filters.q;
   const category = filters.categories.length === 1 ? filters.categories[0] : filters.hiddenGemOnly ? "hidden_gem" : null;
-  const state = filters.state;
-  const timeFrom = filters.timeFrom;
-  const timeTo = filters.timeTo;
-  const openNow = filters.openNow;
 
   const totalPages = Math.max(1, Math.ceil(filteredVendors.length / RESULTS_PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
   const pageStart = (safePage - 1) * RESULTS_PER_PAGE;
   const visibleVendors = filteredVendors.slice(pageStart, pageStart + RESULTS_PER_PAGE);
   const pageItems = getPageItems(safePage, totalPages);
-  const hasActiveFilters = Boolean(query.trim() || category || state || filters.types.length || filters.priceMax !== null || filters.operatingDays.length || filters.hoursMode !== "during" || filters.timeAt || timeFrom || timeTo || filters.overnight || openNow || filters.freeOnly || filters.bookableOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly);
+  const hasActiveFilters = Boolean(
+    filters.q.trim() || filters.state || filters.categories.length || filters.types.length || filters.priceMax !== null ||
+    filters.operatingDays.length || filters.hoursMode !== "during" || filters.timeAt || filters.timeFrom || filters.timeTo ||
+    filters.overnight || filters.openNow || filters.freeOnly || filters.bookableOnly || filters.familyFriendlyOnly || filters.coupleFriendlyOnly,
+  );
   const categoryLabel = category
     ? (() => {
         const key = getOptionalDiscoveryCategoryLabelKey(category);
@@ -235,17 +237,77 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Header */}
-      <section className="border-b border-border bg-background">
-        <div className="mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 sm:pb-8 sm:pt-10">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.search.verifiedPartners")}</p>
-          <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-foreground sm:text-4xl">
-            {t("ui.search.title")}
-          </h1>
+    <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
+      <div className="min-h-screen overflow-x-clip bg-background text-foreground">
+        <section className="border-b border-border bg-background">
+          <div className="mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 sm:pb-8 sm:pt-10">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.search.verifiedPartners")}</p>
+            <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-foreground sm:text-4xl">
+              {t("ui.search.title")}
+            </h1>
+          </div>
+        </section>
 
-           <div data-testid="partner-filter-bar" className="mt-6">
+        <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+          <div data-testid="partner-filter-bar" className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <DiscoverySearchField value={filters.q} onChange={(q) => updateFilters({ q })} placeholder={t("ui.search.searchVendors")} />
+            <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
+              <DialogTrigger asChild>
+                <Button type="button" variant="outline" size="sm" data-testid="partner-filters-trigger" className="min-h-10 rounded-xl px-4 text-sm">
+                  <SlidersHorizontal aria-hidden="true" />
+                  {t("ui.explore.filters")}
+                </Button>
+              </DialogTrigger>
+              <label data-testid="partner-sort-control" className="flex min-w-0 items-center gap-2 text-xs font-semibold text-muted-foreground">
+                <span className="shrink-0">{t("ui.explore.sortBy")}</span>
+                <select
+                  aria-label={t("ui.explore.sortBy")}
+                  value={partnerSort}
+                  onChange={(event) => { setPartnerSort(event.target.value as PartnerSort); setCurrentPage(1); }}
+                  className="min-h-10 min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-foreground"
+                >
+                  <option value="featured">{t("ui.search.featuredFirst")}</option>
+                  <option value="name">{t("ui.search.nameAscending")}</option>
+                  <option value="outlets">{t("ui.search.mostOutlets")}</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          {hasActiveFilters && (
+            <div data-testid="active-filter-summary" className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.search.activeFilters")}</span>
+              {categoryLabel && <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-primary">{t("ui.search.category")}: {categoryLabel}</span>}
+            </div>
+          )}
+        </section>
+
+        <DialogContent
+          id="partner-filter-dialog"
+          aria-labelledby="partner-filter-title"
+          aria-describedby="partner-filter-description"
+          className="fixed inset-y-0 right-0 left-auto top-0 z-50 flex h-dvh max-h-dvh w-full max-w-[430px] translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-y-0 border-r-0 p-0 shadow-xl duration-200 data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right sm:max-w-[430px]"
+        >
+          <DialogHeader className="shrink-0 border-b border-border px-5 py-5 pr-14">
+            <DialogTitle id="partner-filter-title">{t("ui.explore.filterDrawerTitle")}</DialogTitle>
+            <DialogDescription id="partner-filter-description" className="text-sm text-muted-foreground">
+              {t("ui.explore.filterDrawerDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
+            <label data-testid="partner-view-control" className="block text-sm font-semibold text-foreground">
+              <span>{t("ui.search.partnerView")}</span>
+              <select
+                value={partnerView}
+                onChange={(event) => { setPartnerView(event.target.value as PartnerView); setCurrentPage(1); }}
+                className="mt-2 min-h-10 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-normal text-foreground"
+              >
+                <option value="all">{t("ui.search.allPartnersOption")}</option>
+                <option value="featured">{t("ui.search.featuredOnly")}</option>
+              </select>
+            </label>
             <CustomerDiscoveryFilterPanel
+              layout="sidebar"
+              showSearchField={false}
               value={filters}
               hasActiveFilters={hasActiveFilters}
               onChange={updateFilters}
@@ -257,102 +319,61 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
               includeAllCategories={false}
               filterButtonAlignment="end"
             />
+          </div>
+        </DialogContent>
 
-            <div className="mt-3.5 flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
-              <div data-testid="active-filter-summary" className="flex flex-wrap items-center gap-2">
-                {hasActiveFilters && <span className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.search.activeFilters")}</span>}
-                {categoryLabel && <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-primary">{t("ui.search.category")}: {categoryLabel}</span>}
-              </div>
+        <SponsoredPartnerRail advertisements={advertisements} eventPromotions={eventPromotions} />
 
-              <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
-                <label data-testid="partner-view-control" className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-                  <span className="shrink-0">{t("ui.search.partnerView")}</span>
-                  <select
-                    value={partnerView}
-                    onChange={(event) => { setPartnerView(event.target.value as PartnerView); setCurrentPage(1); }}
-                    className="h-9 rounded-lg border border-border bg-background px-2.5 text-xs font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  >
-                    <option value="all">{t("ui.search.allPartnersOption")}</option>
-                    <option value="featured">{t("ui.search.featuredOnly")}</option>
-                  </select>
-                </label>
-                <label data-testid="partner-sort-control" className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-                  <span className="shrink-0">{t("ui.search.sortPartners")}</span>
-                  <select
-                    value={partnerSort}
-                    onChange={(event) => { setPartnerSort(event.target.value as PartnerSort); setCurrentPage(1); }}
-                    className="h-9 rounded-lg border border-border bg-background px-2.5 text-xs font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  >
-                    <option value="featured">{t("ui.search.featuredFirst")}</option>
-                    <option value="name">{t("ui.search.nameAscending")}</option>
-                    <option value="outlets">{t("ui.search.mostOutlets")}</option>
-                  </select>
-                </label>
-              </div>
+        <EventPartnersSection partners={eventPartners.filter((partner) => !filters.q.trim() || partner.name.toLowerCase().includes(filters.q.trim().toLowerCase()))} />
+
+        <section className="mx-auto max-w-7xl px-4 pb-10 sm:px-6">
+          <h2 className="sr-only">{partnerView === "featured" ? t("ui.search.searchResults") : t("ui.search.allPartners")}</h2>
+          {visibleVendors.length ? (
+            <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+              {visibleVendors.map((vendor, index) => (
+                <VendorCard
+                  key={vendor.id}
+                  vendor={vendor}
+                  destinationHref={(() => {
+                    const badgeSlugs = [
+                      filters.hiddenGemOnly && "hidden_gem",
+                      filters.familyFriendlyOnly && "family_friendly",
+                      filters.coupleFriendlyOnly && "couple_friendly",
+                      filters.categories.includes("hidden_gem") && "hidden_gem",
+                    ].filter(Boolean) as string[];
+                    const matchingOutlet = badgeSlugs.length > 0
+                      ? vendor.outlets.find((outlet) => badgeSlugs.some((slug) => outlet.badgeSlugs?.includes(slug)))
+                      : undefined;
+                    return matchingOutlet ? getOutletShopHref(matchingOutlet.id) : undefined;
+                  })()}
+                  categories={[...(categoriesByVendor.get(vendor.id) ?? new Set<string>())]}
+                  index={index}
+                  isFeatured={featuredVendorIds.has(vendor.id)}
+                />
+              ))}
             </div>
-          </div>
-        </div>
-      </section>
-
-      <SponsoredPartnerRail advertisements={advertisements} eventPromotions={eventPromotions} />
-
-      <EventPartnersSection partners={eventPartners.filter((partner) => !filters.q.trim() || partner.name.toLowerCase().includes(filters.q.trim().toLowerCase()))} />
-
-      {/* All Vendors */}
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <div>
-            <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold">
-              {query || category || state || timeFrom || timeTo || openNow || partnerView === "featured" ? t("ui.search.searchResults") : t("ui.search.allPartners")}
-            </h2>
-          </div>
-        </div>
-        
-        {visibleVendors.length ? (
-          <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-6 lg:grid-cols-4">
-            {visibleVendors.map((vendor, index) => (
-              <VendorCard
-                key={vendor.id}
-                vendor={vendor}
-                destinationHref={(() => {
-                  const badgeSlugs = [
-                    filters.hiddenGemOnly && "hidden_gem",
-                    filters.familyFriendlyOnly && "family_friendly",
-                    filters.coupleFriendlyOnly && "couple_friendly",
-                    filters.categories.includes("hidden_gem") && "hidden_gem",
-                  ].filter(Boolean) as string[];
-                  const matchingOutlet = badgeSlugs.length > 0
-                    ? vendor.outlets.find((outlet) => badgeSlugs.some((slug) => outlet.badgeSlugs?.includes(slug)))
-                    : undefined;
-                  return matchingOutlet ? getOutletShopHref(matchingOutlet.id) : undefined;
-                })()}
-                categories={[...(categoriesByVendor.get(vendor.id) ?? new Set<string>())]}
-                index={index}
-                isFeatured={featuredVendorIds.has(vendor.id)}
-              />
-            ))}
-          </div>
-         ) : (
-           <div className="rounded-[24px] border border-dashed border-border bg-secondary/50 p-12 text-center">
-             <p className="font-bold text-lg">{t("ui.search.noVendors")}</p>
-             <p className="mt-2 text-sm text-muted-foreground">{hasActiveFilters ? t("ui.discovery.adjustFilters") : t("ui.search.tryFilters")}</p>
-             {hasActiveFilters && <button type="button" onClick={clearFilters} className="mt-4 rounded-full border border-primary px-4 py-2 text-xs font-bold text-primary hover:bg-background">{t("ui.actions.clearFilters")}</button>}
-           </div>
-        )}
-
-        {filteredVendors.length > 0 && totalPages > 1 && (
-          <nav aria-label={t("ui.search.vendorPages")} className="mt-10 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-muted-foreground">
-              {t("ui.search.showing", { start: pageStart + 1, end: Math.min(pageStart + RESULTS_PER_PAGE, filteredVendors.length), total: filteredVendors.length, items: t("ui.search.vendors") })}
-            </p>
-            <div className="flex items-center gap-1.5">
-              <button type="button" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage === 1} aria-label={t("ui.search.previousVendorPage")} className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-primary disabled:opacity-35"><ChevronLeft size={15} /></button>
-              {pageItems.map((item, index) => item === "ellipsis" ? <span key={`ellipsis-${index}`} className="flex h-9 w-6 items-center justify-center text-xs text-muted-foreground">…</span> : <button key={item} type="button" onClick={() => setCurrentPage(item)} className={`h-9 min-w-9 rounded-full px-2 text-xs font-bold ${safePage === item ? "bg-primary text-white border-primary" : "border border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>{item}</button>)}
-              <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} aria-label={t("ui.search.nextVendorPage")} className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-primary disabled:opacity-35"><ChevronRight size={15} /></button>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border bg-secondary/30 p-8 text-center sm:p-10">
+              <p className="text-lg font-bold">{t("ui.search.noVendors")}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{hasActiveFilters ? t("ui.discovery.adjustFilters") : t("ui.search.tryFilters")}</p>
+              {hasActiveFilters && <button type="button" onClick={clearFilters} className="mt-4 rounded-full border border-primary px-4 py-2 text-xs font-bold text-primary hover:bg-background">{t("ui.actions.clearFilters")}</button>}
             </div>
-          </nav>
-        )}
-      </section>
-    </div>
+          )}
+
+          {filteredVendors.length > 0 && totalPages > 1 && (
+            <nav aria-label={t("ui.search.vendorPages")} className="mt-10 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-muted-foreground">
+                {t("ui.search.showing", { start: pageStart + 1, end: Math.min(pageStart + RESULTS_PER_PAGE, filteredVendors.length), total: filteredVendors.length, items: t("ui.search.vendors") })}
+              </p>
+              <div className="flex items-center gap-1.5">
+                <button type="button" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage === 1} aria-label={t("ui.search.previousVendorPage")} className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-primary disabled:opacity-35"><ChevronLeft size={15} /></button>
+                {pageItems.map((item, index) => item === "ellipsis" ? <span key={`ellipsis-${index}`} className="flex h-9 w-6 items-center justify-center text-xs text-muted-foreground">…</span> : <button key={item} type="button" onClick={() => setCurrentPage(item)} className={`h-9 min-w-9 rounded-full px-2 text-xs font-bold ${safePage === item ? "bg-primary text-white border-primary" : "border border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>{item}</button>)}
+                <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} aria-label={t("ui.search.nextVendorPage")} className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-primary disabled:opacity-35"><ChevronRight size={15} /></button>
+              </div>
+            </nav>
+          )}
+        </section>
+      </div>
+    </Dialog>
   );
 }

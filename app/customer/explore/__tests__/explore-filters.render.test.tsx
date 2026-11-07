@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   searchExploreActivities: vi.fn(),
   filterComputedActivities: vi.fn((_filters: unknown, candidates: unknown[]) => candidates),
   filterExploreActivities: vi.fn((_filters: unknown, candidates: unknown[]) => candidates),
+  sortExploreActivities: vi.fn((_filters: unknown, candidates: unknown[]) => candidates),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -105,8 +106,9 @@ vi.mock("@/backend/domains/catalogue", () => ({
   searchExploreActivities: mocks.searchExploreActivities,
   filterComputedActivities: mocks.filterComputedActivities,
   filterExploreActivities: mocks.filterExploreActivities,
+  sortExploreActivities: mocks.sortExploreActivities,
 }));
-vi.mock("@/components/customer/activity-card", () => ({ ActivityCard: ({ activity, returnTo, hideDiscoveryBadges }: { activity: { id: string; name: string }; returnTo?: string; hideDiscoveryBadges?: boolean }) => <article data-testid={`activity-${activity.id}`} data-hide-discovery-badges={hideDiscoveryBadges ? "true" : "false"}>{activity.name}|{returnTo}</article> }));
+vi.mock("@/components/customer/activity-card", () => ({ ActivityCard: ({ activity, listing, returnTo, hideDiscoveryBadges }: { activity?: { id: string; name: string }; listing?: { id: string; name: string }; returnTo?: string; hideDiscoveryBadges?: boolean }) => { const item = (activity ?? listing)!; return <article data-testid={`activity-${item.id}`} data-card={listing ? "catalogue" : "discovery"} data-hide-discovery-badges={hideDiscoveryBadges ? "true" : "false"}>{item.name}|{returnTo}</article>; } }));
 vi.mock("@/components/demo-map/story-map", () => ({ StoryMap: ({ activities }: { activities: { id: string }[] }) => <output data-testid="story-map-ids">{activities.map((activity) => activity.id).join(",")}</output> }));
 vi.mock("@/components/ui/checkbox", () => ({
   Checkbox: ({
@@ -218,6 +220,7 @@ describe("ExploreClient URL-backed advanced filters", () => {
     mocks.searchExploreActivities.mockReset().mockResolvedValue(activities);
     mocks.filterComputedActivities.mockReset().mockImplementation((_filters, candidates) => candidates);
     mocks.filterExploreActivities.mockReset().mockImplementation((_filters, candidates) => candidates);
+    mocks.sortExploreActivities.mockReset().mockImplementation((_filters, candidates) => candidates);
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container as unknown as Element);
@@ -257,12 +260,21 @@ describe("ExploreClient URL-backed advanced filters", () => {
     for (const label of ["Maximum price", "Free entry", "Booking required", "Opening hours"]) expect(findElements(container, (element) => element.getAttribute("aria-label") === label)).toHaveLength(0);
     expect(findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false)).toHaveLength(8);
     const activityCard = findOne(container, (element) => element.getAttribute("data-testid") === "activity-result-1");
-    expect(activityCard.getAttribute("data-hide-discovery-badges")).toBe("true");
+    expect(activityCard.getAttribute("data-card")).toBe("catalogue");
     const toolbar = findOne(container, (element) => element.getAttribute("data-testid") === "experience-toolbar");
     expect(findElements(toolbar, (element) => element.tagName === "INPUT" && element.getAttribute("aria-label") === "Search")).toHaveLength(1);
     expect(findElements(toolbar, (element) => element.tagName === "SELECT" && element.getAttribute("aria-label") === "Sort by")).toHaveLength(1);
     expect(findElements(container, (element) => element.textContent === "All Experiences")).toHaveLength(0);
     expect(findElements(container, (element) => /\b\d+\s+results\b/i.test(element.textContent ?? ""))).toHaveLength(0);
+  });
+
+  it("shows the unfiltered default view in the default Explore order, not the cached popularity order", async () => {
+    mocks.params = new URLSearchParams("tab=experiences");
+    mocks.sortExploreActivities.mockImplementation((_filters, candidates) => [...candidates].reverse());
+    await render(root, <ExploreClient initialActivities={activities} />);
+    expect(mocks.sortExploreActivities).toHaveBeenCalledWith({}, activities);
+    const ids = findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false).map((element) => element.getAttribute("data-testid"));
+    expect(ids[0]).toBe("activity-result-10");
   });
 
   it("restores the Experiences tab from the URL", async () => {
@@ -368,7 +380,7 @@ describe("ExploreClient URL-backed advanced filters", () => {
     expect(openNow.textContent).toContain("Open now");
     expect(findElements(container, (element) => element.getAttribute("role") === "checkbox" && element.getAttribute("aria-label") === "Open now")).toHaveLength(0);
     await click(openNow);
-    expect(findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-pressed") === "true").textContent).toContain("Open now");
+    expect(findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-label") === "Open now" && element.getAttribute("aria-pressed") === "true").textContent).toContain("Open now");
 
     const typeGroups = findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("experience-type-toggle-") ?? false);
     expect(typeGroups).toHaveLength(4);

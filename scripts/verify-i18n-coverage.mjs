@@ -166,9 +166,11 @@ function checkKeyParity(root, namespaces, resources, errors) {
         );
       }
 
+      const englishLeaves = flattenLeaves(englishResource.value);
+      const localeLeaves = flattenLeaves(localeResource.value);
       for (const key of [...englishKeys].filter((candidate) => localeKeys.has(candidate)).sort()) {
-        const englishValue = flattenLeaves(englishResource.value).get(key);
-        const localeValue = flattenLeaves(localeResource.value).get(key);
+        const englishValue = englishLeaves.get(key);
+        const localeValue = localeLeaves.get(key);
         if (typeof englishValue !== "string" || typeof localeValue !== "string") continue;
 
         const variables = (value) => [...value.matchAll(/\{\{\s*([^},\s]+)[^}]*\}\}/g)]

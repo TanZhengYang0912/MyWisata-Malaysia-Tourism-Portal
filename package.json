@@ -130,6 +130,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "i18next-cli": "1.71.0",
+    "supabase": "3.0.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.11"

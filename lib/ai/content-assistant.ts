@@ -47,7 +47,7 @@ export async function generateContentDraft(surface: ContentSurface, context: Rec
   const result = await generateAiText(
     'You are a careful writing assistant for MYLawatan, a Malaysian tourism platform. Ground every output in the supplied facts and never fabricate operational details.',
     prompt,
-    { temperature: 0.35, maxTokens: surface === 'outlet_page' ? 350 : 450 },
+    { provider: 'gemini', temperature: 0.35, maxTokens: surface === 'outlet_page' ? 350 : 450 },
   );
   if (!result.available) return result;
   const draft = parseContentDraft(surface, result.content);

@@ -116,7 +116,7 @@ export function GlobalSearch() {
                   {results.experiences.map((exp) => (
                     <Link
                       key={exp.id}
-                      href={`/customer/activity/${exp.id}`}
+                      href={`/customer/products/${exp.id}`}
                       onClick={() => setIsOpen(false)}
                       className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 dark:hover:bg-muted/50 transition-colors"
                     >
@@ -141,7 +141,7 @@ export function GlobalSearch() {
                   {results.vendors.map((vendor) => (
                     <Link
                       key={vendor.id}
-                      href={`/customer/vendor/${vendor.id}`}
+                      href={`/customer/vendors/${vendor.id}`}
                       onClick={() => setIsOpen(false)}
                       className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 dark:hover:bg-muted/50 transition-colors"
                     >

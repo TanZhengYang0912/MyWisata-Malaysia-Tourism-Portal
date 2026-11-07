@@ -131,7 +131,7 @@ async function resolveTarget(
     if (!data) return null;
     return {
       targetId: data.id,
-      destinationPath: `/customer/activity/${data.id}`,
+      destinationPath: `/customer/products/${data.id}`,
       ogTitle: data.name,
       ogDescription: await withRatingPrefix(service, 'product_id', data.id, data.description ?? SITE_PREVIEW_DESCRIPTION),
       ogImage: productImageUrl(data.cover_url) || null,
@@ -146,7 +146,7 @@ async function resolveTarget(
     if (!outlet) return null;
     return {
       targetId: outlet.id,
-      destinationPath: `/customer/outlet/${outlet.id}`,
+      destinationPath: `/customer/outlets/${outlet.id}`,
       ogTitle: outlet.name,
       ogDescription: await withRatingPrefix(service, 'outlet_id', outlet.id, page?.seo_description || `Explore products and experiences at ${outlet.name}.`),
       ogImage: page?.hero_url ?? null,

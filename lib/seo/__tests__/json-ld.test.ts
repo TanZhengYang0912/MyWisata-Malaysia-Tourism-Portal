@@ -24,7 +24,7 @@ describe("serializeJsonLd", () => {
   it("is used by every JSON-LD script tag", () => {
     for (const file of [
       "app/customer/vendor/[vendorId]/page.tsx",
-      "app/customer/vendor/[vendorId]/outlet/[outletId]/page.tsx",
+      "components/outlet/public-outlet-page.tsx",
       "app/help/[slug]/page.tsx",
     ]) {
       const source = readFileSync(resolve(process.cwd(), file), "utf8");

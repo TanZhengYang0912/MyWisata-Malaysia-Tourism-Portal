@@ -30,6 +30,7 @@ vi.mock("react-i18next", () => ({
       "ui.search.featuredCarousel": "Featured recommendations carousel",
       "ui.search.previousAdvertisement": "Previous advertisement",
       "ui.search.nextAdvertisement": "Next advertisement",
+      "ui.accessibility.carouselSlide": `Slide ${options?.page ?? ""} of ${options?.total ?? ""}`,
       "ui.labels.featured": "Featured",
       "ui.labels.operatingHours": "Operating hours",
       "ui.search.providedBy": `By ${options?.vendor ?? ""}`,
@@ -212,7 +213,7 @@ describe("SponsoredPartnerRail", () => {
     expect(container.textContent).toContain("George Town Walks");
     expect(container.textContent).toContain("George Town, Penang");
     const cardLink = findOne(container, (element) => element.tagName === "A");
-    expect(cardLink.getAttribute("href")).toBe("/customer/activity/activity-1");
+    expect(cardLink.getAttribute("href")).toBe("/customer/products/activity-1");
     expect(cardLink.className).toContain("md:grid-cols-[52%_48%]");
     expect(cardLink.className).toContain("md:min-h-[410px]");
     const cards = findElements(container, (element) => element.tagName === "ARTICLE");
@@ -257,64 +258,59 @@ describe("SponsoredPartnerRail", () => {
     expect(findElements(container, (element) => element.tagName === "IMG").length).toBe(0);
   });
 
-  it("advances every three seconds and loops from the last advertisement to the first", async () => {
+  it("advances every five seconds and loops from the last advertisement to the first", async () => {
     await render(root, <SponsoredPartnerRail advertisements={[
       advertisement("activity-1"),
       advertisement("activity-2", SECOND_PLACEMENT_ID),
     ]} />);
 
     expect(container.textContent).toContain("Advertisement activity-1");
-    await advanceTimers(2999);
+    await advanceTimers(4999);
     expect(container.textContent).toContain("Advertisement activity-1");
     await advanceTimers(1);
     expect(container.textContent).toContain("Advertisement activity-2");
-    await advanceTimers(3000);
+    await advanceTimers(5000);
     expect(container.textContent).toContain("Advertisement activity-1");
   });
 
-  it("loops in both manual directions and resets the autoplay interval", async () => {
+  it("lets position dots select any advertisement and resets the autoplay interval", async () => {
     await render(root, <SponsoredPartnerRail advertisements={[
       advertisement("activity-1"),
       advertisement("activity-2", SECOND_PLACEMENT_ID),
     ]} />);
 
-    const previous = findOne(container, (element) => element.getAttribute("aria-label") === "Previous advertisement");
-    const next = findOne(container, (element) => element.getAttribute("aria-label") === "Next advertisement");
-    expect(previous.getAttribute("disabled")).toBeNull();
-    expect(next.getAttribute("disabled")).toBeNull();
-
-    await click(previous);
+    const second = findOne(container, (element) => element.getAttribute("aria-label") === "Slide 2 of 2");
+    await click(second);
     expect(container.textContent).toContain("Advertisement activity-2");
-    await click(next);
-    expect(container.textContent).toContain("Advertisement activity-1");
+    expect(second.getAttribute("aria-current")).toBe("true");
 
     await advanceTimers(2000);
-    await click(next);
-    expect(container.textContent).toContain("Advertisement activity-2");
-    await advanceTimers(2999);
-    expect(container.textContent).toContain("Advertisement activity-2");
-    await advanceTimers(1);
+    const first = findOne(container, (element) => element.getAttribute("aria-label") === "Slide 1 of 2");
+    await click(first);
     expect(container.textContent).toContain("Advertisement activity-1");
+    await advanceTimers(4999);
+    expect(container.textContent).toContain("Advertisement activity-1");
+    await advanceTimers(1);
+    expect(container.textContent).toContain("Advertisement activity-2");
   });
 
-  it("reveals desktop navigation on carousel hover or focus while keeping touch controls visible", async () => {
+  it("places compact accessible position dots below the carousel", async () => {
     await render(root, <SponsoredPartnerRail advertisements={[
       advertisement("activity-1"),
       advertisement("activity-2", SECOND_PLACEMENT_ID),
     ]} />);
 
     const viewport = findOne(container, (element) => element.getAttribute("data-testid") === "sponsored-partner-rail");
-    const previous = findOne(container, (element) => element.getAttribute("aria-label") === "Previous advertisement");
-    const next = findOne(container, (element) => element.getAttribute("aria-label") === "Next advertisement");
+    const controls = findOne(container, (element) => element.getAttribute("role") === "group");
+    const indicators = findElements(container, (element) => element.getAttribute("aria-label")?.startsWith("Slide ") ?? false);
 
     expect(viewport.className).toContain("group/carousel");
-    for (const control of [previous, next]) {
-      const classNames = control.className.split(/\s+/);
-      expect(classNames).toContain("md:opacity-0");
-      expect(classNames).toContain("md:group-hover/carousel:opacity-100");
-      expect(classNames).toContain("md:group-focus-within/carousel:opacity-100");
-      expect(classNames).not.toContain("opacity-0");
-    }
+    expect(controls.className).toContain("mt-3");
+    expect(controls.className).toContain("justify-center");
+    expect(indicators).toHaveLength(2);
+    expect(indicators[0].className).toContain("h-6 w-6");
+    expect(findOne(indicators[0], (element) => element.tagName === "SPAN").className).toContain("h-1.5");
+    expect(findElements(container, (element) => element.getAttribute("aria-label") === "Previous advertisement" || element.getAttribute("aria-label") === "Next advertisement")).toHaveLength(0);
   });
 
   it("returns to the first advertisement when filtering replaces the active placement", async () => {
@@ -322,7 +318,7 @@ describe("SponsoredPartnerRail", () => {
       advertisement("activity-1"),
       advertisement("activity-2", SECOND_PLACEMENT_ID),
     ]} />);
-    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Next advertisement"));
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Slide 2 of 2"));
     expect(container.textContent).toContain("Advertisement activity-2");
 
     await render(root, <SponsoredPartnerRail advertisements={[
@@ -349,20 +345,20 @@ describe("SponsoredPartnerRail", () => {
     ]} />);
     const viewport = findOne(container, (element) => element.getAttribute("data-testid") === "sponsored-partner-rail");
     await dispatch(viewport, Object.assign(new TestEvent("mouseover", { bubbles: true }), { relatedTarget: null }));
-    await advanceTimers(3000);
+    await advanceTimers(5000);
     expect(container.textContent).toContain("Advertisement activity-1");
     await dispatch(viewport, Object.assign(new TestEvent("mouseout", { bubbles: true }), { relatedTarget: null }));
-    await advanceTimers(3000);
+    await advanceTimers(5000);
     expect(container.textContent).toContain("Advertisement activity-2");
 
     const currentLink = findOne(viewport, (element) => element.tagName === "A");
     await dispatch(currentLink, new TestEvent("focusin", { bubbles: true }));
-    await advanceTimers(3000);
+    await advanceTimers(5000);
     expect(container.textContent).toContain("Advertisement activity-2");
     const focusOut = new TestEvent("focusout", { bubbles: true }) as TestEvent & { relatedTarget: TestElement | null };
     focusOut.relatedTarget = document.body;
     await dispatch(currentLink, focusOut);
-    await advanceTimers(3000);
+    await advanceTimers(5000);
     expect(container.textContent).toContain("Advertisement activity-1");
   });
 
@@ -374,7 +370,7 @@ describe("SponsoredPartnerRail", () => {
 
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
     await dispatch(document, new TestEvent("visibilitychange"));
-    await advanceTimers(3000);
+    await advanceTimers(5000);
     expect(container.textContent).toContain("Advertisement activity-1");
 
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
@@ -383,10 +379,10 @@ describe("SponsoredPartnerRail", () => {
       setReducedMotion(true);
       await Promise.resolve();
     });
-    await advanceTimers(3000);
+    await advanceTimers(5000);
     expect(container.textContent).toContain("Advertisement activity-1");
 
-    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Next advertisement"));
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Slide 2 of 2"));
     expect(container.textContent).toContain("Advertisement activity-2");
   });
 
@@ -417,7 +413,7 @@ describe("SponsoredPartnerRail", () => {
       }),
     );
 
-    await advanceTimers(3000);
+    await advanceTimers(5000);
     expect(observedTargets).toHaveLength(2);
     const secondTarget = observedTargets[1];
     await act(async () => {
@@ -457,7 +453,7 @@ describe("SponsoredPartnerRail", () => {
     expect(container.textContent).not.toContain("Advertisement activity-1");
     expect(findOne(container, (element) => element.tagName === "A").getAttribute("href")).toBe("/customer/event-promotions/evt-1");
 
-    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Next advertisement"));
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Slide 2 of 2"));
     expect(container.textContent).toContain("Advertisement activity-1");
   });
 

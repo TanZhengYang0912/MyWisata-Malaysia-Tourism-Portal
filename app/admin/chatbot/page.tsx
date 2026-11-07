@@ -311,27 +311,26 @@ export default function AdminChatbotPage() {
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
           <TrendingUp size={13} /> {t("chatbot.topUnanswered.title")}
         </p>
-        <p className="text-[0.6875rem] text-muted-foreground mb-3 -mt-2">{t("chatbot.topUnanswered.description")}</p>
         {stats.topUnanswered.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("chatbot.topUnanswered.empty")}</p>
         ) : (
           <div className="space-y-2">
             {stats.topUnanswered.map((q, i) => (
-              <div key={i} className="flex items-center justify-between gap-3 text-sm border-t border-border pt-2 first:border-t-0 first:pt-0">
-                <div className="min-w-0">
-                  <span className="text-foreground flex items-center gap-1.5 min-w-0">
+              <div key={i} className="flex min-w-0 flex-col gap-3 border-t border-border pt-3 text-sm first:border-t-0 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <span className="flex min-w-0 items-start gap-1.5 text-foreground">
                     <MessageSquareText size={13} className="text-muted-foreground shrink-0" />
-                    <span className="truncate">{q.question}</span>
+                    <span className="break-words">{q.question}</span>
                   </span>
-                  <p className="text-[0.6875rem] text-muted-foreground pl-[19px]">
+                  <p className="break-words pl-[19px] text-[0.6875rem] text-muted-foreground">
                     {t("chatbot.questionMeta", { count: q.count, date: new Date(q.lastAskedAt).toLocaleDateString() })}
                   </p>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Button size="sm" variant="outline" onClick={() => addToKb(q.question)}>
+                <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:shrink-0">
+                  <Button size="sm" variant="outline" className="min-h-11 min-w-[8rem] flex-1 justify-center whitespace-normal text-center sm:flex-none" onClick={() => addToKb(q.question)}>
                     <Sparkles size={12} /> {t("chatbot.actions.addToKb")}
                   </Button>
-                  <Button size="sm" variant="outline" disabled={draftingQuestion === q.question} onClick={() => draftAnswer(q.question)}>
+                  <Button size="sm" variant="outline" className="min-h-11 min-w-[8rem] flex-1 justify-center whitespace-normal text-center sm:flex-none" disabled={draftingQuestion === q.question} onClick={() => draftAnswer(q.question)}>
                     <WandSparkles size={12} /> {draftingQuestion === q.question ? t("chatbot.drafting") : t("chatbot.actions.aiDraft")}
                   </Button>
                 </div>
@@ -345,26 +344,25 @@ export default function AdminChatbotPage() {
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
           <TrendingUp size={13} /> {t("chatbot.notHelpful.title")}
         </p>
-        <p className="text-[0.6875rem] text-muted-foreground mb-3 -mt-2">{t("chatbot.notHelpful.description")}</p>
         {stats.notHelpfulAnswered.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("chatbot.notHelpful.empty")}</p>
         ) : (
           <div className="space-y-2">
             {stats.notHelpfulAnswered.map((q, i) => (
-              <div key={i} className="flex items-center justify-between gap-3 text-sm border-t border-border pt-2 first:border-t-0 first:pt-0">
-                <div className="min-w-0">
-                  <span className="text-foreground flex items-center gap-1.5 min-w-0">
+              <div key={i} className="flex min-w-0 flex-col gap-3 border-t border-border pt-3 text-sm first:border-t-0 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <span className="flex min-w-0 items-start gap-1.5 text-foreground">
                     <MessageSquareText size={13} className="text-muted-foreground shrink-0" />
-                    <span className="truncate">{q.question}</span>
+                    <span className="break-words">{q.question}</span>
                   </span>
-                  <p className="text-[0.6875rem] text-muted-foreground pl-[19px]">
+                  <p className="break-words pl-[19px] text-[0.6875rem] text-muted-foreground">
                     {t("chatbot.questionMeta", { count: q.count, date: new Date(q.lastAskedAt).toLocaleDateString() })}
                   </p>
                 </div>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="shrink-0"
+                  className="min-h-11 w-full justify-center whitespace-normal text-center sm:w-auto"
                   disabled={draftingQuestion === q.question}
                   onClick={() => draftAnswer(q.question)}
                 >
@@ -380,26 +378,25 @@ export default function AdminChatbotPage() {
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
           <TrendingUp size={13} /> {t("chatbot.topEscalated.title")}
         </p>
-        <p className="text-[0.6875rem] text-muted-foreground mb-3 -mt-2">{t("chatbot.topEscalated.description")}</p>
         {stats.topEscalated.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("chatbot.topEscalated.empty")}</p>
         ) : (
           <div className="space-y-2">
             {stats.topEscalated.map((q, i) => (
-              <div key={i} className="flex items-center justify-between gap-3 text-sm border-t border-border pt-2 first:border-t-0 first:pt-0">
-                <div className="min-w-0">
-                  <span className="text-foreground flex items-center gap-1.5 min-w-0">
+              <div key={i} className="flex min-w-0 flex-col gap-3 border-t border-border pt-3 text-sm first:border-t-0 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <span className="flex min-w-0 items-start gap-1.5 text-foreground">
                     <MessageSquareText size={13} className="text-muted-foreground shrink-0" />
-                    <span className="truncate">{q.question}</span>
+                    <span className="break-words">{q.question}</span>
                   </span>
-                  <p className="text-[0.6875rem] text-muted-foreground pl-[19px]">
+                  <p className="break-words pl-[19px] text-[0.6875rem] text-muted-foreground">
                     {t("chatbot.questionMeta", { count: q.count, date: new Date(q.lastAskedAt).toLocaleDateString() })}
                   </p>
                 </div>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="shrink-0"
+                  className="min-h-11 w-full justify-center whitespace-normal text-center sm:w-auto"
                   disabled={draftingQuestion === q.question}
                   onClick={() => draftAnswer(q.question)}
                 >
@@ -489,20 +486,20 @@ export default function AdminChatbotPage() {
         ) : (
           <div className="divide-y divide-border">
             {sortedDocs.map((d) => (
-              <div key={d.id} className="px-4 py-3 flex items-center gap-3 flex-wrap">
+              <div key={d.id} className="flex min-w-0 flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center">
                 <input type="checkbox" aria-label={t("chatbot.accessibility.selectDocument", { title: d.title })} checked={selectedDocIds.has(d.id)} onChange={(event) => setSelectedDocIds((previous) => { const next = new Set(previous); if (event.target.checked) next.add(d.id); else next.delete(d.id); return next; })} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground truncate">
+                <div className="min-w-0 flex-1">
+                  <p className="break-words text-sm font-semibold text-foreground">
                     {d.title} {!d.isActive && <span className="text-muted-foreground font-normal">({t("chatbot.inactive")})</span>}
                   </p>
-                  <p className="text-xs text-muted-foreground truncate">
+                  <p className="break-words text-xs text-muted-foreground">
                     {d.category ? t(`chatbot.categories.${d.category}`) : t("chatbot.uncategorized")} · {d.hasEmbedding ? t("chatbot.embedded") : t("chatbot.notEmbedded")}
                   </p>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => startEdit(d)}>
+                <Button size="sm" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={() => startEdit(d)}>
                   {t("chatbot.actions.edit")}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => toggleActive(d)}>
+                <Button size="sm" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={() => toggleActive(d)}>
                   {d.isActive ? t("batchActions.deactivate") : t("batchActions.activate")}
                 </Button>
               </div>

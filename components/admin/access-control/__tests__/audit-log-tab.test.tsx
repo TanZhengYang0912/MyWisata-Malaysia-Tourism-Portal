@@ -134,5 +134,11 @@ describe("AuditLogTab", () => {
     expect(details.textContent).toContain('"status": "pending"');
     expect(details.hasAttribute("open")).toBe(false);
     expect(findElements(details, (element) => element.tagName === "PRE")).toHaveLength(2);
+
+    const focusedCard = findOne(container, (element) => element.getAttribute("data-admin-mobile-record-card") !== null && element.textContent.includes("kyc.approve"));
+    expect(focusedCard.getAttribute("class")).toContain("bg-primary/10");
+    const inspectButton = findOne(focusedCard, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-expanded") === "true");
+    expect(inspectButton.textContent).toBe("Hide");
+    expect(findOne(focusedCard, (element) => element.tagName === "DETAILS").hasAttribute("open")).toBe(false);
   });
 });

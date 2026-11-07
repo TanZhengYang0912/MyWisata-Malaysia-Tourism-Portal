@@ -35,6 +35,12 @@ describe("vendor-to-outlet commerce boundary", () => {
     expect(source).toContain('t("ui.labels.priceAvailability")');
   });
 
+  it("shows each outlet choice's live open status, falling back to the server's closed flag", () => {
+    expect(source).toContain("const outletStatus = useOutletOpenStatus();");
+    expect(source.match(/<OutletChoiceStatus choice=\{choice\} status=\{outletStatus\} \/>/g)).toHaveLength(2);
+    expect(source).not.toContain('{!choice.open && ` · ${t("ui.labels.currentlyClosed")}`}');
+  });
+
   it("preserves an outlet selected by an outlet-originated detail link", () => {
     expect(source).toContain('const requestedOutletId = searchParams.get("outletId");');
     expect(source).toContain("outletChoices.some((choice) => choice.outletId === requestedOutletId)");
@@ -62,5 +68,16 @@ describe("vendor-to-outlet commerce boundary", () => {
   it("shows operating hours for the selected outlet", () => {
     expect(source).toContain("selectedOutlet!.hours");
     expect(source).toContain('t("ui.labels.operatingHours")');
+  });
+});
+
+describe("related vendor section", () => {
+  it("uses one vendor heading and keeps the vendor link and related product cards", () => {
+    expect(source).not.toContain('t("ui.activity.moreFromVendorSubtitle"');
+    expect(source).not.toContain('<p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("ui.activity.moreFromVendor")}</p>');
+    expect(source).toContain('id="more-from-outlet-heading" className="text-xl font-black tracking-tight sm:text-2xl">{t("ui.activity.moreFromVendor")}</h2>');
+    expect(source).toContain('t("ui.actions.visitVendor")');
+    expect(source).toContain("relatedProducts.map((product) => (");
+    expect(source).toContain("<ActivityCard");
   });
 });

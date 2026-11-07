@@ -101,6 +101,18 @@ export async function POST(request: Request) {
   if (!parsed.ok) return parsed.response;
   const body = parsed.data;
 
+  if (body.vendorKind === 'event') {
+    const { data: applicant, error: applicantError } = await supabase
+      .from('users')
+      .select('phone_verified_at')
+      .eq('id', user.id)
+      .single();
+    if (applicantError) return apiFail('DB_ERROR', 'Unable to verify the account before registration.', 500);
+    if (!applicant?.phone_verified_at) {
+      return apiFail('PHONE_VERIFICATION_REQUIRED', 'Verify your profile phone number before applying as an event vendor.', 403);
+    }
+  }
+
   const imageSlots = ['logoFile', 'coverFile'] as const;
   const registrationImages: RegistrationImage[] = [];
   if (multipart) {
@@ -201,7 +213,10 @@ export async function POST(request: Request) {
   let registrationError: { message: string; code?: string } | null = null;
   let registrationOutcomeUnknown = false;
   try {
-    const registration = await supabase.rpc('register_vendor_with_outlet', {
+    const registrationFunction = body.vendorKind === 'event'
+      ? 'register_event_vendor_application'
+      : 'register_vendor_with_outlet';
+    const registration = await supabase.rpc(registrationFunction, {
       p_name: registrationBody.name,
       p_slug: registrationBody.slug ?? null,
       p_description: registrationBody.description ?? null,
@@ -236,6 +251,9 @@ export async function POST(request: Request) {
     if (!cleaned) return apiFail('IMAGE_CLEANUP_FAILED', 'The image upload could not be safely cleaned up.', 500);
     if (registrationError.message.includes('vendor_exists')) return apiFail('DUPLICATE', 'You already have a vendor', 409);
     if (registrationError.message.includes('unauthorized')) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+    if (registrationError.message.includes('phone_verification_required')) {
+      return apiFail('PHONE_VERIFICATION_REQUIRED', 'Verify your profile phone number before applying as an event vendor.', 403);
+    }
     if (registrationError.message.includes('invalid_name')) return apiFail('VALIDATION_ERROR', 'Vendor name must contain letters or numbers', 400);
     return apiFail('DB_ERROR', registrationError.message, 400);
   }

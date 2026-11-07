@@ -79,12 +79,14 @@ const priorTaskFiles = new Set([
   'components/vendor/vendor-registration-gallery-field.tsx',
   'components/vendor/vendor-registration-image-field.tsx',
   'app/vendor/layout.tsx',
+  'app/vendor/page.tsx',
   'app/vendor/loading.tsx',
   'app/vendor/redemptions/page.tsx',
   'app/vendor/scanner/page.tsx',
   'components/layout/portal-sidebar.tsx',
   'components/layout/vendor-sidebar.tsx',
   'components/vendor/compact-filter-bar.tsx',
+  'components/vendor/vendor-page-header.tsx',
   'components/vendor/pagination-controls.tsx',
   'components/vendor/redemption-scanner.tsx',
   'components/vendor/register-vendor-form.tsx',
@@ -115,6 +117,8 @@ const priorTaskFiles = new Set([
   'components/shared/global-command-palette.tsx',
   // Shared authentication challenge; it is outside the vendor translation task.
   'components/shared/human-verification.tsx',
+  'components/shared/use-viewport-clamped-popover-position.ts',
+  'components/vendor/mobile-record-card.tsx',
   'components/shared/image-crop-dialog.tsx',
   // Shared OTP countdown helper; its consumer owns the visible copy.
   'components/shared/use-otp-resend.ts',

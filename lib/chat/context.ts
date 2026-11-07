@@ -44,7 +44,7 @@ export async function buildProductContextSnapshot(
     title: product.name,
     subtitle: formatMYR(price),
     imageUrl: productImageUrl(product.cover_url),
-    href: `/customer/activity/${product.id}`,
+    href: `/customer/products/${product.id}`,
   };
 }
 

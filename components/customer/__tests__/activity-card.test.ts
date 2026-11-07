@@ -3,10 +3,11 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const workspace = process.cwd();
-const cardSource = readFileSync(resolve(workspace, "components/customer/activity-card.tsx"), "utf8");
+const cardSource = readFileSync(resolve(workspace, "components/customer/product-card.tsx"), "utf8");
 const saveToggleSource = readFileSync(resolve(workspace, "components/customer/save-toggle-button.tsx"), "utf8");
 const storyMapSource = readFileSync(resolve(workspace, "components/demo-map/story-map.tsx"), "utf8");
 const customerHomeSource = readFileSync(resolve(workspace, "app/customer/customer-home-client.tsx"), "utf8");
+const customerHomePageSource = readFileSync(resolve(workspace, "app/customer/page.tsx"), "utf8");
 const designDemoSource = readFileSync(resolve(workspace, "app/customer/design-demo/design-demo-client.tsx"), "utf8");
 const destinationPreviewSource = readFileSync(resolve(workspace, "components/customer/destination-preview-modal.tsx"), "utf8");
 
@@ -62,6 +63,14 @@ describe("customer activity image handling", () => {
     expect(cardSource).not.toContain("detailsRevealStyle");
     expect(cardSource).not.toContain("CardMediaHoverCaption");
     expect(cardSource).not.toContain("setDetailsOpen");
+  });
+
+  it("keeps recommendation ranking but removes AI reason copy from listing cards", () => {
+    expect(cardSource).not.toContain("AiTag");
+    expect(cardSource).not.toContain("recommendationReason");
+    expect(customerHomeSource).not.toContain("recommendationReason=");
+    expect(customerHomePageSource).toContain("getRecommendedFeed");
+    expect(customerHomePageSource).not.toContain("reasonLabel");
   });
 
   it("uses the reusable save toggle instead of a card-local heart icon", () => {

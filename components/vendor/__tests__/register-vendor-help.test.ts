@@ -40,4 +40,18 @@ describe('vendor registration section help', () => {
       expect(translations.registration.placeholders.contactPhone).toBeUndefined();
     }
   });
+
+  it('offers shop and event vendor account types separately from business type', () => {
+    expect(form).toContain("register('vendorKind')");
+    expect(form).toContain('t(\'registration.fields.vendorKind\')');
+    expect(form).toContain('value="shop"');
+    expect(form).toContain('value="event"');
+
+    for (const locale of ['en', 'ms', 'zh-CN']) {
+      const translations = JSON.parse(readFileSync(`app/i18n/locales/${locale}/vendor.json`, 'utf8'));
+      expect(translations.registration.fields.vendorKind).toBeTruthy();
+      expect(translations.registration.options.shopVendor).toBeTruthy();
+      expect(translations.registration.options.eventVendor).toBeTruthy();
+    }
+  });
 });

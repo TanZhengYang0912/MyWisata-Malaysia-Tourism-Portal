@@ -1,4 +1,6 @@
 import { act } from "react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { findOne, installTestDom, TestElement, TestEvent, type TestDocument } from "@/components/shared/__tests__/render-test-dom";
 
@@ -69,6 +71,12 @@ async function type(id: string, value: string) {
 }
 
 describe("staff passkey device enrollment", () => {
+  it("preserves the staff verification route and safe return destination", () => {
+    const routeSource = readFileSync(resolve(process.cwd(), "app/auth/staff-verification/page.tsx"), "utf8");
+    expect(routeSource).toContain("safeStaffVerificationNext(params.get('next'))");
+    expect(routeSource).toContain("window.location.assign(next)");
+  });
+
   it("lets a new device enroll with a code on an account that already has a passkey", async () => {
     await render();
     await click(button("manage"));

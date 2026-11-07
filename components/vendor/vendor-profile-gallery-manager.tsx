@@ -142,7 +142,6 @@ export default function VendorProfileGalleryManager({ vendorId }: Props) {
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary"><Images size={19} /></div>
         <div className="min-w-0 flex-1">
           <h2 id="vendor-gallery-heading" className="text-base font-bold text-gray-950 dark:text-foreground">{t('ui.profile.galleryTitle')}</h2>
-          <p className="mt-1 text-sm leading-5 text-gray-500 dark:text-muted-foreground">{t('ui.profile.galleryDescription')}</p>
         </div>
         {photos.length > 0 && <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-xs font-bold text-primary">{photos.length}/3</span>}
       </div>
@@ -190,7 +189,6 @@ export default function VendorProfileGalleryManager({ vendorId }: Props) {
               <span aria-hidden="true" className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-card text-primary"><Images size={20} /></span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-gray-800 dark:text-foreground">{t('ui.profile.galleryEmpty')}</p>
-                <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-muted-foreground">{t('ui.profile.galleryEmptyDescription')}</p>
               </div>
             </div>
           )}

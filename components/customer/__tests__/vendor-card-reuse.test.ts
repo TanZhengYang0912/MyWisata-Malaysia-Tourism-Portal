@@ -15,7 +15,17 @@ const partnersSource = readFileSync(
   "utf8",
 );
 
+const homePageSource = readFileSync(resolve(process.cwd(), "app/customer/page.tsx"), "utf8");
+const directoryPageSource = readFileSync(resolve(process.cwd(), "app/customer/partners/page.tsx"), "utf8");
+
 describe("customer vendor card reuse", () => {
+  it("tells no reviews (null) apart from a failed rating lookup (undefined)", () => {
+    for (const source of [homePageSource, directoryPageSource]) {
+      expect(source).toContain(".catch(() => null)");
+      expect(source).toContain("?? null : undefined");
+    }
+  });
+
   it("uses one shared vendor card in Home and Partners", () => {
     expect(homeSource).toContain('from "@/components/customer/vendor-card"');
     expect(partnersSource).toContain('from "@/components/customer/vendor-card"');

@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { getCustomerBreadcrumbModel } from "@/lib/customer/breadcrumbs";
+import { getCustomerBreadcrumbModel, getProductBreadcrumbAncestors } from "@/lib/customer/breadcrumbs";
 
 describe("customer breadcrumb routes", () => {
+  it('uses actual commercial vendor and outlet ancestry without inventing a required selection', () => {
+    const outlet = { vendorId: 'v', vendorName: 'Vendor', outletId: 'o', outletName: 'Outlet' };
+    expect(getProductBreadcrumbAncestors(outlet, false, false).map((item) => item.href)).toEqual(['/customer/vendors', '/customer/vendors/v', '/customer/outlets/o']);
+    expect(getProductBreadcrumbAncestors(outlet, true, false).map((item) => item.href)).toEqual(['/customer/vendors', '/customer/vendors/v']);
+    expect(getProductBreadcrumbAncestors(outlet, false, true).map((item) => item.href)).toEqual(['/customer/explore?tab=experiences']);
+  });
   it("separates automatic, page-owned and hidden routes", () => {
     expect(getCustomerBreadcrumbModel("/customer/explore").mode).toBe("automatic");
     expect(getCustomerBreadcrumbModel("/customer/vendor/v1").mode).toBe("page-owned");

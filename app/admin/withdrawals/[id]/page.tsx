@@ -19,7 +19,6 @@ export default function AdminWithdrawalDetailPage() {
       <AdminPageHeader
         eyebrow={<span className="flex items-center gap-2"><ShieldCheck size={14} /> {t("withdrawals.detail.eyebrow")}</span>}
         title={t("withdrawals.detail.reviewTitle")}
-        description={t("withdrawals.detail.reviewDescription")}
       />
       <WithdrawalReviewDetail withdrawalId={id} />
     </AdminPageShell>

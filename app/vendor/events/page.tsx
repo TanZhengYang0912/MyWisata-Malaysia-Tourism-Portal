@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { formatDate } from '@/lib/i18n/format';
 import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
 import type { PromotionCampaignPublic } from '@/lib/promotion-campaigns/types';
+import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
 
 interface RegistrationSummary { campaignId: string; status: string }
 
@@ -51,11 +52,7 @@ export default function VendorEventsPage() {
 
   return (
     <div className="w-full space-y-6">
-      <header>
-        <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><PartyPopper size={15} aria-hidden="true" /> {t('navigationSections.promotion')}</div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('ui.events.title')}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t('ui.events.description')}</p>
-      </header>
+      <VendorPageHeader eyebrow={<><PartyPopper size={15} aria-hidden="true" /> {t('navigationSections.promotion')}</>} title={t('ui.events.title')} />
 
       {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
 
@@ -69,12 +66,12 @@ export default function VendorEventsPage() {
             const joined = registrations.filter((r) => r.campaignId === campaign.id).length;
             return (
               <li key={campaign.id}>
-                <Link href={`/vendor/events/${campaign.id}`} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 hover:bg-secondary/40">
+                <Link href={`/vendor/events/${campaign.id}`} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-card p-4 hover:bg-secondary/40">
                   <div className="min-w-0">
-                    <p className="truncate font-semibold text-foreground">{campaign.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{formatDate(campaign.startsAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })} – {formatDate(campaign.endsAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })} · {t('ui.events.locations.count', { count: campaign.locations.length })}</p>
+                    <p className="break-words font-semibold text-foreground">{campaign.title}</p>
+                    <p className="mt-1 break-words text-xs text-muted-foreground">{formatDate(campaign.startsAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })} – {formatDate(campaign.endsAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })} · {t('ui.events.locations.count', { count: campaign.locations.length })}</p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-3">
+                  <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-3">
                     {joined > 0
                       ? <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-foreground">{t('ui.events.locations.joined', { joined, total: campaign.locations.length })}</span>
                       : <span className="text-xs font-semibold text-primary">{t('ui.events.registerCta')}</span>}

@@ -54,3 +54,25 @@ export async function markAnnouncementRead(
   if (error.message.includes('not_found')) return { ok: false, code: 'not_found' };
   return { ok: false, code: 'unknown' };
 }
+
+export async function markAnnouncementsRead(
+  authDb: SupabaseClient,
+  announcementIds: string[],
+): Promise<{ ok: true } | { ok: false; code: 'not_found' | 'invalid_batch' | 'unknown' }> {
+  const { error } = await authDb.rpc('mark_vendor_announcements_read', { p_announcement_ids: announcementIds });
+  if (!error) return { ok: true };
+  if (error.message.includes('not_found')) return { ok: false, code: 'not_found' };
+  if (error.message.includes('invalid_batch')) return { ok: false, code: 'invalid_batch' };
+  return { ok: false, code: 'unknown' };
+}
+
+export async function markAnnouncementsUnread(
+  authDb: SupabaseClient,
+  announcementIds: string[],
+): Promise<{ ok: true } | { ok: false; code: 'not_found' | 'invalid_batch' | 'unknown' }> {
+  const { error } = await authDb.rpc('mark_vendor_announcements_unread', { p_announcement_ids: announcementIds });
+  if (!error) return { ok: true };
+  if (error.message.includes('not_found')) return { ok: false, code: 'not_found' };
+  if (error.message.includes('invalid_batch')) return { ok: false, code: 'invalid_batch' };
+  return { ok: false, code: 'unknown' };
+}

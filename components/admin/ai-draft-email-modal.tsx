@@ -162,14 +162,14 @@ export function AiDraftEmailModal({
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 p-4" role="presentation">
       <div
-        className="w-full max-w-xl rounded-2xl border border-border bg-card p-5 shadow-2xl"
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-5 shadow-2xl"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="ai-draft-email-title"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 id="ai-draft-email-title" className="text-base font-semibold text-foreground">
+            <h2 id="ai-draft-email-title" className="break-words text-base font-semibold text-foreground">
               {title}
             </h2>
             <p className="mt-1 text-xs text-muted-foreground">{t("email.draft.advisory")}</p>
@@ -243,7 +243,7 @@ export function AiDraftEmailModal({
           {sendError && <p className="text-xs text-destructive">{sendError}</p>}
         </div>
 
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <Button variant="outline" onClick={onClose} disabled={sending}>
             {t("email.draft.cancel")}
           </Button>

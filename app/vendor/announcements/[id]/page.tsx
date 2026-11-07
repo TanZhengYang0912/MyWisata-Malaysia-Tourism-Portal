@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Bell } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { formatDateTime } from '@/lib/i18n/format';
 import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
+import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
 
 interface Announcement {
   id: string;
@@ -28,11 +29,13 @@ export default function VendorAnnouncementDetailPage({ params }: { params: Promi
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [readError, setReadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!vendorId) return;
     setLoading(true);
     setError(null);
+    setReadError(null);
     try {
       const response = await fetch(`/api/vendors/${vendorId}/announcements`, { cache: 'no-store' });
       const body = await response.json() as { data?: { announcements?: Announcement[] }; error?: { message?: string } };
@@ -40,7 +43,17 @@ export default function VendorAnnouncementDetailPage({ params }: { params: Promi
       const found = (body.data.announcements ?? []).find((item) => item.id === id) ?? null;
       setAnnouncement(found);
       if (found && !found.isRead) {
-        await fetch(`/api/vendors/${vendorId}/announcements/${id}/read`, { method: 'POST' }).catch(() => undefined);
+        try {
+          const readResponse = await fetch(`/api/vendors/${vendorId}/announcements/${id}/read`, { method: 'POST' });
+          const readBody = await readResponse.json().catch(() => ({})) as { error?: { message?: string } };
+          if (!readResponse.ok) {
+            setReadError(readBody.error?.message ?? t('ui.announcements.readError'));
+          } else {
+            setAnnouncement({ ...found, isRead: true });
+          }
+        } catch {
+          setReadError(t('ui.announcements.readError'));
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('ui.announcements.loadError'));
@@ -56,10 +69,16 @@ export default function VendorAnnouncementDetailPage({ params }: { params: Promi
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-6">
+    <div className="w-full space-y-6">
       <Link href="/vendor/announcements" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
         <ArrowLeft size={16} aria-hidden="true" /> {t('ui.announcements.backToInbox')}
       </Link>
+
+      <VendorPageHeader
+        eyebrow={<><Bell size={15} aria-hidden="true" /> {t('navigationSections.communication')}</>}
+        title={announcement?.title ?? t('ui.announcements.title')}
+        description={announcement ? `${announcement.senderCode} · ${formatDateTime(announcement.createdAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })}` : undefined}
+      />
 
       {loading ? (
         <p className="text-sm text-muted-foreground">{t('ui.announcements.loading')}</p>
@@ -67,13 +86,7 @@ export default function VendorAnnouncementDetailPage({ params }: { params: Promi
         <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error ?? t('ui.announcements.notFound')}</p>
       ) : (
         <article className="rounded-xl border border-border bg-card p-6">
-          <div className="flex items-center gap-3">
-            <Bell className="text-primary" size={20} aria-hidden="true" />
-            <div>
-              <h1 className="text-xl font-bold text-foreground">{announcement.title}</h1>
-              <p className="text-xs text-muted-foreground">{announcement.senderCode} · {formatDateTime(announcement.createdAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })}</p>
-            </div>
-          </div>
+          {readError && <p role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{readError}</p>}
           <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-foreground">{announcement.body}</p>
           {announcement.campaignId && (
             <Link

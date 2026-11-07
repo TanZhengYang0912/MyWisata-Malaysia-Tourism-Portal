@@ -2,7 +2,6 @@
   "taxonomy": {
     "productTypes": {
       "title": "Jenis produk",
-      "hint": "Pilih semua jenis yang menerangkan produk ini dengan tepat.",
       "options": {
         "chinese": "Cina",
         "malay": "Melayu",
@@ -32,7 +31,6 @@
     },
     "outletBadges": {
       "title": "Lencana cawangan",
-      "hint": "Pilih ciri yang menggambarkan cawangan ini.",
       "options": {
         "hiddenGem": "Permata Tersembunyi",
         "familyFriendly": "Mesra Keluarga",
@@ -41,7 +39,6 @@
     },
     "accommodationTypes": {
       "title": "Jenis penginapan",
-      "hint": "Pilih jenis yang menggambarkan penginapan ini.",
       "options": {
         "5-star": "5 Bintang",
         "4-star": "4 Bintang",
@@ -127,6 +124,9 @@
     "promotion": "Promosi"
   },
   "filters": {
+    "label": "Penapis",
+    "show": "Tunjukkan penapis",
+    "hide": "Sembunyikan penapis",
     "searchByName": "Cari mengikut nama…",
     "clear": "Kosongkan",
     "applyRange": "Gunakan julat",
@@ -369,7 +369,8 @@
       "invalidImage": "Fail ini bukan imej yang sah. Pilih foto lain.",
       "imageUploadFailed": "Imej tidak dapat dimuat naik. Sila cuba lagi.",
       "imageCleanupFailed": "Muat naik imej tidak dapat diselesaikan dengan selamat. Hubungi sokongan sebelum mencuba lagi.",
-      "statusUnconfirmed": "Kami tidak dapat mengesahkan sama ada permohonan anda telah disimpan. Muat semula profil vendor sebelum mencuba lagi."
+      "statusUnconfirmed": "Kami tidak dapat mengesahkan sama ada permohonan anda telah disimpan. Muat semula profil vendor sebelum mencuba lagi.",
+      "phoneVerificationRequired": "Sahkan nombor telefon profil anda sebelum memohon sebagai vendor acara."
     },
     "validation": {
       "name": {
@@ -426,6 +427,7 @@
       "businessName": "Nama Perniagaan",
       "description": "Penerangan",
       "businessType": "Jenis Perniagaan",
+      "vendorKind": "Jenis akaun vendor",
       "legalBusinessName": "Nama Perniagaan Sah",
       "registrationNumber": "Nombor Pendaftaran",
       "contactPerson": "Orang Hubungan",
@@ -443,6 +445,8 @@
     },
     "options": {
       "selectType": "Pilih jenis...",
+      "shopVendor": "Vendor kedai",
+      "eventVendor": "Vendor acara",
       "restaurant": "Restoran / Makanan & Minuman",
       "tourOperator": "Pengendali Pelancongan",
       "accommodation": "Penginapan",
@@ -504,8 +508,6 @@
       "partnerPortal": "Portal rakan kongsi pelancongan Malaysia",
       "outletOperations": "Operasi outlet",
       "overview": "Gambaran keseluruhan",
-      "assignedOutletMoving": "Pastikan outlet yang ditugaskan anda berjalan lancar hari ini.",
-      "happeningWith": "Perkara yang berlaku dengan",
       "today": "hari ini.",
       "live": "Langsung",
       "noOrdersPeriod": "Tiada pesanan dalam tempoh ini",
@@ -521,6 +523,7 @@
       "stockAlertsDescription": "Inventori aktif yang telah dikonfigurasi dipaparkan di sini apabila mencapai ambang stok rendah.",
       "salesScope": "Data jualan",
       "salesMode": {
+        "all": "Semua aktiviti",
         "live": "Jualan sebenar",
         "demo": "Ujian & Demo"
       },
@@ -530,6 +533,7 @@
       "includedDemoSales_other": "Jualan ujian/demo disertakan: {{amount}} daripada {{count}} pesanan",
       "salesProvenanceTitle": "Pengesahan jualan",
       "salesProvenanceDescription": "Jumlah pesanan turut merangkumi pesanan demo dan mod ujian. Hasil disahkan, carta jualan dan kedudukan produk hanya merangkumi pesanan berbayar atau selesai dengan pembayaran langsung yang berjaya; jualan simulasi dan belum disahkan dipaparkan berasingan.",
+      "salesProvenanceAllDescription": "Carta jualan merangkumi pesanan berbayar atau selesai dengan pembayaran langsung, ujian atau demo yang berjaya. Jualan yang belum disahkan dipaparkan berasingan; jumlah pesanan merangkumi semua pesanan.",
       "simulatedSales_one": "Jualan simulasi dikecualikan: {{amount}} daripada {{count}} pesanan",
       "simulatedSales_other": "Jualan simulasi dikecualikan: {{amount}} daripada {{count}} pesanan",
       "unverifiedSales_one": "Pembayaran belum disahkan: {{amount}} daripada {{count}} pesanan",
@@ -543,7 +547,6 @@
       "alertAt": "maklumkan pada {{threshold}}",
       "noLowStock": "Tiada item stok rendah di outlet yang ditugaskan kepada anda.",
       "itemsInPeriod": "{{count}} item dalam tempoh ini",
-      "keepExperiencesCurrent": "Pastikan pengalaman anda terkini",
       "voucherCampaigns": "Kempen baucar",
       "createOffers": "Cipta tawaran untuk pelancong",
       "availableCount_one": "{{count}} tersedia",
@@ -565,7 +568,6 @@
       "noVendor": "Tiada vendor diluluskan dipautkan kepada akaun ini.",
       "malaysiaPerformance": "Prestasi seluruh Malaysia",
       "title": "Analitik",
-      "description": "Paparan dua belas bulan outlet, produk dan permintaan pelancong anda.",
       "revenueSelectedPeriod": "Hasil dalam tempoh dipilih",
       "paidOrders": "Pesanan berbayar",
       "activeOutletsMalaysia": "Outlet aktif di seluruh Malaysia",
@@ -581,9 +583,6 @@
         "last12Months": "12 bulan terakhir",
         "apply": "Gunakan"
       },
-      "insightLabel": "Perkara utama",
-      "insightTitle": "Tukar data prestasi kepada tindakan operasi seterusnya.",
-      "insightDescription": "Gunakan corak permintaan, campuran produk, sumbangan outlet dan sentimen pelancong untuk menentukan perkara yang perlu dipromosi, diperbaiki atau dijadualkan.",
       "periodLabel": "Menganalisis",
       "revenueTracked": "Pesanan berbayar dan selesai sahaja",
       "metrics": {
@@ -613,25 +612,21 @@
       "revenueQuality": {
         "eyebrow": "Kualiti hasil",
         "title": "Cara permintaan ditukar",
-        "description": "Bandingkan hasil, jumlah pesanan dan nilai pesanan purata dalam tempoh dipilih.",
         "metrics": {
           "revenue": "Hasil",
           "averageOrderValue": "Nilai pesanan purata",
           "orders": "Pesanan"
-        },
-        "trendHint": "Julat pendek dikumpulkan mengikut minggu dan julat panjang mengikut bulan."
+        }
       },
       "bookingMix": {
         "eyebrow": "Tingkah laku pembelian",
         "title": "Campuran tempahan",
-        "description": "Lihat bahagian permintaan yang tiba bersama slot masa berjadual.",
         "booked": "Ditempah",
         "nonBooked": "Tiada slot"
       },
       "demandHeatmap": {
         "eyebrow": "Kecerdasan permintaan",
         "title": "Bila pelancong membeli",
-        "description": "Aktiviti pesanan mengikut waktu Malaysia. Sel lebih gelap menunjukkan lebih banyak pesanan unik.",
         "orders": "pesanan",
         "less": "Kurang",
         "more": "Lebih"
@@ -648,7 +643,6 @@
       "productPortfolio": {
         "eyebrow": "Portfolio produk",
         "title": "Jumlah berbanding nilai",
-        "description": "Setiap gelembung ialah satu produk. Unit lebih tinggi bergerak ke kanan; hasil atau penilaian lebih tinggi bergerak ke atas.",
         "axisHint": "Saiz gelembung mewakili jumlah ulasan.",
         "revenue": "Hasil",
         "units": "Unit",
@@ -657,23 +651,19 @@
       "outletPerformance": {
         "eyebrow": "Prestasi outlet",
         "title": "Sumbangan mengikut outlet",
-        "description": "Susun outlet mengikut hasil diiktiraf, bersama jumlah pesanan dan bahagian hasil.",
         "orders": "pesanan"
       },
       "customerSignal": {
         "eyebrow": "Isyarat pelanggan",
         "title": "Apa kata pelancong",
-        "description": "Taburan ulasan terlihat untuk tempoh dipilih.",
         "reviews": "Ulasan"
       },
       "actionQueue": {
         "eyebrow": "Barisan tindakan",
-        "title": "Isyarat yang wajar diambil tindakan",
-        "description": "Petunjuk berasaskan data untuk membimbing keputusan produk, jadual atau outlet seterusnya."
+        "title": "Isyarat utama"
       },
       "marketingAttribution": {
-        "title": "Atribusi pemasaran",
-        "description": "Jejaki bagaimana senarai yang dikongsi bergerak daripada penemuan sosial kepada klik dan pesanan. Kiraan berdasarkan acara yang dijejaki."
+        "title": "Atribusi pemasaran"
       },
       "dataNote": {
         "title": "Nota data:",
@@ -687,12 +677,9 @@
         "insights": "Lebih banyak aktiviti diperlukan sebelum isyarat tindakan muncul."
       },
       "insights": {
-        "topProductTitle": "Utamakan produk terbaik",
-        "topProductDescription": "Produk ini kini menyumbang hasil diiktiraf tertinggi.",
-        "peakWindowTitle": "Lindungi waktu puncak",
-        "peakWindowDescription": "Gunakan waktu permintaan ini untuk menyusun staf atau promosi bermasa.",
-        "outletConcentrationTitle": "Pantau tumpuan hasil",
-        "outletConcentrationDescription": "Ini ialah bahagian outlet utama daripada hasil diiktiraf."
+        "topProductTitle": "Produk teratas",
+        "peakWindowTitle": "Permintaan puncak",
+        "outletConcentrationTitle": "Outlet teratas"
       }
     },
     "bookings": {
@@ -724,7 +711,6 @@
       "scheduleSummary": "Ringkasan mingguan",
       "bookingOperations": "Operasi tempahan",
       "title": "Tempahan",
-      "description": "Urus tempahan dan waktu operasi mengikut cawangan, dengan slot tempahan diasingkan.",
       "openScanner": "Buka pengimbas",
       "addSlot": "+ Tambah Slot Tempahan",
       "currentFilter": "Penapis semasa",
@@ -849,7 +835,6 @@
       "sendFailed": "Balasan tidak dapat dihantar.",
       "travellerConversations": "Perbualan pelancong",
       "title": "Peti masuk",
-      "description": "Balas soalan pelanggan daripada outlet Malaysia anda.",
       "searchConversations": "Cari perbualan",
       "loading": "Memuatkan perbualan…",
       "noConversations": "Tiada perbualan lagi.",
@@ -869,24 +854,28 @@
     },
     "scanner": {
       "eyebrow": "Kaunter penebusan",
-      "title": "Imbas tiket atau baucar",
-      "description": "Gunakan kamera peranti untuk mengimbas QR tiket sebenar atau kod bar Code 128 baucar, semak dan sahkan penebusan.",
+      "title": "Imbas tiket, pesanan makanan atau baucar",
       "outlet": "Cawangan",
       "assignedOutlet": "Outlet ditugaskan",
       "supportsQrAndBarcode": "QR + Code 128",
       "cameraPreview": "Pratonton kamera untuk imbasan",
-      "cameraReady": "Buka kamera dan halakan pada QR tiket atau kod bar baucar.",
+      "cameraReady": "Kamera sedia",
+      "cameraOff": "Kamera belum dibuka",
+      "cameraPrompt": "Buka kamera dan halakan pada QR tiket, pesanan makanan atau pengambilan, atau kod bar baucar.",
       "openCamera": "Buka kamera",
       "stopCamera": "Hentikan kamera",
+      "switchCamera": "Tukar kamera",
+      "switchToFrontCamera": "Tukar kepada kamera hadapan",
+      "switchToBackCamera": "Tukar kepada kamera belakang",
       "cameraHint": "Akses kamera kekal pada peranti ini. Kod akan disemak mengikut cawangan yang dibenarkan.",
       "manualTitle": "Gunakan kod secara manual",
-      "manualDescription": "Tampal pautan tiket penuh atau kod baucar bertandatangan jika kamera tidak tersedia.",
-      "manualPlaceholder": "Tampal pautan tiket atau kod baucar bertandatangan",
+      "manualDescription": "Tampal pautan tiket, pesanan makanan atau pengambilan, atau kod baucar bertandatangan.",
+      "manualPlaceholder": "Tampal pautan tiket atau pesanan, atau kod baucar bertandatangan",
       "loadingOutlets": "Memuatkan cawangan yang dibenarkan…",
       "noVendor": "Akaun ini tiada vendor yang ditugaskan. Log masuk dengan akaun pengurus cawangan.",
       "outletsUnavailable": "Tidak dapat memuatkan cawangan yang dibenarkan untuk imbasan. Muat semula atau hubungi pentadbir.",
       "checkCode": "Semak kod",
-      "invalidCode": "Kod ini bukan tiket atau baucar MYLawatan yang sah.",
+      "invalidCode": "Kod ini bukan tiket, pesanan makanan, pengambilan atau baucar MYLawatan yang sah.",
       "resolveFailed": "Tidak dapat menyemak kod ini.",
       "cameraUnsupported": "Pelayar ini tidak menyediakan akses kamera.",
       "cameraFailed": "Tidak dapat membuka kamera. Semak kebenaran pelayar dan cuba lagi.",
@@ -900,7 +889,9 @@
       "foodOrderTitle": "Pesanan makanan #{{order}}",
       "vendor": "Vendor",
       "foodOrderFulfilled": "Pesanan makanan berjaya diserahkan.",
+      "foodOrderFulfilledWithItems": "Pesanan makanan diserahkan: {{items}}.",
       "foodDineInCheckedIn": "Ketibaan pelanggan makan di sini disahkan. Pesanan masih menunggu hidangan.",
+      "foodDineInCheckedInWithItems": "Ketibaan pelanggan untuk {{items}} disahkan. Pesanan masih menunggu hidangan.",
       "voucherKind": "Baucar",
       "ticketKind": "Tiket kemasukan",
       "customerFoodMode": {
@@ -915,6 +906,7 @@
       "multiEntryPass": "Pas berbilang masuk",
       "oneEntryPerScan": "Satu lawatan akan diterima untuk imbasan ini.",
       "confirm": "Sahkan penebusan",
+      "confirmFoodOrder": "Sahkan pesanan makanan",
       "cancel": "Batal",
       "stationStatus": "Status Stesen",
       "cameraTab": "Pengimbas Kamera",
@@ -947,7 +939,6 @@
     "redemptions": {
       "eyebrow": "Penebusan Cawangan",
       "title": "Log Penebusan & Imbasan",
-      "description": "Log audit penebusan baucar di kedai dan kemasukan tiket merentas semua cawangan anda.",
       "loadFailed": "Tidak dapat memuatkan rekod penebusan.",
       "totalRedemptions": "Jumlah Penebusan",
       "allTime": "Semua imbasan direkodkan",
@@ -1032,7 +1023,6 @@
         "after-21:00": "Selepas 9:00 malam"
       },
       "title": "Pesanan",
-      "description": "Lihat perkara yang perlu diberi perhatian dahulu, kemudian buka butiran di tengah.",
       "allOrders": "Semua pesanan",
       "needsAttention": "Perlu perhatian",
       "completed": "Selesai",
@@ -1040,7 +1030,6 @@
       "activeFilters": "Penapis aktif",
       "searchFilter": "Carian",
       "advancedFilters": "Penapis lanjutan",
-      "advancedFiltersDescription": "Tapis pesanan mengikut pemenuhan, status pesanan atau tarikh.",
       "closeFilters": "Tutup penapis",
       "applyFilters": "Guna penapis",
       "fulfilmentStatus": "Status pemenuhan",
@@ -1066,6 +1055,9 @@
       "guest": "Tetamu",
       "itemCount": "{{count}} item",
       "orderStatus": "Pesanan {{status}}",
+      "copyOrderId": "Salin ID pesanan {{id}}",
+      "orderIdCopied": "ID pesanan {{id}} disalin.",
+      "orderIdCopyFailed": "Tidak dapat menyalin ID pesanan {{id}}.",
       "unknown": "tidak diketahui",
       "viewDetails": "Lihat butiran",
       "reviewItems": "Semak item",
@@ -1113,7 +1105,6 @@
       "noAssignedOutlet": "Tiada outlet yang ditugaskan tersedia untuk akaun ini lagi.",
       "malaysiaNetwork": "Rangkaian outlet Malaysia",
       "title": "Outlet",
-      "description": "Paparan jelas setiap lokasi, dari Kuala Lumpur hingga Kota Kinabalu.",
       "add": "Tambah outlet",
       "empty": "Tiada outlet ditemui",
       "closeConfirm": "Tutup cawangan ini? Pelanggan tidak lagi dapat melihatnya.",
@@ -1174,7 +1165,6 @@
       "copyFailed": "Tidak dapat menyalin ID produk",
       "catalogueManagement": "Pengurusan katalog",
       "title": "Produk & aktiviti",
-      "description": "Pastikan setiap penyenaraian Malaysia mudah dilihat dan sedia ditempah.",
       "assignedOutlet": "Cawangan ditugaskan",
       "attentionNeeded": "Persediaan / stok rendah / tempahan",
       "outletsManaged": "Outlet",
@@ -1276,7 +1266,6 @@
       "loadFailed": "Profil vendor tidak dapat dimuatkan",
       "aiUnavailable": "Penulisan AI tidak tersedia.",
       "title": "Profil perniagaan",
-      "description": "Pastikan identiti perniagaan yang dilihat pelanggan kemas, tepat dan mudah dipercayai.",
       "vendorIdentity": "Identiti vendor",
       "unsavedChanges": "Perubahan belum disimpan",
       "copyProfileLink": "Salin pautan profil",
@@ -1286,18 +1275,12 @@
       "saveFailed": "Profil vendor tidak dapat disimpan",
       "saveChanges": "Simpan perubahan",
       "businessIdentity": "Identiti perniagaan",
-      "businessIdentityDescription": "Butiran ini dipaparkan pada profil vendor awam anda.",
       "businessName": "Nama perniagaan",
-      "businessNameHelp": "Gunakan nama yang dikenali pelanggan.",
       "businessType": "Jenis perniagaan",
-      "businessTypeHelp": "Pilih kategori yang paling tepat.",
       "selectBusinessType": "Pilih jenis perniagaan",
       "currentBusinessType": "{{type}} (semasa)",
       "descriptionLabel": "Penerangan",
-      "descriptionHelp": "Berikan sebab jelas untuk pelanggan memilih anda.",
-      "descriptionPlaceholder": "Beritahu pelanggan keistimewaan perniagaan anda…",
       "brandAssets": "Aset jenama",
-      "brandAssetsDescription": "Gunakan imej jelas supaya pelanggan cepat mengenali perniagaan anda.",
       "logo": "Logo",
       "logoUploaded": "Logo dimuat naik.",
       "removeLogo": "Buang logo",
@@ -1305,10 +1288,8 @@
       "coverUploaded": "Imej muka depan dimuat naik.",
       "removeCover": "Buang imej muka depan",
       "galleryTitle": "Galeri foto perniagaan",
-      "galleryDescription": "Muat naik tiga foto untuk menunjukkan perniagaan anda kepada pelanggan.",
       "galleryHelp": "Pilih tepat tiga foto JPG, PNG atau WebP. Setiap foto boleh bersaiz sehingga 2 MB.",
       "galleryEmpty": "Belum ada foto galeri",
-      "galleryEmptyDescription": "Tambah tiga foto untuk memaparkan galeri pada profil awam anda.",
       "galleryChoose": "Pilih tiga foto",
       "gallerySave": "Simpan galeri",
       "gallerySelectedCount": "{{count}} daripada 3 foto dipilih",
@@ -1333,17 +1314,14 @@
       "galleryImageSizeError": "Setiap foto mestilah bersaiz 2 MB atau kurang.",
       "galleryCleanupWarning": "Galeri dikemas kini, tetapi fail lama tidak dapat dibuang.",
       "publicProfileLink": "Pautan profil awam",
-      "publicProfileLinkDescription": "Pengecam ini membantu pasukan mengenali URL profil. Pastikan ringkas dan mudah dibaca.",
       "slugHelp": "Huruf kecil, nombor dan sempang sahaja.",
       "livePreview": "Pratonton langsung",
       "publicProfile": "Profil awam",
       "coverPreviewAlt": "Pratonton muka depan perniagaan",
       "logoPreviewAlt": "Pratonton logo perniagaan",
       "businessNameFallback": "Nama perniagaan anda",
-      "businessDescriptionFallback": "Penerangan perniagaan anda akan dipaparkan di sini.",
       "viewPublicProfile": "Lihat profil awam",
       "updateLocation": "Perlu kemas kini lokasi?",
-      "updateLocationDescription": "Urus alamat, waktu operasi dan butiran hubungan dalam bahagian Cawangan.",
       "manageOutlets": "Urus cawangan",
       "businessTypes": {
         "food_and_tourism": "Makanan & pelancongan",
@@ -1412,13 +1390,11 @@
       "batchActivated": "{{count}} baucar diaktifkan.",
       "batchDeactivated": "{{count}} baucar dinyahaktifkan.",
       "title": "Baucar",
-      "description": "Pastikan diskaun jelas, terkini dan mudah dimatikan.",
       "campaignControl": "Kawalan kempen",
       "uploadCsv": "Muat naik CSV",
       "createVoucher": "Cipta baucar",
       "csvColumns": "Lajur CSV: code (pilihan dengan awalan), name, voucherType, redemptionMode (pilihan, lalai online), discountValue, minSpend, maxUses, perCustomerLimit, validFrom, validUntil, outletId, productId.",
       "performance": "Prestasi baucar",
-      "performanceDescription": "Jejaki corong pelanggan, jualan dan kesan diskaun daripada data pesanan Supabase.",
       "allTime": "Sepanjang masa",
       "last7Days": "7 hari lalu",
       "last30Days": "30 hari lalu",
@@ -1547,7 +1523,6 @@
     "wallet": {
       "vendorFinance": "Kewangan vendor",
       "title": "Dompet & Pendapatan",
-      "description": "Fahami perkara yang tersedia, ditahan dan telah bergerak.",
       "withdrawFunds": "Keluarkan dana",
       "availableBalance": "Baki tersedia",
       "balance": "baki",
@@ -1572,7 +1547,6 @@
       "payoutDestination": "Destinasi pembayaran",
       "submittedOn": "Dihantar {{date}}",
       "dualApprovalRequired": "Kelulusan berganda diperlukan",
-      "transactionDescription": "Setiap entri lejar dompet dipaparkan di sini.",
       "transactionFilters": "Penapis transaksi",
       "loadingTransactions": "Memuatkan sejarah transaksi…",
       "noActivity": "Belum ada aktiviti lejar",
@@ -1599,8 +1573,6 @@
       "activeRequests": "Permintaan aktif",
       "activeRequestCount": "{{count}} daripada 1",
       "reserveNotice": "Pengeluaran yang dihantar menempah dana sehingga semakan selesai.",
-      "needMore": "Perlukan lebih pendapatan?",
-      "needMoreDescription": "Kekalkan penyenaraian aktif dan lengkapkan pesanan untuk menambah baki.",
       "manageProducts": "Urus produk",
       "closeDialog": "Tutup dialog pengeluaran",
       "amountRm": "Amaun (RM)",
@@ -1639,7 +1611,6 @@
     },
     "eventPromotions": {
       "title": "Promosikan Acara",
-      "description": "Promosikan acara yang anda sertai tetapi bukan dicipta oleh kami — hantar untuk semakan dan ia akan muncul di laman selepas diluluskan.",
       "newHeading": "Hantar acara baharu",
       "editHeading": "Sunting dan hantar semula",
       "loading": "Memuatkan…",
@@ -1687,13 +1658,30 @@
     },
     "announcements": {
       "title": "Pengumuman",
-      "description": "Mesej daripada Super Admin, termasuk jemputan untuk menyertai acara pesta vendor.",
       "unreadCount": "({{count}} belum dibaca)",
       "unreadCount_one": "({{count}} belum dibaca)",
       "unreadCount_other": "({{count}} belum dibaca)",
       "loading": "Memuatkan…",
       "empty": "Belum ada pengumuman.",
       "loadError": "Tidak dapat memuatkan pengumuman.",
+      "selectAllUnread": "Pilih semua belum dibaca",
+      "allUnreadSelected": "Semua yang belum dibaca dipilih",
+      "selectAllAnnouncements": "Pilih semua pengumuman",
+      "allAnnouncementsSelected": "Semua pengumuman dipilih",
+      "selectAnnouncement": "Pilih {{title}}",
+      "markSelectedRead": "Tandakan pilihan sebagai dibaca",
+      "markSelectedUnread": "Tandakan pilihan sebagai belum dibaca",
+      "batchReadSuccess": "{{count}} pengumuman ditandakan sebagai dibaca.",
+      "batchReadSuccess_one": "{{count}} pengumuman ditandakan sebagai dibaca.",
+      "batchReadSuccess_other": "{{count}} pengumuman ditandakan sebagai dibaca.",
+      "batchReadError": "Tidak dapat menandakan pengumuman sebagai dibaca.",
+      "batchUnreadSuccess": "{{count}} pengumuman ditandakan sebagai belum dibaca.",
+      "batchUnreadSuccess_one": "{{count}} pengumuman ditandakan sebagai belum dibaca.",
+      "batchUnreadSuccess_other": "{{count}} pengumuman ditandakan sebagai belum dibaca.",
+      "batchUnreadError": "Tidak dapat menandakan pengumuman sebagai belum dibaca.",
+      "readError": "Tidak dapat menyimpan status bacaan.",
+      "readStatus": "Dibaca.",
+      "unreadStatus": "Belum dibaca.",
       "noVendor": "Tiada akaun vendor dijumpai untuk sesi ini.",
       "backToInbox": "Kembali ke peti masuk",
       "notFound": "Pengumuman tidak dijumpai.",
@@ -1706,7 +1694,6 @@
     },
     "events": {
       "title": "Acara",
-      "description": "Acara pesta vendor yang boleh anda sertai — daftar gerai untuk mengambil bahagian.",
       "loading": "Memuatkan…",
       "empty": "Tiada acara dibuka untuk pendaftaran sekarang.",
       "loadError": "Tidak dapat memuatkan acara.",
@@ -1839,7 +1826,6 @@
     },
     "eventOrders": {
       "title": "Tempahan acara",
-      "description": "Tempahan berbayar yang akan diambil oleh pelanggan dari gerai anda.",
       "date": "Tarikh pengambilan",
       "upcoming": "Semua akan datang",
       "scan": "Imbas pengambilan",
@@ -1872,7 +1858,6 @@
     "heroLabel": "Salinan hero AI",
     "listingLabel": "Pembantu penyenaraian AI",
     "regenerate": "Jana semula",
-    "reviewHint": "Jana draf, semak, kemudian gunakannya sendiri.",
     "suggestListing": "Cadangkan penyenaraian",
     "title": "Pembantu penulisan AI",
     "unavailable": "Penulisan AI tidak tersedia."
@@ -1908,8 +1893,6 @@
       "publishTitle": "Terbitkan draf ini?"
     },
     "copy": "Salin",
-    "currentDraftHint": "Beginilah rupa draf semasa.",
-    "currentPublishedHint": "Ini ialah versi yang sedang dilihat pelanggan.",
     "delete": "Padam",
     "deleteLabel": "Padam {{label}}",
     "desktop": "Desktop",
@@ -1991,62 +1974,48 @@
     "palette": {
       "groups": {
         "common-content": {
-          "hint": "Ceritakan kisah anda dengan visual.",
           "label": "Kandungan umum"
         },
         "products-sales": {
-          "hint": "Bantu tetamu memilih dan menempah.",
           "label": "Produk & jualan"
         },
         "outlet-information": {
-          "hint": "Mudahkan perancangan lawatan.",
           "label": "Maklumat outlet"
         },
         "trust-reviews": {
-          "hint": "Tunjukkan sebab pengembara boleh mempercayai anda.",
           "label": "Kepercayaan & ulasan"
         }
       },
       "hint": "Klik untuk menambah atau seret ke halaman.",
       "items": {
         "text": {
-          "hint": "Tambah tajuk dan cerita.",
           "label": "Teks"
         },
         "image_text": {
-          "hint": "Tambah foto, kapsyen atau cerita.",
           "label": "Foto"
         },
         "product_grid": {
-          "hint": "Ketengahkan penyenaraian outlet ini.",
           "label": "Kad produk"
         },
         "gallery": {
-          "hint": "Tunjukkan beberapa imej.",
           "label": "Galeri"
         },
         "hours": {
-          "hint": "Gunakan jadual outlet.",
           "label": "Waktu operasi"
         },
         "contact": {
-          "hint": "Bantu pengembara mencari anda.",
           "label": "Peta dan hubungan"
         },
         "voucher_banner": {
-          "hint": "Promosikan tawaran.",
           "label": "Sepanduk baucar"
         },
         "review_highlight": {
-          "hint": "Bina kepercayaan melalui maklum balas.",
           "label": "Ulasan tetamu"
         },
         "social_proof": {
-          "hint": "Tunjukkan isyarat yang dipercayai.",
           "label": "Bukti sosial"
         },
         "cta": {
-          "hint": "Gerakkan tetamu ke arah tempahan.",
           "label": "Seruan tindakan"
         }
       },
@@ -2073,7 +2042,6 @@
     "seoDescription": "Penerangan SEO",
     "seoTitle": "Tajuk SEO",
     "studio": "Outlet Studio",
-    "studioHint": "Bina halaman kedai yang dilihat pengembara.",
     "tablet": "Tablet",
     "tabletPreview": "Pratonton tablet",
     "undo": "Buat asal",
@@ -2109,7 +2077,13 @@
     "foodServiceModeRequired": "Aktifkan sekurang-kurangnya satu pilihan perkhidmatan makanan.",
     "dine_in": "Makan di sini",
     "takeaway": "Bungkus",
-    "accessibilityHint": "Hanya “Ya” akan memaparkan lencana kebolehcapaian dan membantu pengembara yang memerlukannya. Biarkan “Tidak dinyatakan” jika tidak pasti.",
+    "sections": {
+      "businessDetails": "Butiran perniagaan",
+      "contactAndMap": "Maklumat hubungan & peta",
+      "visitorOptions": "Pilihan pengunjung",
+      "outletCategories": "Label & jenis outlet",
+      "welcomeMessage": "Mesej alu-aluan"
+    },
     "addTitle": "Tambah Outlet",
     "address": "Alamat",
     "addressHint": "Pilih cadangan untuk mengisi bandar, negeri, poskod dan koordinat peta.",
@@ -2211,8 +2185,6 @@
     "noDescription": "Tiada penerangan ditambah lagi.",
     "outlet": "Outlet",
     "overview": "Gambaran penyenaraian",
-    "overviewHint": "Urus butiran penyenaraian, penerangan untuk pelanggan, inventori dan peraturan harga daripada satu ruang kerja.",
-    "pricingHint": "Konfigurasikan harga waktu puncak, luar puncak, kumpulan, pakej dan bertingkat tanpa meninggalkan penyenaraian.",
     "pricingRules": "Peraturan harga",
     "productId": "ID produk",
     "revenueControls": "Kawalan hasil",
@@ -2225,7 +2197,6 @@
     "typeUpdated": "Jenis produk dikemas kini.",
     "timeSlots": "Diurus melalui slot masa",
     "unitsAvailable": "{{count}} unit tersedia",
-    "variantsHint": "Urus pilihan, perbezaan harga, kuantiti stok dan varian lalai.",
     "variantsInventory": "Varian & inventori",
     "viewOnlyPricing": "Anda mempunyai akses melihat penyenaraian ini. Pemilik atau pengurus outlet boleh mengemas kini peraturan harga.",
     "viewOnlyVariants": "Anda mempunyai akses melihat penyenaraian ini. Pemilik atau pengurus outlet boleh mengemas kini varian dan inventori.",
@@ -2240,7 +2211,6 @@
     "aiNoSuggestion": "AI tidak mengembalikan cadangan yang boleh digunakan.",
     "aiUnavailable": "Cadangan AI belum tersedia.",
     "availability": "Ketersediaan",
-    "availabilityHint": "Bahagian ini berubah berdasarkan jenis produk.",
     "stockSetupHint": "Senarai ini belum mempunyai persediaan inventori lengkap untuk outlet ini. Masukkan kuantiti sebenar untuk mencipta atau mengemas kini varian stok lalai dan rekodnya; stok tidak akan direka jika dibiarkan kosong.",
     "variantStockHint": "Senarai ini mempunyai beberapa varian. Kemas kini stok setiap varian dalam bahagian Varian & inventori supaya setiap kuantiti kekal tepat.",
     "stockQuantityPlaceholder": "Masukkan kuantiti sebenar",
@@ -2329,8 +2299,6 @@
     "privatePreview": "Ini ialah pratonton peribadi. Pelanggan tidak akan melihat perubahan ini sehingga anda menerbitkan halaman kedai.",
     "publishToGoLive": "Terbitkan untuk disiarkan",
     "published": "Diterbitkan",
-    "rendererHint": "Pratonton ini menggunakan pemapar halaman yang sama seperti kedai awam.",
-    "subtitle": "Semak halaman yang dilihat pelanggan, kemudian edit apabila anda bersedia.",
     "title": "Halaman kedai",
     "viewPublicShop": "Lihat kedai awam"
   },
@@ -2392,6 +2360,7 @@
     "exportCsv": "Eksport CSV",
     "exportReadableCsv": "Eksport CSV untuk dibaca",
     "refresh": "Muat semula",
+    "moreActions": "Lagi tindakan",
     "tryAgain": "Cuba lagi",
     "previous": "Sebelumnya",
     "next": "Seterusnya"
@@ -2448,6 +2417,8 @@
       "topProductsGrouped_other": "Menunjukkan {{count}} produk teratas · lain-lain digabungkan"
     },
     "sales": {
+      "allActivityDescription": "Jualan daripada pembayaran langsung, ujian dan demo yang berjaya",
+      "noAllActivity": "Tiada jualan berjaya dalam tempoh ini.",
       "demoDescription": "Pembelian ujian/demo berjaya · amaun simulasi",
       "noDemoActivity": "Tiada pembelian ujian/demo yang berjaya dalam tempoh ini.",
       "description": "Jualan disahkan dengan pembayaran langsung yang berjaya",
@@ -2467,14 +2438,11 @@
     }
   },
   "ranking": {
-    "insight": "Wawasan",
     "selling": {
       "eyebrow": "PAPAN KEDUDUKAN JUALAN",
       "title": "Produk paling laris",
       "subtitle": "Kedudukan mengikut unit berbayar",
       "link": "Lihat katalog",
-      "insight": "{{name}} mendahului dengan {{quantity}} unit terjual.",
-      "emptyInsight": "Produk berbayar akan muncul di sini.",
       "unitsSold": "{{count}} unit terjual",
       "sold": "{{count}} terjual",
       "empty": "Tiada produk berbayar dalam tempoh ini.",
@@ -2487,12 +2455,11 @@
       "eyebrow": "KEGEMARAN PELANCONG",
       "title": "Senarai bertaraf tertinggi",
       "subtitle": "Ulasan pelanggan yang kelihatan",
+      "allTime": "Sepanjang masa",
       "link": "Lihat analitik",
-      "insight": "{{name}} ialah senarai bertaraf tertinggi pada {{rating}} / 5.",
-      "emptyInsight": "Ulasan yang diterbitkan akan muncul di sini.",
       "travellerReviews": "{{count}} ulasan pelancong",
       "reviews": "{{count}} ulasan",
-      "empty": "Tiada ulasan diterbitkan dalam tempoh ini.",
+      "empty": "Tiada ulasan diterbitkan lagi.",
       "travellerReviews_one": "{{count}} ulasan pelancong",
       "travellerReviews_other": "{{count}} ulasan pelancong",
       "reviews_one": "{{count}} ulasan",
@@ -2818,7 +2785,6 @@
     "outletMeta": "{{location}} · ID {{id}}",
     "orderStatusValue": "Status pesanan: {{status}}",
     "bookingReference": "{{date}} · #{{reference}}",
-    "specificOutletOptional": "Cawangan tertentu (pilihan)",
-    "dashboardTodayForVendor": "Inilah perkembangan {{vendor}} hari ini."
+    "specificOutletOptional": "Cawangan tertentu (pilihan)"
   }
 }

@@ -464,7 +464,7 @@ export default function CartPage() {
                 />
                 <span className="break-words whitespace-normal text-sm font-semibold text-foreground">{group.outlet?.name ?? tCustomer("ui.cart.unavailableOutlet")}</span>
               </label>
-              {group.outlet && <Link href={`/customer/outlet/${group.outletId}`} className="shrink-0 text-xs font-semibold text-primary hover:underline">{tCustomer("ui.cart.viewOutlet")}</Link>}
+              {group.outlet && <Link href={`/customer/outlets/${group.outletId}`} className="shrink-0 text-xs font-semibold text-primary hover:underline">{tCustomer("ui.cart.viewOutlet")}</Link>}
             </header>
             <div className="space-y-3 p-3">
         {group.rows.map(({ item, index }) => {

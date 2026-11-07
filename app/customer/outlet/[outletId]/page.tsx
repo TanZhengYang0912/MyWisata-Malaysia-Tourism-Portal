@@ -1,25 +1,8 @@
-import { notFound, redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { permanentRedirect } from 'next/navigation';
+import { getOutletShopHref } from '@/lib/customer/shop-navigation';
 
-export const dynamic = 'force-dynamic';
-
+// Compatibility entry; next.config.ts normally redirects this path first.
 export default async function OutletRedirectPage({ params }: { params: Promise<{ outletId: string }> }) {
   const { outletId } = await params;
-  const db = await createClient();
-  
-  // Find the vendor for this outlet
-  const { data: outlet } = await db
-    .from('outlets')
-    .select('vendor_id')
-    .eq('id', outletId)
-    .eq('status', 'active')
-    .eq('review_status', 'approved')
-    .maybeSingle();
-
-  if (!outlet || !outlet.vendor_id) {
-    notFound();
-  }
-
-  // Redirect to the new canonical nested route
-  redirect(`/customer/vendor/${outlet.vendor_id}/outlet/${outletId}`);
+  permanentRedirect(getOutletShopHref(outletId));
 }

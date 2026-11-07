@@ -30,6 +30,27 @@ describe('content assistant contracts', () => {
     expect(parseContentDraft('inbox_reply', '   Thanks for reaching out.   ')).toBe('Thanks for reaching out.');
   });
 
+  it('uses Gemini to generate a business-profile draft', async () => {
+    vi.stubEnv('LLM_API_KEY', 'gemini-test-token');
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      candidates: [{ content: { parts: [{ text: 'Traditional tau sar pneah made in Penang.' }] } }],
+    }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(generateContentDraft('business_profile', {
+      name: 'Ghee Hiang', description: 'Tau sar pneah and sesame oil, made in Penang since 1856.',
+    })).resolves.toEqual({
+      available: true,
+      provider: 'gemini',
+      model: 'gemini-flash-lite-latest',
+      draft: 'Traditional tau sar pneah made in Penang.',
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent',
+      expect.objectContaining({ headers: expect.objectContaining({ 'x-goog-api-key': 'gemini-test-token' }) }),
+    );
+  });
+
   it('withholds customer contact details from the provider instead of redacting and sending the rest', async () => {
     vi.stubEnv('MODELSCOPE_API_KEY', 'test-token');
     const fetchMock = vi.fn();

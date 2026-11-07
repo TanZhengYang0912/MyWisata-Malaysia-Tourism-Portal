@@ -8,6 +8,7 @@ import { Compass, Map, SlidersHorizontal } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import * as catalogueDomain from "@/backend/domains/catalogue";
 import { ActivityCard } from "@/components/customer/activity-card";
+import { toDiscoveryCatalogueCard } from "@/lib/customer/product-catalogue";
 import { CustomerDiscoveryFilterPanel, DiscoverySearchField } from "@/components/customer/discovery-filters";
 import { DirectoryPagination } from "@/components/customer/directory-pagination";
 import { Button } from "@/components/ui/button";
@@ -115,7 +116,9 @@ export function ExploreClient({
   const [sort, setSort] = useState<ExperienceSort>(() => readExperienceSort(searchParams.get("sort")));
   const activeSort = tab === "experiences" ? sort : "recommended";
   const [debouncedQuery, setDebouncedQuery] = useState(filters.q);
-  const [activities, setActivities] = useState<DiscoveryResult[]>(() => initialActivities.map((activity) => ({ ...activity, sponsorship: null })));
+  // The cached candidates arrive in popularity order; the default view is ⭐ first, then name.
+  const orderedInitialActivities = useMemo(() => catalogueDomain.sortExploreActivities({}, initialActivities), [initialActivities]);
+  const [activities, setActivities] = useState<DiscoveryResult[]>(() => orderedInitialActivities.map((activity) => ({ ...activity, sponsorship: null })));
   const [experienceFiltersOpen, setExperienceFiltersOpen] = useState(false);
   const initialCandidatesExpireAt = useRef<number | null>(null);
   const displayActivities = useMemo(() => groupAccommodationByProperty(activities), [activities]);
@@ -234,7 +237,7 @@ export function ExploreClient({
       ? !hasOutletCandidateFilter && Date.now() < initialCandidatesExpireAt.current && typeof catalogueDomain.filterExploreActivities === "function"
         ? Promise.resolve().then(() => catalogueDomain.filterExploreActivities(searchQuery, initialActivities))
         : catalogueDomain.searchExploreActivities(searchQuery)
-      : Promise.resolve(initialActivities);
+      : Promise.resolve(orderedInitialActivities);
     Promise.all([
       activitiesRequest,
       placementsRequest,
@@ -269,7 +272,7 @@ export function ExploreClient({
       if (!cancelled) setActivities([]);
     });
     return () => { cancelled = true; };
-  }, [db, hasOutletCandidateFilter, hasSearchCriteria, initialActivities, searchQuery]);
+  }, [db, hasOutletCandidateFilter, hasSearchCriteria, initialActivities, orderedInitialActivities, searchQuery]);
 
   const recordSponsoredEvent = useCallback((activity: DiscoveryResult, eventType: "impression" | "click") => {
     if (!activity.sponsorship) return;
@@ -345,29 +348,31 @@ export function ExploreClient({
             </div>
 
             {/* Tab switch */}
-            <div className="inline-flex shrink-0 self-end md:self-auto rounded-2xl border border-border bg-card p-2 shadow-sm">
+            <div className="inline-flex shrink-0 self-end rounded-full border border-border bg-card p-1 md:self-auto">
               <button
                 type="button"
+                aria-pressed={tab === "destinations"}
                 onClick={() => changeTab("destinations")}
-                className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition ${
+                className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
                   tab === "destinations"
-                    ? "bg-primary text-white shadow-sm"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    ? "bg-primary text-white"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Map size={15} />
+                <Map size={15} aria-hidden="true" />
                 {t("ui.explore.destinations")}
               </button>
               <button
                 type="button"
+                aria-pressed={tab === "experiences"}
                 onClick={() => changeTab("experiences")}
-                className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition ${
+                className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
                   tab === "experiences"
-                    ? "bg-primary text-white shadow-sm"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    ? "bg-primary text-white"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Compass size={15} />
+                <Compass size={15} aria-hidden="true" />
                 {t("ui.explore.experiences")}
               </button>
             </div>
@@ -486,7 +491,9 @@ export function ExploreClient({
               ) : (
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
                   {visibleActivities.map((a) => (
-                    <ActivityCard key={a.id} activity={a} returnTo={buildExploreHref(filters, tab, activeSort, currentExperiencePage)} hideDiscoveryBadges onSponsoredClick={a.sponsorship ? () => recordSponsoredEvent(a, "click") : undefined} />
+                    a.property
+                      ? <ActivityCard key={a.id} activity={a} returnTo={buildExploreHref(filters, tab, activeSort, currentExperiencePage)} hideDiscoveryBadges onSponsoredClick={a.sponsorship ? () => recordSponsoredEvent(a, "click") : undefined} />
+                      : <ActivityCard key={a.id} listing={toDiscoveryCatalogueCard(a)} returnTo={buildExploreHref(filters, tab, activeSort, currentExperiencePage)} onSponsoredClick={a.sponsorship ? () => recordSponsoredEvent(a, "click") : undefined} />
                   ))}
                 </div>
               )}

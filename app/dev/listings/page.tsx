@@ -54,7 +54,7 @@ export default function DevListingsPage() {
                 {items.map((a) => (
                   <Link
                     key={a.id}
-                    href={`/customer/activity/${a.id}`}
+                    href={`/customer/products/${a.id}`}
                     className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted"
                   >
                     <span className="truncate">{a.name}</span>

@@ -115,7 +115,7 @@ export async function GET(
     vendor: vendorResult.data ? {
       id: vendorResult.data.id,
       name: vendorResult.data.name,
-      href: `/customer/vendor/${vendorResult.data.id}`,
+      href: `/customer/vendors/${vendorResult.data.id}`,
     } : null,
     events,
     editable: recommendation.status === 'changes_requested' ? {

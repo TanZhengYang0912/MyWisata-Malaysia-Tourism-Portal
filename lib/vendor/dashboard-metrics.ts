@@ -5,13 +5,15 @@ export type DashboardPayment = {
 };
 
 export type DashboardSaleClass = 'verified' | 'simulated' | 'unverified' | 'excluded';
-export type DashboardSalesMode = 'live' | 'demo';
+export type DashboardSalesMode = 'all' | 'live' | 'demo';
 
 export function normalizeDashboardSalesMode(value: unknown): DashboardSalesMode {
-  return value === 'demo' ? 'demo' : 'live';
+  if (value === 'all' || value === 'live' || value === 'demo') return value;
+  return 'all';
 }
 
 export function matchesDashboardSalesMode(sale: DashboardSaleClass, mode: DashboardSalesMode): boolean {
+  if (mode === 'all') return sale === 'verified' || sale === 'simulated';
   return sale === (mode === 'demo' ? 'simulated' : 'verified');
 }
 export type DashboardPaymentMode = 'live' | 'test' | 'demo' | 'mixed' | 'unknown';

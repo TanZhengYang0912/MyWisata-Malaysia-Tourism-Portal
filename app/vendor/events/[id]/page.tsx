@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, CalendarDays, Check, Clock, ImagePlus, Loader2, MapPin, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Check, Clock, ImagePlus, Loader2, MapPin, PartyPopper, Plus, Search, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import { formatEventDateRange, formatEventHours } from '@/lib/promotion-campaign
 import type { PromotionCampaignPublic } from '@/lib/promotion-campaigns/types';
 import { EventListingsManager, type RegistrationListing } from './event-listings-manager';
 import { PickupSlotsManager, type PickupSlot } from './pickup-slots-manager';
+import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
 
 type ItemKind = 'product' | 'service';
 
@@ -395,7 +396,9 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-6">
+    <div className="w-full space-y-6">
+      <VendorPageHeader eyebrow={<><PartyPopper size={15} aria-hidden="true" /> {t('navigationSections.promotion')}</>} title={t('ui.events.title')} />
+
       <Link href="/vendor/events" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
         <ArrowLeft size={16} aria-hidden="true" /> {t('ui.events.backToEvents')}
       </Link>
@@ -411,7 +414,7 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
               // eslint-disable-next-line @next/next/no-img-element
               <img src={campaign.posterUrl} alt="" className="mb-4 h-48 w-full rounded-lg object-cover" />
             )}
-            <h1 className="text-xl font-bold text-foreground">{campaign.title}</h1>
+            <h2 className="text-xl font-bold text-foreground">{campaign.title}</h2>
             <p className="mt-2 text-sm text-muted-foreground">{campaign.description}</p>
             <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
               <span>{formatDate(campaign.startsAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })} – {formatDate(campaign.endsAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })}</span>

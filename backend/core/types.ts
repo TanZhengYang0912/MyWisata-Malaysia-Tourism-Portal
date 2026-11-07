@@ -35,6 +35,7 @@ export interface User {
   staffPermissionKeys?: import("@/lib/staff-permissions/types").StaffPermissionKey[];
   staffModules?: import("@/lib/staff-permissions/types").StaffModule[];
   vendorId?: string; // set for vendor_owner
+  vendorName?: string;
   outletId?: string; // set for outlet_manager
 }
 
@@ -213,6 +214,9 @@ export interface OutletOffer {
 export interface ComputedActivity extends Activity {
   outlet: Outlet;
   distanceKm?: number;
+  salesSummary?: { outletCount: number; fromPrice: number };
+  /** Set only under Explore's Open now filter: outlets matching the other filters vs. those open now. */
+  openNowSummary?: { totalOutletCount: number; openOutletCount: number };
 }
 
 export interface DiscoveryPropertySummary {

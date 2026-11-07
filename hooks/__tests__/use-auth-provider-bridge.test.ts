@@ -19,6 +19,8 @@ describe("legacy useAuth provider bridge", () => {
 
     expect(hookSource).toContain("activeVendorId: activeVendorId ?? null");
     expect(hookSource).toContain("activeOutletIds: activeOutletIds ?? []");
+    expect(hookSource).toContain("vendorName: currentUser.vendorName ?? null");
+    expect(providerSource).toContain("vendorName: row.activeVendorName ?? undefined");
     expect(hookSource).toContain("activeOutletName");
     expect(providerSource).toContain("activeOutletName: string | null");
   });

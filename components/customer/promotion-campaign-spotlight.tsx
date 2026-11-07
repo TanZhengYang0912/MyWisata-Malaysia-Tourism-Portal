@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, ArrowUpRight, CalendarDays, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { CampaignEventPass } from "@/components/customer/campaign-event-pass";
+import { CampaignEnvelope } from "@/components/customer/campaign-envelope";
 import { FeaturedSplitCard } from "@/components/customer/featured-split-card";
 import { FeaturedRecommendationsFrame } from "@/components/customer/featured-recommendations-frame";
 import { Button } from "@/components/ui/button";
@@ -51,7 +51,10 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
     setActiveIndex((index) => (index + direction + list.length) % list.length);
   }
 
-  const hasMultiple = list.length > 1;
+  function moveTo(index: number) {
+    if (index < 0 || index >= list.length) return;
+    setActiveIndex(index);
+  }
 
   const actions = (loadFailed || !displayCampaign) && <div data-slot="promotion-campaign-actions" className="mt-auto flex w-full flex-wrap items-center justify-start gap-x-5 gap-y-3 pt-8">
     {loadFailed && (
@@ -86,12 +89,13 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
         title={t("ui.home.campaigns")}
         description={null}
         carouselLabel={t("ui.search.featuredCarousel")}
-        previousLabel={t("ui.promotionCampaigns.previous")}
-        nextLabel={t("ui.promotionCampaigns.next")}
+        slideLabel={(page, total) => t("ui.accessibility.carouselSlide", { page, total })}
         carouselTestId="promotion-campaign-spotlight"
-        hasMultipleSlides={hasMultiple}
-        onPrevious={() => move(-1)}
+        activeSlideIndex={list.length > 0 ? activeIndex % list.length : 0}
+        slideCount={list.length}
+        onSelectSlide={moveTo}
         onNext={() => move(1)}
+        clip={!displayCampaign}
         action={displayCampaign && (
           <Link href="/customer/events" className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
             {t("ui.promotionCampaigns.allCampaigns")} <ArrowUpRight size={15} aria-hidden="true" />
@@ -99,9 +103,7 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
         )}
       >
         {displayCampaign ? (
-          <CampaignEventPass campaign={displayCampaign} headingLevel="h2" imageSizes="(max-width: 767px) 100vw, 52vw" imagePriority>
-            {actions}
-          </CampaignEventPass>
+          <CampaignEnvelope key={displayCampaign.id} campaign={displayCampaign} imagePriority />
         ) : (
           <FeaturedSplitCard
             mediaSlot="promotion-campaign-image"

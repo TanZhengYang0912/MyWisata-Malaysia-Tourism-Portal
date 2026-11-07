@@ -53,18 +53,12 @@ export default async function PerformanceRankingCard({ kind, periodLabel, items,
     ? Number((first as SellingItem | undefined)?.quantity || 0)
     : 5;
 
-  const insight = first
-    ? kind === 'selling'
-      ? t('ranking.selling.insight', { name: first.name, quantity: formatNumber((first as SellingItem).quantity, locale) })
-      : t('ranking.rated.insight', { name: first.name, rating: formatNumber((first as RatedItem).rating, locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
-    : kind === 'selling' ? t('ranking.selling.emptyInsight') : t('ranking.rated.emptyInsight');
-
   return (
     <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
       <header className="border-b border-gray-100 dark:border-border p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-muted-foreground"><Icon size={14} className={style.iconClass} /> {t(kind === 'selling' && salesMode === 'demo' ? 'ui.dashboard.salesMode.demo' : style.eyebrow)}</div>
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-muted-foreground"><Icon size={14} className={style.iconClass} /> {t(kind === 'selling' && salesMode === 'all' ? 'ui.dashboard.salesMode.all' : kind === 'selling' && salesMode === 'demo' ? 'ui.dashboard.salesMode.demo' : style.eyebrow)}</div>
             <h2 className="text-lg font-semibold text-gray-950 dark:text-foreground">{t(style.title)}</h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{t(style.subtitle)}</p>
           </div>
@@ -100,8 +94,7 @@ export default async function PerformanceRankingCard({ kind, periodLabel, items,
         ) : <div className="px-4 py-10 text-center text-sm text-gray-400 dark:text-muted-foreground">{kind === 'selling' ? t('ranking.selling.empty') : t('ranking.rated.empty')}</div>}
       </div>
 
-      <footer className="flex items-center justify-between gap-3 border-t border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-6 py-4">
-        <p className="min-w-0 truncate text-xs text-gray-500 dark:text-muted-foreground"><span className="font-semibold text-gray-700 dark:text-foreground">{t('ranking.insight')}</span> · {insight}</p>
+      <footer className="flex items-center justify-end gap-3 border-t border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-6 py-4">
         <Link href={href} className={`inline-flex shrink-0 items-center gap-1 text-xs font-semibold ${style.iconClass} hover:underline`}>{t(style.linkLabel)} <ArrowRight size={14} /></Link>
       </footer>
     </section>

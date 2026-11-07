@@ -83,6 +83,10 @@ export function FeedbackCollection(props: FeedbackCollectionProps) {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {props.items.map((item) => {
             const review = props.mode === "reviews" ? item as FeedbackReviewItem : null;
+            const reviewSpacing = review ? "p-3 sm:p-4" : "p-4";
+            const previewSpacing = review ? "mt-1.5 leading-5 sm:mt-2 sm:leading-6" : "mt-2 leading-6";
+            const metadataSpacing = review ? "mt-2 sm:mt-3" : "mt-3";
+            const verifiedSpacing = review ? "mt-1.5 sm:mt-2" : "mt-2";
             return (
               <article
                 key={item.id}
@@ -94,21 +98,21 @@ export function FeedbackCollection(props: FeedbackCollectionProps) {
                   data-feedback-trigger
                   aria-label={t(isReviewCollection ? "ui.feedback.openReview" : "ui.feedback.openTip", { author: item.author })}
                   onClick={() => { setSelected(item); setSelectedMode(props.mode); }}
-                  className="block w-full rounded-t-2xl p-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                  className={`block w-full rounded-t-2xl ${reviewSpacing} text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset`}
                 >
                   <div className="flex items-start gap-3">
                     {item.avatar}
                     <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 items-start justify-between gap-3">
+                      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
                           <p className="truncate font-semibold text-foreground">{item.author}</p>
                           <p className="mt-0.5 text-sm text-muted-foreground">{item.date}</p>
                         </div>
                         {review && <RatingStars rating={review.rating} label={review.ratingLabel} />}
                       </div>
-                      <p className="mt-2 line-clamp-1 text-sm leading-6 text-foreground/80">{item.preview}</p>
-                      {item.metadata && <div className="mt-3 flex flex-wrap items-center gap-2">{item.metadata}</div>}
-                      {item.verifiedLabel && <p className="mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">{item.verifiedLabel}</p>}
+                      <p className={`line-clamp-1 text-sm text-foreground/80 ${previewSpacing}`}>{item.preview}</p>
+                      {item.metadata && <div className={`flex flex-wrap items-center gap-2 ${metadataSpacing}`}>{item.metadata}</div>}
+                      {item.verifiedLabel && <p className={`text-xs font-semibold text-emerald-600 dark:text-emerald-400 ${verifiedSpacing}`}>{item.verifiedLabel}</p>}
                     </div>
                   </div>
                 </button>
@@ -128,7 +132,7 @@ export function FeedbackCollection(props: FeedbackCollectionProps) {
                   {selected.detailTitle ?? selected.title ?? t(isReviewCollection ? "ui.feedback.reviewDetails" : "ui.feedback.tipDetails")}
                 </DialogTitle>
               </DialogHeader>
-              <div className="flex items-start gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                 {selected.avatar}
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-foreground">{selected.author}</p>

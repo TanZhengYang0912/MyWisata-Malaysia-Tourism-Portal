@@ -56,6 +56,6 @@ describe("Vendor camera scanner contract", () => {
 
   it("shows the admitted ticket count for every scan in recent activity and history", () => {
     const scanner = read("components/vendor/redemption-scanner.tsx");
-    expect(scanner.match(/item\.item\.details/g)).toHaveLength(2);
+    expect(scanner.match(/item\.item\.details/g)).toHaveLength(3);
   });
 });

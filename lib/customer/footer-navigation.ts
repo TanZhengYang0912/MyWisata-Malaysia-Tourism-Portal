@@ -23,7 +23,7 @@ export const CUSTOMER_FOOTER_GROUPS: CustomerFooterGroup[] = [
     links: [
       { href: "/customer/explore", labelKey: "navigation.explore" },
       { href: "/customer/events", labelKey: "navigation.events" },
-      { href: "/customer/partners", labelKey: "navigation.search" },
+      { href: "/customer/vendors", labelKey: "navigation.search" },
       { href: "/customer/trip", labelKey: "footer.links.tripPlanner" },
       { href: "/customer/vouchers", labelKey: "footer.links.vouchers" },
     ],

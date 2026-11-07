@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BackLink } from "@/components/shared/back-link";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
+import { getProductBreadcrumbAncestors } from "@/lib/customer/breadcrumbs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, CheckCircle, Clock3, ImageOff, MapPin, MessageCircle, Sparkles, Star, Store } from "lucide-react";
@@ -34,6 +35,14 @@ import { ProductChatButton } from "@/components/customer/product-chat-button";
 import { LocalizedContent } from "@/components/customer/localized-content";
 import { OperatingHoursSummary } from "@/components/customer/operating-hours-summary";
 import { ProductSaveButton } from "@/components/customer/product-save-button";
+import { useOutletOpenStatus } from "@/components/customer/vendor-location-list";
+
+/** City, then the outlet's live status; before mount (or without hours) only the server's closed flag. */
+function OutletChoiceStatus({ choice, status }: { choice: OutletChoice; status: ReturnType<typeof useOutletOpenStatus> }) {
+  const { t } = useTranslation("customer");
+  const live = choice.operatingHours ? status(choice.operatingHours) : null;
+  return <>{choice.city}{live ? <> · {live}</> : !choice.open && ` · ${t("ui.labels.currentlyClosed")}`}</>;
+}
 
 export function ActivityDetailClient({
   initialActivity,
@@ -53,6 +62,7 @@ export function ActivityDetailClient({
   relatedScope?: "vendor" | "outlet";
 }) {
   const { t } = useTranslation("customer");
+  const outletStatus = useOutletOpenStatus();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser } = useAuth();
@@ -192,9 +202,7 @@ export function ActivityDetailClient({
     <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7">
       <Breadcrumbs className="mb-3" label={t("ui.place.breadcrumb")} items={[
         { label: t("navigation.home"), href: "/customer" },
-        ...(vendorDiscovery && selectedOutlet?.vendorName
-          ? [{ label: t("navigation.search"), href: "/customer/partners" }, { label: selectedOutlet.vendorName, href: `/customer/vendor/${selectedOutlet.vendorId}` }]
-          : [{ label: t("navigation.explore"), href: "/customer/explore?tab=experiences" }]),
+        ...getProductBreadcrumbAncestors({ vendorId: selectedOutlet?.vendorId ?? "", vendorName: selectedOutlet?.vendorName ?? t("ui.labels.localVendor"), outletId: selectedOutlet?.outletId ?? "", outletName: selectedOutlet?.outletName ?? "" }, outletSelectionRequired, publicPlace).map((item, index) => ({ ...item, label: index === 0 ? t(publicPlace ? "navigation.explore" : "navigation.search") : item.label })),
         { label: <LocalizedContent entityType="product" entityId={activity.id} field="name" sourceText={activity.name} /> },
       ]} />
       <div className="mb-4">
@@ -309,7 +317,7 @@ export function ActivityDetailClient({
                {placeBound ? <MapPin size={12} className="mr-1 inline align-[-1px]" /> : <Store size={12} className="mr-1 inline align-[-1px]" />}
                {publicPlace ? t("strictMigration.activityDetail.noVendorRequired") : placeBound ? t("strictMigration.activityDetail.placeDetails") : (selectedOutlet!.vendorName ?? t("strictMigration.activityDetail.localVendor"))}
              </span>
-             {!placeBound && <Link href={`/customer/vendor/${selectedOutlet!.vendorId}`} className="shrink-0 font-semibold text-primary hover:underline">{t("ui.actions.visitVendor")}</Link>}
+             {!placeBound && <Link href={`/customer/vendors/${selectedOutlet!.vendorId}`} className="shrink-0 font-semibold text-primary hover:underline">{t("ui.actions.visitVendor")}</Link>}
            </div>
 
           {publicPlace ? <div className="rounded-2xl border border-[#cbd7f2] bg-[#f3f5ff] p-4 text-sm text-muted-foreground">{t("ui.activity.publicPlaceAccess")}</div> : outletSelectionRequired ? <div className="rounded-2xl border border-primary/15 bg-secondary/35 p-4">
@@ -318,7 +326,7 @@ export function ActivityDetailClient({
             <div className="mt-4 flex flex-col gap-2">
               {outletChoices.length > 0 ? outletChoices.map((choice) => (
                 <Link key={choice.outletId} href={`${getOutletShopHref(choice.outletId)}#full-menu`} className="flex items-start justify-between gap-3 rounded-xl border border-primary/15 bg-card px-3 py-2.5 text-left transition hover:border-primary/40 hover:bg-primary/5">
-                  <span className="min-w-0"><span className="block break-words whitespace-normal text-sm font-semibold text-foreground">{t("strictMigration.activityDetail.viewOutlet", { name: outletShortName(choice.outletName, choice.vendorName) })}</span><span className="break-words whitespace-normal text-xs text-muted-foreground">{choice.city}{!choice.open && ` · ${t("ui.labels.currentlyClosed")}`}</span></span>
+                  <span className="min-w-0"><span className="block break-words whitespace-normal text-sm font-semibold text-foreground">{t("strictMigration.activityDetail.viewOutlet", { name: outletShortName(choice.outletName, choice.vendorName) })}</span><span className="break-words whitespace-normal text-xs text-muted-foreground"><OutletChoiceStatus choice={choice} status={outletStatus} /></span></span>
                   <span className="shrink-0 text-primary" aria-hidden="true">→</span>
                 </Link>
               )) : <Link href={`${getOutletShopHref(activity.outletId)}#full-menu`} className="inline-flex items-center justify-between rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-white hover:bg-primary/90">{t("ui.cart.viewOutlet")} <span aria-hidden="true">→</span></Link>}
@@ -347,8 +355,7 @@ export function ActivityDetailClient({
                       <span className="min-w-0">
                         <span className="block break-words whitespace-normal text-sm font-semibold text-foreground">{outletShortName(choice.outletName, choice.vendorName)}</span>
                         <span className="text-xs text-muted-foreground">
-                          {choice.city}
-                          {!choice.open && ` · ${t("ui.labels.currentlyClosed")}`}
+                          <OutletChoiceStatus choice={choice} status={outletStatus} />
                         </span>
                       </span>
                       <span className="shrink-0 text-sm font-bold text-primary font-[family-name:var(--font-mono)]">
@@ -483,11 +490,7 @@ export function ActivityDetailClient({
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               {relatedScope === "vendor" ? (
-                <>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("ui.activity.moreFromVendor")}</p>
-                  <h2 id="more-from-outlet-heading" className="mt-2 text-2xl font-black tracking-tight">{t("ui.activity.moreFromVendor")}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{t("ui.activity.moreFromVendorSubtitle", { vendor: selectedOutlet.vendorName ?? t("ui.labels.localVendor") })}</p>
-                </>
+                <h2 id="more-from-outlet-heading" className="text-xl font-black tracking-tight sm:text-2xl">{t("ui.activity.moreFromVendor")}</h2>
               ) : (
                 <>
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("ui.activity.moreFromOutlet")}</p>
@@ -497,18 +500,18 @@ export function ActivityDetailClient({
               )}
             </div>
             {relatedScope === "vendor" ? (
-              <Link href={returnTo !== "/customer" ? returnTo : `/customer/vendor/${selectedOutlet.vendorId}`} className="text-sm font-bold text-primary hover:underline">{t("ui.actions.visitVendor")} →</Link>
+              <Link href={returnTo !== "/customer" ? returnTo : `/customer/vendors/${selectedOutlet.vendorId}`} className="text-sm font-bold text-primary hover:underline">{t("ui.actions.visitVendor")} →</Link>
             ) : (
               <Link href={getOutletShopHref(selectedOutlet.outletId)} className="text-sm font-bold text-primary hover:underline">{t("ui.actions.visitOutlet")} →</Link>
             )}
           </div>
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-3">
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
             {relatedProducts.map((product) => (
               <ActivityCard
                 key={product.id}
                 activity={product}
                 outletId={selectedOutlet.outletId}
-                returnTo={returnTo !== "/customer" ? returnTo : `/customer/vendor/${selectedOutlet.vendorId}`}
+                returnTo={returnTo !== "/customer" ? returnTo : `/customer/vendors/${selectedOutlet.vendorId}`}
                 source={relatedScope === "vendor" ? "vendor" : undefined}
               />
             ))}

@@ -1,3 +1,4 @@
+import { isMerchantFeatured, orderProductCatalogue } from "@/lib/customer/product-catalogue";
 import { getOutletStock } from '@/lib/vendor/product-scope';
 // Owner: Member 2 / catalogue side (Vendor/Outlet/Product)
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -868,7 +869,8 @@ function toComputed(
   if (candidates.length === 0) {
     const outlet = outletMap.get(activity.outletId);
     if (!outlet) return null;
-    return { ...activity, outlet, distanceKm: from ? haversineKm(from, { lat: outlet.lat, lng: outlet.lng }) : undefined };
+    const valid = outlet.verified && Number.isFinite(activity.price) && activity.price >= 0;
+    return { ...activity, outlet, salesSummary: { outletCount: valid ? 1 : 0, fromPrice: valid ? activity.price : 0 }, distanceKm: from ? haversineKm(from, { lat: outlet.lat, lng: outlet.lng }) : undefined };
   }
 
   const scored = candidates.map((candidate) => ({
@@ -879,12 +881,20 @@ function toComputed(
     ? scored.reduce((a, b) => ((b.distanceKm ?? Infinity) < (a.distanceKm ?? Infinity) ? b : a))
     : scored.reduce((a, b) => (b.offer.price < a.offer.price ? b : a)));
 
+  const eligiblePrices = new Map<string, number>();
+  for (const { offer, outlet } of candidates) {
+    if (!outlet.verified || offer.status !== 'active' || !Number.isFinite(offer.price) || offer.price < 0) continue;
+    eligiblePrices.set(outlet.id, Math.min(eligiblePrices.get(outlet.id) ?? Infinity, offer.price));
+  }
+  const prices = [...eligiblePrices.values()];
+
   return {
     ...activity,
     outletId: best.outlet.id,
     price: best.offer.price,
     outlet: best.outlet,
     distanceKm: best.distanceKm,
+    salesSummary: { outletCount: prices.length, fromPrice: prices.length ? Math.min(...prices) : 0 },
   };
 }
 
@@ -969,7 +979,7 @@ export async function getOutletActivities(outletId: string, excludeProductId?: s
   const outlet = outletMap.get(outletId);
   if (!outlet) return [];
 
-  return activities
+  return orderProductCatalogue(activities
     .filter((activity) => activity.id !== excludeProductId)
     .map((activity) => {
       const offer = activity.offers?.find((candidate) => candidate.outletId === outletId);
@@ -981,7 +991,7 @@ export async function getOutletActivities(outletId: string, excludeProductId?: s
         outlet,
       } satisfies ComputedActivity;
     })
-    .filter((activity): activity is ComputedActivity => activity !== null);
+    .filter((activity): activity is ComputedActivity => activity !== null));
 }
 
 /**
@@ -996,7 +1006,7 @@ export async function getVendorActivities(vendorId: string, excludeProductId?: s
   if (vendorOutlets.length === 0) return [];
   const vendorOutletIds = new Set(vendorOutlets.map((o) => o.id));
 
-  return activities
+  return orderProductCatalogue(activities
     .filter((activity) => activity.id !== excludeProductId)
     .map((activity): ComputedActivity | null => {
       // Include activities that belong to any outlet of this vendor (via offers
@@ -1012,8 +1022,8 @@ export async function getVendorActivities(vendorId: string, excludeProductId?: s
         outlet,
       } satisfies ComputedActivity;
     })
-    .filter((activity): activity is ComputedActivity => activity !== null)
-    .slice(0, 3);
+    .filter((activity): activity is ComputedActivity => activity !== null))
+    .slice(0, 4); // Fills one row of the four-column related grid.
 }
 
 export interface SearchFilters {
@@ -1205,7 +1215,8 @@ function matchesExploreActivity(
   return true;
 }
 
-function sortExploreActivities(filters: SearchFilters, activities: ComputedActivity[]): ComputedActivity[] {
+/** Explicit sorts reorder in place; the default name order puts merchant ⭐ picks first and returns a new array. */
+export function sortExploreActivities(filters: SearchFilters, activities: ComputedActivity[]): ComputedActivity[] {
   switch (filters.sort) {
     case "price_asc":
       activities.sort((a, b) => a.price - b.price);
@@ -1217,7 +1228,7 @@ function sortExploreActivities(filters: SearchFilters, activities: ComputedActiv
       activities.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
       break;
     default:
-      activities.sort((a, b) => b.rating * b.reviews - a.rating * a.reviews);
+      return orderProductCatalogue(activities, orderProductCatalogue(activities.filter(isMerchantFeatured)).map(({ id }) => id));
   }
   return activities;
 }
@@ -1253,14 +1264,22 @@ export async function searchExploreActivities(filters: SearchFilters, db: Supaba
       activity.outletId,
     ].filter(Boolean))];
     const matchingOutlets = new Map<string, Outlet>();
+    const matchingAnyHours = new Map<string, Outlet>();
     for (const outletId of candidateOutletIds) {
       const outlet = outletMap.get(outletId);
       if (outlet && matchesExploreActivity(activity, outlet, filters, categorySelections, typeSelections, badgeSelections)) {
         matchingOutlets.set(outlet.id, outlet);
       }
+      if (filters.openNow && outlet && matchesExploreActivity(activity, outlet, { ...filters, openNow: false }, categorySelections, typeSelections, badgeSelections)) {
+        matchingAnyHours.set(outlet.id, outlet);
+      }
     }
     const computed = toComputed(activity, matchingOutlets, filters.near);
-    return computed ? [computed] : [];
+    if (!computed) return [];
+    if (!filters.openNow) return [computed];
+    const openOutletCount = computed.salesSummary?.outletCount ?? matchingOutlets.size;
+    const totalOutletCount = toComputed(activity, matchingAnyHours, filters.near)?.salesSummary?.outletCount ?? openOutletCount;
+    return [{ ...computed, openNowSummary: { totalOutletCount, openOutletCount } }];
   });
   return sortExploreActivities(filters, matchingActivities);
 }

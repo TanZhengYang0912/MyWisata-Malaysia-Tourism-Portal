@@ -21,7 +21,6 @@ export function ProductTypeSelector({ categorySlug, value, onChange, disabled = 
   return (
     <fieldset className="rounded-xl border border-border bg-card p-4" disabled={disabled}>
       <legend className="px-1 text-sm font-semibold text-foreground">{t('taxonomy.productTypes.title')}</legend>
-      <p className="mb-3 text-xs text-muted-foreground">{t('taxonomy.productTypes.hint')}</p>
       <div className="grid gap-2 sm:grid-cols-2">
         {options.map((option) => {
           const id = `product-type-${option.slug}`;

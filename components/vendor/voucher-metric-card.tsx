@@ -13,8 +13,8 @@ export interface VoucherMetricCardProps {
 
 const toneClasses = {
   navy: "text-primary",
-  gold: "text-[#b77900]",
-  muted: "text-foreground",
+  gold: "text-amber-600 dark:text-amber-300",
+  muted: "text-gray-900 dark:text-foreground",
 } as const;
 
 export function VoucherMetricCard({
@@ -29,13 +29,12 @@ export function VoucherMetricCard({
     <article
       data-voucher-metric
       className={cn(
-        density === "compact"
-          ? "rounded-xl border border-border bg-card px-4 py-3"
-          : "rounded-2xl border border-border bg-card p-5 shadow-sm",
+        "min-w-0 rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-border dark:bg-card",
+        density === "compact" ? "p-3" : "p-4",
         className,
       )}
     >
-      <p className={cn("text-muted-foreground", density === "compact" ? "text-xs font-medium" : "text-sm")}>{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-muted-foreground">{label}</p>
       <p className={cn("tabular-nums font-bold tracking-tight", density === "compact" ? "mt-0.5 text-xl" : "mt-1 text-2xl", toneClasses[tone])}>{value}</p>
       {note && <div className={cn("text-muted-foreground/70", density === "compact" ? "mt-0.5 text-[11px] leading-4" : "mt-1 text-xs leading-5")}>{note}</div>}
     </article>

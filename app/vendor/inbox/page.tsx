@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, BellOff, CheckCheck, MessageCircle, Search, SlidersHorizontal, UserRound, X } from 'lucide-react';
 import { formatMYR } from '@/lib/i18n/format';
 import { useAuth } from '@/hooks/use-auth';
+import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { ChatThreadPanel } from '@/components/customer/chat-thread-panel';
 import { createClient } from '@/lib/supabase/client';
@@ -427,11 +428,7 @@ export default function VendorInboxPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><MessageCircle size={15} /> {t('ui.inbox.travellerConversations')}</div>
-        <h1 className="text-2xl font-bold text-gray-950 dark:text-foreground">{t('ui.inbox.title')}</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{t('ui.inbox.description')}</p>
-      </div>
+      <VendorPageHeader eyebrow={<><MessageCircle size={15} aria-hidden="true" /> {t('ui.inbox.travellerConversations')}</>} title={t('ui.inbox.title')} />
       <div className="flex h-[calc(100dvh-15rem)] min-h-[480px] overflow-hidden rounded-2xl border border-gray-200 dark:border-border bg-white dark:bg-card shadow-sm">
         {/* Phones show the list or the open conversation, one at a time; md and up show both. */}
         <div className={`flex shrink-0 flex-col border-r border-gray-200 dark:border-border md:w-80 ${selected ? 'max-md:hidden' : 'max-md:w-full max-md:border-r-0'}`}>

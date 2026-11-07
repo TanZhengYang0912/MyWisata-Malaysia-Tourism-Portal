@@ -7,12 +7,12 @@ const destinationSource = readFileSync(resolve(process.cwd(), "app/customer/dest
 
 describe("customer commerce entry points", () => {
   it("routes global-search experiences through the outlet-aware activity detail", () => {
-    expect(globalSearchSource).toContain("/customer/activity/${exp.id}");
+    expect(globalSearchSource).toContain("/customer/products/${exp.id}");
     expect(globalSearchSource).not.toContain("/customer/experience/${exp.id}");
   });
 
   it("routes destination products through the outlet-aware activity detail", () => {
-    expect(destinationSource).toContain("/customer/activity/${product.id}");
+    expect(destinationSource).toContain("/customer/products/${product.id}");
     expect(destinationSource).not.toContain("/customer/experience/${product.id}");
   });
 });

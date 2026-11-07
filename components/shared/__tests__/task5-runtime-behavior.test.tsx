@@ -1,7 +1,7 @@
 import React, { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { TestEvent, findOne, installTestDom, type TestDocument, type TestElement } from "./render-test-dom";
+import { TestElement, TestEvent, findOne, installTestDom, type TestDocument } from "./render-test-dom";
 
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
@@ -21,7 +21,7 @@ vi.mock("lucide-react", () => {
     AlertTriangle: Icon, ArrowLeft: Icon, Bell: Icon, BellOff: Icon, Check: Icon, CheckCheck: Icon,
     ChevronLeft: Icon, FileText: Icon, Flag: Icon, HelpCircle: Icon, Languages: Icon, Maximize2: Icon,
     MessageCircle: Icon, Mic: Icon, MicOff: Icon, Minimize2: Icon, Paperclip: Icon, Reply: Icon,
-    Search: Icon, Send: Icon, SlidersHorizontal: Icon, Tag: Icon, X: Icon,
+    Search: Icon, Send: Icon, SlidersHorizontal: Icon, Tag: Icon, Plus: Icon, X: Icon,
   };
 });
 vi.mock("@/components/ui/button", () => ({ Button: (props: React.ComponentProps<"button">) => <button {...props} /> }));
@@ -104,6 +104,20 @@ function response(body: unknown, ok = true) {
   return { ok, json: async () => body } as Response;
 }
 
+function testRect(left: number, top: number, width: number, height: number): DOMRect {
+  return {
+    x: left,
+    y: top,
+    left,
+    top,
+    right: left + width,
+    bottom: top + height,
+    width,
+    height,
+    toJSON: () => ({}),
+  };
+}
+
 let createRoot: typeof import("react-dom/client").createRoot;
 let root: ReturnType<typeof import("react-dom/client").createRoot> | undefined;
 let document: TestDocument;
@@ -157,6 +171,7 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     if (root) {
       act(() => root?.unmount());
       root = undefined;
@@ -246,6 +261,24 @@ describe("Task 5 shared runtime behavior", () => {
     await render(<NotificationCenter />);
     expect(container.textContent).not.toContain("Private A notice");
     expect(container.textContent).toContain("Private B notice");
+  });
+
+  it("keeps the notification bell panel inside a narrow viewport", async () => {
+    Object.assign(document.defaultView, { innerWidth: 320, innerHeight: 800 });
+    vi.spyOn(TestElement.prototype, "getBoundingClientRect").mockImplementation(function (this: TestElement) {
+      if (this.getAttribute("aria-label") === "accessibility.notifications") return testRect(282, 14, 36, 36);
+      if (this.className.includes("w-[min(26rem")) return testRect(0, 62, 288, 238);
+      return testRect(0, 0, 0, 0);
+    });
+
+    await render(<NotificationBell />);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "accessibility.notifications"));
+
+    const panel = findOne(container, (element) => element.className.includes("w-[min(26rem"));
+    expect(panel.style.position).toBe("fixed");
+    expect(panel.style.left).toBe("24px");
+    expect(panel.style.top).toBe("62px");
+    expect(panel.style.maxHeight).toBe("730px");
   });
 
   it("loads the next vendor notification page inside the bell without linking to a separate page", async () => {

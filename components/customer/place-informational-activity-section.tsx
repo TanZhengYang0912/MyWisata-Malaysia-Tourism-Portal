@@ -94,7 +94,6 @@ export function PlaceInformationalActivitySection({
             titleTranslation={{ entityType: "place_informational_activity", entityId: activity.id, field: "title", sourceText: activity.title }}
             supportingText={activity.sourceTitle}
             price={activity.priceLabel ? <span className="text-xs font-bold text-foreground">{activity.priceLabel}</span> : null}
-            description={<LocalizedContent entityType="place_informational_activity" entityId={activity.id} field="description" sourceText={activity.description} />}
             footer={venueDetailsHint}
             action={(
               <button

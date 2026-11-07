@@ -53,10 +53,10 @@ export default async function PartnersPage({ searchParams }: Props) {
   // Event vendors never appear in the normal directory — only under "Event partners".
   const directoryVendors = vendors.filter((vendor) => vendor.status === "approved" && vendor.kind !== "event");
   // ponytail: one `in` query over every directory vendor; page it if the directory grows past a few hundred.
-  const vendorRatings = await getVendorRatingSummaries(directoryVendors.map((vendor) => vendor.id), createServiceClient()).catch(() => new Map<string, { value: number; count: number }>());
+  const vendorRatings = await getVendorRatingSummaries(directoryVendors.map((vendor) => vendor.id), createServiceClient()).catch(() => null);
   const approvedVendors = directoryVendors.map((vendor) => ({
     ...vendor,
-    rating: vendorRatings.get(vendor.id),
+    rating: vendorRatings ? vendorRatings.get(vendor.id) ?? null : undefined,
     openNow: vendor.outlets.some((outlet) => outlet.currentlyOpen ?? isOperatingHoursOpenNow(outlet.operatingHours)),
     popularProducts: popularVendorProducts(results, vendor.id),
   }));
