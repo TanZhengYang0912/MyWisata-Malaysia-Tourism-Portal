@@ -51,8 +51,8 @@ describe("Guest Mode navigation", () => {
 
   describe("guestPathToCustomerPath — the header Sign In link's return path", () => {
     it("maps every real /guest route to its 1:1 /customer equivalent", () => {
-      expect(guestPathToCustomerPath("/guest/activity/abc-123")).toBe("/customer/activity/abc-123");
-      expect(guestPathToCustomerPath("/guest/vendor/xyz-789")).toBe("/customer/vendor/xyz-789");
+      expect(guestPathToCustomerPath("/guest/activity/abc-123")).toBe("/customer/products/abc-123");
+      expect(guestPathToCustomerPath("/guest/vendor/xyz-789")).toBe("/customer/vendors/xyz-789");
       expect(guestPathToCustomerPath("/guest/explore")).toBe("/customer/explore");
     });
 
@@ -63,7 +63,7 @@ describe("Guest Mode navigation", () => {
 
     it("composes with guestLoginHref to build a working return-to-page login link", () => {
       expect(guestLoginHref(guestPathToCustomerPath("/guest/activity/abc-123")))
-        .toBe("/login?next=%2Fcustomer%2Factivity%2Fabc-123");
+        .toBe("/login?next=%2Fcustomer%2Fproducts%2Fabc-123");
     });
   });
 });

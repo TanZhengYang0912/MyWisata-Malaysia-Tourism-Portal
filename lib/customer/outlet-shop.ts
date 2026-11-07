@@ -1,5 +1,6 @@
 import { formatMYRNumber } from "@/lib/i18n/format";
 import { round2 } from "@/backend/core/money";
+import { orderProductCatalogue } from '@/lib/customer/product-catalogue';
 
 export interface PublicOutletEmptyState {
   title: string;
@@ -74,8 +75,6 @@ export interface OutletProductCardModelInput {
   productType?: string | null;
   requiresBooking?: boolean;
   availableStock?: number | null;
-  rating?: number;
-  reviews?: number;
   hasCartAction: boolean;
 }
 
@@ -84,7 +83,6 @@ export interface OutletProductCardModel {
   priceLabel: string;
   descriptionFallback: string;
   availabilityLabel: string;
-  ratingLabel?: string;
   locationLabel: string;
   primaryActionLabel: string;
   secondaryActionLabel?: string;
@@ -236,9 +234,6 @@ export function buildOutletProductCardModel(input: OutletProductCardModelInput):
       : input.availableStock != null
         ? `${input.availableStock} available`
         : 'Available to explore';
-  const ratingLabel = input.rating && input.rating > 0
-    ? `${input.rating.toFixed(1)} (${input.reviews ?? 0})`
-    : undefined;
   const actionLabel = input.hasCartAction
     ? requiresBooking ? 'Add booking' : 'Add to cart'
     : 'View details';
@@ -248,18 +243,17 @@ export function buildOutletProductCardModel(input: OutletProductCardModelInput):
     priceLabel: `From RM${formatMYRNumber(Number(input.basePrice))}`,
     descriptionFallback: `A local favourite from ${input.outletName}.`,
     availabilityLabel,
-    ratingLabel,
     locationLabel: `Available at ${input.outletName}`,
     primaryActionLabel: actionLabel,
     ...(input.hasCartAction ? { secondaryActionLabel: requiresBooking ? 'Book now' : 'Buy now' } : {}),
   };
 }
 
-export function selectFullOutletMenu<T extends { id: string }>(products: T[], featuredIds: string[]) {
+export function selectFullOutletMenu<T extends { id: string; name: string }>(products: T[], featuredIds: string[]) {
   const featured = new Set(featuredIds);
-  return products
-    .map((product) => ({ ...product, featured: featured.has(product.id) }))
-    .sort((left, right) => Number(right.featured) - Number(left.featured));
+  const sorted = orderProductCatalogue(products);
+  return [...sorted.filter((product) => featured.has(product.id)), ...sorted.filter((product) => !featured.has(product.id))]
+    .map((product) => ({ ...product, featured: featured.has(product.id) }));
 }
 
 export function selectPublicOutletProductIds(featuredIds: string[], sellableIds: string[]) {

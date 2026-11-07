@@ -76,14 +76,16 @@ describe("shared card layout contract", () => {
 
   it("uses the contract across customer-facing card families", () => {
     const cardConsumers = [
-      "components/customer/activity-card.tsx",
+      "components/customer/product-card.tsx",
       "components/guest/guest-catalogue.tsx",
       "app/customer/for-you/for-you-client.tsx",
       "components/customer/vendor-listing-grid.tsx",
     ];
 
     for (const file of cardConsumers) {
-      if (file === "app/customer/for-you/for-you-client.tsx" || file === "components/customer/vendor-listing-grid.tsx") {
+      if (file === "components/customer/vendor-listing-grid.tsx") {
+        expect(read(file), file).toContain("ProductCard");
+      } else if (file === "app/customer/for-you/for-you-client.tsx") {
         expect(read(file), file).toContain("ActivityCard");
       } else {
         expect(read(file), file).toContain("mw-card");

@@ -8,10 +8,10 @@ import { CustomerPrimaryNavigation } from "@/components/customer/customer-primar
 
 describe("CustomerPrimaryNavigation", () => {
   it.each(["single", "stacked"] as const)("renders text links and the active blue underline in %s layout", (layout) => {
-    const markup = renderToStaticMarkup(<CustomerPrimaryNavigation pathname="/customer/activity/p1" layout={layout} />);
+    const markup = renderToStaticMarkup(<CustomerPrimaryNavigation pathname="/customer/products/p1" layout={layout} />);
     expect(markup.match(/<a /g)).toHaveLength(5);
     expect(markup).not.toContain("<svg");
-    expect(markup).toMatch(/<a[^>]*aria-current="page"[^>]*href="\/customer\/partners"/);
+    expect(markup).toMatch(/<a[^>]*aria-current="page"[^>]*href="\/customer\/vendors"/);
     expect(markup).toContain("bg-primary");
   });
 });

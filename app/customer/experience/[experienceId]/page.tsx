@@ -12,6 +12,8 @@ import { formatMYR } from "@/lib/i18n/format";
 import { ExperienceBookingSidebar } from "./experience-booking-sidebar";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
+import { getVendorHref } from "@/lib/customer/navigation-context";
+import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -155,7 +157,7 @@ export default async function ExperiencePage({ params }: Props) {
                   {t("ui.experience.providedBy")}
                 </p>
                 <Link
-                  href={`/customer/vendor/${vendor.id}`}
+                  href={getVendorHref(vendor.id)}
                   className="mt-3 flex items-center gap-3 hover:opacity-80"
                 >
                   <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-lg font-bold text-primary">
@@ -186,7 +188,7 @@ export default async function ExperiencePage({ params }: Props) {
                 {t("ui.experience.location")}
               </p>
               <Link
-                href={`/customer/outlet/${experience.outletId}`}
+                href={getOutletShopHref(experience.outletId)}
                 className="mt-2 block hover:opacity-80"
               >
                 <p className="font-semibold text-foreground">{experience.outlet.name}</p>

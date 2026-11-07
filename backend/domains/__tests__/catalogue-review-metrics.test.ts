@@ -245,6 +245,36 @@ describe("getComputedActivity", () => {
     });
   });
 
+  it("summarizes eligible unique outlet prices without changing the selected outlet", async () => {
+    const db = makeFilterRecordingDb({
+      products: [{ ...PRODUCT_ROW, outlet_id: null, outlet_offers: [
+        { outlet_id: 'o1', price: 9, status: 'active' },
+        { outlet_id: 'o2', price: 0, status: 'active' },
+        { outlet_id: 'o2', price: 3, status: 'active' },
+        { outlet_id: 'o3', price: 2, status: 'active' },
+        { outlet_id: 'missing', price: 1, status: 'active' },
+        { outlet_id: 'o1', price: 1, status: 'inactive' },
+      ] }],
+      product_review_metrics: [{ product_id: 'p1', rating: 4.6, reviews: 107 }],
+      outlets: [OUTLET_ROW, { ...OUTLET_ROW, id: 'o2' }, { ...OUTLET_ROW, id: 'o3', vendors: { name: 'Pending vendor', status: 'pending' } }],
+    }, []);
+    const activity = await getComputedActivity('p1', undefined, db, 'o1');
+    expect(activity?.outlet.id).toBe('o1');
+    expect(activity?.price).toBe(9);
+    expect(activity?.salesSummary).toEqual({ outletCount: 2, fromPrice: 0 });
+    expect(activity?.reviews).toBe(107);
+  });
+
+  it('marks a product with no publicly eligible offer as unavailable for summary display', async () => {
+    const db = makeFilterRecordingDb({
+      products: [{ ...PRODUCT_ROW, outlet_offers: [{ outlet_id: 'o1', price: 7, status: 'active' }] }],
+      product_review_metrics: [],
+      outlets: [{ ...OUTLET_ROW, vendors: { name: 'Pending', status: 'pending' } }],
+    }, []);
+    const activity = await getComputedActivity('p1', undefined, db);
+    expect(activity?.salesSummary?.outletCount).toBe(0);
+  });
+
   it("falls back to the default outlet when the requested outlet does not sell the product", async () => {
     const db = makeFilterRecordingDb(
       {

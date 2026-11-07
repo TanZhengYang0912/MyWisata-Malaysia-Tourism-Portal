@@ -5,21 +5,22 @@ import { formatMYRNumber } from "@/lib/i18n/format";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Check, Clock3, ImageOff, MapPin, ShoppingBag, Star, Ticket, Utensils } from "lucide-react";
+import { Check, Clock3, ImageOff, MapPin, ShoppingBag, Ticket, Utensils } from "lucide-react";
 import { useCart } from "@/components/providers/cart";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import type { OutletRendererOutlet, OutletRendererProduct } from "@/components/outlet/outlet-block-types";
-import { buildOutletProductCardModel, getOutletProductAction } from "@/lib/customer/outlet-shop";
+import { getOutletProductAction } from "@/lib/customer/outlet-shop";
 import { productImageUrl } from "@/lib/storage/product-image";
 import { LocalizedContent } from "@/components/customer/localized-content";
 import { ProductSaveButton } from "@/components/customer/product-save-button";
+import { PhotoRatingBadge } from "@/components/customer/photo-rating-badge";
 
 function productDetailHref(productId: string, outletId: string) {
   // Always navigate with outlet scope: outletId pre-selects the outlet in the
   // product detail page and returnTo points back to the outlet shop so that
   // relatedScope resolves to "outlet" (not "vendor") on the server.
-  return `/customer/activity/${productId}?outletId=${encodeURIComponent(outletId)}&returnTo=${encodeURIComponent(`/customer/outlet/${outletId}`)}`;
+  return `/customer/products/${productId}?outletId=${encodeURIComponent(outletId)}&returnTo=${encodeURIComponent(`/customer/outlets/${outletId}`)}`;
 }
 
 function fallbackImage(categoryLabel: string, photoComingSoon: string) {
@@ -96,18 +97,6 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
     firstAvailableSlotId: product.first_available_slot_id,
     availableStock: product.available_stock,
   });
-  const model = buildOutletProductCardModel({
-    outletName: outlet.name,
-    productName: product.name,
-    basePrice: product.base_price,
-    category: product.category,
-    productType: product.product_type,
-    requiresBooking: product.requires_booking,
-    availableStock: product.available_stock,
-    rating: product.rating,
-    reviews: product.reviews,
-    hasCartAction: action.kind === "cart",
-  });
   const detailHref = productDetailHref(product.id, outlet.id);
   const categoryLabel = product.category || t(product.product_type ? `ui.vendor.productTypes.${product.product_type}` : "ui.outlet.availableToExplore");
   const descriptionFallback = t("ui.outletMenu.descriptionFallback", { outlet: outlet.name });
@@ -121,11 +110,14 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
           <img src={productImageUrl(product.cover_url) || ''} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover/product-media:scale-105" />
         ) : fallbackImage(categoryLabel, t("ui.outlet.photoComingSoon"))}
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/80 via-black/20 to-transparent px-4 pb-3 pt-12">
-          <span className="inline-flex items-center gap-1 rounded-full bg-background/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-primary">
-            {product.requires_booking ? <Ticket size={11} aria-hidden="true" /> : <Utensils size={11} aria-hidden="true" />}
-            {categoryLabel}
-          </span>
-          {product.featured && <span className="rounded-full bg-amber-400 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-black">{t("ui.map.featured")}</span>}
+          <div className="flex min-w-0 flex-wrap items-end gap-1.5">
+            <span className="inline-flex items-center gap-1 rounded-full bg-background/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-primary">
+              {product.requires_booking ? <Ticket size={11} aria-hidden="true" /> : <Utensils size={11} aria-hidden="true" />}
+              {categoryLabel}
+            </span>
+            {product.featured && <span className="rounded-full bg-amber-400 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-black">{t("ui.map.featured")}</span>}
+          </div>
+          {typeof product.rating === "number" && typeof product.reviews === "number" && <PhotoRatingBadge rating={product.rating} reviews={product.reviews} className="shrink-0" />}
         </div>
       </Link>
       <ProductSaveButton productId={product.id} productName={product.name} className="absolute right-3 top-3 z-10" />
@@ -145,7 +137,6 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
         <div className="mt-4 space-y-2 border-t border-border pt-3 text-xs text-muted-foreground">
           <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
             <span className="inline-flex min-w-0 flex-1 items-start gap-1.5 break-words"><MapPin size={13} aria-hidden="true" className="mt-0.5 shrink-0 text-primary/70" /> {t("ui.outletMenu.availableAt", { outlet: outlet.name })}</span>
-            {model.ratingLabel && <span className="inline-flex shrink-0 items-center gap-1 text-amber-600"><Star size={12} fill="currentColor" aria-hidden="true" /> {model.ratingLabel}</span>}
           </div>
           <span className={`inline-flex items-center gap-1.5 font-semibold ${action.kind === "details" ? "text-muted-foreground" : "text-primary"}`}>
             {product.requires_booking ? <Clock3 size={13} aria-hidden="true" /> : <ShoppingBag size={13} aria-hidden="true" />}

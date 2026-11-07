@@ -5,7 +5,7 @@ import { findElements, findOne, installTestDom, TestEvent, type TestDocument, ty
 
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string, options?: Record<string, unknown>) => (options ? `${key} ${JSON.stringify(options)}` : key) }) }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => <a href={href} {...props}>{children}</a> }));
-vi.mock("@/components/customer/activity-card", () => ({ ActivityCard: ({ vendorListing }: { vendorListing: { name: string } }) => <article data-card>{vendorListing.name}</article> }));
+vi.mock("@/components/customer/product-card", () => ({ ProductCard: ({ listing }: { listing: { name: string } }) => <article data-card>{listing.name}</article> }));
 
 import { VendorListingGrid } from "@/components/customer/vendor-listing-grid";
 import { VendorLocationList, type VendorLocationRow } from "@/components/customer/vendor-location-list";
@@ -68,6 +68,8 @@ describe("vendor page sections", () => {
     await render(<VendorLocationList locations={[open, closed]} />);
     expect(container.textContent).toContain("ui.operatingHours.openNow · 09:00–17:00");
     expect(container.textContent).toContain('ui.vendor.opensAt {"day":"ui.vendor.tomorrow","time":"09:00"}');
+    expect(findElements(container, (element) => (element.getAttribute("class") ?? "").includes("bg-emerald-500"))).toHaveLength(1);
+    expect(findElements(container, (element) => (element.getAttribute("class") ?? "").includes("bg-slate-400"))).toHaveLength(1);
   });
 
   it("lists only the sections it is given, and hides with fewer than two", () => {

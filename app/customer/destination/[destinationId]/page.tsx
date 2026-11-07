@@ -160,7 +160,7 @@ export default async function DestinationPage({ params }: Props) {
               {t("ui.destination.viewOnMap")}
             </Link>
             <Link
-              href={`/customer/partners?state=${encodeURIComponent(destination.state)}`}
+              href={`/customer/vendors?state=${encodeURIComponent(destination.state)}`}
               className="inline-flex items-center gap-2 rounded-2xl border border-white/40 bg-white/10 dark:bg-card/10 px-5 py-3 text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/20 dark:hover:bg-card/20"
             >
               <Search size={15} />
@@ -200,7 +200,7 @@ export default async function DestinationPage({ params }: Props) {
                 const price = Number(product.base_price);
                 return (
                   <article key={product.id} className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                    <Link href={`/customer/activity/${product.id}`} className="group/product-media block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                    <Link href={`/customer/products/${product.id}`} className="group/product-media block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
                     <div className="relative aspect-[4/3] overflow-hidden bg-primary/10">
                       {product.cover_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -221,7 +221,7 @@ export default async function DestinationPage({ params }: Props) {
                       )}
                     </div></Link>
                     <div className="flex flex-1 flex-col p-3">
-                      <LocalizedContentHeading entityType="product" entityId={product.id} field="name" sourceText={product.name} href={`/customer/activity/${product.id}`} linkClassName="rounded-sm font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40" headingClassName="break-words whitespace-normal text-sm" />
+                      <LocalizedContentHeading entityType="product" entityId={product.id} field="name" sourceText={product.name} href={`/customer/products/${product.id}`} linkClassName="rounded-sm font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40" headingClassName="break-words whitespace-normal text-sm" />
                       <ReferencePrice amountMYR={price} className="mt-auto pt-2 text-sm font-bold text-primary" />
                     </div>
                   </article>
@@ -246,7 +246,7 @@ export default async function DestinationPage({ params }: Props) {
               </p>
             </div>
             <Link
-              href={`/customer/partners?state=${encodeURIComponent(destination.state)}`}
+              href={`/customer/vendors?state=${encodeURIComponent(destination.state)}`}
               className="flex items-center gap-1 text-sm font-semibold text-primary shrink-0"
             >
               {t("ui.destination.allPartners")} <ArrowRight size={14} />

@@ -40,7 +40,7 @@ export function ProductChatButton({ outletId, product, className, children }: Pr
         title: product.name,
         subtitle: product.priceLabel,
         imageUrl: product.imageUrl ?? null,
-        href: `/customer/activity/${product.id}`,
+        href: `/customer/products/${product.id}`,
       },
     );
   }

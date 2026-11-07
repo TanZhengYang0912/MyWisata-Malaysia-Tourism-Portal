@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const read = (file: string) => readFileSync(resolve(process.cwd(), file), "utf8");
 
 const contentCardFiles = [
-  "components/customer/activity-card.tsx",
+  "components/customer/product-card.tsx",
   "components/customer/activity-reviews.tsx",
   "components/customer/vendor-card.tsx",
   "components/customer/vendor-reviews-list.tsx",

@@ -1,5 +1,6 @@
 import type { ComputedActivity, OperatingHours } from "@/backend/core/types";
 import { buildActivityPath } from "@/lib/customer/navigation-context";
+import { orderProductCatalogue } from '@/lib/customer/product-catalogue';
 
 export interface VendorReviewMetric {
   rating: number;
@@ -26,29 +27,7 @@ export function selectFeaturedVendorProducts<T extends FeaturedVendorProduct>(
   limit = 4,
   featuredProductIds?: string[] | null,
 ) {
-  if (featuredProductIds && featuredProductIds.length > 0) {
-    const productMap = new Map(products.map((product) => [product.id, product]));
-    const explicitSelection: T[] = [];
-    for (const id of featuredProductIds) {
-      const match = productMap.get(id);
-      if (match) {
-        explicitSelection.push(match);
-      }
-    }
-    if (explicitSelection.length > 0) {
-      return explicitSelection.slice(0, Math.max(0, limit));
-    }
-  }
-
-  return [...products]
-    .sort((left, right) => {
-      const imageScore = Number(Boolean(right.coverUrl)) - Number(Boolean(left.coverUrl));
-      if (imageScore !== 0) return imageScore;
-      const outletScore = right.soldAt.length - left.soldAt.length;
-      if (outletScore !== 0) return outletScore;
-      return left.name.localeCompare(right.name);
-    })
-    .slice(0, Math.max(0, limit));
+  return orderProductCatalogue(products, featuredProductIds ?? []).slice(0, Math.max(0, limit));
 }
 
 export function getVendorProductTypeLabel(productType: string | null | undefined) {
@@ -58,6 +37,8 @@ export function getVendorProductTypeLabel(productType: string | null | undefined
     food: 'Food & drink',
     digital: 'Digital guide',
     product: 'Local product',
+    retail: 'Local product',
+    accommodation: 'Accommodation',
   };
   return labels[productType || ''] || 'Local favourite';
 }
@@ -77,7 +58,7 @@ export type VendorProductCardData = {
 
 export function vendorProductDetailHref(productId: string, vendorId: string, outletId?: string) {
   const outletQuery = outletId ? `&outletId=${encodeURIComponent(outletId)}` : "";
-  return `/customer/activity/${productId}?source=vendor${outletQuery}&returnTo=${encodeURIComponent(`/customer/vendor/${vendorId}`)}`;
+  return `/customer/products/${productId}?source=vendor${outletQuery}&returnTo=${encodeURIComponent(`/customer/vendors/${vendorId}`)}`;
 }
 
 /** A vendor card's three most-reviewed listings, as drawer thumbnails. */

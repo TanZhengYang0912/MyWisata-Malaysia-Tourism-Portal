@@ -117,6 +117,17 @@ describe("POST /api/customer/nearby-partners", () => {
       openNow: true,
       outlets: [expect.objectContaining({ id: "o1-near", city: "George Town", state: "Penang" })],
     }));
+    expect(body.data.partners[1].rating).toBeNull();
+  });
+
+  it("leaves the rating out when the rating lookup fails", async () => {
+    configureClient({ vendors: [{ id: "v1", name: "Vendor v1", description: null, logo_url: null, cover_url: null, status: "approved", kind: "shop" }] });
+    mocks.getVendorRatingSummaries.mockRejectedValue(new Error("boom"));
+    mocks.getNearbyOutlets.mockResolvedValue([outlet("o1", "v1", 0.5)]);
+
+    const body = await (await POST(request({ latitude: 5.4141, longitude: 100.3288 }))).json();
+
+    expect(body.data.partners[0]).not.toHaveProperty("rating");
   });
 
   it("rejects invalid coordinates before opening a database client", async () => {

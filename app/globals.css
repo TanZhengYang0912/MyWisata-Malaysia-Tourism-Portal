@@ -411,6 +411,119 @@ body {
   }
 }
 
+/* Home campaign envelope (components/customer/campaign-envelope.tsx). The front
+   is "printed paper", so it keeps its brand colours in dark mode; the letter
+   inside follows the theme. Three stacked copies of the front are clipped by the
+   runtime into the part above the tear strip, the part below it, and the strip. */
+.mw-envelope {
+  --env-navy: #010066;
+  --env-yellow: #ffcc00;
+  --h0: 440px;
+  --a: 84px;
+  --sh: 64px;
+  --tuck: 40px;
+  position: relative;
+  min-width: 0;
+  height: var(--h0);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.mw-envelope[data-state="gone"] { cursor: default; }
+.mw-envelope__under { position: absolute; left: 0; right: 0; top: 0; height: var(--h0); }
+/* A piece's own box spans the whole card; only its clipped fold takes pointer events. */
+.mw-envelope__pc { position: absolute; left: 0; right: 0; top: 0; height: var(--h0); pointer-events: none; }
+.mw-envelope__fold,
+.mw-envelope__artwrap,
+.mw-envelope__art { position: absolute; inset: 0; }
+.mw-envelope__fold { transform-origin: 0 0; background: #fffdf6; pointer-events: auto; }
+.mw-envelope__fold[data-back="true"] { background: #f1dd86; }
+.mw-envelope__fold[data-back="true"] .mw-envelope__artwrap { opacity: .14; filter: grayscale(1) contrast(.7); }
+.mw-envelope__artwrap { filter: drop-shadow(0 0 1.2px rgba(20, 20, 50, .55)); }
+.mw-envelope__shade { position: absolute; inset: 0; pointer-events: none; }
+.mw-envelope__roll { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+/* The torn strip curls off past the right edge instead of hanging outside the card. */
+.mw-envelope__pc[data-k="flap"] { clip-path: inset(-200px 0 -200px -200px); }
+/* Once flown off, the invisible top and strip must not cover the letter link. */
+.mw-envelope[data-state="open"] .mw-envelope__pc:is([data-k="top"], [data-k="flap"]) .mw-envelope__fold { pointer-events: none; }
+.mw-envelope__bits { position: absolute; inset: 0; pointer-events: none; }
+.mw-envelope__bits i { position: absolute; width: 5px; height: 9px; border: 1px solid rgba(1, 0, 102, .18); border-radius: 1px; background: #fffdf6; }
+
+/* Envelope front */
+.mw-envelope__bg { position: absolute; inset: 0; overflow: hidden; border-radius: 22px; background: repeating-linear-gradient(135deg, rgba(255, 255, 255, .03) 0 2px, transparent 2px 9px), var(--env-navy); }
+.mw-envelope__bg::before {
+  content: ""; position: absolute; inset: 0; padding: 9px; border-radius: 22px; pointer-events: none;
+  background: repeating-linear-gradient(135deg, var(--env-yellow) 0 16px, var(--env-navy) 16px 23px, #fff 23px 39px, var(--env-navy) 39px 46px);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.mw-envelope__from { position: absolute; left: 44px; top: 30px; color: #c7c7ff; font-size: 12px; font-weight: 700; letter-spacing: .16em; line-height: 1.7; text-transform: uppercase; }
+.mw-envelope__strip {
+  position: absolute; left: -30px; right: 0; top: var(--a); height: var(--sh); display: flex; align-items: center; gap: 22px; padding-left: 12px;
+  overflow: hidden; white-space: nowrap; border-top: 2px dashed rgba(1, 0, 102, .35); border-bottom: 2px dashed rgba(1, 0, 102, .35); border-radius: 16px 0 0 16px;
+  background: var(--env-yellow); color: var(--env-navy); font-size: 12px; font-weight: 800; letter-spacing: .26em; text-transform: uppercase;
+}
+.mw-envelope__tab { display: grid; flex: none; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--env-navy); color: var(--env-yellow); }
+.mw-envelope__body { position: absolute; left: 44px; right: 300px; top: calc(var(--a) + var(--sh) + 30px); color: #fff; }
+.mw-envelope__eyebrow { color: var(--env-yellow); font-size: 13px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+.mw-envelope__title {
+  display: -webkit-box; overflow: hidden; margin: 6px 0 14px; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  font-family: var(--font-display); font-size: clamp(3rem, 5.5vw, 4.5rem); font-weight: 800; line-height: .95; letter-spacing: -.02em; overflow-wrap: anywhere;
+}
+.mw-envelope__row { display: flex; align-items: center; gap: 10px; min-width: 0; margin: 0 0 6px; font-size: 18px; font-weight: 600; }
+.mw-envelope__row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mw-envelope__row svg { flex: none; color: var(--env-yellow); }
+.mw-envelope__hint { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; padding: 8px 14px; border-radius: 999px; background: rgba(255, 255, 255, .1); color: #c7c7ff; font-size: 12px; font-weight: 600; }
+/* Tap copy by default; hover copy where the JS treats the device as hover-capable
+   ((hover: hover) is the exact complement of the runtime's (hover: none) check). */
+.mw-envelope__hint-hover { display: none; }
+@media (hover: hover) {
+  .mw-envelope__hint-hover { display: inline; }
+  .mw-envelope__hint-tap { display: none; }
+}
+.mw-envelope__stamp {
+  position: absolute; right: 54px; top: calc(var(--a) + var(--sh) + 34px); width: 132px; height: 162px; padding: 9px; background: #fff; transform: rotate(4deg);
+  -webkit-mask: radial-gradient(circle 5px at 50% 50%, transparent 98%, #000) -5px -5px / 13px 13px, linear-gradient(#000 0 0) content-box;
+  mask: radial-gradient(circle 5px at 50% 50%, transparent 98%, #000) -5px -5px / 13px 13px, linear-gradient(#000 0 0) content-box;
+}
+.mw-envelope__stamp-img { position: relative; height: 112px; overflow: hidden; background: linear-gradient(160deg, #2b2b9e, var(--env-navy)); }
+.mw-envelope__stamp-caption { display: block; margin-top: 6px; color: var(--env-navy); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-align: right; }
+.mw-envelope__postmark {
+  position: absolute; right: 140px; top: calc(var(--a) + var(--sh) + 112px); display: grid; place-content: center; width: 116px; height: 116px; padding: 12px;
+  border: 2px solid rgba(255, 255, 255, .55); border-radius: 50%; color: rgba(255, 255, 255, .55); font-size: 9.5px; font-weight: 800; letter-spacing: .14em;
+  line-height: 1.6; text-align: center; text-transform: uppercase; transform: rotate(-14deg); overflow: hidden;
+}
+
+/* Inside: the lining and the letter. The pocket opens upward only, so the
+   letter can float over the content above while its bottom stays tucked in. */
+.mw-envelope__under { overflow: hidden; border-radius: 22px; background: repeating-linear-gradient(45deg, #17178e 0 10px, #0b0b6e 10px 20px); box-shadow: inset 0 16px 30px rgba(0, 0, 0, .35); }
+.mw-envelope__pocket { position: absolute; inset: 0; pointer-events: none; clip-path: inset(-100vh 0 0 0 round 0 0 22px 22px); }
+.mw-envelope__letter { position: absolute; left: 4%; right: 4%; top: calc(var(--a) - 8px); overflow: hidden; padding-bottom: var(--tuck); border-radius: 16px; pointer-events: auto; box-shadow: 0 -10px 34px rgba(0, 0, 0, .32); }
+.mw-envelope__lhead { position: relative; height: calc(var(--sh) + 16px); background: linear-gradient(160deg, #2b2b9e, var(--env-navy)); }
+.mw-envelope__band { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 18px; padding: 0 16px; overflow: hidden; white-space: nowrap;
+  background: color-mix(in srgb, var(--env-navy) 72%, transparent); color: #fff; font-size: 13px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+.mw-envelope__band i { color: var(--env-yellow); font-style: normal; }
+.mw-envelope__lbody { display: grid; grid-template-columns: 1.1fr 1fr; gap: 28px; padding: 22px 28px; }
+.mw-envelope__more-narrow { display: none; }
+
+/* Phone-width card (set by the runtime from the measured width). */
+.mw-envelope[data-narrow="true"] { --h0: 480px; --a: 96px; --sh: 56px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__from { left: 22px; top: 22px; font-size: 10.5px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__body { left: 22px; right: 22px; top: calc(var(--a) + var(--sh) + 24px); }
+.mw-envelope[data-narrow="true"] .mw-envelope__title { font-size: 3rem; }
+.mw-envelope[data-narrow="true"] .mw-envelope__row { font-size: 15px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__stamp { right: 16px; top: 14px; width: 70px; height: 86px; padding: 6px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__stamp-img { height: 58px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__stamp-caption { display: none; }
+.mw-envelope[data-narrow="true"] .mw-envelope__postmark { right: 54px; top: 22px; width: 64px; height: 64px; font-size: 0; }
+.mw-envelope[data-narrow="true"] .mw-envelope__band { justify-content: flex-start; gap: 12px; font-size: 10.5px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__lbody { grid-template-columns: 1fr; gap: 14px; padding: 16px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__loc ~ .mw-envelope__loc { display: none; }
+.mw-envelope[data-narrow="true"] .mw-envelope__more-wide { display: none; }
+.mw-envelope[data-narrow="true"] .mw-envelope__more-narrow { display: block; }
+
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }

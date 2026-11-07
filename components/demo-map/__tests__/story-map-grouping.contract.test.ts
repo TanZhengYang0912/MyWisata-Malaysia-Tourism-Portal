@@ -18,14 +18,15 @@ describe("hotel-first discovery surfaces", () => {
   });
 
   it("groups rooms into hotels on the home pages and For You", () => {
-    expect(read("app/customer/page.tsx")).toContain("groupAccommodationByProperty(activities)");
-    expect(read("app/customer/page.tsx")).toContain("groupAccommodationByProperty(recommended)");
+    expect(read("app/customer/page.tsx")).toContain("selectHomeDiscoverySections(activities, recommended, placements, requestedAt)");
+    expect(read("lib/customer/discovery-ranking.ts")).toContain("groupAccommodationByProperty(activities)");
+    expect(read("lib/customer/discovery-ranking.ts")).toContain("groupAccommodationByProperty(recommended)");
     expect(read("app/customer/home-client.tsx")).toContain("groupAccommodationByProperty(");
     expect(read("app/customer/for-you/for-you-client.tsx")).toContain("groupRankedByProperty(");
   });
 
   it("never shows opening hours on a hotel or stay card", () => {
-    expect(read("components/customer/activity-card.tsx")).toMatch(/\{isStayCard \? null : activity\.outlet\.operatingHours/);
+    expect(read("components/customer/product-card.tsx")).toMatch(/\{isStayCard \? null : activity\.outlet\.operatingHours/);
   });
 
   it("names the pin preview card apart from the shared ActivityCard", () => {

@@ -467,7 +467,7 @@ export function ChatThreadPanel({
                       </Link>
                     ) : message.contextProductId && !message.text ? (
                       <Link
-                        href={`/customer/activity/${message.contextProductId}`}
+                        href={`/customer/products/${message.contextProductId}`}
                         className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-secondary px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
                       >
                         <Tag size={12} /> {t("ui.chat.contextCard.view")}

@@ -59,7 +59,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const isActivityDetailPage = /^\/customer\/activity\/[^/]+\/?$/.test(pathname);
+  const isActivityDetailPage = /^\/customer\/(activity|products)\/[^/]+\/?$/.test(pathname);
   const { currentUser, loading } = useRequireRole(["customer"], { allowUnauthenticated: isPublicCustomerPath });
   const gate = useCustomerCapabilityGate();
   const { count } = useCart();

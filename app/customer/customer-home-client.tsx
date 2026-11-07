@@ -4,8 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, CalendarDays, MapPin, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { ComputedActivity } from "@/backend/core/types";
+import type { ComputedActivity, DiscoveryPropertySummary, DiscoveryResult } from "@/backend/core/types";
 import { ActivityCard } from "@/components/customer/activity-card";
+import { ProductCard } from "@/components/customer/product-card";
+import { toDiscoveryCatalogueCard } from "@/lib/customer/product-catalogue";
 import { SaveToggleButton } from "@/components/customer/save-toggle-button";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { VendorCard, type CustomerVendorCardVendor } from "@/components/customer/vendor-card";
@@ -18,7 +20,7 @@ const EventCalendarDialog = dynamic(
   () => import("@/components/customer/event-calendar-dialog").then((m) => m.EventCalendarDialog),
   { ssr: false, loading: () => null },
 );
-import { useEffect, useRef, useState, type TransitionEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type TransitionEvent } from "react";
 import { useAuth } from "@/components/providers/auth";
 import { PromotionCampaignSpotlight } from "@/components/customer/promotion-campaign-spotlight";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
@@ -75,7 +77,7 @@ export function CustomerHomeClient({
   campaignUnavailable = false,
   titleFontClassName = "",
 }: {
-  highlightItems: ComputedActivity[];
+  highlightItems: (DiscoveryResult & { property?: DiscoveryPropertySummary })[];
   forYouItems: ComputedActivity[];
   vendors: DemoVendor[];
   eventPartners?: EventPartner[];
@@ -89,6 +91,25 @@ export function CustomerHomeClient({
   const gate = useCustomerCapabilityGate();
   const { savedStates, toggleSaved } = useSavedDestinations();
   const isGuest = !currentUser;
+  // Same Sponsored analytics as Explore: one impression per placement, a click on navigation.
+  const impressedPlacementIds = useRef(new Set<string>());
+  const recordSponsoredEvent = useCallback((activity: DiscoveryResult, eventType: "impression" | "click") => {
+    if (!activity.sponsorship) return;
+    void fetch(`/api/sponsored-placements/${activity.sponsorship.placementId}/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ eventType, productId: activity.id }),
+      keepalive: true,
+    });
+  }, []);
+  useEffect(() => {
+    for (const activity of highlightItems) {
+      const placementId = activity.sponsorship?.placementId;
+      if (!placementId || impressedPlacementIds.current.has(placementId)) continue;
+      impressedPlacementIds.current.add(placementId);
+      recordSponsoredEvent(activity, "impression");
+    }
+  }, [highlightItems, recordSponsoredEvent]);
   const [activeState, setActiveState] = useState(() => HOME_DESTINATIONS[0].state);
   const [outgoingHeroState, setOutgoingHeroState] = useState<string | null>(null);
   const [incomingHeroVisible, setIncomingHeroVisible] = useState(false);
@@ -349,7 +370,9 @@ export function CustomerHomeClient({
             </div>
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
               {highlightItems.map((activity) => (
-                <ActivityCard key={activity.id} activity={activity} />
+                activity.property
+                  ? <ActivityCard key={activity.id} activity={activity} onSponsoredClick={activity.sponsorship ? () => recordSponsoredEvent(activity, "click") : undefined} />
+                  : <ProductCard key={activity.id} listing={toDiscoveryCatalogueCard(activity)} returnTo="/customer" source="home" onSponsoredClick={activity.sponsorship ? () => recordSponsoredEvent(activity, "click") : undefined} />
               ))}
             </div>
           </section>
@@ -396,7 +419,7 @@ export function CustomerHomeClient({
                 <MapPin size={15} aria-hidden="true" />
                 {nearbyLoading ? t("ui.states.loading") : t("ui.map.useCurrentLocation")}
               </button>
-              <Link href="/customer/partners" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
+              <Link href="/customer/vendors" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
                 {t("ui.home.viewPartners")} <ArrowRight size={14} />
               </Link>
             </div>
@@ -423,7 +446,7 @@ export function CustomerHomeClient({
           ) : nearbyPartners ? (
             <p className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
               {t(nearbyLocationSource === "none" ? "ui.home.nearbyNoLocation" : "ui.home.noNearbyPartners")} {" "}
-              <Link href="/customer/partners" className="font-semibold text-primary underline-offset-4 hover:underline">{t("ui.home.viewPartners")}</Link>
+              <Link href="/customer/vendors" className="font-semibold text-primary underline-offset-4 hover:underline">{t("ui.home.viewPartners")}</Link>
             </p>
           ) : null}
         </section>
@@ -432,7 +455,7 @@ export function CustomerHomeClient({
         <section className="mt-12">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-2xl font-bold font-[family-name:var(--font-display)]">{t("ui.home.featuredPartners")}</h2>
-            <Link href="/customer/partners" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">{t("ui.home.viewPartners")} <ArrowRight size={14} /></Link>
+            <Link href="/customer/vendors" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">{t("ui.home.viewPartners")} <ArrowRight size={14} /></Link>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
             {vendors.slice(0, 4).map((vendor, index) => {

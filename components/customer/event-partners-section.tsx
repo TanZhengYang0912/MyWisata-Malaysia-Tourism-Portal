@@ -48,7 +48,7 @@ function FeaturedEventPartnersSection({ partners }: { partners: EventPartner[] }
           <Sparkles size={19} className="text-primary" aria-hidden="true" />
           {t("ui.home.eventFeaturedPartners")}
         </h2>
-        <Link href="/customer/partners" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
+        <Link href="/customer/vendors" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
           {t("ui.home.viewPartners")} <ArrowRight size={14} aria-hidden="true" />
         </Link>
       </div>
@@ -65,7 +65,7 @@ function FeaturedEventPartnersSection({ partners }: { partners: EventPartner[] }
 function EventPartnerCard({ partner, locale, featured = false }: { partner: EventPartner; locale: AppLocale; featured?: boolean }) {
   const { t } = useTranslation("customer");
   const visual = getVendorVisual(partner);
-  const href = `/customer/vendor/${partner.id}`;
+  const href = `/customer/vendors/${partner.id}`;
   const eventSchedule = partner.next
     ? t("ui.eventPartners.next", {
       event: partner.next.campaignTitle,

@@ -37,7 +37,7 @@ describe("security headers", () => {
 describe("single indexed host", () => {
   it("redirects www to the public site permanently and names each page's canonical URL", async () => {
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://mylawatan.my");
-    expect(await nextConfig.redirects!()).toEqual([{
+    expect((await nextConfig.redirects!()).filter((rule) => rule.has)).toEqual([{
       source: "/:path*",
       has: [{ type: "host", value: "www\\.mylawatan\\.my" }],
       destination: "https://mylawatan.my/:path*",
@@ -52,7 +52,7 @@ describe("single indexed host", () => {
 
   it.each(["http://localhost:3000", "", "not a url"])("adds neither on localhost or without a site URL (%j)", async (siteUrl) => {
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", siteUrl);
-    expect(await nextConfig.redirects!()).toEqual([]);
+    expect((await nextConfig.redirects!()).filter((rule) => rule.has)).toEqual([]);
     expect((await nextConfig.headers!()).some((rule) => rule.headers.some((header) => header.key === "Link"))).toBe(false);
   });
 });

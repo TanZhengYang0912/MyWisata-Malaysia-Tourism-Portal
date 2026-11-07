@@ -69,7 +69,7 @@ export function VendorReviewsList({ reviews: initialReviews, ratingBuckets: init
       ? <LocalizedContent entityType="review" entityId={review.id} field="body" sourceText={review.body} />
       : null;
     const productHref = review.productId
-      ? `/customer/activity/${review.productId}?source=vendor${review.outletId ? `&outletId=${encodeURIComponent(review.outletId)}` : ""}&returnTo=${encodeURIComponent(`/customer/vendor/${vendorId}`)}`
+      ? `/customer/products/${review.productId}?source=vendor${review.outletId ? `&outletId=${encodeURIComponent(review.outletId)}` : ""}&returnTo=${encodeURIComponent(`/customer/vendors/${vendorId}`)}`
       : null;
 
     return {

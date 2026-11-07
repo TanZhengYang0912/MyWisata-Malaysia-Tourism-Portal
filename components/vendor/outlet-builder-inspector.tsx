@@ -258,7 +258,7 @@ export default function OutletBuilderInspector({
               onChange={(event) =>
                 onUpdateHero({ buttonLink: event.target.value })
               }
-              placeholder="/customer/activity/..."
+              placeholder="/customer/products/..."
               className="mt-1 h-10 w-full rounded-xl border border-gray-200 px-3 text-sm"
             />,
           )}

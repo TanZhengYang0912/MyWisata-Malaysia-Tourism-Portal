@@ -77,6 +77,11 @@ describe("customer discovery filter contract", () => {
     expect(storyMapSource).toContain('t("ui.labels.sponsored")');
   });
 
+  it("renders product results with the shared catalogue card and keeps hotel cards on the discovery card", () => {
+    expect(exploreSource).toContain("listing={toDiscoveryCatalogueCard(a)}");
+    expect(exploreSource).toMatch(/a\.property\s*\?\s*<ActivityCard key=\{a\.id\} activity=\{a\}/);
+  });
+
   it("keeps the canonical category selector out of the advanced filter panel", () => {
     expect(filterSource).not.toContain('<p className="text-sm font-bold text-foreground">{t("ui.explore.filterByCategory")}</p>');
     expect(filterSource).not.toContain('CATEGORIES.filter((category) => category.id !== "hidden_gem")');

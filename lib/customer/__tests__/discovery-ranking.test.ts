@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ComputedActivity, SponsoredPlacement } from "@/backend/core/types";
 import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
-import { rankDiscoveryResults } from "@/lib/customer/discovery-ranking";
+import { rankDiscoveryResults, selectHomeDiscoverySections } from "@/lib/customer/discovery-ranking";
 
 function activity(id: string, overrides: Partial<ComputedActivity> = {}): ComputedActivity {
   return {
@@ -75,6 +75,56 @@ const filters: DiscoveryQuery = {
   familyFriendlyOnly: false,
   coupleFriendlyOnly: false,
 };
+
+describe('home highlights and recommendations', () => {
+  it('sorts highlights without changing the old recommendation exclusion or reasons', () => {
+    const activities = [activity('z', { name: 'Zulu' }), activity('y', { name: 'Yankee' }), activity('x', { name: 'Xray' }), activity('w', { name: 'Whisky' }), activity('a', { name: 'Alpha' })];
+    const recommended = [activity('z', { aiTag: 'near you' }), activity('a', { name: 'Alpha', aiTag: 'interests' }), activity('b', { aiTag: 'similar' })];
+    const result = selectHomeDiscoverySections(activities, recommended);
+    expect(result.highlightItems.map((item) => item.id)).toEqual(['a', 'w', 'x', 'y']);
+    expect(result.forYouItems.map((item) => [item.id, item.aiTag])).toEqual([['a', 'interests'], ['b', 'similar']]);
+  });
+  it('counts duplicate accommodation product ids once when grouping a property', () => {
+    const hotel = activity('room-1', { name: 'Room 1', categorySlug: 'accommodation' });
+    const secondRoom = activity('room-2', { name: 'Room 2', categorySlug: 'accommodation', outlet: hotel.outlet });
+    const result = selectHomeDiscoverySections([hotel, hotel, secondRoom], []);
+    expect(result.highlightItems).toHaveLength(1);
+    expect(result.highlightItems[0].property?.roomTypeCount).toBe(2);
+  });
+});
+
+describe('home highlight tiers', () => {
+  const now = '2026-09-15T00:00:00.000Z';
+  const named = (id: string, name: string, tags?: string[]) => activity(id, { name, ...(tags ? { tags } : {}) });
+
+  it('fills Sponsored, then merchant Featured by name, then everything else by name', () => {
+    const activities = [named('p1', 'Alpha'), named('p2', 'Bravo'), named('f1', 'Zulu', ['featured']), named('s1', 'Yankee'), named('s2', 'Xray'), named('f2', 'Mike', ['featured'])];
+    const result = selectHomeDiscoverySections(activities, [], [placement('pl1', 's1'), placement('pl2', 's2', { priority: 2 })], now);
+    expect(result.highlightItems.map((item) => item.id)).toEqual(['s1', 's2', 'f2', 'f1']);
+    expect(result.highlightItems.map((item) => item.sponsorship?.placementId ?? null)).toEqual(['pl1', 'pl2', null, null]);
+  });
+
+  it('lets Sponsored take every slot and caps it at four', () => {
+    const activities = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => named(id, id.toUpperCase()));
+    const placements = ['a', 'b', 'c', 'd', 'e'].map((id, index) => placement(`pl-${id}`, id, { priority: index }));
+    const result = selectHomeDiscoverySections(activities, [], placements, now);
+    expect(result.highlightItems.map((item) => item.id)).toEqual(['a', 'b', 'c', 'd']);
+    expect(result.highlightItems.every((item) => item.sponsorship)).toBe(true);
+  });
+
+  it('shows a product that is both Sponsored and Featured once, in its Sponsored slot', () => {
+    const activities = [named('both', 'Zulu', ['featured']), named('plain', 'Alpha')];
+    const result = selectHomeDiscoverySections(activities, [], [placement('pl', 'both')], now);
+    expect(result.highlightItems.map((item) => [item.id, item.sponsorship?.placementId ?? null, item.tags ?? []])).toEqual([['both', 'pl', ['featured']], ['plain', null, []]]);
+  });
+
+  it('never shows state- or category-targeted placements on Home', () => {
+    const activities = [named('a', 'Alpha'), named('t', 'Zulu')];
+    const result = selectHomeDiscoverySections(activities, [], [placement('pl', 't', { state: 'Sabah' })], now);
+    expect(result.highlightItems.map((item) => item.id)).toEqual(['a', 't']);
+    expect(result.highlightItems.some((item) => item.sponsorship)).toBe(false);
+  });
+});
 
 describe("rankDiscoveryResults", () => {
   it("caps eligible placements to four unique sponsored products in one-based position order", () => {

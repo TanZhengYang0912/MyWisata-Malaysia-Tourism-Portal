@@ -209,7 +209,7 @@ export async function generateMetadata({ params }: { params: Promise<{ vendorId:
   // same weighted rating the page itself displays, never a fabricated
   // number (result.reviewSummary.rating is null with zero reviews).
   const description = result.reviewSummary.rating !== null ? `★ ${result.reviewSummary.rating.toFixed(1)} · ${baseDescription}` : baseDescription;
-  const url = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/vendor/${vendorId}`;
+  const url = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/vendors/${vendorId}`;
   return { title: `${result.vendor.name} | ${BRAND_NAME}`, description, openGraph: { title: result.vendor.name, description, url, images: vendorVisual.coverUrl ? [{ url: vendorVisual.coverUrl }] : undefined } };
 }
 
@@ -255,7 +255,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
       city: location.city,
       state: location.state,
       operatingHours: location.operatingHours,
-      href: `/customer/vendor/${vendor.id}/outlet/${location.id}`,
+      href: `/customer/outlets/${location.id}`,
       directionsHref: location.lat !== null && location.lng !== null ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.name, locationLabel].join(', '))}`,
     };
   });
@@ -266,12 +266,12 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
     { id: 'about', label: t('ui.vendor.about') },
     reviewSummary.reviews > 0 && { id: 'reviews', label: t('ui.vendor.reviewsNav', { count: reviewSummary.reviews }) },
   ].filter((item): item is { id: string; label: string } => Boolean(item));
-  const jsonLd = { '@context': 'https://schema.org', '@type': 'Organization', name: vendor.name, description: vendor.description, url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/vendor/${vendor.id}` };
+  const jsonLd = { '@context': 'https://schema.org', '@type': 'Organization', name: vendor.name, description: vendor.description, url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/vendors/${vendor.id}` };
 
   return <main className="min-h-screen bg-background text-foreground">
     <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8"><Breadcrumbs label={t('ui.place.breadcrumb')} items={[
       { label: t('navigation.home'), href: '/customer' },
-      { label: t('navigation.search'), href: '/customer/partners' },
+      { label: t('navigation.search'), href: '/customer/vendors' },
       { label: vendor.name },
     ]} /></div>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
@@ -356,7 +356,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
           <h2 id="experiences-heading" className="mt-2 text-3xl font-black tracking-tight">{t('ui.vendor.memorableDay')}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t('ui.vendor.experienceDescription')}</p>
           {listingCards.length ? (
-            <VendorListingGrid products={listingCards} returnTo={`/customer/vendor/${vendor.id}`} />
+            <VendorListingGrid products={listingCards} returnTo={`/customer/vendors/${vendor.id}`} />
           ) : (
             <div className="mt-6 rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">{t('ui.vendor.noExperiences')}</div>
           )}

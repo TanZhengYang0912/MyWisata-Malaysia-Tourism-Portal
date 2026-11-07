@@ -44,7 +44,7 @@ describe("Event Featured Partners", () => {
     expect(drawer).toContain("George Town");
     expect(drawer).toContain("Heritage Market");
     expect(drawer).toContain("A local craft vendor.");
-    expect(markup).toMatch(/<a [^>]*href="\/customer\/vendor\/partner-1"[^>]*data-card-primary-cta="true"[^>]*>ui\.eventPartners\.view<\/a>/);
+    expect(markup).toMatch(/<a [^>]*href="\/customer\/vendors\/partner-1"[^>]*data-card-primary-cta="true"[^>]*>ui\.eventPartners\.view<\/a>/);
     expect(markup).not.toContain('aria-haspopup="dialog"');
     expect(markup).not.toContain("aria-expanded");
     expect(markup).not.toContain("line-clamp");

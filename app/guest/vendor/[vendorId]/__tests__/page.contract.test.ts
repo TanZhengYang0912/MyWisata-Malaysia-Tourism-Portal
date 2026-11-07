@@ -6,6 +6,6 @@ const pageSource = readFileSync(resolve(process.cwd(), "app/guest/vendor/[vendor
 
 describe("guest vendor compatibility route", () => {
   it("redirects guests to the full customer vendor page", () => {
-    expect(pageSource).toContain('redirect(`/customer/vendor/${encodeURIComponent(vendorId)}`)');
+    expect(pageSource).toContain('redirect(appendCustomerQuery(`/customer/vendors/${encodeURIComponent(vendorId)}`, await searchParams))');
   });
 });

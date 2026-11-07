@@ -213,6 +213,9 @@ export interface OutletOffer {
 export interface ComputedActivity extends Activity {
   outlet: Outlet;
   distanceKm?: number;
+  salesSummary?: { outletCount: number; fromPrice: number };
+  /** Set only under Explore's Open now filter: outlets matching the other filters vs. those open now. */
+  openNowSummary?: { totalOutletCount: number; openOutletCount: number };
 }
 
 export interface DiscoveryPropertySummary {

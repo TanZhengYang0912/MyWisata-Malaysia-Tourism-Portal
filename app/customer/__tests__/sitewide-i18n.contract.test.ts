@@ -50,6 +50,11 @@ export const CUSTOMER_I18N_FILES = [
   "app/customer/orders/access/page.tsx",
   "app/customer/orders/page.tsx",
   "app/customer/outlet/[outletId]/page.tsx",
+  "app/customer/outlets/[outletId]/page.tsx",
+  "app/customer/products/[productId]/page.tsx",
+  "app/customer/products/[productId]/loading.tsx",
+  "app/customer/vendors/page.tsx",
+  "app/customer/vendors/[vendorId]/page.tsx",
   "app/customer/page.tsx",
   "app/customer/partners/page.tsx",
   "app/customer/place/[slug]/page.tsx",
@@ -96,6 +101,7 @@ export const CUSTOMER_I18N_FILES = [
   "app/guest/layout.tsx",
   "app/guest/vendor/[vendorId]/page.tsx",
   "components/customer/activity-card.tsx",
+  "components/customer/product-card.tsx",
   "components/customer/activity-reviews.tsx",
   "components/customer/affiliate-clicks-chart.tsx",
   "components/customer/affiliate-earnings-history.tsx",
@@ -123,6 +129,7 @@ export const CUSTOMER_I18N_FILES = [
   "app/customer/orders/[id]/order-pickup-qr-codes.tsx",
   "components/customer/featured-recommendations-frame.tsx",
   "components/customer/featured-split-card.tsx",
+  "components/customer/campaign-envelope.tsx",
   "components/customer/campaign-event-pass.tsx",
   "components/customer/campaign-stall-strip.tsx",
   "components/customer/feedback/feedback-collection.tsx",
@@ -144,6 +151,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/place-card.tsx",
   "components/customer/place-community-section.tsx",
   "components/customer/place-informational-activity-section.tsx",
+  "components/customer/photo-rating-badge.tsx",
   "components/customer/place-list.tsx",
   "components/customer/product-chat-button.tsx",
   "components/customer/product-save-button.tsx",
@@ -182,6 +190,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/outlet/hotel-page.tsx",
   "components/outlet/outlet-block-renderer.tsx",
   "components/outlet/outlet-menu.tsx",
+  "components/outlet/public-outlet-page.tsx",
   "components/outlet/outlet-page-renderer.tsx",
   "components/outlet/room-details-dialog.tsx",
   "components/profile/preferences-editor.tsx",
@@ -247,6 +256,13 @@ function resourceValue(resource: unknown, key: string): unknown {
 }
 
 const delegatingFiles = new Set([
+  "components/customer/activity-card.tsx",
+  "app/customer/outlets/[outletId]/page.tsx",
+  "app/customer/products/[productId]/page.tsx",
+  "app/customer/products/[productId]/loading.tsx",
+  "app/customer/vendors/page.tsx",
+  "app/customer/vendors/[vendorId]/page.tsx",
+  "app/customer/vendor/[vendorId]/outlet/[outletId]/page.tsx",
   // Thin route wrappers delegate their rendered copy to the client/component
   // listed below; keeping them in the inventory protects the route boundary.
   // ExpandCard is a layout shell; every label it shows is translated by the card that uses it.

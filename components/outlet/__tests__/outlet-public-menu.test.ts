@@ -19,7 +19,7 @@ describe('public outlet menu', () => {
   it('keeps product details tied to the outlet that owns the purchase context', async () => {
     const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
     expect(source).toContain('outletId=${encodeURIComponent(outletId)}');
-    expect(source).toContain('returnTo=${encodeURIComponent(`/customer/outlet/${outletId}`)}');
+    expect(source).toContain('returnTo=${encodeURIComponent(`/customer/outlets/${outletId}`)}');
   });
 
   it('uses the professional four-column card treatment for public outlet menus', async () => {
@@ -75,13 +75,13 @@ describe('public outlet menu', () => {
   });
 
   it('shows the current outlet position when the vendor has multiple outlets', async () => {
-    const source = await import('node:fs').then(({ readFileSync }) => readFileSync('app/customer/vendor/[vendorId]/outlet/[outletId]/page.tsx', 'utf8'));
+    const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/public-outlet-page.tsx', 'utf8'));
     expect(source).toContain('t("strictMigration.outletNavigation.position"');
     expect(source).toContain('t("strictMigration.outletNavigation.viewAll"');
   });
 
   it('scopes public inventory, variants, and booking slots to the current outlet', async () => {
-    const source = await import('node:fs').then(({ readFileSync }) => readFileSync('app/customer/vendor/[vendorId]/outlet/[outletId]/page.tsx', 'utf8'));
+    const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/public-outlet-page.tsx', 'utf8'));
 
     expect(source).toContain('inventory(outlet_id,quantity,reserved)');
     expect(source).toContain('.eq("outlet_id", outletId)');

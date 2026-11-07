@@ -117,8 +117,15 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     const site = publicSiteUrl();
-    if (!site || site.hostname.startsWith('www.')) return [];
-    return [{
+    const legacy = [
+      { source: '/customer/partners', destination: '/customer/vendors', permanent: true },
+      { source: '/customer/vendor/:vendorId', destination: '/customer/vendors/:vendorId', permanent: true },
+      { source: '/customer/activity/:id', destination: '/customer/products/:id', permanent: true },
+      { source: '/customer/experience/:id', destination: '/customer/products/:id', permanent: true },
+      { source: '/customer/outlet/:outletId', destination: '/customer/outlets/:outletId', permanent: true },
+    ];
+    if (!site || site.hostname.startsWith('www.')) return legacy;
+    return [...legacy, {
       source: '/:path*',
       has: [{ type: 'host' as const, value: `www.${site.hostname}`.replace(/\./g, '\\.') }],
       destination: `${site.origin}/:path*`,

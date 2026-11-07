@@ -12,6 +12,9 @@ const PUBLIC_CUSTOMER_ROOTS = [
 const PUBLIC_CUSTOMER_PREFIXES = [
   "/customer/explore",
   "/customer/partners",
+  "/customer/vendors",
+  "/customer/products/",
+  "/customer/outlets/",
   "/customer/search",
   "/customer/events",
   "/customer/activity/",

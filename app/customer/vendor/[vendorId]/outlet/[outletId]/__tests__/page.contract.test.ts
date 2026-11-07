@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const pageSource = readFileSync(
-  resolve(process.cwd(), "app/customer/vendor/[vendorId]/outlet/[outletId]/page.tsx"),
+  resolve(process.cwd(), "components/outlet/public-outlet-page.tsx"),
   "utf8",
 );
 

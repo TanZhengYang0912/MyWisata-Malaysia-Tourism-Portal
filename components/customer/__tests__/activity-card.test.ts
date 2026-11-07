@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const workspace = process.cwd();
-const cardSource = readFileSync(resolve(workspace, "components/customer/activity-card.tsx"), "utf8");
+const cardSource = readFileSync(resolve(workspace, "components/customer/product-card.tsx"), "utf8");
 const saveToggleSource = readFileSync(resolve(workspace, "components/customer/save-toggle-button.tsx"), "utf8");
 const storyMapSource = readFileSync(resolve(workspace, "components/demo-map/story-map.tsx"), "utf8");
 const customerHomeSource = readFileSync(resolve(workspace, "app/customer/customer-home-client.tsx"), "utf8");

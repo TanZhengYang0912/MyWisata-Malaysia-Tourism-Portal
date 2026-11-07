@@ -3,8 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { resolvedLanguage: "en" } }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 import { PromotionCampaignSpotlight } from "@/components/customer/promotion-campaign-spotlight";
+import { FeaturedRecommendationsFrame } from "@/components/customer/featured-recommendations-frame";
+import { formatEventHours } from "@/lib/promotion-campaigns/locations";
 
 const campaign: PromotionCampaignPublic = {
   id: "campaign", slug: "sample-event", title: "Sample event",
@@ -29,21 +32,20 @@ describe("promotion campaign home spotlight", () => {
     expect(markup).toContain("Sample event");
     expect(markup).toContain("ui.promotionCampaigns.upcoming");
     expect(markup).toContain('href="/customer/events/sample-event"');
-    const imageIndex = markup.indexOf('data-slot="promotion-campaign-image"');
-    const contentIndex = markup.indexOf('data-slot="promotion-campaign-content"');
-    expect(imageIndex).toBeGreaterThanOrEqual(0);
-    expect(contentIndex).toBeGreaterThan(imageIndex);
+    // The letter sits under the envelope pieces, so it comes first in the DOM.
+    const letterIndex = markup.indexOf('data-slot="campaign-envelope-letter"');
+    const frontIndex = markup.indexOf('data-slot="campaign-envelope-front"');
+    expect(letterIndex).toBeGreaterThanOrEqual(0);
+    expect(frontIndex).toBeGreaterThan(letterIndex);
     // The header carries "Browse all events"; the card body has no action row.
     expect(markup).not.toContain('data-slot="promotion-campaign-actions"');
     expect(markup.indexOf("ui.promotionCampaigns.allCampaigns")).toBeLessThan(markup.indexOf('data-testid="promotion-campaign-spotlight"'));
-    expect(markup).toContain("bg-card");
-    expect(markup).toContain("rounded-[28px]");
-    expect(markup).toContain("shadow-sm");
-    expect(markup).toContain("lg:grid-cols-[44%_minmax(0,1fr)_9rem]");
-    expect(markup).toContain("lg:min-h-[310px]");
-    expect(markup).toContain('data-slot="featured-end"');
-    expect(markup).toContain("aspect-[16/9]");
-    expect(markup).toContain("lg:aspect-auto");
+    expect(markup).toContain("mw-envelope");
+    // The letter floats out of the carousel, so the frame must not clip it.
+    const carousel = markup.match(/<div(?=[^>]*data-testid="promotion-campaign-spotlight")[^>]*>/)?.[0];
+    expect(carousel).toBeDefined();
+    expect(carousel).not.toContain("overflow-hidden");
+    expect(markup).not.toContain('data-slot="featured-end"');
     expect(markup).toContain("ui.home.campaigns");
     expect(markup).not.toContain("ui.search.featuredRecommendations");
     expect(markup).not.toContain("ui.search.featuredDescription");
@@ -54,13 +56,13 @@ describe("promotion campaign home spotlight", () => {
     expect(markup).not.toContain("lg:border-l-4");
     expect(markup).not.toContain("opacity-70");
     expect(markup).not.toContain("bg-gradient-to-r");
-    const stub = markup.slice(markup.indexOf('data-slot="featured-end"'));
-    expect(stub).toContain("ui.promotionCampaigns.exploreCampaign");
-    // Upcoming events count down to the start: 25 Sep 2026, 20:00 in Malaysia.
-    expect(stub).toContain("ui.promotionCampaigns.startsAt");
-    expect(stub).toContain(">25<");
-    expect(stub).toContain(">2026<");
-    expect(markup.indexOf("ui.promotionCampaigns.upcoming")).toBeLessThan(markup.indexOf("-title\""));
+    const front = markup.slice(markup.indexOf('data-slot="campaign-envelope-front"'));
+    expect(front).toContain("ui.promotionCampaigns.invitedTo");
+    // The front shows the range from its start: 25 Sep 2026, 20:00 in Malaysia.
+    expect(front).toContain("Sep 25, 2026");
+    expect(front).toContain(">2026<");
+    // The status now sits in the letter, which renders before the front; the title is on the front.
+    expect(markup.indexOf("ui.promotionCampaigns.upcoming")).toBeLessThan(markup.indexOf("<h2 id=\"campaign-envelope-"));
   });
 
   it("shows dates for a full-day event and retains the precise time for a legacy event", () => {
@@ -117,25 +119,35 @@ describe("promotion campaign home spotlight", () => {
     const markup = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={posterCampaign} />);
 
     expect(markup).toContain('src="https://thumb.wikimedia.org/event-poster.jpg"');
-    expect(markup.indexOf('src="https://thumb.wikimedia.org/event-poster.jpg"')).toBeLessThan(markup.indexOf('data-slot="promotion-campaign-content"'));
+    // The poster heads the letter, before the envelope front.
+    expect(markup.indexOf('src="https://thumb.wikimedia.org/event-poster.jpg"')).toBeLessThan(markup.indexOf('data-slot="campaign-envelope-front"'));
   });
 
-  it("counts a live campaign down to its end even between opening sessions", () => {
+  it("shows a live campaign's status in the letter even between opening sessions", () => {
     const markup = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={{ ...campaign, visibility: "live", operationalStatus: "between_sessions" }} />);
-    const stub = markup.slice(markup.indexOf('data-slot="featured-end"'));
-    expect(stub).toContain("ui.promotionCampaigns.endsAt");
-    expect(stub).toContain(">26<");
+    const letter = markup.slice(markup.indexOf('data-slot="campaign-envelope-letter"'), markup.indexOf('data-slot="campaign-envelope-front"'));
+    expect(letter).toContain("ui.promotionCampaigns.betweenSessions");
   });
 
-  it("pins the first location on the poster and lists hours in the details", () => {
+  it("shows the location on the front and its hours in the letter", () => {
     const markup = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={campaign} />);
 
     expect(markup).not.toContain("bg-gradient-to-t from-primary/95 via-primary/40 to-transparent");
-    const chip = markup.indexOf('data-slot="promotion-campaign-location"');
-    expect(chip).toBeGreaterThan(markup.indexOf('data-slot="promotion-campaign-image"'));
-    expect(chip).toBeLessThan(markup.indexOf('data-slot="promotion-campaign-content"'));
-    expect(markup.slice(chip)).toContain("Melaka");
-    expect(markup).toContain("10:00 AM - 6:00 PM");
-    expect(markup).toContain("lg:grid-cols-[44%_minmax(0,1fr)_9rem]");
+    const front = markup.slice(markup.indexOf('data-slot="campaign-envelope-front"'));
+    expect(front).toContain("Melaka");
+    const letter = markup.slice(markup.indexOf('data-slot="campaign-envelope-letter"'), markup.indexOf('data-slot="campaign-envelope-front"'));
+    expect(letter).toContain(formatEventHours("10:00", "18:00", "en"));
+    // Per-location hours replace the campaign's free-text operating hours.
+    expect(markup).not.toContain("10:00 AM - 6:00 PM");
+    expect(markup).not.toContain("lg:grid-cols-[44%_minmax(0,1fr)_9rem]");
+  });
+
+  it("keeps clipping slides by default for the other featured carousels", () => {
+    const markup = renderToStaticMarkup(
+      <FeaturedRecommendationsFrame headingId="h" eyebrow={null} title="t" description={null} carouselLabel="c" previousLabel="p" nextLabel="n" carouselTestId="frame" hasMultipleSlides={false} onPrevious={() => {}} onNext={() => {}}>
+        <div />
+      </FeaturedRecommendationsFrame>,
+    );
+    expect(markup.match(/<div(?=[^>]*data-testid="frame")[^>]*>/)?.[0]).toContain("overflow-hidden");
   });
 });

@@ -10,14 +10,14 @@ import { selectEntityGallery, selectEntityLogo, type EntityMediaRow } from "@/li
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import { popularVendorProducts } from "@/lib/customer/vendor-page";
 import { isOperatingHoursOpenNow } from "@/lib/customer/operating-hours";
-import type { ComputedActivity, OperatingHours } from "@/backend/core/types";
+import type { ComputedActivity, OperatingHours, SponsoredPlacement } from "@/backend/core/types";
 import { CustomerHomeClient } from "./customer-home-client";
 import { selectFeaturedPublicCampaigns } from "@/lib/customer/promotion-campaigns";
 import { resolvePromotionCampaignImages } from "@/lib/promotion-campaigns/images";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 import type { EventPartner } from "@/components/customer/event-partners-section";
 import { getMalaysiaDateInputValue } from "@/lib/datetime/date-input";
-import { groupAccommodationByProperty } from "@/lib/customer/discovery-ranking";
+import { selectHomeDiscoverySections } from "@/lib/customer/discovery-ranking";
 import { nextVendorEvent } from "@/lib/promotion-campaigns/vendor-events";
 import { Instrument_Serif } from "next/font/google";
 
@@ -45,7 +45,8 @@ export default async function CustomerHomePage() {
       default: return undefined;
     }
   };
-  const [{ data: { user } }, activities, vendorRows, campaignResult] = await Promise.all([
+  const requestedAt = new Date().toISOString();
+  const [{ data: { user } }, activities, vendorRows, campaignResult, placementsResult] = await Promise.all([
     db.auth.getUser(),
     // Cached for 60 s — same data for all visitors, no user-specific filtering
     getCachedComputedActivities(),
@@ -57,7 +58,27 @@ export default async function CustomerHomePage() {
       .order("name")
       .limit(24),
     db.rpc("get_public_promotion_campaigns", { p_slug: null }),
+    db.rpc("list_active_sponsored_discovery_placements"),
   ]);
+  const placements = placementsResult.error ? [] : ((placementsResult.data ?? []) as Array<{
+    id: string;
+    product_id: string;
+    state: string | null;
+    category_slug: string | null;
+    starts_at: string;
+    ends_at: string;
+    priority: number;
+    status: SponsoredPlacement["status"];
+  }>).map((placement): SponsoredPlacement => ({
+    id: placement.id,
+    productId: placement.product_id,
+    state: placement.state,
+    categorySlug: placement.category_slug,
+    startsAt: placement.starts_at,
+    endsAt: placement.ends_at,
+    priority: placement.priority,
+    status: placement.status,
+  }));
 
   const publicCampaigns = resolvePromotionCampaignImages(Array.isArray(campaignResult.data) ? campaignResult.data as unknown as PromotionCampaignPublic[] : []);
   const eventVendorIds = Array.from(new Set(publicCampaigns.flatMap((campaign) => campaign.vendors.map((vendor) => vendor.vendorId))));
@@ -87,11 +108,7 @@ export default async function CustomerHomePage() {
     ...item.activity,
     aiTag: reasonLabel(item.reason),
   })) as ComputedActivity[];
-  const highlightItems = groupAccommodationByProperty(activities).slice(0, 4);
-  const highlightIds = new Set(highlightItems.map((activity) => activity.id));
-  const forYouItems = groupAccommodationByProperty(recommended)
-    .filter((activity) => !highlightIds.has(activity.id))
-    .slice(0, 4);
+  const { highlightItems, forYouItems } = selectHomeDiscoverySections(activities, recommended, placements, requestedAt);
 
   const mediaByVendorId = new Map<string, EntityMediaRow[]>();
   for (const row of vendorMediaRows) {
@@ -118,9 +135,9 @@ export default async function CustomerHomePage() {
     .filter((vendor) => vendor.outlets.length > 0);
 
   const rankedVendors = rankFeaturedVendors(vendors, activities, 24);
-  // Ratings read the review metrics view with the service client, as the vendor page does; a failure only hides the line.
-  const vendorRatings = await getVendorRatingSummaries(rankedVendors.map((vendor) => vendor.id), createServiceClient()).catch(() => new Map<string, { value: number; count: number }>());
-  const featuredVendors = rankedVendors.map((vendor) => ({ ...vendor, rating: vendorRatings.get(vendor.id), popularProducts: popularVendorProducts(activities, vendor.id) }));
+  // Ratings read the review metrics view with the service client, as the vendor page does; a failure (unknown rating) hides the badge, while no reviews shows "No reviews yet".
+  const vendorRatings = await getVendorRatingSummaries(rankedVendors.map((vendor) => vendor.id), createServiceClient()).catch(() => null);
+  const featuredVendors = rankedVendors.map((vendor) => ({ ...vendor, rating: vendorRatings ? vendorRatings.get(vendor.id) ?? null : undefined, popularProducts: popularVendorProducts(activities, vendor.id) }));
   const featuredCampaigns = selectFeaturedPublicCampaigns(publicCampaigns);
   const today = getMalaysiaDateInputValue();
   const featuredEventPartners: EventPartner[] = (eventPartnerVendorResult.data ?? [])

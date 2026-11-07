@@ -14,7 +14,7 @@ describe('customer recommendation detail page', () => {
   it('shows a customer-safe timeline and linked vendor without internal review data', () => {
     expect(source).toContain('detail.events');
     expect(source).toContain('detail.changesRequested');
-    expect(source).toContain('/customer/vendor/');
+    expect(source).toContain('/customer/vendors/');
     expect(source).not.toContain('internalNote');
     expect(source).not.toContain('moderation');
     expect(source).not.toContain('qualityScore');

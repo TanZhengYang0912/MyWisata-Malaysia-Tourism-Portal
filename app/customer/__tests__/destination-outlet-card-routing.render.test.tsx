@@ -41,7 +41,7 @@ describe("destination outlet card routing", () => {
   it("opens the outlet page, not its vendor page, when the outlet has a vendor", async () => {
     const markup = renderToStaticMarkup(await DestinationPage({ params: Promise.resolve({ destinationId: "penang" }) }));
 
-    expect(markup).toContain('href="/customer/outlet/outlet-123"');
-    expect(markup).not.toContain('href="/customer/vendor/vendor-456"');
+    expect(markup).toContain('href="/customer/outlets/outlet-123"');
+    expect(markup).not.toContain('href="/customer/vendors/vendor-456"');
   });
 });
