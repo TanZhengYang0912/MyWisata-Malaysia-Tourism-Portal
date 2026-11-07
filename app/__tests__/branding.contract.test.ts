@@ -85,6 +85,7 @@ describe("platform branding contract", () => {
   it("uses one canonical public brand token", () => {
     const tokenSource = read("lib/i18n/invariant-tokens.ts");
     expect(tokenSource).toContain('BRAND_NAME = "MYLawatan"');
+    expect(tokenSource).toContain('BRAND_DOMAIN = "mylawatan.my"');
     expect(tokenSource).toContain("LOGO_BRAND_NAME = BRAND_NAME");
     expect(tokenSource).toContain('ATLAS_BRAND_NAME = "MYLawatan / Atlas"');
   });

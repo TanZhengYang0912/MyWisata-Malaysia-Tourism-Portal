@@ -20,9 +20,26 @@ describe("customer vendor profile image contract", () => {
     expect(pageSource).toContain("outlet_pages(hero_url)");
   });
 
+  it("keeps outlet rows focused on the name and actions", () => {
+    const rowSource = locationSource.slice(locationSource.indexOf("export function VendorLocationList"));
+    expect(rowSource).toContain("{location.name}");
+    expect(rowSource).toContain("ui.vendor.directions");
+    expect(rowSource).toContain("ui.vendor.viewOutlet");
+    expect(rowSource).not.toContain("location.city");
+    expect(rowSource).not.toContain("location.state");
+    expect(rowSource).not.toContain("location.operatingHours");
+    expect(rowSource).not.toContain("useOutletOpenStatus");
+    expect(pageSource).not.toContain("ui.vendor.chooseLocationDescription");
+    expect(pageSource).not.toContain("ui.vendor.activeOutletCount");
+  });
 });
-
 describe("customer vendor commerce boundary", () => {
+  it("keeps listing cards focused on product names, prices, and key facts", () => {
+    expect(pageSource).not.toContain("id,name,description,product_type");
+    expect(pageSource).toContain("imageUrl: product.coverUrl, description: null");
+    expect(listingSource).toContain("<ProductCard key={product.id}");
+  });
+
   it("preserves a single product outlet in the vendor detail link", () => {
     expect(vendorProductDetailHref("p1", "v1", "o1")).toContain("outletId=o1");
     expect(vendorProductDetailHref("p1", "v1")).not.toContain("outletId=");
@@ -77,5 +94,19 @@ describe("customer vendor page layout", () => {
     expect(pageSource).toContain('href="#gallery"');
     expect(pageSource).toContain('id="gallery"');
     expect(pageSource).toContain("max-w-7xl");
+  });
+});
+
+describe("customer vendor mobile layout", () => {
+  it("uses a shorter mobile hero and a denser mobile content rhythm", () => {
+    expect(pageSource).toContain("h-[200px]");
+    expect(pageSource).toContain("sm:h-[300px]");
+    expect(pageSource).toContain("space-y-12 sm:space-y-16");
+    expect(pageSource).toContain("mb-4 mt-2 max-w-2xl text-sm leading-5 text-muted-foreground sm:mb-6 sm:leading-6");
+  });
+
+  it("removes redundant experience and location introductions", () => {
+    expect(pageSource).not.toContain("ui.vendor.experienceDescription");
+    expect(pageSource).not.toContain("ui.vendor.chooseLocationDescription");
   });
 });

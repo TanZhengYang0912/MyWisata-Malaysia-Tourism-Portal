@@ -66,10 +66,7 @@ export function FoodOrderQrCodes({ orderId, passes: controlledPasses, onRefresh 
   return (
     <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-labelledby="food-order-qr-heading">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border bg-secondary/40 px-5 py-4 sm:px-6">
-        <div>
-          <h2 id="food-order-qr-heading" className="text-sm font-bold uppercase tracking-[0.14em] text-primary">{t("ui.booking.foodOrderQrTitle")}</h2>
-          <p className="mt-1 text-xs text-muted-foreground">{t("ui.booking.foodOrderQrDescription")}</p>
-        </div>
+        <h2 id="food-order-qr-heading" className="text-sm font-bold uppercase tracking-[0.14em] text-primary">{t("ui.booking.foodOrderQrTitle")}</h2>
         <button type="button" onClick={() => onRefresh ? onRefresh() : void refresh()} disabled={refreshing && !onRefresh} className="text-xs font-semibold text-primary underline disabled:opacity-50">
           {t("ui.booking.refreshPass")}
         </button>
@@ -86,14 +83,12 @@ export function FoodOrderQrCodes({ orderId, passes: controlledPasses, onRefresh 
             <CustomerQrPassCard
               key={pass.outletId}
               title={pass.outletName}
-              merchantLabel={t("ui.labels.providedBy", { vendor: pass.vendorName })}
               qr={
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={pass.qr} alt={t("ui.booking.foodOrderQrAlt", { outlet: pass.outletName })} className="aspect-square w-full rounded-lg bg-white object-contain" />
               }
             >
               <p className="mt-1 text-sm font-semibold text-primary">{pass.mode === "dine_in" ? t("ui.checkout.foodModes.dine_in") : t("ui.checkout.foodModes.takeaway")}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{t(pass.mode === "takeaway" ? "ui.booking.takeawayScanHint" : "ui.booking.dineInScanHint")}</p>
               <Badge
                 variant="outline"
                 role="status"

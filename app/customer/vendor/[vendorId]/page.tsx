@@ -51,7 +51,6 @@ type OutletOffer = { outlet_id: string; price: number; status: string };
 type CatalogueProduct = {
   id: string;
   name: string;
-  description: string | null;
   productType: string | null;
   requiresBooking: boolean;
   coverUrl: string | null;
@@ -107,7 +106,7 @@ async function getVendor(vendorId: string) {
 
   const [{ data: outlets }, { data: products }, { data: managedPlaces }] = await Promise.all([
     db.from('outlets').select('id,name,city,state,address,lat,lng,operating_hours,outlet_pages(hero_url)').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
-    db.from('products').select('id,name,description,product_type,requires_booking,base_price,cover_url,outlet_id,tags,outlet_offers(outlet_id,price,status)').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
+    db.from('products').select('id,name,product_type,requires_booking,base_price,cover_url,outlet_id,tags,outlet_offers(outlet_id,price,status)').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
     db.from('places').select('name,image_url').eq('managed_by_vendor_id', vendorId).eq('level', 'poi').eq('status', 'active'),
   ]);
 
@@ -157,7 +156,6 @@ async function getVendor(vendorId: string) {
     return {
       id: product.id,
       name: product.name,
-      description: product.description as string | null,
       productType: product.product_type as string | null,
       requiresBooking: Boolean(product.requires_booking),
       coverUrl: productImageUrl(product.cover_url as string | null),
@@ -240,7 +238,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
   const hoursSource = locations.find((location) => location.operatingHours)?.operatingHours ?? null;
   const lowestPrice = catalogue.length ? Math.min(...catalogue.map((product) => product.fromPrice)) : null;
   const listingCards = listing.map((product) => ({
-    ...product, vendorId: vendor.id, imageUrl: product.coverUrl,
+    ...product, vendorId: vendor.id, imageUrl: product.coverUrl, description: null,
     soldAt: product.soldAt.map((entry) => {
       const outlet = locationsById.get(entry.id);
       // Only a single-outlet card reads the hours (its Closed badge and hours summary).
@@ -252,9 +250,6 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
     return {
       id: location.id,
       name: location.name,
-      city: location.city,
-      state: location.state,
-      operatingHours: location.operatingHours,
       href: `/customer/outlets/${location.id}`,
       directionsHref: location.lat !== null && location.lng !== null ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.name, locationLabel].join(', '))}`,
     };
@@ -340,12 +335,12 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
       </div>}
 
       {/* Content Sections */}
-      <div className="space-y-16">
+      <div className="space-y-12 sm:space-y-16">
         {showEventItems && (
           <section id="event-items" aria-labelledby="event-items-heading" className={sectionScroll}>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.eventItems.eyebrow')}</p>
-            <h2 id="event-items-heading" className="mt-2 text-3xl font-black tracking-tight">{t('ui.vendor.eventItems.title')}</h2>
-            <p className="mb-6 mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t('ui.vendor.eventItems.description')}</p>
+            <h2 id="event-items-heading" className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t('ui.vendor.eventItems.title')}</h2>
+            <p className="mb-4 mt-2 max-w-2xl text-sm leading-5 text-muted-foreground sm:mb-6 sm:leading-6">{t('ui.vendor.eventItems.description')}</p>
             <EventItemsTable items={eventItems} />
           </section>
         )}
@@ -353,8 +348,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
         {!isEventVendor && <>
         <section id="experiences" aria-labelledby="experiences-heading" className={sectionScroll}>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.featuredExperiences')}</p>
-          <h2 id="experiences-heading" className="mt-2 text-3xl font-black tracking-tight">{t('ui.vendor.memorableDay')}</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t('ui.vendor.experienceDescription')}</p>
+          <h2 id="experiences-heading" className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t('ui.vendor.memorableDay')}</h2>
           {listingCards.length ? (
             <VendorListingGrid products={listingCards} returnTo={`/customer/vendors/${vendor.id}`} />
           ) : (
@@ -366,10 +360,8 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.findAcrossMalaysia')}</p>
-              <h2 id="locations-heading" className="mt-2 text-3xl font-black tracking-tight">{t('ui.vendor.chooseLocationTitle')}</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t('ui.vendor.chooseLocationDescription')}</p>
+              <h2 id="locations-heading" className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t('ui.vendor.chooseLocationTitle')}</h2>
             </div>
-            {hasMultipleLocations && <span className="text-sm font-semibold text-muted-foreground">{t('ui.vendor.activeOutletCount', { count: locations.length })}</span>}
           </div>
           {locations.length ? <VendorLocationList locations={locationRows} /> : <div className="mt-6 rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">{t('ui.vendor.noPublicOutlets')}</div>}
         </section>

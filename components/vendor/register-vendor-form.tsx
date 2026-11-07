@@ -13,7 +13,7 @@ import VendorRegistrationImageField from '@/components/vendor/vendor-registratio
 import VendorRegistrationGalleryField from '@/components/vendor/vendor-registration-gallery-field';
 import { InternationalPhoneInput } from '@/components/profile/international-phone-input';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { isVendorRegisterValidationKey, vendorRegisterSchema, type VendorRegister } from '@/lib/validation/vendor-schemas';
+import { isVendorRegisterValidationKey, vendorRegisterSchema, type VendorRegister, type VendorRegisterInput } from '@/lib/validation/vendor-schemas';
 
 interface Props {
   onClose?: () => void;
@@ -52,7 +52,8 @@ export default function RegisterVendorForm({ onClose }: Props) {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<VendorRegister>({
+  } = useForm<VendorRegisterInput, unknown, VendorRegister>({
+    defaultValues: { vendorKind: 'shop' },
     resolver: zodResolver(vendorRegisterSchema),
     mode: 'onTouched',
     reValidateMode: 'onChange',
@@ -97,6 +98,7 @@ export default function RegisterVendorForm({ onClose }: Props) {
           IMAGE_CLEANUP_FAILED: t('registration.errors.imageCleanupFailed'),
           INVALID_GALLERY_COUNT: t('registration.gallery.invalidCount'),
           REGISTRATION_STATUS_UNCONFIRMED: t('registration.errors.statusUnconfirmed'),
+          PHONE_VERIFICATION_REQUIRED: t('registration.errors.phoneVerificationRequired'),
         };
         const message = imageErrors[result.error?.code] ?? result.error?.message ?? t('registration.errors.failed');
         setServerError(message);
@@ -198,6 +200,23 @@ export default function RegisterVendorForm({ onClose }: Props) {
             <option value="other">{t('registration.options.other')}</option>
           </select>
           {renderFieldError('business-type-error', errors.businessType?.message)}
+        </div>
+
+        <div>
+          <label htmlFor="vendor-kind" className={labelClass}>
+            <span>{t('registration.fields.vendorKind')}</span>
+          </label>
+          <select
+            id="vendor-kind"
+            {...register('vendorKind')}
+            aria-invalid={Boolean(errors.vendorKind)}
+            aria-describedby={errors.vendorKind ? 'vendor-kind-error' : undefined}
+            className="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm text-foreground shadow-sm shadow-slate-950/[0.02] outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-primary/20"
+          >
+            <option value="shop">{t('registration.options.shopVendor')}</option>
+            <option value="event">{t('registration.options.eventVendor')}</option>
+          </select>
+          {renderFieldError('vendor-kind-error', errors.vendorKind?.message)}
         </div>
       </section>
 

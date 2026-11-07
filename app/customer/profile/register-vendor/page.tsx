@@ -65,19 +65,6 @@ export default async function RegisterVendorPage() {
           <span aria-hidden="true">←</span> {t('ui.profile.backToProfile')}
         </Link>
 
-        <ol className="mb-6 grid gap-3 sm:grid-cols-3">
-          <li aria-current="step" className="relative overflow-hidden rounded-2xl border border-primary/20 bg-card p-4 shadow-sm shadow-primary/5 sm:p-5">
-            <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-accent" />
-            <p className="font-semibold text-foreground">{t('ui.profile.vendorStepApply')}</p>
-          </li>
-          <li className="rounded-2xl border border-border bg-card/70 p-4 sm:p-5">
-            <p className="font-semibold text-foreground">{t('ui.profile.vendorStepReview')}</p>
-          </li>
-          <li className="rounded-2xl border border-border bg-card/70 p-4 sm:p-5">
-            <p className="font-semibold text-foreground">{t('ui.profile.vendorStepLive')}</p>
-          </li>
-        </ol>
-
         <CustomerPanel className="p-5 sm:p-7">
           <RegisterVendorForm />
         </CustomerPanel>

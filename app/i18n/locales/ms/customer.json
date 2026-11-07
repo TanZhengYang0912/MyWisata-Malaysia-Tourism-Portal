@@ -197,7 +197,8 @@
       "pending": "Terjemahan sedang disediakan"
     },
     "accessibility": {
-      "carousel": "karusel"
+      "carousel": "karusel",
+      "carouselSlide": "Slaid {{page}} daripada {{total}}"
     },
     "capabilityGate": {
       "notNow": "Bukan sekarang",
@@ -887,12 +888,6 @@
       "vendorApplication": "Permohonan vendor",
       "vendorApplicationDescription": "Mohon untuk menyenaraikan lawatan, makanan, penginapan atau pengalaman tempatan. Kelulusan pentadbir diperlukan sebelum kandungan dipaparkan kepada pelancong.",
       "openVendorDashboard": "Buka papan pemuka vendor",
-      "vendorStepApply": "1. Mohon",
-      "vendorStepApplyHint": "Beritahu kami tentang perniagaan anda.",
-      "vendorStepReview": "2. Semakan pentadbir",
-      "vendorStepReviewHint": "Kami akan mengesahkan permohonan.",
-      "vendorStepLive": "3. Mula beroperasi",
-      "vendorStepLiveHint": "Sediakan cawangan dan penyenaraian selepas diluluskan.",
       "vendorStatus": {
         "pending": "Permohonan anda sedang menunggu semakan pentadbir.",
         "approved": "Akaun vendor anda telah diluluskan.",
@@ -1005,6 +1000,7 @@
         "failed": "Tidak dapat menterjemah",
         "privacyBlocked": "Mesej ini tidak dihantar kepada AI kerana mungkin mengandungi maklumat peribadi. Buang nombor telefon, e-mel, ID, butiran bank atau alamat peribadi, kemudian cuba lagi. Anda juga boleh membaca mesej asal tanpa terjemahan."
       },
+      "moreActions": "Pilihan sembang lain",
       "attachOrder": "Lampirkan pesanan",
       "underReview": "Dilaporkan — pasukan kami sedang menyemak perbualan ini."
     },
@@ -1014,7 +1010,7 @@
       "actions": "Tindakan kalendar",
       "filters": "Penapis",
       "searchBookings": "Cari tempahan",
-      "searchActivity": "Cari aktiviti, cawangan atau ID pesanan",
+      "searchActivity": "Cari aktiviti, cawangan, rujukan tempahan atau ID pesanan",
       "bookingScope": "Skop tempahan",
       "bookingOutlet": "Cawangan tempahan",
       "bookingActivity": "Aktiviti tempahan",
@@ -1029,6 +1025,7 @@
       "selectMonth": "Pilih {{month}}",
       "itineraryItems": "{{count}} item jadual perjalanan",
       "inMonth": "{{monthCount}} item jadual perjalanan bulan ini · {{totalCount}} padanan keseluruhan",
+      "otherBookings": "Tempahan lain",
       "showItinerary": "Tunjukkan butiran jadual perjalanan {{activity}}",
       "showMore": "Tunjukkan {{count}} item jadual perjalanan lagi untuk {{date}}",
       "more": "+{{count}} lagi",
@@ -1073,7 +1070,6 @@
         "all": "Gambaran keseluruhan tempahan"
       },
       "scopeDescriptions": {
-        "upcoming": "Lihat pengalaman yang telah anda rancang.",
         "past": "Semak pengalaman yang telah anda selesaikan atau terlepas.",
         "all": "Lihat pengalaman lalu dan akan datang bersama-sama."
       }
@@ -1501,7 +1497,6 @@
       "submitted": "Cadangan vendor dihantar untuk semakan.",
       "community": "Komuniti",
       "title": "Cadangkan vendor",
-      "description": "Vendor disiarkan selepas kelulusan pentadbir. Komisen mungkin diberikan jika mereka menyertai melalui cadangan anda.",
       "recommend": "Cadangkan",
       "new": "Cadangan baharu",
       "vendorBusinessName": "Nama vendor / perniagaan",
@@ -2788,8 +2783,6 @@
       "eyebrow": "Baucar MYLawatan",
       "dealsTitle": "Teroka lebih dengan lebih jimat",
       "mineTitle": "Baucar anda",
-      "dealsDescription": "Tuntut tawaran rakan kongsi dan cawangan untuk pengalaman Malaysia anda yang seterusnya.",
-      "mineDescription": "Semak baucar yang telah dituntut dan gunakannya apabila anda bersedia.",
       "viewsLabel": "Paparan baucar",
       "browseDeals": "Lihat tawaran",
       "myVouchers": "Baucar saya",

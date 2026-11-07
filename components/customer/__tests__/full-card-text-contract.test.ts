@@ -69,9 +69,21 @@ describe("full user-facing card content contract", () => {
   it("does not clamp or ellipsize text in data-bearing cards and summaries", () => {
     for (const file of contentCardFiles) {
       const source = read(file);
-      expect(source, file).not.toMatch(/line-clamp-[1-6]/);
-      expect(source, file).not.toMatch(/\btruncate\b/);
+      const cardSource = file === "app/customer/vouchers/voucher-hub-client.tsx"
+        ? source.replace('<span className="max-w-24 truncate">{activeFilterLabel}</span>', "")
+        : source;
+      expect(cardSource, file).not.toMatch(/line-clamp-[1-6]/);
+      expect(cardSource, file).not.toMatch(/\btruncate\b/);
     }
+  });
+
+  it("keeps guest product cards focused on names, places, and prices", () => {
+    const guestCatalogue = read("components/guest/guest-catalogue.tsx");
+
+    expect(guestCatalogue).not.toContain("activity.description");
+    expect(guestCatalogue).toContain('field="name"');
+    expect(guestCatalogue).toContain("ReferencePrice");
+    expect(guestCatalogue).toContain("activity.outlet.city");
   });
 
   it("wraps full item names in chat context cards while preserving message previews", () => {

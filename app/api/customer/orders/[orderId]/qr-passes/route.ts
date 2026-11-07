@@ -2,6 +2,7 @@ import { guestPrivateResponse } from '@/lib/checkout/guest-session';
 import { authorizeOrder } from '@/lib/checkout/order-access';
 import { apiFail } from "@/lib/validation/schemas";
 import { signTicketPassToken } from "@/lib/tickets/tokens";
+import { isTicketEligibleProduct } from "@/lib/tickets/product-ticket-policy";
 import { loadOrderPickupPasses, OrderPickupPassError } from "@/lib/checkout/order-pickup-passes";
 import { createServiceClient } from "@/lib/supabase/service";
 
@@ -33,19 +34,20 @@ export async function GET(request: Request, { params }: Props) {
 
   const { data: bookings, error: bookingError } = await db
     .from("bookings")
-    .select("id,order_items!inner(outlet_id,vendor_id,outlets(id,name,vendor_id,vendors(id,name))),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)")
+    .select("id,order_items!inner(outlet_id,vendor_id,products(requires_booking),outlets(id,name,vendor_id,vendors(id,name))),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)")
     .eq("order_items.order_id", orderId);
   if (bookingError) return apiFail("DB_ERROR", bookingError.message, 500);
 
   let missingTicketIdentity = false;
   const tickets = (bookings ?? []).flatMap((booking: {
     id: string;
-    order_items: { outlet_id: string; vendor_id: string; outlets: { id: string; name: string; vendor_id: string; vendors: { id: string; name: string } | { id: string; name: string }[] | null } | { id: string; name: string; vendor_id: string; vendors: { id: string; name: string } | { id: string; name: string }[] | null }[] | null } | { outlet_id: string; vendor_id: string; outlets: { id: string; name: string; vendor_id: string; vendors: { id: string; name: string } | { id: string; name: string }[] | null } | { id: string; name: string; vendor_id: string; vendors: { id: string; name: string } | { id: string; name: string }[] | null }[] | null }[] | null;
+    order_items: { outlet_id: string; vendor_id: string; products: { requires_booking: boolean | null } | { requires_booking: boolean | null }[] | null; outlets: { id: string; name: string; vendor_id: string; vendors: { id: string; name: string } | { id: string; name: string }[] | null } | { id: string; name: string; vendor_id: string; vendors: { id: string; name: string } | { id: string; name: string }[] | null }[] | null } | { outlet_id: string; vendor_id: string; products: { requires_booking: boolean | null } | { requires_booking: boolean | null }[] | null; outlets: { id: string; name: string; vendor_id: string; vendors: { id: string; name: string } | { id: string; name: string }[] | null } | { id: string; name: string; vendor_id: string; vendors: { id: string; name: string } | { id: string; name: string }[] | null }[] | null }[] | null;
     ticket_passes: TicketPassProjection | TicketPassProjection[] | null;
   }) => {
     const item = Array.isArray(booking.order_items) ? booking.order_items[0] : booking.order_items;
     const pass = Array.isArray(booking.ticket_passes) ? booking.ticket_passes[0] : booking.ticket_passes;
     if (!item?.outlet_id || !pass?.id) return [];
+    if (!isTicketEligibleProduct(item.products)) return [];
     const outlet = Array.isArray(item.outlets) ? item.outlets[0] : item.outlets;
     const vendor = Array.isArray(outlet?.vendors) ? outlet.vendors[0] : outlet?.vendors;
     if (!outlet?.name || !vendor?.name || outlet.id !== item.outlet_id || outlet.vendor_id !== item.vendor_id || vendor.id !== item.vendor_id) {

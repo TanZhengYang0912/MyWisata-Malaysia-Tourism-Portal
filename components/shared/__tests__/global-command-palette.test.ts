@@ -11,13 +11,14 @@ import {
 } from '@/components/shared/__tests__/render-test-dom';
 
 const routerPush = vi.hoisted(() => vi.fn());
+const setTheme = vi.hoisted(() => vi.fn());
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: routerPush }),
 }));
 
 vi.mock('next-themes', () => ({
-  useTheme: () => ({ theme: 'light', setTheme: vi.fn() }),
+  useTheme: () => ({ theme: 'light', setTheme }),
 }));
 
 vi.mock('react-i18next', () => ({
@@ -49,10 +50,20 @@ vi.mock('react-i18next', () => ({
       'navigation.Shop page': 'Shop page',
       'navigation.Inbox': 'Inbox',
       'navigation.Analytics': 'Analytics',
-      'ui.products.addProduct': 'Add Product',
-      'ui.bookings.addSlot': 'Add Booking Slot',
-      'ui.vouchers.createVoucher': 'Create Voucher',
-      'theme.dark': 'Dark mode',
+      'navigation.Announcements': 'Announcements',
+      'navigation.Promotions': 'Promote Event',
+      'navigation.Events': 'Events',
+      'navigation.Reservations': 'Reservations',
+      'navigationSections.communication': 'Communication',
+      'navigationSections.workspace': 'Workspace',
+      'navigationSections.operations': 'Operations',
+      'navigationSections.finance': 'Finance',
+      'navigationSections.insights': 'Insights',
+      'navigationSections.promotion': 'Promotion',
+      'ui.products.addProduct': '+ Add New Product',
+      'ui.bookings.addSlot': '+ Add Booking Slot',
+      'ui.vouchers.createVoucher': 'Create voucher',
+      'theme.dark': 'Dark Theme',
     } as Record<string, string>)[key]?.replace('{{name}}', options?.name ?? '') ?? key,
   }),
 }));
@@ -112,8 +123,9 @@ describe('GlobalCommandPalette contract', () => {
     expect(getCommandShortcutLabel('Linux x86_64')).toBe('Ctrl K');
   });
 
-  it('lists Vendor Owner sidebar destinations and opens supported create actions', async () => {
+  it('routes every Vendor Owner command to its matching page or action', async () => {
     routerPush.mockClear();
+    setTheme.mockClear();
     await render(React.createElement(GlobalCommandPalette, {
       scope: 'vendor',
       isOutletManager: false,
@@ -121,29 +133,49 @@ describe('GlobalCommandPalette contract', () => {
       onOpenChange: vi.fn(),
     }));
 
-    for (const title of ['Dashboard', 'Outlets', 'Profile', 'Products', 'Bookings', 'Redemptions', 'Vouchers', 'Orders', 'Wallet', 'Inbox', 'Analytics']) {
-      expect(container.textContent).toContain(title);
+    const destinations = [
+      ['Announcements', 'Communication', '/vendor/announcements'],
+      ['Inbox', 'Communication', '/vendor/inbox'],
+      ['Dashboard', 'Workspace', '/vendor/dashboard'],
+      ['Outlets', 'Workspace', '/vendor/outlets'],
+      ['Profile', 'Workspace', '/vendor/profile'],
+      ['Products', 'Operations', '/vendor/products'],
+      ['Bookings', 'Operations', '/vendor/bookings'],
+      ['Redemptions', 'Operations', '/vendor/redemptions'],
+      ['Vouchers', 'Operations', '/vendor/vouchers'],
+      ['Orders', 'Operations', '/vendor/orders'],
+      ['Wallet', 'Finance', '/vendor/wallet'],
+      ['Analytics', 'Insights', '/vendor/analytics'],
+      ['Promote Event', 'Promotion', '/vendor/event-promotions'],
+      ['Events', 'Promotion', '/vendor/events'],
+      ['Reservations', 'Promotion', '/vendor/event-orders'],
+      ['+ Add Booking Slot', 'Quick Actions', '/vendor/bookings?create=1'],
+      ['Create voucher', 'Quick Actions', '/vendor/vouchers?create=1'],
+    ];
+    expect(findElements(container, (element) => element.tagName === 'BUTTON')).toHaveLength(destinations.length + 1);
+    for (const [title, category] of destinations) {
+      const option = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes(title));
+      expect(option.textContent).toContain(category);
+      await act(async () => {
+        option.dispatchEvent(new TestEvent('click', { bubbles: true }));
+        await Promise.resolve();
+      });
     }
+    expect(routerPush.mock.calls.map(([href]) => href)).toEqual(destinations.map(([, , href]) => href));
     expect(container.textContent).not.toContain('Scanner');
     expect(container.textContent).not.toContain('Shop page');
-    expect(container.textContent).not.toContain('Add Product');
+    expect(container.textContent).not.toContain('Add New Product');
 
-    const addSlot = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes('Add Booking Slot'));
+    const themeOption = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes('Dark Theme'));
     await act(async () => {
-      addSlot.dispatchEvent(new TestEvent('click', { bubbles: true }));
+      themeOption.dispatchEvent(new TestEvent('click', { bubbles: true }));
       await Promise.resolve();
     });
-    expect(routerPush).toHaveBeenCalledWith('/vendor/bookings?create=1');
-
-    const createVoucher = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes('Create Voucher'));
-    await act(async () => {
-      createVoucher.dispatchEvent(new TestEvent('click', { bubbles: true }));
-      await Promise.resolve();
-    });
-    expect(routerPush).toHaveBeenCalledWith('/vendor/vouchers?create=1');
+    expect(themeOption.textContent).toContain('Preferences');
+    expect(setTheme).toHaveBeenCalledWith('dark');
   });
 
-  it('lists Outlet Manager sidebar destinations and only its allowed create actions', async () => {
+  it('routes every Outlet Manager command to its matching page or action', async () => {
     routerPush.mockClear();
     await render(React.createElement(GlobalCommandPalette, {
       scope: 'vendor',
@@ -152,26 +184,68 @@ describe('GlobalCommandPalette contract', () => {
       onOpenChange: vi.fn(),
     }));
 
-    for (const title of ['Operations', 'Shop page', 'Products', 'Bookings', 'Scanner', 'Vouchers', 'Orders', 'Inbox', 'Analytics', 'Add Product']) {
-      expect(container.textContent).toContain(title);
+    const destinations = [
+      ['Announcements', 'Communication', '/vendor/announcements'],
+      ['Inbox', 'Communication', '/vendor/inbox'],
+      ['Operations', 'Workspace', '/vendor/dashboard'],
+      ['Shop page', 'Workspace', '/vendor/outlets?mode=shop'],
+      ['Products', 'Operations', '/vendor/products'],
+      ['Bookings', 'Operations', '/vendor/bookings'],
+      ['Scanner', 'Operations', '/vendor/scanner'],
+      ['Vouchers', 'Operations', '/vendor/vouchers'],
+      ['Orders', 'Operations', '/vendor/orders'],
+      ['Analytics', 'Insights', '/vendor/analytics'],
+      ['+ Add New Product', 'Quick Actions', '/vendor/products?create=1'],
+      ['+ Add Booking Slot', 'Quick Actions', '/vendor/bookings?create=1'],
+      ['Create voucher', 'Quick Actions', '/vendor/vouchers?create=1'],
+    ];
+    expect(findElements(container, (element) => element.tagName === 'BUTTON')).toHaveLength(destinations.length + 1);
+    for (const [title, category] of destinations) {
+      const option = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes(title));
+      expect(option.textContent).toContain(category);
+      await act(async () => {
+        option.dispatchEvent(new TestEvent('click', { bubbles: true }));
+        await Promise.resolve();
+      });
     }
+    expect(routerPush.mock.calls.map(([href]) => href)).toEqual(destinations.map(([, , href]) => href));
     expect(container.textContent).not.toContain('Outlets');
     expect(container.textContent).not.toContain('Wallet');
     expect(container.textContent).not.toContain('Profile');
+  });
 
-    const shopPage = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes('Shop page'));
-    await act(async () => {
-      shopPage.dispatchEvent(new TestEvent('click', { bubbles: true }));
-      await Promise.resolve();
-    });
-    expect(routerPush).toHaveBeenCalledWith('/vendor/outlets?mode=shop');
+  it('shows only event vendor destinations and no shop creation shortcuts', async () => {
+    routerPush.mockClear();
+    await render(React.createElement(GlobalCommandPalette, {
+      scope: 'vendor',
+      isEventVendor: true,
+      triggerOpen: true,
+      onOpenChange: vi.fn(),
+    }));
 
-    const addProduct = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes('Add Product'));
-    await act(async () => {
-      addProduct.dispatchEvent(new TestEvent('click', { bubbles: true }));
-      await Promise.resolve();
-    });
-    expect(routerPush).toHaveBeenCalledWith('/vendor/products?create=1');
+    const destinations = [
+      ['Announcements', 'Communication', '/vendor/announcements'],
+      ['Events', 'Workspace', '/vendor/events'],
+      ['Reservations', 'Operations', '/vendor/event-orders'],
+      ['Scanner', 'Operations', '/vendor/scanner'],
+      ['Wallet', 'Finance', '/vendor/wallet'],
+    ];
+    expect(findElements(container, (element) => element.tagName === 'BUTTON')).toHaveLength(destinations.length + 1);
+    for (const [title, category] of destinations) {
+      const option = findOne(container, (element) => element.tagName === 'BUTTON' && element.textContent.includes(title));
+      expect(option.textContent).toContain(category);
+      await act(async () => {
+        option.dispatchEvent(new TestEvent('click', { bubbles: true }));
+        await Promise.resolve();
+      });
+    }
+    expect(routerPush.mock.calls.map(([href]) => href)).toEqual(destinations.map(([, , href]) => href));
+    expect(container.textContent).not.toContain('Inbox');
+    expect(container.textContent).not.toContain('Products');
+    expect(container.textContent).not.toContain('Bookings');
+    expect(container.textContent).not.toContain('Vouchers');
+    expect(container.textContent).not.toContain('Add New Product');
+    expect(container.textContent).not.toContain('Create voucher');
   });
 
   it('adds Admin queue shortcuts only for authorized visible queues with pending items', async () => {

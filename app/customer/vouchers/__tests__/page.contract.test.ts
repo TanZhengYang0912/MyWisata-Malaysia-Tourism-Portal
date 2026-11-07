@@ -15,13 +15,10 @@ describe("customer voucher hub UI contract", () => {
     expect(source).toContain('tCustomer("ui.voucherHub.useNow")');
   });
 
-  it("explains online checkout redemption and uses the customer voucher API", () => {
+  it("uses voucher redemption mode and the customer voucher API", () => {
     const source = read("app/customer/vouchers/voucher-hub-client.tsx");
     expect(source).toContain("redemptionMode");
-    expect(source).toContain("CircleHelp");
-    expect(source).toContain('tCustomer("ui.voucherHub.helpTitle")');
-    expect(source).toContain('tCustomer("ui.voucherHub.helpStep1")');
-    expect(source).toContain("group-hover:block");
+    expect(source).toContain("redemptionLabel");
     expect(source).toContain("/api/customer/vouchers");
     expect(source).toContain("/api/customer/vouchers/claim");
     expect(source).toContain("buildVoucherUseHref");
@@ -88,16 +85,22 @@ describe("customer voucher hub UI contract", () => {
     expect(layout).toContain("/customer/vouchers");
   });
 
-  it("places the voucher view switch on the right like Explore", () => {
+  it("places the voucher view switch in the shared customer header actions", () => {
     const source = read("app/customer/vouchers/voucher-hub-client.tsx");
-    expect(source).toContain("flex shrink-0 flex-col items-end gap-3 lg:pt-1");
-    expect(source).toContain("inline-flex rounded-2xl border border-border bg-card p-2 shadow-sm");
+    expect(source).toContain("<CustomerPageHeader");
+    expect(source).toContain("actions={");
+    expect(source).toContain('role="tablist" aria-label={tCustomer("ui.voucherHub.viewsLabel")}');
   });
 
-  it("keeps the exclusive deals intro and voucher view switch in one desktop row", () => {
+  it("keeps the claimed-voucher header concise", () => {
     const source = read("app/customer/vouchers/voucher-hub-client.tsx");
-    expect(source).toContain("flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between");
-    expect(source).toContain('role="tablist" aria-label={tCustomer("ui.voucherHub.viewsLabel")}');
+    expect(source).not.toContain("mineDescription");
+  });
+
+  it("uses the shared customer search field in the voucher toolbar", () => {
+    const source = read("app/customer/vouchers/voucher-hub-client.tsx");
+    expect(source).toContain("DiscoverySearchField");
+    expect(source).toContain('ariaLabel={tCustomer("ui.voucherHub.searchLabel")}');
   });
 
   it("keeps My Vouchers in the account menu instead of a standalone header link", () => {

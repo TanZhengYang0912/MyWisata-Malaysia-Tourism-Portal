@@ -1,5 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { act } from 'react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { findElements, installTestDom, TestEvent } from '@/components/shared/__tests__/render-test-dom';
 const mfa = vi.hoisted(() => ({ listFactors: vi.fn(), unenroll: vi.fn(), enroll: vi.fn() }));
@@ -90,6 +92,13 @@ describe('KYC MFA entry', () => {
     expect(html).toContain('kyc.mfa.start');
     expect(html).not.toContain('data:image');
     expect(html).not.toContain('otpauth');
+  });
+  it('preserves the staff MFA destination and its authenticated return route', () => {
+    const routeSource = readFileSync(resolve(process.cwd(), 'app/auth/staff-mfa/page.tsx'), 'utf8');
+    expect(routeSource).toContain("requireStaffMfaSetup()");
+    expect(routeSource).toContain("safeStaffVerificationNext(params.next)");
+    expect(routeSource).toContain('scope="staff"');
+    expect(routeSource).toContain("redirect('/login')");
   });
   it('renders an explicit user-initiated setup action without pre-generating a secret', () => {
     const html = renderToStaticMarkup(<KycMfa next="/admin/kyc" />);

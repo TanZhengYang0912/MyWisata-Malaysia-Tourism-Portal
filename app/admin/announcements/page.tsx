@@ -96,7 +96,6 @@ export default function AnnouncementsPage() {
       <AdminPageHeader
         eyebrow={<><Megaphone size={15} /> {t("announcements.eyebrow")}</>}
         title={t("announcements.title")}
-        description={t("announcements.description")}
       />
       {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
 

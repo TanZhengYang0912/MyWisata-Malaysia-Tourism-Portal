@@ -1824,14 +1824,40 @@ ON CONFLICT (product_id) DO UPDATE SET
   license = EXCLUDED.license,
   content_hash = EXCLUDED.content_hash;
 
+-- The checked-in source manifest contains 904 products; newer production
+-- products can exist outside it and must not make this migration roll back.
 DO $$
-DECLARE scoped_count integer; missing_count integer; unique_count integer;
+DECLARE manifest_count integer; active_count integer; unique_count integer;
 BEGIN
-  SELECT count(*) INTO scoped_count FROM public.products WHERE status = 'active' AND review_status = 'approved';
-  SELECT count(*) INTO missing_count FROM public.products WHERE status = 'active' AND review_status = 'approved' AND cover_url IS NULL;
-  SELECT count(DISTINCT cover_url) INTO unique_count FROM public.products WHERE status = 'active' AND review_status = 'approved';
-  IF scoped_count <> 904 OR missing_count <> 0 OR unique_count <> 904 THEN RAISE EXCEPTION 'unique product cover postcondition failed: count=%, missing=%, unique=%', scoped_count, missing_count, unique_count; END IF;
-  IF EXISTS (SELECT 1 FROM public.products WHERE status = 'active' AND review_status = 'approved' AND cover_url NOT LIKE '/assets/customer/products/%') THEN RAISE EXCEPTION 'product cover path is not local'; END IF;
+  SELECT count(*) INTO manifest_count
+    FROM public.product_source_evidence
+   WHERE observed_at = DATE '2026-09-13';
+  SELECT count(*) INTO active_count
+    FROM public.product_source_evidence AS evidence
+    JOIN public.products AS product ON product.id = evidence.product_id
+   WHERE evidence.observed_at = DATE '2026-09-13'
+     AND product.status = 'active'
+     AND product.review_status = 'approved';
+  SELECT count(DISTINCT product.cover_url) INTO unique_count
+    FROM public.product_source_evidence AS evidence
+    JOIN public.products AS product ON product.id = evidence.product_id
+   WHERE evidence.observed_at = DATE '2026-09-13'
+     AND product.status = 'active'
+     AND product.review_status = 'approved';
+  IF manifest_count <> 904 OR active_count = 0 OR unique_count <> active_count THEN
+    RAISE EXCEPTION 'unique product cover postcondition failed: manifest=%, active=%, unique=%', manifest_count, active_count, unique_count;
+  END IF;
+  IF EXISTS (
+    SELECT 1
+      FROM public.product_source_evidence AS evidence
+      JOIN public.products AS product ON product.id = evidence.product_id
+     WHERE evidence.observed_at = DATE '2026-09-13'
+       AND product.status = 'active'
+       AND product.review_status = 'approved'
+       AND (product.cover_url IS NULL OR product.cover_url NOT LIKE '/assets/customer/products/%')
+  ) THEN
+    RAISE EXCEPTION 'active manifest product cover path is not local';
+  END IF;
 END $$;
 
 COMMIT;

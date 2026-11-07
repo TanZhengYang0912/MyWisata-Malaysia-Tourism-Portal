@@ -90,7 +90,8 @@ export function VoucherRedeemDialog({
       subtitle={voucher.outletName ? undefined : tCustomer("ui.voucherHub.showAtOutlet")}
       closeLabel={tCustomer("ui.voucherHub.barcodeModal.close")}
       onClose={() => onOpenChange(false)}
-      className="rounded-3xl"
+      className="max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:max-h-[92dvh] max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:px-4 max-sm:pt-4 max-sm:pb-[calc(1rem+env(safe-area-inset-bottom))] sm:rounded-3xl"
+      overlayClassName="z-[60] max-sm:items-end max-sm:p-0"
     >
       {voucher.outletName && (
         <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-foreground">
@@ -119,7 +120,7 @@ export function VoucherRedeemDialog({
                 <button
                   type="button"
                   onClick={() => setCodeType("qr")}
-                  className={`rounded-lg px-4 py-1.5 transition ${
+                  className={`max-sm:min-h-11 rounded-lg px-4 transition ${
                     codeType === "qr" ? "bg-white dark:bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -128,7 +129,7 @@ export function VoucherRedeemDialog({
                 <button
                   type="button"
                   onClick={() => setCodeType("barcode")}
-                  className={`rounded-lg px-4 py-1.5 transition ${
+                  className={`max-sm:min-h-11 rounded-lg px-4 transition ${
                     codeType === "barcode" ? "bg-white dark:bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -164,7 +165,7 @@ export function VoucherRedeemDialog({
               <button
                 type="button"
                 onClick={copyStoreToken}
-                className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-bold text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="inline-flex max-sm:min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-bold text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 aria-live="polite"
               >
                 {storeTokenCopied ? (
@@ -200,7 +201,7 @@ export function VoucherRedeemDialog({
           <button
             type="button"
             onClick={copyCode}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-border bg-secondary/80 px-3 py-2 text-xs font-bold text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="inline-flex max-sm:min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-secondary/80 px-3 py-2 text-xs font-bold text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
             {copied ? (
               <>

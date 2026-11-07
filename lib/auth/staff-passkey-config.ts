@@ -19,7 +19,10 @@ export function staffPasskeyEnforcementEnabled(env: Record<string, string | unde
 }
 
 export function staffPasskeyConfig(env: Record<string, string | undefined> = process.env): StaffPasskeyConfig {
-  const configured = env.STAFF_PASSKEY_ORIGIN ?? env.NEXT_PUBLIC_SITE_URL;
+  const configured = env.STAFF_PASSKEY_ORIGIN
+    ?? (env.NODE_ENV === 'development'
+      ? env.NEXT_PUBLIC_APP_URL ?? env.NEXT_PUBLIC_SITE_URL
+      : env.NEXT_PUBLIC_SITE_URL ?? env.NEXT_PUBLIC_APP_URL);
   if (!configured) throw new Error('Staff Passkey origin is not configured');
   const url = new URL(configured);
   const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1';

@@ -36,7 +36,6 @@ export default function AdminHelpPage() {
       <AdminPageHeader
         eyebrow={<><LifeBuoy size={12} aria-hidden="true" /> {t("staffHelp.eyebrow")}</>}
         title={t("staffHelp.title")}
-        description={t("staffHelp.description")}
       />
 
       <div className="space-y-2">

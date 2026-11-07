@@ -5,7 +5,7 @@ import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Trans, useTranslation } from "react-i18next";
 import Link from "next/link";
-import { Eye, EyeOff, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { validatePassword } from "@/lib/auth/password-policy";
@@ -13,11 +13,12 @@ import { postLoginPath } from "@/lib/auth/guest-mode";
 import { demoAccountRoleCategories, filterDemoAccountsByRole } from "@/lib/auth/demo-account-filter";
 import { postLoginDestination } from "@/lib/auth/post-login-destination";
 import { getDemoSignInErrorMessage } from "@/lib/auth/demo-signin-error";
+import { BRAND_DOMAIN, BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
-import { MyLawatanLogo } from "@/components/shared/mylawatan-logo";
+import { MyLawatanLogo, MyLawatanMark } from "@/components/shared/mylawatan-logo";
 import { CustomerSiteFooter } from "@/components/customer/customer-site-footer";
 import { HumanVerification, useHumanVerification } from "@/components/shared/human-verification";
 import type { Role, User } from "@/backend/core/types";
@@ -38,6 +39,7 @@ function LoginContent() {
   const { switchUser } = useAuth();
   const { t: tAuth, i18n } = useTranslation("auth");
   const { t: tCommon } = useTranslation("common");
+  const { t: tCustomer } = useTranslation("customer");
   const GENERIC_ERROR = tAuth("errors.generic");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -61,9 +63,7 @@ function LoginContent() {
   const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
   const [resendReady, setResendReady] = useState(true);
-  const human = useHumanVerification(
-    mode === "verify" ? "signup_resend" : mode === "forgot" || mode === "recover" ? "password_reset" : mode,
-  );
+  const human = useHumanVerification("login", { manualRefreshAfterUse: true });
 
   function startResendCooldown() {
     setResendReady(false);
@@ -78,12 +78,13 @@ function LoginContent() {
     } else if (queryError) {
       setError(GENERIC_ERROR);
     }
-    if (process.env.NODE_ENV === "production") return;
+  }, [GENERIC_ERROR]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production" || !human.hasVerifiedOnce) return;
 
     const controller = new AbortController();
     const generation = ++demoRequestGeneration.current;
-    setDemoLoadState("loading");
-    setUsers([]);
     fetch("/api/auth/demo-users", { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error("Demo account lookup failed");
@@ -102,11 +103,17 @@ function LoginContent() {
         setDemoLoadState("error");
       });
     return () => controller.abort();
-  }, [GENERIC_ERROR, demoRetryKey]);
+  }, [GENERIC_ERROR, demoRetryKey, human.hasVerifiedOnce]);
 
   function resetFeedback() {
     setError(null);
     setMessage(null);
+  }
+
+  function retryDemoLoad() {
+    setDemoLoadState("loading");
+    setUsers([]);
+    setDemoRetryKey((key) => key + 1);
   }
 
   function requestedNext() {
@@ -339,24 +346,70 @@ function LoginContent() {
   const visibleUsers = filterDemoAccountsByRole(users, roleFilter);
 
   return (
-    <div className="min-h-screen w-full bg-background text-foreground flex flex-col justify-between pt-4 sm:pt-6 pb-8 px-4 sm:px-6 relative overflow-x-hidden">
-      {/* Subtle, soft ambient background glow matching system secondary palette */}
-      <div
+    <div
+      data-security-verification-page={!human.hasVerifiedOnce ? "true" : undefined}
+      className={human.hasVerifiedOnce
+        ? "min-h-screen w-full bg-background text-foreground flex flex-col justify-between pt-4 sm:pt-6 pb-8 px-4 sm:px-6 relative overflow-x-hidden"
+        : "min-h-dvh w-full bg-background text-foreground flex flex-col px-6 sm:px-8"}
+    >
+      {human.hasVerifiedOnce && <div
         className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-gradient-to-b from-secondary/80 via-background/40 to-transparent -z-10"
         aria-hidden="true"
-      />
+      />}
 
-      {/* Main Authentication Card - Shifted higher up */}
-      <main className="w-full max-w-[490px] mx-auto mt-2 sm:mt-4 mb-auto py-2 sm:py-4">
-        {/* Brand Logo with Language Switcher to the right, aligned with the card border below */}
-        <header className="relative mb-5 sm:mb-6 flex items-center justify-center min-h-[60px]">
-          <MyLawatanLogo markSize={60} priority />
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-28 sm:w-32">
-            <LanguageSwitcher compact />
-          </div>
+      <main className={human.hasVerifiedOnce
+        ? "w-full max-w-[490px] mx-auto mt-2 sm:mt-4 mb-auto py-2 sm:py-4"
+        : "w-full max-w-7xl mx-auto flex-1 pt-8 sm:pt-10 pb-10"}
+      >
+        <header className={human.hasVerifiedOnce
+          ? "relative mb-5 sm:mb-6 flex items-center justify-center min-h-[60px]"
+          : "mb-6 sm:mb-12 flex min-h-[44px] items-center gap-3 sm:gap-4"}
+        >
+          {human.hasVerifiedOnce ? <>
+            <MyLawatanLogo markSize={60} priority />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-28 sm:w-32">
+              <LanguageSwitcher compact />
+            </div>
+          </> : <>
+            <MyLawatanMark size={40} title={BRAND_NAME} />
+            <span className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{BRAND_DOMAIN}</span>
+          </>}
         </header>
 
-        <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+        <section className={human.hasVerifiedOnce ? "mb-4" : "max-w-4xl"}>
+          <div className="max-w-4xl" hidden={human.hasVerifiedOnce}>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              {tAuth("humanVerification.checking")}
+            </h1>
+            <p className="mt-3 max-w-4xl text-base leading-7 text-foreground/90 sm:text-xl sm:leading-9">
+              {tAuth("humanVerification.entryDescription")}
+            </p>
+            <div
+              className="mt-7 inline-flex min-h-10 items-center text-foreground"
+              role="status"
+              aria-label={tAuth("humanVerification.checking")}
+            >
+              <Loader2 size={34} strokeWidth={2.5} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            </div>
+          </div>
+          <div
+            hidden={mode === "recover" || (human.hasVerifiedOnce && !human.needsRefresh && !human.isRechecking)}
+            className={human.hasVerifiedOnce ? "mt-2" : "mt-4"}
+          >
+            <HumanVerification
+              action={human.action}
+              resetKey={human.resetKey}
+              onToken={human.onToken}
+              manualRefreshAfterUse={human.manualRefreshAfterUse}
+              needsRefresh={human.needsRefresh}
+              reset={human.reset}
+              showDescription={false}
+              appearance="interaction-only"
+            />
+          </div>
+        </section>
+
+        {human.hasVerifiedOnce && <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
           <CardContent className="p-7 sm:p-9">
             {/* Header / Title */}
             <div className="text-center mb-6 sm:mb-7">
@@ -380,8 +433,6 @@ function LoginContent() {
                 {message}
               </div>
             )}
-
-            {mode !== "recover" && <div className="mb-4"><HumanVerification {...human} /></div>}
 
             {/* Mode: Verify Email */}
             {mode === "recover" ? (
@@ -738,11 +789,11 @@ function LoginContent() {
               </div>
             )}
           </CardContent>
-        </Card>
+        </Card>}
       </main>
 
       {/* Demo accounts are local development tools, not part of deployed login. */}
-      {process.env.NODE_ENV !== "production" && <aside className="w-full max-w-[490px] mx-auto mt-6 lg:mt-0 lg:fixed lg:right-6 xl:right-8 lg:top-16 xl:top-18 lg:w-[350px] xl:w-[370px] lg:z-20">
+      {human.hasVerifiedOnce && process.env.NODE_ENV !== "production" && <aside className="w-full max-w-[490px] mx-auto mt-6 lg:mt-0 lg:fixed lg:right-6 xl:right-8 lg:top-16 xl:top-18 lg:w-[350px] xl:w-[370px] lg:z-20">
         <div className="rounded-2xl border border-border bg-card/95 p-4 shadow-sm backdrop-blur-md">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -793,7 +844,7 @@ function LoginContent() {
             {demoLoadState === "error" && (
               <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
                 <p>{tAuth("errors.demoLoad")}</p>
-                <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => setDemoRetryKey((key) => key + 1)}>
+                <Button type="button" variant="outline" size="sm" className="mt-2" onClick={retryDemoLoad}>
                   {tAuth("demo.retry")}
                 </Button>
               </div>
@@ -829,8 +880,17 @@ function LoginContent() {
         </div>
       </aside>}
 
-      {/* Clean Minimal Footer */}
-      <CustomerSiteFooter variant="slim" />
+      {human.hasVerifiedOnce ? <CustomerSiteFooter variant="slim" /> : (
+        <footer className="w-full border-t border-border px-6 py-5 text-center text-sm text-muted-foreground sm:px-8">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-3 gap-y-1">
+            <span>{tAuth("humanVerification.protectedBy")}</span>
+            <span aria-hidden="true">·</span>
+            <Link href="/legal/privacy" className="text-primary underline underline-offset-4 hover:text-primary/80">
+              {tCustomer("legal.nav.privacy")}
+            </Link>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }

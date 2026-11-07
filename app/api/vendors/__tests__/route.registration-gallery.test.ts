@@ -12,9 +12,10 @@ import { POST } from '../route';
 
 const pngBytes = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
-function galleryForm(count: number) {
+function galleryForm(count: number, vendorKind?: string) {
   const form = new FormData();
   form.set('name', 'Gallery Test Vendor');
+  if (vendorKind) form.set('vendorKind', vendorKind);
   for (let index = 0; index < count; index += 1) {
     form.append('galleryFiles', new Blob([pngBytes], { type: 'image/png' }), `gallery-${index + 1}.png`);
   }
@@ -26,10 +27,12 @@ describe('POST /api/vendors registration gallery', () => {
   let upload: ReturnType<typeof vi.fn>;
   let remove: ReturnType<typeof vi.fn>;
   let rpcArgs: Record<string, unknown> | undefined;
+  let phoneVerifiedAt: string | null;
 
   beforeEach(() => {
     vi.clearAllMocks();
     rpcArgs = undefined;
+    phoneVerifiedAt = '2026-11-01T00:00:00.000Z';
     rpc = vi.fn().mockImplementation((_name: string, args: Record<string, unknown>) => {
       rpcArgs = args;
       return Promise.resolve({ data: { vendor_id: 'vendor-1', slug: 'gallery-test-vendor' }, error: null });
@@ -44,13 +47,38 @@ describe('POST /api/vendors registration gallery', () => {
     mocks.createClient.mockResolvedValue({
       auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1', email: 'owner@example.com' } } }) },
       rpc,
-      from: vi.fn(() => ({
+      from: vi.fn((table: string) => ({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: { id: 'vendor-1', name: 'Gallery Test Vendor' }, error: null }),
+        single: vi.fn().mockResolvedValue(table === 'users'
+          ? { data: { phone_verified_at: phoneVerifiedAt }, error: null }
+          : { data: { id: 'vendor-1', name: 'Gallery Test Vendor' }, error: null }),
       })),
     });
     mocks.createServiceClient.mockReturnValue({ storage: { from: vi.fn(() => bucket) } });
+  });
+
+  it('uses the event-only registration RPC for an event vendor application', async () => {
+    const response = await POST(galleryForm(3, 'event'));
+
+    expect(response.status).toBe(201);
+    expect(rpc).toHaveBeenCalledWith('register_event_vendor_application', expect.objectContaining({
+      p_name: 'Gallery Test Vendor',
+      p_gallery: expect.any(Array),
+    }));
+    expect(rpc).not.toHaveBeenCalledWith('register_vendor_with_outlet', expect.any(Object));
+  });
+
+  it('requires a verified account phone before uploading event application images', async () => {
+    phoneVerifiedAt = null;
+
+    const response = await POST(galleryForm(3, 'event'));
+    const payload = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(payload.error.code).toBe('PHONE_VERIFICATION_REQUIRED');
+    expect(upload).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it('uploads exactly three photos and passes their URLs into the atomic registration RPC', async () => {

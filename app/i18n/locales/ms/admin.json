@@ -10,6 +10,12 @@
       "approver": "Kelulusan dompet",
       "admin": "Ruang kerja pentadbir",
       "staff": "Tugasan yang diberikan"
+    },
+    "mobileActions": {
+      "open": "Buka tetapan akaun dan paparan",
+      "title": "Akaun dan tetapan",
+      "account": "Akaun",
+      "security": "Keselamatan dan peranti"
     }
   },
   "roles": {
@@ -57,7 +63,6 @@
   "sponsoredPlacements": {
     "eyebrow": "Kempen penemuan",
     "title": "Iklan ditaja",
-    "description": "Cipta, semak dan jeda penempatan penemuan ditaja yang dilabel dengan jelas.",
     "accessibility": {
       "lifecycleFilters": "Penapis kitar hayat kempen"
     },
@@ -326,12 +331,10 @@
       "lockedGroup": "Modul tergabung: {{group}}",
       "reviewSave": "Semak perubahan peranan",
       "rolesTitle": "Peranan kebenaran tersedia",
-      "rolesHelp": "Semak dengan tepat perkara yang diberikan oleh setiap peranan, kemudian pilih satu untuk kakitangan.",
       "permissionCount": "{{count}} kebenaran",
       "permissionCount_one": "{{count}} kebenaran",
       "permissionCount_other": "{{count}} kebenaran",
       "assignmentTitle": "Kakitangan sedia ada & kebenaran",
-      "assignmentHelp": "Cari kakitangan yang telah menyertai, kemudian tambah Peranan Kakitangan tersuai dengan sebab yang diaudit.",
       "role": "Peranan",
       "selectRole": "Pilih peranan aktif",
       "userId": "UUID pengguna kakitangan",
@@ -476,7 +479,6 @@
       "versions": "Senarai versi",
       "actions": "Tindakan",
       "versionHistory": "Sejarah versi",
-      "compareHint": "Pilih dua versi untuk dibandingkan",
       "comparison": "Perbandingan versi",
       "createTitle": "Cipta versi polisi bertadbir",
       "effect": "Kesan",
@@ -693,7 +695,6 @@
     },
     "staffEmployees": {
       "title": "Pekerja dan akses",
-      "help": "Semak kebenaran semasa setiap pekerja dan tarik balik penetapan peranan individu.",
       "loadError": "Tidak dapat mengesahkan akses pekerja. Muat semula dan cuba lagi.",
       "revokeError": "Tidak dapat menarik balik penetapan ini. Muat semula akses sebelum mencuba lagi.",
       "revoked": "Penetapan telah ditarik balik. Kelulusan terdahulu dan rekod audit dikekalkan.",
@@ -785,6 +786,7 @@
     },
     "allAttributions": "Semua atribusi",
     "allTime": "Sepanjang masa",
+    "mobileStatusLine": "{{label}}: {{status}}",
     "pagination": {
       "previous": "Halaman sebelumnya",
       "next": "Halaman seterusnya",
@@ -1172,7 +1174,6 @@
     },
     "notEmbedded": "tidak dibenamkan (kata kunci sahaja)",
     "notHelpful": {
-      "description": "Dokumen KB dipadankan, tetapi pelanggan berkata ia tidak membantu — dokumen itu perlu ditambah baik, bukan dibuat baharu.",
       "empty": "Tiada tanda tidak suka lagi untuk soalan yang dijawab.",
       "title": "Dijawab, tetapi tidak membantu"
     },
@@ -1194,7 +1195,6 @@
     },
     "title": "Pemantauan chatbot",
     "topUnanswered": {
-      "description": "Tiada dokumen KB yang meliputi perkara ini.",
       "empty": "Tiada soalan belum dijawab lagi — KB meliputi semua soalan yang ditanya setakat ini.",
       "title": "Soalan paling banyak belum dijawab"
     },
@@ -1205,7 +1205,6 @@
     "questionMeta_other": "×{{count}} · kali terakhir ditanya {{date}}",
     "topEscalated": {
       "title": "Soalan paling kerap dieskalasi ke tiket",
-      "description": "Walau apa pun jawapan bot, pelanggan tetap meningkatkan soalan ini — perbaiki Pusat Bantuan untuk topik ini dahulu.",
       "empty": "Belum ada yang dieskalasikan kepada tiket lagi."
     }
   },
@@ -1350,7 +1349,6 @@
     "activityNote": "Denyutan ini berdasarkan permintaan pengeluaran yang dibuat dalam set data semasa. Gunakannya untuk melihat penumpukan barisan, bukan sebagai carta volum pembayaran.",
     "allSources": "Semua sumber yang memberi respons",
     "approvalSummary": "Ringkasan kelulusan",
-    "description": "Paparan sedia untuk keputusan tentang barisan, wang dan isyarat risiko yang memerlukan perhatian hari ini.",
     "errors": {
       "load": "Tidak dapat memuatkan gambaran keseluruhan kelulusan"
     },
@@ -1964,7 +1962,6 @@
       "tier": "Peringkat"
     },
     "confirmed": "Atribusi {{count}} disahkan.",
-    "description": "Pindahkan komisen afiliasi daripada penahanan sementara kepada pendapatan tersedia.",
     "errors": {
       "clearanceFailed": "Penyelesaian gagal",
       "unknown": "Ralat tidak diketahui"
@@ -2029,7 +2026,6 @@
       "assignedTo": "Ditugaskan kepada {{name}}",
       "loadError": "Tidak dapat memuatkan cadangan.",
       "noResults": "Tiada cadangan sepadan dengan penapis ini",
-      "queueDescription": "Buka satu cadangan untuk menyemak bukti lengkap dan membuat keputusan.",
       "queueItems": "cadangan",
       "queueTitle": "Baris gilir moderasi ({{count}})",
       "queueTitle_one": "Baris gilir moderasi ({{count}})",
@@ -2049,7 +2045,6 @@
         "processed_other": "{{count}} cadangan telah diproses."
       },
       "contributorLine": "Cadangan pelanggan · {{category}} · {{state}} · oleh {{author}}",
-      "description": "Semak cadangan komuniti sebelum menghubungi vendor.",
       "duplicate": "Pendua",
       "member": "Ahli MYLawatan",
       "noPending": "Tiada cadangan belum selesai",
@@ -2261,7 +2256,6 @@
       },
       "actionSuccess": "{{name}}: {{action}} berjaya diselesaikan.",
       "applications": {
-        "description": "Pilih vendor untuk melihat skop operasi dan sejarah semakannya.",
         "title": "Permohonan vendor"
       },
       "approvalEmail": {
@@ -2285,7 +2279,6 @@
         "approve": "Luluskan {{name}}?",
         "reactivate": "Aktifkan semula {{name}}?"
       },
-      "description": "Semak permohonan, pantau keadaan vendor dan ambil tindakan tanpa membuka setiap rekod.",
       "details": {
         "approvedOn": "Diluluskan pada",
         "businessType": "Jenis perniagaan",
@@ -2595,7 +2588,6 @@
       "eyebrow": "Vendor",
       "title": "Yuran platform",
       "back": "Kembali ke vendor",
-      "description": "Tetapkan caj platform kepada vendor bagi setiap item yang dijual, mengikut peringkat vendor, dan yuran tetap untuk item yang dijual di acara.",
       "loading": "Memuatkan yuran platform…",
       "retry": "Cuba lagi",
       "saved": "Yuran platform disimpan. Ia terpakai pada pesanan yang dibayar mulai sekarang.",
@@ -3198,7 +3190,6 @@
       "notSupplied": "Tidak dibekalkan",
       "overridden": "Diganti",
       "risk": "Risiko",
-      "reviewDescription": "Semak kesediaan, bukti kekal dan garis masa pembayaran lengkap sebelum mengambil satu tindakan terkawal.",
       "reviewTitle": "Butiran semakan pengeluaran",
       "retry": "Cuba lagi",
       "status": "Status",
@@ -3554,7 +3545,6 @@
   "orderOperations": {
     "eyebrow": "Operasi pesanan",
     "title": "Pesanan pelanggan",
-    "description": "Semak butiran pesanan, pembayaran dan pemenuhan outlet semasa daripada aliran pembayaran pelanggan.",
     "refresh": "Muat semula",
     "searchLabel": "ID pesanan",
     "searchPlaceholder": "ID pesanan atau nombor pesanan",
@@ -3662,12 +3652,10 @@
     "allLocationsCancelled": "Semua lokasi telah dibatalkan. Acara ini disembunyikan daripada penemuan.",
     "eyebrow": "Acara pelanggan",
     "title": "Acara",
-    "description": "Sediakan acara pesta vendor dan terbitkannya — vendor mendaftar gerai mereka sendiri apabila acara sudah diterbitkan.",
     "refresh": "Muat semula",
     "form": {
       "title": "Cipta acara",
       "editTitle": "Edit acara",
-      "guidance": "Ini ialah acara itu sendiri — vendor menyertai dengan mendaftar gerai mereka sendiri selepas diterbitkan.",
       "name": "Nama acara",
       "slug": "Alamat halaman",
       "summary": "Penerangan ringkas",
@@ -3877,7 +3865,6 @@
     "stallNotificationDescription": "Perubahan yang berjaya menghantar e-mel dan pemberitahuan aplikasi kepada pemilik vendor dengan nombor gerai lama dan baharu.",
     "eyebrow": "Governans",
     "title": "Pendaftaran Gerai",
-    "description": "Semak pendaftaran gerai vendor untuk acara pesta vendor sebelum ia disiarkan.",
     "loading": "Memuatkan…",
     "backToQueue": "Kembali ke barisan",
     "reviewHeading": "Keputusan semakan",
@@ -3956,7 +3943,6 @@
   "announcements": {
     "eyebrow": "Governans",
     "title": "Pengumuman",
-    "description": "Hantar pengumuman kepada vendor — jemputan acara atau apa-apa sahaja yang lain.",
     "loading": "Memuatkan…",
     "saved": "Pengumuman dihantar.",
     "errors": {
@@ -3983,7 +3969,6 @@
   "eventPromotions": {
     "eyebrow": "Governans",
     "title": "Iklan Acara Luar",
-    "description": "Semak promosi acara luaran yang dihantar vendor sebelum ia disiarkan.",
     "loading": "Memuatkan…",
     "backToQueue": "Kembali ke barisan",
     "reviewHeading": "Keputusan semakan",
@@ -4191,7 +4176,6 @@
   "staffHelp": {
     "eyebrow": "Bantuan staf",
     "title": "Bantuan admin",
-    "description": "Cara setiap bahagian panel admin berfungsi, siapa yang boleh menggunakannya, dan peraturan yang perlu diketahui sebelum bertindak.",
     "searchLabel": "Cari bantuan",
     "searchPlaceholder": "Cari bahagian, tindakan atau peraturan",
     "contentLanguage": "Butiran bahagian adalah dalam bahasa Inggeris.",

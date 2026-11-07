@@ -35,6 +35,7 @@ export interface User {
   staffPermissionKeys?: import("@/lib/staff-permissions/types").StaffPermissionKey[];
   staffModules?: import("@/lib/staff-permissions/types").StaffModule[];
   vendorId?: string; // set for vendor_owner
+  vendorName?: string;
   outletId?: string; // set for outlet_manager
 }
 

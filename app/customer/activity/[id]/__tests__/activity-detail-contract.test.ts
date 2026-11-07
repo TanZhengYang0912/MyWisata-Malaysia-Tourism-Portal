@@ -70,3 +70,14 @@ describe("vendor-to-outlet commerce boundary", () => {
     expect(source).toContain('t("ui.labels.operatingHours")');
   });
 });
+
+describe("related vendor section", () => {
+  it("uses one vendor heading and keeps the vendor link and related product cards", () => {
+    expect(source).not.toContain('t("ui.activity.moreFromVendorSubtitle"');
+    expect(source).not.toContain('<p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("ui.activity.moreFromVendor")}</p>');
+    expect(source).toContain('id="more-from-outlet-heading" className="text-xl font-black tracking-tight sm:text-2xl">{t("ui.activity.moreFromVendor")}</h2>');
+    expect(source).toContain('t("ui.actions.visitVendor")');
+    expect(source).toContain("relatedProducts.map((product) => (");
+    expect(source).toContain("<ActivityCard");
+  });
+});

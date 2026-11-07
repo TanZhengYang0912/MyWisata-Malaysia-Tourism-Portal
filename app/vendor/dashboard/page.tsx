@@ -18,6 +18,7 @@ import { VendorRevenueAssistantCard } from '@/components/vendor/revenue-assistan
 import { dashboardFilterLabel } from '@/lib/vendor/performance-ranking';
 import { getServerTranslation } from '@/lib/i18n/server';
 import { normalizeDashboardSalesMode } from '@/lib/vendor/dashboard-metrics';
+import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
 
 interface Props { searchParams?: Promise<{ filter?: string; from?: string; to?: string; sales?: string | string[] }> }
 
@@ -42,6 +43,7 @@ export default async function VendorDashboard({ searchParams }: Props) {
   const filter = normalizeFilter(params?.filter);
   const salesMode = normalizeDashboardSalesMode(params?.sales);
   const isDemoSales = salesMode === 'demo';
+  const isAllSales = salesMode === 'all';
   const scopeLabel = t(`ui.dashboard.salesMode.${salesMode}`);
   const data = await getVendorDashboardData(filter, { from: params?.from, to: params?.to }, salesMode);
   if (!data) redirect('/login');
@@ -62,25 +64,19 @@ export default async function VendorDashboard({ searchParams }: Props) {
   return (
     <div className="space-y-8">
       <DashboardRealtime vendorId={data.vendor.id} />
-      <header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary"><Landmark size={15} /> {t('ui.dashboard.partnerPortal')}</div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-foreground">{isOutletManager ? t('ui.dashboard.outletOperations') : t('ui.dashboard.overview')}</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{isOutletManager ? t('ui.dashboard.assignedOutletMoving') : t('strictMigration.dashboardTodayForVendor', { vendor: data.vendor.name })}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <DashboardFilterControl />
-          <div className="inline-flex items-center gap-2 rounded-xl border border-primary/10 bg-secondary px-4 py-2 text-sm font-semibold text-primary"><span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-nature-green/60 opacity-60" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" /></span>{isDemoSales ? scopeLabel : t('ui.dashboard.live')}</div>
-        </div>
-      </header>
+      <VendorPageHeader
+        eyebrow={<><Landmark size={15} aria-hidden="true" /> {t('ui.dashboard.partnerPortal')}</>}
+        title={isOutletManager ? t('ui.dashboard.outletOperations') : t('ui.dashboard.overview')}
+        actions={<DashboardFilterControl />}
+      />
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         {stats.map(({ label, value, note, icon: Icon, tone }) => (
-          <article key={label} className="relative overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-6 shadow-sm">
+          <article key={label} className="relative min-w-0 overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm sm:p-6">
             <div className="absolute -right-3 -top-3 opacity-[0.045]"><Icon size={104} /></div>
-            <div className="mb-5 flex items-center gap-3"><div className={`flex h-10 w-10 items-center justify-center rounded-full ${statTone(tone)}`}><Icon size={20} /></div><p className="font-medium text-gray-600 dark:text-muted-foreground">{label}</p></div>
-            <p className="text-3xl font-bold tracking-tight text-gray-950 dark:text-foreground">{value}</p>
-            <div className={`mt-3 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${note.includes('vs previous') && !note.startsWith('-') ? 'bg-secondary text-primary' : 'bg-gray-50 dark:bg-muted/50 text-gray-500 dark:text-muted-foreground'}`}><ArrowUpRight size={13} />{note}</div>
+            <div className="mb-3 flex min-w-0 items-center gap-2 sm:mb-5 sm:gap-3"><div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full sm:h-10 sm:w-10 ${statTone(tone)}`}><Icon size={18} /></div><p className="min-w-0 text-sm font-medium leading-5 text-gray-600 dark:text-muted-foreground sm:text-base">{label}</p></div>
+            <p className="break-words text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground sm:text-3xl">{value}</p>
+            <div className={`mt-2 inline-flex max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold sm:mt-3 ${note.includes('vs previous') && !note.startsWith('-') ? 'bg-secondary text-primary' : 'bg-gray-50 dark:bg-muted/50 text-gray-500 dark:text-muted-foreground'}`}><ArrowUpRight size={13} className="shrink-0" /><span className="break-words">{note}</span></div>
           </article>
         ))}
       </section>
@@ -90,9 +86,9 @@ export default async function VendorDashboard({ searchParams }: Props) {
           <AlertTriangle size={19} className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-200" />
           <div className="min-w-0">
             <h2 className="font-semibold text-amber-950 dark:text-amber-200">{isDemoSales ? scopeLabel : t('ui.dashboard.salesProvenanceTitle')}</h2>
-            <p className="mt-1 text-sm leading-6 text-amber-900 dark:text-amber-200">{t(isDemoSales ? 'ui.dashboard.demoSalesDescription' : 'ui.dashboard.salesProvenanceDescription')}</p>
+            <p className="mt-1 text-sm leading-6 text-amber-900 dark:text-amber-200">{t(isDemoSales ? 'ui.dashboard.demoSalesDescription' : isAllSales ? 'ui.dashboard.salesProvenanceAllDescription' : 'ui.dashboard.salesProvenanceDescription')}</p>
             <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm font-medium text-amber-950 dark:text-amber-200">
-              {data.stats.simulatedOrders > 0 && <span>{t(isDemoSales ? 'ui.dashboard.includedDemoSales' : 'ui.dashboard.simulatedSales', { amount: formatMYR(data.stats.simulatedRevenue), count: data.stats.simulatedOrders })}</span>}
+              {data.stats.simulatedOrders > 0 && <span>{t(isDemoSales || isAllSales ? 'ui.dashboard.includedDemoSales' : 'ui.dashboard.simulatedSales', { amount: formatMYR(data.stats.simulatedRevenue), count: data.stats.simulatedOrders })}</span>}
               {data.stats.unverifiedOrders > 0 && <span>{t('ui.dashboard.unverifiedSales', { amount: formatMYR(data.stats.unverifiedRevenue), count: data.stats.unverifiedOrders })}</span>}
             </div>
           </div>
@@ -108,7 +104,7 @@ export default async function VendorDashboard({ searchParams }: Props) {
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <PerformanceRankingCard kind="selling" periodLabel={dashboardFilterLabel(data.filter)} items={data.topSelling} href="/vendor/products" salesMode={salesMode} />
-        <PerformanceRankingCard kind="rated" periodLabel={dashboardFilterLabel(data.filter)} items={data.topRated} href="/vendor/analytics" />
+        <PerformanceRankingCard kind="rated" periodLabel={t('ranking.rated.allTime')} items={data.topRated} href="/vendor/analytics" />
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
@@ -136,7 +132,7 @@ export default async function VendorDashboard({ searchParams }: Props) {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Link href="/vendor/bookings" className="flex items-center gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><CalendarDays className="text-primary" /><div><p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('ui.dashboard.bookingActivity')}</p><p className="text-xs text-gray-500 dark:text-muted-foreground">{t('ui.dashboard.itemsInPeriod', { count: data.stats.bookingItems })}</p></div></Link>
-        <Link href="/vendor/products" className="flex items-center gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><Compass className="text-primary" /><div><p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('ui.dashboard.manageListings')}</p><p className="text-xs text-gray-500 dark:text-muted-foreground">{t('ui.dashboard.keepExperiencesCurrent')}</p></div></Link>
+        <Link href="/vendor/products" className="flex items-center gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><Compass className="text-primary" /><div><p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('ui.dashboard.manageListings')}</p></div></Link>
         {!isOutletManager && <Link href="/vendor/vouchers" className="flex items-center gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><TicketPercent className="text-amber-700 dark:text-amber-200" /><div><p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('ui.dashboard.voucherCampaigns')}</p><p className="text-xs text-gray-500 dark:text-muted-foreground">{t('ui.dashboard.createOffers')}</p></div></Link>}
       </div>
     </div>

@@ -8,7 +8,7 @@ vi.mock("next/link", () => ({ default: ({ href, children, ...props }: React.Anch
 vi.mock("@/components/customer/product-card", () => ({ ProductCard: ({ listing }: { listing: { name: string } }) => <article data-card>{listing.name}</article> }));
 
 import { VendorListingGrid } from "@/components/customer/vendor-listing-grid";
-import { VendorLocationList, type VendorLocationRow } from "@/components/customer/vendor-location-list";
+import { VendorLocationList } from "@/components/customer/vendor-location-list";
 import { VendorSectionNav } from "@/components/customer/vendor-section-nav";
 
 let createRoot: typeof import("react-dom/client").createRoot;
@@ -20,7 +20,7 @@ async function click(element: TestElement) { await act(async () => { element.dis
 const button = (text: string) => findOne(container, (element) => element.tagName === "BUTTON" && (element.textContent ?? "").includes(text));
 
 const product = (index: number, productType: string | null = "activity") => ({ id: `p${index}`, vendorId: "v1", name: `Product ${index}`, description: null, productType, imageUrl: null, fromPrice: 10, requiresBooking: true, rating: 0, reviews: 0, soldAt: [] });
-const location = (index: number): VendorLocationRow => ({ id: `o${index}`, name: `Outlet ${index}`, city: "Ipoh", state: "Perak", operatingHours: null, href: `/customer/vendor/v1/outlet/o${index}`, directionsHref: `https://maps.example/${index}` });
+const location = (index: number) => ({ id: `o${index}`, name: `Outlet ${index}`, city: "Ipoh", state: "Perak", operatingHours: null as { mon: { open: string; close: string } } | null, href: `/customer/vendor/v1/outlet/o${index}`, directionsHref: `https://maps.example/${index}` });
 
 describe("vendor page sections", () => {
   beforeAll(async () => {
@@ -61,15 +61,15 @@ describe("vendor page sections", () => {
     }
   });
 
-  it("fills in open or closed only after mount", async () => {
+  it("keeps location rows free of repeated city and operating-hours details", async () => {
     const open = { ...location(1), operatingHours: { mon: { open: "09:00", close: "17:00" } } };
-    const closed = { ...location(2), operatingHours: { tue: { open: "09:00", close: "17:00" } } };
-    expect(renderToStaticMarkup(<VendorLocationList locations={[open]} />)).not.toContain("ui.operatingHours.openNow");
-    await render(<VendorLocationList locations={[open, closed]} />);
-    expect(container.textContent).toContain("ui.operatingHours.openNow · 09:00–17:00");
-    expect(container.textContent).toContain('ui.vendor.opensAt {"day":"ui.vendor.tomorrow","time":"09:00"}');
-    expect(findElements(container, (element) => (element.getAttribute("class") ?? "").includes("bg-emerald-500"))).toHaveLength(1);
-    expect(findElements(container, (element) => (element.getAttribute("class") ?? "").includes("bg-slate-400"))).toHaveLength(1);
+    await render(<VendorLocationList locations={[open]} />);
+    expect(container.textContent).toContain("Outlet 1");
+    expect(container.textContent).toContain("ui.vendor.directions");
+    expect(container.textContent).toContain("ui.vendor.viewOutlet");
+    expect(container.textContent).not.toContain("Ipoh");
+    expect(container.textContent).not.toContain("Perak");
+    expect(container.textContent).not.toContain("ui.operatingHours.openNow");
   });
 
   it("lists only the sections it is given, and hides with fewer than two", () => {

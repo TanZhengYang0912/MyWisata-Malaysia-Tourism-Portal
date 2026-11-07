@@ -1,9 +1,27 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { act } from "react";
+import type { AnchorHTMLAttributes } from "react";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
+import {
+  TestEvent,
+  findElements,
+  findOne,
+  installTestDom,
+  type TestDocument,
+  type TestElement,
+} from "@/components/shared/__tests__/render-test-dom";
 
-vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { resolvedLanguage: "en" } }) }));
+vi.mock("next/link", () => ({ default: (props: AnchorHTMLAttributes<HTMLAnchorElement>) => <a {...props} /> }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("react-i18next", () => ({ useTranslation: () => ({
+  t: (key: string, options?: { date?: string; page?: number; total?: number }) => options?.date
+    ? `${key} ${options.date}`
+    : options?.page
+      ? `${key} ${options.page} ${options.total}`
+      : key,
+  i18n: { resolvedLanguage: "en" },
+}) }));
 
 import { PromotionCampaignSpotlight } from "@/components/customer/promotion-campaign-spotlight";
 import { FeaturedRecommendationsFrame } from "@/components/customer/featured-recommendations-frame";
@@ -27,6 +45,29 @@ function getPanelActions(markup: string, labels: string[]) {
 }
 
 describe("promotion campaign home spotlight", () => {
+  it("removes demo copy while keeping the event name and key details", () => {
+    const demoCampaign: PromotionCampaignPublic = {
+      ...campaign,
+      slug: "demo-popup-fiesta",
+      title: "Demo – Pop-up Fiesta",
+      summary: "Demo event: three locations, multi-location stalls, products, services and every stall status.",
+      visibility: "live",
+      operationalStatus: "operating",
+      vendors: [{ vendorId: "vendor", vendorName: "Local partner", vendorLogoUrl: null, vendorKind: "shop", stalls: [] }],
+    };
+
+    const markup = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={demoCampaign} />);
+
+    expect(markup).toContain("Pop-up Fiesta");
+    expect(markup).not.toContain("Demo – Pop-up Fiesta");
+    expect(markup).not.toContain("Demo event: three locations");
+    expect(markup).toContain("ui.promotionCampaigns.operating");
+    expect(markup).toContain("8:00 PM");
+    expect(markup).toContain("ui.promotionCampaigns.stallsJoining");
+    expect(markup).toContain('href="/customer/events/demo-popup-fiesta"');
+    expect(markup).toContain('href="/customer/events"');
+  });
+
   it("links the upcoming teaser to its campaign details", () => {
     const markup = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={campaign} />);
     expect(markup).toContain("Sample event");
@@ -79,6 +120,21 @@ describe("promotion campaign home spotlight", () => {
     expect(legacy).toContain("8:00 PM");
   });
 
+  it("labels the start and end dates separately and shows each Malaysia-local time on its own", () => {
+    const timedCampaign = {
+      ...campaign,
+      startsAt: "2026-09-25T10:50:00.000Z",
+      endsAt: "2027-03-12T23:00:00.000Z",
+    };
+    const markup = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={timedCampaign} />);
+    const contentPanel = markup.slice(markup.indexOf('data-slot="promotion-campaign-content"'));
+
+    expect(contentPanel).toContain("ui.promotionCampaigns.startsAt Sep 25, 2026");
+    expect(contentPanel).toContain("6:50 PM");
+    expect(contentPanel).toContain("ui.promotionCampaigns.endsAt Mar 13, 2027");
+    expect(contentPanel).toContain("7:00 AM");
+  });
+
   it("distinguishes an unavailable projection from a genuine empty campaign list", () => {
     const unavailable = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={null} unavailable />);
     const empty = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={null} />);
@@ -90,24 +146,24 @@ describe("promotion campaign home spotlight", () => {
     expect(getPanelActions(empty, ["ui.promotionCampaigns.allCampaigns"])).toContain("bg-highlight-yellow");
   });
 
-  it("uses the shared Partner carousel arrows only when more than one campaign is eligible", () => {
+  it("renders accessible slide indicators only when multiple campaigns are eligible", () => {
     const second: PromotionCampaignPublic = { ...campaign, id: "campaign-2", slug: "second-event", title: "Second event" };
 
     const single = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={campaign} campaigns={[campaign]} />);
     expect(single).not.toContain("ui.promotionCampaigns.previous");
     expect(single).not.toContain("ui.promotionCampaigns.next");
+    expect(single).not.toContain("ui.accessibility.carouselSlide");
 
     const multiple = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={campaign} campaigns={[campaign, second]} />);
-    expect(multiple).toContain("ui.promotionCampaigns.previous");
-    expect(multiple).toContain("ui.promotionCampaigns.next");
+    expect(multiple).not.toContain("ui.promotionCampaigns.previous");
+    expect(multiple).not.toContain("ui.promotionCampaigns.next");
     expect(multiple).toContain("Sample event");
     expect(multiple).not.toContain("Second event");
-    const previousControl = multiple.match(/<button(?=[^>]*aria-label="ui\.promotionCampaigns\.previous")[^>]*>/)?.[0];
-    const nextControl = multiple.match(/<button(?=[^>]*aria-label="ui\.promotionCampaigns\.next")[^>]*>/)?.[0];
-    expect(previousControl).toContain("absolute left-3 top-1/2");
-    expect(previousControl).toContain("md:group-hover/carousel:opacity-100");
-    expect(nextControl).toContain("absolute right-3 top-1/2");
-    expect(nextControl).toContain("md:group-hover/carousel:opacity-100");
+    const indicators = multiple.match(/<button(?=[^>]*aria-label="ui\.accessibility\.carouselSlide [^"]+")[^>]*>/g) ?? [];
+    expect(indicators).toHaveLength(2);
+    expect(indicators[0]).toContain('aria-current="true"');
+    expect(indicators[1]).not.toContain("aria-current");
+    expect(multiple).toContain("mt-3 flex justify-center");
   });
 
   it("renders the event poster without requiring a global image host allowlist", () => {
@@ -144,10 +200,86 @@ describe("promotion campaign home spotlight", () => {
 
   it("keeps clipping slides by default for the other featured carousels", () => {
     const markup = renderToStaticMarkup(
-      <FeaturedRecommendationsFrame headingId="h" eyebrow={null} title="t" description={null} carouselLabel="c" previousLabel="p" nextLabel="n" carouselTestId="frame" hasMultipleSlides={false} onPrevious={() => {}} onNext={() => {}}>
+      <FeaturedRecommendationsFrame headingId="h" eyebrow={null} title="t" description={null} carouselLabel="c" slideLabel={(page, total) => `${page}/${total}`} carouselTestId="frame" activeSlideIndex={0} slideCount={1} onSelectSlide={() => {}} onNext={() => {}}>
         <div />
       </FeaturedRecommendationsFrame>,
     );
     expect(markup.match(/<div(?=[^>]*data-testid="frame")[^>]*>/)?.[0]).toContain("overflow-hidden");
+  });
+});
+
+describe("campaign carousel interactions", () => {
+  let createRoot: typeof import("react-dom/client").createRoot;
+  let document: TestDocument;
+  let container: TestElement;
+  let root: ReturnType<typeof createRoot>;
+
+  beforeAll(async () => {
+    document = installTestDom();
+    Object.assign(globalThis, {
+      requestAnimationFrame: (callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 16),
+      cancelAnimationFrame: (handle: number) => window.clearTimeout(handle),
+    });
+    ({ createRoot } = await import("react-dom/client"));
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container as unknown as Element);
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    document.body.removeChild(container);
+    vi.useRealTimers();
+  });
+
+  it("advances after five seconds and lets a dot select a campaign", async () => {
+    const second = { ...campaign, id: "campaign-2", slug: "second-event", title: "Second event" };
+    const third = { ...campaign, id: "campaign-3", slug: "third-event", title: "Third event" };
+
+    await act(async () => {
+      root.render(<PromotionCampaignSpotlight campaign={campaign} campaigns={[campaign, second, third]} />);
+      await Promise.resolve();
+    });
+
+    const indicators = findElements(container, (element) => element.tagName === "BUTTON");
+    expect(indicators.map((indicator) => indicator.getAttribute("aria-label"))).toHaveLength(3);
+    expect(indicators[0].getAttribute("aria-current")).toBe("true");
+    expect(container.textContent).toContain("Sample event");
+    expect(container.textContent).not.toContain("Second event");
+
+    await act(async () => {
+      vi.advanceTimersByTime(4999);
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Sample event");
+
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Second event");
+    expect(indicators[1].getAttribute("aria-current")).toBe("true");
+
+    const thirdIndicator = findOne(container, (element) => element.getAttribute("aria-label") === "ui.accessibility.carouselSlide 3 3");
+    await act(async () => {
+      thirdIndicator.dispatchEvent(new TestEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Third event");
+    await act(async () => {
+      vi.advanceTimersByTime(4999);
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Third event");
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Sample event");
   });
 });

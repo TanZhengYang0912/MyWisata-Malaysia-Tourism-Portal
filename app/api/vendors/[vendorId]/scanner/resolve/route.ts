@@ -3,6 +3,7 @@ import { apiFail, apiOk, databaseUuidSchema, parseBody } from "@/lib/validation/
 import { authorizeVendor } from "@/lib/vendor-authorization";
 import { getBookingOrderItem } from "@/lib/vendor/booking-scope";
 import { verifyTicketPassToken } from "@/lib/tickets/tokens";
+import { isTicketEligibleProduct } from "@/lib/tickets/product-ticket-policy";
 import { verifyVoucherStoreToken } from "@/lib/vouchers/store-token";
 import { verifyFoodFulfilmentToken } from "@/lib/food/food-fulfilment-token";
 import { verifyEventPickupToken } from "@/lib/events/event-pickup-token";
@@ -187,7 +188,7 @@ export async function POST(request: Request, { params }: Props) {
 
     const { data: booking, error } = await access.access.serviceDb
       .from("bookings")
-      .select("id,slot_id,status,order_items(order_id,vendor_id,outlet_id,quantity,product_name,outlets(id,name,vendor_id,vendors(id,name))),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)")
+      .select("id,slot_id,status,order_items(order_id,vendor_id,outlet_id,quantity,product_name,products(requires_booking),outlets(id,name,vendor_id,vendors(id,name))),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)")
       .eq("id", ticket.bookingId)
       .maybeSingle();
     if (error) return apiFail("DB_ERROR", error.message, 500);
@@ -198,6 +199,8 @@ export async function POST(request: Request, { params }: Props) {
     const productName = rawOrderItem && typeof rawOrderItem === "object" && "product_name" in rawOrderItem && typeof rawOrderItem.product_name === "string" ? rawOrderItem.product_name : "Ticket";
     const quantity = rawOrderItem && typeof rawOrderItem === "object" && "quantity" in rawOrderItem && Number.isFinite(Number(rawOrderItem.quantity)) ? Number(rawOrderItem.quantity) : 1;
     if (orderItem.vendorId !== vendorId || orderItem.outletId !== outlet.outletId) return apiFail("FORBIDDEN", "This ticket is not valid at the selected outlet", 403);
+    const ticketProduct = rawOrderItem && typeof rawOrderItem === "object" && "products" in rawOrderItem ? rawOrderItem.products : null;
+    if (!isTicketEligibleProduct(ticketProduct)) return apiFail("INVALID_TICKET", "This product does not use ticket admission", 409);
     const pass = Array.isArray(booking.ticket_passes) ? booking.ticket_passes[0] : booking.ticket_passes;
     if (!rawOrderItem || typeof rawOrderItem !== "object" || !("order_id" in rawOrderItem) || typeof rawOrderItem.order_id !== "string") return apiFail("INVALID_TICKET", "This ticket has no associated order", 400);
     const { data: order, error: orderError } = await access.access.serviceDb.from("orders").select("status").eq("id", rawOrderItem.order_id).maybeSingle();

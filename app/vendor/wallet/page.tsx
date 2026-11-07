@@ -13,6 +13,7 @@ import { getWithdrawalDisplayGroups } from "@/lib/wallet/withdrawal-display";
 import { DEMO_PAYOUT_ACCOUNT } from "@/lib/i18n/invariant-tokens";
 import { formatMYR, formatMYRNumber } from "@/lib/i18n/format";
 import { VendorSettlementPanel } from "@/components/vendor/vendor-settlement-panel";
+import { VendorPageHeader } from "@/components/vendor/vendor-page-header";
 
 const MIN_WITHDRAWAL = 50;
 const DESTINATIONS = [
@@ -130,36 +131,33 @@ export default function VendorWalletPage() {
 
   return (
     <div className="w-full space-y-6">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Wallet size={15} aria-hidden="true" /> {t('ui.wallet.vendorFinance')}</div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('ui.wallet.title')}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t('ui.wallet.description')}</p>
-        </div>
-        <div className="flex flex-col items-stretch gap-2 sm:items-end">
-          <Button onClick={() => { setError(""); setShowModal(true); }} disabled={!canRequestWithdrawal || loading} className="flex items-center justify-center gap-2">
+      <VendorPageHeader
+        eyebrow={<><Wallet size={15} aria-hidden="true" /> {t('ui.wallet.vendorFinance')}</>}
+        title={t('ui.wallet.title')}
+        actions={<div className="flex flex-col items-stretch gap-2 sm:items-end">
+          <Button onClick={() => { setError(""); setShowModal(true); }} disabled={!canRequestWithdrawal || loading} className="min-h-11 w-full items-center justify-center gap-2 sm:w-auto">
             <ArrowDownCircle size={15} /> {t('ui.wallet.withdrawFunds')}
           </Button>
-          <p className="text-right text-xs text-muted-foreground">{withdrawalHelp}</p>
-        </div>
-      </header>
+          <p className="text-left text-xs text-muted-foreground sm:text-right">{withdrawalHelp}</p>
+        </div>}
+      />
 
       {loadError && <div role="alert" className="flex flex-col gap-3 rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-800 dark:text-red-200 sm:flex-row sm:items-center sm:justify-between"><span className="inline-flex items-center gap-2"><AlertCircle size={16} /> {loadError}</span><button type="button" onClick={refresh} className="inline-flex items-center gap-2 font-semibold underline underline-offset-4"><RefreshCw size={14} /> {t('ui.common.tryAgain')}</button></div>}
 
-      <section aria-label={t('ui.wallet.summaryLabel')} className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl p-5 text-white" style={{ background: "linear-gradient(135deg, var(--primary) 0%, #11115A 100%)", boxShadow: "0 4px 20px rgba(0,0,77,0.28)" }}>
+      <section aria-label={t('ui.wallet.summaryLabel')} className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
+        <div className="col-span-2 rounded-2xl p-4 text-white md:col-span-1 sm:p-5" style={{ background: "linear-gradient(135deg, var(--primary) 0%, #11115A 100%)", boxShadow: "0 4px 20px rgba(0,0,77,0.28)" }}>
           <p className="text-xs opacity-75">{t('ui.wallet.availableToWithdraw')}</p>
-          <p className="mt-2 text-3xl font-bold font-[family-name:var(--font-mono)]">{formatMYR(available)}</p>
+          <p className="mt-2 break-words text-2xl font-bold font-[family-name:var(--font-mono)] sm:text-3xl">{formatMYR(available)}</p>
           <p className="mt-2 text-xs opacity-75">{t('ui.wallet.availableDescription')}</p>
         </div>
-        <div className="rounded-2xl border border-amber-100 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.06)" }}>
+        <div className="min-w-0 rounded-2xl border border-amber-100 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 sm:p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.06)" }}>
           <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">{t('ui.wallet.pendingEarnings')}</p>
-          <p className="mt-2 text-3xl font-bold text-amber-700 dark:text-amber-200 font-[family-name:var(--font-mono)]">{formatMYR(wallet.pendingEarnings)}</p>
+          <p className="mt-2 break-words text-xl font-bold text-amber-700 dark:text-amber-200 font-[family-name:var(--font-mono)] sm:text-3xl">{formatMYR(wallet.pendingEarnings)}</p>
           <p className="mt-2 text-xs text-amber-800/70 dark:text-amber-200/80">{t('ui.wallet.pendingDescription')}</p>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.06)" }}>
+        <div className="min-w-0 rounded-2xl border border-border bg-card p-4 sm:p-5" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.06)" }}>
           <p className="text-xs font-semibold text-muted-foreground">{t('ui.wallet.totalEarnings')}</p>
-          <p className="mt-2 text-3xl font-bold text-primary font-[family-name:var(--font-mono)]">{formatMYR(totalEarnings)}</p>
+          <p className="mt-2 break-words text-xl font-bold text-primary font-[family-name:var(--font-mono)] sm:text-3xl">{formatMYR(totalEarnings)}</p>
           <p className="mt-2 text-xs text-muted-foreground">{t('ui.wallet.totalDescription')}</p>
         </div>
       </section>
@@ -170,14 +168,14 @@ export default function VendorWalletPage() {
           {pending.length > 0 && <section className="overflow-hidden rounded-2xl border border-amber-100 dark:border-amber-500/30 bg-card shadow-sm"><div className="flex items-center justify-between border-b border-border px-5 py-4"><div className="flex items-center gap-2"><Clock3 size={16} className="text-amber-600 dark:text-amber-300" /><div><h2 className="text-sm font-bold text-foreground">{t('ui.wallet.activeWithdrawals')}</h2><p className="mt-1 text-xs text-muted-foreground">{t('ui.wallet.activeDescription')}</p></div></div><span className="rounded-full bg-amber-100 dark:bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-800 dark:text-amber-200">{t('ui.wallet.activeCount', { count: pending.length })}</span></div><div className="divide-y divide-border">{pending.map((withdrawal) => <div key={withdrawal.id} className="flex items-center justify-between gap-4 px-5 py-4"><div className="min-w-0"><p className="truncate text-sm font-semibold text-foreground">{withdrawal.destination || t('ui.wallet.payoutDestination')}</p><p className="mt-1 text-xs text-muted-foreground">{t('ui.wallet.submittedOn', { date: formatDate(withdrawal.createdAt, locale) })}</p>{withdrawal.requiresDualApproval && <span className="mt-2 inline-block rounded bg-amber-100 dark:bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-200">{t('ui.wallet.dualApprovalRequired')}</span>}</div><div className="shrink-0 text-right"><p className="font-bold text-foreground font-[family-name:var(--font-mono)]">{formatMYR(withdrawal.amount)}</p><StatusBadge status={withdrawal.status} /></div></div>)}</div></section>}
 
           <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            <div className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-sm font-bold text-foreground">{t('ui.wallet.transactionHistory')}</h2><p className="mt-1 text-xs text-muted-foreground">{t('ui.wallet.transactionDescription')}</p></div><div role="tablist" aria-label={t('ui.wallet.transactionFilters')} className="flex flex-wrap gap-1 rounded-xl bg-muted p-1">{FILTERS.map((filter) => <button key={filter} type="button" role="tab" aria-selected={activeFilter === filter} onClick={() => setActiveFilter(filter)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${activeFilter === filter ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{t(`ui.wallet.filters.${filter}`)}</button>)}</div></div>
+            <div className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-sm font-bold text-foreground">{t('ui.wallet.transactionHistory')}</h2></div><div role="tablist" aria-label={t('ui.wallet.transactionFilters')} className="flex flex-wrap gap-1 rounded-xl bg-muted p-1">{FILTERS.map((filter) => <button key={filter} type="button" role="tab" aria-selected={activeFilter === filter} onClick={() => setActiveFilter(filter)} className={`min-h-10 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold transition ${activeFilter === filter ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>{t(`ui.wallet.filters.${filter}`)}</button>)}</div></div>
             {loading ? <div className="flex items-center justify-center gap-2 px-5 py-14 text-sm text-muted-foreground"><LoaderCircle size={18} className="animate-spin" /> {t('ui.wallet.loadingTransactions')}</div> : filteredTransactions.length === 0 ? <div className="px-5 py-14 text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-primary"><Wallet size={22} /></div><h3 className="mt-4 text-sm font-bold text-foreground">{transactions.length === 0 ? t('ui.wallet.noActivity') : t('ui.wallet.noMatches')}</h3><p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted-foreground">{transactions.length === 0 ? t('ui.wallet.noActivityDescription') : t('ui.wallet.noMatchesDescription')}</p>{transactions.length === 0 ? <a href="/vendor/orders" className="mt-4 inline-flex text-sm font-bold text-primary hover:underline">{t('ui.wallet.viewOrders')}</a> : <button type="button" onClick={() => setActiveFilter("all")} className="mt-4 text-sm font-bold text-primary hover:underline">{t('ui.wallet.showAll')}</button>}</div> : <><div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[680px] text-left"><thead className="bg-muted/50 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground"><tr><th className="px-5 py-3">{t('ui.wallet.dateColumn')}</th><th className="px-5 py-3">{t('ui.wallet.descriptionColumn')}</th><th className="px-5 py-3">{t('ui.wallet.referenceColumn')}</th><th className="px-5 py-3">{t('ui.wallet.typeColumn')}</th><th className="px-5 py-3 text-right">{t('ui.wallet.amountColumn')}</th></tr></thead><tbody className="divide-y divide-border">{filteredTransactions.map((transaction) => <tr key={transaction.id} className="transition hover:bg-muted/30"><td className="whitespace-nowrap px-5 py-4 text-sm text-muted-foreground">{formatDate(transaction.createdAt, locale)}</td><td className="px-5 py-4"><div className="flex items-center gap-3">{transactionIcon(transaction)}<div className="min-w-0"><p className="font-semibold text-foreground">{transaction.note || transactionTypeLabel(transaction.type)}</p><p className="mt-1 text-xs text-muted-foreground">{transaction.direction === "credit" ? t('ui.wallet.moneyAdded') : t('ui.wallet.moneyMovedOut')}</p></div></div></td><td className="whitespace-nowrap px-5 py-4 font-mono text-xs text-muted-foreground">{referenceLabel(transaction)}</td><td className="px-5 py-4"><span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-primary">{transactionTypeLabel(transaction.type)}</span></td><td className={`whitespace-nowrap px-5 py-4 text-right font-bold font-[family-name:var(--font-mono)] ${transactionTone(transaction.direction) === "positive" ? "text-emerald-700 dark:text-emerald-200" : "text-rose-700 dark:text-rose-200"}`}>{signedAmount(transaction)}</td></tr>)}</tbody></table></div><div className="divide-y divide-border md:hidden">{filteredTransactions.map((transaction) => <article key={transaction.id} className="px-5 py-4"><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3">{transactionIcon(transaction)}<div className="min-w-0"><p className="truncate text-sm font-semibold text-foreground">{transaction.note || transactionTypeLabel(transaction.type)}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(transaction.createdAt, locale)} · {referenceLabel(transaction)}</p></div></div><p className={`shrink-0 text-sm font-bold font-[family-name:var(--font-mono)] ${transactionTone(transaction.direction) === "positive" ? "text-emerald-700 dark:text-emerald-200" : "text-rose-700 dark:text-rose-200"}`}>{signedAmount(transaction)}</p></div><span className="ml-8 mt-3 inline-flex rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-primary">{transactionTypeLabel(transaction.type)}</span></article>)}</div></>}
           </section>
         </div>
 
         <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
           <section className="rounded-2xl border border-border bg-card p-5 shadow-sm"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-primary"><Landmark size={18} /></div><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">{t('ui.wallet.payoutInformation')}</p><h2 className="mt-1 text-base font-bold text-foreground">{t('ui.wallet.knowBefore')}</h2></div></div><dl className="mt-5 space-y-4"><div className="flex items-start justify-between gap-4"><dt className="text-sm text-muted-foreground">{t('ui.wallet.minimumWithdrawal')}</dt><dd className="text-right text-sm font-bold text-foreground">{formatMYR(MIN_WITHDRAWAL)}</dd></div><div className="flex items-start justify-between gap-4"><dt className="text-sm text-muted-foreground">{t('ui.wallet.typicalProcessing')}</dt><dd className="text-right text-sm font-bold text-foreground">{t('ui.wallet.businessDays')}</dd></div><div className="flex items-start justify-between gap-4"><dt className="text-sm text-muted-foreground">{t('ui.wallet.activeRequests')}</dt><dd className="text-right text-sm font-bold text-foreground">{t('ui.wallet.activeRequestCount', { count: pending.length })}</dd></div></dl><div className="mt-5 flex items-start gap-2 rounded-xl bg-secondary/70 p-3 text-xs leading-5 text-muted-foreground"><Info size={15} className="mt-0.5 shrink-0 text-primary" /> {t('ui.wallet.reserveNotice')}</div></section>
-          <section className="rounded-2xl border border-dashed border-border bg-muted/30 p-5"><p className="text-sm font-bold text-foreground">{t('ui.wallet.needMore')}</p><p className="mt-1 text-sm leading-6 text-muted-foreground">{t('ui.wallet.needMoreDescription')}</p><a href="/vendor/products" className="mt-3 inline-flex text-sm font-bold text-primary hover:underline">{t('ui.wallet.manageProducts')}</a></section>
+          <section className="rounded-2xl border border-dashed border-border bg-muted/30 p-5"><a href="/vendor/products" className="inline-flex text-sm font-bold text-primary hover:underline">{t('ui.wallet.manageProducts')}</a></section>
         </aside>
       </div>
 

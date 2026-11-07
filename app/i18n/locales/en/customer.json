@@ -192,7 +192,8 @@
       "pending": "Translation is being prepared"
     },
     "accessibility": {
-      "carousel": "carousel"
+      "carousel": "carousel",
+      "carouselSlide": "Slide {{page}} of {{total}}"
     },
     "capabilityGate": {
       "notNow": "Not now",
@@ -882,12 +883,6 @@
       "vendorApplication": "Vendor application",
       "vendorApplicationDescription": "Apply to list your tours, food, stays, or local experiences. Admin approval is required before anything is visible to travellers.",
       "openVendorDashboard": "Open vendor dashboard",
-      "vendorStepApply": "1. Apply",
-      "vendorStepApplyHint": "Tell us about your business.",
-      "vendorStepReview": "2. Admin review",
-      "vendorStepReviewHint": "We verify the application.",
-      "vendorStepLive": "3. Go live",
-      "vendorStepLiveHint": "Set up outlets and listings after approval.",
       "vendorStatus": {
         "pending": "Your application is awaiting admin review.",
         "approved": "Your vendor account has been approved.",
@@ -1000,6 +995,7 @@
         "failed": "Couldn't translate",
         "privacyBlocked": "This message was not sent to AI because it may contain personal information. Remove phone, email, ID, bank, or private-address details, then try again. You can also read the original message without translation."
       },
+      "moreActions": "More chat actions",
       "attachOrder": "Attach an order",
       "underReview": "Reported — our team is reviewing this conversation."
     },
@@ -1009,7 +1005,7 @@
       "actions": "Calendar actions",
       "filters": "Filters",
       "searchBookings": "Search bookings",
-      "searchActivity": "Search activity, outlet or order ID",
+      "searchActivity": "Search activity, outlet, booking reference or order ID",
       "bookingScope": "Booking scope",
       "bookingOutlet": "Booking outlet",
       "bookingActivity": "Booking activity",
@@ -1024,6 +1020,7 @@
       "selectMonth": "Select {{month}}",
       "itineraryItems": "{{count}} itinerary items",
       "inMonth": "{{monthCount}} in this month · {{totalCount}} matching overall",
+      "otherBookings": "Other bookings",
       "showItinerary": "Show {{activity}} itinerary details",
       "showMore": "Show {{count}} more itinerary items for {{date}}",
       "more": "+{{count}} more",
@@ -1068,7 +1065,6 @@
         "all": "Booking overview"
       },
       "scopeDescriptions": {
-        "upcoming": "See the experiences you have planned ahead.",
         "past": "Review the experiences you have completed or missed.",
         "all": "See past and upcoming experiences together."
       }
@@ -1496,7 +1492,6 @@
       "submitted": "Vendor recommendation submitted for review.",
       "community": "Community",
       "title": "Recommend a vendor",
-      "description": "Vendors go live after admin approval. Commission may apply if they join through your recommendation.",
       "recommend": "Recommend",
       "new": "New recommendation",
       "vendorBusinessName": "Vendor / business name",
@@ -2783,8 +2778,6 @@
       "eyebrow": "MYLawatan vouchers",
       "dealsTitle": "Discover more for less",
       "mineTitle": "Your vouchers",
-      "dealsDescription": "Claim partner and outlet offers for your next Malaysia experience.",
-      "mineDescription": "Review the vouchers you have claimed and use them when you are ready.",
       "viewsLabel": "Voucher views",
       "browseDeals": "Browse deals",
       "myVouchers": "My vouchers",

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef } from "react";
-import { ArrowRight, ArrowUpRight, CalendarDays, Mail, MapPin } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CalendarDays, Clock3, Mail, MapPin } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { initials } from "@/components/customer/campaign-stall-strip";
 import { LocalizedContent } from "@/components/customer/localized-content";
@@ -41,9 +41,17 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
   const partRefs = useRef<Record<string, Element | null>>({});
   const partRef = (key: string) => (el: Element | null) => { partRefs.current[key] = el; };
 
-  const formatCampaignDate = isMalaysiaFullDayRange(campaign.startsAt, campaign.endsAt) ? formatDate : formatDateTime;
+  const isFullDayCampaign = isMalaysiaFullDayRange(campaign.startsAt, campaign.endsAt);
+  const formatCampaignDate = isFullDayCampaign ? formatDate : formatDateTime;
   const startLabel = formatCampaignDate(campaign.startsAt, locale, { timeZone: "Asia/Kuala_Lumpur" });
   const endLabel = formatCampaignDate(campaign.endsAt, locale, { timeZone: "Asia/Kuala_Lumpur" });
+  const formatCampaignTime = (value: string) => new Intl.DateTimeFormat(locale, {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "Asia/Kuala_Lumpur",
+  }).format(new Date(value));
+  const isDemoCampaign = campaign.slug.startsWith("demo-");
+  const campaignTitle = isDemoCampaign ? campaign.title.replace(/^Demo\s*[-–—]\s*/i, "") : campaign.title;
   const placeNames = [...new Set(campaign.locations.map((location) => location.name))];
   const session = getNextEventSession(campaign.locations);
   const image = campaign.posterUrl;
@@ -268,8 +276,8 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
       <div className="mw-envelope__body">
         <span className="mw-envelope__eyebrow">{t("ui.promotionCampaigns.invitedTo")}</span>
         {k === "bottom"
-          ? <h2 id={titleId} className="mw-envelope__title"><LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title} /></h2>
-          : <p className="mw-envelope__title"><LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title}>{({ text }) => text}</LocalizedContent></p>}
+          ? <h2 id={titleId} className="mw-envelope__title">{isDemoCampaign ? campaignTitle : <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title} />}</h2>
+          : <p className="mw-envelope__title">{isDemoCampaign ? campaignTitle : <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title}>{({ text }) => text}</LocalizedContent>}</p>}
         <p className="mw-envelope__row"><CalendarDays size={18} aria-hidden="true" /><span>{startLabel}{" – "}{endLabel}</span></p>
         {placeNames.length > 0 && (
           <p className="mw-envelope__row">
@@ -314,6 +322,30 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
             </div>
           </div>
           <div className="mw-envelope__lbody">
+            <div data-slot="promotion-campaign-content" className="grid min-w-0 grid-cols-2 gap-3 border-b border-border/70 pb-3">
+              <div className="min-w-0">
+                <p className="break-words text-sm font-semibold leading-5 text-foreground">
+                  {t("ui.promotionCampaigns.startsAt", { date: formatDate(campaign.startsAt, locale, { timeZone: "Asia/Kuala_Lumpur" }) })}
+                </p>
+                {!isFullDayCampaign && (
+                  <time dateTime={campaign.startsAt} className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold tabular-nums text-muted-foreground">
+                    <Clock3 size={14} aria-hidden="true" />
+                    {formatCampaignTime(campaign.startsAt)}
+                  </time>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="break-words text-sm font-semibold leading-5 text-foreground">
+                  {t("ui.promotionCampaigns.endsAt", { date: formatDate(campaign.endsAt, locale, { timeZone: "Asia/Kuala_Lumpur" }) })}
+                </p>
+                {!isFullDayCampaign && (
+                  <time dateTime={campaign.endsAt} className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold tabular-nums text-muted-foreground">
+                    <Clock3 size={14} aria-hidden="true" />
+                    {formatCampaignTime(campaign.endsAt)}
+                  </time>
+                )}
+              </div>
+            </div>
             {(session || campaign.vendors.length > 0) && (
               <div className="min-w-0">
                 <p className="mb-2.5 text-[11px] font-extrabold uppercase tracking-[0.2em] text-primary">{t("ui.promotionCampaigns.insideEvent")}</p>

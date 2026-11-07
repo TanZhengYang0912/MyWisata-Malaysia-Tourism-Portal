@@ -10,6 +10,7 @@ import {
   Copy,
   Download,
   MapPin,
+  MoreHorizontal,
   PackageCheck,
   RefreshCw,
   Search,
@@ -19,6 +20,9 @@ import {
   Users,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
+import { MobileFilterToggle } from '@/components/vendor/compact-filter-bar';
+import { VendorMobileRecordCard } from '@/components/vendor/mobile-record-card';
 import type { RedemptionRecord } from '@/app/api/vendors/[vendorId]/redemptions/route';
 
 interface OutletOption {
@@ -51,6 +55,7 @@ export default function VendorRedemptionsPage() {
   const [outletFilter, setOutletFilter] = useState('');
   const [kindFilter, setKindFilter] = useState<'all' | 'voucher' | 'ticket' | 'event_pickup' | 'retail_pickup'>('all');
   const [search, setSearch] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Load Outlets for filter
@@ -148,31 +153,17 @@ export default function VendorRedemptionsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-0 lg:pb-24">
       {/* Header */}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            <ClipboardCheck size={16} />
-            <span>{t('ui.redemptions.eyebrow', 'Store Redemptions')}</span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground sm:text-3xl">
-            {t('ui.redemptions.title', 'Redemptions & Scan Logs')}
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-muted-foreground">
-            {t(
-              'ui.redemptions.description',
-              'Audit logs of in-store voucher redemptions and ticket admissions across all your outlets.',
-            )}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
+      <VendorPageHeader
+        eyebrow={<><ClipboardCheck size={16} aria-hidden="true" /> <span>{t('ui.redemptions.eyebrow', 'Store Redemptions')}</span></>}
+        title={t('ui.redemptions.title', 'Redemptions & Scan Logs')}
+        actions={<div className="hidden w-full flex-col gap-2 md:flex md:w-auto md:flex-row">
           <button
             type="button"
             onClick={() => loadRedemptions(page)}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
+            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             <span>{t('actions.refresh', 'Refresh')}</span>
@@ -181,13 +172,13 @@ export default function VendorRedemptionsPage() {
             type="button"
             onClick={handleExportCsv}
             disabled={loading || records.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-primary/20 bg-secondary px-3.5 py-2.5 text-sm font-semibold text-primary shadow-sm transition hover:bg-secondary/80 disabled:opacity-40"
+            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-primary/20 bg-secondary px-3.5 py-2.5 text-sm font-semibold text-primary shadow-sm transition hover:bg-secondary/80 disabled:opacity-40"
           >
             <Download size={15} />
             <span>{t('actions.exportCsv', 'Export CSV')}</span>
           </button>
-        </div>
-      </header>
+        </div>}
+      />
 
       {/* KPI Cards */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
@@ -218,11 +209,27 @@ export default function VendorRedemptionsPage() {
         </div>
       </section>
 
+      <div className="flex justify-end md:hidden">
+        <details className="group relative">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 [&::-webkit-details-marker]:hidden">
+            <MoreHorizontal size={17} aria-hidden="true" /> {t('actions.moreActions')}
+          </summary>
+          <div className="absolute right-0 z-20 mt-2 flex w-52 flex-col gap-1 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card p-2 shadow-xl">
+            <button type="button" onClick={() => loadRedemptions(page)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
+              <RefreshCw size={15} aria-hidden="true" className={loading ? 'animate-spin' : ''} /> {t('actions.refresh')}
+            </button>
+            <button type="button" onClick={handleExportCsv} disabled={loading || records.length === 0} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
+              <Download size={15} aria-hidden="true" /> {t('actions.exportCsv')}
+            </button>
+          </div>
+        </details>
+      </div>
+
       {/* Filter and Search Bar */}
-      <section className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <section className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
           {/* Kind Filter Pills */}
-          <div className="inline-flex rounded-xl bg-gray-100 dark:bg-muted p-1 text-xs font-semibold">
+          <div className="inline-flex max-w-full shrink-0 flex-nowrap overflow-x-auto rounded-xl bg-gray-100 dark:bg-muted p-1 text-xs font-semibold">
             {(
               [
                 { value: 'all', label: t('ui.redemptions.filters.all', 'All Activity') },
@@ -238,7 +245,7 @@ export default function VendorRedemptionsPage() {
                   setKindFilter(item.value);
                   setPage(1);
                 }}
-                className={`rounded-lg px-3 py-1.5 transition ${
+                className={`min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition ${
                   kindFilter === item.value ? 'bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm' : 'text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground'
                 }`}
               >
@@ -246,30 +253,27 @@ export default function VendorRedemptionsPage() {
               </button>
             ))}
           </div>
-          <span className="text-xs text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.filteredCount', { count: totalRecords })}</span>
-
-          {/* Outlet Filter */}
-          {outlets.length > 1 && (
-            <select
-              value={outletFilter}
-              onChange={(e) => {
-                setOutletFilter(e.target.value);
-                setPage(1);
-              }}
-              className="h-9 w-full min-w-0 max-w-full rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-xs font-semibold text-gray-700 dark:text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary sm:w-auto sm:max-w-xs"
-            >
-              <option value="">{t('ui.redemptions.allOutlets', 'All Outlets')}</option>
-              {outlets.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-          )}
+          <span className="shrink-0 text-xs text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.filteredCount', { count: totalRecords })}</span>
         </div>
 
+        {outlets.length > 1 && (
+          <select
+            value={outletFilter}
+            onChange={(event) => {
+              setOutletFilter(event.target.value);
+              setPage(1);
+            }}
+            aria-label={t('ui.redemptions.allOutlets', 'All Outlets')}
+            className="hidden h-11 min-w-0 max-w-xs rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-semibold text-gray-700 dark:text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary lg:block"
+          >
+            <option value="">{t('ui.redemptions.allOutlets', 'All Outlets')}</option>
+            {outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}
+          </select>
+        )}
+
         {/* Search */}
-        <div className="relative w-full sm:max-w-xs">
+        <div className="flex min-w-0 gap-2 lg:w-72 lg:shrink-0">
+          <label className="relative min-w-0 flex-1">
           <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-muted-foreground" />
           <input
             type="text"
@@ -279,9 +283,36 @@ export default function VendorRedemptionsPage() {
               setPage(1);
             }}
             placeholder={t('ui.redemptions.searchPlaceholder', 'Search code, item, staff...')}
-            className="h-9 w-full rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card pl-9 pr-3 text-xs text-gray-800 dark:text-foreground outline-none placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+            aria-label={t('ui.redemptions.searchPlaceholder', 'Search code, item, staff...')}
+            className="h-11 w-full rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card pl-9 pr-3 text-sm text-gray-800 dark:text-foreground outline-none placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary"
           />
+          </label>
+          {outlets.length > 1 && (
+            <MobileFilterToggle
+              controlId="redemption-filters"
+              isOpen={filtersOpen}
+              selectedFilterCount={outletFilter ? 1 : 0}
+              onToggle={() => setFiltersOpen((open) => !open)}
+            />
+          )}
         </div>
+
+        {outlets.length > 1 && (
+          <div id="redemption-filters" className={`${filtersOpen ? 'flex' : 'hidden'} min-w-0 flex-col gap-2 rounded-xl border border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 p-3 lg:hidden`}>
+            <select
+              value={outletFilter}
+              onChange={(event) => {
+                setOutletFilter(event.target.value);
+                setPage(1);
+              }}
+              aria-label={t('ui.redemptions.allOutlets', 'All Outlets')}
+              className="h-11 w-full min-w-0 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-semibold text-gray-700 dark:text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            >
+              <option value="">{t('ui.redemptions.allOutlets', 'All Outlets')}</option>
+              {outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}
+            </select>
+          </div>
+        )}
       </section>
 
       {/* Main Table */}
@@ -313,7 +344,43 @@ export default function VendorRedemptionsPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div data-mobile-redemption-list className="space-y-3 p-3 md:hidden">
+            {records.map((record) => (
+              <VendorMobileRecordCard
+                key={record.id}
+                header={
+                  <>
+                    <div className="flex min-w-0 flex-wrap gap-2">
+                      {record.kind === 'voucher' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-200"><TicketPercent size={13} aria-hidden="true" /> {t('ui.redemptions.kindVoucher', 'Voucher')}</span>
+                      ) : record.kind === 'retail_pickup' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"><PackageCheck size={13} aria-hidden="true" /> {t('ui.redemptions.kindRetailPickup', 'Retail pickup')}</span>
+                      ) : record.kind === 'event_pickup' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 dark:bg-violet-500/10 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:text-violet-200"><Store size={13} aria-hidden="true" /> {t('ui.redemptions.kindEventPickup', 'Event pickup')}</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-200"><Ticket size={13} aria-hidden="true" /> {t('ui.redemptions.kindTicket', 'Ticket Pass')}</span>
+                      )}
+                    </div>
+                    <time className="shrink-0 text-right text-xs text-muted-foreground">{formatDateTime(record.redeemedAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })}</time>
+                  </>
+                }
+              >
+                <h3 className="break-words text-sm font-semibold text-foreground">{record.item.name}</h3>
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                  <span className="break-words">{record.item.details}</span>
+                  <span className="text-muted-foreground/50" aria-hidden="true">·</span>
+                  <span className="inline-flex items-center gap-1.5 font-mono font-bold text-primary">{record.item.code || '—'}{record.item.code && <button type="button" onClick={() => copyToClipboard(record.item.code!, record.id)} aria-label={t('ui.vouchers.copyCode')} title={t('ui.vouchers.copyCode')} className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-md hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">{copiedId === record.id ? <Check size={14} className="text-emerald-600 dark:text-emerald-300" /> : <Copy size={14} />}</button>}</span>
+                </div>
+                <dl className="grid gap-2 border-t border-border pt-3 text-xs sm:grid-cols-2">
+                  <div className="min-w-0"><dt className="font-semibold text-muted-foreground">{t('ui.redemptions.table.outlet', 'Outlet')}</dt><dd className="mt-0.5 break-words font-medium text-foreground">{record.outlet.name}</dd><dd className="mt-0.5 flex items-start gap-1 text-muted-foreground"><MapPin size={12} className="mt-0.5 shrink-0" aria-hidden="true" /> {record.outlet.location}</dd></div>
+                  <div className="min-w-0"><dt className="font-semibold text-muted-foreground">{t('ui.redemptions.table.customer', 'Customer')}</dt><dd className="mt-0.5 break-words font-medium text-foreground">{record.customer.name}</dd><dd className="break-all text-muted-foreground">{record.customer.email}</dd></div>
+                  <div className="min-w-0 sm:col-span-2"><dt className="font-semibold text-muted-foreground">{t('ui.redemptions.table.verifiedBy', 'Verified By')}</dt><dd className="mt-0.5 break-words text-foreground">{record.staff ? <span className="inline-flex items-center gap-1"><Users size={12} className="shrink-0 text-primary" aria-hidden="true" />{record.staff.name} <span className="text-muted-foreground">· {record.staff.email}</span></span> : t('ui.redemptions.selfService', 'Counter checkout')}</dd></div>
+                </dl>
+              </VendorMobileRecordCard>
+            ))}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             {/* Six columns cannot share a phone width; keep a readable minimum and scroll inside the card. */}
             <table className="w-full min-w-[56rem] text-left text-sm">
               <thead className="border-b border-gray-100 dark:border-border bg-gray-50/75 dark:bg-muted/75 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-muted-foreground">
@@ -421,6 +488,7 @@ export default function VendorRedemptionsPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {/* Pagination Footer */}
@@ -429,12 +497,12 @@ export default function VendorRedemptionsPage() {
             <span>
               {t('ui.pagination.pageOf', { page, total: totalPages }) || `Page ${page} of ${totalPages}`}
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded-lg border border-gray-200 dark:border-border px-3 py-1.5 font-semibold text-gray-700 dark:text-foreground transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
+                className="min-h-10 rounded-lg border border-gray-200 dark:border-border px-3 py-1.5 font-semibold text-gray-700 dark:text-foreground transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
               >
                 {t('actions.previous', 'Previous')}
               </button>
@@ -442,7 +510,7 @@ export default function VendorRedemptionsPage() {
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded-lg border border-gray-200 dark:border-border px-3 py-1.5 font-semibold text-gray-700 dark:text-foreground transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
+                className="min-h-10 rounded-lg border border-gray-200 dark:border-border px-3 py-1.5 font-semibold text-gray-700 dark:text-foreground transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
               >
                 {t('actions.next', 'Next')}
               </button>

@@ -27,8 +27,10 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { mapRedemptionStationStats, type RedemptionStationStats, type RedemptionApiStats } from "@/lib/vendor/redemption-station-stats";
+import { VendorMobileRecordCard } from "@/components/vendor/mobile-record-card";
 
 type OutletOption = { id: string; name: string };
+type CameraFacingMode = "user" | "environment";
 type ResolvedScan =
   | { kind: "ticket"; bookingId: string; passToken: string | null; outletId: string; outletName: string; vendorName: string; status: string; productName: string; quantity: number; pass: { policy?: string; entry_limit?: number; entries_used?: number; remaining?: number; status?: string; valid_until?: string | null } | null }
   | { kind: "food_order"; orderId: string; foodToken: string; outletId: string; outletName: string; vendorName: string; mode: "dine_in" | "takeaway"; items: { id: string; name: string; variant: string | null; quantity: number }[] }
@@ -92,6 +94,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
   const controlsRef = useRef<IScannerControls | null>(null);
   const [outletId, setOutletId] = useState(outlets[0]?.id ?? "");
   const [cameraOn, setCameraOn] = useState(false);
+  const [cameraFacingMode, setCameraFacingMode] = useState<CameraFacingMode>("environment");
   const [manualValue, setManualValue] = useState("");
   const [result, setResult] = useState<ResolvedScan | null>(null);
   const [scanError, setScanError] = useState("");
@@ -201,7 +204,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
       if (!navigator.mediaDevices?.getUserMedia) throw new Error(t("ui.scanner.cameraUnsupported"));
       try {
         controlsRef.current = await reader.decodeFromConstraints(
-          { video: { facingMode: { ideal: "environment" } }, audio: false },
+          { video: { facingMode: { ideal: cameraFacingMode } }, audio: false },
           videoElement ?? undefined,
           (decoded) => {
             if (cancelled || !decoded || result) return;
@@ -213,7 +216,10 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
           },
         );
       } catch (error) {
-        if (!cancelled) setScanError(error instanceof Error ? error.message : t("ui.scanner.cameraFailed"));
+        if (!cancelled) {
+          setScanError(error instanceof Error ? error.message : t("ui.scanner.cameraFailed"));
+          setCameraOn(false);
+        }
       }
     }
 
@@ -224,7 +230,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
       controlsRef.current = null;
       BrowserMultiFormatReader.releaseAllStreams();
     };
-  }, [cameraOn, resolve, result, t]);
+  }, [cameraFacingMode, cameraOn, resolve, result, t]);
 
   async function confirm() {
     if (!result || (!outletId && result.kind !== "event_pickup")) return;
@@ -262,9 +268,10 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
         });
         const payload = await response.json() as { data?: { mode?: "dine_in" | "takeaway"; status?: "checked_in" | "fulfilled" }; error?: { message?: string } };
         if (!response.ok) throw new Error(payload.error?.message ?? t("ui.scanner.commitFailed"));
+        const items = result.items.map((item) => `${item.quantity} × ${item.name}${item.variant ? ` · ${item.variant}` : ""}`).join(", ");
         successMessage = payload.data?.status === "checked_in"
-          ? t("ui.scanner.foodDineInCheckedIn")
-          : t("ui.scanner.foodOrderFulfilled");
+          ? t("ui.scanner.foodDineInCheckedInWithItems", { items })
+          : t("ui.scanner.foodOrderFulfilledWithItems", { items });
       } else if (result.kind === "retail_pickup") {
         const response = await fetch(`/api/vendors/${vendorId}/scanner/fulfil-retail-pickup`, {
           method: "POST",
@@ -309,7 +316,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
     : null;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       {/* 1. Header (Matching Fig 2 Layout) */}
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
@@ -318,14 +325,13 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
             <span>{t("ui.scanner.eyebrow")}</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground">{t("ui.scanner.title")}</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{t("ui.scanner.description")}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setSoundEnabled((prev) => !prev)}
-            className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3.5 text-sm font-semibold transition ${
+            className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-3.5 text-sm font-semibold transition sm:h-10 ${
               soundEnabled
                 ? "border-primary/20 bg-secondary text-primary hover:bg-secondary/80"
                 : "border-gray-200 dark:border-border bg-white dark:bg-card text-gray-600 dark:text-muted-foreground hover:bg-gray-50 dark:hover:bg-muted/50"
@@ -338,7 +344,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50 sm:h-10"
           >
             {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             <span className="hidden sm:inline">{isFullscreen ? t("ui.scanner.exitFullscreen", "Exit") : t("ui.scanner.fullscreen", "Fullscreen")}</span>
@@ -347,7 +353,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
             type="button"
             onClick={() => void loadStationData()}
             disabled={loadingStats}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-50"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-50 sm:h-10"
           >
             <RefreshCw size={15} className={loadingStats ? "animate-spin" : ""} />
             <span>{t("actions.refresh", "Refresh")}</span>
@@ -356,25 +362,25 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
       </header>
 
       {/* 2. KPI Summary Cards Row (Matching Fig 2) */}
-      <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-5">
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.scanner.todayScans", "Today's Scans")}</p>
-          <p className="mt-1 text-2xl font-bold text-primary">{stats.todayScans}</p>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-5">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm sm:p-4">
+          <p className="text-[11px] leading-tight text-gray-500 dark:text-muted-foreground sm:text-xs">{t("ui.scanner.todayScans", "Today's Scans")}</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-primary">{stats.todayScans}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.scanner.ticketsAdmitted", "Tickets Admitted")}</p>
-          <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">{stats.ticketAdmissions}</p>
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm sm:p-4">
+          <p className="text-[11px] leading-tight text-gray-500 dark:text-muted-foreground sm:text-xs">{t("ui.scanner.ticketsAdmitted", "Tickets Admitted")}</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-gray-950 dark:text-foreground">{stats.ticketAdmissions}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.scanner.vouchersUsed", "Vouchers Redeemed")}</p>
-          <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">{stats.voucherRedemptions}</p>
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm sm:p-4">
+          <p className="text-[11px] leading-tight text-gray-500 dark:text-muted-foreground sm:text-xs">{t("ui.scanner.vouchersUsed", "Vouchers Redeemed")}</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-gray-950 dark:text-foreground">{stats.voucherRedemptions}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.redemptions.retailPickups", "Retail pickups")}</p>
-          <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">{stats.retailPickups}</p>
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm sm:p-4">
+          <p className="text-[11px] leading-tight text-gray-500 dark:text-muted-foreground sm:text-xs">{t("ui.redemptions.retailPickups", "Retail pickups")}</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-gray-950 dark:text-foreground">{stats.retailPickups}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.scanner.stationStatus", "Station Status")}</p>
+        <div className="col-span-2 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm sm:col-span-1 sm:p-4">
+          <p className="text-[11px] leading-tight text-gray-500 dark:text-muted-foreground sm:text-xs">{t("ui.scanner.stationStatus", "Station Status")}</p>
           <div className="mt-1.5 flex items-center gap-2">
             <span className="relative flex h-2.5 w-2.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
@@ -389,11 +395,12 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
 
       {/* 3. Toolbar Row (Tabs + Outlet Selector - Matching Fig 2) */}
       <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm md:flex-row md:items-center md:justify-between">
-        <div className="flex gap-1 overflow-x-auto rounded-xl bg-gray-100 dark:bg-muted p-1">
+        <div className="grid w-full min-w-0 grid-cols-3 gap-1 rounded-xl bg-gray-100 dark:bg-muted p-1 md:flex md:w-auto md:overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab("scanner")}
-            className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-semibold transition ${
+            aria-pressed={activeTab === "scanner"}
+            className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 whitespace-normal break-words rounded-lg px-1 py-2 text-center text-[11px] leading-tight font-semibold transition md:min-h-0 md:shrink-0 md:flex-row md:gap-2 md:whitespace-nowrap md:px-3.5 md:text-left md:text-xs ${
               activeTab === "scanner" ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"
             }`}
           >
@@ -403,7 +410,8 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
           <button
             type="button"
             onClick={() => setActiveTab("manual")}
-            className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-semibold transition ${
+            aria-pressed={activeTab === "manual"}
+            className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 whitespace-normal break-words rounded-lg px-1 py-2 text-center text-[11px] leading-tight font-semibold transition md:min-h-0 md:shrink-0 md:flex-row md:gap-2 md:whitespace-nowrap md:px-3.5 md:text-left md:text-xs ${
               activeTab === "manual" ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"
             }`}
           >
@@ -413,7 +421,8 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
           <button
             type="button"
             onClick={() => setActiveTab("history")}
-            className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-semibold transition ${
+            aria-pressed={activeTab === "history"}
+            className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 whitespace-normal break-words rounded-lg px-1 py-2 text-center text-[11px] leading-tight font-semibold transition md:min-h-0 md:shrink-0 md:flex-row md:gap-2 md:whitespace-nowrap md:px-3.5 md:text-left md:text-xs ${
               activeTab === "history" ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"
             }`}
           >
@@ -457,20 +466,20 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
       </div>
 
       {/* 4. Main Workstation Card (Matching Fig 2 unified white card container) */}
-      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-5 shadow-sm sm:p-6">
+      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm sm:p-6">
         {activeTab !== "history" ? (
-          <div className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)]">
+          <div className="space-y-4 sm:space-y-6">
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)]">
               {/* Left Column: Viewfinder or Dedicated Gun Input */}
               {activeTab === "scanner" ? (
-                <div className="rounded-2xl border border-gray-900 bg-gray-950 p-4 text-white shadow-inner sm:p-5">
+                <div className="rounded-2xl border border-gray-900 bg-gray-950 p-3 text-white shadow-inner sm:p-5">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                     <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white/80">
                       <Camera size={14} className="text-[#ffcc00]" />
                       <span>{t("ui.scanner.supportsQrAndBarcode")}</span>
                     </span>
                     <span className="rounded-full bg-white/10 dark:bg-card/10 px-2.5 py-0.5 text-[11px] font-medium text-white/70">
-                      {cameraOn ? t("ui.scanner.stationActive", "Ready to scan") : t("ui.scanner.cameraReady")}
+                      {cameraOn ? t("ui.scanner.stationActive", "Ready to scan") : t("ui.scanner.cameraOff")}
                     </span>
                   </div>
 
@@ -482,20 +491,16 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                       className="h-full w-full object-cover"
                       aria-label={t("ui.scanner.cameraPreview")}
                     />
-                    <div className="pointer-events-none absolute inset-[14%] rounded-2xl border-2 border-[#ffcc00] shadow-[0_0_0_999px_rgba(0,0,0,0.3)]">
+                    <div className="pointer-events-none absolute inset-[10%] flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-[#ffcc00] shadow-[0_0_0_999px_rgba(0,0,0,0.3)] sm:inset-[14%]">
                       {cameraOn && (
                         <div className="absolute inset-x-0 top-0 h-0.5 animate-pulse bg-[#ffcc00] shadow-[0_0_8px_#ffcc00]" />
                       )}
+                      {!cameraOn && <TicketCheck size={32} className="shrink-0 text-[#ffcc00]" />}
+                      {!cameraOn && <p className="max-w-full px-2 text-center text-xs leading-snug text-white/80 sm:text-sm">{t("ui.scanner.cameraPrompt")}</p>}
                     </div>
-                    {!cameraOn && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-white/80">
-                        <TicketCheck size={42} className="text-[#ffcc00]" />
-                        <p className="max-w-xs text-sm">{t("ui.scanner.cameraReady")}</p>
-                      </div>
-                    )}
                   </div>
 
-                  <div className="mt-4">
+                  <div className="mt-4 flex gap-2">
                     <button
                       type="button"
                       onClick={() => {
@@ -504,7 +509,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                         setCameraOn((current) => !current);
                       }}
                       disabled={busy || (!outletId && outlets.length > 0)}
-                      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#ffcc00] px-4 py-2.5 text-sm font-bold text-[#010066] transition hover:brightness-105 disabled:opacity-50"
+                      className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#ffcc00] px-4 py-2.5 text-sm font-bold text-[#010066] transition hover:brightness-105 disabled:opacity-50"
                     >
                       {cameraOn ? (
                         <>
@@ -516,6 +521,23 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                         </>
                       )}
                     </button>
+                    {cameraOn && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setScanError("");
+                          setMessage("");
+                          setCameraFacingMode((mode) => mode === "environment" ? "user" : "environment");
+                        }}
+                        disabled={busy}
+                        aria-label={cameraFacingMode === "environment" ? t("ui.scanner.switchToFrontCamera") : t("ui.scanner.switchToBackCamera")}
+                        title={cameraFacingMode === "environment" ? t("ui.scanner.switchToFrontCamera") : t("ui.scanner.switchToBackCamera")}
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-2.5 text-white transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffcc00] disabled:opacity-50"
+                      >
+                        <RefreshCw size={16} />
+                        <span className="whitespace-nowrap text-xs font-semibold">{t("ui.scanner.switchCamera")}</span>
+                      </button>
+                    )}
                   </div>
                   <p className="mt-2.5 text-center text-xs text-white/50">{t("ui.scanner.cameraHint")}</p>
                 </div>
@@ -726,7 +748,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                           className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-primary/90 disabled:opacity-50"
                         >
                           {busy ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                          <span>{result.kind === "retail_pickup" ? t("ui.scanner.confirmRetailPickup") : t("ui.scanner.confirm")}</span>
+                          <span>{result.kind === "retail_pickup" ? t("ui.scanner.confirmRetailPickup") : result.kind === "food_order" ? t("ui.scanner.confirmFoodOrder") : t("ui.scanner.confirm")}</span>
                         </button>
                         <button
                           type="button"
@@ -758,7 +780,6 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-base font-bold text-gray-950 dark:text-foreground">{t("ui.scanner.historyTab", "Recent Scans")}</h3>
-                <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.redemptions.description")}</p>
               </div>
               <button
                 type="button"
@@ -777,60 +798,109 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                 <p>{t("ui.scanner.noRecentActivity")}</p>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-gray-100 dark:border-border">
-                <table className="w-full text-left text-xs">
-                  <thead className="border-b border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 font-semibold uppercase tracking-[0.1em] text-gray-500 dark:text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-3">{t("ui.redemptions.table.time")}</th>
-                      <th className="px-4 py-3">{t("ui.redemptions.table.type")}</th>
-                      <th className="px-4 py-3">{t("ui.redemptions.table.item")}</th>
-                      <th className="px-4 py-3">{t("ui.redemptions.table.customer")}</th>
-                      <th className="px-4 py-3 text-right">{t("ui.vouchers.status")}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-border">
-                    {recentLogs.map((item) => (
-                      <tr key={item.id} className="transition hover:bg-gray-50/50 dark:hover:bg-muted/50">
-                        <td className="whitespace-nowrap px-4 py-3 text-gray-500 dark:text-muted-foreground">
-                          {formatScanTime(item.redeemedAt)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                              item.kind === "voucher"
-                                ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-200"
-                                : "bg-primary/10 text-primary"
-                            }`}
-                          >
-                            {item.kind === "voucher" ? <Tag size={10} /> : item.kind === "retail_pickup" ? <ClipboardCheck size={10} /> : <Ticket size={10} />}
-                            <span>{item.kind === "retail_pickup" ? t("ui.scanner.retailPickupKind") : item.kind === "event_pickup" ? t("ui.scanner.eventPickupKind") : item.kind === "voucher" ? t("ui.scanner.voucherKind") : t("ui.scanner.ticketKind")}</span>
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 font-semibold text-gray-900 dark:text-foreground">
-                          {item.item.name}
-                          {item.item.code && (
-                            <span className="ml-2 font-mono text-[11px] text-gray-400 dark:text-muted-foreground">
-                              ({item.item.code})
+              <div className="space-y-3 md:space-y-0">
+                <div className="space-y-3 md:hidden">
+                  {recentLogs.map((item) => (
+                    <VendorMobileRecordCard
+                      key={item.id}
+                      header={
+                        <>
+                          <div className="min-w-0">
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                item.kind === "voucher"
+                                  ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-200"
+                                  : "bg-primary/10 text-primary"
+                              }`}
+                            >
+                              {item.kind === "voucher" ? <Tag size={10} aria-hidden="true" /> : item.kind === "retail_pickup" ? <ClipboardCheck size={10} aria-hidden="true" /> : <Ticket size={10} aria-hidden="true" />}
+                              <span>{item.kind === "retail_pickup" ? t("ui.scanner.retailPickupKind") : item.kind === "event_pickup" ? t("ui.scanner.eventPickupKind") : item.kind === "voucher" ? t("ui.scanner.voucherKind") : t("ui.scanner.ticketKind")}</span>
                             </span>
-                          )}
-                          <p className="mt-1 font-normal text-gray-500 dark:text-muted-foreground">{item.item.details}</p>
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 dark:text-muted-foreground">
-                          <span className="inline-flex items-center gap-1">
-                            <User size={12} className="text-gray-400 dark:text-muted-foreground" />
-                            <span>{item.customer.name}</span>
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-200">
-                            <Sparkles size={10} />
+                            <h4 className="mt-1.5 break-words text-sm font-semibold text-gray-900 dark:text-foreground">{item.item.name}</h4>
+                          </div>
+                          <time dateTime={item.redeemedAt} className="shrink-0 whitespace-nowrap pt-1 text-xs text-gray-500 dark:text-muted-foreground">
+                            {formatScanTime(item.redeemedAt)}
+                          </time>
+                        </>
+                    }
+                      footer={
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                          <div className="flex min-w-0 items-center gap-1.5 text-xs">
+                            <User size={12} className="shrink-0 text-gray-400 dark:text-muted-foreground" aria-hidden="true" />
+                            <span className="text-gray-500 dark:text-muted-foreground">{t("ui.redemptions.table.customer")}</span>
+                            <span className="min-w-0 break-words font-semibold text-gray-900 dark:text-foreground">{item.customer.name}</span>
+                          </div>
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-200">
+                            <Sparkles size={10} aria-hidden="true" />
                             <span>{t("ui.redemptions.table.verifiedBy")}</span>
                           </span>
-                        </td>
+                        </div>
+                      }
+                    >
+                      {item.item.code && (
+                        <p className="break-all font-mono text-xs font-semibold text-gray-500 dark:text-muted-foreground">
+                          ({item.item.code})
+                        </p>
+                      )}
+                      <p className="break-words text-sm text-gray-600 dark:text-muted-foreground">{item.item.details}</p>
+                    </VendorMobileRecordCard>
+                  ))}
+                </div>
+                <div className="hidden overflow-x-auto rounded-xl border border-gray-100 dark:border-border md:block">
+                  <table className="w-full text-left text-xs">
+                    <thead className="border-b border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 font-semibold uppercase tracking-[0.1em] text-gray-500 dark:text-muted-foreground">
+                      <tr>
+                        <th className="px-4 py-3">{t("ui.redemptions.table.time")}</th>
+                        <th className="px-4 py-3">{t("ui.redemptions.table.type")}</th>
+                        <th className="px-4 py-3">{t("ui.redemptions.table.item")}</th>
+                        <th className="px-4 py-3">{t("ui.redemptions.table.customer")}</th>
+                        <th className="px-4 py-3 text-right">{t("ui.vouchers.status")}</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-border">
+                      {recentLogs.map((item) => (
+                        <tr key={item.id} className="transition hover:bg-gray-50/50 dark:hover:bg-muted/50">
+                          <td className="whitespace-nowrap px-4 py-3 text-gray-500 dark:text-muted-foreground">
+                            {formatScanTime(item.redeemedAt)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                item.kind === "voucher"
+                                  ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-200"
+                                  : "bg-primary/10 text-primary"
+                              }`}
+                            >
+                              {item.kind === "voucher" ? <Tag size={10} /> : item.kind === "retail_pickup" ? <ClipboardCheck size={10} /> : <Ticket size={10} />}
+                              <span>{item.kind === "retail_pickup" ? t("ui.scanner.retailPickupKind") : item.kind === "event_pickup" ? t("ui.scanner.eventPickupKind") : item.kind === "voucher" ? t("ui.scanner.voucherKind") : t("ui.scanner.ticketKind")}</span>
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-gray-900 dark:text-foreground">
+                            {item.item.name}
+                            {item.item.code && (
+                              <span className="ml-2 font-mono text-[11px] text-gray-400 dark:text-muted-foreground">
+                                ({item.item.code})
+                              </span>
+                            )}
+                            <p className="mt-1 font-normal text-gray-500 dark:text-muted-foreground">{item.item.details}</p>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 dark:text-muted-foreground">
+                            <span className="inline-flex items-center gap-1">
+                              <User size={12} className="text-gray-400 dark:text-muted-foreground" />
+                              <span>{item.customer.name}</span>
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-200">
+                              <Sparkles size={10} />
+                              <span>{t("ui.redemptions.table.verifiedBy")}</span>
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>

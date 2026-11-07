@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { Laptop, Moon, Palette, Sun } from "lucide-react";
 import { useTheme } from "@/components/providers/theme";
 import { useFontSize, type FontSize } from "@/components/providers/font-size";
+import { useViewportClampedPopoverPosition } from "@/components/shared/use-viewport-clamped-popover-position";
 
 const THEME_OPTIONS = [
   { value: "light", icon: Sun },
@@ -35,6 +36,9 @@ export function AppearanceControl({ variant = "light" }: { variant?: "light" | "
   // localStorage client-side); avoid a hydration mismatch on the active tab.
   const [mounted, setMounted] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const popoverPosition = useViewportClampedPopoverPosition(open && variant === "light", triggerRef, panelRef);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
@@ -65,6 +69,7 @@ export function AppearanceControl({ variant = "light" }: { variant?: "light" | "
   return (
     <div ref={ref} className={variant === "sidebar-dark" ? "relative" : "relative shrink-0"}>
       <button
+        ref={triggerRef}
         type="button"
         aria-label={t("appearance.settings")}
         aria-expanded={open}
@@ -78,10 +83,13 @@ export function AppearanceControl({ variant = "light" }: { variant?: "light" | "
 
       {open && (
         <div
+          ref={panelRef}
           role="menu"
           aria-label={t("appearance.settings")}
-          className="absolute z-50 w-72 rounded-2xl border border-border bg-card p-3 text-foreground shadow-[0_18px_45px_rgba(1,0,102,0.16)]"
-          style={variant === "sidebar-dark" ? { bottom: "calc(100% + 0.5rem)", left: 0 } : { right: 0, top: "calc(100% + 0.75rem)" }}
+          className={`z-50 w-72 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-2xl border border-border bg-card p-3 text-foreground shadow-[0_18px_45px_rgba(1,0,102,0.16)] ${variant === "sidebar-dark" ? "absolute" : "fixed"}`}
+          style={variant === "sidebar-dark"
+            ? { bottom: "calc(100% + 0.5rem)", left: 0 }
+            : popoverPosition ?? { visibility: "hidden" }}
         >
           <p className="px-1 pb-2 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("appearance.theme")}</p>
           <div className="grid grid-cols-3 gap-1.5">

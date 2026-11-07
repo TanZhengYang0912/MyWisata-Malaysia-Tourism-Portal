@@ -39,4 +39,13 @@ describe('AI draft email response handoff', () => {
       expect(localeSource).toContain('"inviteStatusSyncFailed"');
     }
   });
+
+  it('bounds the email editor to the dynamic viewport and keeps its actions reachable', () => {
+    const modalSource = source('components/admin/ai-draft-email-modal.tsx');
+
+    expect(modalSource).toContain('max-h-[calc(100dvh-2rem)]');
+    expect(modalSource).toContain('overflow-y-auto overscroll-contain');
+    expect(modalSource).toContain('break-words text-base font-semibold text-foreground');
+    expect(modalSource).toContain('flex flex-col gap-2 sm:flex-row sm:justify-end');
+  });
 });

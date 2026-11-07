@@ -24,7 +24,7 @@ export function AdminSegmentedFilter({ value, items, onChange, ariaLabel, fullWi
   const { t, i18n } = useTranslation('admin');
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   return (
-    <div role="tablist" aria-label={t(ariaLabel)} className={`${fullWidth ? 'w-full' : 'min-w-0 flex-1'} flex items-center gap-1 overflow-x-auto rounded-2xl border border-border bg-card p-1.5 ${className}`.trim()}>
+    <div role="tablist" aria-label={t(ariaLabel)} className={`${fullWidth ? 'w-full min-w-0' : 'min-w-0 flex-1'} flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-border bg-card p-1.5 ${className}`.trim()}>
       {items.map((item) => {
         const active = value === item.value;
         return (

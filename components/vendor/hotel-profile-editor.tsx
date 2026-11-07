@@ -43,45 +43,48 @@ export function HotelProfileForm({ data, saving, uploading, onSubmit, onUpload }
       : t("hotelProfile.status.live");
 
   return (
-    <form className="space-y-6" onSubmit={(event) => { event.preventDefault(); onSubmit(profile); }}>
+    <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); onSubmit(profile); }}>
       <p role="status" className={`rounded-xl px-4 py-3 text-sm ${data.lastRejection && !data.pending ? "bg-destructive/10 text-destructive" : "bg-secondary text-secondary-foreground"}`}>{status}</p>
 
-      <label className="block text-sm font-medium text-foreground">
-        {t("hotelProfile.fields.about")}
-        <Textarea className="mt-1.5" rows={5} maxLength={2000} value={profile.about} onChange={(event) => update({ about: event.target.value })} />
-      </label>
+      <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+        <label className="block text-sm font-medium text-foreground">
+          {t("hotelProfile.fields.about")}
+          <Textarea className="mt-2" rows={5} maxLength={2000} value={profile.about} onChange={(event) => update({ about: event.target.value })} />
+        </label>
+      </section>
 
-      <fieldset>
-        <legend className="text-sm font-medium text-foreground">{t("hotelProfile.fields.amenities")}</legend>
-        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <fieldset className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+        <legend className="px-1 text-sm font-semibold text-foreground">{t("hotelProfile.fields.amenities")}</legend>
+        <div className="grid grid-cols-2 gap-2">
           {data.amenities.map((amenity) => (
-            <label key={amenity.code} className="flex items-center gap-2 text-sm text-foreground">
+            <label key={amenity.code} className="flex min-h-11 items-center gap-2 rounded-xl border border-border px-2.5 py-2 text-sm text-foreground sm:px-3">
               <Checkbox checked={profile.amenityCodes.includes(amenity.code)} onCheckedChange={(checked) => toggleAmenity(amenity.code, checked === true)} />
-              {label(amenity)}
+              <span className="min-w-0">{label(amenity)}</span>
             </label>
           ))}
         </div>
       </fieldset>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <section className="grid gap-4 rounded-2xl border border-border bg-card p-4 sm:grid-cols-2 sm:p-5">
         <label className="block text-sm font-medium text-foreground">
           {t("hotelProfile.fields.checkIn")}
-          <Input type="time" className="mt-1.5" value={profile.checkInTime} onChange={(event) => update({ checkInTime: event.target.value })} required />
+          <Input type="time" className="mt-2" value={profile.checkInTime} onChange={(event) => update({ checkInTime: event.target.value })} required />
         </label>
         <label className="block text-sm font-medium text-foreground">
           {t("hotelProfile.fields.checkOut")}
-          <Input type="time" className="mt-1.5" value={profile.checkOutTime} onChange={(event) => update({ checkOutTime: event.target.value })} required />
+          <Input type="time" className="mt-2" value={profile.checkOutTime} onChange={(event) => update({ checkOutTime: event.target.value })} required />
         </label>
-      </div>
+      </section>
 
-      <label className="block text-sm font-medium text-foreground">
-        {t("hotelProfile.fields.policies")}
-        <Textarea className="mt-1.5" rows={4} maxLength={2000} value={profile.policies} onChange={(event) => update({ policies: event.target.value })} />
-      </label>
+      <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+        <label className="block text-sm font-medium text-foreground">
+          {t("hotelProfile.fields.policies")}
+          <Textarea className="mt-2" rows={4} maxLength={2000} value={profile.policies} onChange={(event) => update({ policies: event.target.value })} />
+        </label>
+      </section>
 
-      <div>
-        <p className="text-sm font-medium text-foreground">{t("hotelProfile.fields.photos")}</p>
-        <p className="text-xs text-muted-foreground">{t("hotelProfile.photoHint")}</p>
+      <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+        <p className="text-sm font-semibold text-foreground">{t("hotelProfile.fields.photos")}</p>
         <ImageShapeHint shape="photo" className="text-xs text-muted-foreground" />
         <ul className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {profile.photos.map((url, index) => (
@@ -95,7 +98,7 @@ export function HotelProfileForm({ data, saving, uploading, onSubmit, onUpload }
             </li>
           ))}
         </ul>
-        <label className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary">
+        <label className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary">
           {uploading ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}
           {t("hotelProfile.addPhoto")}
           <Input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={uploading || profile.photos.length >= 20}
@@ -106,10 +109,11 @@ export function HotelProfileForm({ data, saving, uploading, onSubmit, onUpload }
             }} />
         </label>
         {cropDialog}
-      </div>
+      </section>
 
-      <div className="flex justify-end">
-        <Button type="submit" disabled={saving}>{saving ? t("hotelProfile.submitting") : t("hotelProfile.submit")}</Button>
+      <div className="sticky bottom-0 z-40 -mx-4 grid grid-cols-[minmax(0,1fr)_3.5rem] gap-2 border-t border-border bg-card/95 px-4 py-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] shadow-[0_-8px_20px_-16px_rgba(15,23,42,0.4)] backdrop-blur sm:static sm:mx-0 sm:flex sm:justify-end sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-none">
+        <Button type="submit" disabled={saving} className="min-h-11 w-full sm:w-auto">{saving ? t("hotelProfile.submitting") : t("hotelProfile.submit")}</Button>
+        <span aria-hidden="true" className="sm:hidden" />
       </div>
     </form>
   );
@@ -171,12 +175,11 @@ export function HotelProfileEditor({ vendorId, outletId, outletName, onClose, ch
 
   if (state === "notHotel") return <>{children}</>;
   return (
-    <section className="mx-auto max-w-4xl rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+    <section className="mx-auto max-w-4xl rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6">
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t("hotelProfile.eyebrow")}</p>
-          <h1 className="mt-1 text-xl font-bold text-foreground">{outletName}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("hotelProfile.description")}</p>
+          <h1 className="mt-1 break-words text-xl font-bold text-foreground">{outletName}</h1>
         </div>
         <Button type="button" variant="ghost" size="icon" aria-label={t("hotelProfile.close")} onClick={onClose}><X size={18} /></Button>
       </div>

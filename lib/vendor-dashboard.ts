@@ -44,11 +44,20 @@ type DashboardProduct = {
   product_variants?: Array<{ id: string; is_active?: boolean | null; inventory?: Array<{ outlet_id: string }> | null }> | null;
 };
 
+type DashboardReviewMetric = {
+  scope_id: string;
+  context_scope_id: string | null;
+  rating: number | string;
+  review_count: number | string;
+};
+
 type RecentOrderDraft = RecentOrder & { display_id?: string | null; fulfil_statuses: string[] };
 export type StockAlert = { variantId: string; productId: string; productName: string; variantName: string; outletId: string; quantity: number; reserved: number; available: number; threshold: number; coverUrl: string | null };
 export type InventorySetupItem = { productId: string; productName: string; outletId: string; outletName: string; coverUrl: string | null };
 
 const TIME_ZONE = 'Asia/Kuala_Lumpur';
+const REVIEW_PRODUCT_ID_BATCH_SIZE = 100;
+const REVIEW_METRIC_PAGE_SIZE = 500;
 
 function number(value: unknown) {
   const parsed = Number(value);
@@ -181,14 +190,13 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   const outletIds = outletRows.map((outlet) => outlet.id);
   const { now, start, previousStart, previousEnd } = rangeFor(filter, customRange);
 
-  const [itemsResult, productsResult, reviewsResult, pendingResult, inventoryResult] = await Promise.all([
+  const [itemsResult, productsResult, pendingResult, inventoryResult] = await Promise.all([
     outletIds.length
       ? db.from('order_items').select('id,order_id,outlet_id,product_id,product_name,quantity,line_total,fulfil_status,slot_id,slot_starts_at,created_at,orders!inner(display_id,status,subtotal,total_amount,created_at,paid_at,completed_at,payments(status,provider,is_live))').in('outlet_id', outletIds).gte('created_at', previousStart.toISOString()).lte('created_at', now.toISOString()).order('created_at', { ascending: false }).limit(10000)
       : Promise.resolve({ data: [], error: null }),
     outletIds.length
       ? db.from('products').select('id,name,base_price,product_type,requires_booking,status,outlet_id,cover_url,outlet_offers(outlet_id,status),product_variants(id,is_active,inventory(outlet_id))').eq('vendor_id', vendor.id).or(`outlet_id.in.(${outletIds.join(',')}),outlet_id.is.null`)
       : Promise.resolve({ data: [], error: null }),
-    db.from('reviews').select('product_id,rating,created_at').eq('vendor_id', vendor.id).eq('is_visible', true).gte('created_at', start.toISOString()).lte('created_at', now.toISOString()),
     outletIds.length
       ? db.from('order_items').select('order_id,orders!inner(status)').in('outlet_id', outletIds).in('fulfil_status', ['pending', 'ready']).eq('orders.status', 'paid')
       : Promise.resolve({ data: [], error: null }),
@@ -196,7 +204,6 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   ]);
   if (itemsResult.error) throw itemsResult.error;
   if (productsResult.error) throw productsResult.error;
-  if (reviewsResult.error) throw reviewsResult.error;
   if (pendingResult.error) throw pendingResult.error;
   if (inventoryResult.error) throw inventoryResult.error;
 
@@ -207,7 +214,31 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   const pendingOrdersCount = new Set((pendingResult.data || []).map((item: { order_id: string }) => item.order_id)).size;
   const previousOrderIds = new Set(previousItems.map((item) => item.order_id));
   const products = (productsResult.data || []) as unknown as DashboardProduct[];
-  const reviews = (reviewsResult.data || []) as unknown as DashboardRow[];
+  const ratingScopeType = role === 'outlet_manager' ? 'product_outlet' : 'product';
+  const productIdBatches = Array.from({ length: Math.ceil(products.length / REVIEW_PRODUCT_ID_BATCH_SIZE) }, (_, index) =>
+    products.slice(index * REVIEW_PRODUCT_ID_BATCH_SIZE, (index + 1) * REVIEW_PRODUCT_ID_BATCH_SIZE).map((product) => product.id),
+  );
+  const reviewMetrics = (await Promise.all(productIdBatches.map(async (productIds) => {
+    const rows: DashboardReviewMetric[] = [];
+    for (let from = 0; ; from += REVIEW_METRIC_PAGE_SIZE) {
+      let query = db
+        .from('review_rating_metrics_by_scope')
+        .select('scope_id,context_scope_id,rating,review_count')
+        .eq('scope_type', ratingScopeType)
+        .in('scope_id', productIds)
+        .order('scope_id')
+        .order('context_scope_id')
+        .order('rating')
+        .range(from, from + REVIEW_METRIC_PAGE_SIZE - 1);
+      if (role === 'outlet_manager') query = query.in('context_scope_id', outletIds);
+      const { data, error } = await query;
+      if (error) throw error;
+      const page = (data || []) as unknown as DashboardReviewMetric[];
+      rows.push(...page);
+      if (page.length < REVIEW_METRIC_PAGE_SIZE) break;
+    }
+    return rows;
+  }))).flat();
   const outletNames = Object.fromEntries(outletRows.map((outlet) => [outlet.id, outlet.name]));
   // Strip the vendor brand prefix from each outlet name to get a unique location label.
   // e.g. "Rasa Malaysia — Ipoh Old Town" → "Ipoh Old Town"
@@ -290,14 +321,16 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
   const topSelling = [...productMap.values()].sort((a, b) => b.quantity - a.quantity).slice(0, 5).map((product) => ({ ...product, revenue: Math.round(product.revenue * 100) / 100 }));
 
   const ratingMap = new Map<string, { total: number; count: number }>();
-  for (const review of reviews) {
-    const key = review.product_id;
-    if (!key) continue;
+  for (const review of reviewMetrics) {
+    const key = review.scope_id;
     const product = productById[key];
     if (!product || !isRatingEligibleProduct(product, outletIds)) continue;
+    const ratingValue = number(review.rating);
+    const reviewCount = number(review.review_count);
+    if (!Number.isInteger(ratingValue) || ratingValue < 1 || ratingValue > 5 || !Number.isInteger(reviewCount) || reviewCount < 1) continue;
     const rating = ratingMap.get(key) || { total: 0, count: 0 };
-    rating.total += number(review.rating);
-    rating.count += 1;
+    rating.total += ratingValue * reviewCount;
+    rating.count += reviewCount;
     ratingMap.set(key, rating);
   }
   const topRated = [...ratingMap.entries()].sort(([, a], [, b]) => (b.total / b.count) - (a.total / a.count) || b.count - a.count).slice(0, 5).map(([productId, rating]) => ({

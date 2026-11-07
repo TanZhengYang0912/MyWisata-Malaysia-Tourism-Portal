@@ -25,7 +25,6 @@ export default function AdminNotificationsPage() {
       <AdminPageHeader
         eyebrow={<><Bell size={14} /> {t("notifications.label")}</>}
         title={t("notifications.title")}
-        description={t("notifications.adminDescription")}
       />
       <NotificationCenter scope="staff" categories={categories} pageSize={15} />
     </AdminPageShell>

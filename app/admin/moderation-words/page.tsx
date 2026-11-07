@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
+import { AdminMobileRecordCard } from "@/components/admin/admin-mobile-record-card";
 import { adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { APP_LOCALES, isAppLocale } from "@/lib/i18n/locale";
 
@@ -106,7 +107,7 @@ export default function ModerationWordsPage() {
         title={t("moderationWords.title")}
       />
 
-      <section className="rounded-2xl border border-border bg-card p-5">
+      <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
         <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr_auto] sm:items-end">
           <label className="text-sm">
             <span className="mb-1.5 block font-medium text-foreground">{t("moderationWords.form.term")}</span>
@@ -114,7 +115,7 @@ export default function ModerationWordsPage() {
               value={form.term}
               onChange={(e) => setForm((f) => ({ ...f, term: e.target.value }))}
               onKeyDown={(e) => { if (e.key === "Enter") void addWord(); }}
-              className={adminFilterControlClassName}
+              className={`${adminFilterControlClassName} w-full`}
               placeholder={t("moderationWords.form.termPlaceholder")}
             />
           </label>
@@ -123,7 +124,7 @@ export default function ModerationWordsPage() {
             <select
               value={form.category}
               onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as CustomWord["category"] }))}
-              className={adminFilterControlClassName}
+              className={`${adminFilterControlClassName} w-full`}
             >
               <option value="profanity">{t("moderationWords.category.profanity")}</option>
               <option value="slur">{t("moderationWords.category.slur")}</option>
@@ -134,7 +135,7 @@ export default function ModerationWordsPage() {
             <select
               value={form.language}
               onChange={(e) => setForm((f) => ({ ...f, language: e.target.value }))}
-              className={adminFilterControlClassName}
+              className={`${adminFilterControlClassName} w-full`}
             >
               <option value="">{t("moderationWords.form.languageNotSpecified")}</option>
               {APP_LOCALES.map((language) => (
@@ -143,7 +144,7 @@ export default function ModerationWordsPage() {
               <option value="other">{t("moderationWords.form.otherLanguage")}</option>
             </select>
           </label>
-          <Button onClick={() => void addWord()} disabled={saving || !form.term.trim()}>
+          <Button className="min-h-11 w-full sm:w-auto" onClick={() => void addWord()} disabled={saving || !form.term.trim()}>
             <Plus size={15} /> {t("moderationWords.form.add")}
           </Button>
         </div>
@@ -155,7 +156,14 @@ export default function ModerationWordsPage() {
         ) : words.length === 0 ? (
           <EmptyState title={t("moderationWords.empty")} />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="space-y-3 lg:hidden">
+            {words.map((word) => <AdminMobileRecordCard key={word.id} header={<div className="min-w-0"><p className="break-words font-semibold">{word.term}</p><p className="mt-1 text-sm text-muted-foreground">{t(`moderationWords.category.${word.category}`)}</p></div>}>
+              <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-sm text-muted-foreground">{t("moderationWords.table.language")}: {languageLabel(word.language)}</span><button type="button" onClick={() => void toggleActive(word)} className={`rounded-full px-2.5 py-1 text-xs font-medium ${word.isActive ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" : "bg-secondary text-muted-foreground"}`}>{word.isActive ? t("moderationWords.status.active") : t("moderationWords.status.inactive")}</button></div>
+              <div className="flex justify-end"><button type="button" onClick={() => void removeWord(word)} aria-label={t("moderationWords.table.remove")} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 size={15} />{t("moderationWords.table.remove")}</button></div>
+            </AdminMobileRecordCard>)}
+          </div>
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -194,6 +202,7 @@ export default function ModerationWordsPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </section>
     </AdminPageShell>

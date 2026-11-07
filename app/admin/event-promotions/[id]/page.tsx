@@ -222,10 +222,10 @@ export default function AdminEventPromotionDetailPage({ params }: { params: Prom
           )}
 
           <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-            <DialogContent className="sm:max-w-2xl">
+            <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain sm:max-w-2xl">
               <DialogTitle className="sr-only">{detail.title}</DialogTitle>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={detail.posterUrl} alt="" className="w-full rounded-lg object-contain" />
+              <img src={detail.posterUrl} alt="" className="max-h-[calc(100dvh-8rem)] w-full rounded-lg object-contain" />
             </DialogContent>
           </Dialog>
         </>

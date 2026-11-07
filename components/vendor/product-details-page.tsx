@@ -198,7 +198,6 @@ export default function ProductDetailsPage({ product, vendorId, canManageOutlet,
               <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-primary">{productTypeLabel}</span>
               <StatusBadge status={product.status} />
             </div>
-            <p className="mt-5 max-w-2xl text-sm leading-6 text-gray-500 dark:text-muted-foreground">{t('productDetails.overviewHint')}</p>
           </div>
         </div>
 
@@ -303,7 +302,6 @@ export default function ProductDetailsPage({ product, vendorId, canManageOutlet,
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{t('productDetails.catalogueSetup')}</p>
             <h2 className="mt-1 text-xl font-bold text-gray-950 dark:text-foreground">{t('productDetails.variantsInventory')}</h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{t('productDetails.variantsHint')}</p>
           </div>
           {canViewDetails ? <VariantManager vendorId={vendorId} productId={product.id} variants={product.variants || []} selectedOutletId={selectedOutlet?.id} requiresBooking={product.requires_booking} readOnly={!canManageOutlet} onUpdate={onUpdate} /> : <div className="mt-5 rounded-xl border border-dashed border-gray-200 dark:border-border bg-gray-50 dark:bg-muted/50 p-5 text-sm text-gray-500 dark:text-muted-foreground">{t('productDetails.viewOnlyVariants')}</div>}
         </section>
@@ -312,7 +310,6 @@ export default function ProductDetailsPage({ product, vendorId, canManageOutlet,
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{t('productDetails.revenueControls')}</p>
             <h2 className="mt-1 text-xl font-bold text-gray-950 dark:text-foreground">{t('productDetails.pricingRules')}</h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{t('productDetails.pricingHint')}</p>
           </div>
           {canViewDetails ? <PriceRuleManager vendorId={vendorId} productId={product.id} productOptions={productOptions} readOnly={!canManageOutlet} /> : <div className="mt-5 rounded-xl border border-dashed border-gray-200 dark:border-border bg-gray-50 dark:bg-muted/50 p-5 text-sm text-gray-500 dark:text-muted-foreground">{t('productDetails.viewOnlyPricing')}</div>}
         </section>

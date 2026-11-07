@@ -20,4 +20,16 @@ describe('Admin orders page contract', () => {
     expect(page).toContain('confirm(');
     expect(page).not.toContain('/financial-outcome');
   });
+
+  it('keeps order identity, customer, items, payment, total, date, and actions in mobile cards', () => {
+    expect(page).toContain('AdminMobileRecordCard');
+    expect(page).toContain('lg:hidden');
+    expect(page).toContain('lg:block');
+    expect(page).toContain('orderOperations.customer');
+    expect(page).toContain('orderOperations.fulfilment');
+    expect(page).toContain('orderOperations.payment');
+    expect(page).toContain('resolveShortage(item)');
+    expect(page).toContain('openGuestContactCorrection(order)');
+    expect(page).toContain('orderOperations.created');
+  });
 });

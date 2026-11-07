@@ -43,6 +43,20 @@ describe("Admin page-shell presentation", () => {
     expect(markup.indexOf("Prioritize open cases.")).toBeLessThan(markup.indexOf("Refresh"));
   });
 
+  it("lets long mobile headings wrap and actions use the available row width", () => {
+    const markup = renderToStaticMarkup(
+      <AdminPageHeader
+        title="A long governance heading that should wrap cleanly"
+        actions={<button type="button">Refresh overview</button>}
+      />,
+    );
+
+    expect(markup).toContain("min-w-0");
+    expect(markup).toContain("break-words");
+    expect(markup).toContain("w-full flex-wrap");
+    expect(markup).toContain("lg:w-fit");
+  });
+
   it("keeps a fragment eyebrow icon and label on the same aligned row", () => {
     const markup = renderToStaticMarkup(
       <AdminPageHeader
@@ -56,7 +70,7 @@ describe("Admin page-shell presentation", () => {
       />,
     );
 
-    expect(markup).toContain('class="mb-1 inline-flex items-center gap-2');
+    expect(markup).toContain('class="mb-1 inline-flex max-w-full flex-wrap items-center gap-2');
     expect(markup.indexOf("<svg")).toBeLessThan(markup.indexOf("Malaysia Vendor Network"));
   });
 
@@ -72,6 +86,7 @@ describe("Admin page-shell presentation", () => {
     );
 
     expect(metricsMarkup).toContain("grid");
+    expect(metricsMarkup).toContain("grid-cols-2");
     expect(metricsMarkup).toContain("border-border");
     expect(metricsMarkup).toContain("bg-card");
     expect(metricsMarkup).toContain("rounded-2xl");

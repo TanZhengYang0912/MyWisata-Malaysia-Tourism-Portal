@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
+import { AdminMobileRecordCard } from "@/components/admin/admin-mobile-record-card";
 
 interface Amenity {
   code: string;
@@ -115,7 +116,14 @@ export default function HotelAmenitiesPage() {
         ) : amenities.length === 0 ? (
           <EmptyState title={t("hotelAmenities.empty")} />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            <div className="space-y-3 lg:hidden">
+              {amenities.map((amenity) => <AdminMobileRecordCard key={amenity.code} header={<div className="flex min-w-0 flex-wrap items-start justify-between gap-2"><p className="break-all font-mono text-sm font-semibold">{amenity.code}</p><StatusBadge status={amenity.is_active ? "active" : "inactive"} /></div>}>
+                <div><p className="text-xs font-semibold text-muted-foreground">{t("hotelAmenities.table.labels")}</p><p className="mt-1 break-words text-sm">{amenity.label_en}</p><p className="break-words text-sm text-muted-foreground">{amenity.label_ms}</p><p className="break-words text-sm text-muted-foreground">{amenity.label_zh}</p></div>
+                <div className="flex justify-end"><Button size="sm" variant="outline" onClick={() => void toggleActive(amenity)}>{amenity.is_active ? t("hotelAmenities.actions.deactivate") : t("hotelAmenities.actions.activate")}</Button></div>
+              </AdminMobileRecordCard>)}
+            </div>
+            <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -140,7 +148,8 @@ export default function HotelAmenitiesPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </section>
     </AdminPageShell>

@@ -30,6 +30,8 @@ export const VENDOR_BUSINESS_TYPES = [
   'other',
 ] as const;
 
+export const VENDOR_KINDS = ['shop', 'event'] as const;
+
 // ── Vendor ─────────────────────────────────────────────────
 
 export const VENDOR_REGISTER_VALIDATION_KEYS = [
@@ -74,6 +76,7 @@ const vendorRegisterKey = (field: string, rule: string) => `registration.validat
 
 export const vendorRegisterSchema = z.object({
   name: z.string({ error: vendorRegisterKey('name', 'required') }).trim().min(2, { error: vendorRegisterKey('name', 'min') }).max(255, { error: vendorRegisterKey('name', 'max') }),
+  vendorKind: z.enum(VENDOR_KINDS).default('shop'),
   slug: slug.optional(), // auto-generated from name if not provided
   description: z.string({ error: vendorRegisterKey('description', 'invalid') }).trim().max(2000, { error: vendorRegisterKey('description', 'max') }).optional(),
   businessType: z.enum(VENDOR_BUSINESS_TYPES, { error: vendorRegisterKey('businessType', 'invalid') }).optional().or(z.literal('')),
@@ -92,7 +95,9 @@ export const vendorRegisterSchema = z.object({
   coverUrl: z.string({ error: vendorRegisterKey('coverUrl', 'invalid') }).url({ error: vendorRegisterKey('coverUrl', 'format') }).max(2000, { error: vendorRegisterKey('coverUrl', 'max') }).optional().or(z.literal('')),
 }).strict();
 
-export const vendorUpdateSchema = vendorRegisterSchema.partial();
+export type VendorRegisterInput = z.input<typeof vendorRegisterSchema>;
+
+export const vendorUpdateSchema = vendorRegisterSchema.omit({ vendorKind: true }).partial();
 
 export const vendorApproveSchema = z.object({
   action: z.enum(['approve', 'reject', 'request_information']),

@@ -41,3 +41,13 @@ describe('catalogue queue refresh state', () => {
     expect(pageSource).toContain('setPage(Math.max(1, nextTotalPages))');
   });
 });
+
+describe('catalogue mobile review cards', () => {
+  it('keeps selection and item review actions inside the card surface', () => {
+    expect(pageSource).toContain('AdminMobileRecordCard');
+    expect(pageSource).toContain('catalogue.accessibility.selectItem');
+    expect(pageSource).toContain('catalogue.actions.openReview');
+    expect(pageSource).toContain("review(item, 'approve')");
+    expect(pageSource).toContain('lg:hidden');
+  });
+});

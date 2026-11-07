@@ -51,7 +51,10 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
     setActiveIndex((index) => (index + direction + list.length) % list.length);
   }
 
-  const hasMultiple = list.length > 1;
+  function moveTo(index: number) {
+    if (index < 0 || index >= list.length) return;
+    setActiveIndex(index);
+  }
 
   const actions = (loadFailed || !displayCampaign) && <div data-slot="promotion-campaign-actions" className="mt-auto flex w-full flex-wrap items-center justify-start gap-x-5 gap-y-3 pt-8">
     {loadFailed && (
@@ -86,11 +89,11 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
         title={t("ui.home.campaigns")}
         description={null}
         carouselLabel={t("ui.search.featuredCarousel")}
-        previousLabel={t("ui.promotionCampaigns.previous")}
-        nextLabel={t("ui.promotionCampaigns.next")}
+        slideLabel={(page, total) => t("ui.accessibility.carouselSlide", { page, total })}
         carouselTestId="promotion-campaign-spotlight"
-        hasMultipleSlides={hasMultiple}
-        onPrevious={() => move(-1)}
+        activeSlideIndex={list.length > 0 ? activeIndex % list.length : 0}
+        slideCount={list.length}
+        onSelectSlide={moveTo}
         onNext={() => move(1)}
         clip={!displayCampaign}
         action={displayCampaign && (

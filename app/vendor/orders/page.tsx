@@ -5,14 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
   Check,
+  Copy,
   Download,
   Eye,
+  MoreHorizontal,
   PackageCheck,
   Search,
-  SlidersHorizontal,
   ShoppingBag,
   X,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { StatusBadge } from "@/components/ui/badge";
 import CompactThumbnail from "@/components/vendor/compact-thumbnail";
@@ -29,6 +31,9 @@ import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { getMalaysiaDateRangeDefaults } from "@/lib/datetime/date-input";
 import type { StayBookingDetails } from "@/backend/core/types";
 import CenteredDetailModal from "@/components/ui/centered-detail-modal";
+import { VendorPageHeader } from "@/components/vendor/vendor-page-header";
+import { MobileFilterToggle } from "@/components/vendor/compact-filter-bar";
+import { VendorMobileRecordCard } from "@/components/vendor/mobile-record-card";
 import {
   getBatchFulfilmentActions,
   getItemFulfilmentAction,
@@ -155,6 +160,15 @@ export default function VendorOrdersPage() {
   const linkedOrderId = searchParams.get("orderId") ?? "";
   const { user } = useAuth();
   const { showFeedback } = useActionFeedback();
+
+  async function copyOrderId(orderId: string) {
+    try {
+      await navigator.clipboard.writeText(orderId);
+      showFeedback("success", t("ui.orders.orderIdCopied", { id: orderId }));
+    } catch {
+      showFeedback("error", t("ui.orders.orderIdCopyFailed", { id: orderId }));
+    }
+  }
   const vendorId = user?.activeVendorId;
   const [items, setItems] = useState<VendorOrderData[]>([]);
   const [selectedItem, setSelectedItem] = useState<VendorOrderData | null>(
@@ -617,36 +631,26 @@ export default function VendorOrdersPage() {
       : t("ui.orders.fulfil");
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            <ShoppingBag size={15} aria-hidden="true" />{" "}
-            {t("ui.orders.fulfilmentDesk")}
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground">
-            {t("ui.orders.title")}
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">
-            {t("ui.orders.description")}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <div className="space-y-5 pb-0 lg:pb-24">
+      <VendorPageHeader
+        eyebrow={<><ShoppingBag size={15} aria-hidden="true" /> {t("ui.orders.fulfilmentDesk")}</>}
+        title={t("ui.orders.title")}
+        actions={<div className="hidden w-full flex-col gap-2 md:flex md:w-auto md:flex-row">
         <button
           type="button"
           onClick={handleExportOrders}
           disabled={loading || items.length === 0}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
         >
           <Download size={16} aria-hidden="true" /> {t("actions.exportCsv")}
         </button>
-        <button type="button" onClick={handleExportReadableOrders} disabled={loading || items.length === 0} className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
+        <button type="button" onClick={handleExportReadableOrders} disabled={loading || items.length === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
           <Download size={16} aria-hidden="true" /> {t("actions.exportReadableCsv")}
         </button>
-        </div>
-      </header>
+        </div>}
+      />
 
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
           <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.orders.needsAttention")}</p>
           <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-300">{stats.attention}</p>
@@ -669,8 +673,24 @@ export default function VendorOrdersPage() {
         </div>
       </div>
 
+      <div className="flex justify-end md:hidden">
+        <details className="group relative">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 [&::-webkit-details-marker]:hidden">
+            <MoreHorizontal size={17} aria-hidden="true" /> {t("actions.moreActions")}
+          </summary>
+          <div className="absolute right-0 z-20 mt-2 flex w-60 flex-col gap-1 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card p-2 shadow-xl">
+            <button type="button" onClick={handleExportOrders} disabled={loading || items.length === 0} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
+              <Download size={16} aria-hidden="true" /> {t("actions.exportCsv")}
+            </button>
+            <button type="button" onClick={handleExportReadableOrders} disabled={loading || items.length === 0} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
+              <Download size={16} aria-hidden="true" /> {t("actions.exportReadableCsv")}
+            </button>
+          </div>
+        </details>
+      </div>
+
       <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm">
-        <div className="flex flex-wrap gap-1 rounded-xl bg-gray-100 dark:bg-muted p-1">
+        <div className="flex max-w-full flex-nowrap gap-1 overflow-x-auto rounded-xl bg-gray-100 dark:bg-muted p-1">
           {[
             { value: "", label: t("ui.orders.allOrders") },
             { value: "attention", label: t("ui.orders.needsAttention") },
@@ -681,14 +701,14 @@ export default function VendorOrdersPage() {
               key={filter.value || "all"}
               type="button"
               onClick={() => applyQuickFilter(filter.value)}
-              className={`rounded-lg px-3 py-2 text-xs font-semibold ${quickFilter === filter.value ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"}`}
+              className={`min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold ${quickFilter === filter.value ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"}`}
             >
               {filter.label}
             </button>
           ))}
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 items-center gap-2">
           <label className="relative min-w-0 flex-1">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-muted-foreground"
@@ -704,27 +724,19 @@ export default function VendorOrdersPage() {
               }}
               placeholder={t("ui.orders.searchPlaceholder")}
               aria-label={t("ui.orders.searchPlaceholder")}
-              className="h-10 w-full rounded-xl border border-gray-200 dark:border-border pl-9 pr-3 text-sm outline-none focus:border-primary"
+              className="h-11 w-full rounded-xl border border-gray-200 dark:border-border pl-9 pr-3 text-sm outline-none focus:border-primary"
             />
           </label>
-          <button
-            type="button"
-            onClick={() => {
+          <MobileFilterToggle
+            controlId="order-filters"
+            isOpen={filtersOpen}
+            selectedFilterCount={activeFilterCount}
+            mobileOnly={false}
+            onToggle={() => {
               setDraftFilters(filters);
               setFiltersOpen((open) => !open);
             }}
-            aria-expanded={filtersOpen}
-            aria-controls="order-filters"
-            className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition ${filtersOpen || activeFilterCount ? "border-primary bg-secondary text-primary" : "border-gray-200 dark:border-border text-gray-600 dark:text-muted-foreground hover:border-primary/40 hover:text-primary"}`}
-          >
-            <SlidersHorizontal size={15} aria-hidden="true" />
-            {t("ui.orders.filters")}
-            {activeFilterCount > 0 && (
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] text-white">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
+          />
         </div>
 
         {filtersOpen && (
@@ -736,9 +748,6 @@ export default function VendorOrdersPage() {
               <div>
                 <p className="text-sm font-semibold text-gray-900 dark:text-foreground">
                   {t("ui.orders.advancedFilters")}
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-muted-foreground">
-                  {t("ui.orders.advancedFiltersDescription")}
                 </p>
               </div>
               <button
@@ -996,7 +1005,152 @@ export default function VendorOrdersPage() {
                 })}
               </span>
             </div>
-            <div className="overflow-x-auto">
+            <div data-mobile-order-list className="space-y-3 p-3 xl:hidden">
+              {items.map((order) => {
+                const customer = customerFor(order);
+                const displayOrderId = order.display_id || `#${order.id.slice(0, 8)}`;
+                const orderAction = getOrderFulfilmentAction(
+                  order.status,
+                  order.vendor_items.map((item) => item.fulfil_status),
+                );
+                const actionLabel =
+                  orderAction === "review"
+                    ? t("ui.orders.reviewItems")
+                    : orderAction === "ready"
+                      ? t("ui.orders.markReady")
+                      : orderAction === "fulfilled"
+                        ? t("ui.orders.fulfil")
+                        : "";
+
+                return (
+                  <VendorMobileRecordCard
+                    key={order.id}
+                    header={
+                      <>
+                        <div className="flex min-w-0 flex-1 items-start gap-2">
+                          <label className="flex size-11 shrink-0 items-center justify-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(order.id)}
+                              onChange={() => toggleSelected(order.id)}
+                              aria-label={t("ui.orders.selectOrder", {
+                                id: order.id,
+                              })}
+                              className="size-5"
+                            />
+                          </label>
+                          <div className="min-w-0 flex-1 pt-1">
+                            <p className="truncate text-sm font-semibold text-foreground">
+                              {customer.full_name || t("ui.orders.guest")}
+                            </p>
+                            <div className="mt-1 flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                              <span className="truncate font-mono">{displayOrderId}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                aria-label={t("ui.orders.copyOrderId", { id: displayOrderId })}
+                                title={t("ui.orders.copyOrderId", { id: displayOrderId })}
+                                onClick={() => void copyOrderId(displayOrderId)}
+                                className="size-9 shrink-0 rounded-md text-muted-foreground hover:bg-secondary hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
+                              >
+                                <Copy size={13} aria-hidden="true" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                        <StatusBadge status={order.vendor_fulfil_status} />
+                      </>
+                    }
+                    footer={
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setSelectedItem(order)}
+                          aria-label={
+                            orderAction === "review"
+                              ? t("ui.orders.reviewItems")
+                              : t("ui.orders.viewDetails")
+                          }
+                          className={`min-h-11 min-w-0 gap-1.5 px-2 text-xs ${orderAction ? "flex-1" : "w-full"}`}
+                        >
+                          <Eye size={15} aria-hidden="true" />
+                          <span className="truncate">{t("ui.orders.viewDetails")}</span>
+                        </Button>
+                        {orderAction && (
+                          <Button
+                            type="button"
+                            onClick={() =>
+                              orderAction === "review"
+                                ? setSelectedItem(order)
+                                : requestOrderAction(order, orderAction)
+                            }
+                            aria-label={actionLabel}
+                            className="min-h-11 min-w-0 flex-1 gap-1.5 whitespace-nowrap px-2 text-xs"
+                          >
+                            {orderAction === "ready" ? (
+                              <Check size={15} aria-hidden="true" />
+                            ) : (
+                              <PackageCheck size={15} aria-hidden="true" />
+                            )}
+                            <span className="truncate">{actionLabel}</span>
+                          </Button>
+                        )}
+                      </div>
+                    }
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex shrink-0 items-center gap-1">
+                        {order.vendor_items.slice(0, 2).map((item, index) => (
+                          <CompactThumbnail
+                            key={index}
+                            src={imageFor(item)}
+                            alt={item.product_name}
+                            kind="product"
+                          />
+                        ))}
+                        {order.vendor_items.length > 2 && (
+                          <span className="ml-1 text-xs font-medium text-muted-foreground">
+                            +{order.vendor_items.length - 2}
+                          </span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedItem(order)}
+                          className="block max-w-full text-left text-xs font-semibold text-primary hover:underline"
+                        >
+                          {t("ui.orders.itemCount", {
+                            count: order.vendor_items.length,
+                          })}
+                        </button>
+                        <p className="mt-0.5 line-clamp-2 text-sm font-medium text-foreground">
+                          {order.product_summary}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex min-w-0 items-center justify-between gap-3 border-t border-border pt-3">
+                      <p className="min-w-0 truncate text-xs text-muted-foreground">
+                        {order.outlets_summary}
+                      </p>
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-bold text-foreground">
+                          {formatMYR(Number(order.vendor_total))}
+                        </p>
+                        <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                          {t("ui.orders.orderStatus", {
+                            status: order.status || t("ui.orders.unknown"),
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </VendorMobileRecordCard>
+                );
+              })}
+            </div>
+            <div className="hidden overflow-x-auto xl:block">
               <div className="xl:min-w-[1000px]">
                 <div className="hidden grid-cols-[32px_minmax(120px,1.2fr)_minmax(170px,1.5fr)_minmax(100px,1fr)_90px_100px_230px] gap-4 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground xl:grid">
                   <span></span>
@@ -1012,6 +1166,7 @@ export default function VendorOrdersPage() {
                 <div className="divide-y divide-gray-100 dark:divide-border">
                   {items.map((order) => {
                     const customer = customerFor(order);
+                    const displayOrderId = order.display_id || `#${order.id.slice(0, 8)}`;
                     const orderAction = getOrderFulfilmentAction(
                       order.status,
                       order.vendor_items.map((item) => item.fulfil_status),
@@ -1043,9 +1198,20 @@ export default function VendorOrdersPage() {
                           <p className="truncate font-medium text-gray-800 dark:text-foreground">
                             {customer.full_name || t("ui.orders.guest")}
                           </p>
-                          <p className="mt-1 truncate text-xs text-gray-500 dark:text-muted-foreground">
-                            {order.display_id || `#${order.id.slice(0, 8)}`}
-                          </p>
+                          <div className="mt-1 flex min-w-0 items-center gap-1 text-xs text-gray-500 dark:text-muted-foreground">
+                            <span className="truncate font-mono">{displayOrderId}</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label={t("ui.orders.copyOrderId", { id: displayOrderId })}
+                              title={t("ui.orders.copyOrderId", { id: displayOrderId })}
+                              onClick={() => void copyOrderId(displayOrderId)}
+                              className="size-7 shrink-0 rounded-md text-gray-400 hover:bg-secondary hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
+                            >
+                              <Copy size={13} aria-hidden="true" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="flex min-w-0 items-center gap-3">
                           <div className="flex items-center gap-1">
@@ -1177,11 +1343,31 @@ export default function VendorOrdersPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center justify-between rounded-xl border border-gray-100 dark:border-border p-4">
+              <div className="flex flex-col gap-3 rounded-xl border border-gray-100 dark:border-border p-4 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-gray-500 dark:text-muted-foreground text-sm">
                   {t("ui.orders.overallFulfilment")}
                 </span>
-                <StatusBadge status={selectedItem.vendor_fulfil_status} />
+                <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
+                  <StatusBadge status={selectedItem.vendor_fulfil_status} />
+                  {selectedOrderAction && selectedOrderAction !== "review" ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        requestOrderAction(selectedItem, selectedOrderAction)
+                      }
+                      className="inline-flex min-w-[13rem] flex-none items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white"
+                    >
+                      {selectedOrderAction === "ready" ? (
+                        <Check size={15} aria-hidden="true" />
+                      ) : (
+                        <PackageCheck size={15} aria-hidden="true" />
+                      )}{" "}
+                      {selectedOrderAction === "ready"
+                        ? t("ui.orders.markOrderReady")
+                        : t("ui.orders.fulfilOrder")}
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
             <div className="mt-6">
@@ -1278,33 +1464,6 @@ export default function VendorOrdersPage() {
                 {t("ui.orders.mixedOrderHint")}
               </p>
             )}
-            <div className="mt-7 flex flex-wrap justify-center gap-2">
-              {selectedOrderAction && selectedOrderAction !== "review" ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    requestOrderAction(selectedItem, selectedOrderAction)
-                  }
-                  className="inline-flex min-w-[13rem] flex-none items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white"
-                >
-                  {selectedOrderAction === "ready" ? (
-                    <Check size={15} aria-hidden="true" />
-                  ) : (
-                    <PackageCheck size={15} aria-hidden="true" />
-                  )}{" "}
-                  {selectedOrderAction === "ready"
-                    ? t("ui.orders.markOrderReady")
-                    : t("ui.orders.fulfilOrder")}
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setSelectedItem(null)}
-                className="rounded-xl border border-gray-200 dark:border-border px-4 py-2.5 text-sm font-semibold text-gray-600 dark:text-muted-foreground"
-              >
-                {t("ui.orders.close")}
-              </button>
-            </div>
         </CenteredDetailModal>
       )}
 

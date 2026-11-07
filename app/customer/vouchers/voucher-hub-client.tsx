@@ -4,9 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatMYRNumber } from "@/lib/i18n/format";
 import Link from "next/link";
-import { ArrowRight, Check, CircleHelp, Gift, QrCode, Search, Sparkles } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Gift, MessageCircle, QrCode, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { useSupportChat } from "@/components/providers/support-chat";
 import { Button } from "@/components/ui/button";
+import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
+import { DiscoverySearchField } from "@/components/customer/discovery-filters";
 import { VoucherTicket } from "@/components/vouchers/voucher-ticket";
 import { VoucherRedeemDialog } from "@/components/customer/voucher-redeem-dialog";
 import { buildVoucherUseHref, isClaimUsable, type CustomerVoucher, type CustomerVoucherTab } from "@/lib/customer/voucher-claims";
@@ -75,11 +78,12 @@ function VoucherCard({
         availabilityLabel: remainingLabel,
         scopeLabel: isOutletVoucher ? tCustomer("ui.voucherHub.outletVoucher") : voucher.voucherType === "bogo" ? tCustomer("ui.voucherHub.freebie") : tCustomer("ui.voucherHub.partnerVoucher"),
         scopeDetail: isOutletVoucher ? (
-          <div className="rounded-2xl bg-secondary/55 p-3">
+          <div className="rounded-2xl bg-secondary/55 p-3 max-sm:p-2.5">
             <p className="text-xs font-semibold text-primary">{tCustomer("ui.voucherHub.allEligibleProducts")}</p>
             <p className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.voucherHub.productsAvailable", { count: voucher.eligibleProductCount })}</p>
             {visibleProductNames.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <>
+                <div className="mt-2 hidden flex-wrap gap-1.5 sm:flex">
                 {(expandedProducts ? voucher.eligibleProductNames : visibleProductNames).map((productName) => (
                   <span key={productName} className="max-w-full break-words whitespace-normal rounded-xl border border-border bg-card px-2 py-1 text-[11px] font-medium text-foreground">
                     {productName}
@@ -89,12 +93,29 @@ function VoucherCard({
                   <button
                     type="button"
                     onClick={() => setExpandedProducts((prev) => !prev)}
+                    aria-expanded={expandedProducts}
                     className="rounded-full border border-primary/30 bg-card px-2.5 py-1 text-[11px] font-semibold text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                   >
                     {expandedProducts ? tCustomer("ui.voucherHub.showLess", "Show less") : tCustomer("ui.voucherHub.moreProducts", { count: remainingProductCount })}
                   </button>
                 )}
-              </div>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5 sm:hidden">
+                  {expandedProducts && voucher.eligibleProductNames.map((productName) => (
+                    <span key={productName} className="max-w-full break-words whitespace-normal rounded-xl border border-border bg-card px-2 py-1 text-[11px] font-medium text-foreground">
+                      {productName}
+                    </span>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setExpandedProducts((prev) => !prev)}
+                    aria-expanded={expandedProducts}
+                    className="min-h-9 rounded-full border border-primary/30 bg-card px-3 py-1 text-[11px] font-semibold text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  >
+                    {expandedProducts ? tCustomer("ui.voucherHub.showLess", "Show less") : tCustomer("ui.voucherHub.moreProducts", { count: voucher.eligibleProductCount })}
+                  </button>
+                </div>
+              </>
             )}
           </div>
         ) : voucher.productName ? (
@@ -118,7 +139,7 @@ function VoucherCard({
         <span className="text-xs font-semibold text-muted-foreground">{redemptionLabel}</span>
       )}
       {canUse && (
-        <Button asChild size="sm" className="w-full rounded-full px-4">
+        <Button asChild size="sm" className="max-sm:min-h-11 w-full rounded-full px-4">
           <Link href={buildVoucherUseHref(voucher.code, voucher.claim!.id)}>
             {tCustomer("ui.voucherHub.useNow")} <ArrowRight size={14} aria-hidden="true" />
           </Link>
@@ -130,7 +151,7 @@ function VoucherCard({
           size="sm"
           variant={canUse ? "outline" : "default"}
           onClick={() => onShowInStore(voucher)}
-          className="w-full rounded-full border-primary/30 px-4 text-xs font-bold text-primary hover:bg-secondary"
+          className="max-sm:min-h-11 w-full rounded-full border-primary/30 px-4 text-xs font-bold text-primary hover:bg-secondary"
         >
           <QrCode size={13} aria-hidden="true" className="mr-1" />
           {tCustomer("ui.voucherHub.showAtOutlet")}
@@ -141,7 +162,7 @@ function VoucherCard({
           type="button"
           size="sm"
           variant={actionKey === "claim" ? "default" : "outline"}
-          className="w-full rounded-full px-4"
+          className="max-sm:min-h-11 w-full rounded-full px-4"
           disabled={claiming || actionKey !== "claim"}
           onClick={() => onClaim(voucher)}
         >
@@ -154,15 +175,17 @@ function VoucherCard({
 
 export default function VoucherHubClient() {
   const { t: tCustomer } = useTranslation("customer");
+  const { t: tCommon } = useTranslation("common");
   const { showFeedback } = useActionFeedback();
+  const { selectChat, unreadChatCount } = useSupportChat();
   const [tab, setTab] = useState<CustomerVoucherTab>("deals");
   const [vouchers, setVouchers] = useState<CustomerVoucher[]>([]);
   const [filter, setFilter] = useState<VoucherFilter>("all");
+  const [filterOpen, setFilterOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [claimingId, setClaimingId] = useState<string | null>(null);
-  const [helpOpen, setHelpOpen] = useState(false);
   const [redeemVoucher, setRedeemVoucher] = useState<CustomerVoucher | null>(null);
 
   useEffect(() => {
@@ -213,47 +236,82 @@ export default function VoucherHubClient() {
     });
   }, [filter, search, vouchers]);
 
+  const activeFilterLabel = tCustomer(FILTERS.find((item) => item.value === filter)?.labelKey ?? FILTERS[0].labelKey);
+  const renderFilterButtons = (mobile: boolean) => FILTERS.map((item) => (
+    <button
+      key={item.value}
+      type="button"
+      aria-pressed={filter === item.value}
+      onClick={() => {
+        setFilter(item.value);
+        setFilterOpen(false);
+      }}
+      className={mobile
+        ? `inline-flex min-h-11 items-center justify-center rounded-full border px-3 py-2 text-center text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${filter === item.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-primary"}`
+        : `inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border px-4 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${filter === item.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/30 hover:bg-muted/40 hover:text-primary"}`}
+    >
+      {tCustomer(item.labelKey)}
+    </button>
+  ));
+
   return (
-    <div className="min-h-full bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-        <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          <header className="mb-0 min-w-0 flex-1">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#c28a00]">{tCustomer("ui.voucherHub.eyebrow")}</p>
-            <h1 className="mt-3 max-w-2xl font-[family-name:var(--font-display)] text-3xl font-bold leading-tight text-foreground sm:text-5xl">{tCustomer(tab === "deals" ? "ui.voucherHub.dealsTitle" : "ui.voucherHub.mineTitle")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{tCustomer(tab === "deals" ? "ui.voucherHub.dealsDescription" : "ui.voucherHub.mineDescription")}</p>
-          </header>
-
-          <div className="flex shrink-0 flex-col items-end gap-3 lg:pt-1">
-            <div className="inline-flex rounded-2xl border border-border bg-card p-2 shadow-sm" role="tablist" aria-label={tCustomer("ui.voucherHub.viewsLabel")}>
-              <button type="button" role="tab" aria-selected={tab === "deals"} onClick={() => setTab("deals")} className={`rounded-xl px-5 py-3 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${tab === "deals" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>{tCustomer("ui.voucherHub.browseDeals")}</button>
-              <button type="button" role="tab" aria-selected={tab === "mine"} onClick={() => setTab("mine")} className={`rounded-xl px-5 py-3 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${tab === "mine" ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>{tCustomer("ui.voucherHub.myVouchers")}</button>
+    <CustomerPageShell wide className="min-h-full">
+      <CustomerPageHeader
+        eyebrow={tCustomer("ui.voucherHub.eyebrow")}
+        title={tCustomer(tab === "deals" ? "ui.voucherHub.dealsTitle" : "ui.voucherHub.mineTitle")}
+        className="mb-8 gap-4"
+        actions={(
+          <div className="flex w-full flex-col gap-2 lg:w-auto lg:items-end">
+            <div className="inline-flex w-full rounded-full border border-border bg-card p-1 lg:w-auto" role="tablist" aria-label={tCustomer("ui.voucherHub.viewsLabel")}>
+              <button type="button" role="tab" aria-selected={tab === "deals"} onClick={() => setTab("deals")} className={`min-h-11 flex-1 rounded-full px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 lg:flex-none ${tab === "deals" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>{tCustomer("ui.voucherHub.browseDeals")}</button>
+              <button type="button" role="tab" aria-selected={tab === "mine"} onClick={() => setTab("mine")} className={`min-h-11 flex-1 rounded-full px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 lg:flex-none ${tab === "mine" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>{tCustomer("ui.voucherHub.myVouchers")}</button>
             </div>
-            <div className="group relative">
-              <button type="button" aria-expanded={helpOpen} aria-controls="voucher-help" onClick={() => setHelpOpen((open) => !open)} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm transition hover:border-primary/30 hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
-                <CircleHelp size={16} aria-hidden="true" /> {tCustomer("ui.voucherHub.howItWorks")}
-              </button>
-              <div id="voucher-help" role="tooltip" className={`${helpOpen ? "block" : "hidden"} absolute right-0 top-full z-30 mt-2 w-80 rounded-2xl border border-border bg-card p-4 text-left text-xs leading-5 text-muted-foreground shadow-xl group-hover:block group-focus-within:block`}>
-                <p className="font-bold text-foreground">{tCustomer("ui.voucherHub.helpTitle")}</p>
-                <ol className="mt-2 space-y-2">
-                  <li><span className="font-bold text-primary">1.</span> {tCustomer("ui.voucherHub.helpStep1")}</li>
-                  <li><span className="font-bold text-primary">2.</span> {tCustomer("ui.voucherHub.helpStep2")}</li>
-                  <li><span className="font-bold text-primary">3.</span> {tCustomer("ui.voucherHub.helpStep3")}</li>
-                </ol>
-              </div>
-            </div>
+            <Button type="button" variant="outline" onClick={() => selectChat({ kind: "support" })} aria-label={tCommon("accessibility.openChat")} title={tCommon("chatbot.openChat")} className="relative min-h-11 self-end rounded-full px-3 text-sm font-semibold text-primary md:hidden sm:px-4">
+              <MessageCircle size={16} aria-hidden="true" /> <span className="max-sm:sr-only">{tCommon("chatbot.openChat")}</span>
+              {unreadChatCount > 0 && (
+                <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-destructive px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">
+                  {unreadChatCount > 99 ? "99+" : unreadChatCount}
+                </span>
+              )}
+            </Button>
           </div>
-        </div>
+        )}
+      />
 
-        <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label={tCustomer("ui.voucherHub.filterLabel")}>
-            {FILTERS.map((item) => <button key={item.value} type="button" onClick={() => setFilter(item.value)} className={`shrink-0 rounded-full border px-4 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${filter === item.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-primary"}`}>{tCustomer(item.labelKey)}</button>)}
+      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex w-full items-center gap-2 lg:order-2 lg:w-auto">
+          <div className="min-w-0 flex-1 lg:w-80 lg:flex-initial">
+            <DiscoverySearchField
+              value={search}
+              onChange={setSearch}
+              placeholder={tCustomer("ui.voucherHub.searchPlaceholder")}
+              ariaLabel={tCustomer("ui.voucherHub.searchLabel")}
+            />
           </div>
-          <label className="relative block w-full lg:max-w-xs"><Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><span className="sr-only">{tCustomer("ui.voucherHub.searchLabel")}</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={tCustomer("ui.voucherHub.searchPlaceholder")} className="h-10 w-full rounded-full border border-border bg-card pl-9 pr-4 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" /></label>
+          <Button
+            type="button"
+            variant="outline"
+            aria-label={tCustomer("ui.voucherHub.filterLabel")}
+            aria-expanded={filterOpen}
+            aria-controls="voucher-type-filter-panel"
+            onClick={() => setFilterOpen((open) => !open)}
+            className="min-h-11 shrink-0 rounded-full border-border bg-card px-3 text-xs font-semibold text-foreground hover:border-primary/30 lg:hidden"
+          >
+            <SlidersHorizontal size={15} aria-hidden="true" />
+            <span className="max-w-24 truncate">{activeFilterLabel}</span>
+            <ChevronDown size={14} aria-hidden="true" className={`transition-transform ${filterOpen ? "rotate-180" : ""}`} />
+          </Button>
         </div>
+        <div className="hidden gap-2 overflow-x-auto pb-1 lg:order-1 lg:flex" role="group" aria-label={tCustomer("ui.voucherHub.filterLabel")}>
+          {renderFilterButtons(false)}
+        </div>
+        <div id="voucher-type-filter-panel" role="group" aria-label={tCustomer("ui.voucherHub.filterLabel")} className={`${filterOpen ? "grid" : "hidden"} grid-cols-2 gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm lg:hidden`}>
+          {renderFilterButtons(true)}
+        </div>
+      </div>
 
         {loading ? <div className="space-y-5">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-64 animate-pulse rounded-[1.75rem] bg-secondary/50" />)}</div> : error ? <div className="rounded-3xl border border-destructive/20 bg-card p-8 text-center"><Gift className="mx-auto text-destructive" /><p className="mt-3 text-sm font-semibold text-destructive">{error}</p><button type="button" onClick={() => window.location.reload()} className="mt-4 text-sm font-bold text-primary hover:underline">{tCustomer("ui.voucherHub.tryAgain")}</button></div> : visibleVouchers.length === 0 ? <div className="rounded-3xl border border-border bg-card p-10 text-center"><Gift className="mx-auto text-primary" /><h2 className="mt-3 text-lg font-bold text-foreground">{tCustomer(tab === "mine" ? "ui.voucherHub.emptyMineTitle" : "ui.voucherHub.emptyDealsTitle")}</h2><p className="mt-2 text-sm text-muted-foreground">{tCustomer(tab === "mine" ? "ui.voucherHub.emptyMineDescription" : "ui.voucherHub.emptyDealsDescription")}</p>{tab === "mine" && <button type="button" onClick={() => setTab("deals")} className="mt-4 text-sm font-bold text-primary hover:underline">{tCustomer("ui.voucherHub.browseDeals")}</button>}</div> : <div className="space-y-5">{visibleVouchers.map((voucher) => <VoucherCard key={voucher.id} voucher={voucher} onClaim={claim} claiming={claimingId === voucher.id} onShowInStore={setRedeemVoucher} />)}</div>}
         <VoucherRedeemDialog open={Boolean(redeemVoucher)} onOpenChange={(open) => { if (!open) setRedeemVoucher(null); }} voucher={redeemVoucher} />
-      </div>
-    </div>
+    </CustomerPageShell>
   );
 }
