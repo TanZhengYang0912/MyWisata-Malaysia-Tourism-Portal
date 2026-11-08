@@ -227,7 +227,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     ],
     notes: [
       'KYC approval is what unlocks withdrawals for that customer.',
-      'KYC review needs an authenticator code on top of your sign-in; the first time, you set one up on /admin/kyc/mfa.',
+      'KYC review needs an authenticator code on top of your sign-in; the first time, KYC review asks you to set one up.',
       'Opening a case assigns it to you. A case assigned to another reviewer stays visible, but only its assignee or a Super Admin can decide it.',
       'The document number you enter becomes a protected match key; it is not stored in plain text.',
       'A case waiting for the customer (information requested) cannot be decided until they resubmit.',
@@ -327,7 +327,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'Rename each of the three tiers and set its fee as a percentage of the item price or a fixed RM amount per item',
       'Set the 90-day sales amount a vendor needs to reach tier 2 and tier 3 (tier 1 always starts at RM0)',
       'Set a default fixed fee per item for event orders, and override it per event',
-      'Pin a single vendor to a tier from the vendor review drawer on /admin/vendors',
+      'Pin a single vendor to a tier from the vendor review drawer on Vendor review',
     ],
     notes: [
       'Admins with vendor management can view the page and pin vendors; only a Super Admin can change fees, and every change needs a reason of at least 10 characters.',
@@ -369,7 +369,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'Super Admin only.',
       'Affiliate and recommendation payouts come out of the platform\'s commission cut, not on top of it. Since the vendor tier change, the platform fee on a held order is raised to at least the payout owed, so platform net no longer goes negative on new orders.',
       'A row where the platform net is negative (the commission on it was smaller than what got paid out to affiliates/recommenders) is flagged with a warning banner.',
-      'Platform fees are set per vendor tier on /admin/vendors/platform-fees (see the platform_fees section).',
+      'Platform fees are set per vendor tier on Platform fees.',
       'There is no platform wallet or cash-out: customer payments already land in the company account. Recording a transfer moves no money; it logs a transfer finance already made, so "available to transfer" stays accurate.',
       'Available to transfer = platform net on confirmed settlements (past their hold period) minus transfers already recorded. Recording more than that is refused. Transfers cannot be edited or deleted, only voided with a reason, and each action is in the audit log.',
     ],
@@ -405,7 +405,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'Run recommendation reward clearing, which confirms rewards past their hold and reverses any that no longer qualify',
       'See how many were cleared, reversed, or skipped after a run',
     ],
-    notes: ['This page is not in the admin sidebar: reach it directly at /admin/recommendations/rewards. Not the same page as /admin/rewards, which clears AFFILIATE earnings.'],
+    notes: ['This page is not in the admin sidebar; open it with Open this page on this guide. It is not the same page as Rewards clearing, which clears affiliate earnings.'],
     keywords: ['recommendation reward', 'recommendation rewards', 'recommendation clearing'],
     source: 'app/admin/recommendations/rewards/page.tsx, app/api/admin/recommendations/run-clearing/route.ts',
   },
@@ -526,8 +526,8 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     ],
     notes: [
       'Super Admin only.',
-      'Not the same thing as /admin/chat-reports, which handles reports about CUSTOMER<->VENDOR chat conversations (scam/abuse/spam): this page is about support-ticket conduct and staff behaviour, not vendor chat.',
-      'Moved out of /admin/ai-assistant into its own nav entry: it is a moderation tool, not an AI capability.',
+      'Not the same thing as Chat Reports, which handles reports about CUSTOMER<->VENDOR chat conversations (scam/abuse/spam): this page is about support-ticket conduct and staff behaviour, not vendor chat.',
+      'Moved out of AI Assistant into its own sidebar entry: it is a moderation tool, not an AI capability.',
     ],
     keywords: ['staff conduct', 'flagged conduct', 'profanity', 'admin misconduct'],
     source: 'app/admin/staff-conduct/page.tsx, components/admin/staff-conduct-panel.tsx, app/api/admin/conduct-flags/route.ts, app/api/admin/chat-conduct-reports/route.ts, lib/moderation/chat-conduct-reports.ts',
@@ -562,7 +562,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'See how many affiliate attributions are past their hold and ready to confirm',
       'Run clearing to confirm them',
     ],
-    notes: ['This page is not in the admin sidebar: reach it directly at /admin/rewards.'],
+    notes: ['This page is not in the admin sidebar; open it with Open this page on this guide.'],
     keywords: ['clear earnings', 'clearing earnings', 'rewards clearing', 'pending earnings clearing'],
     source: 'app/admin/rewards/page.tsx, app/api/admin/clear-earnings/route.ts',
   },
@@ -591,7 +591,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'Changing a location that already has stalls or reservations needs a change reason of at least 5 characters, and the preview shows what it would affect.',
       'Cancelling a location, archiving an event, or removing a stall cancels the uncollected reservations there and starts refunds: automatic for card, wallet and simulator payments before the event starts, otherwise queued for review.',
       'Every save checks you are editing the latest version; if someone else changed it, refresh and try again.',
-      'The fee per item for event orders is set on /admin/vendors/platform-fees (see platform_fees).',
+      'The fee per item for event orders is set on Platform fees.',
       'An event-only vendor invitation cannot go to an email that already owns a vendor, and the invited owner must pass KYC before approval.',
     ],
     keywords: ['promotion campaign', 'create an event', 'new event', 'event location', 'publish an event', 'archive an event', 'cancel a location', 'event campaign', 'vendor fair', 'event vendor invite'],
@@ -773,7 +773,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     path: '/admin/security',
     role: 'admin_or_approver',
     actions: [
-      'Enter the 6-digit authenticator app code after your password (/admin/security takes you to this check)',
+      'Enter the 6-digit authenticator app code after your password',
       'Verify with your passkey (face, fingerprint or device PIN); a verified session lasts up to 12 hours',
       'Register a new device with a one-time enrollment code, or add another device from Security and devices after verifying',
       'Remove a device you no longer use, as long as at least one remains',
@@ -871,11 +871,14 @@ export function capabilityContext(capability: AdminCapability): string {
     `SECTION: ${capability.name}`,
     `Where: ${capability.path}`,
     roleLine,
-    'What you can do here:',
+    // Headings start with '## ' so the bank-account pattern in lib/chatbot/pii.ts
+    // cannot read a line ending in "account" plus the next heading word as an
+    // account number and block the whole how-to answer.
+    '## What you can do here:',
     ...capability.actions.map((a) => `- ${a}`),
-    ...(capability.notes?.length ? ['Important:', ...capability.notes.map((n) => `- ${n}`)] : []),
+    ...(capability.notes?.length ? ['## Important:', ...capability.notes.map((n) => `- ${n}`)] : []),
     ...(capability.lifecycle?.length
-      ? ['Status lifecycle, in order:', ...capability.lifecycle.map((stage) => `- ${stage.status} (by ${stage.by}): ${stage.detail}`)]
+      ? ['## Status lifecycle, in order:', ...capability.lifecycle.map((stage) => `- ${stage.status} (by ${stage.by}): ${stage.detail}`)]
       : []),
     ...workflowsForGuide(capability.name).map(({ workflow, index }) => {
       const before = workflow.steps[index - 1]?.guide;

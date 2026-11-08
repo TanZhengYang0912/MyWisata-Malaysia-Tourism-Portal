@@ -28,3 +28,22 @@ describe('callGemini multimodal payload', () => {
   });
 
 });
+
+describe('callGemini text source', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete process.env.LLM_API_KEY;
+  });
+
+  it('lets the admin assistant ask about KYC, but keeps the full check for every other caller', async () => {
+    process.env.LLM_API_KEY = 'test-key';
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await expect(callGemini('system', 'How many KYC submissions are pending?', { textSource: 'staff' })).resolves.toBe('ok');
+    await expect(callGemini('system', 'How many KYC submissions are pending?')).rejects.toThrow('sensitive_data_detected');
+    await expect(callGemini('system', 'KYC for 990101-14-5678 please', { textSource: 'staff' })).rejects.toThrow('sensitive_data_detected');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});

@@ -52,7 +52,6 @@ export default function AdminHelpGuidePage() {
           <span className="rounded-full bg-secondary px-2.5 py-1 font-semibold text-secondary-foreground">
             {sectionAudience(guide, isSuperAdmin) === "granted" ? t("staffHelp.whoGranted") : sectionAudience(guide, isSuperAdmin) === "superAdmin" ? t("staffHelp.whoSuperAdmin") : t("staffHelp.whoStaff")}
           </span>
-          <span className="font-mono">{guide.path}</span>
         </div>
         {workflowsForGuide(guide.name).map(({ workflow, index }) => {
           const neighbour = (offset: number) => {

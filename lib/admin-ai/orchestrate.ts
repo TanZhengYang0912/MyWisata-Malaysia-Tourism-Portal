@@ -196,7 +196,7 @@ async function answerCapabilityQuestion(
     capabilityUsed = keywordMatch.name;
   } else {
     try {
-      const pickerRaw = await callGemini(CAPABILITY_PICKER_SYSTEM_PROMPT, question, {
+      const pickerRaw = await callGemini(CAPABILITY_PICKER_SYSTEM_PROMPT, question, { textSource: 'staff',
         temperature: 0,
         maxOutputTokens: 100,
       });
@@ -221,7 +221,7 @@ async function answerCapabilityQuestion(
   }
 
   const userText = `ADMIN QUESTION: ${question}\n\nSECTION INFO:\n${context}`;
-  const answer = await callGemini(CAPABILITY_PHRASER_SYSTEM_PROMPT, userText, {
+  const answer = await callGemini(CAPABILITY_PHRASER_SYSTEM_PROMPT, userText, { textSource: 'staff',
     temperature: 0.2,
     maxOutputTokens: 400,
   });
@@ -235,7 +235,7 @@ export async function answerAdminQuestion(service: SupabaseClient, question: str
   let queryUsed: string | null = null;
 
   try {
-    const pickerRaw = await callGemini(PICKER_SYSTEM_PROMPT, question, { temperature: 0, maxOutputTokens: 200 });
+    const pickerRaw = await callGemini(PICKER_SYSTEM_PROMPT, question, { textSource: 'staff', temperature: 0, maxOutputTokens: 200 });
     const parsed = pickerResponseSchema.safeParse(extractJson(pickerRaw));
 
     if (parsed.success && parsed.data.query) {
@@ -274,7 +274,7 @@ export async function answerAdminQuestion(service: SupabaseClient, question: str
   }
 
   const userText = `ADMIN QUESTION: ${question}\n\nDATA RESULT:\n${JSON.stringify(aggregateResult)}`;
-  const answer = await callGemini(PHRASER_SYSTEM_PROMPT, userText, { temperature: 0.2, maxOutputTokens: 300 });
+  const answer = await callGemini(PHRASER_SYSTEM_PROMPT, userText, { textSource: 'staff', temperature: 0.2, maxOutputTokens: 300 });
 
   return { answer, piiDetected, queryUsed, capabilityUsed: null };
 }

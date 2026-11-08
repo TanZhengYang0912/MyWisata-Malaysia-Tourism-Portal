@@ -171,3 +171,11 @@ describe('Staff Help coverage', () => {
     expect(byName('sponsored_placements')?.title).toBe(navigation['Sponsored Placements']);
   });
 });
+
+describe('admin AI how-to answers are not blocked by the privacy check', () => {
+  it('passes every guide context through the staff check, so KYC how-to questions can be answered', async () => {
+    const { prepareStaffQuestionText } = await import('@/lib/chatbot/pii');
+    const blocked = CAPABILITY_REGISTRY.filter((capability) => !prepareStaffQuestionText(`ADMIN QUESTION: how does this work?\n\n${capabilityContext(capability)}`).allowed).map((capability) => capability.name);
+    expect(blocked).toEqual([]);
+  });
+});

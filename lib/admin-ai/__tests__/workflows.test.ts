@@ -28,7 +28,7 @@ describe('Staff Help workflows and lifecycles', () => {
     expect(capabilityContext(findCapability('event_registrations')!)).toContain('Part of the Event lifecycle workflow, step 2 of 6; before this: event_campaigns; next: orders.');
   });
 
-  it('keeps em dashes out of everything Staff Help shows', () => {
+  it('keeps em dashes and admin addresses out of everything Staff Help shows', () => {
     const shown = [
       ...CAPABILITY_REGISTRY.flatMap((capability) => [
         capability.title ?? '', capability.description, ...capability.actions, ...(capability.notes ?? []),
@@ -40,5 +40,7 @@ describe('Staff Help workflows and lifecycles', () => {
       )),
     ];
     expect(shown.filter((text) => text.includes(EM_DASH))).toEqual([]);
+    // Staff reach pages by name and the Open this page button, never by typing an address.
+    expect(shown.filter((text) => text.includes('/admin/'))).toEqual([]);
   });
 });

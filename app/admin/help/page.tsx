@@ -13,7 +13,7 @@ import { guideHref, sectionAudience, sectionTitle, useStaffHelpSections, workflo
 // The registry's `source` paths and keywords are internal and are not rendered.
 
 function searchableText(capability: AdminCapability): string {
-  return [sectionTitle(capability), capability.description, capability.path, ...capability.actions, ...(capability.notes ?? [])]
+  return [sectionTitle(capability), capability.description, ...capability.actions, ...(capability.notes ?? [])]
     .join(" ")
     .toLowerCase();
 }
