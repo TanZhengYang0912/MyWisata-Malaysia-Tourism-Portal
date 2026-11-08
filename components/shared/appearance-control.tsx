@@ -9,6 +9,7 @@
 // white/10 hover style instead of the light-shell token classes.
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Laptop, Moon, Palette, Sun } from "lucide-react";
 import { useTheme } from "@/components/providers/theme";
@@ -46,7 +47,9 @@ export function AppearanceControl({ variant = "light" }: { variant?: "light" | "
   useEffect(() => {
     if (!open) return;
     function closeOnOutsideClick(event: PointerEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      // The light popover is portalled to <body>, so it is not inside `ref`.
+      if (ref.current && !ref.current.contains(target) && !panelRef.current?.contains(target)) setOpen(false);
     }
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape") setOpen(false);
@@ -58,6 +61,14 @@ export function AppearanceControl({ variant = "light" }: { variant?: "light" | "
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [open]);
+
+  // The popover is `position: fixed`, but a header with backdrop-blur (the
+  // vendor and admin shells) becomes the containing block for fixed children,
+  // so it shifted by the header's own offset (240px behind the vendor
+  // sidebar) and ran off the right edge. Render it at <body> instead. The
+  // sidebar-dark variant is absolute inside its rail and stays in place.
+  const inPortal = (panel: React.ReactNode) =>
+    variant === "light" && mounted ? createPortal(panel, document.body) : panel;
 
   const activeTheme = mounted ? (theme ?? "system") : "system";
 
@@ -81,7 +92,7 @@ export function AppearanceControl({ variant = "light" }: { variant?: "light" | "
         {variant === "sidebar-dark" && t("appearance.label")}
       </button>
 
-      {open && (
+      {open && inPortal(
         <div
           ref={panelRef}
           role="menu"
@@ -124,7 +135,7 @@ export function AppearanceControl({ variant = "light" }: { variant?: "light" | "
               </button>
             ))}
           </div>
-        </div>
+        </div>,
       )}
     </div>
   );
