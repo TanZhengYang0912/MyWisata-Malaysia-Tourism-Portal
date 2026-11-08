@@ -23,7 +23,7 @@ export function parseNodeKycOcrOutcome(value: unknown): NodeKycOcrOutcome {
   const fields = data.fields as Record<string, unknown>;
   const text = (key: string, max: number) => fields[key] === null || (typeof fields[key] === 'string' && (fields[key] as string).length <= max);
   const metrics = data.metrics as NodeOcrMetrics | undefined;
-  if (!text('holderName', 160) || !text('documentNumber', 40) || fields.expiryDate !== null || typeof fields.unreadable !== 'boolean' ||
+  if (!text('holderName', 160) || !text('documentNumber', 40) || !(fields.expiryDate === null || typeof fields.expiryDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fields.expiryDate)) || typeof fields.unreadable !== 'boolean' ||
     !(fields.confidence === null || (typeof fields.confidence === 'number' && Number.isFinite(fields.confidence) && fields.confidence >= 0 && fields.confidence <= 1)) ||
     !metrics || !Number.isFinite(metrics.initializationMs) || !Number.isFinite(metrics.childRssBytes) || !metrics.manifest || metrics.manifest.engine !== 'tesseract-js-7.0.0-v1') return failure('invalid_response');
   if (!metrics.cpu || ![metrics.cpu.user, metrics.cpu.system, metrics.initializationMs, metrics.childRssBytes].every(value => typeof value === 'number' && Number.isFinite(value) && value >= 0) ||
@@ -32,8 +32,17 @@ export function parseNodeKycOcrOutcome(value: unknown): NodeKycOcrOutcome {
   const safeMetrics: NodeOcrMetrics = { initializationMs: metrics.initializationMs, childRssBytes: metrics.childRssBytes, cpu: { user: metrics.cpu.user, system: metrics.cpu.system },
     manifest: { engine: metrics.manifest.engine, version: metrics.manifest.version, coreVersion: metrics.manifest.coreVersion,
       models: metrics.manifest.models.map(({ code, version, sha256 }) => ({ code, version, sha256 })) } };
+  const nullableCountry = (key: string) => fields[key] === null || fields[key] === undefined || typeof fields[key] === 'string' && /^[A-Z]{2}$/.test(fields[key] as string);
+  if (!nullableCountry('issuerCountry') || !nullableCountry('nationality')
+    || fields.mrzStatus !== undefined && !['valid', 'invalid', 'unreadable', 'unsupported'].includes(String(fields.mrzStatus))
+    || fields.visualComparisonStatus !== undefined && !['consistent', 'conflict', 'incomplete'].includes(String(fields.visualComparisonStatus))
+    || fields.visualMismatchFields !== undefined && (!Array.isArray(fields.visualMismatchFields) || fields.visualMismatchFields.length > 8
+      || fields.visualMismatchFields.some((field) => typeof field !== 'string' || !/^[a-z_]{1,40}$/.test(field)))) return failure('invalid_response');
   return { ok: true, fields: { holderName: fields.holderName as string | null, documentNumber: fields.documentNumber as string | null,
-    expiryDate: null, confidence: fields.confidence as number | null, unreadable: fields.unreadable }, metrics: safeMetrics };
+    expiryDate: fields.expiryDate as string | null, confidence: fields.confidence as number | null, unreadable: fields.unreadable,
+    issuerCountry: fields.issuerCountry as string | null | undefined, nationality: fields.nationality as string | null | undefined,
+    mrzStatus: fields.mrzStatus as ExtractedKycFields['mrzStatus'], visualComparisonStatus: fields.visualComparisonStatus as ExtractedKycFields['visualComparisonStatus'],
+    visualMismatchFields: fields.visualMismatchFields as string[] | undefined }, metrics: safeMetrics };
   } catch { return failure('invalid_response'); }
 }
 

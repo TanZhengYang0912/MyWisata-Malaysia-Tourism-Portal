@@ -1587,6 +1587,8 @@
       "check": "Semakan OCR:",
       "documentEnding": "Empat digit terakhir nombor dokumen: {{number}}",
       "expiryDate": "Tarikh luput: {{date}}",
+      "passportCountry": "Negara pengeluar / kewarganegaraan: {{issuer}} / {{nationality}}",
+      "mrzStatus": "MRZ: {{status}} · perbandingan medan: {{comparison}}",
       "extractedName": "Nama diekstrak: {{name}}",
       "mismatch": "Tidak sepadan: {{fields}}",
       "noMismatch": "Tiada ketidakpadanan OCR dikesan",

@@ -8,6 +8,8 @@ import { prepareKycEvidenceImage } from '@/lib/kyc/evidence-image';
 import { randomUUID } from 'node:crypto';
 import { withPortalWorkload, WorkloadUnavailableError } from '@/lib/operations/workload';
 import { reserveGuestRateLimit } from '@/lib/checkout/guest-session';
+import { getRequiredKycDocumentSides, type KycDocumentType } from '@/lib/kyc/document-policy';
+import { createKycEvidenceRevision } from '@/lib/kyc/submission';
 
 const validDocType = (value: FormDataEntryValue | null): value is 'national_id'|'passport'|'driving_license' =>
   value==='national_id'||value==='passport'||value==='driving_license';
@@ -42,7 +44,8 @@ export async function POST(request:Request) {
   const frontFile=frontEntry instanceof File?frontEntry:null,backFile=backEntry instanceof File?backEntry:null;
   const reuseFront=form.get('reuseFront')==='true',reuseBack=form.get('reuseBack')==='true';
   if(!validDocType(documentType)||typeof holderName!=='string'||holderName.trim().length>100
-    ||(!frontFile&&!reuseFront)||(!backFile&&!reuseBack))return privateResponse(apiFail('INVALID_DRAFT','Draft fields and evidence are required',422));
+    ||(!frontFile&&!reuseFront)
+    ||(getRequiredKycDocumentSides(documentType as KycDocumentType).includes('back')&&!backFile&&!reuseBack))return privateResponse(apiFail('INVALID_DRAFT','Draft fields and evidence are required',422));
   const service=createServiceClient();
   const {data: previousData}=await service.rpc('get_kyc_draft',{p_owner_user_id:user.id});
   const previous=Array.isArray(previousData)?previousData[0]:previousData;
@@ -51,7 +54,9 @@ export async function POST(request:Request) {
   const version=typeof versionText==='string'&&/^\d+$/.test(versionText)?Number(versionText):previous&&previous.id===draftId?Number(previous.version):null;
   const existingFrontPath=typeof previous?.front_storage_path==='string'?previous.front_storage_path:null;
   const existingBackPath=typeof previous?.back_storage_path==='string'?previous.back_storage_path:null;
-  if((reuseFront||!frontFile)&&!existingFrontPath||(reuseBack||!backFile)&&!existingBackPath)
+  const requiredSides=getRequiredKycDocumentSides(documentType as KycDocumentType);
+  if((reuseFront||!frontFile)&&!existingFrontPath
+    ||(requiredSides.includes('back')&&(reuseBack||!backFile)&&!existingBackPath))
     return privateResponse(apiFail('CONFLICT','Saved evidence is unavailable; reload the draft',409));
   const bucket=service.storage.from('kyc-documents');
   const removeOrQueue = async (paths: string[]) => {
@@ -126,18 +131,19 @@ export async function POST(request:Request) {
     if(busy)response.headers.set('Retry-After','10');
     return privateResponse(response);
   }
-  if(!front||!back){await removeOrQueue(newlyUploaded);return privateResponse(apiFail('INVALID_DRAFT','Both evidence sides are required',422));}
-  const revision=createHash('sha256').update(`kyc-evidence-v1\0${front.evidenceHash}\0${back.evidenceHash}`).digest('hex');
+  if(!front||(requiredSides.includes('back')&&!back)){await removeOrQueue(newlyUploaded);return privateResponse(apiFail('INVALID_DRAFT','Required document evidence is missing',422));}
+  if(!back) back={path:'',inputHash:null,evidenceHash:''};
+  const revision=createKycEvidenceRevision(front.evidenceHash,requiredSides.includes('back')?back.evidenceHash:null);
   const {data,error}=await service.rpc('save_kyc_draft_v2',{
     p_owner_user_id:user.id,p_draft_id:draftId,p_expected_version:version,p_document_type:documentType,p_holder_name:holderName.trim()||null,
-    p_front_storage_path:front.path,p_back_storage_path:back.path,p_front_input_sha256:front.inputHash,p_back_input_sha256:back.inputHash,
-    p_front_evidence_sha256:front.evidenceHash,p_back_evidence_sha256:back.evidenceHash,p_evidence_revision:revision,
+    p_front_storage_path:front.path,p_back_storage_path:requiredSides.includes('back')?back.path:null,p_front_input_sha256:front.inputHash,p_back_input_sha256:back.inputHash,
+    p_front_evidence_sha256:front.evidenceHash,p_back_evidence_sha256:requiredSides.includes('back')?back.evidenceHash:null,p_evidence_revision:revision,
     p_idle_ttl_seconds:idle,p_absolute_ttl_seconds:absolute,
   });
   if(error){await removeOrQueue(newlyUploaded);const status=error.message.includes('kyc_draft_conflict')?409:503;return privateResponse(apiFail(status===409?'CONFLICT':'DRAFT_SAVE_FAILED',status===409?'Draft changed in another tab; reload the saved draft':'Draft could not be saved',status))}
   const row=Array.isArray(data)?data[0]:data;
   if(!row||typeof row.draft_id!=='string')return privateResponse(apiFail('DRAFT_SAVE_FAILED','Draft could not be confirmed as saved',503));
-    return privateResponse(apiOk({draft:{id:row.draft_id,version:row.version,documentType,holderName:holderName.trim(),hasFront:true,hasBack:true,expiresAt:row.expires_at,evidenceRevision:revision,changed:row.changed===true}}));
+    return privateResponse(apiOk({draft:{id:row.draft_id,version:row.version,documentType,holderName:holderName.trim(),hasFront:true,hasBack:requiredSides.includes('back'),expiresAt:row.expires_at,evidenceRevision:revision,changed:row.changed===true}}));
 }
 
 export async function DELETE(request:Request) {

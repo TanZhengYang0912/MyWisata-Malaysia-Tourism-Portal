@@ -3,6 +3,7 @@ import { isIP } from 'node:net';
 import { extractKycFieldsInNode } from './node-ocr-engine';
 
 import { hashICWithHmac, normalizeIC } from './hash';
+import { hasRequiredKycEvidence } from './document-policy';
 export { requiresManualKycReview } from './ocr-policy';
 
 export type KycOcrStatus = 'matched' | 'mismatch' | 'unreadable' | 'unavailable';
@@ -13,7 +14,7 @@ export type KycOcrInput = {
   expectedDocumentNumberHmac?: string;
   expectedHolderName?: string | null;
   front: { mimeType: string; bytes: Uint8Array };
-  back: { mimeType: string; bytes: Uint8Array };
+  back?: { mimeType: string; bytes: Uint8Array };
   hmacKey: string;
 };
 
@@ -30,6 +31,11 @@ export type KycOcrResult = {
   confidence: number | null;
   mismatchFields: string[];
   providerModel: string;
+  issuerCountry?: string | null;
+  nationality?: string | null;
+  mrzStatus?: 'valid' | 'invalid' | 'unreadable' | 'unsupported';
+  visualComparisonStatus?: 'consistent' | 'conflict' | 'incomplete';
+  visualMismatchFields?: string[];
 };
 
 export type KycOcrPreviewResult = {
@@ -37,6 +43,8 @@ export type KycOcrPreviewResult = {
   holderName: string | null;
   documentNumber: string | null;
   expiryDate: string | null;
+  mrzStatus?: 'valid' | 'invalid' | 'unreadable' | 'unsupported';
+  visualComparisonStatus?: 'consistent' | 'conflict' | 'incomplete';
   confidence: number | null;
   providerModel: string;
   failureCode?: KycOcrFailureCode;
@@ -49,6 +57,11 @@ type ExtractedOcr = {
   expiryDate?: unknown;
   confidence?: unknown;
   unreadable?: unknown;
+  issuerCountry?: unknown;
+  nationality?: unknown;
+  mrzStatus?: unknown;
+  visualComparisonStatus?: unknown;
+  visualMismatchFields?: unknown;
 };
 
 const DEFAULT_MODEL = 'private-ocr-v1';
@@ -136,7 +149,13 @@ export function kycOcrRuntimeConfiguration(): KycOcrRuntimeConfiguration | null 
 export async function extractKycPreviewFields(input: Pick<KycOcrInput, 'documentType' | 'front' | 'back'>): Promise<KycOcrPreviewResult> {
   const configuration = kycOcrRuntimeConfiguration();
   const providerModel = configuration?.engine === 'tesseract-js' ? 'tesseract-js-7.0.0-v1' : DEFAULT_MODEL;
+  if (input.documentType === 'passport' && process.env.KYC_CHINESE_PASSPORT_OCR_ENABLED !== 'true') return {
+    status: 'unavailable', holderName: null, documentNumber: null, expiryDate: null, confidence: null, providerModel, failureCode: 'configuration',
+  };
   if (!configuration) return { status: 'unavailable', holderName: null, documentNumber: null, expiryDate: null, confidence: null, providerModel, failureCode: 'configuration' };
+  if (!hasRequiredKycEvidence(input.documentType, input.front, input.back)) return {
+    status: 'unreadable', holderName: null, documentNumber: null, expiryDate: null, confidence: null, providerModel, failureCode: 'evidence_invalid',
+  };
   try {
     let fields: ExtractedOcr | null;
     if (configuration.engine === 'tesseract-js') {
@@ -148,7 +167,7 @@ export async function extractKycPreviewFields(input: Pick<KycOcrInput, 'document
         method: 'POST', redirect: 'error',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${configuration.token}` },
         signal: AbortSignal.timeout(configuration.timeoutMs),
-        body: JSON.stringify({ documentType: input.documentType, front: imagePart(input.front), back: imagePart(input.back) }),
+        body: JSON.stringify({ documentType: input.documentType, front: imagePart(input.front), ...(input.back ? { back: imagePart(input.back) } : {}) }),
       });
       if (!response.ok) {
         const retryable = response.status === 408 || response.status === 429 || response.status >= 500;
@@ -163,8 +182,12 @@ export async function extractKycPreviewFields(input: Pick<KycOcrInput, 'document
     const holderName = nullableText(fields.holderName);
     const documentNumber = nullableText(fields.documentNumber, 40);
     const confidence = nullableConfidence(fields.confidence);
+    const mrzStatus = ['valid', 'invalid', 'unreadable', 'unsupported'].includes(String(fields.mrzStatus))
+      ? fields.mrzStatus as KycOcrPreviewResult['mrzStatus'] : undefined;
+    const visualComparisonStatus = ['consistent', 'conflict', 'incomplete'].includes(String(fields.visualComparisonStatus))
+      ? fields.visualComparisonStatus as KycOcrPreviewResult['visualComparisonStatus'] : undefined;
     return { status: fields.unreadable === true || !documentNumber ? 'unreadable' : 'extracted', holderName, documentNumber,
-      expiryDate: nullableDate(fields.expiryDate), confidence, providerModel };
+      expiryDate: nullableDate(fields.expiryDate), mrzStatus, visualComparisonStatus, confidence, providerModel };
   } catch (error) {
     const timeout = error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name);
     return { status: 'unavailable', holderName: null, documentNumber: null, expiryDate: null, confidence: null, providerModel,
@@ -185,25 +208,48 @@ async function compareExtractedKycFields(extracted: ExtractedOcr, input: KycOcrI
     ?? (input.enteredDocumentNumber ? (await hashICWithHmac(input.enteredDocumentNumber, input.hmacKey)).value : null);
   if (!expectedHmac || !/^[a-f0-9]{64}$/.test(expectedHmac)) return unavailable(providerModel);
   const mismatchFields = extractedHmac.value === expectedHmac ? [] : ['document_number'];
+  const issuerCountry = nullableText(extracted.issuerCountry, 2);
+  const nationality = nullableText(extracted.nationality, 2);
+  const mrzStatus = ['valid', 'invalid', 'unreadable', 'unsupported'].includes(String(extracted.mrzStatus))
+    ? extracted.mrzStatus as KycOcrResult['mrzStatus'] : undefined;
+  const visualComparisonStatus = ['consistent', 'conflict', 'incomplete'].includes(String(extracted.visualComparisonStatus))
+    ? extracted.visualComparisonStatus as KycOcrResult['visualComparisonStatus'] : undefined;
+  const visualMismatchFields = Array.isArray(extracted.visualMismatchFields)
+    ? extracted.visualMismatchFields.filter((field): field is string => typeof field === 'string' && /^[a-z_]{1,40}$/.test(field)).slice(0, 8) : [];
+  if (input.documentType === 'passport') {
+    if (mrzStatus !== 'valid') mismatchFields.push('mrz_invalid');
+    if (issuerCountry !== 'CN' || nationality !== 'CN') mismatchFields.push('country_unsupported');
+    if (visualComparisonStatus !== 'consistent') mismatchFields.push('visual_comparison_incomplete');
+    mismatchFields.push(...visualMismatchFields);
+  }
   const name = (value: string) => value.normalize('NFKC').replace(/\s+/g, ' ').trim().toUpperCase();
   if (input.expectedHolderName && (!holderName || name(holderName) !== name(input.expectedHolderName))) mismatchFields.push('holder_name');
   const compact = normalizeIC(documentNumber);
+  const expiryDate = nullableDate(extracted.expiryDate);
+  if (input.documentType === 'passport' && expiryDate && expiryDate < new Date().toISOString().slice(0, 10)) mismatchFields.push('expired_document');
   return {
     status: mismatchFields.length === 0 ? 'matched' : 'mismatch',
     holderName,
     documentNumberHmac: extractedHmac.value,
     documentNumberLast4: compact.slice(-4) || null,
-    expiryDate: nullableDate(extracted.expiryDate),
+    expiryDate,
     confidence,
     mismatchFields,
     providerModel,
+    issuerCountry,
+    nationality,
+    mrzStatus,
+    visualComparisonStatus,
+    visualMismatchFields,
   };
 }
 
 export async function runKycOcr(input: KycOcrInput): Promise<KycOcrResult> {
   const configuration = kycOcrRuntimeConfiguration();
   const providerModel = configuration?.engine === 'tesseract-js' ? 'tesseract-js-7.0.0-v1' : DEFAULT_MODEL;
+  if (input.documentType === 'passport' && process.env.KYC_CHINESE_PASSPORT_OCR_ENABLED !== 'true') return unavailable(providerModel);
   if (!configuration) return unavailable(providerModel);
+  if (!hasRequiredKycEvidence(input.documentType, input.front, input.back)) return unavailable(providerModel, 'evidence_invalid');
   try {
     if (configuration.engine === 'tesseract-js') {
       // Pass only the image/type boundary, never expected answers or app secrets.
@@ -214,7 +260,7 @@ export async function runKycOcr(input: KycOcrInput): Promise<KycOcrResult> {
       method: 'POST', redirect: 'error',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${configuration.token}` },
       signal: AbortSignal.timeout(configuration.timeoutMs),
-      body: JSON.stringify({ documentType: input.documentType, front: imagePart(input.front), back: imagePart(input.back) }),
+      body: JSON.stringify({ documentType: input.documentType, front: imagePart(input.front), ...(input.back ? { back: imagePart(input.back) } : {}) }),
     });
     if (!response.ok) {
       const retryable = response.status === 408 || response.status === 429 || response.status >= 500;

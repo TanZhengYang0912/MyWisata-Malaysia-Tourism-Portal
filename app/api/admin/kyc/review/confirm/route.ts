@@ -10,7 +10,7 @@ const schema = z.object({
   submissionId: uuid,
   expectedVersion: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   purpose: z.enum(['primary', 'independent_second']).default('primary'),
-  documentAccessRefs: z.array(uuid).length(2),
+  documentAccessRefs: z.array(uuid).min(1).max(2),
   actualDocumentType: z.enum(['national_id', 'passport', 'driving_license']),
   issuerCountry: z.string().regex(/^[A-Za-z]{2}$/),
   identifierKind: z.enum(['my_ic', 'passport']),
@@ -58,6 +58,10 @@ export async function POST(request: Request) {
       || (value.identifierKind === 'my_ic' && value.issuerCountry.toUpperCase() !== 'MY')) {
     return apiFail('VALIDATION_FAILED', 'Document type and issuing country do not match this KYC application', 422);
   }
+  const requiredAccessCount = submission.document_type === 'passport' ? 1 : 2;
+  if (value.documentAccessRefs.length !== requiredAccessCount || new Set(value.documentAccessRefs).size !== requiredAccessCount) {
+    return apiFail('EVIDENCE_VIEW_REQUIRED', 'Open all required document pages before confirming', 422);
+  }
 
   let fingerprint: Awaited<ReturnType<typeof hashICWithHmac>>;
   try { fingerprint = await hashICWithHmac(value.documentNumber); }
@@ -87,7 +91,7 @@ export async function POST(request: Request) {
   if (stageError || typeof confirmationId !== 'string') {
     const message = stageError?.message ?? '';
     if (message.includes('kyc_case_changed') || message.includes('kyc_evidence_changed')) return apiFail('CONFLICT', 'The evidence changed; reopen both documents and confirm again', 409);
-    if (message.includes('kyc_document_review_evidence_required')) return apiFail('EVIDENCE_VIEW_REQUIRED', 'Open the current front and back documents before confirming', 422);
+    if (message.includes('kyc_document_review_evidence_required')) return apiFail('EVIDENCE_VIEW_REQUIRED', 'Open all required document pages before confirming', 422);
     if (message.includes('kyc_not_assigned')) return apiFail('CONFLICT', 'This case is assigned to another reviewer', 409);
     return apiFail('CONFIRMATION_FAILED', 'Evidence confirmation could not be recorded', 500);
   }

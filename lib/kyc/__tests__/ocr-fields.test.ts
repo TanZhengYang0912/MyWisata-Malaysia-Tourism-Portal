@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractKycFields, extractMykadLayoutFieldsV1, toOcrLayoutV1, toOcrLines } from '../runtime/ocr-fields.cjs';
+import { extractKycFields, extractMykadLayoutFieldsV1, parseTd3Mrz, toOcrLayoutV1, toOcrLines } from '../runtime/ocr-fields.cjs';
 
 const line = (text: string, confidence: number | null = 90) => ({ text, confidence });
 describe('bounded identity fields', () => {
@@ -10,6 +10,43 @@ describe('bounded identity fields', () => {
   it('requires a name label and keeps unsupported layouts unknown', () => {
     expect(extractKycFields({ front: [line('SYNTHETIC PERSON'), line('990101-14-0001')], back: [] }, 'national_id').holderName).toBeNull();
     expect(extractKycFields({ front: [line('A12345678')], back: [] }, 'passport').unreadable).toBe(true);
+  });
+  it('parses ICAO TD3 fields only when line lengths and check digits are valid', () => {
+    const result = parseTd3Mrz([
+      line('P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<'),
+      line('L898902C36UTO7408122F1204159ZE184226B<<<<<10'),
+    ]);
+    expect(result).toMatchObject({ status: 'valid', documentNumber: 'L898902C3', issuerCode: 'UTO', nationalityCode: 'UTO',
+      surname: 'ERIKSSON', givenNames: 'ANNA MARIA', birthDate: '740812', expiryDate: '120415' });
+    expect(parseTd3Mrz([line('P<UTOERIKSSON<<ANNA<MARIA'), line('L898902C36UTO7408122F1204159ZE184226B<<<<<10')]).status).toBe('unreadable');
+    expect(parseTd3Mrz([line('P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<'), line('L898902C36UTO7408122F1204158ZE184226B<<<<<10')]).status).toBe('invalid');
+  });
+  it('keeps passport OCR unknown unless a unique Chinese ordinary passport MRZ is valid', () => {
+    const lines = [
+      line('P<CHNLI<<WEI<MING'.padEnd(44, '<')),
+      line('EA12345676CHN9001011M3001019<<<<<<<<<<<<<<04'),
+    ];
+    expect(extractKycFields({ front: lines, back: [] }, 'passport')).toMatchObject({
+      holderName: 'LI WEI MING', documentNumber: 'EA1234567', issuerCountry: 'CN', nationality: 'CN', mrzStatus: 'valid', unreadable: false,
+    });
+    expect(extractKycFields({ front: lines, back: [line('') ] }, 'passport').unreadable).toBe(false);
+    expect(extractKycFields({ front: [line('PPUTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<'), line('L898902C36UTO7408122F1204159ZE184226B<<<<<10')], back: [] }, 'passport'))
+      .toMatchObject({ unreadable: true, mrzStatus: 'unsupported' });
+  });
+  it('cross-checks visible Chinese passport fields and returns the MRZ expiry date', () => {
+    const lines = [
+      line('Passport No. EA1234567'), line('Surname LI'), line('Given names WEI MING'),
+      line('Date of expiry 01 JAN 2030'), line('Nationality CHINESE'), line('Country code CHN'),
+      line('P<CHNLI<<WEI<MING'.padEnd(44, '<')),
+      line('EA12345676CHN9001011M3001019<<<<<<<<<<<<<<04'),
+    ];
+    expect(extractKycFields({ front: lines, back: [] }, 'passport')).toMatchObject({
+      expiryDate: '2030-01-01', visualComparisonStatus: 'consistent', visualMismatchFields: [],
+    });
+    const conflict = lines.map((item) => item.text === 'Passport No. EA1234567' ? line('Passport No. EA1234568') : item);
+    expect(extractKycFields({ front: conflict, back: [] }, 'passport')).toMatchObject({
+      visualComparisonStatus: 'conflict', visualMismatchFields: ['document_number'],
+    });
   });
   it('uses the minimum mandatory field score and emits only allowed fields', () => {
     expect(extractKycFields({ front: [line('NAME: SYNTHETIC PERSON', 95), line('990101-14-0001', 62)], back: [] }, 'national_id'))

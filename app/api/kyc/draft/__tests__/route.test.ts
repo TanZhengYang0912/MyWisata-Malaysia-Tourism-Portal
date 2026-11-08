@@ -11,7 +11,10 @@ vi.mock('@/lib/operations/workload', () => ({
   withPortalWorkload: async (_scope: string, work: (signal: AbortSignal) => Promise<unknown>) => work(new AbortController().signal),
   WorkloadUnavailableError: class extends Error { code = 'busy'; },
 }));
-vi.mock('@/lib/kyc/submission', () => ({ validateKycUploadFile: vi.fn(async (file: File) => ({ ok: true, buffer: await file.arrayBuffer() })) }));
+vi.mock('@/lib/kyc/submission', () => ({
+  validateKycUploadFile: vi.fn(async (file: File) => ({ ok: true, buffer: await file.arrayBuffer() })),
+  createKycEvidenceRevision: vi.fn(() => 'f'.repeat(64)),
+}));
 vi.mock('@/lib/kyc/evidence-image', () => ({ prepareKycEvidenceImage: vi.fn(async (bytes: Buffer) => ({ stored: Buffer.from(bytes), ocr: Buffer.from(bytes) })) }));
 
 const { GET, POST } = await import('../route');
@@ -67,5 +70,17 @@ describe('/api/kyc/draft', () => {
     expect(upload).not.toHaveBeenCalled();
     const save = rpc.mock.calls.find(([name]) => name === 'save_kyc_draft_v2')?.[1];
     expect(save).toMatchObject({ p_front_storage_path: `${owner}/drafts/${draftId}/front.jpg`, p_back_storage_path: `${owner}/drafts/${draftId}/back.jpg` });
+  });
+
+  it('saves a Chinese passport draft with one page and no back-side object', async () => {
+    rpc.mockResolvedValueOnce({ data: [], error: null }).mockResolvedValueOnce({ data: [{ draft_id: draftId, version: 1, expires_at: '2026-11-02T01:00:00Z', changed: true }], error: null });
+    const form = new FormData();
+    form.set('draftId', draftId); form.set('documentType', 'passport'); form.set('holderName', 'LI WEI MING');
+    form.set('frontFile', new File(['passport page'], 'passport.jpg', { type: 'image/jpeg' }));
+    const response = await POST(new Request('https://example.test/api/kyc/draft', { method: 'POST', body: form }));
+    expect(response.status).toBe(200);
+    const save = rpc.mock.calls.find(([name]) => name === 'save_kyc_draft_v2')?.[1];
+    expect(save).toMatchObject({ p_document_type: 'passport', p_back_storage_path: null, p_back_evidence_sha256: null });
+    expect(JSON.stringify(save)).not.toContain('/back.');
   });
 });

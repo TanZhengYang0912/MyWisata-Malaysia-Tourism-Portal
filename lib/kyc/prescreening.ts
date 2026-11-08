@@ -1,6 +1,7 @@
 import 'server-only';
 import type { createServiceClient } from '@/lib/supabase/service';
 import { kycOcrRuntimeConfiguration, runKycOcr, type KycOcrResult } from './ocr';
+import { getRequiredKycDocumentSides } from './document-policy';
 
 type Service = ReturnType<typeof createServiceClient>;
 type Job = {
@@ -70,6 +71,9 @@ export async function processKycPrescreening(service: Service) {
       await Promise.all((data as Job[]).map(async (job) => {
         let result = unavailable('evidence_invalid', false, model);
         try {
+          if (job.documentType === 'passport' && process.env.KYC_CHINESE_PASSPORT_OCR_ENABLED !== 'true') {
+            result = unavailable('configuration', false, model);
+          } else if (job.expectedDocumentNumberHmac && /^[a-f0-9]{64}$/.test(job.expectedDocumentNumberHmac)) {
           const read = async (side: 'front' | 'back') => {
             const document = job.documents.find((item) => item.side === side);
             if (!document || !['image/jpeg', 'image/png', 'image/webp'].includes(document.mimeType)) throw new EvidenceFailure('evidence_invalid', false);
@@ -83,19 +87,20 @@ export async function processKycPrescreening(service: Service) {
             if (!blob || blob.size === 0 || blob.size > 5 * 1024 * 1024) throw new EvidenceFailure('evidence_invalid', false);
             return { mimeType: document.mimeType, bytes: new Uint8Array(await blob.arrayBuffer()) };
           };
-          if (job.expectedDocumentNumberHmac && /^[a-f0-9]{64}$/.test(job.expectedDocumentNumberHmac)) {
-            // Wait for both bounded reads even if one fails; never release a job with a detached read.
-            const [frontRead, backRead] = await Promise.allSettled([read('front'), read('back')]);
-            const failed = [frontRead, backRead].filter((value) => value.status === 'rejected');
+            // Await only the document sides required by this document type.
+            const sides = getRequiredKycDocumentSides(job.documentType);
+            const reads = await Promise.allSettled(sides.map(read));
+            const failed = reads.filter((value) => value.status === 'rejected');
             const permanent = failed.find((value) => value.reason instanceof EvidenceFailure && !value.reason.retryable);
             if (permanent) throw permanent.reason;
-            if (frontRead.status === 'rejected') throw frontRead.reason;
-            if (backRead.status === 'rejected') throw backRead.reason;
-            const front = frontRead.value, back = backRead.value;
+            const failedRead = reads.find((value) => value.status === 'rejected');
+            if (failedRead?.status === 'rejected') throw failedRead.reason;
+            const front = (reads[0] as PromiseFulfilledResult<Awaited<ReturnType<typeof read>>>).value;
+            const back = reads[1]?.status === 'fulfilled' ? reads[1].value : undefined;
             if (budget.node && deadline !== null && performance.now() + budget.timeoutMs + 10000 >= deadline) throw new EvidenceFailure('timeout', true);
             result = await runKycOcr({ documentType: job.documentType,
               expectedDocumentNumberHmac: job.expectedDocumentNumberHmac, expectedHolderName: job.expectedHolderName,
-              front, back, hmacKey: process.env.KYC_IC_HMAC_KEY ?? '' });
+              front, ...(back ? { back } : {}), hmacKey: process.env.KYC_IC_HMAC_KEY ?? '' });
             // Until a confidence cutoff is calibrated and explicitly configured,
             // consistent OCR remains an uncertain signal for a human to assess.
             const thresholdText = process.env[budget.node ? 'KYC_NODE_OCR_MIN_CONFIDENCE' : 'KYC_PRIVATE_OCR_MIN_CONFIDENCE'];

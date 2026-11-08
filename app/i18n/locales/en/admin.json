@@ -1587,6 +1587,8 @@
       "check": "OCR check:",
       "documentEnding": "Last four digits of document number: {{number}}",
       "expiryDate": "Expiry date: {{date}}",
+      "passportCountry": "Issuing country / nationality: {{issuer}} / {{nationality}}",
+      "mrzStatus": "MRZ: {{status}} · visible field comparison: {{comparison}}",
       "extractedName": "Extracted name: {{name}}",
       "mismatch": "Mismatch: {{fields}}",
       "noMismatch": "No OCR mismatch detected",

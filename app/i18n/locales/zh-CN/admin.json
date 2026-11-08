@@ -1587,6 +1587,8 @@
       "check": "OCR 检查：",
       "documentEnding": "证件号码后四位：{{number}}",
       "expiryDate": "到期日：{{date}}",
+      "passportCountry": "签发国 / 国籍：{{issuer}} / {{nationality}}",
+      "mrzStatus": "机读区：{{status}} · 可见字段比对：{{comparison}}",
       "extractedName": "提取的姓名：{{name}}",
       "mismatch": "不匹配：{{fields}}",
       "noMismatch": "未检测到 OCR 不匹配",

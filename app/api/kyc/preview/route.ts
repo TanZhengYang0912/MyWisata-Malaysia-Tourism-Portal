@@ -6,6 +6,7 @@ import { extractKycPreviewFields } from '@/lib/kyc/ocr';
 import { hashICWithHmac, normalizeIC } from '@/lib/kyc/hash';
 import { withPortalWorkload, WorkloadUnavailableError } from '@/lib/operations/workload';
 import { guestAddressRateKey, reserveGuestRateLimit } from '@/lib/checkout/guest-session';
+import { getRequiredKycDocumentSides, type KycDocumentType } from '@/lib/kyc/document-policy';
 
 const schema = z.object({ draftId: z.string().uuid(), version: z.number().int().positive() }).strict();
 const positiveInteger = (name: string) => {
@@ -37,9 +38,13 @@ export async function POST(request: Request) {
   if (error || !draft || draft.id !== parsed.data.draftId || Number(draft.version) !== parsed.data.version) {
     return noStore(apiFail('DRAFT_CONFLICT', 'Saved draft changed; reload it before reading the document', 409));
   }
+  if (draft.document_type === 'passport' && process.env.KYC_CHINESE_PASSPORT_OCR_ENABLED !== 'true') {
+    return noStore(apiFail('PREVIEW_DISABLED', 'Passport preview is not enabled yet', 503));
+  }
 
   try {
-    const [frontPath, backPath] = await Promise.all((['front', 'back'] as const).map(async (side) => {
+    const sides = getRequiredKycDocumentSides(draft.document_type as KycDocumentType);
+    const paths = await Promise.all(sides.map(async (side) => {
       const { data: path, error: pathError } = await service.rpc('get_kyc_draft_document', {
         p_owner_user_id: user.id, p_draft_id: draft.id, p_side: side,
       });
@@ -47,14 +52,14 @@ export async function POST(request: Request) {
       return path;
     }));
     const bucket = service.storage.from('kyc-documents');
-    const [frontObject, backObject] = await Promise.all([bucket.download(frontPath), bucket.download(backPath)]);
-    if (frontObject.error || !frontObject.data || backObject.error || !backObject.data) throw new Error('draft_document_unavailable');
+    const objects = await Promise.all(paths.map((path) => bucket.download(path)));
+    if (objects.some((object) => object.error || !object.data)) throw new Error('draft_document_unavailable');
     const result = await withPortalWorkload('kyc_preview', async (signal) => {
-      const front = new Uint8Array(await frontObject.data!.arrayBuffer());
-      const back = new Uint8Array(await backObject.data!.arrayBuffer());
+      const front = new Uint8Array(await objects[0].data!.arrayBuffer());
+      const back = objects[1]?.data ? new Uint8Array(await objects[1].data.arrayBuffer()) : undefined;
       signal.throwIfAborted();
       return extractKycPreviewFields({ documentType: draft.document_type,
-        front: { mimeType: frontObject.data!.type, bytes: front }, back: { mimeType: backObject.data!.type, bytes: back } });
+        front: { mimeType: objects[0].data!.type, bytes: front }, ...(back && objects[1]?.data ? { back: { mimeType: objects[1].data.type, bytes: back } } : {}) });
     }, request.signal);
     let documentNumberHmac: string | null = null;
     let documentNumberLast4: string | null = null;
@@ -67,10 +72,12 @@ export async function POST(request: Request) {
       p_owner_user_id: user.id, p_draft_id: draft.id, p_evidence_revision: draft.evidence_revision,
       p_engine: result.providerModel, p_holder_name: result.holderName,
       p_document_number_hmac: documentNumberHmac, p_document_number_last4: documentNumberLast4,
-      p_status: result.status, p_confidence: result.confidence, p_failure_code: result.failureCode ?? null,
+      p_status: result.status, p_confidence: result.confidence,
+      p_failure_code: result.failureCode ?? (result.visualComparisonStatus ? `passport_visual_${result.visualComparisonStatus}` : null),
     });
     if (observationError) return noStore(apiFail('PREVIEW_UNAVAILABLE', 'Document preview could not be saved; enter the details manually', 503));
-    return noStore(apiOk({ preview: { status: result.status, holderName: result.holderName, documentNumber: result.documentNumber } }));
+    return noStore(apiOk({ preview: { status: result.status, holderName: result.holderName, documentNumber: result.documentNumber,
+      expiryDate: result.expiryDate, mrzStatus: result.mrzStatus, visualComparisonStatus: result.visualComparisonStatus } }));
   } catch (error) {
     if (error instanceof WorkloadUnavailableError) {
       const status = error.code === 'busy' ? 429 : 503;

@@ -42,6 +42,26 @@ afterEach(() => {
 });
 
 describe('runKycOcr', () => {
+  it('keeps Chinese passport OCR disabled unless the explicit sample-evaluation gate is enabled', async () => {
+    configure();
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    const passport = input({ documentType: 'passport', back: undefined, enteredDocumentNumber: 'EA1234567' });
+    await expect(extractKycPreviewFields(passport)).resolves.toMatchObject({ status: 'unavailable', failureCode: 'configuration' });
+    await expect(runKycOcr(passport)).resolves.toMatchObject({ status: 'unavailable' });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('matches a passport only when MRZ, country, number, name and visible-field checks agree', async () => {
+    configure();
+    vi.stubEnv('KYC_CHINESE_PASSPORT_OCR_ENABLED', 'true');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(privateResponse(JSON.stringify({
+      holderName: 'LI WEI MING', documentNumber: 'EA1234567', expiryDate: '2030-01-01', confidence: 0.99, unreadable: false,
+      issuerCountry: 'CN', nationality: 'CN', mrzStatus: 'valid', visualComparisonStatus: 'consistent', visualMismatchFields: [],
+    })));
+    await expect(runKycOcr(input({ documentType: 'passport', back: undefined, enteredDocumentNumber: 'EA1234567', expectedHolderName: 'LI WEI MING' })))
+      .resolves.toMatchObject({ status: 'matched', expiryDate: '2030-01-01', issuerCountry: 'CN', nationality: 'CN', mrzStatus: 'valid', visualComparisonStatus: 'consistent' });
+  });
+
   it('returns full extracted number only in the temporary owner preview result', async () => {
     configure();
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(privateResponse(JSON.stringify({

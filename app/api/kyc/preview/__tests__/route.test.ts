@@ -44,7 +44,7 @@ describe('/api/kyc/preview', () => {
       body: JSON.stringify({ draftId, version: 2 }) }));
     const body = await response.json();
     expect(response.headers.get('cache-control')).toContain('no-store');
-    expect(body.data.preview).toEqual({ status: 'extracted', holderName: 'OCR Name', documentNumber: '900101-14-5678' });
+    expect(body.data.preview).toEqual({ status: 'extracted', holderName: 'OCR Name', documentNumber: '900101-14-5678', expiryDate: null });
     expect(JSON.stringify(body)).not.toContain('internal-model');
     expect(rpc).toHaveBeenLastCalledWith('record_kyc_draft_ocr_observation', expect.objectContaining({
       p_document_number_hmac: 'a'.repeat(64), p_document_number_last4: '5678', p_status: 'extracted',

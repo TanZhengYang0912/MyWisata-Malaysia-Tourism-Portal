@@ -30,10 +30,11 @@ vi.mock('@/lib/kyc/hash', () => ({
 }));
 vi.mock('@/lib/kyc/submission', () => ({
   validateKycUploadFile: vi.fn().mockResolvedValue({ ok: true, buffer: new ArrayBuffer(8) }),
-  buildKycEvidencePaths: vi.fn().mockReturnValue({
+  createKycEvidenceRevision: vi.fn(() => 'f'.repeat(64)),
+  buildKycEvidencePaths: vi.fn((_owner: string, _submission: string, _token: string, _frontMime: string, backMime: string | null) => ({
     front: '11111111-1111-4111-8111-111111111111/33333333-3333-4333-8333-333333333333/44444444-4444-4444-8444-444444444444/front.jpg',
-    back: '11111111-1111-4111-8111-111111111111/33333333-3333-4333-8333-333333333333/44444444-4444-4444-8444-444444444444/back.jpg',
-  }),
+    back: backMime ? '11111111-1111-4111-8111-111111111111/33333333-3333-4333-8333-333333333333/44444444-4444-4444-8444-444444444444/back.jpg' : null,
+  })),
   abandonAndRemoveKycEvidence: vi.fn(),
 }));
 vi.mock('@/lib/kyc/ocr', () => ({
@@ -104,6 +105,22 @@ describe('POST /api/kyc/upload', () => {
     expect(download).toHaveBeenCalledTimes(2);
     expect(prepareKycEvidenceImage).not.toHaveBeenCalled();
     expect(upload.mock.calls.every((call) => call[1].equals(Buffer.from('watermarked')))).toBe(true);
+  });
+
+  it('submits a Chinese passport with one front page and finalizes without a back path', async () => {
+    const owner = '11111111-1111-4111-8111-111111111111';
+    const submissionId = '33333333-3333-4333-8333-333333333333';
+    const operationId = '44444444-4444-4444-8444-444444444444';
+    getUser.mockResolvedValue({ data: { user: { id: owner } } });
+    serviceRpc.mockResolvedValueOnce({ data: { submissionId, state: 'processing' }, error: null }).mockResolvedValue({ error: null });
+    authenticatedRpc.mockResolvedValue({ error: null });
+    const form = new FormData();
+    for (const [key, value] of Object.entries({ ocrConsent: 'true', holderName: 'LI WEI MING', operationId, icNumber: 'EA1234567', docType: 'passport' })) form.set(key, value);
+    form.set('frontFile', new File(['passport page'], 'passport.jpg', { type: 'image/jpeg' }));
+    const response = await POST(new Request('http://localhost/api/kyc/upload', { method: 'POST', body: form }));
+    expect(response.status).toBe(201);
+    expect(upload).toHaveBeenCalledTimes(1);
+    expect(authenticatedRpc).toHaveBeenCalledWith('finalize_kyc_submission', expect.objectContaining({ p_back_path: null }));
   });
 
   it('rejects undecodable photos without superseding an earlier information request', async () => {

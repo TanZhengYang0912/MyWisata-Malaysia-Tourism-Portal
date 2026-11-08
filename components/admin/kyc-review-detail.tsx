@@ -65,6 +65,9 @@ export function KycReviewDetailContent({
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const currentDocumentAccessRefs = documentAccessRefs ?? {};
   const { customer, submission } = detail;
+  const requiredDocumentSides = submission.docType === "passport" ? ["front"] as const : ["front", "back"] as const;
+  const requiredDocumentRefs = requiredDocumentSides.map((side) => currentDocumentAccessRefs[side]).filter((ref): ref is string => Boolean(ref));
+  const hasViewedRequiredDocuments = requiredDocumentRefs.length === requiredDocumentSides.length;
   const [reasonAction, setReasonAction] = useState<ReasonAction | null>(null);
   const [reasonCode, setReasonCode] = useState<KycReviewReasonCode | "">("");
   const [reasonDetail, setReasonDetail] = useState("");
@@ -245,7 +248,7 @@ export function KycReviewDetailContent({
   async function submitConfirmedDecision() {
     if (!confirmDecision || (confirmationPurpose === "primary" && !actionable) || confirmationVersion !== detail.assignment.reviewVersion) return;
     if (confirmDecision.action === "approve") {
-      if (!currentDocumentAccessRefs.front || !currentDocumentAccessRefs.back) {
+      if (!hasViewedRequiredDocuments) {
         setConfirmationError(t("kyc.confirm.openBothDocuments"));
         return;
       }
@@ -259,7 +262,7 @@ export function KycReviewDetailContent({
               submissionId: submission.id,
               expectedVersion: detail.assignment.reviewVersion,
               purpose: "independent_second",
-              documentAccessRefs: [currentDocumentAccessRefs.front, currentDocumentAccessRefs.back],
+              documentAccessRefs: requiredDocumentRefs,
               actualDocumentType: manualIdentity.actualDocumentType,
               issuerCountry: manualIdentity.issuerCountry,
               identifierKind: manualIdentity.identifierKind,
@@ -302,7 +305,7 @@ export function KycReviewDetailContent({
             body: JSON.stringify({
               submissionId: submission.id,
               expectedVersion: detail.assignment.reviewVersion,
-              documentAccessRefs: [currentDocumentAccessRefs.front, currentDocumentAccessRefs.back],
+              documentAccessRefs: requiredDocumentRefs,
               actualDocumentType: manualIdentity.actualDocumentType,
               issuerCountry: manualIdentity.issuerCountry,
               identifierKind: manualIdentity.identifierKind,
@@ -428,6 +431,10 @@ export function KycReviewDetailContent({
                 </div>
                 <div className="rounded-xl bg-secondary/60 p-3">
                   <p className="text-muted-foreground">{t("kyc.ocr.expiryDate", { date: submission.ocr.expiryDate ?? t("kyc.fallback.notAvailable") })}</p>
+                  {submission.docType === "passport" && <>
+                    <p className="text-muted-foreground">{t("kyc.ocr.passportCountry", { issuer: submission.ocr.issuerCountry ?? t("kyc.fallback.notAvailable"), nationality: submission.ocr.nationality ?? t("kyc.fallback.notAvailable") })}</p>
+                    <p className="text-muted-foreground">{t("kyc.ocr.mrzStatus", { status: submission.ocr.mrzStatus ?? t("kyc.fallback.notAvailable"), comparison: submission.ocr.visualComparisonStatus ?? t("kyc.fallback.notAvailable") })}</p>
+                  </>}
                   {submission.ocr.mismatchFields.length > 0 ? (
                     <p className="mt-1 flex items-start gap-1 text-destructive">
                       <FileWarning size={14} className="mt-0.5 shrink-0" />
