@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { RefreshCw, Search } from 'lucide-react';
+import { Pagination } from '@/components/shared/pagination';
 import { AdminFilterBar, adminFilterControlClassName } from '@/components/admin/filter-bar';
 import { AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminMobileRecordCard } from '@/components/admin/admin-mobile-record-card';
@@ -302,14 +303,7 @@ export default function AdminOrdersPage() {
               </tbody>
             </table>
           </div>}
-        <footer className="flex items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
-          <span className="text-muted-foreground">{t('orderOperations.count', { total })}</span>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1 || loading} onClick={() => setPage((value) => Math.max(1, value - 1))}>{t('orderOperations.previous')}</Button>
-            <span className="min-w-16 text-center text-xs text-muted-foreground">{page} / {pageCount}</span>
-            <Button variant="outline" size="sm" disabled={page >= pageCount || loading} onClick={() => setPage((value) => value + 1)}>{t('orderOperations.next')}</Button>
-          </div>
-        </footer>
+        <Pagination currentPage={page} totalPages={pageCount} totalItems={total} pageSize={PAGE_SIZE} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-4 py-3" />
       </section>
       <Dialog open={Boolean(correctionOrder)} onOpenChange={(open) => { if (!open && !correctionBusy) setCorrectionOrder(null); }}>
         <DialogContent>

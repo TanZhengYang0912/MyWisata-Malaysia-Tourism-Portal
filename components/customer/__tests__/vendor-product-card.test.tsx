@@ -67,6 +67,14 @@ describe("vendor product cards", () => {
     expect(markup).not.toContain("hours-summary");
     expect(markup).not.toContain("ui.labels.closed");
   });
+  it("names a pinned outlet with the shop icon instead of a location count", () => {
+    const listing = { ...toVendorCatalogueCard(product), pinnedOutletId: "o9", pinnedOutletName: "Campbell Annexe" };
+    const markup = renderToStaticMarkup(<ActivityCard listing={listing} returnTo="/customer/products/x" />);
+    expect(markup).toContain("Campbell Annexe");
+    expect(markup).toContain("lucide-store");
+    expect(markup).not.toContain("ui.vendor.locationCount");
+    expect(markup).toContain("outletId=o9");
+  });
   it("labels paid and merchant-featured discovery cards, alone or together", () => {
     const base = toVendorCatalogueCard(product);
     const render = (flags: { sponsored?: boolean; featured?: boolean }) => renderToStaticMarkup(<ActivityCard listing={{ ...base, ...flags }} returnTo="/customer/explore" />);

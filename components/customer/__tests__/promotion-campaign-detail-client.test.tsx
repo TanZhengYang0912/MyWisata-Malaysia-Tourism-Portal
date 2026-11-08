@@ -251,7 +251,8 @@ describe("PromotionCampaignDetailClient vendor directory scaling", () => {
     expect(markup).toContain("ui.promotionCampaigns.vendorCount 20");
     expect(markup).toContain("ui.promotionCampaigns.stallCount 21");
     expect(markup).toContain('placeholder="ui.promotionCampaigns.searchVendorsOrStalls"');
-    expect(markup).toContain("ui.pagination.showing");
+    expect(markup).toContain('aria-label="ui.promotionCampaigns.vendorPages"');
+    expect(markup).toContain("pagination.range");
   });
 
   it("searches vendor names and stall numbers, and identifies a matching stall", async () => {
@@ -272,7 +273,7 @@ describe("PromotionCampaignDetailClient vendor directory scaling", () => {
       <PromotionCampaignDetailClient slug={twentyVendorCampaign.slug} initialCampaign={twentyVendorCampaign} initialError={null} />,
     );
 
-    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent === "2"));
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-label") === "accessibility.nextPage"));
     expect(findElements(container, (element) => element.tagName === "ARTICLE")).toHaveLength(8);
     expect(container.textContent).toContain("Market vendor 13");
 

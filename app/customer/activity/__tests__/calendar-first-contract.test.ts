@@ -92,7 +92,7 @@ describe("calendar-first My Activity flow", () => {
 
   it("limits the rendered outside-month list with shared pagination", () => {
     expect(calendarSource).toContain("const OTHER_BOOKINGS_PAGE_SIZE = 10;");
-    expect(calendarSource).toContain('import { DirectoryPagination } from "@/components/customer/directory-pagination"');
+    expect(calendarSource).toContain('import { Pagination } from "@/components/shared/pagination"');
     expect(calendarSource).toContain("otherItineraryGroups.slice(");
     expect(calendarSource).toContain("pageSize={OTHER_BOOKINGS_PAGE_SIZE}");
     expect(calendarSource).toContain("const otherBookingsPageKey = JSON.stringify([scope, outletId, activityName, query, from, to, monthStart?.getTime() ?? null]);");

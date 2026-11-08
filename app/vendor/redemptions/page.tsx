@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Pagination } from '@/components/shared/pagination';
 import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
 import { formatDateTime } from '@/lib/i18n/format';
 import {
@@ -491,32 +492,15 @@ export default function VendorRedemptionsPage() {
           </>
         )}
 
-        {/* Pagination Footer */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-gray-100 dark:border-border px-5 py-3 text-xs text-gray-500 dark:text-muted-foreground">
-            <span>
-              {t('ui.pagination.pageOf', { page, total: totalPages }) || `Page ${page} of ${totalPages}`}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="min-h-10 rounded-lg border border-gray-200 dark:border-border px-3 py-1.5 font-semibold text-gray-700 dark:text-foreground transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
-              >
-                {t('actions.previous', 'Previous')}
-              </button>
-              <button
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="min-h-10 rounded-lg border border-gray-200 dark:border-border px-3 py-1.5 font-semibold text-gray-700 dark:text-foreground transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
-              >
-                {t('actions.next', 'Next')}
-              </button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={totalRecords}
+          pageSize={15}
+          onPageChange={setPage}
+          disabled={loading}
+          className="mt-0 border-t border-border px-5 py-3"
+        />
       </section>
     </div>
   );

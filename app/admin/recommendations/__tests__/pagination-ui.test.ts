@@ -12,8 +12,7 @@ describe('recommendation moderation pagination', () => {
     expect(pageSource).toContain('const PAGE_SIZE = 10;');
     expect(pageSource).toContain('pageSize: String(PAGE_SIZE)');
     expect(pageSource).toContain('/api/admin/recommendations?');
-    expect(pageSource).toContain('aria-label={t("ui.pagination.previousPage")}');
-    expect(pageSource).toContain('aria-label={t("ui.pagination.nextPage")}');
+    expect(pageSource).toContain('<Pagination currentPage={page} totalPages={data.totalPages} totalItems={data.total} pageSize={PAGE_SIZE} onPageChange={setPage} disabled={loading}');
   });
 
   it('uses the API counts and status filter instead of splitting a browser-side table', () => {

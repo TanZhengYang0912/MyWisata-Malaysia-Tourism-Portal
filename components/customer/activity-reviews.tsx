@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Star, X } from "lucide-react";
+import { Star, X } from "lucide-react";
+import { Pagination } from "@/components/shared/pagination";
 import type { ProductReview } from "@/backend/core/types";
 import { DEFAULT_REVIEW_PAGE_SIZE, getReviewPageState } from "@/lib/customer/review-pagination";
 import { formatDate } from "@/lib/i18n/format";
@@ -318,12 +319,8 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
               </div>
             )}
 
-            {!loading && !error && filteredTotal > 0 && (
-              <nav aria-label={t("ui.reviews.pages")} className="mt-5 flex items-center justify-between border-t border-border pt-4">
-                <button type="button" onClick={() => void loadPage(pageState.page - 1)} disabled={!pageState.hasPrevious} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={15} /> {t("actions.previous", { ns: "common" })}</button>
-                <span className="text-xs font-semibold text-muted-foreground">{t("ui.reviews.pageOf", { page: pageState.page, total: pageState.totalPages })}</span>
-                <button type="button" onClick={() => void loadPage(pageState.page + 1)} disabled={!pageState.hasNext} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40">{t("actions.next", { ns: "common" })} <ChevronRight size={15} /></button>
-              </nav>
+            {!loading && !error && (
+              <Pagination ariaLabel={t("ui.reviews.pages")} currentPage={pageState.page} totalPages={pageState.totalPages} totalItems={filteredTotal} pageSize={DEFAULT_REVIEW_PAGE_SIZE} onPageChange={(nextPage) => void loadPage(nextPage)} />
             )}
           </section>
         </div>

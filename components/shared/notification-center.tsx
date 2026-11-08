@@ -3,9 +3,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
+import { Pagination } from "@/components/shared/pagination";
 import { useAuth } from "@/components/providers/auth";
 import type { Notification, NotificationBellProps } from "./notification-bell";
-import { formatDateTime, formatNumber } from "@/lib/i18n/format";
+import { formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { localizeNotification } from "@/lib/notifications/localize";
 
@@ -157,6 +158,6 @@ export function NotificationCenter({ scope = "customer", vendorId = null, catego
       const localized = localizeNotification({ ...item, metadata }, (key, options) => t(key, options));
       return <div key={item.id} className={`border-b border-border px-5 py-4 last:border-0 ${item.readAt ? "" : "bg-primary/5"}`}><button type="button" onClick={() => void markRead(item.id)} className="w-full text-left"><p className="font-semibold">{localized.title}</p><p className="mt-1 text-sm text-muted-foreground">{localized.body}</p><p className="mt-1 text-xs text-muted-foreground">{formatDateTime(item.createdAt, locale)}</p></button>{item.link && <Link className="mt-2 inline-block text-xs font-semibold text-primary" href={item.link}>{t("notifications.open")}</Link>}</div>;
     })}</div>
-    <div className="mt-4 flex items-center justify-between text-sm"><span className="sr-only">{formatNumber(total, locale)}</span><button type="button" disabled={page <= 1} onClick={() => setPageState({ viewKey: pageViewKey, page: page - 1 })} aria-label={t("accessibility.previousPage")} className="rounded-lg border border-border px-3 py-2 disabled:opacity-50">{t("actions.previous")}</button><span aria-live="polite">{t("pagination.page", { current: formatNumber(page, locale), total: formatNumber(totalPages, locale) })}</span><button type="button" disabled={page >= totalPages} onClick={() => setPageState({ viewKey: pageViewKey, page: page + 1 })} aria-label={t("accessibility.nextPage")} className="rounded-lg border border-border px-3 py-2 disabled:opacity-50">{t("actions.next")}</button></div>
+    <Pagination currentPage={page} totalPages={totalPages} totalItems={total} pageSize={safePageSize} onPageChange={(next) => setPageState({ viewKey: pageViewKey, page: next })} />
   </div>;
 }

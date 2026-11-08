@@ -2,7 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, Search, UsersRound } from "lucide-react";
+import { Search, UsersRound } from "lucide-react";
+import { Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { UserManagementDrawer } from "@/components/admin/user-management-drawer";
@@ -37,7 +38,6 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [pageInput, setPageInput] = useState("1");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchBusy, setBatchBusy] = useState(false);
 
@@ -53,7 +53,7 @@ export default function AdminUsersPage() {
       const response = await fetch(`/api/admin/users?${params.toString()}`, { cache: "no-store" });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error?.message ?? t("ui.users.errors.load"));
-      setResult(body.data as UserManagementListResponse); setPageInput(String(nextFilters.page));
+      setResult(body.data as UserManagementListResponse);
     } catch (err) { setError(err instanceof Error ? err.message : t("ui.users.errors.load")); }
     finally { setLoading(false); }
   }
@@ -63,7 +63,6 @@ export default function AdminUsersPage() {
 
   function submitSearch(event: FormEvent) { event.preventDefault(); setFilters((current) => ({ ...current, page: 1, search: searchInput.trim() })); }
   function changeFilter<K extends keyof UserManagementFilters>(key: K, value: UserManagementFilters[K]) { setFilters((current) => ({ ...current, [key]: value, page: 1 })); }
-  function goToPage() { const page = Math.max(1, Number.parseInt(pageInput, 10) || 1); setFilters((current) => ({ ...current, page })); }
   function resetFilters() { setSearchInput(""); setFilters(initialFilters); }
   const selectedUsers = result.items.filter((user) => selectedIds.has(user.id));
   const batchActions = selectedUsers.length === 0 ? [] : (["clear_bio_restriction", "suspend", "unsuspend", "restore"] as const).filter((action) => selectedUsers.every((user) => {
@@ -199,7 +198,7 @@ export default function AdminUsersPage() {
           </AdminMobileRecordCard>
         );
       })}</div>}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4"><p className="text-xs text-muted-foreground">{t("ui.pagination.pageOf", { page: result.page, total: Math.max(result.totalPages, 1) })}</p><div className="flex items-center gap-2"><Button variant="outline" size="sm" disabled={loading || result.page <= 1} onClick={() => setFilters((current) => ({ ...current, page: current.page - 1 }))}><ChevronLeft size={15} /> {t("ui.pagination.previous")}</Button><div className="flex items-center gap-1"><input aria-label={t("ui.pagination.pageNumber")} value={pageInput} onChange={(event) => setPageInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") goToPage(); }} inputMode="numeric" className="h-9 w-14 rounded-lg border border-border bg-background px-2 text-center text-sm" /><Button variant="outline" size="sm" onClick={goToPage}>{t("ui.pagination.go")}</Button></div><Button variant="outline" size="sm" disabled={loading || result.totalPages === 0 || result.page >= result.totalPages} onClick={() => setFilters((current) => ({ ...current, page: current.page + 1 }))}>{t("ui.pagination.next")} <ChevronRight size={15} /></Button></div></div>
+      <Pagination currentPage={result.page} totalPages={result.totalPages} totalItems={result.total} pageSize={result.pageSize} onPageChange={(page) => setFilters((current) => ({ ...current, page }))} disabled={loading} className="mt-0 border-t border-border px-5 py-4" />
     </section>
     <UserManagementDrawer userId={selectedUserId} onClose={() => setSelectedUserId(null)} onChanged={() => void load()} />
   </AdminPageShell>;

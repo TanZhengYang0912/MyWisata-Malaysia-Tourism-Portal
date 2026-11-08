@@ -51,10 +51,11 @@ describe("saved hub UI contract", () => {
     }
   });
 
-  it("uses the same shared ActivityCard drawer for Saved experiences as Customer Home", () => {
+  it("uses the unified, unlabelled product card for Saved experiences", () => {
     const client = readFileSync(clientPath, "utf8");
-    const savedActivityCard = client.match(/<ActivityCard key=\{activity\.id\}[\s\S]*?\/>/)?.[0] ?? "";
+    const savedActivityCard = client.match(/<ProductCard key=\{activity\.id\}[\s\S]*?\/>/)?.[0] ?? "";
 
+    expect(savedActivityCard).toContain("listing={toDiscoveryCatalogueCard(activity, { labels: false })}");
     expect(savedActivityCard).toContain('returnTo="/customer/wishlist"');
     expect(savedActivityCard).not.toContain("detailsRevealStyle");
   });

@@ -53,8 +53,8 @@ describe("nearby outlets section", () => {
 });
 
 describe("nearby outlets pagination", () => {
-  it("uses the shared numbered pagination, not a show-more counter", () => {
-    expect(nearbySource).toContain("DirectoryPagination");
+  it("uses the shared pager, not a show-more counter", () => {
+    expect(nearbySource).toContain("<Pagination");
     expect(nearbySource).not.toContain("Show more");
     expect(nearbySource).not.toContain("setVisible");
   });

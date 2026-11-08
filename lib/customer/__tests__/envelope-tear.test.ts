@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildZipStrip, createEnvelopeGeometry, letterRise, nextEnvelopeAction } from "@/lib/customer/envelope-tear";
+import { buildZipStrip, createEnvelopeGeometry, nextEnvelopeAction, splitOpenLayout } from "@/lib/customer/envelope-tear";
 
 const desktop = createEnvelopeGeometry(1200, false);
 
@@ -33,21 +33,32 @@ describe("envelope zip-strip geometry", () => {
   });
 
   it("uses the planned desktop and narrow sizes", () => {
-    expect(desktop).toMatchObject({ H: 440, a: 84, sh: 64, tuck: 40 });
-    expect(createEnvelopeGeometry(360, true)).toMatchObject({ H: 480, a: 96, sh: 56, tuck: 40 });
+    expect(desktop).toMatchObject({ H: 460, a: 264, sh: 48 });
+    expect(createEnvelopeGeometry(360, true)).toMatchObject({ H: 480, a: 236, sh: 44 });
+    expect(desktop).not.toHaveProperty("tuck");
   });
 });
 
-describe("letterRise", () => {
-  const base = { a: 84, sh: 64, tuck: 40 };
-  it("floats the letter up until only the tuck stays inside", () => {
-    expect(letterRise({ ...base, letterHeight: 400, cardTop: 600, headerBottom: 64 })).toBe(84 + 64 + 40 - 400 - 76);
+describe("splitOpenLayout", () => {
+  // Tear band 264..312 in card coordinates, a 400px letter, 900px screen, 64px header.
+  const base = { tearTop: 264, tearBottom: 312, letterHeight: 400, headerBottom: 64, viewportHeight: 900 };
+  it("centres the letter on the tear when there is room", () => {
+    expect(splitOpenLayout({ ...base, cardTop: 200 }).letterTop).toBe(288 - 200);
   });
-  it("stops below the sticky header when headroom is short", () => {
-    expect(letterRise({ ...base, letterHeight: 400, cardTop: 90, headerBottom: 64 })).toBe(64 + 8 - 90 - 76);
+  it("moves the letter down when the card sits right under the header", () => {
+    // Centred would start at 88 + (-150) = -62 on screen, above the header bottom.
+    expect(splitOpenLayout({ ...base, cardTop: -150 }).letterTop).toBe(64 + 12 + 150);
   });
-  it("never moves the letter below the card top", () => {
-    expect(letterRise({ ...base, letterHeight: 100, cardTop: 600, headerBottom: 64 })).toBe(0 - 76);
+  it("moves the letter up when the card is near the screen bottom", () => {
+    expect(splitOpenLayout({ ...base, cardTop: 700 }).letterTop).toBe(900 - 12 - 400 - 700);
+  });
+  it("lets the header win when the screen is too short for both limits", () => {
+    expect(splitOpenLayout({ ...base, viewportHeight: 300, cardTop: 100 }).letterTop).toBe(64 + 12 - 100);
+  });
+  it("leaves exactly 8px between each half and the letter", () => {
+    const out = splitOpenLayout({ ...base, cardTop: 200 });
+    expect(out.letterTop - (base.tearTop + out.topShift)).toBe(8);
+    expect(base.tearBottom + out.bottomShift - (out.letterTop + base.letterHeight)).toBe(8);
   });
 });
 

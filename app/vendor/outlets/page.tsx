@@ -18,7 +18,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import OutletForm from '@/components/vendor/outlet-form';
 import CompactFilterBar from '@/components/vendor/compact-filter-bar';
 import CompactThumbnail from '@/components/vendor/compact-thumbnail';
-import PaginationControls from '@/components/vendor/pagination-controls';
+import { Pagination as SharedPagination } from '@/components/shared/pagination';
 import BatchActionBar from '@/components/vendor/batch-action-bar';
 import OutletManagerPanel from '@/components/vendor/outlet-manager-panel';
 import OutletPageBuilder from '@/components/vendor/outlet-page-builder';
@@ -519,16 +519,15 @@ export default function VendorOutletsPage() {
           </section>
           {pagination.totalPages > 1 && (
             <div className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
-              <PaginationControls
-                page={pagination.page}
+              <SharedPagination
+                currentPage={pagination.page}
                 totalPages={pagination.totalPages}
-                total={pagination.total}
+                totalItems={pagination.total}
                 pageSize={pagination.pageSize}
                 onPageChange={(page) => {
                   setPagination((current) => ({ ...current, page }));
                   loadOutlets(page);
-                }}
-              />
+                }} className="mt-0 border-t border-border px-4 py-3" />
             </div>
           )}
         </>

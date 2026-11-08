@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 
 describe("hotel-first discovery surfaces", () => {
-  it("feeds the Explore map the hotel-grouped list", () => {
-    expect(read("app/customer/explore/explore-client.tsx")).toContain("<StoryMap activities={displayActivities}");
+  it("feeds the Explore postcard board the hotel-grouped list", () => {
+    expect(read("app/customer/explore/explore-client.tsx")).toContain("<ExplorePostcardBoard activities={displayActivities}");
   });
 
   it("links a hotel on the map to its hotel page and never shows hotel opening hours", () => {

@@ -164,6 +164,46 @@ function renderRegionFeatures(
   );
 }
 
+/** A state's label point in the map's viewBox coordinates (0 100 1600 860). */
+export function stateAnchor(stateId: string): { x: number; y: number } | null {
+  const state = DEMO_STATES.find((item) => item.id === stateId);
+  return state ? projected({ lat: state.label[1], lng: state.label[0] }, regionForState(state.id)) : null;
+}
+
+function handleStateKeyDown(event: React.KeyboardEvent<SVGGElement>, action: () => void) {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    action();
+  }
+}
+
+/** Only the state shapes and a dot per state, for the Explore postcard board. A click always selects. */
+export function MalaysiaStateOutline({
+  highlightedStateId,
+  onHoverState,
+  onSelectState,
+}: {
+  highlightedStateId: string | null;
+  onHoverState: React.Dispatch<React.SetStateAction<string | null>>;
+  onSelectState: (stateId: string) => void;
+}) {
+  // renderRegionFeatures toggles to null when the clicked state is the highlighted one; that null means this state.
+  const select = (stateId: string | null) => { const id = stateId ?? highlightedStateId; if (id) onSelectState(id); };
+  return (
+    <svg viewBox={`0 ${MAP_VIEWBOX_TOP} ${WIDTH} ${MAP_VIEWBOX_HEIGHT}`} preserveAspectRatio="none" className="block h-full w-full overflow-visible">
+      {renderRegionFeatures(peninsularFeatures, "peninsular", highlightedStateId, select, onHoverState, handleStateKeyDown)}
+      {renderRegionFeatures(borneoFeatures, "borneo", highlightedStateId, select, onHoverState, handleStateKeyDown)}
+      <g aria-hidden="true" pointerEvents="none">
+        {DEMO_STATES.map((state) => {
+          const point = stateAnchor(state.id)!;
+          const hot = state.id === highlightedStateId;
+          return <circle key={state.id} data-state-dot={state.id} cx={point.x} cy={point.y} r={hot ? 24 : 16} className={`${hot ? "fill-[var(--mw-string)]" : "fill-primary"} stroke-card`} strokeWidth={5} />;
+        })}
+      </g>
+    </svg>
+  );
+}
+
 export function MalaysiaStateMap({
   stateCounts,
   selectedStateId,

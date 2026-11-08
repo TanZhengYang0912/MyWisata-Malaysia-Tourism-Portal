@@ -2,7 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowUpRight, BedDouble, Check, ChevronLeft, ChevronRight, MapPin, Maximize2, Minus, Navigation, Plus, Star, Users } from "lucide-react";
+import { ArrowUpRight, BedDouble, Check, MapPin, Maximize2, Minus, Navigation, Plus, Star, Users } from "lucide-react";
+import { Pagination } from "@/components/shared/pagination";
 import type { GalleryItem, OutletRendererOutlet, OutletRendererProduct } from "@/components/outlet/outlet-block-types";
 import type { StayBookingDetails } from "@/backend/core/types";
 import type { ReviewRatingBucket, ScopedReviewItem } from "@/backend/domains/vendor-reviews";
@@ -370,12 +371,8 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [], reviewRatingBu
               <FeedbackCollection mode="reviews" items={currentReviewPage.items.map(reviewPresentation)} controls={reviewControls} />
             </div>
           ) : <p className="mt-4 text-sm text-muted-foreground">{selectedReviewRating === null ? t("ui.hotel.noWrittenReviews") : t("ui.reviews.noReviewsForRating")}</p>}
-          {!reviewsLoading && currentReviewPage.totalPages > 1 && (
-            <nav aria-label={t("ui.reviews.pages")} className="mt-5 flex items-center justify-between border-t border-border pt-4">
-              <Button type="button" size="sm" variant="outline" disabled={currentReviewPage.page <= 1} onClick={() => void loadHotelReviews(currentReviewPage.page - 1)}><ChevronLeft size={15} aria-hidden="true" />{t("actions.previous", { ns: "common" })}</Button>
-              <span className="text-xs text-muted-foreground">{t("ui.reviews.pageOf", { page: currentReviewPage.page, total: currentReviewPage.totalPages })}</span>
-              <Button type="button" size="sm" variant="outline" disabled={currentReviewPage.page >= currentReviewPage.totalPages} onClick={() => void loadHotelReviews(currentReviewPage.page + 1)}>{t("actions.next", { ns: "common" })}<ChevronRight size={15} aria-hidden="true" /></Button>
-            </nav>
+          {!reviewsLoading && (
+            <Pagination ariaLabel={t("ui.reviews.pages")} currentPage={currentReviewPage.page} totalPages={currentReviewPage.totalPages} totalItems={currentReviewPage.total} pageSize={HOTEL_REVIEW_PAGE_SIZE} onPageChange={(nextPage) => void loadHotelReviews(nextPage)} />
           )}
         </section>
       )}

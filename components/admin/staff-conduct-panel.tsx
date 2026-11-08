@@ -18,8 +18,9 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Search, UserX } from "lucide-react";
+import { Search, UserX } from "lucide-react";
 import Link from "next/link";
+import { Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -384,19 +385,7 @@ export function StaffConductPanel() {
             </p>
           ) : pagedItems.items.map((item) => (item.kind === "flagged_conduct" ? flagRow(item.data, true) : reportRow(item.data, true)))}
         </div>
-        <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
-          <span>{t("staffConduct.filters.pageOf", { page: pagedItems.page, total: pagedItems.totalPages })}</span>
-          {pagedItems.totalPages > 1 && (
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" aria-label={t("staffConduct.filters.previousPage")} disabled={pagedItems.page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
-                <ChevronLeft size={14} />
-              </Button>
-              <Button size="sm" variant="outline" aria-label={t("staffConduct.filters.nextPage")} disabled={pagedItems.page >= pagedItems.totalPages} onClick={() => setPage((value) => Math.min(pagedItems.totalPages, value + 1))}>
-                <ChevronRight size={14} />
-              </Button>
-            </div>
-          )}
-        </div>
+        <Pagination currentPage={pagedItems.page} totalPages={pagedItems.totalPages} totalItems={filteredItems.length} pageSize={pageSize} onPageChange={setPage} className="mt-0 border-t border-border px-5 py-3" />
       </div>
 
       <Dialog open={!!transcriptFlag} onOpenChange={(open) => { if (!open) { setTranscriptFlag(null); setTranscript(null); } }}>

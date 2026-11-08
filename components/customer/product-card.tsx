@@ -20,7 +20,7 @@ import { useCustomerCapabilityGate } from "@/components/customer/use-customer-ca
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { OperatingHoursSummary } from "@/components/customer/operating-hours-summary";
 import { LocalizedContent } from "@/components/customer/localized-content";
-import { PhotoRatingBadge } from "@/components/customer/photo-rating-badge";
+import { PhotoCardLabels, PhotoRatingBadge } from "@/components/customer/photo-rating-badge";
 import { ProductSaveButton } from "@/components/customer/product-save-button";
 import { getVendorProductTypeLabel, type VendorProductCardData } from "@/lib/customer/vendor-page";
 import { toVendorCatalogueCard, type ProductCatalogueCardData } from "@/lib/customer/product-catalogue";
@@ -34,11 +34,10 @@ type DiscoveryCardProps = { activity: ActivityCardItem; returnTo?: string; outle
 type VendorListingProps = { vendorListing: VendorProductCardData; returnTo: string };
 type CatalogueProductCardProps = { listing: ProductCatalogueCardData; returnTo: string; source?: "home" | "vendor"; onSponsoredClick?: () => void };
 
-const badgeClass = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]";
-const sponsoredLabelClass = "inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-900 dark:text-amber-200";
+export const badgeClass = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]";
 
 // The badge row sits right under the name: at most three pills on one line, in priority order.
-function CardBadges({ badges }: { badges: ReactNode[] }) {
+export function CardBadges({ badges }: { badges: ReactNode[] }) {
   const shown = badges.filter(Boolean).slice(0, 3);
   return shown.length > 0 ? <div className="flex max-h-5 flex-wrap gap-1.5 overflow-hidden">{shown}</div> : null;
 }
@@ -65,10 +64,7 @@ function VendorListingCard({ listing: product, returnTo, source, onSponsoredClic
           <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
         ) : <div className="flex h-full items-center justify-center bg-secondary text-xs font-semibold text-primary">{t("ui.vendor.photoComingSoon")}</div>}
       </Link>
-      {(product.sponsored || product.featured) && <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-1">
-        {product.sponsored && <span className={sponsoredLabelClass}>{t("ui.labels.sponsored")}</span>}
-        {product.featured && <span className="inline-flex items-center rounded-full bg-white/90 dark:bg-card/90 px-2 py-0.5 text-[10px] font-bold text-primary">{t("ui.labels.featured")}</span>}
-      </div>}
+      <PhotoCardLabels sponsored={product.sponsored} featured={product.featured} />
       <ProductSaveButton productId={product.id} productName={product.name} compact className="absolute right-3 top-3 z-20" />
       {wishlist && <div className="absolute right-3 top-12 z-20"><ShareButton compact shareType="product" contentId={product.id} title={product.name} /></div>}
       <PhotoRatingBadge rating={product.rating} reviews={product.reviews} className="absolute bottom-3 right-3 z-10" />
@@ -78,11 +74,14 @@ function VendorListingCard({ listing: product, returnTo, source, onSponsoredClic
     </LocalizedContent>}
     price={<>{product.sales.outletCount > 1 && <span className="mr-1 text-xs text-muted-foreground">{t("ui.vendor.from")}</span>}<ReferencePrice amountMYR={product.sales.fromPrice} className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary" /></>}
     details={<>
-      <p className="flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
+      {product.pinnedOutletName ? <p className="flex items-center gap-x-1 text-xs text-muted-foreground">
+        <Store size={12} className="shrink-0" aria-hidden="true" />
+        {product.pinnedOutletName}
+      </p> : <p className="flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
         <MapPinned size={12} aria-hidden="true" />
         {t("ui.vendor.locationCount", { count: product.openNowSummary?.totalOutletCount ?? product.sales.outletCount })}
         {product.openNowSummary && <> · <span className="font-semibold text-emerald-700 dark:text-emerald-300">{t("ui.vendor.openNowCount", { count: product.openNowSummary.openOutletCount })}</span></>}
-      </p>
+      </p>}
       {product.description && <p className="break-words text-xs text-muted-foreground"><LocalizedContent entityType="product" entityId={product.id} field="description" sourceText={product.description} /></p>}
     </>}
     detailsId={`vendor-product-details-${product.id}`}
@@ -171,8 +170,8 @@ function DiscoveryActivityCard({ activity, returnTo, outletId, source, onSponsor
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
-          {activity.sponsorship && <span className={`absolute left-3 top-3 ${sponsoredLabelClass}`}>{t("ui.labels.sponsored")}</span>}
         </Link>
+        <PhotoCardLabels sponsored={Boolean(activity.sponsorship)} />
         <SaveToggleButton
           appearance="icon"
           onClick={handleSave}

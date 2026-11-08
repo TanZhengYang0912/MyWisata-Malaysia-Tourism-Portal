@@ -259,6 +259,8 @@ export function getPriceUnit(categorySlug?: string | null, translate?: Translate
 function resolveValue(field: AttrField, activity: ComputedActivity, translate?: Translate): string | null {
   switch (field.key) {
     case "_hours":
+      // The page header's hours summary already shows structured hours (except on public places).
+      if (activity.outlet.operatingHours && !(isPlaceBound(activity) && getActivityCommerceMode(activity) === "public")) return null;
       return activity.outlet.hours || null;
     case "_tags":
       return activity.tags && activity.tags.length > 0 ? activity.tags.join(" · ") : null;
