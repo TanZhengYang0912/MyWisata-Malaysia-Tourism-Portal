@@ -4,7 +4,8 @@ import type {
   DiscoveryResult,
   SponsoredPlacement,
 } from "@/backend/core/types";
-import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
+import { parseDiscoveryQuery, type DiscoveryQuery } from "@/lib/customer/discovery-query";
+import { isMerchantFeatured, orderProductCatalogue } from "@/lib/customer/product-catalogue";
 import {
   compareEligibleSponsoredPlacements,
   getSponsoredSpecificity,
@@ -112,6 +113,26 @@ export function groupAccommodationByProperty<T extends ComputedActivity & { prop
       },
     }];
   });
+}
+
+/** Home highlights: Sponsored (untargeted only — Home has no state/category), then merchant ⭐ by name, then name. */
+export function selectHomeDiscoverySections(
+  activities: ComputedActivity[],
+  recommended: ComputedActivity[],
+  placements: SponsoredPlacement[] = [],
+  now: string = new Date().toISOString(),
+) {
+  const grouped = groupAccommodationByProperty(activities);
+  const oldHighlightIds = new Set(grouped.slice(0, 4).map((activity) => activity.id));
+  const seen = new Set<string>();
+  const uniqueActivities = activities.filter((activity) => !seen.has(activity.id) && Boolean(seen.add(activity.id)));
+  const organic = orderProductCatalogue(uniqueActivities, orderProductCatalogue(uniqueActivities.filter(isMerchantFeatured)).map(({ id }) => id));
+  const ranked = rankDiscoveryResults({ activities: organic, placements, filters: parseDiscoveryQuery(new URLSearchParams()), now });
+  const ordinary = groupAccommodationByProperty<DiscoveryResult & { property?: DiscoveryPropertySummary }>(ranked);
+  return {
+    highlightItems: ordinary.filter((activity) => activity.salesSummary?.outletCount !== 0).slice(0, 4),
+    forYouItems: groupAccommodationByProperty(recommended).filter((activity) => !oldHighlightIds.has(activity.id)).slice(0, 4),
+  };
 }
 
 /** Same grouping for ranked items that carry extra data (e.g. For You's reasons): the best-ranked room keeps its slot. */

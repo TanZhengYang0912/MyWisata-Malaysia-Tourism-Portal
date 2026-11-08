@@ -25,14 +25,21 @@ describe("place-bound activity presentation", () => {
 });
 
 describe("vendor-to-outlet commerce boundary", () => {
-  it("only requires outlet selection for multi-outlet vendor discovery", () => {
+  it("never blocks purchase behind a separate outlet-selection step", () => {
     expect(source).toContain('const vendorDiscovery = searchParams.get("source") === "vendor";');
     expect(source).toContain("getEffectiveOutletCount");
-    expect(source).toContain("shouldRequireOutletSelection");
-    expect(source).toContain('t("ui.activity.chooseOutletContinue")');
+    expect(source).not.toContain("shouldRequireOutletSelection");
+    expect(source).not.toContain("outletSelectionRequired");
+    expect(source).not.toContain('t("ui.activity.chooseOutletContinue")');
+    expect(source).not.toContain('t("ui.labels.priceAvailability")');
     expect(source).toContain("outletChoices.map");
-    expect(source).toContain("getOutletShopHref(choice.outletId)");
-    expect(source).toContain('t("ui.labels.priceAvailability")');
+    expect(source).toContain("{!publicPlace && <div className=\"fixed inset-x-0 bottom-0");
+  });
+
+  it("shows each outlet choice's live open status, falling back to the server's closed flag", () => {
+    expect(source).toContain("const outletStatus = useOutletOpenStatus();");
+    expect(source.match(/<OutletChoiceStatus choice=\{choice\} status=\{outletStatus\} \/>/g)).toHaveLength(1);
+    expect(source).not.toContain('{!choice.open && ` · ${t("ui.labels.currentlyClosed")}`}');
   });
 
   it("preserves an outlet selected by an outlet-originated detail link", () => {
@@ -53,14 +60,27 @@ describe("vendor-to-outlet commerce boundary", () => {
     expect(source).not.toContain("slot.outletId || slot.outletId === outletId");
   });
 
-  it("keeps related products scoped to the selected outlet", () => {
+  it("keeps related products scoped to the selected outlet, each card pinned to its own outlet offer", () => {
     expect(source).toContain('ui.activity.moreFromOutlet');
     expect(source).toContain("selectedOutlet");
-    expect(source).toContain("ActivityCard");
+    expect(source).toContain("<ProductCard");
+    expect(source).toContain("listing={toOutletCatalogueCard(product)}");
+    expect(source).not.toContain("outletId={selectedOutlet.outletId}");
   });
 
   it("shows operating hours for the selected outlet", () => {
     expect(source).toContain("selectedOutlet!.hours");
     expect(source).toContain('t("ui.labels.operatingHours")');
+  });
+});
+
+describe("related vendor section", () => {
+  it("uses one vendor heading and keeps the vendor link and related product cards", () => {
+    expect(source).not.toContain('t("ui.activity.moreFromVendorSubtitle"');
+    expect(source).not.toContain('<p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("ui.activity.moreFromVendor")}</p>');
+    expect(source).toContain('id="more-from-outlet-heading" className="text-xl font-black tracking-tight sm:text-2xl">{t("ui.activity.moreFromVendor")}</h2>');
+    expect(source).toContain('t("ui.actions.visitVendor")');
+    expect(source).toContain("relatedProducts.map((product) => (");
+    expect(source).toContain("<ProductCard");
   });
 });

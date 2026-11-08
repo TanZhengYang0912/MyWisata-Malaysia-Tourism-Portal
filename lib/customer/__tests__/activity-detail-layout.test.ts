@@ -12,6 +12,15 @@ const reviewsSource = readFileSync(
 );
 
 describe("activity detail booking layout", () => {
+  it("keeps product content and recommendations in natural document flow", () => {
+    const wrapper = source.match(/<div className="mx-auto max-w-7xl px-4 py-5[^"]*"/)?.[0] ?? "";
+    const grid = source.match(/<div className="grid items-start gap-6[^"]*"/)?.[0] ?? "";
+    for (const classes of [wrapper, grid]) {
+      expect(classes).not.toMatch(/\bh-\[|lg:h-|lg:overflow-hidden/);
+    }
+    expect(source.indexOf("<Breadcrumbs")).toBeLessThan(source.indexOf('<section className="min-w-0">'));
+    expect(source.indexOf("{relatedProducts.length > 0")).toBeGreaterThan(source.indexOf("<aside>"));
+  });
   it("places the shorter hero and content before the desktop booking card inside one grid", () => {
     const gridIndex = source.indexOf('className="grid items-start gap-6');
     const heroIndex = source.indexOf("h-44");
@@ -44,7 +53,7 @@ describe("activity detail booking layout", () => {
     expect(source).toContain('aria-label={t("ui.activityDetail.increaseQuantity")}');
   });
 
-  it("scopes scrolling to the reviews list, not the whole page", () => {
+  it("keeps the review dialog scrollable without constraining the product page", () => {
     expect(source).toContain("<ActivityReviews");
     expect(reviewsSource).toContain('className="max-h-[88vh] w-full max-w-2xl overflow-y-auto');
     expect(reviewsSource).toContain('role="dialog" aria-modal="true"');

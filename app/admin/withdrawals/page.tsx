@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { formatMYRFromSen } from "@/lib/i18n/format";
+import { Pagination } from "@/components/shared/pagination";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { WithdrawalReviewQueueRow } from "@/components/admin/withdrawal-review-queue-row";
@@ -38,7 +39,6 @@ const ENUM_VALUE_KEYS: Record<string, string> = {
 
 export default function AdminWithdrawalsPage() {
   const { t, i18n } = useTranslation("admin");
-  const { t: tCommon } = useTranslation("common");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const { showFeedback } = useActionFeedback();
   const [items, setItems] = useState<WithdrawalListItem[]>([]);
@@ -125,13 +125,16 @@ export default function AdminWithdrawalsPage() {
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_10px_rgba(1,0,102,0.06)]">
         <div className="border-b border-border px-5 py-4"><h2 className="font-bold text-foreground">{t("withdrawals.queue.title", { count: total })}</h2></div>
-        <div className="overflow-x-auto">
+        <div className="hidden overflow-x-auto lg:block">
           <div className="min-w-[940px]">
             <div className="grid grid-cols-[minmax(210px,1.35fr)_120px_145px_150px_120px_145px_32px] items-center gap-4 border-b border-border bg-muted/30 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground"><span>{t("withdrawals.table.customer")}</span><span>{t("withdrawals.table.amount")}</span><span>{t("withdrawals.table.riskPriority")}</span><span>{t("withdrawals.table.approvalProgress")}</span><span>{t("withdrawals.table.ageSla")}</span><span>{t("withdrawals.table.status")}</span><span aria-hidden="true" /></div>
             {loading && items.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">{t("withdrawals.loading")}</div> : items.length === 0 ? <EmptyState title={t("withdrawals.empty.noRequests")} /> : <div className="divide-y divide-border">{items.map((item) => <WithdrawalReviewQueueRow key={item.id} item={item} locale={locale} t={(key, options) => t(key, options)} formatAmount={formatMYRFromSen} formatAge={formatAge} displayStatus={displayStatus} />)}</div>}
           </div>
         </div>
-        <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground"><span>{t("withdrawals.pagination.pageOf", { page, totalPages: Math.max(totalPages, 1) })}</span>{totalPages > 1 && <div className="flex gap-2"><Button size="sm" variant="outline" aria-label={tCommon("accessibility.previousPage")} disabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={14} /></Button><Button size="sm" variant="outline" aria-label={tCommon("accessibility.nextPage")} disabled={page >= totalPages || loading} onClick={() => setPage((value) => value + 1)}><ChevronRight size={14} /></Button></div>}</div>
+        <div className="space-y-3 p-3 lg:hidden">
+          {loading && items.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">{t("withdrawals.loading")}</div> : items.length === 0 ? <EmptyState title={t("withdrawals.empty.noRequests")} /> : items.map((item) => <WithdrawalReviewQueueRow key={item.id} item={item} locale={locale} t={(key, options) => t(key, options)} formatAmount={formatMYRFromSen} formatAge={formatAge} displayStatus={displayStatus} compact />)}
+        </div>
+        <Pagination currentPage={page} totalPages={totalPages} totalItems={total} pageSize={pageSize} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-5 py-3" />
       </section>
     </AdminPageShell>
   );

@@ -41,7 +41,7 @@ export async function generateListingSuggestion(input: ListingSuggestionInput): 
   const result = await generateAiText(
     'You help Malaysian tourism vendors prepare concise marketplace listings. Return only valid JSON with title, description, category, and tags. Do not invent unavailable facts, prices, opening hours, awards, or guarantees.',
     JSON.stringify(input),
-    { temperature: 0.35, maxTokens: Number.parseInt(process.env.QWEN_MAX_OUTPUT_TOKENS || '500', 10) || 500 },
+    { provider: 'gemini', temperature: 0.35, maxTokens: Number.parseInt(process.env.QWEN_MAX_OUTPUT_TOKENS || '500', 10) || 500 },
   );
   if (!result.available) return result;
   const suggestion = parseSuggestion(result.content);

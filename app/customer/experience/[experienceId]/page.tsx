@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BackLink } from "@/components/shared/back-link";
+import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Clock, MapPin, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -11,6 +12,8 @@ import { formatMYR } from "@/lib/i18n/format";
 import { ExperienceBookingSidebar } from "./experience-booking-sidebar";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
+import { getVendorHref } from "@/lib/customer/navigation-context";
+import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +61,11 @@ export default async function ExperiencePage({ params }: Props) {
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+        <Breadcrumbs className="mb-4" label={t("ui.place.breadcrumb")} items={[
+          { label: t("navigation.home"), href: "/customer" },
+          { label: t("navigation.explore"), href: "/customer/explore?tab=experiences" },
+          { label: experience.name },
+        ]} />
         <BackLink
           fallbackHref="/customer/explore"
           className="mb-6 inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-primary"
@@ -149,7 +157,7 @@ export default async function ExperiencePage({ params }: Props) {
                   {t("ui.experience.providedBy")}
                 </p>
                 <Link
-                  href={`/customer/vendor/${vendor.id}`}
+                  href={getVendorHref(vendor.id)}
                   className="mt-3 flex items-center gap-3 hover:opacity-80"
                 >
                   <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-lg font-bold text-primary">
@@ -180,7 +188,7 @@ export default async function ExperiencePage({ params }: Props) {
                 {t("ui.experience.location")}
               </p>
               <Link
-                href={`/customer/outlet/${experience.outletId}`}
+                href={getOutletShopHref(experience.outletId)}
                 className="mt-2 block hover:opacity-80"
               >
                 <p className="font-semibold text-foreground">{experience.outlet.name}</p>

@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, RefreshCw, ClipboardCheck, Search } from "lucide-react";
+import { ChevronRight, RefreshCw, ClipboardCheck, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Pagination } from "@/components/shared/pagination";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -78,7 +79,6 @@ export default function EventRegistrationsPage() {
       <AdminPageHeader
         eyebrow={<><ClipboardCheck size={18} /> {t("eventRegistrations.eyebrow")}</>}
         title={t("eventRegistrations.title")}
-        description={t("eventRegistrations.description")}
       />
       {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
 
@@ -132,10 +132,7 @@ export default function EventRegistrationsPage() {
             ))}
           </div>
         )}
-        <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground">
-          <span>{t("catalogue.pagination.range", { first: total ? (page-1)*pageSize+1 : 0, last: Math.min(page*pageSize,total), total })}</span>
-          <div className="flex items-center gap-2"><span>{t("ui.pagination.pageOf", { page, total: Math.max(1,totalPages) })}</span><Button size="sm" variant="outline" aria-label={t("ui.pagination.previousPage")} disabled={loading || page<=1} onClick={() => setPage(page-1)}><ChevronLeft size={14} /></Button><Button size="sm" variant="outline" aria-label={t("ui.pagination.nextPage")} disabled={loading || page>=totalPages} onClick={() => setPage(page+1)}><ChevronRight size={14} /></Button></div>
-        </div>
+        <Pagination currentPage={page} totalPages={totalPages} totalItems={total} pageSize={pageSize} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-5 py-3" />
       </section>
     </AdminPageShell>
   );

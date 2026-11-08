@@ -8,13 +8,15 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, FileText, MessageSquare, Mic, MicOff, Paperclip, Send, X } from "lucide-react";
+import { FileText, MessageSquare, Mic, MicOff, Paperclip, Send, X } from "lucide-react";
+import { Pagination } from "@/components/shared/pagination";
 import { useAuth } from "@/components/providers/auth";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
+import { AdminMobileRecordCard } from "@/components/admin/admin-mobile-record-card";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { TicketThread, type ReplyMessage, type TranscriptMessage } from "@/components/shared/ticket-thread";
@@ -408,7 +410,65 @@ function AdminSupportContent() {
         <div className="overflow-hidden rounded-2xl border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           <div className="flex items-center gap-2 border-b border-border px-6 py-3 text-xs"><input type="checkbox" aria-label={t("ui.support.selectAllVisible")} checked={visibleTickets.length > 0 && visibleTickets.every((ticket) => selectedIds.has(ticket.id))} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); visibleTickets.forEach((ticket) => event.target.checked ? next.add(ticket.id) : next.delete(ticket.id)); return next; })} /><span className="text-muted-foreground">{t("ui.batch.selectAllOnPage")}</span></div>
           <AdminBatchActionBar selectedCount={visibleTickets.filter((ticket) => selectedIds.has(ticket.id)).length} onClear={() => setSelectedIds(new Set())} onApply={(action) => void applyBatch(action as "resolved")} actions={[{ value: "resolved", label: t("ui.support.markResolved") }]} busy={batchBusy} />
-          <div className="divide-y divide-border">
+          <div className="space-y-3 p-3 lg:hidden">
+            {visibleTickets.map((ticket) => (
+              <AdminMobileRecordCard
+                key={ticket.id}
+                header={
+                  <div className="flex min-w-0 w-full items-start gap-3">
+                    <label className="flex h-11 w-11 shrink-0 items-center justify-center">
+                      <input type="checkbox" aria-label={t("ui.support.selectTicket", { subject: ticket.subject })} checked={selectedIds.has(ticket.id)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); if (event.target.checked) next.add(ticket.id); else next.delete(ticket.id); return next; })} />
+                    </label>
+                    <button onClick={() => openTicket(ticket.id)} className="min-w-0 flex-1 text-left">
+                      <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold text-foreground">
+                        <MessageSquare size={13} className="shrink-0 text-muted-foreground" />
+                        <span className="break-words">{ticket.subject}</span>
+                        {ticket.unread && <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" />}
+                      </p>
+                      <p className="mt-1 break-words text-sm text-muted-foreground">
+                        {ticket.category}{ticket.classificationMethod && <span className="text-xs opacity-70"> · {ticket.classificationMethod}</span>}
+                        {" "}{t("ui.support.fromUser", { user: ticket.userName })} · {new Date(ticket.createdAt).toLocaleDateString()}
+                      </p>
+                    </button>
+                  </div>
+                }
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground" title={t("ui.support.routedToTeam")}>
+                    {ticket.team}
+                  </span>
+                  {ticket.unanswered && <span className="rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive">{t("ui.support.unanswered")}</span>}
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label className="min-w-0 text-xs font-medium text-muted-foreground">
+                    {t("ui.support.category")}
+                    <select
+                      aria-label={t("ui.support.overrideCategory")}
+                      value={ticket.category}
+                      disabled={updatingId === ticket.id}
+                      onChange={(event) => updateCategory(ticket.id, event.target.value)}
+                      className="mt-1 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground"
+                    >
+                      {CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+                    </select>
+                  </label>
+                  <label className="min-w-0 text-xs font-medium text-muted-foreground">
+                    {t("ui.support.statusLabel")}
+                    <select
+                      aria-label={t("ui.support.statusLabel")}
+                      value={ticket.status}
+                      disabled={updatingId === ticket.id}
+                      onChange={(event) => updateStatus(ticket.id, event.target.value)}
+                      className="mt-1 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-semibold text-foreground"
+                    >
+                      {STATUSES.map((status) => <option key={status} value={status}>{t(STATUS_LABEL[status])}</option>)}
+                    </select>
+                  </label>
+                </div>
+              </AdminMobileRecordCard>
+            ))}
+          </div>
+          <div className="hidden divide-y divide-border lg:block">
             {visibleTickets.map((ticket) => (
               <div key={ticket.id} className="px-6 py-4 flex items-center gap-4 flex-wrap">
                 <input type="checkbox" aria-label={t("ui.support.selectTicket", { subject: ticket.subject })} checked={selectedIds.has(ticket.id)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); if (event.target.checked) next.add(ticket.id); else next.delete(ticket.id); return next; })} />
@@ -453,32 +513,7 @@ function AdminSupportContent() {
               </div>
             ))}
           </div>
-          {totalTickets > 0 && (
-            <nav aria-label={t("ui.support.pagination")} className="flex flex-col gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-              <span>{t("ui.support.range", { first: (ticketPage - 1) * TICKETS_PER_PAGE + 1, last: Math.min(ticketPage * TICKETS_PER_PAGE, totalTickets), total: totalTickets })}</span>
-              {totalTicketPages > 1 && <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-label={t("ui.pagination.previousPage")}
-                  onClick={() => { setTicketPage((page) => Math.max(1, page - 1)); setSelectedIds(new Set()); }}
-                  disabled={ticketPage === 1}
-                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <ChevronLeft size={14} /> {t("ui.pagination.previous")}
-                </button>
-                <span className="min-w-20 text-center font-semibold text-foreground">{t("ui.pagination.pageOf", { page: ticketPage, total: totalTicketPages })}</span>
-                <button
-                  type="button"
-                  aria-label={t("ui.pagination.nextPage")}
-                  onClick={() => { setTicketPage((page) => Math.min(totalTicketPages, page + 1)); setSelectedIds(new Set()); }}
-                  disabled={ticketPage === totalTicketPages}
-                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 font-semibold text-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {t("ui.pagination.next")} <ChevronRight size={14} />
-                </button>
-              </div>}
-            </nav>
-          )}
+          <Pagination ariaLabel={t("ui.support.pagination")} currentPage={ticketPage} totalPages={totalTicketPages} totalItems={totalTickets} pageSize={TICKETS_PER_PAGE} onPageChange={(page) => { setTicketPage(page); setSelectedIds(new Set()); }} className="mt-0 border-t border-border px-5 py-3" />
         </div>
       )}
 
@@ -493,11 +528,11 @@ function AdminSupportContent() {
           }
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] flex-col overflow-hidden overscroll-contain sm:max-w-lg">
           <DialogHeader>
-            <div className="flex items-center justify-between gap-3 pr-6">
-              <DialogTitle>{detail?.subject}</DialogTitle>
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2 pr-6 sm:flex-row sm:items-center sm:justify-between">
+              <DialogTitle className="break-words">{detail?.subject}</DialogTitle>
+              <div className="flex flex-wrap items-center gap-2">
                 {detail && openTicketId && <ReportChatButton chatType="user_admin" threadId={openTicketId} />}
                 {detail && detail.status !== "resolved" && (
                   <Button
@@ -517,7 +552,7 @@ function AdminSupportContent() {
             <p className="text-sm text-muted-foreground">{t("ui.states.loadingEllipsis")}</p>
           ) : (
             <>
-              <div className="max-h-80 overflow-y-auto">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 <TicketThread
                   ticketId={openTicketId ?? undefined}
                   currentUserId={currentUser.id}
@@ -529,7 +564,7 @@ function AdminSupportContent() {
                 />
               </div>
 
-              <div className="pt-2 border-t border-border">
+              <div className="shrink-0 border-t border-border pt-2">
                 {speech.error && <p className="mb-1.5 text-xs text-destructive">{SPEECH_ERROR_TEXT[speech.error]}</p>}
                 {pendingFile && (
                   <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-secondary/60 px-3 py-2 text-xs">

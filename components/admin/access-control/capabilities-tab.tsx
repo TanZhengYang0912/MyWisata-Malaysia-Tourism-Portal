@@ -1,12 +1,14 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Edit3, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { Edit3, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Pagination } from "@/components/shared/pagination";
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
 import { capabilityLabel } from "@/components/admin/access-control/capability-label";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
+import { AdminMobileRecordCard } from "@/components/admin/admin-mobile-record-card";
 import { AdminSegmentedFilter } from "@/components/admin/segmented-filter";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -14,7 +16,6 @@ import { buildAccessControlQuery, errorMessage } from "@/components/admin/access
 import type { ApiEnvelope, AuditFocus, CapabilityRecord, MutationReceipt, PageResult } from "@/components/admin/access-control/types";
 
 const PAGE_SIZE = 25;
-const PAGE_SIZES = [25, 50, 100];
 const CATEGORIES = ["", "platform", "commerce", "ai", "recommendation", "affiliate", "wallet"];
 const RISK_LEVELS = ["low", "medium", "high", "critical"];
 
@@ -98,7 +99,12 @@ export function CapabilitiesTab({ focusId, onViewAudit }: { focusId: string | nu
       {error && !editorOpen && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="overflow-x-auto">
+        <div className="space-y-3 p-3 lg:hidden">
+          {result.items.map((item) => <AdminMobileRecordCard key={item.key} className={focusId === item.key ? "bg-primary/10" : ""} header={<div className="min-w-0"><p className="break-words font-semibold text-foreground">{capabilityLabel(item.key, t)}</p><p className="mt-1 text-sm text-muted-foreground">{t(`accessControl.categories.${item.category}`)}</p></div>} footer={<Button size="sm" variant="outline" onClick={() => { setReceipt(null); setEdit({ ...item, reason: "" }); setEditorOpen(true); }}><Edit3 /> {t("accessControl.actions.manage")}</Button>}>
+            <div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">{t("accessControl.capabilities.risk")}</p><ToneBadge value={item.riskLevel} label={t(`accessControl.risk.${item.riskLevel}`)} /></div><div><p className="text-xs text-muted-foreground">{t("accessControl.capabilities.status")}</p><ToneBadge value={item.enabled ? "enabled" : "disabled"} label={t(`accessControl.status.${item.enabled ? "enabled" : "disabled"}`)} /></div><div><p className="text-xs text-muted-foreground">{t("accessControl.capabilities.visibility")}</p>{item.customerVisible ? t("accessControl.common.yes") : t("accessControl.common.no")}</div><div><p className="text-xs text-muted-foreground">{t("accessControl.capabilities.assignment")}</p>{item.manuallyAssignable ? t("accessControl.common.allowed") : t("accessControl.common.locked")}</div></div>
+          </AdminMobileRecordCard>)}
+        </div>
+        <div className="hidden overflow-x-auto lg:block">
           <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-5 py-3">{t("accessControl.capabilities.key")}</th><th>{t("accessControl.capabilities.category")}</th><th>{t("accessControl.capabilities.risk")}</th><th>{t("accessControl.capabilities.visibility")}</th><th>{t("accessControl.capabilities.assignment")}</th><th>{t("accessControl.capabilities.status")}</th><th className="px-5 text-right">{t("accessControl.capabilities.actions")}</th></tr></thead>
             <tbody className="divide-y divide-border">
@@ -106,7 +112,7 @@ export function CapabilitiesTab({ focusId, onViewAudit }: { focusId: string | nu
             </tbody>
           </table>
         </div>
-        {loading && result.items.length === 0 ? <StateRow text={t("accessControl.states.loading")} /> : result.items.length === 0 ? <StateRow text={t("accessControl.states.noCapabilities")} /> : <Pagination page={result.page} pageSize={pageSize} pageSizes={PAGE_SIZES} totalPages={result.totalPages} loading={loading} setPage={setPage} setPageSize={setPageSize} />}
+        {loading && result.items.length === 0 ? <StateRow text={t("accessControl.states.loading")} /> : result.items.length === 0 ? <StateRow text={t("accessControl.states.noCapabilities")} /> : <Pagination currentPage={result.page} totalPages={result.totalPages} totalItems={result.total} pageSize={result.pageSize} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-5 py-3" />}
       </section>
 
       <Dialog open={editorOpen && Boolean(edit)} onOpenChange={(open) => { setEditorOpen(open); if (!open && !confirmOpen) setEdit(null); }}>
@@ -134,4 +140,3 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 function ToneBadge({ value, label }: { value: string; label: string }) { const tone = value === "critical" || value === "disabled" ? "bg-destructive/10 text-destructive" : value === "high" ? "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300" : "bg-primary/10 text-primary"; return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${tone}`}>{label}</span>; }
 function StateRow({ text }: { text: string }) { return <div className="border-t border-border px-5 py-12 text-center text-sm text-muted-foreground">{text}</div>; }
 function SuccessReceipt({ text, onClick }: { text: string; onClick?: () => void }) { const { t } = useTranslation("admin"); return <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-primary"><span>{text}</span>{onClick && <Button size="sm" variant="outline" onClick={onClick}>{t("accessControl.actions.viewAuditEvent")}</Button>}</div>; }
-function Pagination({ page, pageSize, pageSizes, totalPages, loading, setPage, setPageSize }: { page: number; pageSize: number; pageSizes: number[]; totalPages: number; loading: boolean; setPage: React.Dispatch<React.SetStateAction<number>>; setPageSize: React.Dispatch<React.SetStateAction<number>> }) { const { t } = useTranslation("admin"); return <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground"><span>{t("accessControl.pagination.pageOf", { page, total: Math.max(totalPages, 1) })}</span><div className="flex items-center gap-2"><select aria-label={t("accessControl.staffEmployees.pageSize")} value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }} className={adminFilterControlClassName}>{pageSizes.map((size) => <option key={size} value={size}>{size}</option>)}</select><Button size="sm" variant="outline" aria-label={t("accessControl.accessibility.previousPage")} disabled={loading || page <= 1} onClick={() => setPage((value) => value - 1)}><ChevronLeft /></Button><Button size="sm" variant="outline" aria-label={t("accessControl.accessibility.nextPage")} disabled={loading || page >= totalPages} onClick={() => setPage((value) => value + 1)}><ChevronRight /></Button></div></div>; }

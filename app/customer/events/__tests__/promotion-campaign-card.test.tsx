@@ -43,21 +43,30 @@ const campaign: PromotionCampaignPublic = {
 };
 
 describe("promotion campaign card variants", () => {
-  it("pairs the campaign poster and details with a three-vendor list preview", () => {
+  it("shows the event pass with every joining stall in a strip under it", () => {
     const markup = renderToStaticMarkup(createElement(PromotionCampaignCard, { campaign }));
 
     expect(markup).toContain("ui.promotionCampaigns.endsAt");
     expect(markup).toContain(campaign.summary);
-    expect(markup).toContain('data-slot="campaign-poster"');
+    expect(markup).toContain('data-slot="featured-end"');
     expect(markup).toContain('src="https://example.test/event-poster.jpg"');
-    expect(markup).toContain("lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]");
-    expect(markup).toContain('data-slot="campaign-stalls"');
-    expect(markup).toContain("ui.promotionCampaigns.previewVendorCount");
-    expect(markup).toContain("Vendor 0");
-    expect(markup).toContain("Vendor 1");
-    expect(markup).toContain("Vendor 2");
-    expect(markup).not.toContain("Vendor 3");
-    expect(markup.match(/href="\/customer\/events\/heritage-walk"/g)).toHaveLength(1);
+    const strip = markup.slice(markup.indexOf('data-slot="campaign-stall-strip"'));
+    expect(markup.indexOf('data-slot="campaign-stall-strip"')).toBeGreaterThan(markup.indexOf('data-slot="featured-end"'));
+    expect(strip).toContain("ui.promotionCampaigns.stallsJoining");
+    for (let index = 0; index < 6; index += 1) {
+      expect(strip).toContain(`Vendor ${index}`);
+      expect(strip).toContain(`href="/customer/events/heritage-walk/vendor-${index}"`);
+    }
+    expect(strip).toContain("ui.promotionCampaigns.stallNumber");
+    expect(strip).toContain('href="/customer/events/heritage-walk"');
+    expect(strip).toContain("ui.promotionCampaigns.viewAllStalls");
+  });
+
+  it("leaves out the stall strip when no vendor has joined", () => {
+    const markup = renderToStaticMarkup(createElement(PromotionCampaignCard, { campaign: { ...campaign, vendors: [] } }));
+
+    expect(markup).toContain('data-slot="featured-end"');
+    expect(markup).not.toContain('data-slot="campaign-stall-strip"');
   });
 
   it("keeps map results compact while linking to the same event detail", () => {
@@ -74,15 +83,12 @@ describe("promotion campaign card variants", () => {
     expect(markup.match(/href="\/customer\/events\/heritage-walk"/g)).toHaveLength(1);
   });
 
-  it("uses the existing poster fallback in the list card when the poster is missing", () => {
-    const markup = renderToStaticMarkup(createElement(PromotionCampaignCard, { campaign }));
-
+  it("uses the event pass fallback in the list card when the poster is missing", () => {
     const withoutPoster = renderToStaticMarkup(createElement(PromotionCampaignCard, {
       campaign: { ...campaign, posterUrl: null },
     }));
 
-    expect(markup).toContain('data-slot="campaign-poster"');
-    expect(withoutPoster).toContain('data-slot="campaign-poster"');
+    expect(withoutPoster).toContain('data-slot="promotion-campaign-image"');
     expect(withoutPoster).toContain("lucide-calendar-days");
     expect(withoutPoster).not.toContain('src="https://example.test/event-poster.jpg"');
   });

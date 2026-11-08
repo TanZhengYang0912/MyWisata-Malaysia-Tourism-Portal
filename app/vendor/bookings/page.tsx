@@ -13,10 +13,10 @@ import {
   Download,
   Eye,
   MapPin,
+  MoreHorizontal,
   Save,
   ScanLine,
   Search,
-  SlidersHorizontal,
   Users,
   X,
 } from "lucide-react";
@@ -24,7 +24,7 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { StatusBadge } from "@/components/ui/badge";
 import SlotForm from "@/components/vendor/slot-form";
-import PaginationControls from "@/components/vendor/pagination-controls";
+import { Pagination as SharedPagination } from "@/components/shared/pagination";
 import BatchActionBar from "@/components/vendor/batch-action-bar";
 import CompactThumbnail from "@/components/vendor/compact-thumbnail";
 import {
@@ -42,6 +42,8 @@ import { formatDateTime, formatMYR } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { getBookingSlotAvailability } from "@/lib/customer/booking-slot-presenter";
 import { formatStayRange } from "@/lib/customer/booking-view";
+import { VendorPageHeader } from "@/components/vendor/vendor-page-header";
+import { MobileFilterToggle } from "@/components/vendor/compact-filter-bar";
 import {
   getMalaysiaDateInputValue,
   getMalaysiaDateRangeDefaults,
@@ -281,6 +283,7 @@ export default function VendorBookingsPage() {
     outletId: "",
     productId: searchParams.get("productId") ?? "",
   });
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [scheduleOutletId, setScheduleOutletId] = useState("");
   const [scheduleDraft, setScheduleDraft] =
     useState<Record<DayKey, DaySchedule>>(scheduleFor());
@@ -655,25 +658,19 @@ export default function VendorBookingsPage() {
     if (tab === "operating-hours" && outletId) setScheduleOutletId(outletId);
   }
 
+  const selectedFilterCount = [filters.outletId, filters.productId, filters.from, filters.to].filter(Boolean).length;
+  const hasFilters = Boolean(filters.q || filters.status || filters.from || filters.to || filters.outletId || filters.productId);
+
   return (
     <div className="space-y-5">
-      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            <CalendarDays size={15} /> {t("ui.bookings.bookingOperations")}
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground">
-            {t("ui.bookings.title")}
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-muted-foreground">
-            {t("ui.bookings.description")}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <VendorPageHeader
+        eyebrow={<><CalendarDays size={15} aria-hidden="true" /> {t("ui.bookings.bookingOperations")}</>}
+        title={t("ui.bookings.title")}
+        actions={<div className="hidden w-full flex-col gap-2 md:flex md:w-auto md:flex-row">
           {isOutletManager && (
             <Link
               href="/vendor/scanner"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-secondary px-3.5 py-2.5 text-sm font-semibold text-primary shadow-sm hover:bg-secondary/80"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-primary/20 bg-secondary px-3.5 py-2.5 text-sm font-semibold text-primary shadow-sm hover:bg-secondary/80"
             >
               <ScanLine size={16} /> {t("ui.bookings.openScanner")}
             </Link>
@@ -684,11 +681,11 @@ export default function VendorBookingsPage() {
               type="button"
               onClick={handleExportBookings}
               disabled={loading || bookings.length === 0}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
             >
               <Download size={16} /> {t("actions.exportCsv")}
             </button>
-            <button type="button" onClick={handleExportReadableBookings} disabled={loading || bookings.length === 0} className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
+            <button type="button" onClick={handleExportReadableBookings} disabled={loading || bookings.length === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
               <Download size={16} /> {t("actions.exportReadableCsv")}
             </button>
             </>
@@ -696,14 +693,14 @@ export default function VendorBookingsPage() {
           <button
             type="button"
             onClick={() => setShowSlotForm(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
           >
             <CirclePlus size={17} /> {t("ui.bookings.addSlot")}
           </button>
-        </div>
-      </header>
+        </div>}
+      />
 
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
           <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.status.confirmed")}</p>
           <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">
@@ -744,6 +741,43 @@ export default function VendorBookingsPage() {
         </div>
       </div>
 
+      <div className="flex flex-col gap-2 md:hidden">
+        <button
+          type="button"
+          onClick={() => setShowSlotForm(true)}
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
+        >
+          <CirclePlus size={17} aria-hidden="true" /> {t("ui.bookings.addSlot")}
+        </button>
+        {(isOutletManager || tab === "reservations") && (
+          <div className="flex items-center justify-end gap-2">
+            {isOutletManager && (
+              <Link
+                href="/vendor/scanner"
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-primary/20 bg-secondary px-3.5 py-2.5 text-sm font-semibold text-primary shadow-sm hover:bg-secondary/80"
+              >
+                <ScanLine size={16} aria-hidden="true" /> {t("ui.bookings.openScanner")}
+              </Link>
+            )}
+            {tab === "reservations" && (
+              <details className="group relative shrink-0">
+                <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 [&::-webkit-details-marker]:hidden">
+                  <MoreHorizontal size={17} aria-hidden="true" /> {t("actions.moreActions")}
+                </summary>
+                <div className="absolute right-0 z-20 mt-2 flex w-60 flex-col gap-1 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card p-2 shadow-xl">
+                  <button type="button" onClick={handleExportBookings} disabled={loading || bookings.length === 0} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
+                    <Download size={16} aria-hidden="true" /> {t("actions.exportCsv")}
+                  </button>
+                  <button type="button" onClick={handleExportReadableBookings} disabled={loading || bookings.length === 0} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
+                    <Download size={16} aria-hidden="true" /> {t("actions.exportReadableCsv")}
+                  </button>
+                </div>
+              </details>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex rounded-xl bg-gray-100 dark:bg-muted p-1">
@@ -764,7 +798,7 @@ export default function VendorBookingsPage() {
           </div>
 
           {tab === "reservations" && (
-            <div className="flex flex-wrap gap-1 rounded-xl bg-gray-100 dark:bg-muted p-1">
+            <div className="flex max-w-full flex-nowrap gap-1 overflow-x-auto rounded-xl bg-gray-100 dark:bg-muted p-1">
               {[
                 { value: "", label: t("ui.orders.allOrders") || "All" },
                 { value: "confirmed", label: t("ui.status.confirmed") },
@@ -777,7 +811,7 @@ export default function VendorBookingsPage() {
                   onClick={() =>
                     setFilters((current) => ({ ...current, status: f.value }))
                   }
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${filters.status === f.value ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"}`}
+                  className={`min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold ${filters.status === f.value ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"}`}
                 >
                   {f.label}
                 </button>
@@ -786,103 +820,70 @@ export default function VendorBookingsPage() {
           )}
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 items-center gap-2">
           <label className="relative min-w-0 flex-1">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-muted-foreground"
-              size={15}
-            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-muted-foreground" size={15} aria-hidden="true" />
             <input
               value={filters.q}
-              onChange={(event) =>
-                setFilters((current) => ({ ...current, q: event.target.value }))
-              }
-              placeholder={
-                tab === "reservations"
-                  ? t("ui.bookings.searchPlaceholder")
-                  : t("ui.bookings.searchOperatingPlaceholder")
-              }
-              className="h-10 w-full rounded-xl border border-gray-200 dark:border-border pl-9 pr-3 text-sm outline-none focus:border-primary"
+              onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
+              placeholder={tab === "reservations" ? t("ui.bookings.searchPlaceholder") : t("ui.bookings.searchOperatingPlaceholder")}
+              aria-label={tab === "reservations" ? t("ui.bookings.searchPlaceholder") : t("ui.bookings.searchOperatingPlaceholder")}
+              className="h-11 w-full rounded-xl border border-gray-200 dark:border-border pl-9 pr-3 text-sm outline-none focus:border-primary"
             />
           </label>
+          <MobileFilterToggle
+            controlId="booking-filters"
+            isOpen={filtersOpen}
+            selectedFilterCount={selectedFilterCount}
+            onToggle={() => setFiltersOpen((open) => !open)}
+          />
+        </div>
+
+        <div id="booking-filters" className={`${filtersOpen ? "grid" : "hidden"} min-w-0 gap-3 rounded-xl border border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 p-3 sm:grid-cols-2 lg:grid`}>
           <select
             value={filters.outletId}
             onChange={(event) => setOutletFilter(event.target.value)}
-            className="h-10 rounded-xl border border-gray-200 dark:border-border px-3 text-sm text-gray-600 dark:text-muted-foreground outline-none focus:border-primary sm:w-52"
+            aria-label={t("ui.bookings.allOutlets")}
+            className="h-11 min-w-0 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm text-gray-600 dark:text-muted-foreground outline-none focus:border-primary"
           >
             <option value="">{t("ui.bookings.allOutlets")}</option>
             {outlets.map((outlet) => (
               <option key={outlet.id} value={outlet.id}>
-                {outletShortName(outlet.name)} ·{" "}
-                {outletLocation(outlet.city, outlet.state)}
+                {outletShortName(outlet.name)} · {outletLocation(outlet.city, outlet.state)}
               </option>
             ))}
           </select>
           {tab === "reservations" && (
             <select
               value={filters.productId}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  productId: event.target.value,
-                }))
-              }
-              className="h-10 rounded-xl border border-gray-200 dark:border-border px-3 text-sm text-gray-600 dark:text-muted-foreground outline-none focus:border-primary sm:w-48"
+              onChange={(event) => setFilters((current) => ({ ...current, productId: event.target.value }))}
+              aria-label={t("ui.bookings.allExperiences")}
+              className="h-11 min-w-0 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm text-gray-600 dark:text-muted-foreground outline-none focus:border-primary"
             >
               <option value="">{t("ui.bookings.allExperiences")}</option>
               {filteredProducts.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name}
-                </option>
+                <option key={product.id} value={product.id}>{product.name}</option>
               ))}
             </select>
           )}
+          {tab === "reservations" && (
+            <>
+              <label className="min-w-0 text-xs font-medium text-gray-500 dark:text-muted-foreground">
+                {t("ui.orders.fromDate")}
+                <input type="date" value={filters.from} onFocus={primeDateRange} onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))} className="mt-1 h-11 w-full rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm text-gray-700 dark:text-foreground" />
+              </label>
+              <label className="min-w-0 text-xs font-medium text-gray-500 dark:text-muted-foreground">
+                {t("ui.orders.toDate")}
+                <input type="date" value={filters.to} onFocus={primeDateRange} onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))} className="mt-1 h-11 w-full rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm text-gray-700 dark:text-foreground" />
+              </label>
+            </>
+          )}
+          {hasFilters && (
+            <button type="button" onClick={clearFilters} className="min-h-11 justify-self-start px-2 text-sm font-semibold text-primary hover:underline sm:col-span-2">
+              {t("ui.common.clearFilters")}
+            </button>
+          )}
         </div>
-
-        {tab === "reservations" && (
-          <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 dark:border-border pt-3">
-            <SlidersHorizontal size={14} className="text-gray-400 dark:text-muted-foreground" />
-            <input
-              type="date"
-              value={filters.from}
-              onFocus={primeDateRange}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  from: event.target.value,
-                }))
-              }
-              className="h-9 rounded-lg border border-gray-200 dark:border-border px-2.5 text-xs text-gray-600 dark:text-muted-foreground"
-            />
-            <span className="text-xs text-gray-400 dark:text-muted-foreground">{t("ui.bookings.to")}</span>
-            <input
-              type="date"
-              value={filters.to}
-              onFocus={primeDateRange}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  to: event.target.value,
-                }))
-              }
-              className="h-9 rounded-lg border border-gray-200 dark:border-border px-2.5 text-xs text-gray-600 dark:text-muted-foreground"
-            />
-            {(filters.q ||
-              filters.status ||
-              filters.from ||
-              filters.to ||
-              filters.outletId ||
-              filters.productId) && (
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="ml-auto text-xs font-semibold text-primary hover:underline"
-              >
-                {t("ui.common.clearFilters")}
-              </button>
-            )}
-          </div>
-        )}
       </div>
 
       {tab === "reservations" && (
@@ -1136,16 +1137,15 @@ export default function VendorBookingsPage() {
           )}
 
           {!loading && (
-            <PaginationControls
-              page={pagination.page}
+            <SharedPagination
+              currentPage={pagination.page}
               totalPages={pagination.totalPages}
-              total={pagination.total}
+              totalItems={pagination.total}
               pageSize={pagination.pageSize}
               onPageChange={(page) => {
                 setPagination((current) => ({ ...current, page }));
                 loadData(page);
-              }}
-            />
+              }} className="mt-0 border-t border-border px-4 py-3" />
           )}
         </section>
       ) : (
@@ -1991,13 +1991,12 @@ function OperatingHoursPanel({
               </div>
             )}
           </div>
-          <PaginationControls
-            page={pagination.page}
+          <SharedPagination
+            currentPage={pagination.page}
             totalPages={pagination.totalPages}
-            total={pagination.total}
+            totalItems={pagination.total}
             pageSize={pagination.pageSize}
-            onPageChange={(page) => loadData(page)}
-          />
+            onPageChange={(page) => loadData(page)} className="mt-0 border-t border-border px-4 py-3" />
         </div>
       </div>
     </div>

@@ -11,13 +11,16 @@ describe("customer QR pass card contract", () => {
     expect(read("app/customer/bookings/[id]/page.tsx")).toContain("<CustomerQrPassCard");
   });
 
-  it("keeps merchant identity in translated card details, not beside the QR as a raw key", () => {
+  it("keeps provider labels only where the pass title is not the merchant", () => {
     const foodPasses = read("components/customer/food-order-qr-codes.tsx");
     const ticketQr = read("components/customer/booking-qr-code.tsx");
     const orderDetails = read("app/customer/orders/[id]/page.tsx");
     const bookingDetails = read("app/customer/bookings/[id]/page.tsx");
 
-    expect(foodPasses).toContain('t("ui.labels.providedBy", { vendor: pass.vendorName })');
+    expect(foodPasses).not.toContain('t("ui.labels.providedBy", { vendor: pass.vendorName })');
+    expect(foodPasses).not.toContain("ui.booking.foodOrderQrDescription");
+    expect(foodPasses).not.toContain("ui.booking.takeawayScanHint");
+    expect(foodPasses).not.toContain("ui.booking.dineInScanHint");
     expect(foodPasses).not.toContain('t("ui.labels.vendor")');
     expect(ticketQr).not.toContain('t("ui.labels.vendor")');
     expect(orderDetails).toContain('tCustomer("ui.labels.providedBy",');
@@ -26,14 +29,21 @@ describe("customer QR pass card contract", () => {
     expect(bookingDetails).toContain('tCustomer("ui.labels.outlet")');
   });
 
-  it("provides a stable details column followed by a right-hand QR column", () => {
+  it("limits the stacked mobile layout to consumers that opt in", () => {
     const card = read("components/customer/customer-qr-pass-card.tsx");
+    const bookingDetails = read("app/customer/bookings/[id]/page.tsx");
+    const orderDetails = read("app/customer/orders/[id]/page.tsx");
 
     expect(card).toContain('data-qr-pass-card="true"');
     expect(card).toContain('data-qr-pass-details="true"');
     expect(card).toContain('data-qr-pass-code="true"');
-    expect(card).toContain("grid-cols-[minmax(0,1fr)_8rem]");
+    expect(card).toContain('mobileStacked ? "grid-cols-1 p-4 sm:grid-cols-[minmax(0,1fr)_11rem]"');
+    expect(card).toContain('"grid-cols-[minmax(0,1fr)_8rem] p-5 sm:grid-cols-[minmax(0,1fr)_11rem]"');
     expect(card).toContain("sm:grid-cols-[minmax(0,1fr)_11rem]");
+    expect(card).toContain("max-w-60");
+    expect(card).toContain("sm:justify-self-end");
+    expect(bookingDetails).toContain("mobileStacked");
+    expect(orderDetails).not.toContain("mobileStacked");
     expect(card.indexOf('data-qr-pass-details="true"')).toBeLessThan(card.indexOf('data-qr-pass-code="true"'));
   });
 });

@@ -58,7 +58,7 @@ export function buildPromotionSpotlight(activities: ComputedActivity[]): Promoti
       title: campaign.title,
       description: campaign.description,
       image: isPlaceBound(activity) ? getPlaceActivityImage(activity) : activity.image,
-      href: `/customer/activity/${activity.id}`,
+      href: `/customer/products/${activity.id}`,
       ctaLabel: campaign.ctaLabel,
       accent: campaign.accent,
     }];

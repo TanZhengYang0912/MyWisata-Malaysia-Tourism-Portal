@@ -56,7 +56,10 @@ export async function saveCurrencyPreference(
   }
 }
 
-function CurrencyOption({ currency, hideCode = false }: { currency: ReferenceCurrency; hideCode?: boolean }) {
+function CurrencyOption({ currency, hideFlagOnNarrowMobile = false }: {
+  currency: ReferenceCurrency;
+  hideFlagOnNarrowMobile?: boolean;
+}) {
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5">
       <Image
@@ -65,18 +68,19 @@ function CurrencyOption({ currency, hideCode = false }: { currency: ReferenceCur
         aria-hidden="true"
         width={16}
         height={12}
-        className="h-3 w-4 shrink-0 rounded-[2px] border border-foreground/10 object-cover"
+        className={cn(
+          "h-3 w-4 shrink-0 rounded-[2px] border border-foreground/10 object-cover",
+          hideFlagOnNarrowMobile ? "max-[419px]:hidden" : undefined,
+        )}
       />
-      {/* sr-only (not hidden) so screen readers still hear the code when only the flag shows. */}
-      <span className={cn("truncate font-medium", hideCode ? "max-md:sr-only" : undefined)}>{currency}</span>
+      <span className="truncate font-medium">{currency}</span>
     </span>
   );
 }
 
-export function CurrencySwitcher({ compact = false, codeHiddenOnMobile = false, className }: {
+export function CurrencySwitcher({ compact = false, hideFlagOnNarrowMobile = false, className }: {
   compact?: boolean;
-  // Below md the trigger shows only the flag; the dropdown list always shows flag + code.
-  codeHiddenOnMobile?: boolean;
+  hideFlagOnNarrowMobile?: boolean;
   className?: string;
 }) {
   const { t } = useTranslation("common");
@@ -143,7 +147,7 @@ export function CurrencySwitcher({ compact = false, codeHiddenOnMobile = false, 
           )}
         >
           <SelectValue>
-            <CurrencyOption currency={currency} hideCode={codeHiddenOnMobile} />
+            <CurrencyOption currency={currency} hideFlagOnNarrowMobile={hideFlagOnNarrowMobile} />
           </SelectValue>
         </SelectTrigger>
         <SelectContent

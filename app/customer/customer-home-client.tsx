@@ -2,23 +2,19 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, CalendarDays, MapPin, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, MapPin, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { ComputedActivity } from "@/backend/core/types";
+import type { ComputedActivity, DiscoveryPropertySummary, DiscoveryResult } from "@/backend/core/types";
 import { ActivityCard } from "@/components/customer/activity-card";
+import { ProductCard } from "@/components/customer/product-card";
+import { toDiscoveryCatalogueCard } from "@/lib/customer/product-catalogue";
 import { SaveToggleButton } from "@/components/customer/save-toggle-button";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { VendorCard, type CustomerVendorCardVendor } from "@/components/customer/vendor-card";
 import { useSavedDestinations } from "@/components/providers/saved-destinations";
 import { destinationHref, MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
-import dynamic from "next/dynamic";
-
-const EventCalendarDialog = dynamic(
-  () => import("@/components/customer/event-calendar-dialog").then((m) => m.EventCalendarDialog),
-  { ssr: false, loading: () => null },
-);
-import { useEffect, useRef, useState, type TransitionEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type TransitionEvent } from "react";
 import { useAuth } from "@/components/providers/auth";
 import { PromotionCampaignSpotlight } from "@/components/customer/promotion-campaign-spotlight";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
@@ -28,6 +24,8 @@ import { useHomeDestinationPager } from "@/components/customer/use-home-destinat
 import { Button } from "@/components/ui/button";
 
 const HERO_CROSSFADE_DURATION_MS = 240;
+// Match the card widths from the responsive rail, including its outer and trailing padding.
+const HOME_DESTINATION_IMAGE_SIZES = "(min-width: 1420px) 339px, (min-width: 1024px) calc(25vw - 16px), (min-width: 640px) calc(50vw - 48px), calc(50vw - 32px)";
 const FEATURED_DESTINATION_STATES = ["Kuala Lumpur", "Penang", "Sabah", "Melaka"];
 const FEATURED_DESTINATIONS = FEATURED_DESTINATION_STATES.flatMap((state) =>
   MALAYSIA_DESTINATIONS.filter((destination) => destination.state === state),
@@ -75,8 +73,8 @@ export function CustomerHomeClient({
   campaignUnavailable = false,
   titleFontClassName = "",
 }: {
-  highlightItems: ComputedActivity[];
-  forYouItems: ComputedActivity[];
+  highlightItems: (DiscoveryResult & { property?: DiscoveryPropertySummary })[];
+  forYouItems: (ComputedActivity & { property?: DiscoveryPropertySummary })[];
   vendors: DemoVendor[];
   eventPartners?: EventPartner[];
   campaign: PromotionCampaignPublic | null;
@@ -89,10 +87,33 @@ export function CustomerHomeClient({
   const gate = useCustomerCapabilityGate();
   const { savedStates, toggleSaved } = useSavedDestinations();
   const isGuest = !currentUser;
+  // Same Sponsored analytics as Explore: one impression per placement, a click on navigation.
+  const impressedPlacementIds = useRef(new Set<string>());
+  const recordSponsoredEvent = useCallback((activity: DiscoveryResult, eventType: "impression" | "click") => {
+    if (!activity.sponsorship) return;
+    void fetch(`/api/sponsored-placements/${activity.sponsorship.placementId}/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ eventType, productId: activity.id }),
+      keepalive: true,
+    });
+  }, []);
+  useEffect(() => {
+    for (const activity of highlightItems) {
+      const placementId = activity.sponsorship?.placementId;
+      if (!placementId || impressedPlacementIds.current.has(placementId)) continue;
+      impressedPlacementIds.current.add(placementId);
+      recordSponsoredEvent(activity, "impression");
+    }
+  }, [highlightItems, recordSponsoredEvent]);
+  const discoverTitleWords = t("ui.guest.discoverMalaysia").trim().split(/\s+/);
+  const discoverTitleLead = discoverTitleWords.length > 1
+    ? discoverTitleWords.slice(0, -1).join(" ")
+    : "";
+  const discoverTitleEnding = discoverTitleWords[discoverTitleWords.length - 1] ?? "";
   const [activeState, setActiveState] = useState(() => HOME_DESTINATIONS[0].state);
   const [outgoingHeroState, setOutgoingHeroState] = useState<string | null>(null);
   const [incomingHeroVisible, setIncomingHeroVisible] = useState(false);
-  const [eventCalendarOpen, setEventCalendarOpen] = useState(false);
   const [nearbyPartners, setNearbyPartners] = useState<NearbyPartner[] | null>(null);
   const [nearbyLocationSource, setNearbyLocationSource] = useState<NearbyLocationSource | null>(null);
   const [nearbyLoading, setNearbyLoading] = useState(false);
@@ -200,9 +221,8 @@ export function CustomerHomeClient({
 
   return (
     <div className={`${titleFontClassName} bg-background min-h-screen text-foreground pb-20`}>
-      <section className="atlas-hero-section relative isolate min-h-[calc(100svh-96px)] overflow-hidden bg-[#061326] text-white lg:min-h-[calc(100svh-64px)]">
+      <section className="atlas-hero-section relative isolate min-h-[calc(100svh-var(--customer-header-h,6.3125rem))] overflow-hidden bg-[#061326] text-white xl:min-h-[calc(100svh-var(--customer-header-h,4.3125rem))]">
         <div className="absolute inset-0 z-0 overflow-hidden bg-[#061326]">
-          <Image key={`${activeDestination.state}-placeholder`} src={activeHeroImage} alt="" aria-hidden="true" fill quality={75} sizes="(max-width: 639px) 44vw, (max-width: 1023px) 45vw, 340px" className={`atlas-hero-placeholder object-cover ${activeDestination.state === "Kuala Lumpur" ? "object-[60%_center] sm:object-center" : "object-[56%_48%]"}`} />
           {outgoingHeroDestination && (
             <Image
               key={`${outgoingHeroDestination.state}-outgoing`}
@@ -213,7 +233,7 @@ export function CustomerHomeClient({
               loading="eager"
               quality={90}
               sizes="100vw"
-              className={`atlas-hero-photo atlas-hero-photo--outgoing object-cover ${outgoingHeroDestination.state === "Kuala Lumpur" ? "object-[60%_center] sm:object-center" : "object-[56%_48%]"}`}
+              className={`atlas-hero-photo atlas-hero-photo--outgoing object-contain md:object-cover ${outgoingHeroDestination.state === "Kuala Lumpur" ? "object-[60%_48%] md:object-center" : "object-[56%_48%]"}`}
             />
           )}
           <Image
@@ -226,18 +246,21 @@ export function CustomerHomeClient({
             sizes="100vw"
             onLoad={() => handleHeroPhotoLoaded(activeDestination.state)}
             onTransitionEnd={(event) => completeHeroPhotoTransition(event, activeDestination.state)}
-            className={`atlas-hero-photo object-cover ${outgoingHeroDestination ? `atlas-hero-photo--incoming${incomingHeroVisible ? " atlas-hero-photo--incoming-visible" : ""}` : ""} ${activeDestination.state === "Kuala Lumpur" ? "object-[60%_center] sm:object-center" : "object-[56%_48%]"}`}
+            className={`atlas-hero-photo object-contain md:object-cover ${outgoingHeroDestination ? `atlas-hero-photo--incoming${incomingHeroVisible ? " atlas-hero-photo--incoming-visible" : ""}` : ""} ${activeDestination.state === "Kuala Lumpur" ? "object-[60%_48%] md:object-center" : "object-[56%_48%]"}`}
           />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(4,15,36,0.27)_0%,rgba(4,15,36,0.16)_27%,rgba(4,15,36,0.04)_64%,rgba(4,15,36,0.01)_100%),linear-gradient(0deg,rgba(4,17,39,0.36)_0%,rgba(4,17,39,0.16)_22%,rgba(4,17,39,0.02)_59%),linear-gradient(180deg,rgba(4,17,39,0.05)_0%,rgba(4,17,39,0)_52%)]" />
         </div>
 
-        <div className="relative z-10 mx-auto flex min-h-[calc(100svh-96px)] w-full max-w-[1420px] flex-col px-5 pb-8 pt-[12svh] sm:px-9 lg:min-h-[calc(100svh-64px)] lg:px-0 lg:pb-9 lg:pt-[14.5svh]">
+        <div className="relative z-10 mx-auto flex min-h-[calc(100svh-var(--customer-header-h,6.3125rem))] w-full max-w-[1420px] flex-col px-5 pb-8 pt-[12svh] sm:px-9 xl:min-h-[calc(100svh-var(--customer-header-h,4.3125rem))] lg:px-0 lg:pb-9 lg:pt-[14.5svh]">
           <header className="atlas-enter atlas-delay-1 mb-auto pl-0 sm:pl-4 lg:pl-[3.4%]">
-            <h1 className="atlas-discover-title max-w-[760px] font-[family-name:var(--font-discover-title)] text-[clamp(4.2rem,9vw,9.2rem)] font-normal leading-[1.05] tracking-[-0.025em]">
-              {t("ui.guest.discoverMalaysia")}
+            <h1 className="atlas-discover-title max-w-[760px] font-[family-name:var(--font-discover-title)] text-[clamp(4.2rem,min(9vw,14svh),9.2rem)] font-normal leading-[1.05] tracking-[-0.025em]">
+              {discoverTitleLead && (
+                <span className="atlas-discover-title__lead block md:inline">{discoverTitleLead} </span>
+              )}
+              <span className="atlas-discover-title__ending block md:inline">{discoverTitleEnding}</span>
             </h1>
             <svg
-              className="atlas-title-accent ml-28 mt-8 block w-[clamp(132px,16vw,250px)] text-[#f4b900] sm:ml-32 sm:mt-9"
+              className="atlas-title-accent ml-[63%] mt-4 block w-[clamp(100px,32vw,220px)] text-[#f4b900] md:ml-32 md:mt-9 md:w-[clamp(132px,16vw,250px)]"
               viewBox="0 0 228 24"
               aria-hidden="true"
               focusable="false"
@@ -254,7 +277,7 @@ export function CustomerHomeClient({
             </svg>
           </header>
 
-          <nav aria-label={t("ui.home.destinationCarousel")} className="atlas-enter atlas-delay-2 mt-10 w-full">
+          <nav aria-label={t("ui.home.destinationCarousel")} className="atlas-destination-rail atlas-enter atlas-delay-2 mt-10 w-full">
             <div className="mb-3 flex items-center gap-3 sm:mb-1">
               <div className="flex items-center gap-3">
                 <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f4bd00] sm:text-xs">{t("ui.home.exploreDestinations")}</h2>
@@ -280,9 +303,9 @@ export function CustomerHomeClient({
                       type="button"
                       onClick={() => selectDestination(destination.state)}
                       aria-pressed={isSelected}
-                      className={`group relative block h-[108px] w-full overflow-hidden rounded-[14px] border text-left transition duration-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/40 sm:h-[138px] lg:h-[168px] ${isSelected ? "border-2 border-[#f4bd00]" : "border-white/70 hover:border-white"}`}
+                      className={`group relative block h-[clamp(108px,22svh,220px)] w-full overflow-hidden rounded-[14px] border text-left transition duration-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/40 ${isSelected ? "border-2 border-[#f4bd00]" : "border-white/70 hover:border-white"}`}
                     >
-                      <Image src={destination.image} alt="" fill sizes="(min-width: 1024px) 25vw, 50vw" className="object-cover transition duration-700 group-hover:scale-[1.045]" />
+                      <Image src={destination.image} alt="" fill sizes={HOME_DESTINATION_IMAGE_SIZES} className="object-cover transition duration-700 group-hover:scale-[1.045]" />
                       <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
                       <span className="absolute inset-x-3 bottom-2 truncate font-[family-name:var(--font-display)] text-[15px] font-semibold leading-tight text-white sm:inset-x-4 sm:bottom-3 sm:text-xl lg:text-[25px]">{destination.state}</span>
                     </button>
@@ -304,7 +327,7 @@ export function CustomerHomeClient({
             </div>
             <div className="mt-2 lg:hidden">
               <HomeDestinationWormIndicator
-                count={8}
+                count={destinationPager.pageCount}
                 progress={destinationPager.progress}
                 current={destinationPager.page}
                 sizes={{ dot: 11, pill: 36, gap: 8 }}
@@ -315,7 +338,7 @@ export function CustomerHomeClient({
             </div>
             <div className="mt-2 hidden lg:block">
               <HomeDestinationWormIndicator
-                count={4}
+                count={destinationPager.pageCount}
                 progress={destinationPager.progress}
                 current={destinationPager.page}
                 sizes={{ dot: 14, pill: 50, gap: 10 }}
@@ -329,10 +352,6 @@ export function CustomerHomeClient({
       </section>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mt-8 flex flex-col gap-4 rounded-3xl border border-border/70 bg-card p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-          <h2 className="text-lg font-bold text-foreground">{t("ui.home.eventCalendar")}</h2>
-          <button type="button" onClick={() => setEventCalendarOpen(true)} aria-label={t("ui.home.eventCalendar")} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/25"><CalendarDays size={17} /> {t("ui.home.viewEventCalendar")} <ArrowRight size={15} /></button>
-        </div>
         <PromotionCampaignSpotlight campaign={campaign} campaigns={campaigns} unavailable={campaignUnavailable} />
 
         {highlightItems.length > 0 && (
@@ -349,7 +368,9 @@ export function CustomerHomeClient({
             </div>
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
               {highlightItems.map((activity) => (
-                <ActivityCard key={activity.id} activity={activity} />
+                activity.property
+                  ? <ActivityCard key={activity.id} activity={activity} onSponsoredClick={activity.sponsorship ? () => recordSponsoredEvent(activity, "click") : undefined} />
+                  : <ProductCard key={activity.id} listing={toDiscoveryCatalogueCard(activity)} returnTo="/customer" source="home" onSponsoredClick={activity.sponsorship ? () => recordSponsoredEvent(activity, "click") : undefined} />
               ))}
             </div>
           </section>
@@ -367,7 +388,9 @@ export function CustomerHomeClient({
             </div>
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
               {forYouItems.map((activity) => (
-                <ActivityCard key={activity.id} activity={activity} recommendationReason={activity.aiTag ?? undefined} />
+                activity.property
+                  ? <ActivityCard key={activity.id} activity={activity} />
+                  : <ProductCard key={activity.id} listing={toDiscoveryCatalogueCard(activity, { labels: false })} returnTo="/customer" />
               ))}
             </div>
           </section>
@@ -396,7 +419,7 @@ export function CustomerHomeClient({
                 <MapPin size={15} aria-hidden="true" />
                 {nearbyLoading ? t("ui.states.loading") : t("ui.map.useCurrentLocation")}
               </button>
-              <Link href="/customer/partners" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
+              <Link href="/customer/vendors" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
                 {t("ui.home.viewPartners")} <ArrowRight size={14} />
               </Link>
             </div>
@@ -423,7 +446,7 @@ export function CustomerHomeClient({
           ) : nearbyPartners ? (
             <p className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
               {t(nearbyLocationSource === "none" ? "ui.home.nearbyNoLocation" : "ui.home.noNearbyPartners")} {" "}
-              <Link href="/customer/partners" className="font-semibold text-primary underline-offset-4 hover:underline">{t("ui.home.viewPartners")}</Link>
+              <Link href="/customer/vendors" className="font-semibold text-primary underline-offset-4 hover:underline">{t("ui.home.viewPartners")}</Link>
             </p>
           ) : null}
         </section>
@@ -432,7 +455,7 @@ export function CustomerHomeClient({
         <section className="mt-12">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-2xl font-bold font-[family-name:var(--font-display)]">{t("ui.home.featuredPartners")}</h2>
-            <Link href="/customer/partners" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">{t("ui.home.viewPartners")} <ArrowRight size={14} /></Link>
+            <Link href="/customer/vendors" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">{t("ui.home.viewPartners")} <ArrowRight size={14} /></Link>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
             {vendors.slice(0, 4).map((vendor, index) => {
@@ -443,8 +466,6 @@ export function CustomerHomeClient({
           </div>
         </section>
       </div>
-
-      {eventCalendarOpen && <EventCalendarDialog open onOpenChange={setEventCalendarOpen} />}
 
       {/* Keep the title, photo, and carousel motion subtle and disable it for reduced-motion users. */}
       <style jsx>{`
@@ -490,6 +511,9 @@ export function CustomerHomeClient({
           stroke-dashoffset: 1;
           animation: atlas-accent-draw 800ms var(--atlas-ease-out) 460ms both;
         }
+        /* Cards per page follow the rail's own width: about 220px minimum per card, 2 to 5 per page. */
+        .atlas-destination-rail { container: destination-rail / inline-size; }
+
         .atlas-destination-pager {
           --per-page: 2;
           --destination-gap: 0.75rem;
@@ -510,28 +534,52 @@ export function CustomerHomeClient({
           animation: atlas-enter 480ms var(--atlas-ease-out) both;
         }
 
-        .atlas-destination-card:nth-child(2n + 1) {
-          scroll-snap-align: start;
-          scroll-snap-stop: always;
+        @container destination-rail (width < 692px) {
+          .atlas-destination-card:nth-child(2n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
+        }
+
+        @container destination-rail (692px <= width < 928px) {
+          .atlas-destination-pager { --per-page: 3; }
+          .atlas-destination-card:nth-child(3n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
+        }
+
+        @container destination-rail (928px <= width < 1164px) {
+          .atlas-destination-pager { --per-page: 4; --destination-gap: 1rem; }
+          .atlas-destination-card:nth-child(4n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
+        }
+
+        @container destination-rail (width >= 1164px) {
+          .atlas-destination-pager { --per-page: 5; --destination-gap: 1rem; }
+          .atlas-destination-card:nth-child(5n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
         }
 
         .atlas-discover-title {
-          background-image: linear-gradient(108deg, #fff8e9 0%, #fff1d2 25%, var(--malaysia-yellow) 43%, color-mix(in srgb, var(--malaysia-red) 55%, #fff1d2) 58%, #f1b948 76%, #f1b948 100%);
-          background-clip: text;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
           font-style: italic;
           font-weight: 400;
           text-shadow: 0 3px 18px color-mix(in srgb, var(--malaysia-blue) 38%, transparent);
         }
 
+        .atlas-discover-title__lead,
+        .atlas-discover-title__ending {
+          width: fit-content;
+          background-image: linear-gradient(108deg, #fff8e9 0%, #fff1d2 28%, var(--malaysia-yellow) 78%, #f4b900 100%);
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
         :global(html:lang(zh-CN)) .atlas-discover-title {
-          background-image: none;
-          color: #fff6df;
           font-family: var(--font-display), serif;
           font-style: normal;
           font-weight: 600;
           letter-spacing: -0.055em;
+          font-size: clamp(4.2rem, 9vw, 9.2rem);
+        }
+
+        :global(html:lang(zh-CN)) .atlas-discover-title__lead,
+        :global(html:lang(zh-CN)) .atlas-discover-title__ending {
+          background-image: none;
+          color: #fff6df;
           -webkit-text-fill-color: #fff6df;
         }
 
@@ -573,23 +621,6 @@ export function CustomerHomeClient({
           .atlas-title-accent__stroke {
             stroke-dashoffset: 0;
             animation: none;
-          }
-        }
-
-        @media (min-width: 1024px) {
-          .atlas-destination-pager {
-            --per-page: 4;
-            --destination-gap: 1rem;
-          }
-
-          .atlas-destination-card:nth-child(2n + 1) {
-            scroll-snap-align: none;
-            scroll-snap-stop: normal;
-          }
-
-          .atlas-destination-card:nth-child(4n + 1) {
-            scroll-snap-align: start;
-            scroll-snap-stop: always;
           }
         }
       `}</style>

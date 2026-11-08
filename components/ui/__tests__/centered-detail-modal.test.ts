@@ -16,4 +16,16 @@ describe("CenteredDetailModal", () => {
     expect(source).toContain("previousActiveElement?.focus()");
     expect(source).not.toContain("absolute right-0 top-0");
   });
+
+  it("supports a fixed heading and content region for long forms", () => {
+    expect(source).toContain("layout?: 'scroll' | 'fixed'");
+    expect(source).toContain("layout === 'fixed'");
+    expect(source).toContain("headerClassName");
+    expect(source).toContain("overflow-hidden");
+  });
+
+  it("keeps fixed long-form dialogs readable in dark mode", () => {
+    expect(source).toContain("bg-white dark:bg-card");
+    expect(source).toContain("dark:text-foreground");
+  });
 });

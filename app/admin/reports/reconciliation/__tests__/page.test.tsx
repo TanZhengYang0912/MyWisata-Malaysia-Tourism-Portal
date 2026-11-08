@@ -27,6 +27,7 @@ async function change(select: TestElement, value: string) {
   await act(async () => { Object.getOwnPropertyDescriptor(Object.getPrototypeOf(select), 'value')?.set?.call(select, value); select.dispatchEvent(new TestEvent(select.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); });
 }
 function bodyRows() { return findElements(findOne(container, e => e.tagName === 'TBODY'), e => e.tagName === 'TR'); }
+function mobileCards() { return findElements(container, e => e.getAttribute('data-admin-mobile-record-card') !== null); }
 function button(label: string) { return findOne(container, e => e.tagName === 'BUTTON' && e.getAttribute('aria-label') === label); }
 
 describe('financial reconciliation pagination', () => {
@@ -54,6 +55,11 @@ describe('financial reconciliation pagination', () => {
 
   it('shows 15 rows, places the 16th on page two, and keeps full matching sums and CSV', async () => {
     expect(bodyRows().length).toBe(15);
+    expect(mobileCards().length).toBe(15);
+    expect(mobileCards()[0].textContent).toContain('ORD-01');
+    expect(mobileCards()[0].textContent).toContain('reconciliation.columns.gross');
+    expect(mobileCards()[0].textContent).toContain('RM1.00');
+    expect(mobileCards()[0].textContent).toContain('reconciliation.columns.platformNet');
     expect(bodyRows().map(e => e.textContent).join(' ')).not.toContain('ORD-16');
     const grossCard = findOne(container, e => e.tagName === 'P' && e.textContent === 'reconciliation.metrics.gross').parentNode;
     expect(grossCard?.textContent).toContain('RM16.00');
@@ -61,7 +67,7 @@ describe('financial reconciliation pagination', () => {
     expect(bodyRows().length).toBe(1);
     expect(bodyRows()[0].textContent).toContain('ORD-16');
     expect(button('accessibility.nextPage').disabled).toBe(true);
-    expect(container.textContent).toContain('"page":2,"total":2');
+    expect(container.textContent).toContain('pagination.range {"from":16,"to":16,"total":16}');
     let csv: Blob | undefined;
     vi.spyOn(URL, 'createObjectURL').mockImplementation(blob => { csv = blob as Blob; return 'blob:verification'; });
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
@@ -80,7 +86,7 @@ describe('financial reconciliation pagination', () => {
     } }) } as Response);
     await click(findOne(container, e => e.tagName === 'BUTTON' && e.textContent.includes('reconciliation.reload')));
     expect(bodyRows().length).toBe(2);
-    expect(container.textContent).toContain('\"page\":1,\"total\":1');
+    expect(container.textContent).toContain('pagination.range {"from":1,"to":2,"total":2}');
     expect(bodyRows()[0].textContent).toContain('ORD-01');
   });
 
@@ -90,13 +96,13 @@ describe('financial reconciliation pagination', () => {
     expect(size.options.map(o => o.value)).toEqual(['15', '25', '50']);
     await change(size, '25');
     expect(bodyRows().length).toBe(16);
-    expect(container.textContent).toContain('"page":1,"total":1');
+    expect(container.textContent).toContain('pagination.range {"from":1,"to":16,"total":16}');
     await change(size, '15');
     await click(button('accessibility.nextPage'));
     await change(findOne(container, e => e.tagName === 'SELECT' && e.getAttribute('aria-label') === 'reconciliation.metrics.platformNet'), 'zero');
     expect(findElements(container, e => e.tagName === 'TBODY')).toHaveLength(0);
     expect(container.textContent).toContain('reconciliation.filters.noMatches');
-    expect(container.textContent).toContain('"page":1,"total":1');
+    expect(container.textContent).not.toContain('pagination.range');
     await change(findOne(container, e => e.tagName === 'SELECT' && e.getAttribute('aria-label') === 'reconciliation.metrics.platformNet'), 'all');
     expect(bodyRows().length).toBe(15);
     expect(bodyRows()[0].textContent).toContain('ORD-01');

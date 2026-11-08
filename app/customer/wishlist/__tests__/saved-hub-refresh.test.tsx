@@ -14,6 +14,8 @@ vi.mock('@/components/providers/auth', () => ({ useAuth: () => ({ currentUser: s
 vi.mock('@/components/providers/wishlist', () => ({ useWishlist: () => state.wishlist }));
 vi.mock('@/components/providers/saved-destinations', () => ({ useSavedDestinations: () => state.destinations }));
 vi.mock('@/components/customer/activity-card', () => ({ ActivityCard: ({ activity }: { activity: { id: string } }) => <span>card:{activity.id}</span> }));
+vi.mock('@/components/customer/product-card', () => ({ ProductCard: ({ listing }: { listing: { id: string } }) => <span>card:{listing.id}</span> }));
+vi.mock('@/lib/customer/product-catalogue', () => ({ toDiscoveryCatalogueCard: (activity: { id: string }) => activity }));
 vi.mock('@/components/customer/saved-destination-card', () => ({ SavedDestinationCard: ({ destination }: { destination: { state: string } }) => <span>destination:{destination.state}</span> }));
 vi.mock('@/lib/customer/discovery-ranking', () => ({ groupAccommodationByProperty: () => [] }));
 import { SavedHubClient } from '../wishlist-client';

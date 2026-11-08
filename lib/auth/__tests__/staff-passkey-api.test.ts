@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ db: { auth: { getUser: vi.fn(), getClaims: vi.fn() }, rpc: vi.fn() }, service: { rpc: vi.fn() } }));
 vi.mock('@/lib/supabase/server', () => ({ createClient: async () => mocks.db }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => mocks.service }));
@@ -14,7 +14,23 @@ beforeEach(() => {
   mocks.db.rpc.mockResolvedValue({ data: { required: true, verified: false, passwordAuthenticated: true }, error: null });
   mocks.service.rpc.mockResolvedValue({ data: [], error: null });
 });
+afterEach(() => vi.unstubAllEnvs());
 describe('staff Passkey API', () => {
+  it('uses the local app origin for staff Passkey challenges in development', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:3000');
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://mylawatan.my');
+    mocks.service.rpc
+      .mockResolvedValueOnce({ data: [], error: null })
+      .mockResolvedValueOnce({ data: { id: '33333333-3333-4333-8333-333333333333', userHandle: 'A'.repeat(43) }, error: null });
+
+    const response = await challenge(request({ operation: 'register', grant: 'a'.repeat(43), label: 'Local device' }, 'http://localhost:3000'));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.options.rp).toEqual({ id: 'localhost', name: 'MYLawatan' });
+  });
+
   it('uses MYLawatan in new credential prompts without changing the relying-party ID', async () => {
     mocks.service.rpc
       .mockResolvedValueOnce({ data: [], error: null })

@@ -12,7 +12,7 @@ import ProductForm from '@/components/vendor/product-form';
 import ProductDetailsPage from '@/components/vendor/product-details-page';
 import CompactFilterBar from '@/components/vendor/compact-filter-bar';
 import CompactThumbnail from '@/components/vendor/compact-thumbnail';
-import PaginationControls from '@/components/vendor/pagination-controls';
+import { Pagination as SharedPagination } from '@/components/shared/pagination';
 import BatchActionBar from '@/components/vendor/batch-action-bar';
 import { outletLocation, outletShortName, outletIdLabel } from '@/lib/outlet-display';
 import { useActionFeedback } from '@/components/providers/action-feedback';
@@ -349,7 +349,6 @@ export default function VendorProductsPage() {
             <Utensils size={15} /> {t('ui.products.catalogueManagement')}
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground">{t('ui.products.title')}</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{t('ui.products.description')}</p>
           {isOwner && (
             <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
               <span className="font-semibold uppercase tracking-[0.1em] text-amber-800 dark:text-amber-200 shrink-0">{t('ui.products.catalogueManagement')}</span>
@@ -414,7 +413,7 @@ export default function VendorProductsPage() {
       </section>
 
       {/* Quick Status & Featured Tabs */}
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-gray-200 dark:border-border pb-2">
+      <div className="flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto border-b border-gray-200 dark:border-border pb-2">
         {[
           { key: 'all', label: t('ui.products.allStatuses'), active: !filters.status && !filters.featured, onClick: () => setFilters((curr) => ({ ...curr, status: '', featured: false })) },
           ...(isOwner ? [{
@@ -430,7 +429,7 @@ export default function VendorProductsPage() {
             key={tab.key}
             type="button"
             onClick={tab.onClick}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
+            className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
               tab.active
                 ? 'bg-primary text-white shadow-sm'
                 : 'text-gray-600 dark:text-muted-foreground hover:bg-gray-100 dark:hover:bg-muted'
@@ -475,7 +474,7 @@ export default function VendorProductsPage() {
         </div>
       )}
 
-      <CompactFilterBar search={filters.q} onSearchChange={(value) => setFilters((current) => ({ ...current, q: value }))} placeholder={t('ui.products.searchPlaceholder')} selects={filterSelects} onClear={clearFilters} />
+      <CompactFilterBar search={filters.q} onSearchChange={(value) => setFilters((current) => ({ ...current, q: value }))} placeholder={t('ui.products.searchPlaceholder')} selects={filterSelects} onClear={clearFilters} collapsibleOnMobile />
 
       {canManageOutlet && <BatchActionBar selectedCount={selectedIds.length} total={pagination.total} allFilteredSelected={allFilteredSelected} onSelectAllFiltered={() => { setAllFilteredSelected(true); setSelectedIds(products.map((product) => product.id)); }} onClear={() => { setSelectedIds([]); setAllFilteredSelected(false); setBatchMessage(''); }} onApply={applyBatch} actions={[{ value: 'archive', label: t('ui.products.archiveSelected') }, { value: 'restore', label: t('ui.products.restoreSelected') }]} busy={batchBusy} message={batchMessage} />}
       <div className="flex items-center justify-between text-xs text-gray-500 dark:text-muted-foreground"><span>{t('ui.products.resultCount', { count: pagination.total.toLocaleString() })}</span><span className="inline-flex items-center gap-1"><SlidersHorizontal size={14} /> {t('ui.products.perPage', { count: 10 })}</span></div>
@@ -494,15 +493,15 @@ export default function VendorProductsPage() {
             </div>
             <div className="divide-y divide-gray-100 dark:divide-border">
               {products.map((product) => (
-                <article key={product.id} className={`grid gap-3 px-4 py-4 transition hover:bg-secondary/30 ${tableGridClass} xl:items-center xl:gap-4 xl:px-5`}>
+                <article key={product.id} className={`grid grid-cols-2 gap-x-3 gap-y-2 px-4 py-4 transition hover:bg-secondary/30 ${tableGridClass} xl:items-center xl:gap-4 xl:px-5`}>
                   {canManageOutlet && (
-                    <div>
+                    <div className="col-span-2 xl:col-span-1">
                       <input type="checkbox" checked={selectedIds.includes(product.id)} onChange={() => toggleSelected(product.id)} aria-label={t('ui.products.selectListing', { name: product.name })} />
                     </div>
                   )}
 
                   {/* LISTING column: Thumbnail + Name + Type/Booking + Ratings + Product ID with copy button */}
-                  <div className="flex min-w-0 items-center gap-3">
+                  <div className="col-span-2 flex min-w-0 items-center gap-3 xl:col-span-1">
                     <CompactThumbnail src={productImageUrl(product.cover_url)} alt={product.name} kind={imageKind(product.product_type)} />
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -537,7 +536,8 @@ export default function VendorProductsPage() {
                           copyProductId(product.display_id || product.id);
                         }}
                         title={t('ui.products.copyProductId')}
-                        className="mt-0.5 group/id inline-flex items-center gap-1 font-mono text-[10px] text-gray-400 dark:text-muted-foreground hover:text-primary transition-colors focus:outline-none"
+                        aria-label={t('ui.products.copyProductId')}
+                        className="mt-0.5 group/id inline-flex min-h-8 items-center gap-1 font-mono text-[10px] text-gray-400 dark:text-muted-foreground hover:text-primary transition-colors focus:outline-none"
                       >
                         <span>{product.display_id || product.id}</span>
                         {copiedProductId === (product.display_id || product.id) ? (
@@ -550,12 +550,12 @@ export default function VendorProductsPage() {
                   </div>
 
                   {/* OUTLET column: Outlet name, city/state, outlet ID or multi-outlet coverage */}
-                  <div className="text-xs text-gray-500 dark:text-muted-foreground">
+                  <div className="col-span-2 min-w-0 text-xs text-gray-500 dark:text-muted-foreground xl:col-span-1">
                     {product.outlets && product.outlets.length > 1 ? (
                       <button
                         type="button"
                         onClick={() => setViewingOutletsProduct(product)}
-                        className="group/outlets text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl p-1.5 -m-1.5 transition hover:bg-emerald-50/70 dark:hover:bg-emerald-500/10 w-full max-w-[230px]"
+                        className="group/outlets w-full max-w-none rounded-xl p-1.5 text-left transition hover:bg-emerald-50/70 dark:hover:bg-emerald-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 xl:-m-1.5 xl:max-w-[230px]"
                         title={t('ui.products.clickToViewAllOutlets', { count: product.outlets.length })}
                       >
                         <div className="flex items-center gap-1.5">
@@ -577,7 +577,7 @@ export default function VendorProductsPage() {
                       <button
                         type="button"
                         onClick={() => setViewingOutletsProduct(product)}
-                        className="group/outlets text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-xl p-1.5 -m-1.5 transition hover:bg-gray-50 dark:hover:bg-muted/50 w-full max-w-[230px]"
+                        className="group/outlets w-full max-w-none rounded-xl p-1.5 text-left transition hover:bg-gray-50 dark:hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 xl:-m-1.5 xl:max-w-[230px]"
                       >
                         <span className="block truncate font-medium text-gray-700 dark:text-foreground group-hover/outlets:text-primary transition-colors">{outletShortName(product.outlet?.name || user?.activeOutletName)}</span>
                         <span className="mt-0.5 block truncate text-[11px] text-gray-500 dark:text-muted-foreground">{outletLocation(product.outlet?.city, product.outlet?.state)}</span>
@@ -587,7 +587,7 @@ export default function VendorProductsPage() {
                   </div>
 
                   {/* TOTAL / PRICE column: Price + Stock / Time slots */}
-                  <div className="text-xs">
+                  <div className="min-w-0 text-xs">
                     <span className="block text-sm font-semibold text-gray-900 dark:text-foreground">
                       {toRM(Number(product.base_price))}
                     </span>
@@ -598,12 +598,12 @@ export default function VendorProductsPage() {
                   </div>
 
                   {/* STATUS column: StatusBadge */}
-                  <div>
+                  <div className="flex items-center justify-end xl:block">
                     <StatusBadge status={product.status} />
                   </div>
 
                   {/* ACTION column: Star toggle (featured on storefront), View details, Share, Edit, Archive/Restore */}
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="col-span-2 flex items-center justify-end gap-1 border-t border-gray-100 dark:border-border pt-2 xl:col-span-1 xl:border-0 xl:pt-0 [&_button]:min-h-11 [&_button]:min-w-11 [&_button]:inline-flex [&_button]:items-center [&_button]:justify-center">
                     {isOwner && (
                       <button
                         type="button"
@@ -617,6 +617,11 @@ export default function VendorProductsPage() {
                             ? t('ui.products.removeFromFeatured')
                             : t('ui.products.addToFeatured')
                         }
+                        aria-label={
+                          featuredIds.includes(product.id)
+                            ? t('ui.products.removeFromFeatured')
+                            : t('ui.products.addToFeatured')
+                        }
                         className={`rounded-lg p-2 transition ${
                           featuredIds.includes(product.id)
                             ? 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-500/25'
@@ -626,21 +631,21 @@ export default function VendorProductsPage() {
                         <Star size={16} className={featuredIds.includes(product.id) ? 'fill-amber-500 text-amber-500' : ''} />
                       </button>
                     )}
-                    <button type="button" onClick={() => setSelectedProduct(product)} title={t('ui.products.viewDetails')} className="rounded-lg p-2 text-gray-500 dark:text-muted-foreground hover:bg-gray-100 dark:hover:bg-muted hover:text-primary transition">
+                    <button type="button" onClick={() => setSelectedProduct(product)} title={t('ui.products.viewDetails')} aria-label={t('ui.products.viewDetails')} className="rounded-xl p-2 text-gray-500 dark:text-muted-foreground hover:bg-gray-100 dark:hover:bg-muted hover:text-primary transition">
                       <Eye size={16} />
                     </button>
                     <ShareButton compact shareType="product" contentId={product.id} title={product.name} plainOnly />
                     {canManageOutlet && (
                       <>
-                        <button type="button" onClick={() => { setEditingProduct(product); setShowForm(true); }} title={t('ui.products.editListing')} className="rounded-lg p-2 text-gray-500 dark:text-muted-foreground hover:bg-secondary hover:text-primary transition">
+                        <button type="button" onClick={() => { setEditingProduct(product); setShowForm(true); }} title={t('ui.products.editListing')} aria-label={t('ui.products.editListing')} className="rounded-xl p-2 text-gray-500 dark:text-muted-foreground hover:bg-secondary hover:text-primary transition">
                           <Pencil size={16} />
                         </button>
                         {product.status === 'archived' ? (
-                          <button type="button" onClick={() => handleRestore(product.id)} title={t('ui.products.restoreListing')} className="rounded-lg p-2 text-primary hover:bg-secondary transition">
+                            <button type="button" onClick={() => handleRestore(product.id)} title={t('ui.products.restoreListing')} aria-label={t('ui.products.restoreListing')} className="rounded-xl p-2 text-primary hover:bg-secondary transition">
                             <RotateCcw size={16} />
                           </button>
                         ) : (
-                          <button type="button" onClick={() => handleDelete(product.id)} title={t('ui.products.archiveListing')} className="rounded-lg p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition">
+                          <button type="button" onClick={() => handleDelete(product.id)} title={t('ui.products.archiveListing')} aria-label={t('ui.products.archiveListing')} className="rounded-xl p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition">
                             <Archive size={16} />
                           </button>
                         )}
@@ -651,7 +656,7 @@ export default function VendorProductsPage() {
               ))}
             </div>
           </div>
-          <PaginationControls page={pagination.page} totalPages={pagination.totalPages} total={pagination.total} pageSize={pagination.pageSize} onPageChange={(page) => { setPagination((current) => ({ ...current, page })); loadProducts(page); }} />
+          <SharedPagination currentPage={pagination.page} totalPages={pagination.totalPages} totalItems={pagination.total} pageSize={pagination.pageSize} onPageChange={(page) => { setPagination((current) => ({ ...current, page })); loadProducts(page); }} className="mt-0 border-t border-border px-4 py-3" />
         </>}
       </section>
       </>}

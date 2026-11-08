@@ -84,176 +84,159 @@ export default function OutletForm({ vendorId, initialData, showAccommodationTyp
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">{initialData?.id ? t('outletForm.editTitle') : t('outletForm.addTitle')}</h2>
-        {onClose && <button type="button" onClick={onClose} className="text-gray-400 dark:text-muted-foreground hover:text-gray-600 dark:hover:text-muted-foreground">✕</button>}
-      </div>
+    <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+      <div data-outlet-form-scroll-region className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5">
+        {serverError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
+            {serverError}
+          </div>
+        )}
 
-      {serverError && (
-        <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-200 text-sm rounded-lg px-4 py-3">
-          {serverError}
-        </div>
-      )}
+        <section className="space-y-4" aria-labelledby="outlet-business-details">
+          <h3 id="outlet-business-details" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t('outletForm.sections.businessDetails')}</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.nameRequired')}</label>
+              <Input {...register('name')} placeholder={t('outletForm.namePlaceholder')} />
+              {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>}
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.address')}</label>
+              <AddressAutocomplete value={address || ''} onChange={(value) => setValue('address', value, { shouldDirty: true })} onSelect={applyAddress} placeholder={t('outletForm.addressPlaceholder')} />
+              <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('outletForm.addressHint')}</p>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.city')}</label>
+              <Input {...register('city')} placeholder={t('outletForm.cityPlaceholder')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.state')}</label>
+              <Input {...register('state')} placeholder={t('outletForm.statePlaceholder')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.postcode')}</label>
+              <Input {...register('postcode')} placeholder="50450" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.country')}</label>
+              <Input {...register('country')} placeholder={t('outletForm.countryPlaceholder')} />
+            </div>
+          </div>
+        </section>
 
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.nameRequired')}</label>
-          <Input {...register('name')} placeholder={t('outletForm.namePlaceholder')} />
-          {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
-        </div>
+        <section className="space-y-4 border-t border-border pt-5" aria-labelledby="outlet-contact-map">
+          <h3 id="outlet-contact-map" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t('outletForm.sections.contactAndMap')}</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.phone')}</label>
+              <Input {...register('phone')} placeholder={SAMPLE_MY_PHONE} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.email')}</label>
+              <Input {...register('email')} type="email" placeholder={t('outletForm.emailPlaceholder')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.latitude')}</label>
+              <Input {...register('lat', { valueAsNumber: true })} type="number" step="any" placeholder="3.1577" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.longitude')}</label>
+              <Input {...register('lng', { valueAsNumber: true })} type="number" step="any" placeholder="101.7118" />
+            </div>
+          </div>
+        </section>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.address')}</label>
-          <AddressAutocomplete value={address || ''} onChange={(value) => setValue('address', value, { shouldDirty: true })} onSelect={applyAddress} placeholder={t('outletForm.addressPlaceholder')} />
-          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('outletForm.addressHint')}</p>
-        </div>
+        <section className="space-y-4 border-t border-border pt-5" aria-labelledby="outlet-visitor-options">
+          <h3 id="outlet-visitor-options" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t('outletForm.sections.visitorOptions')}</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.wheelchair')}</label>
+              <select {...register('wheelchairAccessible', { setValueAs: (v) => (v === '' ? null : v === 'true') })} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-border">
+                <option value="">{t('outletForm.notSpecified')}</option>
+                <option value="true">{t('outletForm.yes')}</option>
+                <option value="false">{t('outletForm.no')}</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.petFriendly')}</label>
+              <select {...register('petFriendly', { setValueAs: (v) => (v === '' ? null : v === 'true') })} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-border">
+                <option value="">{t('outletForm.notSpecified')}</option>
+                <option value="true">{t('outletForm.yes')}</option>
+                <option value="false">{t('outletForm.no')}</option>
+              </select>
+            </div>
+          </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.city')}</label>
-            <Input {...register('city')} placeholder={t('outletForm.cityPlaceholder')} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.state')}</label>
-            <Input {...register('state')} placeholder={t('outletForm.statePlaceholder')} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.postcode')}</label>
-            <Input {...register('postcode')} placeholder="50450" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.country')}</label>
-            <Input {...register('country')} placeholder={t('outletForm.countryPlaceholder')} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.phone')}</label>
-            <Input {...register('phone')} placeholder={SAMPLE_MY_PHONE} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.email')}</label>
-            <Input {...register('email')} type="email" placeholder={t('outletForm.emailPlaceholder')} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.latitude')}</label>
-            <Input {...register('lat', { valueAsNumber: true })} type="number" step="any" placeholder="3.1577" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.longitude')}</label>
-            <Input {...register('lng', { valueAsNumber: true })} type="number" step="any" placeholder="101.7118" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.wheelchair')}</label>
-            <select
-              {...register('wheelchairAccessible', { setValueAs: (v) => (v === '' ? null : v === 'true') })}
-              className="w-full rounded-lg border border-gray-300 dark:border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">{t('outletForm.notSpecified')}</option>
-              <option value="true">{t('outletForm.yes')}</option>
-              <option value="false">{t('outletForm.no')}</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('outletForm.petFriendly')}</label>
-            <select
-              {...register('petFriendly', { setValueAs: (v) => (v === '' ? null : v === 'true') })}
-              className="w-full rounded-lg border border-gray-300 dark:border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">{t('outletForm.notSpecified')}</option>
-              <option value="true">{t('outletForm.yes')}</option>
-              <option value="false">{t('outletForm.no')}</option>
-            </select>
-          </div>
-        </div>
-        <p className="-mt-2 text-xs text-gray-400 dark:text-muted-foreground">{t('outletForm.accessibilityHint')}</p>
-
-        <fieldset className="space-y-2 rounded-xl border border-gray-200 dark:border-border p-4">
-          <legend className="px-1 text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.foodServiceModes')}</legend>
-          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t('outletForm.foodServiceModesHint')}</p>
-          <div className="flex flex-wrap gap-4">
-            {(['dine_in', 'takeaway'] as const).map((mode) => (
-              <label key={mode} className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-foreground">
-                <input
-                  type="checkbox"
-                  checked={foodServiceModes.includes(mode)}
-                  onChange={(event) => {
-                    const next = event.target.checked
-                      ? [...foodServiceModes, mode]
-                      : foodServiceModes.filter((value) => value !== mode);
+          <fieldset className="space-y-2 rounded-xl border border-gray-200 p-4 dark:border-border">
+            <legend className="px-1 text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.foodServiceModes')}</legend>
+            <p className="text-xs text-gray-500 dark:text-muted-foreground">{t('outletForm.foodServiceModesHint')}</p>
+            <div className="flex flex-wrap gap-4">
+              {(['dine_in', 'takeaway'] as const).map((mode) => (
+                <label key={mode} className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-foreground">
+                  <input type="checkbox" checked={foodServiceModes.includes(mode)} onChange={(event) => {
+                    const next = event.target.checked ? [...foodServiceModes, mode] : foodServiceModes.filter((value) => value !== mode);
                     setValue('foodServiceModes', next, { shouldDirty: true, shouldValidate: true });
-                  }}
-                  className="h-4 w-4 rounded border-gray-300 dark:border-border text-primary"
-                />
-                {mode === "dine_in" ? t("outletForm.dine_in") : t("outletForm.takeaway")}
+                  }} className="h-4 w-4 rounded border-gray-300 text-primary dark:border-border" />
+                  {mode === 'dine_in' ? t('outletForm.dine_in') : t('outletForm.takeaway')}
+                </label>
+              ))}
+            </div>
+            {errors.foodServiceModes && <p className="text-xs text-red-600 dark:text-red-300">{t('outletForm.foodServiceModeRequired')}</p>}
+          </fieldset>
+        </section>
+
+        <section className="space-y-4 border-t border-border pt-5" aria-labelledby="outlet-categories">
+          <h3 id="outlet-categories" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t('outletForm.sections.outletCategories')}</h3>
+          <div className={showAccommodationTypes ? 'grid gap-4 sm:grid-cols-2' : ''}>
+            <fieldset className="rounded-xl border border-border bg-card p-4">
+              <legend className="px-1 text-sm font-semibold text-foreground">{t('taxonomy.outletBadges.title')}</legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {OUTLET_BADGE_OPTIONS.map(({ slug, labelKey }) => {
+                  const id = `outlet-badge-${slug}`;
+                  const checked = badgeSlugs.includes(slug);
+                  return <label key={slug} htmlFor={id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted/60">
+                    <Checkbox id={id} checked={checked} onCheckedChange={(nextChecked) => setValue('badgeSlugs', nextChecked ? [...badgeSlugs, slug] : badgeSlugs.filter((value) => value !== slug), { shouldDirty: true, shouldValidate: true })} />
+                    {t(`taxonomy.outletBadges.options.${labelKey}`)}
+                  </label>;
+                })}
+              </div>
+              {errors.badgeSlugs && <p className="mt-2 text-xs text-destructive">{errors.badgeSlugs.message}</p>}
+            </fieldset>
+
+            {showAccommodationTypes && <fieldset className="rounded-xl border border-border bg-card p-4">
+              <legend className="px-1 text-sm font-semibold text-foreground">{t('taxonomy.accommodationTypes.title')}</legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {ACCOMMODATION_PROPERTY_TYPES.map(({ slug }) => {
+                  const id = `property-type-${slug}`;
+                  const checked = accommodationTypeSlugs.includes(slug);
+                  return <label key={slug} htmlFor={id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted/60">
+                    <Checkbox id={id} checked={checked} onCheckedChange={(nextChecked) => setValue('accommodationTypeSlugs', nextChecked ? [...accommodationTypeSlugs, slug] : accommodationTypeSlugs.filter((value) => value !== slug), { shouldDirty: true, shouldValidate: true })} />
+                    {t(`taxonomy.accommodationTypes.options.${slug}`)}
+                  </label>;
+                })}
+              </div>
+              {errors.accommodationTypeSlugs && <p className="mt-2 text-xs text-destructive">{errors.accommodationTypeSlugs.message}</p>}
+            </fieldset>}
+          </div>
+        </section>
+
+        <section className="space-y-4 border-t border-border pt-5" aria-labelledby="outlet-welcome-message">
+          <h3 id="outlet-welcome-message" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t('outletForm.sections.welcomeMessage')}</h3>
+          <div>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <label className="block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.welcomeMessage')}</label>
+              <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-muted-foreground">
+                <input type="checkbox" {...register('welcomeEnabled')} className="h-4 w-4" />
+                {t('outletForm.autoWelcome')}
               </label>
-            ))}
+            </div>
+            <textarea {...register('welcomeMessage')} rows={3} placeholder={t('outletForm.welcomePlaceholder')} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-border" />
+            {errors.welcomeMessage && <p className="mt-1 text-xs text-red-500">{errors.welcomeMessage.message}</p>}
           </div>
-          {errors.foodServiceModes && <p className="text-xs text-red-600 dark:text-red-300">{t('outletForm.foodServiceModeRequired')}</p>}
-        </fieldset>
-
-        <fieldset className="rounded-xl border border-border bg-card p-4">
-          <legend className="px-1 text-sm font-semibold text-foreground">{t('taxonomy.outletBadges.title')}</legend>
-          <p className="mb-3 text-xs text-muted-foreground">{t('taxonomy.outletBadges.hint')}</p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {OUTLET_BADGE_OPTIONS.map(({ slug, labelKey }) => {
-              const id = `outlet-badge-${slug}`;
-              const checked = badgeSlugs.includes(slug);
-              return <label key={slug} htmlFor={id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted/60">
-                <Checkbox id={id} checked={checked} onCheckedChange={(nextChecked) => setValue('badgeSlugs', nextChecked ? [...badgeSlugs, slug] : badgeSlugs.filter((value) => value !== slug), { shouldDirty: true, shouldValidate: true })} />
-                {t(`taxonomy.outletBadges.options.${labelKey}`)}
-              </label>;
-            })}
-          </div>
-          {errors.badgeSlugs && <p className="mt-2 text-xs text-destructive">{errors.badgeSlugs.message}</p>}
-        </fieldset>
-
-        {showAccommodationTypes && <fieldset className="rounded-xl border border-border bg-card p-4">
-          <legend className="px-1 text-sm font-semibold text-foreground">{t('taxonomy.accommodationTypes.title')}</legend>
-          <p className="mb-3 text-xs text-muted-foreground">{t('taxonomy.accommodationTypes.hint')}</p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {ACCOMMODATION_PROPERTY_TYPES.map(({ slug }) => {
-              const id = `property-type-${slug}`;
-              const checked = accommodationTypeSlugs.includes(slug);
-              return <label key={slug} htmlFor={id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-foreground hover:bg-muted/60">
-                <Checkbox id={id} checked={checked} onCheckedChange={(nextChecked) => setValue('accommodationTypeSlugs', nextChecked ? [...accommodationTypeSlugs, slug] : accommodationTypeSlugs.filter((value) => value !== slug), { shouldDirty: true, shouldValidate: true })} />
-                {t(`taxonomy.accommodationTypes.options.${slug}`)}
-              </label>;
-            })}
-          </div>
-          {errors.accommodationTypeSlugs && <p className="mt-2 text-xs text-destructive">{errors.accommodationTypeSlugs.message}</p>}
-        </fieldset>}
-
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.welcomeMessage')}</label>
-            <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-muted-foreground">
-              <input type="checkbox" {...register('welcomeEnabled')} className="h-4 w-4" />
-              {t('outletForm.autoWelcome')}
-            </label>
-          </div>
-          <textarea
-            {...register('welcomeMessage')}
-            rows={3}
-            placeholder={t('outletForm.welcomePlaceholder')}
-            className="w-full rounded-lg border border-gray-300 dark:border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          {errors.welcomeMessage && <p className="text-red-500 text-xs mt-1">{errors.welcomeMessage.message}</p>}
-        </div>
+        </section>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-border">
+      <div data-outlet-form-actions className="sticky bottom-0 z-10 flex shrink-0 justify-end gap-3 border-t border-border bg-card/95 px-4 py-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] backdrop-blur sm:px-6">
         {onClose && (
           <Button type="button" variant="outline" onClick={onClose}>{tCommon('actions.cancel')}</Button>
         )}

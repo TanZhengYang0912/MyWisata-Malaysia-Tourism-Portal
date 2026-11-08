@@ -21,19 +21,23 @@ import { CustomerSiteFooter } from "@/components/customer/customer-site-footer";
 import { customerFooterVariant } from "@/lib/customer/footer-navigation";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { CurrencySwitcher } from "@/components/shared/currency-switcher";
+import { useCustomerHeaderLayout } from "@/components/customer/use-customer-header-layout";
 import { useTranslation } from "react-i18next";
 import { WishlistProvider, useWishlist } from "@/components/providers/wishlist";
 import { SavedDestinationsProvider, useSavedDestinations } from "@/components/providers/saved-destinations";
 import { TripProvider } from "@/components/providers/trip";
 import { SupportChatProvider } from "@/components/providers/support-chat";
 import { supabase } from "@/backend/supabase";
-import { ACCOUNT_MENU_GROUPS, CUSTOMER_NAV, PARTNER_MENU_ITEMS, getCustomerDisplayName, isCustomerNavActive } from "@/lib/customer/header-navigation";
+import { ACCOUNT_MENU_GROUPS, PARTNER_MENU_ITEMS, getCustomerDisplayName, isCustomerNavActive } from "@/lib/customer/header-navigation";
+import { CustomerPrimaryNavigation } from "@/components/customer/customer-primary-navigation";
+import { CustomerBreadcrumbs } from "@/components/customer/customer-breadcrumbs";
 import { LOGO_BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { guestProtectedCustomerPath } from "@/lib/auth/guest-mode";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { isPublicCustomerPath } from "@/lib/auth/public-customer-paths";
 import { CustomerCapabilityGateProvider } from "@/components/customer/customer-capability-gate-dialog";
+import { useViewportClampedPopoverPosition } from "@/components/shared/use-viewport-clamped-popover-position";
 
 const UNREAD_POLL_MS = 30_000;
 
@@ -56,7 +60,11 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const isActivityDetailPage = /^\/customer\/activity\/[^/]+\/?$/.test(pathname);
+  const isTripRoute = pathname === "/customer/trip" || pathname.startsWith("/customer/trip/");
+  const isOrderRoute = pathname === "/customer/orders" || /^\/customer\/orders\/[^/]+\/?$/.test(pathname);
+  const isBookingDetailRoute = /^\/customer\/bookings\/[^/]+\/?$/.test(pathname);
+  const hideMobileChatLauncher = pathname === "/customer/vouchers" || isOrderRoute || isBookingDetailRoute;
+  const isActivityDetailPage = /^\/customer\/(activity|products)\/[^/]+\/?$/.test(pathname);
   const { currentUser, loading } = useRequireRole(["customer"], { allowUnauthenticated: isPublicCustomerPath });
   const gate = useCustomerCapabilityGate();
   const { count } = useCart();
@@ -64,9 +72,17 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   const { savedStates } = useSavedDestinations();
   const savedCount = savedIds.size + savedStates.size;
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const accountTriggerRef = useRef<HTMLButtonElement>(null);
+  const accountPanelRef = useRef<HTMLDivElement>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuPosition = useViewportClampedPopoverPosition(accountMenuOpen, accountTriggerRef, accountPanelRef);
   const partnerMenuRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  const headerLinksRef = useRef<HTMLDivElement>(null);
+  const partnerTriggerRef = useRef<HTMLButtonElement>(null);
+  const partnerPanelRef = useRef<HTMLDivElement>(null);
   const [partnerMenuOpen, setPartnerMenuOpen] = useState(false);
+  const partnerMenuPosition = useViewportClampedPopoverPosition(partnerMenuOpen, partnerTriggerRef, partnerPanelRef);
   // CLAUDE-FIXES-2.md item 1: a dot on the Support account item when there's an
   // unread admin reply anywhere in my tickets. Polled — no realtime chat
   // infra exists elsewhere in this repo to piggyback on.
@@ -149,7 +165,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   }, [partnerMenuOpen]);
 
   const { t: tCommon } = useTranslation("common");
-  const { t: tCustomer } = useTranslation("customer");
+  const { t: tCustomer, i18n } = useTranslation("customer");
+  useCustomerHeaderLayout(headerRef, headerLinksRef, `${i18n.language}:${currentUser?.id ?? ""}:${loading}`);
 
   async function switchAccount() {
     setAccountMenuOpen(false);
@@ -186,8 +203,9 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }} onClickCapture={confirmGuestNavigation} onAuxClickCapture={confirmGuestNavigation}>
-      <nav className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden">
-        <div className="max-w-7xl mx-auto px-2 sm:px-6 flex items-center gap-1 sm:gap-8 h-17">
+      {/* One row only when it fits, else the phone's two rows: useCustomerHeaderLayout sets data-layout on this nav. */}
+      <nav ref={headerRef} className="group/header sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden">
+        <div className={`max-w-7xl mx-auto px-2 sm:px-6 flex items-center gap-1 sm:gap-8 ${isTripRoute ? "h-14 md:h-17" : "h-17"}`}>
           <Link href="/customer" className="group flex items-center gap-2.5 shrink-0">
               <Image
                 src="/branding/mylawatan-logo-transparent.png?v=3"
@@ -195,27 +213,16 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 width={758}
                 height={306}
                 priority
-                className="block h-auto w-[62px] min-[360px]:w-[84px] min-[420px]:w-[94px] sm:w-[118px]"
+                className={`block h-auto ${isTripRoute ? "w-[62px] min-[360px]:w-[76px] min-[420px]:w-[84px] sm:w-[118px]" : "w-[62px] min-[360px]:w-[84px] min-[420px]:w-[94px] sm:w-[118px]"}`}
               />
           </Link>
 
-          <div className="hidden flex-1 items-center gap-5 md:flex xl:gap-6">
-              {CUSTOMER_NAV.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="relative flex items-center gap-1.5 text-sm font-medium transition-colors hover:opacity-70"
-                  aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
-                  style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
-                >
-                  <item.icon size={16} aria-hidden="true" />
-                  <span>{tCustomer(item.labelKey)}</span>
-                </Link>
-              ))}
+          <div ref={headerLinksRef} className="hidden min-w-0 flex-1 items-center gap-5 overflow-hidden xl:flex xl:gap-6 group-data-[layout=single]/header:flex group-data-[layout=stacked]/header:hidden">
+              <CustomerPrimaryNavigation pathname={pathname} layout="single" />
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-0 sm:gap-1">
-            <LanguageSwitcher compact className="hidden md:flex w-28" />
-            <CurrencySwitcher compact codeHiddenOnMobile className="w-14 min-[360px]:w-16 min-[420px]:w-20 md:w-24" />
+            <LanguageSwitcher compact className="hidden w-28 xl:flex group-data-[layout=single]/header:flex group-data-[layout=stacked]/header:hidden" />
+            <CurrencySwitcher compact hideFlagOnNarrowMobile className="w-14 min-[360px]:w-16 min-[420px]:w-20 md:w-24" />
             <AppearanceControl />
             {currentUser ? <NotificationBell key={currentUser.id} /> : (
               <button type="button" aria-label={tCommon("accessibility.notifications")} onClick={() => gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION, "/customer/notifications")} className={HEADER_ICON_BUTTON_CLASS}>
@@ -244,6 +251,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
             <div ref={partnerMenuRef} className="relative flex h-full shrink-0 items-center">
               <button
                 type="button"
+                ref={partnerTriggerRef}
                 onClick={() => setPartnerMenuOpen((open) => !open)}
                 aria-expanded={partnerMenuOpen}
                 aria-haspopup="menu"
@@ -256,9 +264,11 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
 
               {partnerMenuOpen && (
                 <div
+                  ref={partnerPanelRef}
                   role="menu"
                   aria-label={tCustomer("accountGroups.more")}
-                  className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-card p-2 shadow-[0_18px_45px_rgba(1,0,102,0.16)]"
+                  className="thin-scrollbar fixed z-50 w-72 max-w-[calc(100vw-1rem)] overflow-x-hidden overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-[0_18px_45px_rgba(1,0,102,0.16)]"
+                  style={partnerMenuPosition ?? { visibility: "hidden" }}
                 >
                   {PARTNER_MENU_ITEMS.map((item) => {
                     const active = isCustomerNavActive(pathname, item.href);
@@ -288,6 +298,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
           <div ref={accountMenuRef} className="relative flex h-full shrink-0 items-center">
               <button
                 type="button"
+                ref={accountTriggerRef}
                 onClick={() => setAccountMenuOpen((open) => !open)}
                 aria-expanded={accountMenuOpen}
                 aria-haspopup="menu"
@@ -310,19 +321,12 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
               </button>
 
               {accountMenuOpen && (
-              // max-height derived from the real, known layout numbers, not a
-              // guessed px: the nav row is h-17 (4.25rem) and this menu opens
-              // top-[calc(100%+0.75rem)] below it, so 5rem is how far down the
-              // viewport this menu starts, with a little breathing room.
-              // overflow-y-auto only shows a scrollbar once content actually
-              // exceeds that height; overflow-x-hidden keeps the rounded
-              // corners clean now that overflow-hidden (which clipped both
-              // axes but allowed no scrolling at all) is gone.
                 <div
+                  ref={accountPanelRef}
                   role="menu"
                   aria-label={tCommon("account.menu")}
-                className="thin-scrollbar absolute right-0 top-[calc(100%+0.75rem)] z-50 w-80 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-[0_18px_45px_rgba(1,0,102,0.16)]"
-                style={{ maxHeight: "calc(100vh - 6rem)" }}
+                  className="thin-scrollbar fixed z-50 w-80 max-w-[calc(100vw-1rem)] overflow-x-hidden overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-[0_18px_45px_rgba(1,0,102,0.16)]"
+                  style={accountMenuPosition ?? { visibility: "hidden" }}
                 >
                   <div className="border-b border-border px-3 pb-3 pt-2">
                     <p className="truncate text-sm font-bold text-foreground">{customerDisplayName}</p>
@@ -383,25 +387,15 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Responsive secondary row: the same navigation scrolls horizontally on mobile */}
-        <div className="flex items-center gap-4 overflow-x-auto px-4 py-2 hide-scrollbar md:hidden">
-          {CUSTOMER_NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="relative flex items-center gap-1.5 text-xs font-medium whitespace-nowrap shrink-0"
-              aria-current={isCustomerNavActive(pathname, item.href) ? "page" : undefined}
-              style={{ color: isCustomerNavActive(pathname, item.href) ? "var(--primary)" : "var(--muted-foreground)" }}
-            >
-              <item.icon size={16} aria-hidden="true" /> {tCustomer(item.labelKey)}
-            </Link>
-          ))}
+        <div className={`flex items-center gap-4 overflow-x-auto px-4 hide-scrollbar xl:hidden group-data-[layout=single]/header:hidden group-data-[layout=stacked]/header:flex ${isTripRoute ? "py-1" : "py-2"}`}>
+          <CustomerPrimaryNavigation pathname={pathname} layout="stacked" />
         </div>
       </nav>
 
-      <main className={isActivityDetailPage ? "flex-none" : "flex-1 min-h-0"}>{children}</main>
-      {/* On phones the floating chatbot button would cover the centred copyright line, so leave room below it there only. */}
-      <CustomerSiteFooter variant={customerFooterVariant(pathname)} className="pb-16 sm:pb-0" />
-      <ChatbotWidget />
+      <main className={isActivityDetailPage ? "flex-none" : "flex-1 min-h-0"}><CustomerBreadcrumbs />{children}</main>
+      {/* Preserve footer space only where the mobile chat launcher is visible. */}
+      <CustomerSiteFooter variant={customerFooterVariant(pathname)} className={hideMobileChatLauncher ? "pb-0" : "pb-16 sm:pb-0"} />
+      <ChatbotWidget hideLauncherOnMobile={hideMobileChatLauncher} />
     </div>
   );
 }

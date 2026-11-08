@@ -108,33 +108,33 @@ export default function CustomerBookingDetailsPage() {
 
       <CustomerPageShell wide className="pt-0 sm:pt-0">
         <section className="mt-7 overflow-hidden rounded-3xl border border-border bg-card shadow-[0_12px_32px_rgba(1,0,102,0.06)]" aria-labelledby="booking-summary-heading">
-          <div className="border-b border-border bg-secondary/45 px-5 py-5 sm:px-7">
+          <div className="border-b border-border bg-secondary/45 px-4 py-4 sm:px-7 sm:py-5">
             <h2 id="booking-summary-heading" className="text-sm font-bold uppercase tracking-[0.14em] text-primary">{tCustomer("ui.booking.details")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{tCustomer("ui.booking.confirmedInfo")}</p>
           </div>
-          <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-7">
-            <div className="rounded-2xl border border-border bg-secondary/50 p-4">
-              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground"><CalendarDays size={14} className="text-primary" /> {tCustomer("ui.labels.date")}</p>
-              <p className="mt-3 text-sm font-bold text-foreground">{booking.slotStartsAt && (booking.nights ?? 1) > 1 ? `${formatStayRange(booking.slotStartsAt, booking.nights!)} · ${tCustomer("ui.property.nightsSummary", { count: booking.nights })}` : formatBookingDate(booking.slotStartsAt)}</p>
+          <dl className="grid gap-x-4 gap-y-4 p-4 min-[380px]:grid-cols-2 sm:gap-x-6 sm:gap-y-5 sm:p-7">
+            <div className="min-w-0 rounded-xl bg-secondary/50 p-3 sm:p-4">
+              <dt className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground"><CalendarDays size={14} className="shrink-0 text-primary" /> {tCustomer("ui.labels.date")}</dt>
+              <dd className="mt-1.5 break-words text-sm font-bold text-foreground">{booking.slotStartsAt && (booking.nights ?? 1) > 1 ? `${formatStayRange(booking.slotStartsAt, booking.nights!)} · ${tCustomer("ui.property.nightsSummary", { count: booking.nights })}` : formatBookingDate(booking.slotStartsAt)}</dd>
             </div>
-            <div className="rounded-2xl border border-border bg-secondary/50 p-4">
-              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground"><Clock3 size={14} className="text-primary" /> {tCustomer("ui.labels.time")}</p>
-              <p className="mt-3 text-sm font-bold text-foreground">{formatBookingTime(booking.slotStartsAt)}</p>
+            <div className="min-w-0 rounded-xl bg-secondary/50 p-3 sm:p-4">
+              <dt className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground"><Clock3 size={14} className="shrink-0 text-primary" /> {tCustomer("ui.labels.time")}</dt>
+              <dd className="mt-1.5 break-words text-sm font-bold text-foreground">{formatBookingTime(booking.slotStartsAt)}</dd>
             </div>
-            <div className="rounded-2xl border border-border bg-secondary/50 p-4">
-              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground"><MapPin size={14} className="text-primary" /> {tCustomer("ui.labels.location")}</p>
-              <p className="mt-3 text-sm font-bold text-foreground">{outletName}</p>
+            <div className="min-w-0 rounded-xl bg-secondary/50 p-3 sm:p-4">
+              <dt className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground"><MapPin size={14} className="shrink-0 text-primary" /> {tCustomer("ui.labels.location")}</dt>
+              <dd className="mt-1.5 break-words text-sm font-bold text-foreground">{outletName}</dd>
             </div>
-            <div className="rounded-2xl border border-border bg-secondary/50 p-4">
-              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground"><Users size={14} className="text-primary" /> {tCustomer("ui.labels.guests")}</p>
-              <p className="mt-3 text-sm font-bold text-foreground">{tCustomer("strictMigration.bookingReceipt.guests", { count: booking.qty })}</p>
+            <div className="min-w-0 rounded-xl bg-secondary/50 p-3 sm:p-4">
+              <dt className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground"><Users size={14} className="shrink-0 text-primary" /> {tCustomer("ui.labels.guests")}</dt>
+              <dd className="mt-1.5 break-words text-sm font-bold text-foreground">{tCustomer("strictMigration.bookingReceipt.guests", { count: booking.qty })}</dd>
             </div>
-          </div>
+          </dl>
         </section>
 
         <section className="mt-4 overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-label={tCustomer("ui.booking.entryPass")}>
           <CustomerQrPassCard
             title={tCustomer("ui.booking.entryPass")}
+            mobileStacked
             merchantLabel={bookingOutlet?.vendorName
               ? tCustomer("ui.labels.providedBy", { vendor: bookingOutlet.vendorName })
               : undefined}

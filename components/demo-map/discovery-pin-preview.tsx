@@ -40,7 +40,7 @@ function OutletCard({ pin }: { pin: Extract<DiscoveryPin, { kind: "outlet" }> })
       <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
         <Store size={12} /> {t("ui.labels.mylawatanOutlet")}
       </div>
-      <Link href={`/customer/outlet/${pin.outlet.id}`} className="mt-1 block text-sm font-bold text-foreground hover:text-primary">
+      <Link href={`/customer/outlets/${pin.outlet.id}`} className="mt-1 block text-sm font-bold text-foreground hover:text-primary">
         {pin.outlet.name}
       </Link>
       <p className="text-xs text-muted-foreground">{pin.outlet.vendorName ?? t("ui.labels.localVendor")}</p>
@@ -50,7 +50,7 @@ function OutletCard({ pin }: { pin: Extract<DiscoveryPin, { kind: "outlet" }> })
       <ul className="mt-3 space-y-1.5">
         {pin.products.map((product) => (
           <li key={product.id}>
-            <Link href={`/customer/activity/${product.id}`} className="flex items-center justify-between gap-2 text-xs text-foreground hover:text-primary">
+            <Link href={`/customer/products/${product.id}`} className="flex items-center justify-between gap-2 text-xs text-foreground hover:text-primary">
               <span className="truncate">{product.name}</span>
               <ReferencePrice amountMYR={Number(product.price)} className="shrink-0 font-[family-name:var(--font-mono)] font-semibold" />
             </Link>
@@ -68,7 +68,7 @@ function PinActivityCard({ pin }: { pin: Extract<DiscoveryPin, { kind: "activity
       <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
         <MapPin size={12} /> {t("ui.labels.placeBasedExperience")}
       </div>
-      <Link href={`/customer/activity/${pin.activity.id}`} className="mt-1 block text-sm font-bold text-foreground hover:text-primary">
+      <Link href={`/customer/products/${pin.activity.id}`} className="mt-1 block text-sm font-bold text-foreground hover:text-primary">
         {pin.activity.name}
       </Link>
       <p className="text-xs text-muted-foreground">

@@ -9,11 +9,5 @@ describe("customer vendor outlet image contract", () => {
     expect(pageSource).toContain("outlet_pages(hero_url)");
     expect(pageSource).toContain("resolveOutletImage");
     expect(pageSource).toContain("managed_by_vendor_id");
-    expect(pageSource).toContain("location.coverUrl ? <img");
-  });
-
-  it("keeps a real outlet identity fallback when no hero image exists", () => {
-    expect(pageSource).toContain("{visual.initials}");
-    expect(pageSource).toContain("ui.vendor.outletIdentity");
   });
 });

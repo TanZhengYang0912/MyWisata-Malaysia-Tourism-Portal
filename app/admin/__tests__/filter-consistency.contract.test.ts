@@ -83,4 +83,12 @@ describe("admin filter consistency contract", () => {
 
     expect(read("components/admin/filter-bar.tsx")).toContain("shrink-0");
   });
+
+  it("contains horizontally scrollable status segments within narrow screens", () => {
+    const segmented = read("components/admin/segmented-filter.tsx");
+    expect(segmented).toContain("min-w-0");
+    expect(segmented).toContain("max-w-full");
+    expect(segmented).toContain("overflow-x-auto");
+    expect(segmented).toContain("shrink-0 items-center justify-center");
+  });
 });

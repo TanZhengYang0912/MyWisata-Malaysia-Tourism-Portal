@@ -24,7 +24,7 @@ describe("customer header navigation", () => {
       "/customer",
       "/customer/explore",
       "/customer/events",
-      "/customer/partners",
+      "/customer/vendors",
       "/customer/trip",
     ]);
     expect(CUSTOMER_NAV[0]).toMatchObject({ href: "/customer", label: "Home" });
@@ -89,8 +89,18 @@ describe("customer header navigation", () => {
   it("activates Home only on exactly /customer, not on sub-routes", () => {
     expect(isCustomerNavActive("/customer", "/customer")).toBe(true);
     expect(isCustomerNavActive("/customer/explore", "/customer")).toBe(false);
-    expect(isCustomerNavActive("/customer/partners", "/customer")).toBe(false);
+    expect(isCustomerNavActive("/customer/vendors", "/customer")).toBe(false);
     expect(isCustomerNavActive("/customer/trip", "/customer")).toBe(false);
+  });
+
+  it("matches primary sections for detail routes without trusting unknown sources", () => {
+    expect(isCustomerNavActive("/customer/activity/p1", "/customer/vendors", "vendor")).toBe(true);
+    expect(isCustomerNavActive("/customer/products/p1", "/customer/vendors", "unexpected")).toBe(true);
+    expect(isCustomerNavActive("/customer/vendor/v1/outlet/o1", "/customer/vendors")).toBe(true);
+    expect(isCustomerNavActive("/customer/events/event/vendor", "/customer/events")).toBe(true);
+    expect(isCustomerNavActive("/customer/place/penang", "/customer/explore")).toBe(true);
+    expect(isCustomerNavActive("/customer/vendorish", "/customer/vendors")).toBe(false);
+    expect(isCustomerNavActive("/customer/activity", "/customer/explore")).toBe(false);
   });
 
   it("localizes the reused My Orders account entry", () => {

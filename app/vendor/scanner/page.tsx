@@ -12,6 +12,7 @@ export default function VendorScannerPage() {
   const { t } = useTranslation("vendor");
   const { user, loading: authLoading, isEventVendor } = useAuth();
   const vendorId = user?.activeVendorId;
+  const activeOutletIdsKey = user?.activeOutletIds?.join("|") ?? "";
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [outletsLoading, setOutletsLoading] = useState(true);
   const [outletsError, setOutletsError] = useState(false);
@@ -25,6 +26,10 @@ export default function VendorScannerPage() {
       return;
     }
     let active = true;
+    const assignedOutlets = activeOutletIdsKey
+      .split("|")
+      .filter(Boolean)
+      .map((id) => ({ id, name: user?.activeOutletName ?? id }));
     setOutletsLoading(true);
     setOutletsError(false);
     fetch(`/api/vendors/${vendorId}/outlets?view=booking_metadata&sort=name`, { cache: "no-store" })
@@ -35,26 +40,18 @@ export default function VendorScannerPage() {
       .then((payload) => {
         if (!active) return;
         const loadedOutlets = (payload.data?.items ?? []).map((outlet) => ({ id: outlet.id, name: outlet.name }));
-        const assignedOutlets = (user?.activeOutletIds ?? []).map((id) => ({
-          id,
-          name: user?.activeOutletName ?? id,
-        }));
         const availableOutlets = loadedOutlets.length ? loadedOutlets : assignedOutlets;
         setOutlets(availableOutlets);
         setOutletsError(availableOutlets.length === 0);
       })
       .catch(() => {
         if (!active) return;
-        const assignedOutlets = (user?.activeOutletIds ?? []).map((id) => ({
-          id,
-          name: user?.activeOutletName ?? id,
-        }));
         setOutlets(assignedOutlets);
         setOutletsError(assignedOutlets.length === 0);
       })
       .finally(() => { if (active) setOutletsLoading(false); });
     return () => { active = false; };
-  }, [authLoading, isEventVendor, user?.activeOutletIds, user?.activeOutletName, vendorId]);
+  }, [activeOutletIdsKey, authLoading, isEventVendor, user?.activeOutletName, vendorId]);
 
   if (authLoading) {
     return (

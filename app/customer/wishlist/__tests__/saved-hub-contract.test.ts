@@ -7,7 +7,7 @@ const clientPath = resolve(process.cwd(), "app/customer/wishlist/wishlist-client
 const savedPagePath = resolve(process.cwd(), "app/customer/saved/page.tsx");
 const wishlistPagePath = resolve(process.cwd(), "app/customer/wishlist/page.tsx");
 const designDemoPath = resolve(process.cwd(), "app/customer/design-demo/design-demo-client.tsx");
-const activityCardPath = resolve(process.cwd(), "components/customer/activity-card.tsx");
+const activityCardPath = resolve(process.cwd(), "components/customer/product-card.tsx");
 const savedDestinationCardPath = resolve(process.cwd(), "components/customer/saved-destination-card.tsx");
 
 describe("saved hub UI contract", () => {
@@ -51,10 +51,11 @@ describe("saved hub UI contract", () => {
     }
   });
 
-  it("uses the same shared ActivityCard drawer for Saved experiences as Customer Home", () => {
+  it("uses the unified, unlabelled product card for Saved experiences", () => {
     const client = readFileSync(clientPath, "utf8");
-    const savedActivityCard = client.match(/<ActivityCard key=\{activity\.id\}[\s\S]*?\/>/)?.[0] ?? "";
+    const savedActivityCard = client.match(/<ProductCard key=\{activity\.id\}[\s\S]*?\/>/)?.[0] ?? "";
 
+    expect(savedActivityCard).toContain("listing={toDiscoveryCatalogueCard(activity, { labels: false })}");
     expect(savedActivityCard).toContain('returnTo="/customer/wishlist"');
     expect(savedActivityCard).not.toContain("detailsRevealStyle");
   });

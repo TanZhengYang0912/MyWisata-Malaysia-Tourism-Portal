@@ -2,7 +2,6 @@
   "taxonomy": {
     "productTypes": {
       "title": "商品类型",
-      "hint": "选择所有准确描述此商品的类型。",
       "options": {
         "chinese": "中式",
         "malay": "马来式",
@@ -32,7 +31,6 @@
     },
     "outletBadges": {
       "title": "门店标签",
-      "hint": "选择适用于此门店的特点。",
       "options": {
         "hiddenGem": "隐藏宝藏",
         "familyFriendly": "亲子友好",
@@ -41,7 +39,6 @@
     },
     "accommodationTypes": {
       "title": "住宿类型",
-      "hint": "选择适用于此住宿门店的类型。",
       "options": {
         "5-star": "五星级",
         "4-star": "四星级",
@@ -127,6 +124,9 @@
     "promotion": "推广"
   },
   "filters": {
+    "label": "筛选",
+    "show": "显示筛选项",
+    "hide": "隐藏筛选项",
     "searchByName": "按名称搜索…",
     "clear": "清除",
     "applyRange": "应用范围",
@@ -369,7 +369,8 @@
       "invalidImage": "文件不是有效的图片，请选择其他照片。",
       "imageUploadFailed": "图片上传失败，请重试。",
       "imageCleanupFailed": "图片上传未能安全完成。请联系支持人员后再重试。",
-      "statusUnconfirmed": "无法确认申请是否已保存。请先刷新商家资料，再决定是否重试。"
+      "statusUnconfirmed": "无法确认申请是否已保存。请先刷新商家资料，再决定是否重试。",
+      "phoneVerificationRequired": "申请成为活动商家前，请先验证个人资料中的电话号码。"
     },
     "validation": {
       "name": {
@@ -426,6 +427,7 @@
       "businessName": "商家名称",
       "description": "描述",
       "businessType": "商家类型",
+      "vendorKind": "商家账户类型",
       "legalBusinessName": "法定商家名称",
       "registrationNumber": "注册编号",
       "contactPerson": "联系人",
@@ -443,6 +445,8 @@
     },
     "options": {
       "selectType": "选择类型……",
+      "shopVendor": "普通商家",
+      "eventVendor": "活动商家",
       "restaurant": "餐厅 / 餐饮",
       "tourOperator": "旅游运营商",
       "accommodation": "住宿",
@@ -504,8 +508,6 @@
       "partnerPortal": "马来西亚旅游合作伙伴门户",
       "outletOperations": "门店运营",
       "overview": "概览",
-      "assignedOutletMoving": "让您负责的门店今天顺利运营。",
-      "happeningWith": "今天的动态：",
       "today": "今天。",
       "live": "实时",
       "noOrdersPeriod": "此期间没有订单",
@@ -521,6 +523,7 @@
       "stockAlertsDescription": "在售且已配置的商品达到低库存阈值时，会显示在这里。",
       "salesScope": "销售数据",
       "salesMode": {
+        "all": "全部销售活动",
         "live": "真实销售",
         "demo": "测试与 Demo"
       },
@@ -530,6 +533,7 @@
       "includedDemoSales_other": "已计入测试／Demo 销售：{{amount}}（{{count}} 单）",
       "salesProvenanceTitle": "销售核验说明",
       "salesProvenanceDescription": "订单总数包含演示和测试模式的订单。核实收入、销售图表和商品排行只统计有真实环境成功支付记录的已付款或已完成订单；模拟和未核实销售会单独列出。",
+      "salesProvenanceAllDescription": "销售图表会计入有真实、测试或 Demo 成功付款记录的已付款或已完成订单。未核实的销售会单独列出；订单总数包含所有订单。",
       "simulatedSales_one": "已排除模拟销售：{{amount}}（{{count}} 单）",
       "simulatedSales_other": "已排除模拟销售：{{amount}}（{{count}} 单）",
       "unverifiedSales_one": "付款未核实：{{amount}}（{{count}} 单）",
@@ -543,7 +547,6 @@
       "alertAt": "提醒阈值 {{threshold}}",
       "noLowStock": "您负责的门店没有低库存商品。",
       "itemsInPeriod": "此期间 {{count}} 项",
-      "keepExperiencesCurrent": "保持体验信息最新",
       "voucherCampaigns": "优惠券活动",
       "createOffers": "为旅客创建优惠",
       "availableCount_one": "可用 {{count}} 件",
@@ -565,7 +568,6 @@
       "noVendor": "此账户未关联已批准的商家。",
       "malaysiaPerformance": "马来西亚整体表现",
       "title": "分析",
-      "description": "查看门店、产品和旅客需求的十二个月数据。",
       "revenueSelectedPeriod": "所选期间收入",
       "paidOrders": "已付款订单",
       "activeOutletsMalaysia": "马来西亚活跃门店",
@@ -581,9 +583,6 @@
         "last12Months": "最近 12 个月",
         "apply": "应用"
       },
-      "insightLabel": "值得关注",
-      "insightTitle": "把经营数据转化为下一步行动。",
-      "insightDescription": "通过需求模式、产品组合、门店贡献和旅客评价，决定接下来该推广、优化或安排什么。",
       "periodLabel": "分析期间",
       "revenueTracked": "仅统计已付款和已完成订单",
       "metrics": {
@@ -613,25 +612,21 @@
       "revenueQuality": {
         "eyebrow": "收入质量",
         "title": "需求如何转化",
-        "description": "比较所选期间的收入、订单量和平均订单金额。",
         "metrics": {
           "revenue": "收入",
           "averageOrderValue": "平均订单金额",
           "orders": "订单"
-        },
-        "trendHint": "短期间按周汇总，长期间按月汇总。"
+        }
       },
       "bookingMix": {
         "eyebrow": "购买行为",
         "title": "预订组合",
-        "description": "了解有预约时段的需求比例。",
         "booked": "已预订",
         "nonBooked": "无时段"
       },
       "demandHeatmap": {
         "eyebrow": "需求分析",
         "title": "旅客什么时候下单",
-        "description": "按马来西亚时间查看订单活动。颜色越深，独立订单越多。",
         "orders": "个订单",
         "less": "较少",
         "more": "较多"
@@ -648,7 +643,6 @@
       "productPortfolio": {
         "eyebrow": "产品组合",
         "title": "销量与价值",
-        "description": "每个气泡代表一个产品。销量越多越靠右，收入或评分越高越靠上。",
         "axisHint": "气泡大小代表评价数量。",
         "revenue": "收入",
         "units": "销量",
@@ -657,23 +651,19 @@
       "outletPerformance": {
         "eyebrow": "门店表现",
         "title": "各门店贡献",
-        "description": "按确认收入排列门店，并显示订单量和收入占比。",
         "orders": "个订单"
       },
       "customerSignal": {
         "eyebrow": "客户反馈",
         "title": "旅客怎么评价",
-        "description": "所选期间的可见评价分布。",
         "reviews": "评价"
       },
       "actionQueue": {
         "eyebrow": "行动队列",
-        "title": "值得采取行动的信号",
-        "description": "用真实数据帮助您决定下一步产品、排班或门店行动。"
+        "title": "关键数据"
       },
       "marketingAttribution": {
-        "title": "营销归因",
-        "description": "追踪分享商品如何从社交发现转化为点击和订单。数据来自已追踪事件。"
+        "title": "营销归因"
       },
       "dataNote": {
         "title": "数据说明：",
@@ -687,12 +677,9 @@
         "insights": "需要更多活动后才会出现可执行信号。"
       },
       "insights": {
-        "topProductTitle": "重点推广主力产品",
-        "topProductDescription": "该产品目前贡献了最多确认收入。",
-        "peakWindowTitle": "保护高峰时段",
-        "peakWindowDescription": "可根据此需求时段安排人手或限时推广。",
-        "outletConcentrationTitle": "留意收入集中度",
-        "outletConcentrationDescription": "这是当前确认收入最高的门店占比。"
+        "topProductTitle": "热门产品",
+        "peakWindowTitle": "需求高峰",
+        "outletConcentrationTitle": "领先门店"
       }
     },
     "bookings": {
@@ -724,7 +711,6 @@
       "scheduleSummary": "每周摘要",
       "bookingOperations": "预订运营",
       "title": "预订",
-      "description": "按门店管理预约和营业时间，并独立管理预订时段。",
       "openScanner": "打开扫码工具",
       "addSlot": "+ 添加预订时段",
       "currentFilter": "当前筛选",
@@ -849,13 +835,13 @@
       "sendFailed": "无法发送回复。",
       "travellerConversations": "旅客对话",
       "title": "收件箱",
-      "description": "回复来自马来西亚门店的顾客问题。",
       "searchConversations": "搜索对话",
       "loading": "正在加载对话…",
       "noConversations": "暂无对话。",
       "noMatchingConversations": "没有匹配的对话。",
       "selectConversation": "选择一个对话",
       "loadFailed": "无法加载对话，请重试。",
+      "loadOlder": "加载更早的消息",
       "aiUnavailable": "AI 写作暂不可用。",
       "traveller": "旅客",
       "online": "在线",
@@ -868,24 +854,28 @@
     },
     "scanner": {
       "eyebrow": "兑换台",
-      "title": "扫描门票或优惠券",
-      "description": "使用设备摄像头扫描真实门票二维码或优惠券 Code 128 条形码，确认信息后再完成兑换。",
+      "title": "扫描门票、餐食订单或优惠券",
       "outlet": "门店",
       "assignedOutlet": "已分配门店",
       "supportsQrAndBarcode": "二维码 + Code 128",
       "cameraPreview": "扫码摄像头预览",
-      "cameraReady": "打开摄像头，对准门票二维码或优惠券条形码。",
+      "cameraReady": "摄像头已准备好",
+      "cameraOff": "摄像头未开启",
+      "cameraPrompt": "打开摄像头，对准门票、餐食订单或领取二维码，或优惠券条形码。",
       "openCamera": "打开摄像头",
       "stopCamera": "关闭摄像头",
+      "switchCamera": "切换镜头",
+      "switchToFrontCamera": "切换至前置摄像头",
+      "switchToBackCamera": "切换至后置摄像头",
       "cameraHint": "摄像头权限只在此设备使用，代码会根据你获授权的门店进行验证。",
       "manualTitle": "手动输入代码",
-      "manualDescription": "摄像头不可用时，可粘贴完整门票链接或已签名优惠券代码。",
-      "manualPlaceholder": "粘贴门票链接或已签名优惠券核销码",
+      "manualDescription": "可粘贴门票、餐食订单或领取二维码链接，或已签名的优惠券代码。",
+      "manualPlaceholder": "粘贴门票或订单链接，或已签名优惠券核销码",
       "loadingOutlets": "正在加载获授权的门店…",
       "noVendor": "此账号没有分配商家，请使用门店经理账号登录。",
       "outletsUnavailable": "无法加载获授权的扫描门店。请刷新页面或联系管理员。",
       "checkCode": "检查代码",
-      "invalidCode": "此代码不是有效的 MYLawatan 门票或优惠券。",
+      "invalidCode": "此代码不是有效的 MYLawatan 门票、餐食订单、领取码或优惠券。",
       "resolveFailed": "无法检查此代码。",
       "cameraUnsupported": "此浏览器不支持摄像头访问。",
       "cameraFailed": "无法打开摄像头，请检查浏览器权限后重试。",
@@ -899,7 +889,9 @@
       "foodOrderTitle": "餐食订单 #{{order}}",
       "vendor": "商家",
       "foodOrderFulfilled": "餐食订单已完成交付。",
+      "foodOrderFulfilledWithItems": "餐食订单已交付：{{items}}。",
       "foodDineInCheckedIn": "已确认顾客堂食到店，订单仍待上餐。",
+      "foodDineInCheckedInWithItems": "已确认堂食顾客到店：{{items}}。订单仍待上餐。",
       "voucherKind": "优惠券",
       "ticketKind": "入场门票",
       "customerFoodMode": {
@@ -914,6 +906,7 @@
       "multiEntryPass": "多次入场通票",
       "oneEntryPerScan": "本次扫描将核销一次入场。",
       "confirm": "确认兑换",
+      "confirmFoodOrder": "确认餐食订单",
       "cancel": "取消",
       "stationStatus": "核销站点状态",
       "cameraTab": "摄像头扫码",
@@ -946,7 +939,6 @@
     "redemptions": {
       "eyebrow": "门店核销记录",
       "title": "核销与扫码记录",
-      "description": "所有分店的实体店优惠券核销与门票入场签到实时审计日志。",
       "loadFailed": "无法加载核销记录。",
       "totalRedemptions": "总核销次数",
       "allTime": "所有记录的扫码次数",
@@ -1031,7 +1023,6 @@
         "after-21:00": "晚上 9:00 后"
       },
       "title": "订单",
-      "description": "先查看需要处理的事项，再在中央打开详情。",
       "allOrders": "全部订单",
       "needsAttention": "需要处理",
       "completed": "已完成",
@@ -1039,7 +1030,6 @@
       "activeFilters": "当前筛选",
       "searchFilter": "搜索",
       "advancedFilters": "高级筛选",
-      "advancedFiltersDescription": "按履行状态、订单状态或日期缩小订单范围。",
       "closeFilters": "关闭筛选",
       "applyFilters": "应用筛选",
       "fulfilmentStatus": "履行状态",
@@ -1065,6 +1055,9 @@
       "guest": "访客",
       "itemCount": "{{count}} 个项目",
       "orderStatus": "订单 {{status}}",
+      "copyOrderId": "复制订单编号 {{id}}",
+      "orderIdCopied": "订单编号 {{id}} 已复制。",
+      "orderIdCopyFailed": "无法复制订单编号 {{id}}。",
       "unknown": "未知",
       "viewDetails": "查看详情",
       "reviewItems": "检查商品项",
@@ -1112,7 +1105,6 @@
       "noAssignedOutlet": "此账户目前没有可用的已分配门店。",
       "malaysiaNetwork": "马来西亚门店网络",
       "title": "门店",
-      "description": "清晰查看从吉隆坡到亚庇的每个地点。",
       "add": "添加门店",
       "empty": "未找到门店",
       "closeConfirm": "关闭此门店？客户将无法再看到它。",
@@ -1173,7 +1165,6 @@
       "copyFailed": "无法复制产品 ID",
       "catalogueManagement": "目录管理",
       "title": "产品与活动",
-      "description": "让每个马来西亚商品清晰易读并可随时预订。",
       "assignedOutlet": "获分配门店",
       "attentionNeeded": "待设置 / 低库存 / 预订",
       "outletsManaged": "门店",
@@ -1275,7 +1266,6 @@
       "loadFailed": "无法加载商家资料",
       "aiUnavailable": "AI 写作暂不可用。",
       "title": "商家资料",
-      "description": "让顾客看到的商家身份保持精致、准确且值得信赖。",
       "vendorIdentity": "供应商身份",
       "unsavedChanges": "未保存的更改",
       "copyProfileLink": "复制资料链接",
@@ -1285,18 +1275,12 @@
       "saveFailed": "无法保存商家资料",
       "saveChanges": "保存更改",
       "businessIdentity": "企业身份",
-      "businessIdentityDescription": "这些详情将显示在您的公开供应商资料中。",
       "businessName": "企业名称",
-      "businessNameHelp": "使用客户熟悉的名称。",
       "businessType": "企业类型",
-      "businessTypeHelp": "选择最符合您的类别。",
       "selectBusinessType": "选择企业类型",
       "currentBusinessType": "{{type}}（当前）",
       "descriptionLabel": "描述",
-      "descriptionHelp": "清楚说明客户选择您的理由。",
-      "descriptionPlaceholder": "告诉客户您的企业有何独特之处…",
       "brandAssets": "品牌素材",
-      "brandAssetsDescription": "使用清晰图片，让客户快速识别您的企业。",
       "logo": "标志",
       "logoUploaded": "标志已上传。",
       "removeLogo": "移除标志",
@@ -1304,10 +1288,8 @@
       "coverUploaded": "封面图片已上传。",
       "removeCover": "移除封面图片",
       "galleryTitle": "商家照片图库",
-      "galleryDescription": "上传三张照片，让顾客了解您的商家。",
       "galleryHelp": "请选择正好三张 JPG、PNG 或 WebP 照片，每张不超过 2 MB。",
       "galleryEmpty": "尚无图库照片",
-      "galleryEmptyDescription": "添加三张照片后，它们会显示在您的公开资料图库中。",
       "galleryChoose": "选择三张照片",
       "gallerySave": "保存图库",
       "gallerySelectedCount": "已选择 {{count}} / 3 张照片",
@@ -1332,17 +1314,14 @@
       "galleryImageSizeError": "每张照片不能超过 2 MB。",
       "galleryCleanupWarning": "图库已更新，但旧图片文件未能清理。",
       "publicProfileLink": "公开资料链接",
-      "publicProfileLinkDescription": "此标识帮助团队识别资料网址，请保持简短易读。",
       "slugHelp": "仅限小写字母、数字和连字符。",
       "livePreview": "实时预览",
       "publicProfile": "公开资料",
       "coverPreviewAlt": "企业封面预览",
       "logoPreviewAlt": "企业标志预览",
       "businessNameFallback": "您的企业名称",
-      "businessDescriptionFallback": "您的企业描述将在此显示给客户。",
       "viewPublicProfile": "查看公开资料",
       "updateLocation": "需要更新地点？",
-      "updateLocationDescription": "在门店部分管理地址、营业时间和本地联系方式。",
       "manageOutlets": "管理门店",
       "businessTypes": {
         "food_and_tourism": "餐饮与旅游",
@@ -1411,13 +1390,11 @@
       "batchActivated": "已启用 {{count}} 张优惠券。",
       "batchDeactivated": "已停用 {{count}} 张优惠券。",
       "title": "优惠券",
-      "description": "让折扣清晰、及时，并能轻松关闭。",
       "campaignControl": "活动管理",
       "uploadCsv": "上传 CSV",
       "createVoucher": "创建优惠券",
       "csvColumns": "CSV 列：code（使用前缀时可选）、name、voucherType、redemptionMode（可选，默认 online）、discountValue、minSpend、maxUses、perCustomerLimit、validFrom、validUntil、outletId、productId。",
       "performance": "优惠券表现",
-      "performanceDescription": "根据 Supabase 订单数据追踪客户漏斗、销售额和折扣影响。",
       "allTime": "所有时间",
       "last7Days": "过去 7 天",
       "last30Days": "过去 30 天",
@@ -1546,7 +1523,6 @@
     "wallet": {
       "vendorFinance": "商家财务",
       "title": "钱包与收入",
-      "description": "了解可用余额、冻结金额和资金流动。",
       "withdrawFunds": "提取资金",
       "availableBalance": "可用余额",
       "balance": "余额",
@@ -1571,7 +1547,6 @@
       "payoutDestination": "收款账户",
       "submittedOn": "提交于 {{date}}",
       "dualApprovalRequired": "需要双重审批",
-      "transactionDescription": "所有真实钱包账目均显示于此。",
       "transactionFilters": "交易筛选",
       "loadingTransactions": "正在加载交易记录…",
       "noActivity": "尚无账目活动",
@@ -1598,8 +1573,6 @@
       "activeRequests": "活跃申请",
       "activeRequestCount": "{{count}} / 1",
       "reserveNotice": "已提交的提现会预留资金直至审核完成。",
-      "needMore": "需要更多收益？",
-      "needMoreDescription": "保持商品启用并完成订单以增加可用余额。",
       "manageProducts": "管理产品",
       "closeDialog": "关闭提现对话框",
       "amountRm": "金额（RM）",
@@ -1638,7 +1611,6 @@
     },
     "eventPromotions": {
       "title": "推广你的活动",
-      "description": "推广您参与但并非由我们创建的活动——提交后将进入审核，获批后会显示在网站上。",
       "newHeading": "提交新活动",
       "editHeading": "修改并重新提交",
       "loading": "加载中…",
@@ -1686,13 +1658,30 @@
     },
     "announcements": {
       "title": "公告",
-      "description": "来自超级管理员的消息，包括加入商家市集活动的邀请。",
       "unreadCount": "（{{count}} 条未读）",
       "unreadCount_one": "（{{count}} 条未读）",
       "unreadCount_other": "（{{count}} 条未读）",
       "loading": "加载中…",
       "empty": "暂无公告。",
       "loadError": "无法加载公告。",
+      "selectAllUnread": "全选未读公告",
+      "allUnreadSelected": "已全选未读公告",
+      "selectAllAnnouncements": "全选公告",
+      "allAnnouncementsSelected": "已全选公告",
+      "selectAnnouncement": "选择公告：{{title}}",
+      "markSelectedRead": "将所选标记为已读",
+      "markSelectedUnread": "将所选标记为未读",
+      "batchReadSuccess": "{{count}} 条公告已标记为已读。",
+      "batchReadSuccess_one": "{{count}} 条公告已标记为已读。",
+      "batchReadSuccess_other": "{{count}} 条公告已标记为已读。",
+      "batchReadError": "无法将公告标记为已读。",
+      "batchUnreadSuccess": "{{count}} 条公告已标记为未读。",
+      "batchUnreadSuccess_one": "{{count}} 条公告已标记为未读。",
+      "batchUnreadSuccess_other": "{{count}} 条公告已标记为未读。",
+      "batchUnreadError": "无法将公告标记为未读。",
+      "readError": "无法保存已读状态。",
+      "readStatus": "已读。",
+      "unreadStatus": "未读。",
       "noVendor": "此会话未找到商家账户。",
       "backToInbox": "返回收件箱",
       "notFound": "未找到该公告。",
@@ -1705,7 +1694,6 @@
     },
     "events": {
       "title": "活动",
-      "description": "您可以加入的商家市集活动——注册摊位即可参加。",
       "loading": "加载中…",
       "empty": "目前没有开放注册的活动。",
       "loadError": "无法加载活动。",
@@ -1838,7 +1826,6 @@
     },
     "eventOrders": {
       "title": "活动预订",
-      "description": "顾客将到您的摊位领取的已付款预订。",
       "date": "领取日期",
       "upcoming": "全部即将到来",
       "scan": "扫描领取",
@@ -1871,7 +1858,6 @@
     "heroLabel": "AI 主视觉文案",
     "listingLabel": "AI 商品文案助手",
     "regenerate": "重新生成",
-    "reviewHint": "生成草稿后先检查，再由您自行应用。",
     "suggestListing": "生成商品建议",
     "title": "AI 写作助手",
     "unavailable": "AI 写作暂不可用。"
@@ -1907,8 +1893,6 @@
       "publishTitle": "发布此草稿？"
     },
     "copy": "复制",
-    "currentDraftHint": "这是当前草稿的显示效果。",
-    "currentPublishedHint": "这是客户目前看到的版本。",
     "delete": "删除",
     "deleteLabel": "删除{{label}}",
     "desktop": "桌面",
@@ -1990,62 +1974,48 @@
     "palette": {
       "groups": {
         "common-content": {
-          "hint": "用视觉内容讲述您的故事。",
           "label": "常用内容"
         },
         "products-sales": {
-          "hint": "帮助宾客选择并预订。",
           "label": "商品与销售"
         },
         "outlet-information": {
-          "hint": "让访客更容易规划行程。",
           "label": "门店信息"
         },
         "trust-reviews": {
-          "hint": "展示旅客信任您的理由。",
           "label": "信任与评价"
         }
       },
       "hint": "点击添加，或拖动到页面中。",
       "items": {
         "text": {
-          "hint": "添加标题和故事。",
           "label": "文本"
         },
         "image_text": {
-          "hint": "添加照片、说明或故事。",
           "label": "照片"
         },
         "product_grid": {
-          "hint": "展示此门店的商品。",
           "label": "商品卡片"
         },
         "gallery": {
-          "hint": "展示多张图片。",
           "label": "图库"
         },
         "hours": {
-          "hint": "使用门店营业时间。",
           "label": "营业时间"
         },
         "contact": {
-          "hint": "帮助旅客找到您。",
           "label": "地图和联系信息"
         },
         "voucher_banner": {
-          "hint": "推广优惠。",
           "label": "优惠券横幅"
         },
         "review_highlight": {
-          "hint": "用反馈建立信任。",
           "label": "宾客评价"
         },
         "social_proof": {
-          "hint": "展示可信信号。",
           "label": "信任证明"
         },
         "cta": {
-          "hint": "引导宾客预订。",
           "label": "行动号召"
         }
       },
@@ -2072,7 +2042,6 @@
     "seoDescription": "SEO 描述",
     "seoTitle": "SEO 标题",
     "studio": "Outlet Studio",
-    "studioHint": "构建旅客看到的店铺页面。",
     "tablet": "平板",
     "tabletPreview": "平板预览",
     "undo": "撤销",
@@ -2108,7 +2077,13 @@
     "foodServiceModeRequired": "至少启用一种餐食服务方式。",
     "dine_in": "堂食",
     "takeaway": "打包",
-    "accessibilityHint": "只有选择“是”才会显示无障碍标记，并帮助需要无障碍服务的旅客找到您。不确定时请保留“未指定”。",
+    "sections": {
+      "businessDetails": "商家资料",
+      "contactAndMap": "联系方式与地图",
+      "visitorOptions": "访客选项",
+      "outletCategories": "门店标签与类型",
+      "welcomeMessage": "欢迎信息"
+    },
     "addTitle": "添加门店",
     "address": "地址",
     "addressHint": "选择建议以填写城市、州、邮编和地图坐标。",
@@ -2210,8 +2185,6 @@
     "noDescription": "尚未添加描述。",
     "outlet": "门店",
     "overview": "商品概览",
-    "overviewHint": "在一个工作区中管理商品详情、面向客户的描述、库存和定价规则。",
-    "pricingHint": "无需离开商品页面即可配置高峰、非高峰、团体、组合和阶梯定价。",
     "pricingRules": "定价规则",
     "productId": "商品 ID",
     "revenueControls": "收入控制",
@@ -2224,7 +2197,6 @@
     "typeUpdated": "商品类型已更新。",
     "timeSlots": "由时间段管理",
     "unitsAvailable": "可用 {{count}} 件",
-    "variantsHint": "管理选项、价格差额、库存数量和默认变体。",
     "variantsInventory": "变体与库存",
     "viewOnlyPricing": "您拥有此商品的查看权限。所有者或门店经理可以更新定价规则。",
     "viewOnlyVariants": "您拥有此商品的查看权限。所有者或门店经理可以更新变体和库存。",
@@ -2239,7 +2211,6 @@
     "aiNoSuggestion": "AI 未返回可用建议。",
     "aiUnavailable": "AI 建议暂不可用。",
     "availability": "可用情况",
-    "availabilityHint": "此部分会根据商品类型变化。",
     "stockSetupHint": "此门店的商品尚未完成库存设置。输入真实数量后，系统会创建或更新默认规格及库存记录；留空不会自动填入库存。",
     "variantStockHint": "此商品有多个规格。请在“规格与库存”区域分别更新每个规格的库存，确保数量准确。",
     "stockQuantityPlaceholder": "请输入真实库存数量",
@@ -2328,8 +2299,6 @@
     "privatePreview": "这是私有预览。发布店铺页面前，客户不会看到这些更改。",
     "publishToGoLive": "发布并上线",
     "published": "已发布",
-    "rendererHint": "此预览使用与公开店铺相同的页面渲染器。",
-    "subtitle": "查看客户看到的页面，准备好后即可编辑。",
     "title": "店铺页面",
     "viewPublicShop": "查看公开店铺"
   },
@@ -2391,6 +2360,7 @@
     "exportCsv": "导出 CSV",
     "exportReadableCsv": "导出可读 CSV",
     "refresh": "刷新",
+    "moreActions": "更多操作",
     "tryAgain": "重试",
     "previous": "上一页",
     "next": "下一页"
@@ -2447,6 +2417,8 @@
       "topProductsGrouped_other": "显示前 {{count}} 个商品，其余合并"
     },
     "sales": {
+      "allActivityDescription": "统计真实、测试和 Demo 成功付款的销售",
+      "noAllActivity": "此期间没有成功的销售。",
       "demoDescription": "成功的测试／Demo 购买 · 模拟金额",
       "noDemoActivity": "此期间没有成功的测试／Demo 购买。",
       "description": "由真实环境成功付款记录核实的销售",
@@ -2466,14 +2438,11 @@
     }
   },
   "ranking": {
-    "insight": "洞察",
     "selling": {
       "eyebrow": "销售排行榜",
       "title": "热销产品",
       "subtitle": "按已付款销售数量排名",
       "link": "查看目录",
-      "insight": "{{name}} 以 {{quantity}} 件销量领先。",
-      "emptyInsight": "已付款产品会显示在这里。",
       "unitsSold": "已售 {{count}} 件",
       "sold": "已售 {{count}} 件",
       "empty": "此期间没有已付款产品。",
@@ -2486,12 +2455,11 @@
       "eyebrow": "旅客喜爱",
       "title": "高评分产品",
       "subtitle": "可见的顾客评价",
+      "allTime": "全部时间",
       "link": "查看分析",
-      "insight": "{{name}} 是评分最高的产品，评分为 {{rating}} / 5。",
-      "emptyInsight": "已发布的评价会显示在这里。",
       "travellerReviews": "{{count}} 条旅客评价",
       "reviews": "{{count}} 条评价",
-      "empty": "此期间没有已发布的评价。",
+      "empty": "暂无已发布的评价。",
       "travellerReviews_one": "{{count}} 条旅客评价",
       "travellerReviews_other": "{{count}} 条旅客评价",
       "reviews_one": "{{count}} 条评价",
@@ -2817,7 +2785,6 @@
     "outletMeta": "{{location}} · 编号 {{id}}",
     "orderStatusValue": "订单状态：{{status}}",
     "bookingReference": "{{date}} · 编号 {{reference}}",
-    "specificOutletOptional": "指定分店（可选）",
-    "dashboardTodayForVendor": "这是 {{vendor}} 今天的动态。"
+    "specificOutletOptional": "指定分店（可选）"
   }
 }

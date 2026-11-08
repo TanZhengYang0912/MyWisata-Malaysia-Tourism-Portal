@@ -22,4 +22,14 @@ describe("wallet split checkout RPC boundary migration", () => {
     expect(sql).toContain("GRANT EXECUTE ON FUNCTION public.reserve_wallet_split_checkout(uuid) TO authenticated, service_role");
     expect(sql).toContain("NOTIFY pgrst, 'reload schema'");
   });
+
+  it("restricts the private reservation function to wallet-backed methods", () => {
+    const sql = migration("harden_wallet_split_checkout_method");
+
+    expect(sql).toContain("app_private.reserve_wallet_split_checkout(uuid)");
+    expect(sql).toContain("v_definition := replace(v_definition, E'\\r\\n', E'\\n')");
+    expect(sql).toContain("v_session.payment_method NOT IN ('wallet', 'wallet_split')");
+    expect(sql).toContain("invalid_wallet_checkout_method");
+    expect(sql).toContain("RAISE EXCEPTION 'wallet reservation definition changed; inspect migration before applying'");
+  });
 });

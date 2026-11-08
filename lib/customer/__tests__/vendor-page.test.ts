@@ -5,11 +5,18 @@ import {
   getVendorProductTypeLabel,
   selectFeaturedVendorProducts,
   summarizeVendorReviews,
+  vendorProductDetailHref,
 } from '@/lib/customer/vendor-page';
 
 const pageSource = readFileSync(join(process.cwd(), 'app/customer/vendor/[vendorId]/page.tsx'), 'utf8');
 
 describe('vendor storefront presentation', () => {
+  it('leaves the outlet unselected for multi-outlet products', () => {
+    const url = new URL(vendorProductDetailHref('p1', 'v1'), 'https://example.invalid');
+    expect(url.searchParams.get('source')).toBe('vendor');
+    expect(url.searchParams.has('outletId')).toBe(false);
+    expect(url.searchParams.get('returnTo')).toBe('/customer/vendors/v1');
+  });
   it('calculates one vendor rating from real product review metrics', () => {
     expect(summarizeVendorReviews([
       { rating: 5, reviews: 2 },
@@ -18,14 +25,14 @@ describe('vendor storefront presentation', () => {
     expect(summarizeVendorReviews([])).toEqual({ rating: null, reviews: 0 });
   });
 
-  it('prioritises image-rich, widely available products for the featured row', () => {
+  it('orders unfeatured products by name', () => {
     const products = [
       { id: 'plain', name: 'Plain', coverUrl: null, soldAt: [{ id: 'one' }] },
       { id: 'popular', name: 'Popular', coverUrl: 'popular.jpg', soldAt: [{ id: 'one' }, { id: 'two' }] },
       { id: 'pictured', name: 'Pictured', coverUrl: 'pictured.jpg', soldAt: [{ id: 'one' }] },
     ];
 
-    expect(selectFeaturedVendorProducts(products, 2).map((product) => product.id)).toEqual(['popular', 'pictured']);
+    expect(selectFeaturedVendorProducts(products, 2).map((product) => product.id)).toEqual(['pictured', 'plain']);
   });
 
   it('uses customer-friendly product type labels', () => {
@@ -43,7 +50,7 @@ describe('vendor storefront presentation', () => {
       { id: 'p5', name: 'Product 5', coverUrl: '5.jpg', soldAt: [{ id: 'o1' }] },
     ];
 
-    expect(selectFeaturedVendorProducts(products, 4, ['p3', 'p5', 'p1']).map((p) => p.id)).toEqual(['p3', 'p5', 'p1']);
+    expect(selectFeaturedVendorProducts(products, 4, ['p3', 'p5', 'p1']).map((p) => p.id)).toEqual(['p3', 'p5', 'p1', 'p2']);
   });
 
   it('keeps the vendor page as a fixed storefront information architecture', () => {
@@ -53,12 +60,14 @@ describe('vendor storefront presentation', () => {
     expect(pageSource).toContain("t('ui.vendor.policiesSupport')");
     expect(pageSource).toContain('id="experiences"');
     expect(pageSource).toContain('id="locations"');
-    expect(pageSource).toContain('selectFeaturedVendorProducts(catalogue, 4, explicitFeaturedIds)');
+    expect(pageSource).toContain('selectFeaturedVendorProducts(catalogue, catalogue.length, explicitFeaturedIds)');
+    expect(pageSource).toContain('id="about"');
+    expect(pageSource).toContain('id="reviews"');
     expect(pageSource).not.toContain('id="all-products-heading"');
   });
 
   it('routes vendor shares back to the vendor storefront', () => {
     const shareSource = readFileSync(join(process.cwd(), 'components/shared/share-button.tsx'), 'utf8');
-    expect(shareSource).toContain("vendor: (id) => `/customer/vendor/${id}`");
+    expect(shareSource).toContain("vendor: (id) => `/customer/vendors/${id}`");
   });
 });

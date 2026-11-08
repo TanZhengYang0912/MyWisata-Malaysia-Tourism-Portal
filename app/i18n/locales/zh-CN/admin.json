@@ -10,6 +10,12 @@
       "approver": "钱包审批",
       "admin": "管理工作区",
       "staff": "已分配工作"
+    },
+    "mobileActions": {
+      "open": "打开账户与显示设置",
+      "title": "账户与设置",
+      "account": "账户",
+      "security": "安全与设备"
     }
   },
   "roles": {
@@ -57,7 +63,6 @@
   "sponsoredPlacements": {
     "eyebrow": "探索推广活动",
     "title": "赞助广告",
-    "description": "创建、审核和暂停带有清晰赞助标识的探索展示位。",
     "accessibility": {
       "lifecycleFilters": "活动生命周期筛选"
     },
@@ -349,12 +354,10 @@
       "lockedGroup": "不可拆分模块组合：{{group}}",
       "reviewSave": "复核角色变更",
       "rolesTitle": "可用权限角色",
-      "rolesHelp": "先查看每个角色会授予哪些权限，再选择一个用于员工。",
       "permissionCount": "{{count}} 项权限",
       "permissionCount_one": "{{count}} 项权限",
       "permissionCount_other": "{{count}} 项权限",
       "assignmentTitle": "现有员工与权限",
-      "assignmentHelp": "搜索已经加入的员工，然后通过审计原因为其增加另一个自定义员工角色。",
       "role": "角色",
       "selectRole": "选择已启用角色",
       "userId": "员工用户 UUID",
@@ -499,7 +502,6 @@
       "versions": "版本数",
       "actions": "操作",
       "versionHistory": "版本历史",
-      "compareHint": "选择两个版本进行比较",
       "comparison": "版本比较",
       "createTitle": "创建受治理的策略版本",
       "effect": "效果",
@@ -716,7 +718,6 @@
     },
     "staffEmployees": {
       "title": "员工与权限",
-      "help": "查看员工目前的权限，并单独撤销某一项角色授权。",
       "loadError": "无法确认员工权限，请刷新后重试。",
       "revokeError": "无法撤销此授权，请刷新权限后再重试。",
       "revoked": "此授权已撤销，历史审批和审计记录已保留。",
@@ -808,6 +809,7 @@
     },
     "allAttributions": "全部归因",
     "allTime": "全部时间",
+    "mobileStatusLine": "{{label}}：{{status}}",
     "pagination": {
       "previous": "上一页",
       "next": "下一页",
@@ -1195,7 +1197,6 @@
     },
     "notEmbedded": "未嵌入（仅限关键词）",
     "notHelpful": {
-      "description": "匹配到知识库文件，但客户表示没有帮助——应改进该文件，而不是新建文件。",
       "empty": "已回答的问题尚无点踩反馈。",
       "title": "已回答但没有帮助"
     },
@@ -1217,7 +1218,6 @@
     },
     "title": "聊天机器人监管",
     "topUnanswered": {
-      "description": "这些问题完全没有知识库文件覆盖。",
       "empty": "尚无未回答问题——知识库已覆盖目前收到的所有提问。",
       "title": "最常见的未回答问题"
     },
@@ -1228,7 +1228,6 @@
     "questionMeta_other": "×{{count}} · 最近提问于 {{date}}",
     "topEscalated": {
       "title": "最常升级为工单的问题",
-      "description": "无论机器人怎么回答，客户仍不断升级这些问题——请优先改善这些主题的帮助中心内容。",
       "empty": "目前还没有升级为工单的问题。"
     }
   },
@@ -1373,7 +1372,6 @@
     "activityNote": "此动态基于当前数据集中的提现请求。可用来发现队列积压，不应作为提现量图表。",
     "allSources": "所有来源均有响应",
     "approvalSummary": "审批摘要",
-    "description": "展示需要关注的队列、资金和风险信号，便于作出决策。",
     "errors": {
       "load": "无法加载审批概览"
     },
@@ -1992,7 +1990,6 @@
       "tier": "等级"
     },
     "confirmed": "已确认 {{count}} 条归因。",
-    "description": "将推广佣金从待处理状态转入可用收益。",
     "errors": {
       "clearanceFailed": "清算失败",
       "unknown": "未知错误"
@@ -2057,7 +2054,6 @@
       "assignedTo": "已分配给 {{name}}",
       "loadError": "无法加载推荐。",
       "noResults": "没有符合筛选条件的推荐",
-      "queueDescription": "打开单条推荐，查看完整证据并作出决定。",
       "queueItems": "推荐",
       "queueTitle": "审核队列（{{count}}）",
       "queueTitle_one": "审核队列（{{count}}）",
@@ -2077,7 +2073,6 @@
         "processed_other": "已处理 {{count}} 条推荐。"
       },
       "contributorLine": "顾客推荐 · {{category}} · {{state}} · 推荐人：{{author}}",
-      "description": "在联系商家前审核社区推荐。",
       "duplicate": "重复",
       "member": "MYLawatan 会员",
       "noPending": "没有待审核推荐",
@@ -2292,7 +2287,6 @@
       },
       "actionSuccess": "{{name}}：{{action}}已成功完成。",
       "applications": {
-        "description": "选择商家以查看其运营规模和审核历史。",
         "title": "商家申请"
       },
       "approvalEmail": {
@@ -2316,7 +2310,6 @@
         "approve": "批准 {{name}}？",
         "reactivate": "重新启用 {{name}}？"
       },
-      "description": "审核申请、掌握商家状态，并无需打开每条记录即可采取操作。",
       "details": {
         "approvedOn": "批准日期",
         "businessType": "业务类型",
@@ -2626,7 +2619,6 @@
       "eyebrow": "商家",
       "title": "平台费用",
       "back": "返回商家",
-      "description": "按商家等级设置平台对每件售出商品收取的费用，以及活动中售出商品的固定费用。",
       "loading": "正在加载平台费用…",
       "retry": "重试",
       "saved": "平台费用已保存，将适用于此后付款的订单。",
@@ -3254,7 +3246,6 @@
       "notSupplied": "未提供",
       "overridden": "已覆盖",
       "risk": "风险",
-      "reviewDescription": "在执行单一受管控操作前，审核准备状态、不可变证据及完整打款时间线。",
       "reviewTitle": "提现审核详情",
       "retry": "重试",
       "status": "状态",
@@ -3585,7 +3576,6 @@
   "orderOperations": {
     "eyebrow": "订单运营",
     "title": "客户订单",
-    "description": "查看来自客户结账流程的实时订单、付款和门店履约信息。",
     "refresh": "刷新",
     "searchLabel": "订单 ID",
     "searchPlaceholder": "订单 ID 或订单编号",
@@ -3748,12 +3738,10 @@
     "allLocationsCancelled": "所有地点已取消，此活动已从活动发现页面隐藏。",
     "eyebrow": "顾客活动",
     "title": "活动",
-    "description": "设置商家市集活动并发布——活动发布后，商家自行注册摊位加入。",
     "refresh": "刷新",
     "form": {
       "title": "创建活动",
       "editTitle": "编辑活动",
-      "guidance": "这是活动本身——商家在活动发布后通过注册自己的摊位加入。",
       "name": "活动标题",
       "slug": "页面地址",
       "summary": "简短介绍",
@@ -3963,7 +3951,6 @@
     "stallNotificationDescription": "修改成功后，会通过邮件及站内通知告知商家负责人原摊位号和新摊位号。",
     "eyebrow": "治理",
     "title": "活动摊位报名",
-    "description": "在上线前审核商家市集活动的摊位注册。",
     "loading": "加载中…",
     "backToQueue": "返回队列",
     "reviewHeading": "审核决定",
@@ -4042,7 +4029,6 @@
   "announcements": {
     "eyebrow": "治理",
     "title": "公告",
-    "description": "向商家发布公告——活动邀请或其他任何内容。",
     "loading": "加载中…",
     "saved": "公告已发送。",
     "errors": {
@@ -4069,7 +4055,6 @@
   "eventPromotions": {
     "eyebrow": "治理",
     "title": "外部活动广告",
-    "description": "在上线前审核商家提交的外部活动推广。",
     "loading": "加载中…",
     "backToQueue": "返回队列",
     "reviewHeading": "审核决定",
@@ -4277,7 +4262,6 @@
   "staffHelp": {
     "eyebrow": "员工帮助",
     "title": "管理后台帮助",
-    "description": "说明管理后台各个模块的用途、可使用的角色，以及操作前需要了解的规则。",
     "searchLabel": "搜索帮助",
     "searchPlaceholder": "搜索模块、操作或规则",
     "contentLanguage": "模块详情为英文。",
@@ -4292,7 +4276,14 @@
     "otherGroup": "其他",
     "backToHelp": "全部帮助主题",
     "openPage": "打开此页面",
-    "notAvailable": "您的账户无法查看此指南。返回即可查看您可以使用的帮助主题。"
+    "notAvailable": "您的账户无法查看此指南。返回即可查看您可以使用的帮助主题。",
+    "workflows": "工作流程",
+    "lifecycle": "状态流程",
+    "by": "操作方：{{who}}",
+    "partOf": "属于“{{workflow}}”，第 {{step}} 步，共 {{total}} 步",
+    "previousStep": "上一步：{{title}}",
+    "nextStep": "下一步：{{title}}",
+    "workflowNotAvailable": "你的账户无法查看此工作流程。返回查看你可以使用的帮助主题。"
   },
   "hotelAmenities": {
     "eyebrow": "酒店",

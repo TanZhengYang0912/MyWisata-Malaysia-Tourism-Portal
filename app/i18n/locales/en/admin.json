@@ -10,6 +10,12 @@
       "approver": "Wallet approvals",
       "admin": "Admin workspace",
       "staff": "Assigned work"
+    },
+    "mobileActions": {
+      "open": "Open account and display settings",
+      "title": "Account and settings",
+      "account": "Account",
+      "security": "Security and devices"
     }
   },
   "roles": {
@@ -57,7 +63,6 @@
   "sponsoredPlacements": {
     "eyebrow": "Discovery campaigns",
     "title": "Sponsored ads",
-    "description": "Create, review and pause clearly labelled sponsored discovery placements.",
     "accessibility": {
       "lifecycleFilters": "Campaign lifecycle filters"
     },
@@ -349,12 +354,10 @@
       "lockedGroup": "Bundled module: {{group}}",
       "reviewSave": "Review role change",
       "rolesTitle": "Available permission roles",
-      "rolesHelp": "Review exactly what each role grants, then choose one to use for an employee.",
       "permissionCount": "{{count}} permissions",
       "permissionCount_one": "{{count}} permission",
       "permissionCount_other": "{{count}} permissions",
       "assignmentTitle": "Existing employees & permissions",
-      "assignmentHelp": "Search an employee who has already joined, then add another custom Staff Role with an audited reason.",
       "role": "Role",
       "selectRole": "Select an active role",
       "userId": "Staff user UUID",
@@ -499,7 +502,6 @@
       "versions": "Versions",
       "actions": "Actions",
       "versionHistory": "Version history",
-      "compareHint": "Select two versions to compare",
       "comparison": "Version comparison",
       "createTitle": "Create governed policy version",
       "effect": "Effect",
@@ -716,7 +718,6 @@
     },
     "staffEmployees": {
       "title": "Employees and access",
-      "help": "Review each employee’s current permissions and revoke an individual role assignment.",
       "loadError": "Unable to verify employee access. Refresh and try again.",
       "revokeError": "Unable to revoke this assignment. Refresh access before retrying.",
       "revoked": "The assignment was revoked. Historical approvals and audit records are retained.",
@@ -808,6 +809,7 @@
     },
     "allAttributions": "All attributions",
     "allTime": "All time",
+    "mobileStatusLine": "{{label}}: {{status}}",
     "pagination": {
       "previous": "Previous page",
       "next": "Next page",
@@ -1195,7 +1197,6 @@
     },
     "notEmbedded": "not embedded (keyword-only)",
     "notHelpful": {
-      "description": "A KB doc matched, but customers said it didn’t help — the doc needs improving, not creating.",
       "empty": "No thumbs-down yet on an answered question.",
       "title": "Answered, but not helpful"
     },
@@ -1217,7 +1218,6 @@
     },
     "title": "Chatbot Oversight",
     "topUnanswered": {
-      "description": "No KB doc covers these at all.",
       "empty": "Nothing unanswered yet — the KB is covering everything asked so far.",
       "title": "Top unanswered questions"
     },
@@ -1228,7 +1228,6 @@
     "questionMeta_other": "×{{count}} · last asked {{date}}",
     "topEscalated": {
       "title": "Top questions that end in a ticket",
-      "description": "Whatever the bot says, customers keep escalating these — improve the Help Centre for these topics first.",
       "empty": "Nothing has been escalated to a ticket yet."
     }
   },
@@ -1373,7 +1372,6 @@
     "activityNote": "This pulse is based on withdrawal requests created in the current data set. Use it to spot queue build-up, not as a payout-volume chart.",
     "allSources": "All sources responding",
     "approvalSummary": "Approval summary",
-    "description": "A decision-ready view of the queues, money, and risk signals that need attention today.",
     "errors": {
       "load": "Unable to load the approval overview"
     },
@@ -1992,7 +1990,6 @@
       "tier": "Tier"
     },
     "confirmed": "Confirmed {{count}} attribution.",
-    "description": "Move affiliate commissions from pending hold into available earnings.",
     "errors": {
       "clearanceFailed": "Clearance failed",
       "unknown": "Unknown error"
@@ -2057,7 +2054,6 @@
       "assignedTo": "Assigned to {{name}}",
       "loadError": "Unable to load recommendations.",
       "noResults": "No recommendations match these filters",
-      "queueDescription": "Open one recommendation to review its complete evidence and make a decision.",
       "queueItems": "recommendations",
       "queueTitle": "Moderation queue ({{count}})",
       "queueTitle_one": "Moderation queue ({{count}})",
@@ -2077,7 +2073,6 @@
         "processed_other": "{{count}} recommendations processed."
       },
       "contributorLine": "Customer recommendation · {{category}} · {{state}} · by {{author}}",
-      "description": "Review community recommendations before vendor outreach.",
       "duplicate": "Duplicate",
       "member": "MYLawatan member",
       "noPending": "No pending recommendations",
@@ -2292,7 +2287,6 @@
       },
       "actionSuccess": "{{name}}: {{action}} completed successfully.",
       "applications": {
-        "description": "Select a vendor to see its operating footprint and review history.",
         "title": "Vendor applications"
       },
       "approvalEmail": {
@@ -2316,7 +2310,6 @@
         "approve": "Approve {{name}}?",
         "reactivate": "Reactivate {{name}}?"
       },
-      "description": "Review applications, keep vendor health visible, and take action without opening every record.",
       "details": {
         "approvedOn": "Approved on",
         "businessType": "Business type",
@@ -2626,7 +2619,6 @@
       "eyebrow": "Vendors",
       "title": "Platform fees",
       "back": "Back to vendors",
-      "description": "Set what the platform charges vendors per item sold, by vendor tier, and the fixed fee for items sold at events.",
       "loading": "Loading platform fees…",
       "retry": "Try again",
       "saved": "Platform fees saved. They apply to orders paid from now on.",
@@ -3229,7 +3221,6 @@
       "notSupplied": "Not supplied",
       "overridden": "Overridden",
       "risk": "Risk",
-      "reviewDescription": "Review readiness, immutable evidence and the complete payout timeline before taking one governed action.",
       "reviewTitle": "Withdrawal review detail",
       "retry": "Retry",
       "status": "Status",
@@ -3585,7 +3576,6 @@
   "orderOperations": {
     "eyebrow": "Order operations",
     "title": "Customer orders",
-    "description": "Review live order, payment and outlet fulfilment details from the customer checkout flow.",
     "refresh": "Refresh",
     "searchLabel": "Order ID",
     "searchPlaceholder": "Order ID or order number",
@@ -3748,12 +3738,10 @@
     "allLocationsCancelled": "All locations have been cancelled. This event is hidden from discovery.",
     "eyebrow": "Customer events",
     "title": "Events",
-    "description": "Set up a vendor-fair event and publish it — vendors register their own stalls once it's live.",
     "refresh": "Refresh",
     "form": {
       "title": "Create an event",
       "editTitle": "Edit event",
-      "guidance": "This is the event itself — vendors join by registering their own stall once it's published.",
       "name": "Event title",
       "slug": "Page address",
       "summary": "Short description",
@@ -3963,7 +3951,6 @@
     "stallNotificationDescription": "A successful change sends the vendor owner an email and App notification with the old and new stall number.",
     "eyebrow": "Governance",
     "title": "Stall Registrations",
-    "description": "Review vendor stall registrations for vendor-fair events before they go live.",
     "loading": "Loading…",
     "backToQueue": "Back to queue",
     "reviewHeading": "Review decision",
@@ -4042,7 +4029,6 @@
   "announcements": {
     "eyebrow": "Governance",
     "title": "Announcements",
-    "description": "Post announcements to vendors — event invitations or anything else.",
     "loading": "Loading…",
     "saved": "Announcement sent.",
     "errors": {
@@ -4069,7 +4055,6 @@
   "eventPromotions": {
     "eyebrow": "Governance",
     "title": "External Event Ads",
-    "description": "Review vendor-submitted external event promotions before they go live.",
     "loading": "Loading…",
     "backToQueue": "Back to queue",
     "reviewHeading": "Review decision",
@@ -4277,7 +4262,6 @@
   "staffHelp": {
     "eyebrow": "Staff help",
     "title": "Admin help",
-    "description": "How each section of the admin panel works, who can use it, and the rules to know before you act.",
     "searchLabel": "Search help",
     "searchPlaceholder": "Search sections, actions or rules",
     "contentLanguage": "Section details are in English.",
@@ -4292,7 +4276,14 @@
     "otherGroup": "Other",
     "backToHelp": "All help topics",
     "openPage": "Open this page",
-    "notAvailable": "This guide is not available for your account. Go back to see the help topics you can use."
+    "notAvailable": "This guide is not available for your account. Go back to see the help topics you can use.",
+    "workflows": "Workflows",
+    "lifecycle": "Status lifecycle",
+    "by": "By {{who}}",
+    "partOf": "Part of {{workflow}}, step {{step}} of {{total}}",
+    "previousStep": "Previous: {{title}}",
+    "nextStep": "Next: {{title}}",
+    "workflowNotAvailable": "This workflow is not available for your account. Go back to see the help topics you can use."
   },
   "hotelAmenities": {
     "eyebrow": "Hotels",

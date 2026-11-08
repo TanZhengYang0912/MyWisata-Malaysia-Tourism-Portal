@@ -3,12 +3,13 @@
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { BackLink } from "@/components/shared/back-link";
+import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { ArrowLeft, CalendarDays, Clock, MapPin, Megaphone, RefreshCw, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 import { LocalizedContent } from "@/components/customer/localized-content";
-import { DirectoryPagination } from "@/components/customer/directory-pagination";
+import { Pagination } from "@/components/shared/pagination";
 import { PromotionCampaignVendorCard } from "@/components/customer/promotion-campaign-vendor-card";
 import { Input } from "@/components/ui/input";
 import { formatDate, formatDateTime } from "@/lib/i18n/format";
@@ -85,6 +86,11 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
 
   return (
     <CustomerPageShell wide>
+      {campaign && <Breadcrumbs className="mb-4" label={t("ui.place.breadcrumb")} items={[
+        { label: t("navigation.home"), href: "/customer" },
+        { label: t("navigation.events"), href: "/customer/events" },
+        { label: <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title} /> },
+      ]} />}
       <CustomerPageHeader
         eyebrow={t("ui.promotionCampaigns.eyebrow")}
         title={campaign ? <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title} /> : t("ui.promotionCampaigns.detailTitle")}
@@ -183,18 +189,17 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
             </p>
           ) : campaign.vendors.length === 1 ? (
             <div className="grid min-w-0 gap-4">
-              {visibleVendorCards.map(({ vendor, matchingStallNumbers }) => <PromotionCampaignVendorCard key={vendor.vendorId} vendor={vendor} campaignSlug={campaign.slug} mode="detail" layout="featured" matchingStallNumbers={matchingStallNumbers} />)}
+              {visibleVendorCards.map(({ vendor, matchingStallNumbers }) => <PromotionCampaignVendorCard key={vendor.vendorId} vendor={vendor} campaignSlug={campaign.slug} layout="featured" matchingStallNumbers={matchingStallNumbers} />)}
             </div>
           ) : (
             <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {visibleVendorCards.map(({ vendor, matchingStallNumbers }) => <PromotionCampaignVendorCard key={vendor.vendorId} vendor={vendor} campaignSlug={campaign.slug} mode="detail" matchingStallNumbers={matchingStallNumbers} />)}
+              {visibleVendorCards.map(({ vendor, matchingStallNumbers }) => <PromotionCampaignVendorCard key={vendor.vendorId} vendor={vendor} campaignSlug={campaign.slug} matchingStallNumbers={matchingStallNumbers} />)}
             </div>
           )}
 
-          <DirectoryPagination
+          <Pagination
             ariaLabel={t("ui.promotionCampaigns.vendorPages")}
             currentPage={safeVendorPage}
-            itemLabel={t("ui.promotionCampaigns.vendorsLabel")}
             onPageChange={setVendorPage}
             pageSize={VENDOR_PAGE_SIZE}
             totalItems={filteredVendors.length}

@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ArrowUpRight, CheckCircle2, ChevronLeft, ChevronRight, Filter, Gift, Search } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Filter, Gift, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Pagination } from "@/components/shared/pagination";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { useAuth } from "@/components/providers/auth";
@@ -104,7 +105,6 @@ export default function AdminRecommendationsPage() {
       <AdminPageHeader
         eyebrow={<span className="flex items-center gap-2"><CheckCircle2 size={14} /> {t("ui.recommendations.eyebrow")}</span>}
         title={t("ui.recommendations.title")}
-        description={t("ui.recommendations.description")}
         actions={<Button asChild variant="outline"><Link href="/admin/recommendations/rewards" className="gap-2"><Gift size={15} /> {t("ui.recommendations.rewardClearing.operations")}</Link></Button>}
       />
 
@@ -140,7 +140,7 @@ export default function AdminRecommendationsPage() {
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_10px_rgba(1,0,102,0.06)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
-          <div><h2 className="font-bold text-foreground">{t("ui.recommendations.queueTitle", { count: data.total })}</h2><p className="mt-1 text-xs text-muted-foreground">{t("ui.recommendations.queueDescription")}</p></div>
+          <h2 className="font-bold text-foreground">{t("ui.recommendations.queueTitle", { count: data.total })}</h2>
           <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">{t("ui.pagination.pageOf", { page, total: Math.max(data.totalPages, 1) })}</span>
         </div>
 
@@ -167,10 +167,7 @@ export default function AdminRecommendationsPage() {
           </div>
         )}
 
-        <div className="flex items-center justify-between border-t border-border px-5 py-3">
-          <span className="text-xs text-muted-foreground">{t("ui.recommendations.range", { first: data.total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1, last: Math.min(page * PAGE_SIZE, data.total), total: data.total, kind: t("ui.recommendations.queueItems") })}</span>
-          <div className="flex gap-2"><Button size="sm" variant="outline" aria-label={t("ui.pagination.previousPage")} disabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={14} /></Button><Button size="sm" variant="outline" aria-label={t("ui.pagination.nextPage")} disabled={page >= data.totalPages || loading} onClick={() => setPage((value) => value + 1)}><ChevronRight size={14} /></Button></div>
-        </div>
+        <Pagination currentPage={page} totalPages={data.totalPages} totalItems={data.total} pageSize={PAGE_SIZE} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-5 py-3" />
       </section>
     </AdminPageShell>
   );

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
+import { Pagination } from "@/components/shared/pagination";
 import { Star } from "lucide-react";
 import type { ScopedReviewItem, ReviewRatingBucket } from "@/backend/domains/vendor-reviews";
 import { FeedbackCollection, type FeedbackReviewItem } from "@/components/customer/feedback/feedback-collection";
@@ -69,7 +70,7 @@ export function VendorReviewsList({ reviews: initialReviews, ratingBuckets: init
       ? <LocalizedContent entityType="review" entityId={review.id} field="body" sourceText={review.body} />
       : null;
     const productHref = review.productId
-      ? `/customer/activity/${review.productId}?source=vendor${review.outletId ? `&outletId=${encodeURIComponent(review.outletId)}` : ""}&returnTo=${encodeURIComponent(`/customer/vendor/${vendorId}`)}`
+      ? `/customer/products/${review.productId}?source=vendor${review.outletId ? `&outletId=${encodeURIComponent(review.outletId)}` : ""}&returnTo=${encodeURIComponent(`/customer/vendors/${vendorId}`)}`
       : null;
 
     return {
@@ -94,20 +95,39 @@ export function VendorReviewsList({ reviews: initialReviews, ratingBuckets: init
   }
 
   const controls = (
-    <>
-      <Button type="button" size="sm" variant={selectedRating === null ? "default" : "outline"} onClick={() => { setSelectedRating(null); void loadPage(1, null); }}>
+    <div
+      role="group"
+      aria-label={t("ui.reviews.allRatings")}
+      className="flex w-full min-w-0 flex-nowrap gap-2 overflow-x-auto overscroll-x-contain hide-scrollbar py-1"
+    >
+      <Button
+        type="button"
+        size="sm"
+        variant={selectedRating === null ? "default" : "outline"}
+        aria-pressed={selectedRating === null}
+        className="min-h-10 shrink-0 whitespace-nowrap"
+        onClick={() => { setSelectedRating(null); void loadPage(1, null); }}
+      >
         {t("ui.reviews.allRatings")} ({initialTotal})
       </Button>
       {ratingBuckets.map(({ rating, count }) => (
-        <Button key={rating} type="button" size="sm" variant={selectedRating === rating ? "default" : "outline"} onClick={() => { setSelectedRating(rating); void loadPage(1, rating); }}>
+        <Button
+          key={rating}
+          type="button"
+          size="sm"
+          variant={selectedRating === rating ? "default" : "outline"}
+          aria-pressed={selectedRating === rating}
+          className="min-h-10 shrink-0 whitespace-nowrap"
+          onClick={() => { setSelectedRating(rating); void loadPage(1, rating); }}
+        >
           <Star size={13} aria-hidden="true" /> {t("ui.reviews.ratingBucketLabel", { rating, reviewCount: count })}
         </Button>
       ))}
-    </>
+    </div>
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {error && <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
       {loading ? (
         <p role="status" className="text-sm text-muted-foreground">{t("ui.reviews.loading")}</p>
@@ -116,15 +136,8 @@ export function VendorReviewsList({ reviews: initialReviews, ratingBuckets: init
       ) : (
         <FeedbackCollection mode="reviews" items={reviews.map(reviewPresentation)} controls={controls} />
       )}
-      {!loading && totalPages > 1 && (
-        <nav aria-label={t("ui.reviews.pages")} className="flex items-center justify-between border-t border-border pt-4">
-          <Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => void loadPage(page - 1)}>{t("actions.previous", { ns: "common" })}</Button>
-          <span className="text-xs text-muted-foreground">{t("ui.reviews.paginationSummary", {
-            pageLabel: t("ui.reviews.pageOf", { page, total: totalPages }),
-            reviewCountLabel: t("ui.reviews.count", { count: total }),
-          })}</span>
-          <Button type="button" size="sm" variant="outline" disabled={page >= totalPages} onClick={() => void loadPage(page + 1)}>{t("actions.next", { ns: "common" })}</Button>
-        </nav>
+      {!loading && (
+        <Pagination ariaLabel={t("ui.reviews.pages")} currentPage={page} totalPages={totalPages} totalItems={total} pageSize={PAGE_SIZE} onPageChange={(nextPage) => void loadPage(nextPage)} />
       )}
     </div>
   );

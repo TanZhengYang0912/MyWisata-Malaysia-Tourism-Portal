@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const priceSurfaces = [
-  "components/customer/activity-card.tsx",
+  "components/customer/product-card.tsx",
   "components/customer/place-activity-section.tsx",
   "components/customer/sponsored-partner-rail.tsx",
   "components/guest/guest-catalogue.tsx",

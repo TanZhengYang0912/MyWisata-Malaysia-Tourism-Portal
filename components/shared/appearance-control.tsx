@@ -9,10 +9,12 @@
 // white/10 hover style instead of the light-shell token classes.
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Laptop, Moon, Palette, Sun } from "lucide-react";
 import { useTheme } from "@/components/providers/theme";
 import { useFontSize, type FontSize } from "@/components/providers/font-size";
+import { useViewportClampedPopoverPosition } from "@/components/shared/use-viewport-clamped-popover-position";
 
 const THEME_OPTIONS = [
   { value: "light", icon: Sun },
@@ -35,6 +37,9 @@ export function AppearanceControl({ variant = "light" }: { variant?: "light" | "
   // localStorage client-side); avoid a hydration mismatch on the active tab.
   const [mounted, setMounted] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const popoverPosition = useViewportClampedPopoverPosition(open && variant === "light", triggerRef, panelRef);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
@@ -42,7 +47,9 @@ export function AppearanceControl({ variant = "light" }: { variant?: "light" | "
   useEffect(() => {
     if (!open) return;
     function closeOnOutsideClick(event: PointerEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      // The light popover is portalled to <body>, so it is not inside `ref`.
+      if (ref.current && !ref.current.contains(target) && !panelRef.current?.contains(target)) setOpen(false);
     }
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape") setOpen(false);
@@ -55,6 +62,14 @@ export function AppearanceControl({ variant = "light" }: { variant?: "light" | "
     };
   }, [open]);
 
+  // The popover is `position: fixed`, but a header with backdrop-blur (the
+  // vendor and admin shells) becomes the containing block for fixed children,
+  // so it shifted by the header's own offset (240px behind the vendor
+  // sidebar) and ran off the right edge. Render it at <body> instead. The
+  // sidebar-dark variant is absolute inside its rail and stays in place.
+  const inPortal = (panel: React.ReactNode) =>
+    variant === "light" && mounted ? createPortal(panel, document.body) : panel;
+
   const activeTheme = mounted ? (theme ?? "system") : "system";
 
   const triggerClass =
@@ -65,6 +80,7 @@ export function AppearanceControl({ variant = "light" }: { variant?: "light" | "
   return (
     <div ref={ref} className={variant === "sidebar-dark" ? "relative" : "relative shrink-0"}>
       <button
+        ref={triggerRef}
         type="button"
         aria-label={t("appearance.settings")}
         aria-expanded={open}
@@ -76,12 +92,15 @@ export function AppearanceControl({ variant = "light" }: { variant?: "light" | "
         {variant === "sidebar-dark" && t("appearance.label")}
       </button>
 
-      {open && (
+      {open && inPortal(
         <div
+          ref={panelRef}
           role="menu"
           aria-label={t("appearance.settings")}
-          className="absolute z-50 w-72 rounded-2xl border border-border bg-card p-3 text-foreground shadow-[0_18px_45px_rgba(1,0,102,0.16)]"
-          style={variant === "sidebar-dark" ? { bottom: "calc(100% + 0.5rem)", left: 0 } : { right: 0, top: "calc(100% + 0.75rem)" }}
+          className={`z-50 w-72 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-2xl border border-border bg-card p-3 text-foreground shadow-[0_18px_45px_rgba(1,0,102,0.16)] ${variant === "sidebar-dark" ? "absolute" : "fixed"}`}
+          style={variant === "sidebar-dark"
+            ? { bottom: "calc(100% + 0.5rem)", left: 0 }
+            : popoverPosition ?? { visibility: "hidden" }}
         >
           <p className="px-1 pb-2 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("appearance.theme")}</p>
           <div className="grid grid-cols-3 gap-1.5">
@@ -116,7 +135,7 @@ export function AppearanceControl({ variant = "light" }: { variant?: "light" | "
               </button>
             ))}
           </div>
-        </div>
+        </div>,
       )}
     </div>
   );

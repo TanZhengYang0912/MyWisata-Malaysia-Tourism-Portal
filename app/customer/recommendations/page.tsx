@@ -21,7 +21,7 @@ import { useCustomerCapabilityGate } from "@/components/customer/use-customer-ca
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { RecommendationEarningsPanel } from "@/components/customer/recommendation-earnings-panel";
 
-import { DirectoryPagination } from "@/components/customer/directory-pagination";
+import { Pagination } from "@/components/shared/pagination";
 
 type RecommendationResponse = {
   id: string;
@@ -258,7 +258,6 @@ function RecommendationsContent() {
       <CustomerPageTitle
         eyebrow={tCustomer("ui.recommendations.community")}
         title={tCustomer("ui.recommendations.title")}
-        description={tCustomer("ui.recommendations.description")}
         icon={<Star size={14} className="text-accent" />}
         actions={<Button onClick={() => { if (gate(CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT, "/customer/recommendations")) {
             if (editing) { setEditing(null); setRetainedImages([]); setImages([]); setLocation(null); setForm({ name: "", description: "", whyRecommend: "", category: "", phone: "", email: "", website: "", imageAttested: false }); }
@@ -435,7 +434,7 @@ function RecommendationsContent() {
           </div>
         )}
       </CustomerPanel>
-      {!loading && !list.error && <DirectoryPagination ariaLabel={tCustomer("ui.recommendations.myRecommendations")} currentPage={page} itemLabel={tCustomer("ui.recommendations.myRecommendations")} onPageChange={setPage} pageSize={25} totalItems={list.total} totalPages={list.pages} />}
+      {!loading && !list.error && <Pagination ariaLabel={tCustomer("ui.recommendations.myRecommendations")} currentPage={page} onPageChange={setPage} pageSize={25} totalItems={list.total} totalPages={list.pages} />}
       </CustomerPageShell>
     </>
   );

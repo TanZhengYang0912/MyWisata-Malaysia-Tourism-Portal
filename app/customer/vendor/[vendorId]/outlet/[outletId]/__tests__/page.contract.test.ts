@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const pageSource = readFileSync(
-  resolve(process.cwd(), "app/customer/vendor/[vendorId]/outlet/[outletId]/page.tsx"),
+  resolve(process.cwd(), "components/outlet/public-outlet-page.tsx"),
   "utf8",
 );
 
@@ -17,5 +17,10 @@ describe("customer public outlet media hierarchy", () => {
   it("recognizes hotel products regardless of the typed PostgREST relation shape", () => {
     expect(pageSource).toContain("relationOne(p.categories)?.slug === STAY_SLUG");
     expect(pageSource).toContain("category: relationOne(product.categories)?.name ?? null");
+  });
+
+  it("does not read rating metrics that are no longer shown on public product cards", () => {
+    expect(pageSource).not.toContain('from("product_review_metrics")');
+    expect(pageSource).not.toContain("metricByProduct");
   });
 });

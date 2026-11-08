@@ -21,10 +21,10 @@ export async function EventItemsTable({ items }: { items: VendorEventItem[] }) {
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-border bg-card">
-      <table className="w-full min-w-[760px] text-left text-sm">
+      <table className="block w-full min-w-0 text-left text-sm lg:table lg:min-w-[760px]">
         <caption className="sr-only">{t("ui.vendor.eventItems.caption")}</caption>
-        <thead className="bg-secondary/50 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-          <tr>
+        <thead className="sr-only bg-secondary/50 text-xs font-bold uppercase tracking-wide text-muted-foreground lg:not-sr-only lg:table-header-group">
+          <tr className="lg:table-row">
             <th scope="col" className="px-4 py-3">{t("ui.vendor.eventItems.item")}</th>
             <th scope="col" className="px-4 py-3">{t("ui.vendor.eventItems.location")}</th>
             <th scope="col" className="px-4 py-3">{t("ui.vendor.eventItems.date")}</th>
@@ -33,45 +33,55 @@ export async function EventItemsTable({ items }: { items: VendorEventItem[] }) {
             <th scope="col" className="px-4 py-3"><span className="sr-only">{t("ui.vendor.eventItems.reserve")}</span></th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-border">
+        <tbody className="block space-y-3 p-3 lg:table-row-group lg:space-y-0 lg:divide-y lg:divide-border lg:p-0">
           {items.map((item) => (
-            <tr key={item.key} className="align-top">
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-3">
+            <tr key={item.key} className="grid grid-cols-2 gap-x-3 gap-y-3 rounded-2xl border border-border bg-card p-4 lg:table-row lg:rounded-none lg:border-0 lg:p-0">
+              <td className="col-span-2 block p-0 lg:table-cell lg:px-4 lg:py-3">
+                <div className="flex items-start gap-3 lg:items-center">
                   {item.product.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.product.imageUrl} alt="" className="h-11 w-11 shrink-0 rounded-lg object-cover" />
+                    <img src={item.product.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover lg:h-11 lg:w-11 lg:rounded-lg" />
                   ) : (
-                    <div className="h-11 w-11 shrink-0 rounded-lg bg-secondary" aria-hidden="true" />
+                    <div className="h-14 w-14 shrink-0 rounded-xl bg-secondary lg:h-11 lg:w-11 lg:rounded-lg" aria-hidden="true" />
                   )}
                   <div className="min-w-0">
-                    <p className="font-semibold text-foreground">{item.product.name}</p>
+                    <p className="break-words font-semibold text-foreground">{item.product.name}</p>
                     <p className="text-xs text-muted-foreground">{t(`ui.vendor.eventItems.kinds.${item.product.kind}`)}</p>
                   </div>
                 </div>
               </td>
-              <td className="px-4 py-3">
-                <p className="font-semibold text-foreground">{item.location.name}</p>
-                <Link href={`/customer/events/${encodeURIComponent(item.campaignSlug)}`} className="text-xs font-semibold text-primary hover:underline">
+              <td className="col-span-2 block min-w-0 p-0 lg:table-cell lg:px-4 lg:py-3">
+                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted-foreground lg:hidden">{t("ui.vendor.eventItems.location")}</span>
+                <p className="break-words font-semibold text-foreground">{item.location.name}</p>
+                <Link href={`/customer/events/${encodeURIComponent(item.campaignSlug)}`} className="break-words text-xs font-semibold text-primary hover:underline">
                   {item.campaignTitle}
                 </Link>
                 {item.stallNumber && <p className="text-xs text-muted-foreground">{t("ui.vendor.eventItems.stall", { stall: item.stallNumber })}</p>}
               </td>
-              <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatEventDateRange(item.location.startsOn, item.location.endsOn, locale)}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatEventHours(item.location.opensAt, item.location.closesAt, locale)}</td>
-              <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-foreground">
+              <td className="block min-w-0 p-0 text-muted-foreground lg:table-cell lg:whitespace-nowrap lg:px-4 lg:py-3">
+                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted-foreground lg:hidden">{t("ui.vendor.eventItems.date")}</span>
+                <span className="break-words">{formatEventDateRange(item.location.startsOn, item.location.endsOn, locale)}</span>
+              </td>
+              <td className="block min-w-0 p-0 text-muted-foreground lg:table-cell lg:whitespace-nowrap lg:px-4 lg:py-3">
+                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted-foreground lg:hidden">{t("ui.vendor.eventItems.time")}</span>
+                <span className="break-words">{formatEventHours(item.location.opensAt, item.location.closesAt, locale)}</span>
+              </td>
+              <td className="block min-w-0 p-0 text-left font-semibold text-foreground lg:table-cell lg:whitespace-nowrap lg:px-4 lg:py-3 lg:text-right">
+                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted-foreground lg:hidden">{t("ui.vendor.eventItems.price")}</span>
                 {item.product.price === 0 ? t("ui.vendor.eventItems.free") : <ReferencePrice amountMYR={item.product.price} />}
               </td>
-              <td className="px-4 py-3 text-right">
-                <EventReserveButton
-                  registrationId={item.registrationId}
-                  listingId={item.product.id}
-                  itemName={item.product.name}
-                  price={item.product.price}
-                  locationName={item.location.name}
-                  startsOn={item.location.startsOn}
-                  endsOn={item.location.endsOn}
-                />
+              <td className="block p-0 text-right lg:table-cell lg:px-4 lg:py-3">
+                <div className="flex min-h-11 items-end justify-end lg:min-h-0 lg:items-center">
+                  <EventReserveButton
+                    registrationId={item.registrationId}
+                    listingId={item.product.id}
+                    itemName={item.product.name}
+                    price={item.product.price}
+                    locationName={item.location.name}
+                    startsOn={item.location.startsOn}
+                    endsOn={item.location.endsOn}
+                  />
+                </div>
               </td>
             </tr>
           ))}

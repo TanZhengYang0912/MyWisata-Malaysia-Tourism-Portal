@@ -32,12 +32,11 @@ export default function AiWritingAssistant({
   const resolvedButtonLabel = buttonLabel === "Generate with AI" ? t("assistant.generateWithAi") : buttonLabel === "Generate" ? t("assistant.generate") : buttonLabel === "Suggest listing" ? t("assistant.suggestListing") : buttonLabel;
   return (
     <div className={`rounded-xl border border-violet-100 dark:border-violet-500/30 bg-violet-50/70 dark:bg-violet-500/10 ${compact ? "p-2.5" : "p-3"}`}>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 text-sm font-semibold text-violet-950 dark:text-violet-200"><Sparkles size={14} /> {resolvedLabel}</p>
-          {!compact && <p className="mt-0.5 text-xs text-violet-700 dark:text-violet-200">{t("assistant.reviewHint")}</p>}
         </div>
-        <button type="button" onClick={onGenerate} disabled={busy} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-violet-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-50">
+        <button type="button" onClick={onGenerate} disabled={busy} className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-1.5 rounded-lg bg-violet-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
           <Sparkles size={13} /> {busy ? t("assistant.drafting") : resolvedButtonLabel}
         </button>
       </div>

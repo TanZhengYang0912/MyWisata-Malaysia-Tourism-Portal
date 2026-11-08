@@ -79,7 +79,11 @@ describe("AssignmentsTab capability eligibility", () => {
     mocks.fetch.mockImplementation(async (url: string) => {
       if (url.startsWith("/api/admin/access-control/assignments?")) {
         return response({
-          data: { items: [], page: 1, pageSize: 25, total: 0, totalPages: 0 },
+          data: { items: [{
+            id: "assignment-1", subjectType: "user", subjectId: "staff-1", subjectName: "Admin Reviewer", subjectEmail: "reviewer@example.com",
+            capabilityKey: "recommendation.submit", effect: "allow", startsAt: "2026-09-05T00:00:00.000Z", expiresAt: null,
+            reason: "Review access reason", grantedBy: "admin-1", revokedBy: null, revokedAt: null, createdAt: "2026-09-05T00:00:00.000Z", status: "active",
+          }], page: 1, pageSize: 25, total: 1, totalPages: 1 },
           error: null,
         });
       }
@@ -116,12 +120,25 @@ describe("AssignmentsTab capability eligibility", () => {
 
   it("loads governed capability metadata and disables invalid manual allows", async () => {
     await act(async () => {
-      root?.render(<AssignmentsTab focusId={null} onViewAudit={vi.fn()} />);
+      root?.render(<AssignmentsTab focusId="assignment-1" onViewAudit={vi.fn()} />);
     });
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
       await Promise.resolve();
     });
+
+    const assignmentCard = findOne(container, (element) => element.getAttribute("data-admin-mobile-record-card") !== null);
+    expect(assignmentCard.textContent).toContain("Admin Reviewer");
+    expect(assignmentCard.textContent).toContain("Review access reason");
+    expect(assignmentCard.textContent).toContain("accessControl.assignments.period");
+    expect(assignmentCard.textContent).toContain("accessControl.assignments.status");
+    expect(assignmentCard.getAttribute("class")).toContain("bg-primary/10");
+    expect(findOne(assignmentCard, (element) => element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.revoke"))).toBeDefined();
+
+    expect(mocks.fetch).toHaveBeenCalledWith(
+      "/api/admin/access-control/capabilities?page=1&pageSize=100",
+      { cache: "no-store" },
+    );
 
     await click(findOne(container, (element) =>
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.newAssignment")));

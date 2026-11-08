@@ -20,21 +20,23 @@ const OPENING_TIME_SEGMENTS = [
 interface DiscoverySearchFieldProps {
   value: string;
   onChange: (value: string) => void;
-  placeholder: string;
+  placeholder?: string;
+  ariaLabel?: string;
 }
 
-export function DiscoverySearchField({ value, onChange, placeholder }: DiscoverySearchFieldProps) {
+export function DiscoverySearchField({ value, onChange, placeholder, ariaLabel }: DiscoverySearchFieldProps) {
   const { t } = useTranslation("customer");
+  const searchLabel = ariaLabel ?? t("ui.discovery.searchLabel");
   return (
-    <label className="flex min-h-11 flex-1 items-center gap-2.5 rounded-xl border border-border bg-background px-3.5 py-2.5 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10">
-      <SearchIcon size={16} className="shrink-0 text-primary" aria-hidden="true" />
-      <span className="sr-only">{t("ui.discovery.searchLabel")}</span>
+    <label data-active={value.trim() ? "true" : undefined} className="flex min-h-12 min-w-0 flex-1 items-center gap-2.5 border-b-2 border-primary/15 px-1 transition-colors hover:border-primary/40 focus-within:border-primary data-[active=true]:border-primary">
+      <SearchIcon size={18} className="shrink-0 text-primary" aria-hidden="true" />
+      <span className="sr-only">{searchLabel}</span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        aria-label={t("ui.discovery.searchLabel")}
-        className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+        placeholder={placeholder ?? t("ui.discovery.searchPlaceholder")}
+        aria-label={searchLabel}
+        className="min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
       />
     </label>
   );
@@ -330,6 +332,7 @@ export function CustomerDiscoveryFilterPanel({
   excludedCategories = [],
   showTypeFilters = true,
   showTagPreferenceFilters = true,
+  showSearchField = true,
 }: {
   layout?: "panel" | "sidebar";
   mode?: "default" | "experiences";
@@ -337,7 +340,7 @@ export function CustomerDiscoveryFilterPanel({
   hasActiveFilters: boolean;
   onChange: (patch: Partial<DiscoveryQuery>) => void;
   onClear: () => void;
-  placeholder: string;
+  placeholder?: string;
   category: string | null;
   onCategoryChange: (category: string | null) => void;
   categoryVariant?: "cards" | "compact" | "sidebar";
@@ -346,6 +349,7 @@ export function CustomerDiscoveryFilterPanel({
   excludedCategories?: string[];
   showTypeFilters?: boolean;
   showTagPreferenceFilters?: boolean;
+  showSearchField?: boolean;
 }) {
   const { t } = useTranslation("customer");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -527,7 +531,7 @@ export function CustomerDiscoveryFilterPanel({
   if (layout === "sidebar") {
     return (
       <section data-testid="customer-discovery-filter-panel" className="space-y-5">
-        {searchField}
+        {showSearchField && searchField}
         <div className="border-b border-border pb-4">{categoryFilter}</div>
         <div className="border-b border-border pb-4">{openNowFilter}</div>
         {advancedFilters}

@@ -1,15 +1,29 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV === 'development';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const hostname = supabaseUrl ? new URL(supabaseUrl).hostname : null;
+const normalizedHostname = hostname?.replace(/^\[|\]$/g, '');
+const isLocalSupabaseHost = ['localhost', '127.0.0.1', '::1'].includes(normalizedHostname ?? '');
+
 function supabaseStorageRemotePattern() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const hostname = supabaseUrl ? new URL(supabaseUrl).hostname : '*.supabase.co';
-  
   return [
-    {
-      protocol: 'https' as const,
-      hostname,
-      pathname: '/storage/v1/object/public/**',
-    },
+    // Local Supabase Storage uses HTTP; keep its exception limited to development and port 54321.
+    ...(process.env.NODE_ENV === 'development'
+      ? [{
+          protocol: 'http' as const,
+          hostname: '127.0.0.1',
+          port: '54321',
+          pathname: '/storage/v1/object/public/**',
+        }]
+      : []),
+    ...(hostname && !isLocalSupabaseHost
+      ? [{
+          protocol: 'https' as const,
+          hostname,
+          pathname: '/storage/v1/object/public/**',
+        }]
+      : []),
     {
       protocol: 'https' as const,
       hostname: '*.supabase.co', // Fallback wildcard just in case
@@ -17,8 +31,6 @@ function supabaseStorageRemotePattern() {
     }
   ];
 }
-
-const isDev = process.env.NODE_ENV === 'development';
 
 /**
  * Content-Security-Policy without nonces (node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md,
@@ -36,11 +48,17 @@ const isDev = process.env.NODE_ENV === 'development';
 function contentSecurityPolicy() {
   const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL) : null;
   const supabaseOrigins = supabase ? [supabase.origin, `wss://${supabase.host}`] : ['https://*.supabase.co', 'wss://*.supabase.co'];
+  const localSupabaseImageOrigin = isDev
+    && isLocalSupabaseHost
+    && supabase?.protocol === 'http:'
+    && supabase.port === '54321'
+    ? supabase.origin
+    : null;
   const directives: Record<string, string[]> = {
     'default-src': ["'self'"],
     'script-src': ["'self'", "'unsafe-inline'", ...(isDev ? ["'unsafe-eval'"] : []), 'https://maps.googleapis.com', 'https://maps.gstatic.com', 'https://challenges.cloudflare.com'],
     'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-    'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+    'img-src': ["'self'", 'data:', 'blob:', 'https:', ...(localSupabaseImageOrigin ? [localSupabaseImageOrigin] : [])],
     'font-src': ["'self'", 'data:', 'https://fonts.gstatic.com'],
     'connect-src': [
       "'self'",
@@ -93,6 +111,8 @@ function publicSiteUrl() {
 }
 
 const nextConfig: NextConfig = {
+  // Self-contained server for the Docker image (Dockerfile); Vercel builds it too.
+  output: 'standalone',
   compress: true,
   poweredByHeader: false,
   // Dev only: lets a phone on the same network (iPhone hotspot or home Wi-Fi) load the dev server by LAN IP.
@@ -115,8 +135,15 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     const site = publicSiteUrl();
-    if (!site || site.hostname.startsWith('www.')) return [];
-    return [{
+    const legacy = [
+      { source: '/customer/partners', destination: '/customer/vendors', permanent: true },
+      { source: '/customer/vendor/:vendorId', destination: '/customer/vendors/:vendorId', permanent: true },
+      { source: '/customer/activity/:id', destination: '/customer/products/:id', permanent: true },
+      { source: '/customer/experience/:id', destination: '/customer/products/:id', permanent: true },
+      { source: '/customer/outlet/:outletId', destination: '/customer/outlets/:outletId', permanent: true },
+    ];
+    if (!site || site.hostname.startsWith('www.')) return legacy;
+    return [...legacy, {
       source: '/:path*',
       has: [{ type: 'host' as const, value: `www.${site.hostname}`.replace(/\./g, '\\.') }],
       destination: `${site.origin}/:path*`,
@@ -158,6 +185,8 @@ const nextConfig: NextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
     qualities: [75, 90],
+    // Enable private-IP image fetches only for a local Supabase dev URL.
+    dangerouslyAllowLocalIP: isDev && isLocalSupabaseHost,
     remotePatterns: supabaseStorageRemotePattern(),
     localPatterns: [
       { pathname: '/branding/mylawatan-logo-transparent.png', search: '?v=2' },

@@ -3,10 +3,11 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const workspace = process.cwd();
-const cardSource = readFileSync(resolve(workspace, "components/customer/activity-card.tsx"), "utf8");
+const cardSource = readFileSync(resolve(workspace, "components/customer/product-card.tsx"), "utf8");
 const saveToggleSource = readFileSync(resolve(workspace, "components/customer/save-toggle-button.tsx"), "utf8");
 const storyMapSource = readFileSync(resolve(workspace, "components/demo-map/story-map.tsx"), "utf8");
 const customerHomeSource = readFileSync(resolve(workspace, "app/customer/customer-home-client.tsx"), "utf8");
+const customerHomePageSource = readFileSync(resolve(workspace, "app/customer/page.tsx"), "utf8");
 const designDemoSource = readFileSync(resolve(workspace, "app/customer/design-demo/design-demo-client.tsx"), "utf8");
 const destinationPreviewSource = readFileSync(resolve(workspace, "components/customer/destination-preview-modal.tsx"), "utf8");
 
@@ -30,20 +31,22 @@ describe("customer activity image handling", () => {
   it("can hide discovery taxonomy and promotional badges in dense listing views", () => {
     expect(cardSource).toContain("hideDiscoveryBadges = false");
     expect(cardSource).toContain("!hideDiscoveryBadges && activity.hot");
-    expect(cardSource).toContain("activity.sponsorship && <span");
+    expect(cardSource).toContain("<PhotoCardLabels sponsored={Boolean(activity.sponsorship)} />");
     expect(cardSource).toContain('t("ui.labels.verified")');
   });
 
   it("keeps only the Sponsored label on the photo; status badges live in the details drawer", () => {
-    const media = cardSource.slice(cardSource.indexOf("media={<>"), cardSource.indexOf("<SaveToggleButton"));
+    const discovery = cardSource.slice(cardSource.indexOf("function DiscoveryActivityCard"));
+    const media = discovery.slice(discovery.indexOf("media={<>"), discovery.indexOf("<SaveToggleButton"));
     expect(media).toContain("<img");
-    expect(media).toContain('t("ui.labels.sponsored")');
+    expect(media).toContain("<PhotoCardLabels sponsored={Boolean(activity.sponsorship)} />");
+    expect(media).not.toContain("featured=");
     expect(media).not.toContain('t("ui.labels.verified")');
     expect(media).not.toContain('t("ui.labels.closed")');
   });
 
   it("labels sponsored activities and shows the outlet's operating hours", () => {
-    expect(cardSource).toContain('t("ui.labels.sponsored")');
+    expect(cardSource).toContain("<PhotoCardLabels sponsored={Boolean(activity.sponsorship)} />");
     expect(cardSource).toContain("onSponsoredClick");
     expect(cardSource).toContain('t("ui.labels.operatingHours")');
     expect(cardSource).toContain("activity.outlet.hours");
@@ -61,6 +64,14 @@ describe("customer activity image handling", () => {
     expect(cardSource).not.toContain("detailsRevealStyle");
     expect(cardSource).not.toContain("CardMediaHoverCaption");
     expect(cardSource).not.toContain("setDetailsOpen");
+  });
+
+  it("keeps recommendation ranking but removes AI reason copy from listing cards", () => {
+    expect(cardSource).not.toContain("AiTag");
+    expect(cardSource).not.toContain("recommendationReason");
+    expect(customerHomeSource).not.toContain("recommendationReason=");
+    expect(customerHomePageSource).toContain("getRecommendedFeed");
+    expect(customerHomePageSource).not.toContain("reasonLabel");
   });
 
   it("uses the reusable save toggle instead of a card-local heart icon", () => {

@@ -38,32 +38,16 @@ async function loadWithTransientFallback<T>(load: () => Promise<T>, fallback: T)
 
 export default async function ExplorePage() {
   const db = await createClient();
-  const [activityLoad, stateLoad, placeLoad] = await Promise.all([
+  const [activityLoad, stateLoad] = await Promise.all([
     loadWithTransientFallback(() => getCachedComputedActivities(), []),
     loadWithTransientFallback(() => getStatesWithPlaces(db), []),
-    loadWithTransientFallback(async () => {
-      const result = await db.from("places").select("state").eq("level", "poi").eq("status", "active");
-      const responseStatus = result.status;
-      if (result.error && isTransientSupabaseError(result.error, responseStatus)) {
-        throw Object.assign(new Error(String(result.error.message ?? "Supabase temporarily unavailable")), {
-          status: responseStatus,
-        });
-      }
-      return result.data ?? [];
-    }, [] as { state: string }[]),
   ]);
-
-  const placeCountByState = new Map<string, number>();
-  for (const row of placeLoad.value as { state: string }[]) {
-    placeCountByState.set(row.state, (placeCountByState.get(row.state) ?? 0) + 1);
-  }
 
   return (
     <ExploreClient
       initialActivities={activityLoad.value}
       statesWithPlaces={stateLoad.value}
-      placeCountByState={Object.fromEntries(placeCountByState)}
-      dataUnavailable={activityLoad.unavailable || stateLoad.unavailable || placeLoad.unavailable}
+      dataUnavailable={activityLoad.unavailable || stateLoad.unavailable}
     />
   );
 }

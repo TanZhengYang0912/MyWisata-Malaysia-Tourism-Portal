@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/providers/auth";
 import { EmptyState } from "@/components/shared/empty-state";
 import { formatMYR } from "@/lib/i18n/format";
+import { VendorPageHeader } from "@/components/vendor/vendor-page-header";
 
 interface Listing {
   id: string;
@@ -100,13 +101,27 @@ export default function VendorListingsPage() {
   const listings = listingState.scopeKey === scopeKey ? listingState.items : [];
 
   return (
-    <div>
-      <h1 className="font-bold text-lg text-foreground mb-6">{t("ui.listings.title")}</h1>
+    <div className="space-y-5">
+      <VendorPageHeader title={t("ui.listings.title")} />
       {listings.length === 0 ? (
         <EmptyState title={t("ui.listings.emptyTitle")} description={t("ui.listings.emptyDescription")} />
       ) : (
-        <div className="rounded-2xl overflow-hidden bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-          <table className="w-full">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+          <div data-mobile-listing-list className="divide-y divide-border md:hidden">
+            {listings.map((listing) => (
+              <article key={listing.id} className="space-y-3 p-4">
+                <h2 className="break-words font-semibold text-foreground">{listing.name}</h2>
+                <dl className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="min-w-0"><dt className="font-semibold text-muted-foreground">{t("ui.listings.outlet")}</dt><dd className="mt-1 break-words text-foreground">{listing.outlet.name}</dd></div>
+                  <div className="min-w-0"><dt className="font-semibold text-muted-foreground">{t("ui.listings.category")}</dt><dd className="mt-1 break-words text-foreground">{listing.category}</dd></div>
+                  <div><dt className="font-semibold text-muted-foreground">{t("ui.listings.bookingRequired")}</dt><dd className="mt-1 text-foreground">{listing.requires_booking ? t("ui.common.yes") : t("ui.common.no")}</dd></div>
+                  <div><dt className="font-semibold text-muted-foreground">{t("ui.listings.price")}</dt><dd className="mt-1 font-bold text-primary font-[family-name:var(--font-mono)]">{formatMYR(listing.price)}</dd></div>
+                </dl>
+              </article>
+            ))}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead>
               <tr className="bg-muted">
                 {[t("ui.listings.listing"), t("ui.listings.outlet"), t("ui.listings.category"), t("ui.listings.bookingRequired"), t("ui.listings.price")].map((heading) => (
@@ -126,6 +141,7 @@ export default function VendorListingsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

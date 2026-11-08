@@ -6,7 +6,11 @@ import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
-vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => key === "ui.guest.discoverMalaysia" ? "Discover Malaysia" : key,
+  }),
+}));
 vi.mock("@/components/providers/auth", () => ({ useAuth: () => ({ currentUser: null }) }));
 vi.mock("@/components/providers/saved-destinations", () => ({
   useSavedDestinations: () => ({ savedStates: new Set<string>(["Penang"]), toggleSaved: vi.fn() }),
@@ -34,10 +38,12 @@ describe("customer home Discover Malaysia hero", () => {
       <CustomerHomeClient highlightItems={[]} forYouItems={[]} vendors={[]} campaign={null} />,
     );
     consoleError.mockRestore();
-    const title = markup.match(/<h1[^>]*>[^<]*ui\.guest\.discoverMalaysia[^<]*<\/h1>/)?.[0] ?? "";
+    const title = markup.match(/<h1 class="[^"]*atlas-discover-title[^"]*"[\s\S]*?<\/h1>/)?.[0] ?? "";
 
     expect(title).toContain("atlas-discover-title");
     expect(title).toContain("font-[family-name:var(--font-discover-title)]");
+    expect(title).toMatch(/<span class="[^"]*atlas-discover-title__lead[^"]*">Discover <\/span>/);
+    expect(title).toMatch(/<span class="[^"]*atlas-discover-title__ending[^"]*">Malaysia<\/span>/);
   });
 
   it("renders the image-led title and removes typed search and shortcut content", () => {
@@ -56,7 +62,7 @@ describe("customer home Discover Malaysia hero", () => {
     consoleError.mockRestore();
 
     expect(unexpectedRenderErrors).toEqual([]);
-    expect(markup).toContain("ui.guest.discoverMalaysia");
+    expect(markup).toMatch(/Discover <\/span><span class="atlas-discover-title__ending[^\"]*">Malaysia/);
     expect(markup).not.toContain("ui.home.searchAria");
     expect(markup).not.toContain("ui.home.startExploring");
     expect(markup).not.toContain("ui.home.quickSearches");
@@ -113,15 +119,22 @@ describe("customer home Discover Malaysia hero", () => {
     expect(markup).not.toContain("melaka-a-famosa.webp");
   });
 
-  it("keeps the selected card thumbnail under the full-bleed hero while it loads", () => {
+  it("shows the full destination photo on mobile and keeps the desktop cover", () => {
     const markup = renderToStaticMarkup(
       <CustomerHomeClient highlightItems={[]} forYouItems={[]} vendors={[]} campaign={null} />,
     );
     const heroMarkup = markup.slice(0, markup.indexOf('<nav aria-label="ui.home.destinationCarousel"'));
-    const placeholder = heroMarkup.match(/<img[^>]*class="atlas-hero-placeholder[^>]*>/)?.[0] ?? "";
+    const heroImages = Array.from(
+      heroMarkup.matchAll(/<img\b(?=[^>]*class="atlas-hero-photo[^\"]*")[^>]*>/g),
+      ([image]) => image,
+    );
 
-    expect(placeholder).toContain("klcc-home-hero-match.webp");
-    expect(placeholder).toContain("q=75");
+    expect(heroImages).toHaveLength(1);
+    expect(heroImages[0]).toContain("klcc-home-hero-match.webp");
+    expect(heroImages[0]).toContain("object-contain");
+    expect(heroImages[0]).toContain("md:object-cover");
+    expect(heroImages[0]).toContain('sizes="100vw"');
+    expect(heroMarkup).not.toContain("atlas-hero-placeholder");
   });
 
   it("maps every Malaysia destination to an existing local homepage image", () => {
@@ -134,5 +147,20 @@ describe("customer home Discover Malaysia hero", () => {
       expect(imagePath).toMatch(/^\/customer\/.+\.webp$/);
       expect(existsSync(resolve(process.cwd(), "public", imagePath.slice(1)))).toBe(true);
     }
+  });
+
+  it("requests every destination card image at its responsive rail width", () => {
+    const markup = renderToStaticMarkup(
+      <CustomerHomeClient highlightItems={[]} forYouItems={[]} vendors={[]} campaign={null} />,
+    );
+    const destinationImages = Array.from(
+      markup.matchAll(/<img\b(?=[^>]*group-hover:scale-\[1\.045\])[^>]*>/g),
+      ([image]) => image,
+    );
+
+    expect(destinationImages).toHaveLength(MALAYSIA_DESTINATIONS.length);
+    expect(destinationImages.every((image) => image.includes(
+      'sizes="(min-width: 1420px) 339px, (min-width: 1024px) calc(25vw - 16px), (min-width: 640px) calc(50vw - 48px), calc(50vw - 32px)"',
+    ))).toBe(true);
   });
 });

@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { OperatingHourWeekday, OperatingHours } from "@/backend/core/types";
 import { DISPLAY_OPERATING_HOUR_WEEKDAYS, getMalaysiaTodayKey, getOperatingHoursPeriods } from "@/lib/customer/operating-hours";
 
-function formatPeriods(hours: OperatingHours | null | undefined, day: OperatingHourWeekday, closedLabel: string, unavailableLabel: string, allDayLabel: string) {
+export function formatPeriods(hours: OperatingHours | null | undefined, day: OperatingHourWeekday, closedLabel: string, unavailableLabel: string, allDayLabel: string) {
   const schedule = hours?.[day];
   if (!schedule || schedule.closed) return closedLabel;
   const periods = getOperatingHoursPeriods(schedule);

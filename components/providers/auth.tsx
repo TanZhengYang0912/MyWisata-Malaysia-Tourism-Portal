@@ -57,6 +57,7 @@ type AuthMeUser = {
   tier: User["verificationTier"];
   roles: Role[];
   activeVendorId: string | null;
+  activeVendorName: string | null;
   activeOutletIds: string[];
   activeOutletName: string | null;
   city: string | null;
@@ -170,6 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       staffModules: row.staffModules ?? [],
       staffPermissionExpiresAt: row.staffPermissionExpiresAt ?? null,
       vendorId: row.activeVendorId ?? undefined,
+      vendorName: row.activeVendorName ?? undefined,
       outletId: row.activeOutletIds[0] ?? undefined,
       };
       if (!isCurrentRequest(request)) return null;

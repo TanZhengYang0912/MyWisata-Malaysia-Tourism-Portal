@@ -138,7 +138,7 @@ describe("translation resources", () => {
     expect(malay.customer.ui.labels.trending).toBe("Sedang sohor");
     expect(chinese.customer.ui.labels.publicAccess).toBe("公众开放");
     expect(chinese.customer.ui.tripBudget.viewAlternative).toBe("查看项目");
-    expect(chinese.customer.ui.vendor.localPartnerTitle).toBe("马来西亚行程的本地合作伙伴");
+    expect(chinese.customer.ui.vendor.localPartnerTitle).toBe("马来西亚行程的本地商家");
     expect(malay.customer.ui.outlet.blockLabels.contact).toBe("Peta dan maklumat hubungan");
   });
 

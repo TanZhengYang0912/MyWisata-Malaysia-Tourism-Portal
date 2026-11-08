@@ -22,7 +22,7 @@ export const CUSTOMER_NAV: CustomerNavigationItem[] = [
   { href: "/customer", label: "Home", labelKey: "navigation.home", icon: Home },
   { href: "/customer/explore", label: "Explore", labelKey: "navigation.explore", icon: Compass },
   { href: "/customer/events", label: "Events", labelKey: "navigation.events", icon: CalendarDays },
-  { href: "/customer/partners", label: "Partners", labelKey: "navigation.search", icon: Store },
+  { href: "/customer/vendors", label: "Vendors", labelKey: "navigation.search", icon: Store },
   { href: "/customer/trip", label: "Trip", labelKey: "navigation.trip", icon: Map },
 ];
 
@@ -76,9 +76,13 @@ export function getCustomerDisplayName(user: { name?: string | null; email?: str
   return email?.split("@")[0]?.trim() || name || localizedFallback;
 }
 
-export function isCustomerNavActive(pathname: string, href: string): boolean {
+export function isCustomerNavActive(pathname: string, href: string, _source?: string): boolean {
   const targetPath = href.split("?")[0];
   // Home is exactly /customer — use strict equality so it does not light up on every sub-route.
   if (targetPath === "/customer") return pathname === "/customer";
+  if (CUSTOMER_NAV.some((item) => item.href === href)) {
+    if (/^\/customer\/(activity|products|vendor|vendors|outlet|outlets)\/[^/]+/.test(pathname)) return href === "/customer/vendors";
+    if (/^\/customer\/(place|destination|experience)\/[^/]+/.test(pathname)) return href === "/customer/explore";
+  }
   return pathname === targetPath || pathname.startsWith(`${targetPath}/`);
 }

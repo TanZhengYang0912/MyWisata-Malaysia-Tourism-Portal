@@ -13,24 +13,16 @@ vi.mock("@/components/shared/language-switcher", () => ({ LanguageSwitcher: () =
 
 import LoginPage from "../page";
 
-describe("login page initial form selection", () => {
+describe("login page security verification screen", () => {
   beforeEach(() => { mocks.params = new URLSearchParams(); });
 
-  it("opens the registration form when the guest explicitly chooses sign up", () => {
-    mocks.params = new URLSearchParams("mode=signup&next=%2Fcustomer%2Fcart");
-    const markup = renderToStaticMarkup(<LoginPage />);
-    expect(markup).toContain('placeholder="fields.confirmPassword"');
-    expect(markup).toContain("titles.createAccount");
-    expect(markup).toContain("data-legal-agreement");
-    expect(markup).toContain("legal.agreement");
-    expect(markup).toContain('href="/legal/privacy"');
-    expect(markup).toContain('href="/legal/terms"');
-  });
-
-  it.each(["", "mode=signin", "mode=unknown"])("otherwise opens sign in: %s", (query) => {
+  it.each(["", "mode=signup&next=%2Fcustomer%2Fcart", "mode=signin", "mode=unknown"])("keeps authentication controls behind the initial proof: %s", (query) => {
     mocks.params = new URLSearchParams(query);
     const markup = renderToStaticMarkup(<LoginPage />);
-    expect(markup).not.toContain('placeholder="fields.confirmPassword"');
-    expect(markup).toContain("titles.welcomeBack");
+    expect(markup).toContain('data-security-verification-page="true"');
+    expect(markup).toContain("humanVerification.checking");
+    expect(markup).toContain("humanVerification.entryDescription");
+    expect(markup).toContain('data-human-verification="login"');
+    expect(markup).not.toContain("<form");
   });
 });

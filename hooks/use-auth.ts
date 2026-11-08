@@ -16,6 +16,7 @@ export function useAuth() {
     profileComplete: verificationFacts?.profileComplete ?? false,
     roles: roles as AuthUser['roles'],
     activeVendorId: activeVendorId ?? null,
+    vendorName: currentUser.vendorName ?? null,
     activeOutletIds: activeOutletIds ?? [],
     activeOutletName,
   } : null;

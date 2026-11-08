@@ -1,10 +1,12 @@
 "use client";
 
-import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, RefreshCw, Search } from "lucide-react";
+import { ArrowRight, ArrowUpRight, RefreshCw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Pagination } from "@/components/shared/pagination";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
+import { AdminMobileRecordCard } from "@/components/admin/admin-mobile-record-card";
 import { capabilityLabel } from "@/components/admin/access-control/capability-label";
 import { Button } from "@/components/ui/button";
 import {
@@ -89,11 +91,33 @@ export function AuditLogTab({ focus, onViewEntity }: { focus: AuditFocus | null;
     {invalidDateRange && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{t("accessControl.errors.invalidAuditDateRange")}</div>}
     {focus && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-primary"><span>{focus.eventId ? t("accessControl.audit.focusedEvent", { id: focus.eventId }) : t("accessControl.audit.focusedEntity", { id: focus.entityId ?? "" })}</span>{focus.eventId && !result.items.some((item) => item.id === focus.eventId) && !loading && <span className="text-xs">{t("accessControl.audit.focusNotOnPage")}</span>}</div>}
     {error && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
-    <section className="overflow-hidden rounded-2xl border border-border bg-card"><div className="overflow-x-auto"><table className="w-full min-w-[1050px] text-left text-sm"><thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.whenMyt")}</th><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.actor")}</th><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.action")}</th><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.target")}</th><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.policyVersion")}</th><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.trace")}</th><th className="px-4 py-3 whitespace-nowrap text-right">{t("accessControl.audit.details")}</th></tr></thead><tbody className="divide-y divide-border">{result.items.map((item) => { const target = focusTargetForAuditEvent(item.entityType, item.entityId); const policyVersion = field(item.after, "policyVersionId") ?? field(item.before, "policyVersionId"); const trace = field(item.after, "traceReference") ?? field(item.before, "traceReference"); return <AuditRow key={item.id} item={item} locale={locale} selected={focus?.eventId === item.id} expanded={expanded === item.id} policyVersion={policyVersion} trace={trace} target={target} onExpand={() => setExpanded((value) => value === item.id ? null : value)} onViewEntity={() => target && onViewEntity(target)} />; })}</tbody></table></div>{loading && result.items.length === 0 ? <State text={t("accessControl.states.loading")} /> : result.items.length === 0 ? <State text={t("accessControl.states.noAuditEvents")} /> : <Pager page={result.page} totalPages={result.totalPages} loading={loading} setPage={setPage} />}</section>
+    <section className="overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="space-y-3 p-3 lg:hidden">
+        {result.items.map((item) => {
+          const target = focusTargetForAuditEvent(item.entityType, item.entityId);
+          const policyVersion = field(item.after, "policyVersionId") ?? field(item.before, "policyVersionId");
+          const trace = field(item.after, "traceReference") ?? field(item.before, "traceReference");
+          const selected = focus?.eventId === item.id;
+          const isExpanded = expanded === item.id;
+          const summaryId = `audit-change-summary-mobile-${item.id}`;
+          return <AdminMobileRecordCard key={item.id} className={selected ? "bg-primary/10" : ""} header={<div className="min-w-0"><p className="break-words font-semibold text-foreground">{t(`accessControl.audit.actionSummaries.${auditActionSummaryKey(item.action)}`)}</p><p className="mt-1 break-all font-mono text-xs text-muted-foreground">{item.action}</p><p className="mt-1 text-xs text-muted-foreground">{t("accessControl.audit.whenMyt")}: {formatDate(item.createdAt, locale)}</p></div>} footer={<Button type="button" size="sm" variant="outline" aria-expanded={isExpanded} aria-controls={summaryId} onClick={() => setExpanded((value) => value === item.id ? null : item.id)}>{isExpanded ? t("accessControl.actions.hide") : t("accessControl.actions.inspect")}</Button>}>
+            <div><p className="text-xs text-muted-foreground">{t("accessControl.audit.actor")}</p><p className="break-words text-sm">{item.actorName ?? (item.actorId ? t("accessControl.audit.unknownActor") : t("accessControl.audit.systemActor"))}</p>{item.actorId && <p className="break-all font-mono text-xs text-muted-foreground">{item.actorId}</p>}</div>
+            {item.reason && <p className="break-words text-sm text-muted-foreground">{item.reason}</p>}
+            <div><p className="text-xs text-muted-foreground">{t("accessControl.audit.target")}</p><p className="break-words text-sm">{item.entityType}</p><p className="break-all font-mono text-xs text-muted-foreground">{item.entityId ?? t("accessControl.states.none")}</p>{target && <button type="button" onClick={() => onViewEntity(target)} className="mt-1 inline-flex min-h-10 items-center gap-1 text-sm font-semibold text-primary hover:underline">{t("accessControl.actions.openTarget")}<ArrowUpRight className="h-3 w-3" /></button>}</div>
+            <div className="grid gap-3 sm:grid-cols-2"><div><p className="text-xs text-muted-foreground">{t("accessControl.audit.policyVersion")}</p><p className="break-all font-mono text-xs">{policyVersion ?? "—"}</p></div><div><p className="text-xs text-muted-foreground">{t("accessControl.audit.trace")}</p><p className="break-all font-mono text-xs">{trace ?? "—"}</p></div></div>
+            {isExpanded && <div className="space-y-3"><AuditChangeSummary id={summaryId} before={item.before} after={item.after} />{hasTechnicalAuditPayload(item.before, item.after) && <details className="min-w-0 rounded-xl border border-border bg-card p-3"><summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("accessControl.audit.technicalDetails")}</summary><div className="mt-3 grid gap-3 md:grid-cols-2"><AuditPayload title={t("accessControl.audit.before")} value={item.before} /><AuditPayload title={t("accessControl.audit.after")} value={item.after} /></div></details>}</div>}
+          </AdminMobileRecordCard>;
+        })}
+      </div>
+      <div className="hidden overflow-x-auto lg:block">
+        <table className="w-full min-w-[1050px] text-left text-sm"><thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.whenMyt")}</th><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.actor")}</th><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.action")}</th><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.target")}</th><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.policyVersion")}</th><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.trace")}</th><th className="px-4 py-3 whitespace-nowrap text-right">{t("accessControl.audit.details")}</th></tr></thead><tbody className="divide-y divide-border">{result.items.map((item) => { const target = focusTargetForAuditEvent(item.entityType, item.entityId); const policyVersion = field(item.after, "policyVersionId") ?? field(item.before, "policyVersionId"); const trace = field(item.after, "traceReference") ?? field(item.before, "traceReference"); return <AuditRow key={item.id} item={item} locale={locale} selected={focus?.eventId === item.id} expanded={expanded === item.id} summaryId={`audit-change-summary-desktop-${item.id}`} policyVersion={policyVersion} trace={trace} target={target} onExpand={() => setExpanded((value) => value === item.id ? null : item.id)} onViewEntity={() => target && onViewEntity(target)} />; })}</tbody></table>
+      </div>
+      {loading && result.items.length === 0 ? <State text={t("accessControl.states.loading")} /> : result.items.length === 0 ? <State text={t("accessControl.states.noAuditEvents")} /> : <Pagination currentPage={result.page} totalPages={result.totalPages} totalItems={result.total} pageSize={result.pageSize} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-5 py-3" />}
+    </section>
   </div>;
 }
 
-function AuditRow({ item, locale, selected, expanded, policyVersion, trace, target, onExpand, onViewEntity }: { item: AuditRecord; locale: "en" | "ms" | "zh-CN"; selected: boolean; expanded: boolean; policyVersion: string | null; trace: string | null; target: EntityFocus | null; onExpand: () => void; onViewEntity: () => void }) {
+function AuditRow({ item, locale, selected, expanded, summaryId, policyVersion, trace, target, onExpand, onViewEntity }: { item: AuditRecord; locale: "en" | "ms" | "zh-CN"; selected: boolean; expanded: boolean; summaryId: string; policyVersion: string | null; trace: string | null; target: EntityFocus | null; onExpand: () => void; onViewEntity: () => void }) {
   const { t } = useTranslation("admin");
   const actionSummary = t(`accessControl.audit.actionSummaries.${auditActionSummaryKey(item.action)}`);
 
@@ -109,10 +133,10 @@ function AuditRow({ item, locale, selected, expanded, policyVersion, trace, targ
       <td className="px-4 py-4 align-top min-w-48"><p className="text-xs">{item.entityType}</p><p className="max-w-40 truncate font-mono text-xs text-muted-foreground">{item.entityId ?? t("accessControl.states.none")}</p>{target && <button type="button" onClick={onViewEntity} className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">{t("accessControl.actions.openTarget")}<ArrowUpRight className="h-3 w-3" /></button>}</td>
       <td className="px-4 py-4 align-top whitespace-nowrap font-mono text-xs">{policyVersion ?? "—"}</td>
       <td className="px-4 py-4 align-top whitespace-nowrap font-mono text-xs">{trace ?? "—"}</td>
-      <td className="px-4 py-4 align-top whitespace-nowrap text-right"><Button type="button" size="sm" variant="outline" aria-expanded={expanded} aria-controls={`audit-change-summary-${item.id}`} onClick={onExpand}>{expanded ? t("accessControl.actions.hide") : t("accessControl.actions.inspect")}</Button></td>
+      <td className="px-4 py-4 align-top whitespace-nowrap text-right"><Button type="button" size="sm" variant="outline" aria-expanded={expanded} aria-controls={summaryId} onClick={onExpand}>{expanded ? t("accessControl.actions.hide") : t("accessControl.actions.inspect")}</Button></td>
     </tr>
     {expanded && <tr><td colSpan={7} className="bg-muted/20 px-5 py-4"><div className="space-y-3">
-      <AuditChangeSummary id={`audit-change-summary-${item.id}`} before={item.before} after={item.after} />
+      <AuditChangeSummary id={summaryId} before={item.before} after={item.after} />
       {hasTechnicalAuditPayload(item.before, item.after) && <details className="rounded-xl border border-border bg-card p-3">
         <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("accessControl.audit.technicalDetails")}</summary>
         <div className="mt-3 grid gap-3 md:grid-cols-2"><AuditPayload title={t("accessControl.audit.before")} value={item.before} /><AuditPayload title={t("accessControl.audit.after")} value={item.after} /></div>
@@ -188,4 +212,3 @@ function AuditPayload({ title, value }: { title: string; value: Record<string, u
 function field(value: Record<string, unknown> | null, key: string) { return value && typeof value[key] === "string" ? value[key] as string : null; }
 function formatDate(value: string, locale: "en" | "ms" | "zh-CN") { const timestamp = Date.parse(value); return Number.isFinite(timestamp) ? `${formatDateTime(timestamp, locale, { timeZone: "Asia/Kuala_Lumpur" })} MYT` : value; }
 function State({ text }: { text: string }) { return <div className="px-5 py-12 text-center text-sm text-muted-foreground">{text}</div>; }
-function Pager({ page, totalPages, loading, setPage }: { page: number; totalPages: number; loading: boolean; setPage: React.Dispatch<React.SetStateAction<number>> }) { const { t } = useTranslation("admin"); return <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground"><span>{t("accessControl.pagination.pageOf", { page, total: Math.max(totalPages, 1) })}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={loading || page <= 1} onClick={() => setPage((value) => value - 1)}><ChevronLeft /></Button><Button size="sm" variant="outline" disabled={loading || page >= totalPages} onClick={() => setPage((value) => value + 1)}><ChevronRight /></Button></div></div>; }

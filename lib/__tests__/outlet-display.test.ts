@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { outletShortName } from "@/lib/outlet-display";
+import { outletRepeatsVendor, outletShortName } from "@/lib/outlet-display";
+
+describe("outletRepeatsVendor", () => {
+  it("is true only when the outlet label adds nothing to the vendor name", () => {
+    expect(outletRepeatsVendor("Yati Ayam Percik", "Yati Ayam Percik")).toBe(true);
+    expect(outletRepeatsVendor(" yati ayam percik ", "Yati Ayam Percik")).toBe(true);
+    expect(outletRepeatsVendor("Warisan Cultural Journeys — Ipoh", "Warisan Cultural Journeys")).toBe(false);
+    expect(outletRepeatsVendor("Kuantan Studio", "Batik Nusantara Studio")).toBe(false);
+    expect(outletRepeatsVendor("Outlet", null)).toBe(false);
+  });
+});
 
 describe("outletShortName", () => {
   it("strips an exact vendor-name prefix", () => {

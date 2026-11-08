@@ -15,7 +15,7 @@ describe("saved hotels in the wishlist provider", () => {
   });
 
   it("saves the whole hotel from hotel cards and the hotel page", () => {
-    expect(read("components/customer/activity-card.tsx")).toContain("toggleSavedOutlet(activity.outlet.id)");
+    expect(read("components/customer/product-card.tsx")).toContain("toggleSavedOutlet(activity.outlet.id)");
     expect(read("components/outlet/hotel-page.tsx")).toContain("toggleSavedOutlet(outlet.id)");
   });
 

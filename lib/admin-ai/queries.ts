@@ -43,11 +43,22 @@ function sinceIso(days?: number): string | null {
 const vendorStatusSchema = z.object({ status: z.enum(['pending', 'approved', 'rejected', 'suspended']).optional() }).strict();
 const vendorNameSchema = z.object({ vendorName: z.string().trim().min(1).max(255) }).strict();
 const productStatusSchema = z.object({ status: z.enum(['active', 'inactive', 'archived']).optional() }).strict();
-const kycStatusSchema = z.object({ status: z.enum(['pending', 'approved', 'rejected']).optional() }).strict();
+// Status lists mirror the database CHECK constraints (kyc_submissions_status_check,
+// withdrawal_requests_status_check) so every real status can be asked about.
+// When a constraint gains a status, add it here; the descriptions below are
+// built from these lists so the picker always sees the same set.
+export const KYC_STATUSES = ['draft', 'pending', 'info_requested', 'approved', 'rejected', 'superseded', 'withdrawn'] as const;
+export const WITHDRAWAL_STATUSES = [
+  'pending', 'pending_second_approval', 'approved', 'processing', 'hold', 'overdue', 'rejected', 'paid', 'completed', 'failed',
+] as const;
+export const USER_ROLES = ['customer', 'vendor_owner', 'outlet_manager', 'event_vendor', 'staff', 'admin', 'approver', 'super_admin'] as const;
+const options = (values: readonly string[]) => values.map((value) => `"${value}"`).join('|');
+
+const kycStatusSchema = z.object({ status: z.enum(KYC_STATUSES).optional() }).strict();
 const recommendationStatusSchema = z.object({ status: z.enum(['pending', 'approved', 'rejected', 'converted']) }).strict();
-const withdrawalStatusSchema = z.object({ status: z.enum(['pending', 'approved', 'rejected', 'processing', 'completed']).optional() }).strict();
+const withdrawalStatusSchema = z.object({ status: z.enum(WITHDRAWAL_STATUSES).optional() }).strict();
 const customerSchema = z.object({ email: z.string().trim().email().optional(), userId: z.string().trim().uuid().optional() }).strict();
-const roleSchema = z.object({ role: z.enum(['customer', 'vendor_owner', 'outlet_manager', 'admin', 'approver', 'super_admin']).optional() }).strict();
+const roleSchema = z.object({ role: z.enum(USER_ROLES).optional() }).strict();
 
 /** Best-effort fuzzy match on vendors.name — returns null (not a guess) if nothing matches. */
 async function resolveVendorId(service: SupabaseClient, vendorName: string): Promise<string | null> {
@@ -121,12 +132,12 @@ const productsPendingReviewCount: QueryDef<z.infer<typeof emptySchema>> = {
 
 const kycCountsByStatus: QueryDef<z.infer<typeof emptySchema>> = {
   name: 'kyc_counts_by_status',
-  description: 'Counts of KYC submissions grouped by status (pending/approved/rejected).',
+  description: `Counts of KYC submissions grouped by every status (${KYC_STATUSES.join('/')}). info_requested = waiting for the customer to send more information; superseded = replaced by a newer submission.`,
   paramsSchema: emptySchema,
   async run(service) {
     const { data, error } = await service.from('kyc_submissions').select('status');
     if (error) throw new Error(error.message);
-    const counts: Record<string, number> = { pending: 0, approved: 0, rejected: 0 };
+    const counts: Record<string, number> = Object.fromEntries(KYC_STATUSES.map((status) => [status, 0]));
     for (const row of data ?? []) counts[row.status] = (counts[row.status] ?? 0) + 1;
     return counts;
   },
@@ -134,7 +145,7 @@ const kycCountsByStatus: QueryDef<z.infer<typeof emptySchema>> = {
 
 const kycPendingCount: QueryDef<z.infer<typeof kycStatusSchema>> = {
   name: 'kyc_pending_count',
-  description: 'Count of KYC submissions awaiting review (status=pending). Params: {"status"?: "pending"|"approved"|"rejected"} — defaults to pending.',
+  description: `Count of KYC submissions with one status; defaults to pending (awaiting review). Params: {"status"?: ${options(KYC_STATUSES)}}. Use info_requested for "waiting for the customer" or "information requested".`,
   paramsSchema: kycStatusSchema,
   async run(service, { status }) {
     const targetStatus = status ?? 'pending';
@@ -157,7 +168,7 @@ const recommendationsByStatus: QueryDef<z.infer<typeof recommendationStatusSchem
 
 const withdrawalsByStatus: QueryDef<z.infer<typeof withdrawalStatusSchema>> = {
   name: 'withdrawals_by_status',
-  description: 'Count and total RM of withdrawal_requests, optionally filtered by status. Params: {"status"?: "pending"|"approved"|"rejected"|"processing"|"completed"}.',
+  description: `Count and total RM of withdrawal_requests, optionally filtered by status. Params: {"status"?: ${options(WITHDRAWAL_STATUSES)}}. pending_second_approval = first approval recorded, waiting for a second approver; hold = paused for checking; overdue = still waiting after the escalation window; paid = payout confirmed by the provider; failed = payout failed.`,
   paramsSchema: withdrawalStatusSchema,
   async run(service, { status }) {
     let q = service.from('withdrawal_requests').select('amount');
@@ -205,7 +216,7 @@ const ordersCountForCustomer: QueryDef<z.infer<typeof customerSchema>> = {
 
 const usersTotal: QueryDef<z.infer<typeof roleSchema>> = {
   name: 'users_total',
-  description: 'Total count of users, optionally filtered by role. Params: {"role"?: "customer"|"vendor_owner"|"outlet_manager"|"admin"|"approver"|"super_admin"}. Non-PII — a count only.',
+  description: `Total count of users, optionally filtered by role. Params: {"role"?: ${options(USER_ROLES)}}. Non-PII, a count only.`,
   paramsSchema: roleSchema,
   async run(service, { role }) {
     if (!role) {

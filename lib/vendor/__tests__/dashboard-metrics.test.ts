@@ -8,21 +8,21 @@ const summarizePaymentRecords = (payments: Array<{ status: string; provider: str
 const { allocateDashboardRevenue, classifyDashboardSale, matchesDashboardSalesMode, normalizeDashboardSalesMode } = dashboardMetrics;
 
 describe('dashboard sales modes', () => {
-  it('defaults absent, malformed and repeated mode parameters to real sales', () => {
+  it('defaults absent, malformed and repeated mode parameters to all activity', () => {
     for (const value of [undefined, null, '', 'all', 'DEMO', ['demo', 'live']]) {
-      expect(normalizeDashboardSalesMode(value)).toBe('live');
+      expect(normalizeDashboardSalesMode(value)).toBe('all');
     }
     expect(normalizeDashboardSalesMode('demo')).toBe('demo');
   });
 
-  it('keeps live and test/demo views separate and excludes unresolved sales', () => {
+  it('combines verified and simulated sales in all activity and keeps narrower views available', () => {
     expect(matchesDashboardSalesMode('verified', 'live')).toBe(true);
     expect(matchesDashboardSalesMode('simulated', 'demo')).toBe(true);
-    expect(matchesDashboardSalesMode('verified', 'demo')).toBe(false);
-    expect(matchesDashboardSalesMode('simulated', 'live')).toBe(false);
+    expect(matchesDashboardSalesMode('verified', 'all')).toBe(true);
+    expect(matchesDashboardSalesMode('simulated', 'all')).toBe(true);
     for (const sale of ['unverified', 'excluded'] as const) {
       expect(matchesDashboardSalesMode(sale, 'live')).toBe(false);
-      expect(matchesDashboardSalesMode(sale, 'demo')).toBe(false);
+      expect(matchesDashboardSalesMode(sale, 'all')).toBe(false);
     }
   });
 });

@@ -13,9 +13,8 @@ describe('support ticket pagination', () => {
     expect(pageSource).toContain('page: String(ticketPage)');
     expect(pageSource).toContain('setTotalTickets(result.data.total)');
     expect(pageSource).toContain('const visibleTickets = tickets ?? [];');
-    expect(pageSource).toContain('aria-label={t("ui.support.pagination")}');
-    expect(pageSource).toContain('aria-label={t("ui.pagination.previousPage")}');
-    expect(pageSource).toContain('aria-label={t("ui.pagination.nextPage")}');
+    expect(pageSource).toContain('<Pagination ariaLabel={t("ui.support.pagination")} currentPage={ticketPage} totalPages={totalTicketPages} totalItems={totalTickets} pageSize={TICKETS_PER_PAGE}');
+    expect(pageSource).toContain('setSelectedIds(new Set())');
   });
 
   it('resets to the first page when queue filters or sorting change', () => {
@@ -32,5 +31,21 @@ describe('support ticket pagination', () => {
     expect(pageSource).toContain('setQueueError(error instanceof Error');
     expect(pageSource).toContain('onClick={() => void loadTickets()}');
     expect(pageSource).toContain('queueError ? null : <EmptyState');
+  });
+
+  it('keeps the ticket thread and reply controls inside a scrollable phone-height dialog', () => {
+    expect(pageSource).toContain('max-h-[calc(100dvh-2rem)]');
+    expect(pageSource).toContain('min-h-0 flex-1 overflow-y-auto overscroll-contain');
+    expect(pageSource).toContain('flex flex-col gap-2 pr-6 sm:flex-row sm:items-center sm:justify-between');
+    expect(pageSource).toContain('shrink-0 border-t border-border');
+  });
+
+  it('gives phone ticket cards full-width content before labeled review controls', () => {
+    expect(pageSource).toContain('AdminMobileRecordCard');
+    expect(pageSource).toContain('space-y-3 p-3 lg:hidden');
+    expect(pageSource).toContain('grid gap-2 sm:grid-cols-2');
+    expect(pageSource).toContain('hidden divide-y divide-border lg:block');
+    expect(pageSource).toContain('aria-label={t("ui.support.overrideCategory")}');
+    expect(pageSource).toContain('aria-label={t("ui.support.statusLabel")}');
   });
 });

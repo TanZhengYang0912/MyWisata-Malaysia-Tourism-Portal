@@ -100,6 +100,14 @@ describe("getCategoryChips", () => {
     expect(chips.find((chip) => chip.label === "Property type")?.value).toBe("Boutique · Resort");
   });
 
+  it("leaves structured hours to the header summary except on public places", () => {
+    const operatingHours = { sun: { closed: false, periods: [{ open: "09:00", close: "18:00" }] } } as unknown as ComputedActivity["outlet"]["operatingHours"];
+    const withHours = makeActivity({ categorySlug: "food", outlet: { ...makeActivity().outlet, operatingHours } });
+    expect(getCategoryChips(withHours).find((c) => c.label === "Hours")).toBeUndefined();
+    const publicPlace = makeActivity({ typeSlugs: [PLACE_BOUND_TYPES[0]], price: 0, outlet: { ...makeActivity().outlet, operatingHours } });
+    expect(getCategoryChips(publicPlace).find((c) => c.label === "Hours")?.value).toBe("09:00 - 18:00");
+  });
+
   it("still renders Food's baseline chips (hours/tags/contact)", () => {
     const chips = getCategoryChips(makeActivity({
       categorySlug: "food",

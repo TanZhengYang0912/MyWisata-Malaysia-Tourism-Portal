@@ -2,7 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowUpRight, BedDouble, Check, ChevronLeft, ChevronRight, MapPin, Maximize2, Minus, Navigation, Plus, Star, Users } from "lucide-react";
+import { ArrowUpRight, BedDouble, Check, MapPin, Maximize2, Minus, Navigation, Plus, Star, Users } from "lucide-react";
+import { Pagination } from "@/components/shared/pagination";
 import type { GalleryItem, OutletRendererOutlet, OutletRendererProduct } from "@/components/outlet/outlet-block-types";
 import type { StayBookingDetails } from "@/backend/core/types";
 import type { ReviewRatingBucket, ScopedReviewItem } from "@/backend/domains/vendor-reviews";
@@ -18,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { useCart } from "@/components/providers/cart";
-import { useWishlist } from "@/components/providers/wishlist";
+import { useOptionalWishlist } from "@/components/providers/wishlist";
 import { SaveToggleButton } from "@/components/customer/save-toggle-button";
 import { useAppDialog } from "@/components/providers/app-dialog";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
@@ -119,8 +120,9 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [], reviewRatingBu
   const { t, i18n } = useTranslation("customer");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const gate = useCustomerCapabilityGate();
-  const { savedOutletIds, toggleSavedOutlet } = useWishlist();
-  const saved = savedOutletIds.has(outlet.id);
+  // Null in the vendor shop preview, which has no customer wishlist; the save button is hidden there.
+  const wishlist = useOptionalWishlist();
+  const saved = wishlist?.savedOutletIds.has(outlet.id) ?? false;
   const stay = outlet.stay!;
   const initialReviewTotal = reviewTotal ?? stay.reviews;
   const initialReviewPage = {
@@ -288,10 +290,10 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [], reviewRatingBu
             {address && <span className="inline-flex items-center gap-1"><MapPin size={14} aria-hidden="true" />{address}</span>}
           </div>
         </div>
-        <SaveToggleButton saved={saved} aria-label={saved ? t("ui.activity.removeSaved", { name: outlet.name }) : t("ui.activity.save", { name: outlet.name })}
-          onClick={() => { if (gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) void toggleSavedOutlet(outlet.id); }}>
+        {wishlist && <SaveToggleButton saved={saved} aria-label={saved ? t("ui.activity.removeSaved", { name: outlet.name }) : t("ui.activity.save", { name: outlet.name })}
+          onClick={() => { if (gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) void wishlist.toggleSavedOutlet(outlet.id); }}>
           {saved ? t("ui.activity.removeSavedShort") : t("ui.activity.saveShort")}
-        </SaveToggleButton>
+        </SaveToggleButton>}
       </header>
       <form method="get" onSubmit={handleSearchSubmit} aria-label={t("ui.hotel.yourStay")} className="mb-6 grid gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm lg:grid-cols-[minmax(12rem,1.1fr)_minmax(18rem,1.5fr)_minmax(16rem,1.2fr)_auto] lg:items-end">
         <div className="min-w-0">
@@ -369,12 +371,8 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [], reviewRatingBu
               <FeedbackCollection mode="reviews" items={currentReviewPage.items.map(reviewPresentation)} controls={reviewControls} />
             </div>
           ) : <p className="mt-4 text-sm text-muted-foreground">{selectedReviewRating === null ? t("ui.hotel.noWrittenReviews") : t("ui.reviews.noReviewsForRating")}</p>}
-          {!reviewsLoading && currentReviewPage.totalPages > 1 && (
-            <nav aria-label={t("ui.reviews.pages")} className="mt-5 flex items-center justify-between border-t border-border pt-4">
-              <Button type="button" size="sm" variant="outline" disabled={currentReviewPage.page <= 1} onClick={() => void loadHotelReviews(currentReviewPage.page - 1)}><ChevronLeft size={15} aria-hidden="true" />{t("actions.previous", { ns: "common" })}</Button>
-              <span className="text-xs text-muted-foreground">{t("ui.reviews.pageOf", { page: currentReviewPage.page, total: currentReviewPage.totalPages })}</span>
-              <Button type="button" size="sm" variant="outline" disabled={currentReviewPage.page >= currentReviewPage.totalPages} onClick={() => void loadHotelReviews(currentReviewPage.page + 1)}>{t("actions.next", { ns: "common" })}<ChevronRight size={15} aria-hidden="true" /></Button>
-            </nav>
+          {!reviewsLoading && (
+            <Pagination ariaLabel={t("ui.reviews.pages")} currentPage={currentReviewPage.page} totalPages={currentReviewPage.totalPages} totalItems={currentReviewPage.total} pageSize={HOTEL_REVIEW_PAGE_SIZE} onPageChange={(nextPage) => void loadHotelReviews(nextPage)} />
           )}
         </section>
       )}

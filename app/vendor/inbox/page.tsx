@@ -5,12 +5,13 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, BellOff, CheckCheck, MessageCircle, Search, SlidersHorizontal, UserRound, X } from 'lucide-react';
 import { formatMYR } from '@/lib/i18n/format';
 import { useAuth } from '@/hooks/use-auth';
+import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { ChatThreadPanel } from '@/components/customer/chat-thread-panel';
 import { createClient } from '@/lib/supabase/client';
 import { useChatPresence } from '@/hooks/use-chat-presence';
-import { getOtherDeliveredMessageIds, getOtherReadMessageIds, getReadChatMessageIds } from '@/backend/domains/identity';
-import { countUnreadMessages, formatChatTimestamp, truncateChatMessage } from '@/lib/customer/chat-view';
+import { getOtherDeliveredMessageIds, getOtherReadMessageIds } from '@/backend/domains/identity';
+import { formatChatTimestamp, truncateChatMessage } from '@/lib/customer/chat-view';
 import { parseInboxResponse } from '@/lib/vendor/inbox-response';
 import type { ChatMessage } from '@/backend/core/types';
 
@@ -21,7 +22,10 @@ interface Thread {
   last_message_at: string | null;
   customer?: { full_name?: string; email?: string };
   outlets?: { id?: string; name?: string; city?: string; state?: string };
-  chat_messages?: RawMessage[];
+  // Summary fields from get_chat_thread_summaries; the open thread's messages
+  // load separately from /api/vendors/[vendorId]/inbox/[threadId].
+  latest_message?: RawMessage | null;
+  unread_count?: number;
 }
 interface RawMessage { id: string; sender_id: string; body: string; created_at: string; attachment_url?: string | null; reply_to_message_id?: string | null; context_product_id?: string | null; context_snapshot?: ChatMessage['context'] | null }
 
@@ -38,8 +42,8 @@ const FILTERS: { value: InboxFilter; translationKey: string }[] = [
 ];
 const INBOX_RECONCILE_POLL_MS = 15_000;
 
-function toChatMessages(thread: Thread): ChatMessage[] {
-  return (thread.chat_messages ?? [])
+function toChatMessages(thread: Pick<Thread, 'id' | 'customer_id'>, rows: RawMessage[]): ChatMessage[] {
+  return rows
     .slice()
     .sort((a, b) => a.created_at.localeCompare(b.created_at))
     .map((m) => ({
@@ -68,7 +72,15 @@ export default function VendorInboxPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [readByOthersIds, setReadByOthersIds] = useState<Set<string>>(new Set());
-  const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
+  const [activeMessages, setActiveMessages] = useState<RawMessage[]>([]);
+  const [activeLoadedFor, setActiveLoadedFor] = useState<string | null>(null);
+  const [hasOlder, setHasOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  // Read by the realtime handler and the reconcile poll, which outlive renders.
+  const activeRef = useRef<string | null>(null);
+  const activeMessagesRef = useRef<RawMessage[]>([]);
+  useEffect(() => { activeRef.current = active; }, [active]);
+  useEffect(() => { activeMessagesRef.current = activeMessages; }, [activeMessages]);
   const [deliveredByOthersIds, setDeliveredByOthersIds] = useState<Set<string>>(new Set());
   const [aiReplyDraft, setAiReplyDraft] = useState<string | null>(null);
   const [aiReplyBusy, setAiReplyBusy] = useState(false);
@@ -78,6 +90,8 @@ export default function VendorInboxPage() {
   // CLAUDE-SUPPORT-MUTE-REPORT.md Feature 2
   const [mutedThreadIds, setMutedThreadIds] = useState<Set<string>>(new Set());
   const refreshRequest = useRef<{ vendorId: string; controller: AbortController } | null>(null);
+  // Set once catchUpActiveThread exists (declared further down).
+  const catchUpActiveThreadRef = useRef<() => Promise<void>>(async () => undefined);
   const filters = FILTERS.map((option) => ({ value: option.value, label: t(option.translationKey) }));
 
   const presence = useChatPresence(vendorId ? `chat-presence-vendor-${vendorId}` : undefined, user?.id, 'vendor');
@@ -125,6 +139,7 @@ export default function VendorInboxPage() {
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible') {
         void loadThreads(false);
+        void catchUpActiveThreadRef.current();
       }
     }, INBOX_RECONCILE_POLL_MS);
     const onVisibilityChange = () => {
@@ -210,17 +225,6 @@ export default function VendorInboxPage() {
     } finally { setAiReplyBusy(false); }
   }
 
-  useEffect(() => {
-    if (!user?.id || threads.length === 0) return;
-    const allMessageIds = threads.flatMap((thread) => (thread.chat_messages ?? []).map((m) => m.id));
-    getReadChatMessageIds(user.id, allMessageIds).then((ids) => {
-      setReadMessageIds((previous) => new Set([...previous, ...ids]));
-    });
-    // Re-runs only when the number of loaded threads changes (initial load / new thread) —
-    // per-message updates after that are handled locally by the mark-as-read effect below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threads.length, user?.id]);
-
   // A message is "delivered" once the vendor's client has it — which is as soon as
   // the inbox loads it, not only once that specific thread is opened (unlike Read).
   useEffect(() => {
@@ -237,15 +241,22 @@ export default function VendorInboxPage() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         ({ new: row }: { new: RawMessage & { thread_id: string } }) => {
+          const message: RawMessage = { id: row.id, sender_id: row.sender_id, body: row.body, created_at: row.created_at, attachment_url: row.attachment_url, reply_to_message_id: row.reply_to_message_id, context_product_id: row.context_product_id, context_snapshot: row.context_snapshot };
+          const isOpen = activeRef.current === row.thread_id;
           setThreads((previous) => previous.map((thread) => {
-            if (thread.id !== row.thread_id) return thread;
-            if ((thread.chat_messages ?? []).some((m) => m.id === row.id)) return thread;
+            if (thread.id !== row.thread_id || thread.latest_message?.id === row.id) return thread;
+            const fromCustomer = row.sender_id === thread.customer_id;
             return {
               ...thread,
               last_message_at: row.created_at,
-              chat_messages: [...(thread.chat_messages ?? []), { id: row.id, sender_id: row.sender_id, body: row.body, created_at: row.created_at, attachment_url: row.attachment_url, reply_to_message_id: row.reply_to_message_id, context_product_id: row.context_product_id, context_snapshot: row.context_snapshot }],
+              latest_message: message,
+              unread_count: fromCustomer && !isOpen ? (thread.unread_count ?? 0) + 1 : thread.unread_count,
             };
           }));
+          if (isOpen) {
+            setActiveMessages((previous) => previous.some((m) => m.id === row.id) ? previous : [...previous, message]);
+            if (row.sender_id !== user?.id) void fetch(`/api/chat/${row.thread_id}/read`, { method: 'POST' });
+          }
         },
       )
       .on(
@@ -270,49 +281,89 @@ export default function VendorInboxPage() {
 
   const selected = useMemo(() => threads.find((thread) => thread.id === active) || null, [active, threads]);
 
+  // The open thread loads its newest 50 messages; older pages on request.
+  const fetchThreadMessages = useCallback(async (threadId: string, cursor?: { before?: string; after?: string }, signal?: AbortSignal) => {
+    if (!vendorId) return null;
+    const params = new URLSearchParams();
+    if (cursor?.before) params.set('before', cursor.before);
+    if (cursor?.after) params.set('after', cursor.after);
+    const response = await fetch(`/api/vendors/${vendorId}/inbox/${threadId}${params.size ? `?${params}` : ''}`, { cache: 'no-store', signal });
+    if (!response.ok) return null;
+    const payload = await response.json().catch(() => ({}));
+    return payload.data as { messages: RawMessage[]; hasOlder: boolean | null } | null;
+  }, [vendorId]);
+
+  useEffect(() => {
+    if (!active) return;
+    const controller = new AbortController();
+    void fetchThreadMessages(active, undefined, controller.signal).then((page) => {
+      if (!page || controller.signal.aborted) return;
+      setActiveMessages(page.messages);
+      setHasOlder(Boolean(page.hasOlder));
+      setActiveLoadedFor(active);
+    }).catch(() => undefined);
+    return () => controller.abort();
+  }, [active, fetchThreadMessages]);
+
+  async function loadOlder() {
+    const threadId = active;
+    const oldest = activeMessages[0]?.created_at;
+    if (!threadId || !oldest) return;
+    setLoadingOlder(true);
+    try {
+      const page = await fetchThreadMessages(threadId, { before: oldest });
+      if (!page || activeRef.current !== threadId) return;
+      setActiveMessages((previous) => [...page.messages.filter((m) => !previous.some((p) => p.id === m.id)), ...previous]);
+      setHasOlder(Boolean(page.hasOlder));
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
+
+  // Realtime can miss an insert (reconnects); the reconcile poll also catches
+  // the open thread up from its newest loaded message.
+  const catchUpActiveThread = useCallback(async () => {
+    const threadId = activeRef.current;
+    const newest = activeMessagesRef.current[activeMessagesRef.current.length - 1]?.created_at;
+    if (!threadId || !newest) return;
+    const page = await fetchThreadMessages(threadId, { after: newest });
+    if (!page || activeRef.current !== threadId) return;
+    setActiveMessages((previous) => {
+      const added = page.messages.filter((m) => !previous.some((p) => p.id === m.id));
+      return added.length ? [...previous, ...added] : previous;
+    });
+  }, [fetchThreadMessages]);
+  useEffect(() => { catchUpActiveThreadRef.current = catchUpActiveThread; }, [catchUpActiveThread]);
+
   useEffect(() => {
     if (!active || !user?.id) return;
     void fetch(`/api/chat/${active}/read`, { method: 'POST' }).then((response) => {
       if (!response.ok) return;
-      const thread = threads.find((t) => t.id === active);
-      if (!thread) return;
-      const customerMessageIds = (thread.chat_messages ?? [])
-        .filter((m) => m.sender_id === thread.customer_id)
-        .map((m) => m.id);
-      setReadMessageIds((previous) => new Set([...previous, ...customerMessageIds]));
+      setThreads((previous) => previous.map((thread) => thread.id === active ? { ...thread, unread_count: 0 } : thread));
     });
-    // Re-runs only when the selected thread changes, not on every message —
-    // `threads` is read fresh from closure, which is fine since it's already
-    // populated by the time a thread can be selected from the list.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, user?.id]);
 
   useEffect(() => {
-    if (!active || !user?.id) return;
-    const thread = threads.find((t) => t.id === active);
-    if (!thread) return;
-    const messageIds = toChatMessages(thread).map((m) => m.id);
+    if (!active || !user?.id || activeLoadedFor !== active) return;
+    const messageIds = activeMessagesRef.current.map((m) => m.id);
     getOtherReadMessageIds(user.id, messageIds).then((ids) => {
       setReadByOthersIds((previous) => new Set([...previous, ...ids]));
     });
     getOtherDeliveredMessageIds(user.id, messageIds).then((ids) => {
       setDeliveredByOthersIds((previous) => new Set([...previous, ...ids]));
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, user?.id]);
+  }, [active, activeLoadedFor, user?.id]);
 
-  const unreadByThread = useMemo(() => {
-    const counts = new Map<string, number>();
-    threads.forEach((thread) => counts.set(thread.id, countUnreadMessages(toChatMessages(thread), readMessageIds, 'vendor')));
-    return counts;
-  }, [threads, readMessageIds]);
+  const unreadByThread = useMemo(
+    () => new Map(threads.map((thread) => [thread.id, thread.unread_count ?? 0])),
+    [threads],
+  );
 
   const visibleThreads = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return threads
       .filter((thread) => {
-        const messages = thread.chat_messages ?? [];
-        const latest = messages[messages.length - 1];
+        const latest = thread.latest_message;
         const unreadCount = unreadByThread.get(thread.id) ?? 0;
         const needsReply = !!latest && latest.sender_id === thread.customer_id;
         const matchesFilter =
@@ -362,15 +413,13 @@ export default function VendorInboxPage() {
   }
 
   function appendMessage(message: ChatMessage) {
-    setThreads((previous) => previous.map((thread) => {
-      if (thread.id !== message.threadId) return thread;
-      if ((thread.chat_messages ?? []).some((m) => m.id === message.id)) return thread;
-      return {
-        ...thread,
-        last_message_at: message.sentAt,
-        chat_messages: [...(thread.chat_messages ?? []), { id: message.id, sender_id: message.senderId, body: message.text, created_at: message.sentAt, attachment_url: message.attachmentUrl, reply_to_message_id: message.replyToId ?? null }],
-      };
-    }));
+    const raw: RawMessage = { id: message.id, sender_id: message.senderId, body: message.text, created_at: message.sentAt, attachment_url: message.attachmentUrl, reply_to_message_id: message.replyToId ?? null, context_snapshot: message.context ?? null };
+    setThreads((previous) => previous.map((thread) => thread.id === message.threadId
+      ? { ...thread, last_message_at: message.sentAt, latest_message: raw }
+      : thread));
+    if (activeRef.current === message.threadId) {
+      setActiveMessages((previous) => previous.some((m) => m.id === message.id) ? previous : [...previous, raw]);
+    }
   }
 
   function handleSendError() {
@@ -379,11 +428,7 @@ export default function VendorInboxPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><MessageCircle size={15} /> {t('ui.inbox.travellerConversations')}</div>
-        <h1 className="text-2xl font-bold text-gray-950 dark:text-foreground">{t('ui.inbox.title')}</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{t('ui.inbox.description')}</p>
-      </div>
+      <VendorPageHeader eyebrow={<><MessageCircle size={15} aria-hidden="true" /> {t('ui.inbox.travellerConversations')}</>} title={t('ui.inbox.title')} />
       <div className="flex h-[calc(100dvh-15rem)] min-h-[480px] overflow-hidden rounded-2xl border border-gray-200 dark:border-border bg-white dark:bg-card shadow-sm">
         {/* Phones show the list or the open conversation, one at a time; md and up show both. */}
         <div className={`flex shrink-0 flex-col border-r border-gray-200 dark:border-border md:w-80 ${selected ? 'max-md:hidden' : 'max-md:w-full max-md:border-r-0'}`}>
@@ -426,8 +471,7 @@ export default function VendorInboxPage() {
             ) : visibleThreads.length === 0 ? (
               <p className="px-4 py-10 text-center text-xs text-gray-400 dark:text-muted-foreground">{threads.length === 0 ? t('ui.inbox.noConversations') : t('ui.inbox.noMatchingConversations')}</p>
             ) : visibleThreads.map((thread) => {
-              const messages = thread.chat_messages ?? [];
-              const latest = messages[messages.length - 1];
+              const latest = thread.latest_message;
               const unreadCount = unreadByThread.get(thread.id) ?? 0;
               const name = thread.customer?.full_name || t('ui.inbox.traveller');
               return (
@@ -485,10 +529,16 @@ export default function VendorInboxPage() {
               <p className="text-sm">{t('ui.inbox.selectConversation')}</p>
             </div>
           ) : (
+            <>
+            {hasOlder && activeLoadedFor === selected.id && (
+              <button type="button" onClick={() => void loadOlder()} disabled={loadingOlder} className="shrink-0 border-b border-gray-100 py-2 text-xs font-semibold text-primary hover:bg-secondary/60 disabled:opacity-60 dark:border-border">
+                {t('ui.inbox.loadOlder')}
+              </button>
+            )}
             <ChatThreadPanel
               key={selected.id}
               threadId={selected.id}
-              messages={toChatMessages(selected)}
+              messages={activeLoadedFor === selected.id ? toChatMessages(selected, activeMessages) : []}
               currentUserId={user?.id ?? ""}
               counterpart={{
                 name: selected.customer?.full_name || t('ui.inbox.traveller'),
@@ -503,6 +553,7 @@ export default function VendorInboxPage() {
               isMuted={mutedThreadIds.has(selected.id)}
               onToggleMute={() => void toggleMute(selected.id)}
             />
+            </>
           )}
         </div>
       </div>

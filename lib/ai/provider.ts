@@ -1,7 +1,7 @@
 import 'server-only';
 import { prepareExternalText } from '@/lib/chatbot/pii';
 
-export type AiProvider = 'qwencloud' | 'modelscope';
+export type AiProvider = 'qwencloud' | 'modelscope' | 'gemini';
 export type AiUnavailableReason = 'not_configured' | 'authentication_failed' | 'rate_limited' | 'sensitive_input' | 'unavailable';
 
 export type AiTextResult =
@@ -15,7 +15,18 @@ type ProviderConfig = {
   models: string[];
 };
 
-function providerConfig(): ProviderConfig | null {
+function providerConfig(provider?: 'gemini'): ProviderConfig | null {
+  if (provider === 'gemini') {
+    const apiKey = process.env.LLM_API_KEY?.trim();
+    if (!apiKey) return null;
+    return {
+      provider: 'gemini',
+      apiKey,
+      baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models',
+      models: ['gemini-flash-lite-latest'],
+    };
+  }
+
   const qwenKey = process.env.QWEN_API_KEY?.trim() || process.env.DASHSCOPE_API_KEY?.trim();
   if (qwenKey) {
     const primary = process.env.QWEN_MODEL?.trim() || 'qwen-flash-2025-07-28';
@@ -42,11 +53,11 @@ function providerConfig(): ProviderConfig | null {
 export async function generateAiText(
   systemPrompt: string,
   userPrompt: string,
-  options: { temperature?: number; maxTokens?: number; signal?: AbortSignal; maxProviderAttempts?: number } = {},
+  options: { provider?: 'gemini'; temperature?: number; maxTokens?: number; signal?: AbortSignal; maxProviderAttempts?: number } = {},
 ): Promise<AiTextResult> {
   const preparedPrompt = prepareExternalText(userPrompt);
   if (!preparedPrompt.allowed) return { available: false, reason: 'sensitive_input' };
-  const config = providerConfig();
+  const config = providerConfig(options.provider);
   if (!config) return { available: false, reason: 'not_configured' };
 
   const maxTokens = Math.min(1200, Math.max(100, Math.floor(options.maxTokens ?? 500)));
@@ -56,24 +67,35 @@ export async function generateAiText(
   for (const model of config.models.slice(0, providerAttempts)) {
     if (options.signal?.aborted) return { available: false, reason: 'unavailable' };
     try {
-      const response = await fetch(`${config.baseUrl.replace(/\/$/, '')}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${config.apiKey}`,
-          'Content-Type': 'application/json',
+      const isGemini = config.provider === 'gemini';
+      const response = await fetch(
+        isGemini
+          ? `${config.baseUrl}/${encodeURIComponent(model)}:generateContent`
+          : `${config.baseUrl.replace(/\/$/, '')}/chat/completions`,
+        {
+          method: 'POST',
+          headers: isGemini
+            ? { 'Content-Type': 'application/json', 'x-goog-api-key': config.apiKey }
+            : { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(isGemini
+            ? {
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+                generationConfig: { temperature: options.temperature ?? 0.35, maxOutputTokens: maxTokens },
+              }
+            : {
+                model,
+                temperature: options.temperature ?? 0.35,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userPrompt },
+                ],
+                max_tokens: maxTokens,
+              }),
+          cache: 'no-store',
+          signal: options.signal,
         },
-        body: JSON.stringify({
-          model,
-          temperature: options.temperature ?? 0.35,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          max_tokens: maxTokens,
-        }),
-        cache: 'no-store',
-        signal: options.signal,
-      });
+      );
 
       if (response.status === 429) {
         sawRateLimit = true;
@@ -88,8 +110,14 @@ export async function generateAiText(
         continue;
       }
 
-      const payload = await response.json() as { choices?: Array<{ message?: { content?: unknown } }> };
-      const content = payload.choices?.[0]?.message?.content;
+      const payload = await response.json() as {
+        choices?: Array<{ message?: { content?: unknown } }>;
+        candidates?: Array<{ content?: { parts?: Array<{ text?: unknown }> } }>;
+      };
+      const geminiParts = payload.candidates?.[0]?.content?.parts;
+      const content = config.provider === 'gemini'
+        ? geminiParts?.map((part) => typeof part.text === 'string' ? part.text : '').join('')
+        : payload.choices?.[0]?.message?.content;
       if (typeof content === 'string' && content.trim()) {
         return { available: true, provider: config.provider, model, content: content.trim() };
       }

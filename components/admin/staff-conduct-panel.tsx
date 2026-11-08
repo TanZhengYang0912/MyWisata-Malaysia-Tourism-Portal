@@ -18,8 +18,9 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Search, UserX } from "lucide-react";
+import { Search, UserX } from "lucide-react";
 import Link from "next/link";
+import { Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -234,15 +235,15 @@ export function StaffConductPanel() {
 
   function flagRow(f: ConductFlag, withKind: boolean) {
     return (
-      <div key={`flag-${f.id}`} className="flex flex-wrap items-start justify-between gap-4 px-6 py-4 text-sm">
+      <div key={`flag-${f.id}`} className="flex flex-col items-stretch gap-3 px-4 py-4 text-sm lg:flex-row lg:items-start lg:justify-between lg:px-6">
         <div className="min-w-0 flex-1">
-          <p className="text-foreground">
+          <p className="break-words text-foreground">
             {withKind && (
               <span className="mr-1.5 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase text-destructive">
                 {t("staffConduct.kindLabel.flag")}
               </span>
             )}
-            <span className="capitalize text-muted-foreground font-normal">
+            <span className="break-words capitalize text-muted-foreground font-normal">
               {t("strictMigration.staffConduct.flagSummary", { admin: f.flaggedAdminName, source: t(SOURCE_LABEL[f.source]), target: f.targetUserName ?? "—" })}
             </span>{" "}
             <span className={`rounded-full px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase ${SEVERITY_STYLE[f.severity]}`}>
@@ -250,22 +251,22 @@ export function StaffConductPanel() {
             </span>
           </p>
           {f.originalText && (
-            <p className="text-xs text-muted-foreground mt-0.5 max-w-xl">&ldquo;{f.originalText}&rdquo;</p>
+            <p className="mt-0.5 max-w-xl break-words text-xs text-muted-foreground">&ldquo;{f.originalText}&rdquo;</p>
           )}
           <p className="text-[0.625rem] text-muted-foreground mt-0.5">{new Date(f.createdAt).toLocaleString()}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:shrink-0">
           {f.source === "ticket_reply" ? (
-            <Link href={`/admin/support?ticket=${f.sourceRefId}`} className="text-xs font-semibold text-primary hover:underline">
+            <Link href={`/admin/support?ticket=${f.sourceRefId}`} className="inline-flex min-h-11 items-center rounded-md px-2 text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-8">
               {t("staffConduct.actions.viewLog")}
             </Link>
           ) : (
-            <button type="button" onClick={() => void openTranscript(f)} className="text-xs font-semibold text-primary hover:underline">
+            <button type="button" onClick={() => void openTranscript(f)} className="inline-flex min-h-11 items-center rounded-md px-2 text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-8">
               {t("staffConduct.actions.viewLog")}
             </button>
           )}
           {f.status === "open" ? (
-            <Button size="sm" variant="outline" disabled={reviewingFlagId === f.id} onClick={() => markFlagReviewed(f.id)}>
+            <Button size="sm" variant="outline" className="min-h-11 lg:min-h-8" disabled={reviewingFlagId === f.id} onClick={() => markFlagReviewed(f.id)}>
               {reviewingFlagId === f.id ? t("staffConduct.actions.marking") : t("staffConduct.actions.markReviewed")}
             </Button>
           ) : (
@@ -278,9 +279,9 @@ export function StaffConductPanel() {
 
   function reportRow(r: ChatReport, withKind: boolean) {
     return (
-      <div key={`report-${r.id}`} className="flex flex-wrap items-start justify-between gap-4 px-6 py-4 text-sm">
+      <div key={`report-${r.id}`} className="flex flex-col items-stretch gap-3 px-4 py-4 text-sm lg:flex-row lg:items-start lg:justify-between lg:px-6">
         <div className="min-w-0 flex-1">
-          <p className="text-foreground">
+          <p className="break-words text-foreground">
             {withKind && (
               <span className="mr-1.5 rounded-full bg-accent/25 px-1.5 py-0.5 text-[0.625rem] font-semibold uppercase text-amber-700 dark:text-amber-400">
                 {t("staffConduct.kindLabel.report")}
@@ -297,23 +298,23 @@ export function StaffConductPanel() {
             )}{" "}
             <span className="capitalize text-muted-foreground font-normal">· {t(CHAT_TYPE_LABEL[r.chatType])}</span>
           </p>
-          {r.reason && <p className="text-xs text-muted-foreground mt-0.5 max-w-xl">&ldquo;{r.reason}&rdquo;</p>}
+          {r.reason && <p className="mt-0.5 max-w-xl break-words text-xs text-muted-foreground">&ldquo;{r.reason}&rdquo;</p>}
           <p className="text-[0.625rem] text-muted-foreground mt-0.5">{new Date(r.createdAt).toLocaleString()}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:shrink-0">
           {r.chatType === "user_admin" ? (
-            <Link href={`/admin/support?ticket=${r.threadRef}`} className="text-xs font-semibold text-primary hover:underline">
+            <Link href={`/admin/support?ticket=${r.threadRef}`} className="inline-flex min-h-11 items-center rounded-md px-2 text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-8">
               {t("staffConduct.actions.viewLog")}
             </Link>
           ) : r.chatType === "user_vendor" ? (
-            <button type="button" onClick={() => void openChatLog(r)} className="text-xs font-semibold text-primary hover:underline">
+            <button type="button" onClick={() => void openChatLog(r)} className="inline-flex min-h-11 items-center rounded-md px-2 text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-8">
               {t("staffConduct.actions.viewLog")}
             </button>
           ) : (
             <span className="text-[0.625rem] text-muted-foreground">—</span>
           )}
           {r.status === "open" ? (
-            <Button size="sm" variant="outline" disabled={reviewingReportId === r.id} onClick={() => markReportReviewed(r.id)}>
+            <Button size="sm" variant="outline" className="min-h-11 lg:min-h-8" disabled={reviewingReportId === r.id} onClick={() => markReportReviewed(r.id)}>
               {reviewingReportId === r.id ? t("staffConduct.actions.marking") : t("staffConduct.actions.markReviewed")}
             </Button>
           ) : (
@@ -384,19 +385,7 @@ export function StaffConductPanel() {
             </p>
           ) : pagedItems.items.map((item) => (item.kind === "flagged_conduct" ? flagRow(item.data, true) : reportRow(item.data, true)))}
         </div>
-        <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
-          <span>{t("staffConduct.filters.pageOf", { page: pagedItems.page, total: pagedItems.totalPages })}</span>
-          {pagedItems.totalPages > 1 && (
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" aria-label={t("staffConduct.filters.previousPage")} disabled={pagedItems.page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
-                <ChevronLeft size={14} />
-              </Button>
-              <Button size="sm" variant="outline" aria-label={t("staffConduct.filters.nextPage")} disabled={pagedItems.page >= pagedItems.totalPages} onClick={() => setPage((value) => Math.min(pagedItems.totalPages, value + 1))}>
-                <ChevronRight size={14} />
-              </Button>
-            </div>
-          )}
-        </div>
+        <Pagination currentPage={pagedItems.page} totalPages={pagedItems.totalPages} totalItems={filteredItems.length} pageSize={pageSize} onPageChange={setPage} className="mt-0 border-t border-border px-5 py-3" />
       </div>
 
       <Dialog open={!!transcriptFlag} onOpenChange={(open) => { if (!open) { setTranscriptFlag(null); setTranscript(null); } }}>

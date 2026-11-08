@@ -1,6 +1,8 @@
 import { getNearbyOutlets } from "@/backend/domains/places";
+import { getVendorRatingSummaries } from "@/backend/domains/vendor-reviews";
 import { cityCentre, parseRecommendationCoordinates } from "@/lib/personalization/location";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { apiFail, apiOk } from "@/lib/validation/schemas";
 import { z } from "zod";
 
@@ -70,6 +72,8 @@ export async function POST(request: Request) {
     if (vendorsError) return apiFail("PARTNERS_UNAVAILABLE", "Unable to load nearby partners", 503);
 
     const vendorById = new Map((vendors ?? []).map((vendor) => [vendor.id, vendor]));
+    // A failed lookup (unknown rating) hides the badge; no reviews shows "No reviews yet".
+    const ratings = await getVendorRatingSummaries(vendorIds, createServiceClient()).catch(() => null);
     const partners = [...closestOutletByVendor.entries()]
       .flatMap(([vendorId, nearby]) => {
         const vendor = vendorById.get(vendorId);
@@ -87,6 +91,9 @@ export async function POST(request: Request) {
             state: nearby.outlet.state || null,
           }],
           distanceKm: nearby.km,
+          rating: ratings ? ratings.get(vendor.id) ?? null : undefined,
+          // Only the closest outlet is known here, so the status is that outlet's.
+          openNow: nearby.outlet.currentlyOpen ?? nearby.outlet.open,
         }];
       })
       .slice(0, RESULT_LIMIT);

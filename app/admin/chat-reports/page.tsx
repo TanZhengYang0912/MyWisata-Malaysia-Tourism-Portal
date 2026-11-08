@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
+import { AdminMobileRecordCard } from "@/components/admin/admin-mobile-record-card";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -381,7 +382,48 @@ export default function AdminChatReportsPage() {
       ) : (
         <div className="rounded-2xl overflow-hidden border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
           {statusTab === "open" && <><div className="flex items-center gap-2 border-b border-border px-6 py-3 text-xs"><input type="checkbox" aria-label={t("chatReports.accessibility.selectAll")} checked={filtered.length > 0 && filtered.every((report) => selectedIds.has(report.id))} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); filtered.forEach((report) => event.target.checked ? next.add(report.id) : next.delete(report.id)); return next; })} /><span className="text-muted-foreground">{t("chatReports.selectAll")}</span></div><AdminBatchActionBar selectedCount={filtered.filter((report) => selectedIds.has(report.id)).length} onClear={() => setSelectedIds(new Set())} onApply={(action) => void applyBatch(action as "resolved" | "dismissed")} actions={[{ value: "resolved", label: t("batchActions.resolved") }, { value: "dismissed", label: t("batchActions.dismissed") }]} busy={batchBusy} /></>}
-          <div className="divide-y divide-border">
+          <div className="space-y-3 p-3 lg:hidden">
+            {filtered.map((report) => {
+              const outletName = report.chat_threads?.outlets?.name ?? t("chatReports.fallback.unknownOutlet");
+              const reporterName = report.reporter?.full_name || report.reporter?.email || t("chatReports.fallback.unknownReporter");
+              const isRepeatFalseReporter = report.reporterStats.total >= 3 && report.reporterStats.dismissed / report.reporterStats.total >= 0.5;
+              return (
+                <AdminMobileRecordCard
+                  key={report.id}
+                  header={
+                    <div className="flex min-w-0 w-full items-start gap-3">
+                      {report.status === "open" && <label className="flex h-11 w-11 shrink-0 items-center justify-center"><input type="checkbox" aria-label={t("chatReports.accessibility.selectReport", { id: report.id })} checked={selectedIds.has(report.id)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); if (event.target.checked) next.add(report.id); else next.delete(report.id); return next; })} /></label>}
+                      <div className="min-w-0 flex-1">
+                        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-foreground">
+                          <span className="break-words">{reasonLabel(report.reason, REASON_LABEL[report.reason] ?? report.reason)} · {outletName}</span>
+                          <StatusBadge status={reportStatusLabel(report.status)} />
+                          {report.sameThreadReportCount > 1 && <Badge variant="outline" className="text-[10px]">{t("chatReports.threadReportCount", { count: report.sameThreadReportCount })}</Badge>}
+                        </p>
+                        <p className="mt-1 break-words text-xs text-muted-foreground">
+                          {t("chatReports.reportedBy", { name: reporterName, date: new Date(report.created_at).toLocaleDateString(locale) })}
+                          {isRepeatFalseReporter && <span className="font-medium text-destructive"> · {t("chatReports.dismissedHistory", { dismissed: report.reporterStats.dismissed, total: report.reporterStats.total })}</span>}
+                        </p>
+                      </div>
+                    </div>
+                  }
+                  footer={
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button size="sm" variant="outline" className="col-span-2 min-h-11 w-full" onClick={() => setViewReport(report)}>{t("chatReports.actions.view")}</Button>
+                      {report.status === "open" && (
+                        <>
+                          <Button size="sm" variant="outline" className="min-h-11 w-full" disabled={updatingId === report.id} onClick={() => startResolve(report, "dismissed")}>{t("batchActions.dismissed")}</Button>
+                          <Button size="sm" className="min-h-11 w-full" disabled={updatingId === report.id} onClick={() => startResolve(report, "resolved")}>{t("batchActions.resolved")}</Button>
+                        </>
+                      )}
+                    </div>
+                  }
+                >
+                  {report.details && <p className="break-words text-sm italic text-muted-foreground">&ldquo;{report.details}&rdquo;</p>}
+                </AdminMobileRecordCard>
+              );
+            })}
+          </div>
+          <div className="hidden divide-y divide-border lg:block">
             {filtered.map((r) => {
               const outletName = r.chat_threads?.outlets?.name ?? t("chatReports.fallback.unknownOutlet");
               const reporterName = r.reporter?.full_name || r.reporter?.email || t("chatReports.fallback.unknownReporter");
@@ -423,19 +465,19 @@ export default function AdminChatReportsPage() {
       )}
 
       <Dialog open={!!viewReport} onOpenChange={(open) => { if (!open) { setViewReport(null); setThreadMessages(null); } }}>
-        <DialogContent className="flex max-h-[85dvh] flex-col sm:max-w-lg">
+        <DialogContent className="flex max-h-[85dvh] flex-col overflow-y-auto overscroll-contain sm:max-w-lg">
           <DialogHeader className="shrink-0">
             <DialogTitle>{viewReport?.chat_threads?.outlets?.name ?? t("chatReports.dialog.title")}</DialogTitle>
           </DialogHeader>
           {viewReport && (
             <div className="flex min-h-0 flex-1 flex-col gap-3 text-sm">
               <div className="shrink-0 space-y-3">
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div><p className="text-muted-foreground">{t("chatReports.fields.reason")}</p><p className="font-semibold text-foreground">{reasonLabel(viewReport.reason, REASON_LABEL[viewReport.reason] ?? viewReport.reason)}</p></div>
+                <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+                  <div className="min-w-0"><p className="text-muted-foreground">{t("chatReports.fields.reason")}</p><p className="break-words font-semibold text-foreground">{reasonLabel(viewReport.reason, REASON_LABEL[viewReport.reason] ?? viewReport.reason)}</p></div>
                   <div><p className="text-muted-foreground">{t("chatReports.fields.status")}</p><StatusBadge status={reportStatusLabel(viewReport.status)} /></div>
                   <div>
                     <p className="text-muted-foreground">{t("chatReports.fields.reportedBy")}</p>
-                    <p className="font-semibold text-foreground">
+                    <p className="break-words font-semibold text-foreground">
                       {viewReport.reporter?.full_name || viewReport.reporter?.email}{" "}
                       <span className="font-normal text-muted-foreground">
                         ({viewReport.reporter_id === viewReport.chat_threads?.customer_id ? t("chatReports.roles.customer") : t("chatReports.roles.vendor")})
@@ -444,7 +486,7 @@ export default function AdminChatReportsPage() {
                   </div>
                   <div>
                     <p className="text-muted-foreground">{t("chatReports.fields.participants")}</p>
-                    <p className="font-semibold text-foreground">
+                    <p className="break-words font-semibold text-foreground">
                       {viewReport.chat_threads?.customer?.full_name || viewReport.chat_threads?.customer?.email || t("chatReports.fallback.customer")}
                       {" ↔ "}
                       {viewReport.chat_threads?.outlets?.name ?? t("chatReports.fallback.outlet")}
@@ -490,14 +532,14 @@ export default function AdminChatReportsPage() {
                     </>
                   )}
                 </div>
-                {viewReport.details && <p className="text-xs bg-secondary rounded-lg p-2 text-foreground">&ldquo;{viewReport.details}&rdquo;</p>}
+                {viewReport.details && <p className="break-words text-xs bg-secondary rounded-lg p-2 text-foreground">&ldquo;{viewReport.details}&rdquo;</p>}
                 {viewReport.sameThreadReportCount > 1 && (
                   <p className="text-xs text-amber-700 dark:text-amber-200">{t("chatReports.separateReports", { count: viewReport.sameThreadReportCount })}</p>
                 )}
                 {viewReport.status !== "open" && (
                   <div className="rounded-lg bg-secondary p-2 text-xs">
-                    <p className="font-semibold text-foreground">{t("chatReports.resolution", { reason: resolutionLabel(viewReport.resolution_reason ?? "", RESOLUTION_REASON_LABEL[viewReport.resolution_reason ?? ""] ?? viewReport.resolution_reason ?? "") })}</p>
-                    {viewReport.resolution_note && <p className="text-muted-foreground mt-1">{viewReport.resolution_note}</p>}
+                    <p className="break-words font-semibold text-foreground">{t("chatReports.resolution", { reason: resolutionLabel(viewReport.resolution_reason ?? "", RESOLUTION_REASON_LABEL[viewReport.resolution_reason ?? ""] ?? viewReport.resolution_reason ?? "") })}</p>
+                    {viewReport.resolution_note && <p className="mt-1 break-words text-muted-foreground">{viewReport.resolution_note}</p>}
                   </div>
                 )}
               </div>
@@ -516,7 +558,7 @@ export default function AdminChatReportsPage() {
                 )}
               </div>
               {viewReport.status === "open" && (
-                <div className="flex shrink-0 gap-2">
+                <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
                   <Button variant="outline" className="flex-1" disabled={updatingId === viewReport.id} onClick={() => startResolve(viewReport, "dismissed")}>{t("batchActions.dismissed")}</Button>
                   <Button className="flex-1" disabled={updatingId === viewReport.id} onClick={() => startResolve(viewReport, "resolved")}>{t("batchActions.resolved")}</Button>
                 </div>
@@ -527,7 +569,7 @@ export default function AdminChatReportsPage() {
       </Dialog>
 
       <Dialog open={!!resolveTarget} onOpenChange={(open) => { if (!open) setResolveTarget(null); }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto overscroll-contain sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>{resolveTarget?.action === "resolved" ? t("chatReports.dialog.resolveTitle") : t("chatReports.dialog.dismissTitle")}</DialogTitle>
           </DialogHeader>

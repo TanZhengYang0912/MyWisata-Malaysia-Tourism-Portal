@@ -36,7 +36,7 @@ describe('buildProductContextSnapshot', () => {
       'p1',
       'o1',
     );
-    expect(snap).toMatchObject({ type: 'product', id: 'p1', title: 'Sunset Cruise', href: '/customer/activity/p1' });
+    expect(snap).toMatchObject({ type: 'product', id: 'p1', title: 'Sunset Cruise', href: '/customer/products/p1' });
     expect(snap?.subtitle).toContain('120');
   });
 

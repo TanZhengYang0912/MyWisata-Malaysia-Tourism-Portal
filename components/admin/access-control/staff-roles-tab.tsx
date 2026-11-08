@@ -465,9 +465,9 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
             <ul className="mt-3 space-y-1.5">{role.moduleKeys.map((key) => <li key={key} className="rounded-lg bg-muted/30 px-3 py-2">
               <span className="block text-xs font-medium">{modules.find((module) => module.key === key)?.label ?? key.replace(/[._]/g, " ")}</span>
             </li>)}</ul>
-            <ul className="mt-2 space-y-1">{role.permissionKeys.map((key) => <li key={key} className="text-xs text-muted-foreground">{permissionLabel(key)}</li>)}</ul>
+            <ul className="mt-2 space-y-1">{role.permissionKeys.map((key) => <li key={key} className="break-words text-xs text-muted-foreground">{permissionLabel(key)}</li>)}</ul>
             {(role.jitPermissionKeys ?? []).length > 0 && <ul className="mt-2 space-y-1">{(role.jitPermissionKeys ?? []).map((key) => <li key={key} className="text-xs text-primary">{t("accessControl.staffRoles.jitLabel", { permission: permissionLabel(key) })}</li>)}</ul>}
-            <div className="mt-3 flex justify-end gap-2">
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
               {!role.isSystem && <Button size="sm" variant="outline" onClick={() => editRole(role)}>{t("accessControl.staffRoles.editRole")}</Button>}
               <Button size="sm" variant="outline" disabled={!role.isActive} onClick={() => copyRoleTemplate(role)}>{t("accessControl.staffRoles.useTemplate")}</Button>
               {!role.isSystem && <Button size="sm" variant="outline" disabled={!role.isActive} onClick={() => { setInvitationRoleId(role.id); selectRoleForAssignment(role.id); }}>{t("accessControl.staffRoles.useRole")}</Button>}

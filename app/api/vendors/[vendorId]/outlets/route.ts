@@ -29,7 +29,7 @@ export async function GET(request: Request, { params }: Props) {
 
   const selection = metadataOnly
     ? 'id,name,city,state,status,operating_hours'
-    : 'id,display_id,name,slug,address,city,state,postcode,country,lat,lng,phone,email,operating_hours,welcome_message,welcome_enabled,food_service_modes,badge_slugs,accommodation_type_slugs,status,review_status,review_note,created_at,outlet_pages(hero_url,brand_colour),products(count),outlet_managers(user_id,users(id,full_name,email)),outlet_manager_invitations(invited_email,expires_at,status)';
+    : 'id,display_id,name,slug,address,city,state,postcode,country,lat,lng,phone,email,operating_hours,welcome_message,welcome_enabled,food_service_modes,badge_slugs,accommodation_type_slugs,status,review_status,review_note,created_at,outlet_pages(hero_url,brand_colour),outlet_managers(user_id,users(id,full_name,email)),outlet_manager_invitations(invited_email,expires_at,status)';
   let query = supabase
     .from('outlets')
     .select(selection, { count: 'exact' })
@@ -61,26 +61,30 @@ export async function GET(request: Request, { params }: Props) {
   if (error || stateError || managedPlacesError) return apiFail('DB_ERROR', (error || stateError || managedPlacesError)?.message || 'Unknown error', 500);
 
   const outletIds = ((data ?? []) as unknown as Array<{ id: string }>).map((outlet) => outlet.id);
-  const [directAccommodationRows, offeredAccommodationRows] = outletIds.length ? await Promise.all([
-    supabase.from('products').select('outlet_id').eq('vendor_id', vendorId).eq('category_id', ACCOMMODATION_CATEGORY_ID).eq('status', 'active').in('outlet_id', outletIds),
-    supabase.from('outlet_offers').select('outlet_id,products!inner(vendor_id,category_id,status)').eq('status', 'active').eq('products.vendor_id', vendorId).eq('products.category_id', ACCOMMODATION_CATEGORY_ID).eq('products.status', 'active').in('outlet_id', outletIds),
-  ]) : [{ data: [], error: null }, { data: [], error: null }];
-  const accommodationError = directAccommodationRows.error || offeredAccommodationRows.error;
-  if (accommodationError) return apiFail('DB_ERROR', accommodationError.message, 500);
-  const accommodationOutletIds = new Set([
-    ...(directAccommodationRows.data ?? []).map((row: { outlet_id: string }) => row.outlet_id),
-    ...(offeredAccommodationRows.data ?? []).map((row: { outlet_id: string }) => row.outlet_id),
-  ]);
-  const { data: outletMedia, error: outletMediaError } = outletIds.length
-    ? await supabase
-      .from('media_assets')
-      .select('outlet_id,url,alt_text,media_type,sort_order')
-      .in('outlet_id', outletIds)
-      .is('product_id', null)
-      .in('media_type', ['gallery', 'image'])
-      .order('sort_order')
-    : { data: [], error: null };
-  if (outletMediaError) return apiFail('DB_ERROR', outletMediaError.message, 500);
+  const [
+    { data: listingSummaries, error: listingSummaryError },
+    { data: outletMedia, error: outletMediaError },
+  ] = outletIds.length
+    ? await Promise.all([
+      supabase.rpc('get_vendor_outlet_listing_summary', {
+        p_vendor_id: vendorId,
+        p_outlet_ids: outletIds,
+        p_accommodation_category_id: ACCOMMODATION_CATEGORY_ID,
+      }),
+      supabase
+        .from('media_assets')
+        .select('outlet_id,url,alt_text,media_type,sort_order')
+        .in('outlet_id', outletIds)
+        .is('product_id', null)
+        .in('media_type', ['gallery', 'image'])
+        .order('sort_order'),
+    ])
+    : [{ data: [], error: null }, { data: [], error: null }];
+  if (listingSummaryError || outletMediaError) return apiFail('DB_ERROR', (listingSummaryError || outletMediaError)?.message || 'Unknown error', 500);
+
+  const listingSummaryByOutletId = new Map<string, { products_count: number; is_accommodation_outlet: boolean }>(
+    (listingSummaries ?? []).map((summary: { outlet_id: string; products_count: number; is_accommodation_outlet: boolean }) => [summary.outlet_id, summary]),
+  );
 
   const outletMediaById = new Map<string, EntityMediaRow[]>();
   for (const media of outletMedia ?? []) {
@@ -102,7 +106,8 @@ export async function GET(request: Request, { params }: Props) {
     const assignment = Array.isArray(outlet.outlet_managers) ? outlet.outlet_managers[0] : outlet.outlet_managers;
     const manager = Array.isArray(assignment?.users) ? assignment.users[0] : assignment?.users;
     const pendingInvite = (Array.isArray(outlet.outlet_manager_invitations) ? outlet.outlet_manager_invitations : []).find((invite: { invited_email: string; status: string; expires_at: string }) => invite.status === 'pending' && new Date(invite.expires_at).getTime() > Date.now());
-    return { ...outlet, coverUrl: resolveOutletImage({ outletName: outlet.name, outletGalleryUrl, outletHeroUrl: outletPage?.hero_url, managedPlaceImages }), productsCount: outlet.products?.[0]?.count ?? 0, isAccommodationOutlet: accommodationOutletIds.has(outlet.id), manager: manager ? { id: manager.id, fullName: manager.full_name, email: manager.email } : null, pendingInvitation: pendingInvite ? { email: pendingInvite.invited_email, expiresAt: pendingInvite.expires_at } : null };
+    const listingSummary = listingSummaryByOutletId.get(outlet.id);
+    return { ...outlet, coverUrl: resolveOutletImage({ outletName: outlet.name, outletGalleryUrl, outletHeroUrl: outletPage?.hero_url, managedPlaceImages }), productsCount: listingSummary?.products_count ?? 0, isAccommodationOutlet: listingSummary?.is_accommodation_outlet ?? false, manager: manager ? { id: manager.id, fullName: manager.full_name, email: manager.email } : null, pendingInvitation: pendingInvite ? { email: pendingInvite.invited_email, expiresAt: pendingInvite.expires_at } : null };
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return apiOk({ items, availableStates: [...new Set((stateRows || []).map((row: any) => row.state))], pagination: { page, pageSize, total: count || 0, totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)) } });

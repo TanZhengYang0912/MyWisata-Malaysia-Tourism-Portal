@@ -10,8 +10,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("react-i18next", () => {
-  const t = (key: string, values?: Record<string, unknown>) => key === "pagination.showing"
-    ? `${key}:${values?.first}-${values?.last}/${values?.total}`
+  const t = (key: string, values?: Record<string, unknown>) => key === "pagination.range"
+    ? `${key}:${values?.from}-${values?.to}/${values?.total}`
     : key;
   return {
     useTranslation: () => ({ t, i18n: { resolvedLanguage: "en" } }),
@@ -69,6 +69,12 @@ async function renderLoadedPage() {
     await Promise.resolve();
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
+}
+
+function campaignMobileRows() {
+  return findElements(container, element =>
+    element.tagName === 'ARTICLE' && (element.getAttribute('class') ?? '').includes('xl:hidden'),
+  );
 }
 
 describe("Admin promotion campaign workbench", () => {
@@ -205,11 +211,11 @@ describe("Admin promotion campaign workbench", () => {
     const row = (await campaignPayload().json()).data.campaigns[0];
     mocks.fetch.mockResolvedValue(response({ data: { campaigns: Array.from({ length: 31 }, (_, index) => ({ ...row, id: `campaign-${index}`, title: `Event ${index}` })) } }));
     await renderLoadedPage();
-    expect(findElements(container, element => element.tagName === 'ARTICLE')).toHaveLength(15);
+    expect(campaignMobileRows()).toHaveLength(15);
     await click(findOne(container, element => element.tagName === 'BUTTON' && element.getAttribute('aria-label') === 'accessibility.nextPage'));
-    expect(findElements(container, element => element.tagName === 'ARTICLE')).toHaveLength(15);
+    expect(campaignMobileRows()).toHaveLength(15);
     await setInputValue(findOne(container, element => element.tagName === 'INPUT' && element.type === 'search'), ' Event 30 ');
-    const rows = findElements(container, element => element.tagName === 'ARTICLE');
+    const rows = campaignMobileRows();
     expect(rows).toHaveLength(1);
     expect(rows[0].textContent).toContain('Event 30');
   });
@@ -221,45 +227,45 @@ describe("Admin promotion campaign workbench", () => {
       status: index < 31 ? 'approved' : 'draft',
     })) } }));
     await renderLoadedPage();
-    const rows = () => findElements(container, element => element.tagName === 'ARTICLE');
+    const rows = campaignMobileRows;
     const next = () => findOne(container, element => element.tagName === 'BUTTON' && element.getAttribute('aria-label') === 'accessibility.nextPage');
     const perPage = findOne(container, element => element.tagName === 'SELECT' && element.getAttribute('aria-label') === 'ui.pagination.perPage');
     expect(findElements(perPage, element => element.tagName === 'OPTION').map(element => element.value)).toEqual(['15', '25', '50']);
-    expect(container.textContent).toContain('pagination.showing:1-15/61');
+    expect(container.textContent).toContain('pagination.range:1-15/61');
     await click(next());
-    expect(container.textContent).toContain('pagination.showing:16-30/61');
+    expect(container.textContent).toContain('pagination.range:16-30/61');
 
     await setInputValue(perPage, '25');
     expect(rows()).toHaveLength(25);
     expect(rows()[0].textContent).toContain('Event 0');
-    expect(container.textContent).toContain('pagination.showing:1-25/61');
+    expect(container.textContent).toContain('pagination.range:1-25/61');
     await click(next());
     const status = findOne(container, element => element.tagName === 'SELECT' && Boolean(element.parentNode?.textContent.includes('promotionCampaigns.list.statusFilter')));
     await setInputValue(status, 'draft');
     expect(rows()[0].textContent).toContain('Event 31');
-    expect(container.textContent).toContain('pagination.showing:1-25/30');
+    expect(container.textContent).toContain('pagination.range:1-25/30');
     await click(next());
     expect(rows()).toHaveLength(5);
-    expect(container.textContent).toContain('pagination.showing:26-30/30');
+    expect(container.textContent).toContain('pagination.range:26-30/30');
 
     const from = findOne(container, element => element.tagName === 'INPUT' && Boolean(element.parentNode?.textContent.includes('promotionCampaigns.list.dateFrom')));
     await setInputValue(from, '2027-03-14');
     expect(rows()).toHaveLength(0);
-    expect(container.textContent).toContain('pagination.showing:0-0/0');
+    expect(container.textContent).not.toContain('pagination.range');
     await setInputValue(from, '');
-    expect(container.textContent).toContain('pagination.showing:1-25/30');
+    expect(container.textContent).toContain('pagination.range:1-25/30');
     await setInputValue(perPage, '50');
     expect(rows()).toHaveLength(30);
-    expect(container.textContent).toContain('pagination.showing:1-30/30');
+    expect(container.textContent).toContain('pagination.range:1-30/30');
     await setInputValue(status, 'all');
     expect(rows()).toHaveLength(50);
     await click(next());
     await setInputValue(findOne(container, element => element.tagName === 'INPUT' && element.type === 'search'), 'Event 60');
     expect(rows()).toHaveLength(1);
-    expect(container.textContent).toContain('pagination.showing:1-1/1');
+    expect(container.textContent).toContain('pagination.range:1-1/1');
     await click(findOne(container, element => element.tagName === 'BUTTON' && element.textContent === 'filters.clear'));
     expect(rows()).toHaveLength(50);
-    expect(container.textContent).toContain('pagination.showing:1-50/61');
+    expect(container.textContent).toContain('pagination.range:1-50/61');
   });
 
   afterEach(() => {

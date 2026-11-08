@@ -10,19 +10,17 @@ import type { PromotionCampaignPublicVendor } from "@/lib/promotion-campaigns/ty
 type Props = {
   vendor: PromotionCampaignPublicVendor;
   campaignSlug: string;
-  mode: "preview" | "detail";
   layout?: "grid" | "featured";
   matchingStallNumbers?: string[];
 };
 
 /** A participating vendor's stall within an event — replaces the retired offer-card (see 20260928180000). */
-export function PromotionCampaignVendorCard({ vendor, campaignSlug, mode, layout = "grid", matchingStallNumbers = [] }: Props) {
+export function PromotionCampaignVendorCard({ vendor, campaignSlug, layout = "grid", matchingStallNumbers = [] }: Props) {
   const { t } = useTranslation("customer");
   const firstStall = vendor.stalls[0];
   const image = firstStall?.stallPosterUrl || vendor.vendorLogoUrl;
-  const isFeatured = mode === "detail" && layout === "featured";
-  // A product sold at several locations is still one item to the customer.
-  const productCount = new Set(vendor.stalls.flatMap((stall) => stall.products.map((product) => product.name))).size;
+  const productCount = vendor.stalls.reduce((count, stall) => count + stall.products.length, 0);
+  const isFeatured = layout === "featured";
 
   return (
     <article className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm${isFeatured ? " sm:grid sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]" : ""}`}>
@@ -43,8 +41,8 @@ export function PromotionCampaignVendorCard({ vendor, campaignSlug, mode, layout
         {vendor.vendorKind === "event" && (
           <span className="mt-1 inline-flex w-fit rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-900 dark:text-amber-200">{t("ui.eventPartners.badge")}</span>
         )}
-        {mode === "detail" && firstStall && <p className="mt-2 line-clamp-3 break-words text-sm leading-6 text-muted-foreground">{firstStall.stallDescription}</p>}
-        {mode === "detail" && matchingStallNumbers.length > 0 && (
+        {!isFeatured && productCount > 0 && <p className="mt-1 text-xs text-muted-foreground">{t("ui.promotionCampaigns.productCount", { count: productCount })}</p>}
+        {matchingStallNumbers.length > 0 && (
           <div className="mt-3" role="group" aria-label={t("ui.promotionCampaigns.matchingStalls")}>
             <p className="text-xs font-semibold text-primary">{t("ui.promotionCampaigns.matchingStalls")}</p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -55,9 +53,6 @@ export function PromotionCampaignVendorCard({ vendor, campaignSlug, mode, layout
               ))}
             </div>
           </div>
-        )}
-        {productCount > 0 && (
-          <p className="mt-2 text-xs text-muted-foreground">{t("ui.promotionCampaigns.productCount", { count: productCount })}</p>
         )}
         <div className="mt-auto pt-4">
           <Button asChild className="w-full rounded-full">

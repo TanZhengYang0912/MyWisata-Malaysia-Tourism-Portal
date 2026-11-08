@@ -108,10 +108,12 @@ describe("public sponsored placement event route", () => {
 
   it("conditionally labels cards and every StoryMap result in all customer locales", () => {
     const root = process.cwd();
-    const card = readFileSync(resolve(root, "components/customer/activity-card.tsx"), "utf8");
+    const card = readFileSync(resolve(root, "components/customer/product-card.tsx"), "utf8");
     const map = readFileSync(resolve(root, "components/demo-map/story-map.tsx"), "utf8");
-    expect(card).toContain("activity.sponsorship &&");
-    expect(card).toContain('t("ui.labels.sponsored")');
+    const labels = readFileSync(resolve(root, "components/customer/photo-rating-badge.tsx"), "utf8");
+    expect(card).toContain("<PhotoCardLabels sponsored={Boolean(activity.sponsorship)} />");
+    expect(labels).toContain("{sponsored &&");
+    expect(labels).toContain('t("ui.labels.sponsored")');
     expect(card).not.toContain('activity.sponsorship?.label ?? t("ui.labels.sponsored")');
     expect(map.match(/sponsorship &&/g)?.length).toBeGreaterThanOrEqual(3);
     expect(map.match(/t\("ui\.labels\.sponsored"\)/g)?.length).toBeGreaterThanOrEqual(3);

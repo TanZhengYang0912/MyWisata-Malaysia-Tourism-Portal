@@ -160,6 +160,22 @@ describe("GET /api/auth/me", () => {
     expect(mocks.resolveServerCustomerCapabilities).toHaveBeenCalledWith("user-1");
   });
 
+  it("returns the active vendor name with vendor workspace details", async () => {
+    const originalFrom = mocks.from.getMockImplementation()!;
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "user_roles") {
+        return queryResult([{ vendor_id: "vendor-1", outlet_id: null, roles: { name: "vendor_owner" }, outlets: null }]);
+      }
+      if (table === "vendors") return queryResult({ name: "Ghee Hiang" });
+      return originalFrom(table);
+    });
+
+    const body = await (await GET()).json();
+
+    expect(body.user).toMatchObject({ activeVendorId: "vendor-1", activeVendorName: "Ghee Hiang" });
+    expect(mocks.from).toHaveBeenCalledWith("vendors");
+  });
+
   it("returns self-only Staff role names and effective permissions", async () => {
     mocks.from.mockImplementation((table: string) => {
       if (table === "users") return queryResult({

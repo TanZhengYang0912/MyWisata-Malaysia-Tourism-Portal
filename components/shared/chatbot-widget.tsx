@@ -128,7 +128,7 @@ async function postFeedback(payload: Record<string, unknown>) {
   }
 }
 
-export function ChatbotWidget() {
+export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOnMobile?: boolean }) {
   // Lifted to context (CLAUDE-SUPPORT-MUTE-REPORT.md Feature 1) so other
   // entry points — the profile page's "Contact Support" button, outlet and
   // activity page "Message vendor" buttons — can open this same widget
@@ -594,7 +594,7 @@ export function ChatbotWidget() {
           </div>
         </div>
       ) : (
-        <Button size="icon" className="relative h-14 w-14 rounded-full shadow-lg" onClick={() => setOpen(true)} title={t("chatbot.openChat")} aria-label={t("accessibility.openChat")}>
+        <Button size="icon" className={`relative h-14 w-14 rounded-full shadow-lg ${hideLauncherOnMobile ? "max-md:hidden" : ""}`} onClick={() => setOpen(true)} title={t("chatbot.openChat")} aria-label={t("accessibility.openChat")}>
           <MessageCircle size={22} />
           {unreadChatCount > 0 && (
             <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-destructive px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">

@@ -23,12 +23,11 @@ const vendor: PromotionCampaignPublicVendor = {
 };
 
 describe("PromotionCampaignVendorCard", () => {
-  it("renders a featured detail card with its stall details and destination", () => {
+  it("renders a concise featured detail card with its stall destination", () => {
     const markup = renderToStaticMarkup(
       <PromotionCampaignVendorCard
         vendor={vendor}
         campaignSlug="antique-event"
-        mode="detail"
         layout="featured"
       />,
     );
@@ -37,17 +36,19 @@ describe("PromotionCampaignVendorCard", () => {
     expect(markup).toContain("sm:min-h-60");
     expect(markup).toContain("Abdul Antiques");
     expect(markup).toContain("ui.promotionCampaigns.stallNumber");
-    expect(markup).toContain("ui.promotionCampaigns.productCount");
+    expect(markup).not.toContain("Antique pieces and collectibles.");
+    expect(markup).not.toContain("ui.promotionCampaigns.productCount");
     expect(markup).toContain('href="/customer/events/antique-event/vendor-1"');
   });
 
-  it("keeps the default preview card vertical", () => {
+  it("keeps the default grid card vertical", () => {
     const markup = renderToStaticMarkup(
-      <PromotionCampaignVendorCard vendor={vendor} campaignSlug="antique-event" mode="preview" />,
+      <PromotionCampaignVendorCard vendor={vendor} campaignSlug="antique-event" />,
     );
 
     expect(markup).toContain('class="flex min-w-0 flex-col overflow-hidden rounded-2xl');
     expect(markup).not.toContain("sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]");
+    expect(markup).toContain("ui.promotionCampaigns.productCount");
   });
 
   it("identifies the stall number that matched a directory search", () => {
@@ -55,7 +56,6 @@ describe("PromotionCampaignVendorCard", () => {
     const markup = renderToStaticMarkup(createElement(SearchResultCard, {
       vendor: { ...vendor, stalls: [...vendor.stalls, { ...vendor.stalls[0], registrationId: "registration-2", stallNumber: "Z99" }] },
       campaignSlug: "antique-event",
-      mode: "detail",
       matchingStallNumbers: ["Z99"],
     }));
 

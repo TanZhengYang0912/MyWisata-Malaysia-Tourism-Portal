@@ -11,7 +11,7 @@ const homePageSource = readFileSync(
   "utf8",
 );
 const activityCardSource = readFileSync(
-  resolve(process.cwd(), "components/customer/activity-card.tsx"),
+  resolve(process.cwd(), "components/customer/product-card.tsx"),
   "utf8",
 );
 const vendorCardSource = readFileSync(
@@ -22,7 +22,11 @@ const nextConfigSource = readFileSync(resolve(process.cwd(), "next.config.ts"), 
 
 describe("customer home first viewport", () => {
   it("uses a full-bleed photo hero and the existing localized Discover Malaysia title", () => {
-    expect(homeSource).toContain("min-h-[calc(100svh-64px)]");
+    // The hero is one screen below the header's real height (published by useCustomerHeaderLayout), not a guess.
+    expect(homeSource).toContain("min-h-[calc(100svh-var(--customer-header-h,");
+    expect(homeSource).not.toContain("100svh-96px");
+    expect(homeSource).not.toContain("100svh-64px");
+    expect(homeSource).toContain("text-[clamp(4.2rem,min(9vw,14svh),9.2rem)]");
     expect(homeSource).toContain('t("ui.guest.discoverMalaysia")');
     expect(homeSource).toContain("atlas-hero-photo");
     expect(homeSource).toContain("object-cover");
@@ -31,10 +35,17 @@ describe("customer home first viewport", () => {
     expect(homeSource).toContain('Sabah: "/customer/sabah-home-destination.webp"');
     expect(homeSource).toContain('Melaka: "/customer/melaka-home-destination.webp"');
     expect(homeSource).toContain("const activeHeroImage = activeDestination.image;");
-    expect(homeSource).toContain('"object-[60%_center] sm:object-center"');
+    expect(homeSource).toContain("object-contain md:object-cover");
+    expect(homeSource).toContain('"object-[60%_48%] md:object-center"');
+    expect(homeSource).not.toContain("atlas-hero-placeholder");
     expect(homeSource).not.toContain("petronas-twin-towers-skybridge.webp");
     expect(homeSource).toContain("atlas-title-accent");
-    expect(homeSource).toContain("atlas-title-accent ml-28");
+    expect(homeSource).toContain("px-5 pb-8 pt-[12svh] sm:px-9");
+    expect(homeSource).toContain("<HomeDestinationWormIndicator");
+    expect(homeSource).toContain("useHomeDestinationPager");
+    expect(homeSource).toContain('className="atlas-enter atlas-delay-1 mb-auto pl-0 sm:pl-4 lg:pl-[3.4%]"');
+    expect(homeSource).toContain("atlas-title-accent ml-[63%] mt-4 block w-[clamp(100px,32vw,220px)]");
+    expect(homeSource).toContain("md:ml-32 md:mt-9 md:w-[clamp(132px,16vw,250px)]");
     expect(homeSource).not.toContain('t("ui.home.searchAria")');
     expect(homeSource).not.toContain('t("ui.home.startExploring")');
     expect(homeSource).not.toContain('t("ui.home.quickSearches")');
@@ -49,10 +60,17 @@ describe("customer home first viewport", () => {
     expect(homeSource).toMatch(/<h1 className="[^"]*atlas-discover-title[^"]*font-normal[^"]*leading-\[1\.05\][^"]*"/);
     expect(homeSource).toContain("font-style: italic;");
     expect(homeSource).toContain("font-weight: 400;");
+    expect(homeSource).toContain("font-size: clamp(4.2rem, 9vw, 9.2rem);");
     expect(homeSource).not.toContain('font-variation-settings: "SOFT" 35, "WONK" 1;');
-    expect(homeSource).toContain("var(--malaysia-yellow)");
-    expect(homeSource).toContain("var(--malaysia-red)");
-    expect(homeSource).toContain("var(--malaysia-red) 55%, #fff1d2) 58%");
+    const sharedTitleStyle = homeSource.match(/\.atlas-discover-title__lead,\s*\.atlas-discover-title__ending \{([^}]*)\}/)?.[1] ?? "";
+    expect(sharedTitleStyle).toContain("width: fit-content;");
+    expect(sharedTitleStyle).toContain("linear-gradient(108deg, #fff8e9 0%, #fff1d2 28%, var(--malaysia-yellow) 78%, #f4b900 100%)");
+    expect(sharedTitleStyle).toContain("-webkit-text-fill-color: transparent;");
+    expect(sharedTitleStyle).not.toContain("var(--malaysia-red)");
+    expect(homeSource).toContain(".atlas-discover-title__lead,");
+    expect(homeSource).toContain(".atlas-discover-title__ending {");
+    expect(homeSource).toContain("color: #fff6df;");
+    expect(homeSource).toContain("-webkit-text-fill-color: #fff6df;");
     expect(homeSource).toContain("text-shadow: 0 3px 18px");
     expect(homeSource).toMatch(/<svg\s+className="atlas-title-accent/);
     expect(homeSource).toMatch(/<path\s+className="atlas-title-accent__stroke"/);
@@ -72,17 +90,27 @@ describe("customer home first viewport", () => {
     expect(pagerRule).not.toMatch(/touch-action/);
     expect(homeSource).not.toContain("onClickCapture={destinationPager.suppressClickAfterTouch}");
     expect(homeSource).toContain("scroll-snap-align: none");
-    expect(homeSource).toContain("nth-child(2n + 1)");
-    expect(homeSource).toContain("nth-child(4n + 1)");
+    // Cards per page follow the rail's own width (about 220px minimum per card), not fixed breakpoints.
+    expect(homeSource).toContain("container: destination-rail / inline-size;");
+    expect(homeSource).toContain("@container destination-rail (width < 692px)");
+    expect(homeSource).toContain("@container destination-rail (692px <= width < 928px)");
+    expect(homeSource).toContain("@container destination-rail (928px <= width < 1164px)");
+    expect(homeSource).toContain("@container destination-rail (width >= 1164px)");
+    for (const perPage of [2, 3, 4, 5]) {
+      expect(homeSource).toContain(`--per-page: ${perPage}`);
+      expect(homeSource).toContain(`nth-child(${perPage}n + 1)`);
+    }
+    expect(homeSource).not.toMatch(/@media \(min-width: 1024px\) \{\s*\.atlas-destination-pager/);
     expect(homeSource).toContain("scroll-snap-stop: always");
-    expect(homeSource).toContain("--per-page: 2");
-    expect(homeSource).toContain("--per-page: 4");
+    // Card height comes from the screen height so the hero fits one screen at any width.
+    expect(homeSource).toContain("h-[clamp(108px,22svh,220px)]");
+    expect(homeSource).not.toContain("h-[108px]");
     // The trailing padding shrinks the content box by one gap, so a page of N cards plus N gaps equals the viewport only
     // when each card subtracts (N - 1) gaps.
     expect(homeSource).toContain("flex: 0 0 calc((100% - ((var(--per-page) - 1) * var(--destination-gap))) / var(--per-page));");
     expect(homeSource).toContain("padding-right: var(--destination-gap)");
     expect(homeSource).toContain("useHomeDestinationPager(");
-    expect(homeSource).toContain('import { ArrowRight, ArrowUpRight, CalendarDays, MapPin, Sparkles } from "lucide-react"');
+    expect(homeSource).toContain('import { ArrowRight, ArrowUpRight, MapPin, Sparkles } from "lucide-react"');
     expect(homeSource).toContain('aria-label={t("ui.home.viewDestination")}');
     expect(homeSource).not.toContain('{t("ui.home.viewDestination")} <ArrowRight');
     expect(homeSource).toContain("aria-pressed={isSelected}");
@@ -99,6 +127,9 @@ describe("customer home first viewport", () => {
     expect(cardMapping).toMatch(/<\/button>\s*<SaveToggleButton/);
     expect(homeSource).toContain("sizes={{ dot: 11, pill: 36, gap: 8 }}");
     expect(homeSource).toContain("sizes={{ dot: 14, pill: 50, gap: 10 }}");
+    // Dots follow the real page count.
+    expect(homeSource.match(/count=\{destinationPager\.pageCount\}/g)).toHaveLength(2);
+    expect(homeSource).not.toMatch(/count=\{[48]\}/);
   });
 
   it("keeps the hero photo animation while limiting its zoom", () => {
@@ -142,8 +173,8 @@ describe("customer home first viewport", () => {
   it("allows the selected hero's sharper quality without unrestricted optimizer qualities", () => {
     expect(homeSource).toContain("quality={90}");
     expect(homeSource).toContain('loading="eager"');
-    expect(homeSource).toContain("atlas-hero-placeholder");
-    expect(homeSource).toContain("quality={75}");
+    expect(homeSource).toContain('sizes="100vw"');
+    expect(homeSource).not.toContain("atlas-hero-placeholder");
     expect(nextConfigSource).toContain("qualities: [75, 90]");
   });
 
@@ -157,11 +188,9 @@ describe("customer home first viewport", () => {
   });
 
   it("keeps the homepage discovery shelf under the Featured Highlights label", () => {
-    expect(homePageSource).toContain("const highlightItems = groupAccommodationByProperty(activities).slice(0, 4)");
-    expect(homePageSource).toContain("groupAccommodationByProperty(recommended)");
-    expect(homePageSource).toContain(".filter((activity) => !highlightIds.has(activity.id)");
-    expect(homeSource).toContain("highlightItems: ComputedActivity[]");
-    expect(homeSource).toContain("forYouItems: ComputedActivity[]");
+    expect(homePageSource).toContain("selectHomeDiscoverySections(activities, recommended, placements, requestedAt)");
+    expect(homeSource).toContain("highlightItems: (DiscoveryResult & { property?: DiscoveryPropertySummary })[]");
+    expect(homeSource).toContain("forYouItems: (ComputedActivity & { property?: DiscoveryPropertySummary })[]");
     expect(homeSource).not.toContain("groupAccommodationByProperty(popular)");
     expect(homeSource).toContain('t("ui.home.featuredHighlights")');
     expect(homeSource).toContain('t("ui.home.forYou")');
@@ -197,7 +226,7 @@ describe("customer home first viewport", () => {
     expect(homeSource).toContain('fetch("/api/customer/nearby-partners"');
     expect(homeSource).toContain("navigator.geolocation.getCurrentPosition");
     expect(homeSource).toContain("nearbyPartners.slice(0, 4)");
-    expect(homeSource).toContain('href="/customer/partners"');
+    expect(homeSource).toContain('href="/customer/vendors"');
     expect(homeSource).not.toContain("detailsRevealStyle");
   });
 
@@ -226,6 +255,7 @@ describe("customer home first viewport", () => {
 
     expect(forYouSection).toContain("forYouItems.map((activity)");
     expect(forYouSection).toContain("<ActivityCard");
+    expect(forYouSection).toContain('<ProductCard key={activity.id} listing={toDiscoveryCatalogueCard(activity, { labels: false })} returnTo="/customer" />');
     expect(forYouSection).not.toContain("detailsRevealStyle");
     expect(highlightsSection).toContain("<ActivityCard");
     expect(highlightsSection).not.toContain("detailsRevealStyle");
@@ -236,17 +266,15 @@ describe("customer home first viewport", () => {
     expect(homeSource).toContain('text-2xl font-bold font-[family-name:var(--font-display)]');
   });
 
-  it("keeps generic marketing copy out of the customer home and moves the calendar below the hero", () => {
+  it("keeps generic marketing copy and the event calendar card out of the customer home", () => {
     expect(homeSource).not.toContain("heroDescription");
     expect(homeSource).not.toContain("featuredHighlightsSubtitle");
     expect(homeSource).not.toContain("eventCalendarKicker");
     expect(homeSource).not.toContain("eventCalendarPromptDescription");
     expect(homeSource).not.toContain("wanderWays");
     expect(homeSource).toContain('t("ui.guest.discoverMalaysia")');
-    const heroStart = homeSource.indexOf('<section className="atlas-hero-section');
-    const heroEnd = homeSource.indexOf("</section>", heroStart);
-    const calendarEntry = homeSource.indexOf('t("ui.home.eventCalendar")', heroStart);
-    expect(calendarEntry).toBeGreaterThan(heroEnd);
+    expect(homeSource).not.toContain('t("ui.home.eventCalendar")');
+    expect(homeSource).not.toContain('t("ui.home.viewEventCalendar")');
   });
 
   it("does not expose vendor business-type translation keys in Featured Partners cards", () => {
@@ -255,9 +283,8 @@ describe("customer home first viewport", () => {
     expect(homeSource).toContain('t("ui.home.vendorDescription", { location })');
   });
 
-  it("offers a customer event calendar popup from the home route", () => {
-    expect(homeSource).toContain("EventCalendarDialog");
-    expect(homeSource).toContain('t("ui.home.viewEventCalendar")');
-    expect(homeSource).toContain('aria-label={t("ui.home.eventCalendar")');
+  it("does not load or render the event calendar dialog from the home route", () => {
+    expect(homeSource).not.toContain("EventCalendarDialog");
+    expect(homeSource).not.toContain("eventCalendarOpen");
   });
 });

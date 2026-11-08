@@ -9,7 +9,7 @@ describe("customer product save entry points", () => {
   it("uses the shared authenticated wishlist toggle for every product", () => {
     const button = read("components/customer/product-save-button.tsx");
 
-    expect(button).toContain("useWishlist");
+    expect(button).toContain("useOptionalWishlist");
     expect(button).toContain("savedIds.has(productId)");
     expect(button).toContain("toggleSaved(productId)");
     expect(button).toContain("CUSTOMER_CAPABILITY.ACCOUNT_MUTATION");
@@ -18,11 +18,16 @@ describe("customer product save entry points", () => {
 
   it.each([
     ["outlet food and product cards", "components/outlet/outlet-menu.tsx"],
-    ["vendor featured product cards", "app/customer/vendor/[vendorId]/page.tsx"],
+    ["vendor featured product cards", "components/customer/product-card.tsx"],
     ["product detail pages", "app/customer/activity/[id]/activity-detail-client.tsx"],
   ])("offers saving from %s", (_surface, path) => {
     const source = read(path);
     expect(source).toContain("ProductSaveButton");
+  });
+
+  it("uses the shared card for vendor featured products", () => {
+    expect(read("app/customer/vendor/[vendorId]/page.tsx")).toContain("<VendorListingGrid");
+    expect(read("components/customer/vendor-listing-grid.tsx")).toContain("<ProductCard");
   });
 
   it("keeps saved product cards in sync when a customer removes an item", () => {

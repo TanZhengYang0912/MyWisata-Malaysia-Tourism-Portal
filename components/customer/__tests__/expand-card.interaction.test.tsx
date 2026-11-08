@@ -1,168 +1,127 @@
 import React, { act } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { findElements, findOne, installTestDom, TestEvent, type TestDocument, type TestElement } from "@/components/shared/__tests__/render-test-dom";
+import { findElements, findOne, installTestDom, TestElement, TestEvent, type TestDocument } from "@/components/shared/__tests__/render-test-dom";
 
 vi.mock("next/link", () => ({ default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => <a href={href} {...props}>{children}</a> }));
-
-vi.mock("@/components/ui/dialog", async () => {
-  const ReactModule = await import("react");
-  const DialogState = ReactModule.createContext<{ open: boolean; onOpenChange: (open: boolean) => void }>({ open: false, onOpenChange: () => {} });
-
-  return {
-    Dialog: ({ open, onOpenChange, children }: { open: boolean; onOpenChange: (open: boolean) => void; children: React.ReactNode }) => (
-      <DialogState.Provider value={{ open, onOpenChange }}>{children}</DialogState.Provider>
-    ),
-    DialogContent: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
-      const state = ReactModule.useContext(DialogState);
-      if (!state.open) return null;
-
-      return <>
-        <button type="button" data-dialog-backdrop onClick={() => state.onOpenChange(false)} />
-        <div role="dialog" {...props} onKeyDown={(event) => {
-          if (event.key === "Escape") state.onOpenChange(false);
-        }}>
-          {children}
-          <button type="button" data-dialog-close onClick={() => state.onOpenChange(false)}>Close</button>
-        </div>
-      </>;
-    },
-    DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    DialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
-  };
-});
-
 import { ExpandCard } from "@/components/customer/expand-card";
 
 let createRoot: typeof import("react-dom/client").createRoot;
 let document: TestDocument;
 let container: TestElement;
-let root: ReturnType<typeof import("react-dom/client").createRoot> | undefined;
-
+let root: ReturnType<typeof import("react-dom/client").createRoot>;
 async function render(element: React.ReactElement) {
-  await act(async () => {
-    root?.render(element);
-    await Promise.resolve();
-  });
+  await act(async () => { root.render(element); });
 }
-
 async function click(element: TestElement) {
-  let notPrevented = false;
-  await act(async () => {
-    notPrevented = element.dispatchEvent(new TestEvent("click", { bubbles: true }));
-    await Promise.resolve();
-  });
-  return notPrevented;
+  let result = false;
+  await act(async () => { result = element.dispatchEvent(new TestEvent("click", { bubbles: true })); });
+  return result;
 }
-
-function setMobileViewport(mobile: boolean) {
-  const testWindow = globalThis.window as unknown as Window;
-  testWindow.matchMedia = ((query: string) => ({
-    matches: mobile && query === "(max-width: 767px)",
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(() => false),
-  })) as typeof window.matchMedia;
+function setTouch(touch: boolean) {
+  window.matchMedia = ((query: string) => ({ matches: touch && query === "(hover: none)", media: query, addListener: vi.fn(), removeListener: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn(), onchange: null })) as typeof window.matchMedia;
 }
-
 function card(onAction = vi.fn(), onSave = vi.fn(), onShare = vi.fn()) {
   return <ExpandCard
-    media={<>
-      <a href="/card" data-card-preview-trigger="true" aria-haspopup="dialog">Cover link</a>
-      <button type="button" data-save-control onClick={onSave}>Save</button>
-      <button type="button" data-share-control onClick={onShare}>Share</button>
-    </>}
+    media={<><a href="/card">Cover link</a><button type="button" data-save-control onClick={onSave}>Save</button><button type="button" data-share-control onClick={onShare}>Share</button></>}
     title={<h3>Card title</h3>}
-    previewTitle="Card title"
-    previewLabel="View Details"
     details={<p>Card-specific details</p>}
     detailsId="card-details"
     action={{ href: "/card", label: "Book Now", onClick: onAction }}
   />;
 }
+describe("ExpandCard touch interactions", () => {
+  beforeAll(async () => { document = installTestDom(); ({ createRoot } = await import("react-dom/client")); });
+  beforeEach(() => { setTouch(true); container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container as unknown as Element); });
+  afterEach(() => { act(() => root.unmount()); document.body.removeChild(container); });
+  const article = () => findOne(container, (element) => element.tagName === "ARTICLE");
+  const cover = () => findOne(container, (element) => element.tagName === "A" && element.textContent === "Cover link");
+  const cta = () => findOne(container, (element) => element.getAttribute("data-card-primary-cta") === "true");
 
-describe("ExpandCard mobile details drawer", () => {
-  beforeAll(async () => {
-    document = installTestDom();
-    ({ createRoot } = await import("react-dom/client"));
-  });
-
-  beforeEach(() => {
-    setMobileViewport(true);
-    container = document.createElement("div");
-    document.body.appendChild(container);
-    root = createRoot(container as unknown as Element);
-  });
-
-  afterEach(() => {
-    if (root) act(() => root?.unmount());
-    root = undefined;
-    document.body.removeChild(container);
-  });
-
-  it("opens the shared details dialog from a mobile preview surface and keeps the CTA route", async () => {
+  it("first tap on a closed card opens it instead of navigating", async () => {
     await render(card());
-    const trigger = findOne(container, (element) => element.getAttribute("data-card-preview-trigger") === "true");
-
-    expect(await click(trigger)).toBe(false);
-    expect(findElements(container, (element) => element.getAttribute("role") === "dialog")).toHaveLength(1);
-    expect(container.textContent).toContain("Card title");
-    expect(container.textContent).toContain("Card-specific details");
-    const detailsLink = findOne(container, (element) => element.tagName === "A" && element.textContent === "View Details");
-    expect(detailsLink.getAttribute("href")).toBe("/card");
-
-    const primaryCta = findOne(container, (element) => element.getAttribute("data-card-primary-cta") === "true");
-    expect(primaryCta.getAttribute("href")).toBe("/card");
+    expect(await click(cover())).toBe(false);
+    expect(article().getAttribute("data-open")).toBe("true");
+    expect(await click(cover())).toBe(true);
   });
-
-  it("does not let the preview intercept the primary CTA, save, or share controls", async () => {
-    const onAction = vi.fn();
-    const onSave = vi.fn();
-    const onShare = vi.fn();
-    await render(card(onAction, onSave, onShare));
-
-    const primaryCta = findOne(container, (element) => element.getAttribute("data-card-primary-cta") === "true");
-    expect(await click(primaryCta)).toBe(true);
+  it("first tap on the CTA only opens the card; the second tap follows it", async () => {
+    const onAction = vi.fn(); await render(card(onAction));
+    expect(await click(cta())).toBe(false);
+    expect(onAction).not.toHaveBeenCalled();
+    expect(article().getAttribute("data-open")).toBe("true");
+    expect(await click(cta())).toBe(true);
     expect(onAction).toHaveBeenCalledOnce();
-    expect(findElements(container, (element) => element.getAttribute("role") === "dialog")).toHaveLength(0);
-
+  });
+  it("save and share work on the first tap and do not open the card", async () => {
+    const save = vi.fn(); const share = vi.fn(); await render(card(vi.fn(), save, share));
     await click(findOne(container, (element) => element.hasAttribute("data-save-control")));
     await click(findOne(container, (element) => element.hasAttribute("data-share-control")));
-    expect(onSave).toHaveBeenCalledOnce();
-    expect(onShare).toHaveBeenCalledOnce();
-    expect(findElements(container, (element) => element.getAttribute("role") === "dialog")).toHaveLength(0);
+    expect(save).toHaveBeenCalledOnce(); expect(share).toHaveBeenCalledOnce();
+    expect(article().getAttribute("data-open")).toBeNull();
   });
-
-  it("closes from its close control, Escape, and backdrop", async () => {
-    await render(card());
-    const trigger = findOne(container, (element) => element.getAttribute("data-card-preview-trigger") === "true");
-
-    await click(trigger);
-    await click(findOne(container, (element) => element.hasAttribute("data-dialog-close")));
-    expect(findElements(container, (element) => element.getAttribute("role") === "dialog")).toHaveLength(0);
-
-    await click(trigger);
-    const dialog = findOne(container, (element) => element.getAttribute("role") === "dialog");
-    await act(async () => {
-      dialog.dispatchEvent(Object.assign(new TestEvent("keydown", { bubbles: true }), { key: "Escape" }));
-      await Promise.resolve();
-    });
-    expect(findElements(container, (element) => element.getAttribute("role") === "dialog")).toHaveLength(0);
-
-    await click(trigger);
-    await click(findOne(container, (element) => element.hasAttribute("data-dialog-backdrop")));
-    expect(findElements(container, (element) => element.getAttribute("role") === "dialog")).toHaveLength(0);
+  it("a second tap on a non-link area follows the CTA", async () => {
+    const onAction = vi.fn(); await render(card(onAction));
+    const title = findOne(container, (element) => element.tagName === "H3");
+    await click(title); await click(title);
+    expect(onAction).toHaveBeenCalledOnce();
   });
+  it("a tap outside closes the open card", async () => {
+    await render(card()); await click(cover());
+    await act(async () => { document.dispatchEvent(new TestEvent("pointerdown", { bubbles: true })); });
+    expect(article().getAttribute("data-open")).toBeNull();
+  });
+  it("mouse clicks are never intercepted", async () => {
+    setTouch(false); await render(card());
+    expect(await click(cover())).toBe(true); expect(await click(cta())).toBe(true);
+    expect(article().getAttribute("data-open")).toBeNull();
+  });
+  it("keyboard activation navigates on a touch device", async () => {
+    const onAction = vi.fn(); await render(card(onAction));
+    const event = Object.assign(new TestEvent("click", { bubbles: true }), { detail: 0 });
+    await act(async () => { cta().dispatchEvent(event); });
+    expect(event.defaultPrevented).toBe(false);
+    expect(onAction).toHaveBeenCalledOnce();
+  });
+});
 
-  it("leaves the card's ordinary navigation unchanged outside the mobile breakpoint", async () => {
-    setMobileViewport(false);
-    await render(card());
-    const trigger = findOne(container, (element) => element.getAttribute("data-card-preview-trigger") === "true");
+describe("ExpandCard title overflow", () => {
+  const observerCallbacks: Array<() => void> = [];
+  class FakeObserver { constructor(callback: () => void) { observerCallbacks.push(callback); } observe() {} disconnect() {} }
+  const prototype = TestElement.prototype as unknown as Record<string, unknown>;
+  beforeAll(async () => { document = installTestDom(); ({ createRoot } = await import("react-dom/client")); });
+  beforeEach(() => {
+    observerCallbacks.length = 0;
+    vi.stubGlobal("ResizeObserver", FakeObserver);
+    vi.stubGlobal("MutationObserver", FakeObserver);
+    // The test DOM has no selectors or layout; give the card just what the measurement reads.
+    prototype.querySelector = function (this: TestElement, selector: string) { return findElements(this, (element) => element.className.includes(selector.slice(1)))[0] ?? null; };
+    prototype.matches = () => false;
+    container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container as unknown as Element);
+  });
+  afterEach(() => { act(() => root.unmount()); document.body.removeChild(container); vi.unstubAllGlobals(); delete prototype.querySelector; delete prototype.matches; });
+  const article = () => findOne(container, (element) => element.tagName === "ARTICLE");
+  const heading = () => findOne(container, (element) => element.tagName === "H3");
+  function setWidths(scrollWidth: number, clientWidth: number) {
+    Object.defineProperties(heading(), { scrollWidth: { configurable: true, value: scrollWidth }, clientWidth: { configurable: true, value: clientWidth } });
+  }
+  async function remeasure() { await act(async () => { observerCallbacks.forEach((callback) => callback()); }); }
+  const titled = () => <ExpandCard media={null} title={<h3 className="mw-card-title">A very long card title</h3>} details={<p>Details</p>} detailsId="title-details" action={{ href: "/card", label: "Book Now" }} />;
 
-    expect(await click(trigger)).toBe(true);
-    expect(findElements(container, (element) => element.getAttribute("role") === "dialog")).toHaveLength(0);
+  it("marks a card whose name overflows its one line, and clears it once the name fits", async () => {
+    await render(titled());
+    setWidths(400, 200);
+    await remeasure();
+    expect(article().getAttribute("data-title-wraps")).toBe("true");
+    setWidths(200, 200);
+    await remeasure();
+    expect(article().getAttribute("data-title-wraps")).toBeNull();
+  });
+  it("keeps the closed answer while the card is open", async () => {
+    await render(titled());
+    setWidths(400, 200);
+    await remeasure();
+    article().setAttribute("data-open", "true");
+    setWidths(200, 200);
+    await remeasure();
+    expect(article().getAttribute("data-title-wraps")).toBe("true");
   });
 });

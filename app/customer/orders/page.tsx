@@ -3,7 +3,8 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, Package, ReceiptText, Search, SlidersHorizontal, X } from "lucide-react";
+import { CalendarDays, ChevronRight, Clock3, Package, ReceiptText, Search, SlidersHorizontal, X } from "lucide-react";
+import { Pagination } from "@/components/shared/pagination";
 import { useAuth } from "@/components/providers/auth";
 import { productImageUrl } from "@/lib/storage/product-image";
 import { supabase } from "@/backend/supabase";
@@ -139,7 +140,24 @@ export default function OrdersPage() {
         {data && <p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-muted-foreground"><span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.total}</span> {tCustomer("ui.orders.summaryOrders")} <span className="text-muted-foreground/50">·</span> <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.paid}</span> {tCustomer("ui.orders.summaryPaid")} <span className="text-muted-foreground/50">·</span> <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.bookings}</span> {tCustomer("ui.orders.summaryBookings")}</p>}
 
         <section className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center"><label className="relative min-w-0 flex-1"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input maxLength={200} value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={tCustomer("ui.orders.search")} aria-label={tCustomer("ui.orders.search")} className="h-11 w-full rounded-xl border border-border bg-secondary/50 pl-10 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-[rgba(1,0,102,0.12)]" /></label><button type="button" onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} aria-controls="order-filters" className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-primary/20 ${filtersOpen || hasFilters ? "border-primary bg-secondary text-primary" : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-primary"}`}><SlidersHorizontal size={15} /> {tCustomer("ui.orders.filters")} {activeFilterCount > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] text-white">{activeFilterCount}</span>}</button></div>
+          <div className="flex min-w-0 items-center gap-2 lg:gap-3">
+            <label className="relative min-w-0 flex-1">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input maxLength={200} value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={tCustomer("ui.orders.search")} aria-label={tCustomer("ui.orders.search")} className="h-11 w-full rounded-xl border border-border bg-secondary/50 pl-10 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-[rgba(1,0,102,0.12)]" />
+            </label>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setFiltersOpen((open) => !open)}
+              aria-expanded={filtersOpen}
+              aria-controls="order-filters"
+              className={`h-11 shrink-0 gap-2 rounded-full border-2 px-4 py-0 text-sm font-bold transition focus-visible:ring-2 focus-visible:ring-primary/20 has-[>svg]:px-4 lg:rounded-xl lg:border ${filtersOpen || hasFilters ? "border-primary bg-secondary text-primary hover:text-primary" : "border-foreground/60 bg-card text-foreground hover:border-primary/30 hover:text-primary lg:border-border lg:text-muted-foreground"}`}
+            >
+              <SlidersHorizontal size={15} aria-hidden="true" />
+              {tCustomer("ui.orders.filters")}
+              {activeFilterCount > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] text-white">{activeFilterCount}</span>}
+            </Button>
+          </div>
           {filtersOpen && <div id="order-filters" className="mt-3 grid gap-2 border-t border-border pt-3 sm:grid-cols-2 lg:grid-cols-5"><select value={status} onChange={(event) => { setStatus(event.target.value as OrderFilterStatus); setPage(1); }} aria-label={tCustomer("ui.labels.status")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary">{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{tCustomer(option.key)}</option>)}</select><select value={type} onChange={(event) => { setType(event.target.value as OrderFilterType); setPage(1); }} aria-label={tCustomer("ui.orders.allTypes")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.orders.allTypes")}</option><option value="booking">{tCustomer("ui.orders.bookingOrder")}</option><option value="product">{tCustomer("ui.orders.productOrder")}</option><option value="mixed">{tCustomer("ui.orders.mixedOrder")}</option></select><select value={outletId} onChange={(event) => { setOutletId(event.target.value); setPage(1); }} aria-label={tCustomer("ui.orders.allOutlets")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.orders.allOutlets")}</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}</select><input type="date" value={from} onFocus={primeDateRange} onChange={(event) => { setFrom(event.target.value); setPage(1); }} aria-label={tCustomer("ui.orders.fromDate")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /><input type="date" value={to} onFocus={primeDateRange} onChange={(event) => { setTo(event.target.value); setPage(1); }} aria-label={tCustomer("ui.orders.toDate")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /></div>}
           {hasFilters && <button type="button" onClick={clearFilters} className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><X size={13} /> {tCustomer("ui.actions.clearFilters")}</button>}
         </section>
@@ -156,9 +174,8 @@ export default function OrdersPage() {
             
             return (
               <Link key={order.id} href={`/customer/orders/${order.id}`} className="group block rounded-2xl border border-border bg-card p-4 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-md sm:p-5">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4 lg:gap-6">
-                  {/* Image/Icon Box - Enlarge for better visual */}
-                  <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-secondary text-primary shadow-sm sm:h-24 sm:w-24">
+                <div className="grid grid-cols-[4rem_minmax(0,1fr)] items-start gap-x-3 gap-y-3 sm:flex sm:items-center sm:gap-4 lg:gap-6">
+                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-secondary text-primary shadow-sm sm:h-24 sm:w-24">
                     {primaryItem?.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={productImageUrl(primaryItem.imageUrl) || ''} alt={primaryItem.activityName} loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
@@ -174,14 +191,13 @@ export default function OrdersPage() {
                     )}
                   </div>
                   
-                  {/* Middle Left: Primary Details */}
                   <div className="min-w-0 flex-1">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       <span className="font-[family-name:var(--font-mono)] text-xs font-bold text-primary">{formatOrderReference(order.id, order.displayId)}</span>
                       <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">{tCustomer(typeLabelKey(kind))}</span>
                       <OrderStatusBadge status={order.status} refundedLabel={tCustomer("ui.orders.refunded")} />
                     </div>
-                    <p className="text-base font-bold leading-snug text-foreground md:text-lg">
+                    <p className="break-words text-base font-bold leading-snug text-foreground md:text-lg">
                       {order.items.slice(0, 2).map((item) => `${item.qty}× ${item.activityName}`).join(" · ")}
                       {order.items.length > 2 ? <span className="text-muted-foreground">{tCustomer("ui.orders.moreItems", { count: order.items.length - 2 })}</span> : ""}
                     </p>
@@ -190,15 +206,13 @@ export default function OrdersPage() {
                     </p>
                   </div>
                   
-                  {/* Middle Right: Date & Meta (Fills the gap on desktop) */}
                   <div className="hidden min-w-32 flex-col items-end gap-1 border-l border-border pl-6 lg:flex xl:min-w-40">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">{tCustomer("ui.labels.date")}</span>
                     <span className="text-sm font-semibold text-foreground">{dateLabel(order.createdAt, i18n.resolvedLanguage || i18n.language)}</span>
                     <span className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground"><Package size={12} /> {order.items.reduce((sum, item) => sum + item.qty, 0)} {tCustomer("ui.labels.items")}</span>
                   </div>
 
-                  {/* Far Right: Total & Action Arrow */}
-                  <div className="flex shrink-0 items-center justify-between gap-4 border-t border-border pt-4 sm:border-0 sm:pt-0 lg:pl-4">
+                  <div className="col-span-2 flex shrink-0 items-center justify-between gap-4 border-t border-border pt-3 sm:border-0 sm:pt-0 lg:pl-4">
                     <div className="flex flex-col sm:items-end">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 sm:hidden">{tCustomer("ui.checkout.total")}</span>
                       <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary lg:text-xl">
@@ -216,7 +230,7 @@ export default function OrdersPage() {
               </Link>
             ); 
           })}</div>
-          {pageCount > 1 && <nav aria-label={tCustomer("ui.orders.paginationLabel")} className="mt-5 flex flex-col gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"><p className="text-xs text-muted-foreground">{tCustomer("ui.orders.showing", { from: (visiblePage - 1) * PAGE_SIZE + 1, to: Math.min(visiblePage * PAGE_SIZE, total), total: total })}</p><div className="flex items-center justify-between gap-3 sm:justify-end"><button type="button" aria-label={tCustomer("ui.orders.previousPage")} disabled={visiblePage === 1} onClick={() => setPage(Math.max(1, visiblePage - 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={15} /> {tCustomer("ui.orders.previous")}</button><span className="min-w-20 text-center text-xs font-semibold text-muted-foreground">{tCustomer("ui.orders.pageOf", { page: visiblePage, pages: pageCount })}</span><button type="button" aria-label={tCustomer("ui.orders.nextPage")} disabled={visiblePage === pageCount} onClick={() => setPage(Math.min(pageCount, visiblePage + 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground transition hover:border-primary/30 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40">{tCustomer("ui.orders.next")} <ChevronRight size={15} /></button></div></nav>}
+          <Pagination ariaLabel={tCustomer("ui.orders.paginationLabel")} currentPage={visiblePage} totalPages={pageCount} totalItems={total} pageSize={PAGE_SIZE} onPageChange={setPage} />
         </>}
       </CustomerPageShell>
     </div>

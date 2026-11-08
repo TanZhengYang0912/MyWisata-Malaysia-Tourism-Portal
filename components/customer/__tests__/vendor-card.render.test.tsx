@@ -5,17 +5,17 @@ import { describe, expect, it, vi } from "vitest";
 const text: Record<string, string> = {
   "ui.actions.exploreVendor": "Explore vendor",
   "ui.actions.viewDetails": "View Details",
-  "ui.search.featuredPartner": "Featured partner",
-  "ui.search.verifiedLocalPartner": "Verified local partner",
+  "ui.labels.featured": "Featured",
   "ui.search.localPartner": "Local partner",
   "ui.labels.malaysia": "Malaysia",
 };
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) => key === "ui.search.outletCount" ? `${options?.count} outlets` : text[key] ?? key,
+    t: (key: string, options?: Record<string, unknown>) => key === "ui.vendor.locationCount" ? `${options?.count} locations` : text[key] ?? key,
   }),
 }));
+vi.mock("@/components/shared/share-button", () => ({ ShareButton: () => <button type="button" data-share>Share</button> }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => <a href={href} {...props}>{children}</a> }));
 
 import { VendorCard } from "@/components/customer/vendor-card";
@@ -32,10 +32,21 @@ const vendor = {
   ],
 };
 
+const mediaOf = (markup: string) => markup.slice(markup.indexOf("mw-card-media"), markup.indexOf("mw-card-body"));
 const drawerOf = (markup: string) => markup.slice(markup.indexOf('data-card-details-inline="true"'));
 
 describe("VendorCard on the shared ExpandCard", () => {
-  it("puts location, distance, description, outlet count and categories in the drawer", () => {
+  it("shows categories as the product card's chips, at most two", () => {
+    const body = (markup: string) => markup.slice(markup.indexOf("mw-card-body"), markup.indexOf('data-card-details-inline="true"'));
+    const three = body(renderToStaticMarkup(<VendorCard vendor={vendor} categories={["food", "hidden_gem", "activity"]} />));
+    expect(three.match(/bg-secondary font-bold text-primary/g)).toHaveLength(2);
+    expect(three).toContain("categories.food");
+    expect(three).not.toContain("categories.activity");
+    expect(three).not.toContain(" · ");
+    expect(body(renderToStaticMarkup(<VendorCard vendor={vendor} />))).toMatch(/bg-secondary font-bold text-primary[^>]*>Local partner</);
+  });
+
+  it("puts location, distance and description in the drawer, and leaves a nearby card's location count out", () => {
     const markup = renderToStaticMarkup(<VendorCard vendor={vendor} description={vendor.description} distanceLabel="2.1 km away" categories={["food"]} />);
     const drawer = drawerOf(markup);
 
@@ -43,8 +54,8 @@ describe("VendorCard on the shared ExpandCard", () => {
     expect(drawer).toContain("George Town, Penang");
     expect(drawer).toContain("2.1 km away");
     expect(drawer).toContain("charcoal-roasted coffee");
-    expect(drawer).toContain("2 outlets");
-    expect(markup).toMatch(/<a [^>]*href="\/customer\/vendor\/v1"[^>]*data-card-primary-cta="true"[^>]*>Explore vendor<\/a>/);
+    expect(markup).not.toContain("2 locations");
+    expect(markup).toMatch(/<a [^>]*href="\/customer\/vendors\/v1"[^>]*data-card-primary-cta="true"[^>]*>Explore vendor<\/a>/);
   });
 
   it("has no info button and no caption strip", () => {
@@ -52,7 +63,7 @@ describe("VendorCard on the shared ExpandCard", () => {
 
     expect(markup).not.toContain("aria-expanded");
     expect(markup).not.toContain("View Details");
-    expect(markup).toContain('data-card-preview-trigger="true" aria-haspopup="dialog"');
+    expect(markup).not.toContain('aria-haspopup="dialog"');
   });
 
   it("renders the initials tile when the vendor has no cover", () => {
@@ -60,7 +71,7 @@ describe("VendorCard on the shared ExpandCard", () => {
 
     const media = markup.slice(markup.indexOf("mw-card-media"), markup.indexOf("mw-card-body"));
     expect(media).toContain(">KK<");
-    expect(media).toContain("Featured partner");
+    expect(media).toContain("Featured");
   });
 
   it("shows the full description without clamping", () => {
@@ -69,5 +80,65 @@ describe("VendorCard on the shared ExpandCard", () => {
     expect(drawer).toContain("worth reading in full.");
     expect(drawer).not.toContain("line-clamp");
     expect(drawer).not.toContain("truncate");
+  });
+
+  it("shows the rating, status, location count and popular products when they are known", () => {
+    const markup = renderToStaticMarkup(<VendorCard vendor={{
+      ...vendor,
+      rating: { value: 4.56, count: 12 },
+      openNow: true,
+      popularProducts: [1, 2, 3, 4].map((index) => ({ id: `p${index}`, name: `Product ${index}`, imageUrl: index === 2 ? null : `https://img.test/${index}.jpg`, href: `/customer/products/p${index}` })),
+    }} categories={["food"]} />);
+    const body = markup.slice(markup.indexOf("mw-card-body"), markup.indexOf('data-card-details-inline="true"'));
+    const drawer = drawerOf(markup);
+
+    expect(mediaOf(markup)).toContain(">4.6<");
+    expect(mediaOf(markup)).toContain("(12)");
+    expect(body).not.toContain("(12)");
+    expect(body).toContain("categories.food");
+    expect(body).toContain("ui.operatingHours.openNow");
+    expect(body).not.toContain("2 locations");
+    expect(drawer).toContain("2 locations");
+    expect(drawer).not.toContain("George Town, Penang");
+    expect(drawer).toContain("ui.vendor.popular");
+    expect(drawer.match(/href="\/customer\/products\/p\d"/g)).toHaveLength(3);
+    expect(drawer).toContain("bg-secondary");
+  });
+
+  it("leaves out the rating, status and popular lines when the data is missing", () => {
+    const markup = renderToStaticMarkup(<VendorCard vendor={vendor} distanceLabel="1 km away" />);
+
+    expect(markup).not.toContain('data-slot="photo-rating-badge"');
+    expect(markup).not.toContain("ui.operatingHours");
+    expect(markup).not.toContain("ui.vendor.popular");
+    expect(markup).not.toContain('<p class="text-xs text-muted-foreground"></p>');
+  });
+
+  it("says No reviews yet on the photo when the lookup worked but found no reviews", () => {
+    const markup = renderToStaticMarkup(<VendorCard vendor={{ ...vendor, rating: null }} />);
+    expect(mediaOf(markup)).toContain('data-slot="photo-rating-badge"');
+    expect(mediaOf(markup)).toContain("ui.activity.noReviewsYet");
+    expect(markup).toContain("Local partner");
+  });
+
+  it("shows only the empty star on phones for an unreviewed vendor, so it clears the logo", () => {
+    const unreviewed = mediaOf(renderToStaticMarkup(<VendorCard vendor={{ ...vendor, rating: null }} />));
+    expect(unreviewed).toContain("sr-only sm:not-sr-only");
+    expect(unreviewed).toContain("max-sm:pr-1");
+    const reviewed = mediaOf(renderToStaticMarkup(<VendorCard vendor={{ ...vendor, rating: { value: 4.56, count: 12 } }} />));
+    expect(reviewed).not.toContain("sr-only");
+    expect(reviewed).not.toContain("max-sm:pr-1");
+  });
+
+  it("tags only featured vendors with the shared glass Featured label, shares the vendor and offers no save button", () => {
+    const featured = mediaOf(renderToStaticMarkup(<VendorCard vendor={vendor} isFeatured />));
+    expect(featured).toContain("Featured");
+    expect(featured).toContain("backdrop-blur-[8px]");
+    expect(featured).not.toContain("tracking-[0.12em]");
+    const plain = renderToStaticMarkup(<VendorCard vendor={vendor} />);
+    expect(plain).not.toContain("Featured");
+    expect(plain).not.toContain("ui.search.verifiedLocalPartner");
+    expect(plain).toContain("data-share");
+    expect(plain).not.toContain("aria-pressed");
   });
 });

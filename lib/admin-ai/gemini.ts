@@ -15,7 +15,7 @@ import "server-only";
 // and surface that as an unavailable-assistant response, never let it
 // become an unhandled 500.
 
-import { prepareExternalText } from '@/lib/chatbot/pii';
+import { prepareExternalText, prepareStaffQuestionText } from '@/lib/chatbot/pii';
 
 const GENERATE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 const GENERATE_TIMEOUT_MS = 15_000;
@@ -29,6 +29,13 @@ export interface CallGeminiOptions {
   temperature?: number;
   maxOutputTokens?: number;
   images?: GeminiInlineImage[];
+  /**
+   * 'staff' only for the Super Admin AI assistant (lib/admin-ai/orchestrate.ts):
+   * its text is a staff question plus guide text and aggregate results, so
+   * topic words like "KYC" are allowed. Every other caller sends user content
+   * and keeps the default full check.
+   */
+  textSource?: 'user' | 'staff';
 }
 
 export interface GeminiInlineImage {
@@ -42,7 +49,7 @@ export interface GeminiInlineImage {
  * until their contents can be checked without exposing identity documents.
  */
 export async function callGemini(systemPrompt: string, userText: string, options: CallGeminiOptions = {}): Promise<string> {
-  const prepared = prepareExternalText(userText);
+  const prepared = options.textSource === 'staff' ? prepareStaffQuestionText(userText) : prepareExternalText(userText);
   if (!prepared.allowed) throw new Error('sensitive_data_detected');
   if (options.images?.length) throw new Error('image_privacy_review_required');
   const apiKey = process.env.LLM_API_KEY;

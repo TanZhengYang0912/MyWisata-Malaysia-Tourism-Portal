@@ -412,7 +412,7 @@ export function KycReviewDetailContent({
               </div> : <>
                 {/* Authenticated bytes only; never send private evidence to an optimizer. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={documentPreview.url} alt={t("kyc.detail.previewAlt", { side: t(`kyc.detail.${documentPreview.side}`) })} className="max-h-[60vh] w-full rounded-lg border border-border object-contain" />
+                <img src={documentPreview.url} alt={t("kyc.detail.previewAlt", { side: t(`kyc.detail.${documentPreview.side}`) })} className="max-h-[60dvh] w-full rounded-lg border border-border object-contain" />
               </>}
               <Button variant="outline" size="sm" onClick={onCloseDocument}>{t("kyc.detail.closePreview")}</Button>
             </div>}
@@ -454,9 +454,9 @@ export function KycReviewDetailContent({
             <h2 className="font-semibold text-foreground">{t("kyc.detail.identitySnapshot")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t("kyc.detail.identitySnapshotDescription")}</p>
             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-              <div><dt className="text-muted-foreground">{t("kyc.detail.legalName")}</dt><dd className="mt-1 font-medium text-foreground">{submission.legalIdentity.fullName ?? "—"}</dd></div>
-              <div><dt className="text-muted-foreground">{t("kyc.detail.snapshotEmail")}</dt><dd className="mt-1 font-medium text-foreground">{submission.legalIdentity.email ?? "—"}</dd></div>
-              <div><dt className="text-muted-foreground">{t("kyc.detail.snapshotPhone")}</dt><dd className="mt-1 font-medium text-foreground">{submission.legalIdentity.phone ?? "—"}</dd></div>
+              <div className="min-w-0"><dt className="text-muted-foreground">{t("kyc.detail.legalName")}</dt><dd className="mt-1 break-words font-medium text-foreground">{submission.legalIdentity.fullName ?? "—"}</dd></div>
+              <div className="min-w-0"><dt className="text-muted-foreground">{t("kyc.detail.snapshotEmail")}</dt><dd className="mt-1 break-all font-medium text-foreground">{submission.legalIdentity.email ?? "—"}</dd></div>
+              <div className="min-w-0"><dt className="text-muted-foreground">{t("kyc.detail.snapshotPhone")}</dt><dd className="mt-1 break-all font-medium text-foreground">{submission.legalIdentity.phone ?? "—"}</dd></div>
             </dl>
           </section>
           <section className="rounded-2xl border border-border bg-card p-5">

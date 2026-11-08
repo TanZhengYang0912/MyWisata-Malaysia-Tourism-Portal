@@ -18,7 +18,7 @@ export type EventPartner = {
   next: { campaignTitle: string; locationName: string; startsOn: string; endsOn: string } | null;
 };
 
-/** Event vendors, kept apart from the normal partner directory and always labelled "Event partner". */
+/** Event vendors stay separate from the partner directory and keep context-specific badge labels. */
 export function EventPartnersSection({ partners, featured = false }: { partners: EventPartner[]; featured?: boolean }) {
   const { t, i18n } = useTranslation("customer");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
@@ -30,7 +30,7 @@ export function EventPartnersSection({ partners, featured = false }: { partners:
       <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-primary"><Megaphone size={14} aria-hidden="true" /> {t("ui.eventPartners.eyebrow")}</p>
       <h2 id="event-partners-heading" className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{t("ui.eventPartners.title")}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{t("ui.eventPartners.description")}</p>
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
         {partners.map((partner) => <EventPartnerCard key={partner.id} partner={partner} locale={locale} />)}
       </div>
     </section>
@@ -48,7 +48,7 @@ function FeaturedEventPartnersSection({ partners }: { partners: EventPartner[] }
           <Sparkles size={19} className="text-primary" aria-hidden="true" />
           {t("ui.home.eventFeaturedPartners")}
         </h2>
-        <Link href="/customer/partners" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
+        <Link href="/customer/vendors" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
           {t("ui.home.viewPartners")} <ArrowRight size={14} aria-hidden="true" />
         </Link>
       </div>
@@ -65,7 +65,7 @@ function FeaturedEventPartnersSection({ partners }: { partners: EventPartner[] }
 function EventPartnerCard({ partner, locale, featured = false }: { partner: EventPartner; locale: AppLocale; featured?: boolean }) {
   const { t } = useTranslation("customer");
   const visual = getVendorVisual(partner);
-  const href = `/customer/vendor/${partner.id}`;
+  const href = `/customer/vendors/${partner.id}`;
   const eventSchedule = partner.next
     ? t("ui.eventPartners.next", {
       event: partner.next.campaignTitle,
@@ -77,7 +77,7 @@ function EventPartnerCard({ partner, locale, featured = false }: { partner: Even
   return (
     <ExpandCard
       media={
-        <Link href={href} data-card-preview-trigger="true" aria-haspopup="dialog" className="group/partner-media absolute inset-0 block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-[#ffcc00]/60">
+        <Link href={href} className="group/partner-media absolute inset-0 block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-[#ffcc00]/60">
           {visual.coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={visual.coverUrl} alt={t("ui.search.businessCover", { vendor: partner.name })} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover/partner-media:scale-105" />
@@ -92,13 +92,13 @@ function EventPartnerCard({ partner, locale, featured = false }: { partner: Even
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-          <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-[#ffcc00] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#010066]">
-            <Sparkles size={11} aria-hidden="true" /> {featured ? t("ui.home.eventFeaturedPartnerBadge") : t("ui.eventPartners.badge")}
+          <span className={`absolute left-3 top-3 inline-flex items-center rounded-full bg-[#ffcc00] font-bold uppercase text-[#010066] ${featured ? "gap-0.5 px-1 py-0.5 text-[8px] tracking-[0.04em] sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-[0.12em]" : "gap-1.5 px-2.5 py-1 text-[10px] tracking-[0.12em]"}`}>
+            <Sparkles size={11} className={featured ? "h-2 w-2 sm:h-[11px] sm:w-[11px]" : undefined} aria-hidden="true" /> {featured ? t("ui.home.eventFeaturedPartnerBadge") : t("ui.eventPartners.badge")}
           </span>
         </Link>
       }
       title={
-        <Link href={href} data-card-preview-trigger="true" aria-haspopup="dialog" className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30">
+        <Link href={href} className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30">
           <h3 className="mw-card-title text-sm font-bold leading-snug text-foreground" title={partner.name}>{partner.name}</h3>
         </Link>
       }
@@ -108,8 +108,6 @@ function EventPartnerCard({ partner, locale, featured = false }: { partner: Even
         {partner.description?.trim() && <p className="break-words whitespace-normal text-xs leading-5 text-foreground/80">{partner.description}</p>}
       </>}
       detailsId={`event-partner-details-${partner.id}`}
-      previewTitle={partner.name}
-      previewLabel={t("ui.actions.viewDetails")}
       action={{ href, label: t("ui.eventPartners.view") }}
     />
   );

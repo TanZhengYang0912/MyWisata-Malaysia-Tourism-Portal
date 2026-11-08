@@ -16,7 +16,14 @@ vi.mock("react-i18next", () => ({
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/components/providers/cart", () => ({ useCart: () => ({ addItem: vi.fn(), selectedKeys: new Set<string>(), setSelectedKeys: vi.fn() }) }));
 vi.mock("@/components/providers/app-dialog", () => ({ useAppDialog: () => ({ alert: vi.fn() }) }));
-vi.mock("@/components/providers/wishlist", () => ({ useWishlist: () => ({ savedOutletIds: new Set<string>(), toggleSavedOutlet: vi.fn() }) }));
+const wishlistMock = vi.hoisted(() => ({ value: null as null | { savedOutletIds: Set<string>; toggleSavedOutlet: () => void } }));
+vi.mock("@/components/providers/wishlist", () => ({
+  useWishlist: () => {
+    if (!wishlistMock.value) throw new Error("useWishlist must be used within WishlistProvider");
+    return wishlistMock.value;
+  },
+  useOptionalWishlist: () => wishlistMock.value,
+}));
 vi.mock("@/components/customer/use-customer-capability-gate", () => ({ useCustomerCapabilityGate: () => Object.assign(() => true, { handleResponse: vi.fn() }) }));
 vi.mock("@/components/providers/reference-currency", () => ({ useReferenceCurrency: () => ({ currency: "MYR", snapshot: null, convert: (v: number) => v }) }));
 vi.mock("@/components/customer/stay-guest-details-dialog", () => ({
@@ -61,6 +68,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  wishlistMock.value = { savedOutletIds: new Set<string>(), toggleSavedOutlet: vi.fn() };
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container as unknown as Element);
@@ -115,6 +123,13 @@ describe("hotel page", () => {
     expect(markup).not.toContain("/customer/activity/");
   });
 
+  it("renders without the save button outside the customer wishlist, as in the vendor shop preview", () => {
+    wishlistMock.value = null;
+    const markup = renderToStaticMarkup(<HotelPage outlet={outlet} rooms={[full]} gallery={[]} />);
+    expect(markup).toContain("Room full");
+    expect(markup).not.toContain("ui.activity.saveShort");
+  });
+
   it("shows the property's outlet badges and property types", () => {
     const property = {
       ...outlet,
@@ -150,7 +165,7 @@ describe("hotel page", () => {
     const renderer = readFileSync(resolve(process.cwd(), "components/outlet/outlet-page-renderer.tsx"), "utf8");
     expect(renderer).toContain("<HotelPage");
     expect(renderer).not.toContain("StaySection");
-    expect(renderer).toContain("<OutletMenu outlet={outlet} products={products} />");
+    expect(renderer).toContain("<OutletMenu outlet={outlet} products={products} canUseCustomerActions={canUseCustomerActions} />");
   });
 
   it("formats prices with ReferencePrice, never inside a translation string", () => {

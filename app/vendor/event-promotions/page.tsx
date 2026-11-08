@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useActionFeedback } from '@/components/providers/action-feedback';
 import { EventPromotionAvailabilityCalendar } from '@/components/vendor/event-promotion-availability-calendar';
 import { formatMYR } from '@/lib/i18n/format';
+import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
 
 interface EventPromotion {
   id: string;
@@ -191,11 +192,7 @@ export default function VendorEventPromotionsPage() {
 
   return (
     <div className="w-full space-y-8">
-      <header>
-        <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Megaphone size={15} aria-hidden="true" /> {t('navigationSections.promotion')}</div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('ui.eventPromotions.title')}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t('ui.eventPromotions.description')}</p>
-      </header>
+      <VendorPageHeader eyebrow={<><Megaphone size={15} aria-hidden="true" /> {t('navigationSections.promotion')}</>} title={t('ui.eventPromotions.title')} />
 
       <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-card p-5">
         <h2 className="text-sm font-semibold text-foreground">

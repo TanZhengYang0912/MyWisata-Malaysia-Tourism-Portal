@@ -31,22 +31,28 @@ export function GlobalSearch() {
       return;
     }
 
+    // Typing on cancels the previous request, so a slow older response can
+    // never replace the results for what the user typed last.
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal: controller.signal });
         if (res.ok) {
           const data = await res.json();
-          setResults(data);
+          if (!controller.signal.aborted) setResults(data);
         }
       } catch (e) {
-        console.error("Search failed", e);
+        if (!controller.signal.aborted) console.error("Search failed", e);
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) setIsLoading(false);
       }
     }, 300);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [query]);
 
   const hasResults = results && (results.destinations.length > 0 || results.experiences.length > 0 || results.vendors.length > 0);
@@ -110,7 +116,7 @@ export function GlobalSearch() {
                   {results.experiences.map((exp) => (
                     <Link
                       key={exp.id}
-                      href={`/customer/activity/${exp.id}`}
+                      href={`/customer/products/${exp.id}`}
                       onClick={() => setIsOpen(false)}
                       className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 dark:hover:bg-muted/50 transition-colors"
                     >
@@ -135,7 +141,7 @@ export function GlobalSearch() {
                   {results.vendors.map((vendor) => (
                     <Link
                       key={vendor.id}
-                      href={`/customer/vendor/${vendor.id}`}
+                      href={`/customer/vendors/${vendor.id}`}
                       onClick={() => setIsOpen(false)}
                       className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 dark:hover:bg-muted/50 transition-colors"
                     >

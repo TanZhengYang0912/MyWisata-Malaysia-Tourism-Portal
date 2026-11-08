@@ -293,7 +293,6 @@ export default function SponsoredPlacementsPage() {
       <AdminPageHeader
         eyebrow={<><Megaphone size={15} /> {t("sponsoredPlacements.eyebrow")}</>}
         title={t("sponsoredPlacements.title")}
-        description={t("sponsoredPlacements.description")}
       />
 
       {loading ? (

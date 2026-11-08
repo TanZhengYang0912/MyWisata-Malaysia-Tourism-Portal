@@ -32,7 +32,7 @@ export class TestNode {
   parentNode: TestNode | null = null;
   childNodes: TestNode[] = [];
   nodeValue = "";
-  private readonly listeners = new Map<string, TestListener[]>();
+  private readonly listeners = new Map<string, { listener: TestListener; capture: boolean }[]>();
 
   constructor(nodeType: number, ownerDocument: TestDocument, nodeName: string) {
     this.nodeType = nodeType;
@@ -84,26 +84,38 @@ export class TestNode {
     return previous;
   }
 
-  addEventListener(type: string, listener: TestListener | null) {
+  addEventListener(type: string, listener: TestListener | null, options?: boolean | { capture?: boolean }) {
     if (!listener) return;
-    this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
+    const capture = typeof options === "boolean" ? options : Boolean(options?.capture);
+    this.listeners.set(type, [...(this.listeners.get(type) ?? []), { listener, capture }]);
   }
 
-  removeEventListener(type: string, listener: TestListener | null) {
-    this.listeners.set(type, (this.listeners.get(type) ?? []).filter((candidate) => candidate !== listener));
+  removeEventListener(type: string, listener: TestListener | null, options?: boolean | { capture?: boolean }) {
+    const capture = typeof options === "boolean" ? options : Boolean(options?.capture);
+    this.listeners.set(type, (this.listeners.get(type) ?? []).filter((candidate) => candidate.listener !== listener || candidate.capture !== capture));
   }
 
   dispatchEvent(event: TestEvent) {
     event.target ??= this;
-    this.dispatchBubblingEvent(event);
+    const path: TestNode[] = [this];
+    for (let node = this.parentNode; node; node = node.parentNode) path.push(node);
+    for (const node of [...path].reverse()) {
+      node.dispatchListeners(event, true);
+      if (event.cancelBubble) break;
+    }
+    if (!event.cancelBubble) {
+      for (const node of event.bubbles ? path : [this]) {
+        node.dispatchListeners(event, false);
+        if (event.cancelBubble) break;
+      }
+    }
     event.currentTarget = null;
     return !event.defaultPrevented;
   }
 
-  private dispatchBubblingEvent(event: TestEvent): void {
+  private dispatchListeners(event: TestEvent, capture: boolean): void {
     event.currentTarget = this;
-    for (const listener of this.listeners.get(event.type) ?? []) listener(event);
-    if (event.bubbles && !event.cancelBubble) this.parentNode?.dispatchBubblingEvent(event);
+    for (const entry of this.listeners.get(event.type) ?? []) if (entry.capture === capture) entry.listener(event);
   }
 
   get textContent() {
@@ -200,6 +212,14 @@ export class TestElement extends TestNode {
     return this.attributes.get(name) ?? null;
   }
 
+  getAttributeNames() {
+    return [...this.attributes.keys()];
+  }
+
+  get children() {
+    return this.childNodes.filter((node): node is TestElement => node instanceof TestElement);
+  }
+
   hasAttribute(name: string) {
     return this.attributes.has(name);
   }
@@ -210,7 +230,11 @@ export class TestElement extends TestNode {
   }
 
   focus() {}
+  click() { this.dispatchEvent(new TestEvent("click", { bubbles: true })); }
   scrollTo() {}
+  getBoundingClientRect(): DOMRect {
+    return { x: 0, y: 0, width: 0, height: 0, top: 0, right: 0, bottom: 0, left: 0, toJSON: () => ({}) };
+  }
 }
 
 class TestWindow {
@@ -231,6 +255,8 @@ class TestWindow {
   clearInterval(...args: Parameters<typeof clearInterval>) { return clearInterval(...args); }
   setTimeout(...args: Parameters<typeof setTimeout>) { return setTimeout(...args); }
   clearTimeout(...args: Parameters<typeof clearTimeout>) { return clearTimeout(...args); }
+  requestAnimationFrame(callback: FrameRequestCallback) { return this.setTimeout(() => callback(Date.now()), 16) as unknown as number; }
+  cancelAnimationFrame(handle: number) { this.clearTimeout(handle); }
 }
 
 export class TestDocument extends TestNode {
@@ -267,6 +293,8 @@ export function installTestDom() {
   const scope = globalThis as unknown as Record<string, unknown>;
   scope.document = document;
   scope.window = document.defaultView;
+  scope.requestAnimationFrame = document.defaultView.requestAnimationFrame.bind(document.defaultView);
+  scope.cancelAnimationFrame = document.defaultView.cancelAnimationFrame.bind(document.defaultView);
   Object.defineProperty(scope, "navigator", { configurable: true, value: { userAgent: "node", language: "en-US" } });
   scope.HTMLElement = TestElement;
   scope.Element = TestElement;

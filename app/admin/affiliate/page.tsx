@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, ChevronLeft, ChevronRight, Download, RefreshCw, Share2, TrendingUp } from "lucide-react";
+import { Pagination } from "@/components/shared/pagination";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AffiliateFunnelSection } from "@/components/shared/affiliate-funnel";
 import { AffiliateInsightCard } from "@/components/shared/affiliate-insight-card";
@@ -12,6 +13,7 @@ import { FraudTypeBarChart, FraudSeverityDonut } from "@/components/shared/fraud
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
+import { AdminMobileRecordCard } from "@/components/admin/admin-mobile-record-card";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import type { Funnel } from "@/lib/affiliate/funnel";
@@ -854,13 +856,7 @@ export default function AdminAffiliatePage() {
             </div>
           )}
           {disabledLinksTotal > disabledLinksPageSize && (
-            <div className="mt-3 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-              <span>{t("affiliate.pagination.showing", { first: (disabledLinksPage - 1) * disabledLinksPageSize + 1, last: Math.min(disabledLinksPage * disabledLinksPageSize, disabledLinksTotal), total: disabledLinksTotal })}</span>
-              <div className="flex items-center gap-1">
-                <Button size="sm" variant="outline" aria-label={t("affiliate.pagination.previous")} disabled={disabledLinksPage <= 1} onClick={() => setDisabledLinksPage((page) => Math.max(1, page - 1))}><ChevronLeft size={14} /></Button>
-                <Button size="sm" variant="outline" aria-label={t("affiliate.pagination.next")} disabled={disabledLinksPage >= Math.ceil(disabledLinksTotal / disabledLinksPageSize)} onClick={() => setDisabledLinksPage((page) => page + 1)}><ChevronRight size={14} /></Button>
-              </div>
-            </div>
+            <Pagination currentPage={disabledLinksPage} totalPages={Math.ceil(disabledLinksTotal / disabledLinksPageSize)} totalItems={disabledLinksTotal} pageSize={disabledLinksPageSize} onPageChange={setDisabledLinksPage} className="mt-3" />
           )}
         </div>
       </div>
@@ -990,7 +986,7 @@ export default function AdminAffiliatePage() {
       <div className="mb-6 overflow-hidden rounded-2xl border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-xs"><input type="checkbox" aria-label={t("affiliate.accessibility.selectAllFlags")} checked={filteredFraudFlags.length > 0 && filteredFraudFlags.filter((flag) => flag.status === "open").every((flag) => selectedFlagIds.has(flag.id))} onChange={(event) => setSelectedFlagIds((previous) => { const next = new Set(previous); filteredFraudFlags.filter((flag) => flag.status === "open").forEach((flag) => { if (event.target.checked) next.add(flag.id); else next.delete(flag.id); }); return next; })} /><span className="text-muted-foreground">{t("affiliate.selectAllOpen")}</span></div>
         <AdminBatchActionBar selectedCount={filteredFraudFlags.filter((flag) => selectedFlagIds.has(flag.id)).length} onClear={() => setSelectedFlagIds(new Set())} onApply={(action) => void applyFlagBatch(action as "dismiss" | "confirm")} actions={[{ value: "dismiss", label: t("batchActions.dismiss") }, { value: "confirm", label: t("batchActions.confirm") }]} busy={batchBusy} />
-        <table className="w-full text-sm">
+        <table className="hidden w-full text-sm lg:table">
           <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
             <tr>
               <th className="text-left px-4 py-2.5 font-semibold">{t("affiliate.columns.select")}</th>
@@ -1062,19 +1058,17 @@ export default function AdminAffiliatePage() {
             )}
           </tbody>
         </table>
-      </div>
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>{t("affiliate.pagination.showing", { first: fraudTotal ? (fraudPage - 1) * fraudPageSize + 1 : 0, last: Math.min(fraudPage * fraudPageSize, fraudTotal), total: fraudTotal })}</span>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" disabled={fraudPage <= 1} aria-label={t("affiliate.pagination.previous")} onClick={() => { setFraudPage((page) => Math.max(1, page - 1)); setSelectedFlagIds(new Set()); }}>
-            <ChevronLeft size={14} /> {t("affiliate.pagination.previous")}
-          </Button>
-          <span className="min-w-24 text-center">{t("affiliate.pagination.pageOf", { page: fraudPage, total: Math.max(1, fraudTotalPages) })}</span>
-          <Button variant="outline" size="sm" disabled={fraudPage >= fraudTotalPages || fraudTotalPages === 0} aria-label={t("affiliate.pagination.next")} onClick={() => { setFraudPage((page) => page + 1); setSelectedFlagIds(new Set()); }}>
-            {t("affiliate.pagination.next")} <ChevronRight size={14} />
-          </Button>
+        <div className="space-y-3 p-3 lg:hidden">
+          {fraudFlags === undefined ? <p className="p-6 text-center text-sm text-muted-foreground">{t("affiliate.loading")}</p> : filteredFraudFlags.length === 0 ? <p className="p-6 text-center text-sm text-muted-foreground">{t("affiliate.noFlags")}</p> : filteredFraudFlags.map((f) => (
+            <AdminMobileRecordCard key={f.id} header={<div className="flex min-w-0 items-start gap-3"><input type="checkbox" aria-label={t("affiliate.accessibility.selectFlag", { name: f.userName })} disabled={f.status !== "open"} checked={selectedFlagIds.has(f.id)} onChange={(event) => setSelectedFlagIds((previous) => { const next = new Set(previous); if (event.target.checked) next.add(f.id); else next.delete(f.id); return next; })} /><div className="min-w-0"><p className="break-words font-semibold text-foreground">{f.userName}{f.affiliateCode && <span className="font-normal text-muted-foreground"> ({f.affiliateCode})</span>}</p><p className="mt-1 text-sm text-muted-foreground">{t(`affiliate.flagTypes.${f.flagType}`)}</p></div></div>} footer={f.status === "open" ? <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={reviewingFlagId === f.id} onClick={() => reviewFlag(f.id, "dismiss")}>{t("batchActions.dismiss")}</Button><Button size="sm" variant="outline" disabled={reviewingFlagId === f.id || !f.linkId} onClick={() => reviewFlag(f.id, "confirm")}>{t("batchActions.confirm")}</Button></div> : undefined}>
+              <div className="flex flex-wrap items-center justify-between gap-2"><span className={`rounded-full px-2 py-0.5 text-xs capitalize ${SEVERITY_STYLE[f.severity] ?? ""}`}>{t(`affiliate.severity.${f.severity}`)}</span><span className="text-sm capitalize text-muted-foreground">{t(`affiliate.status.${f.status}`)}</span></div>
+              <p className="break-words text-sm text-muted-foreground">{f.detail ? Object.entries(f.detail).map(([key, value]) => `${key}: ${value}`).join(" · ") : "—"}</p>
+              <p className="text-xs text-muted-foreground">{t("affiliate.columns.when")}: {new Date(f.createdAt).toLocaleDateString(locale)}</p>
+            </AdminMobileRecordCard>
+          ))}
         </div>
       </div>
+      <Pagination currentPage={fraudPage} totalPages={fraudTotalPages} totalItems={fraudTotal} pageSize={fraudPageSize} onPageChange={(next) => { setFraudPage(next); setSelectedFlagIds(new Set()); }} className="mb-8 mt-3" />
 
       <AdminFilterBar className="mb-3">
         <p className="text-xs font-bold uppercase tracking-wider text-primary">{t("affiliate.allAttributions")}</p>
@@ -1099,8 +1093,11 @@ export default function AdminAffiliatePage() {
         </div>
       </AdminFilterBar>
 
+      <div className="mb-3 flex flex-wrap gap-2 lg:hidden" aria-label={t("affiliate.columns.review")}>
+        {([["userName", t("affiliate.columns.user")], ["productName", t("affiliate.columns.activity")], ["createdAt", t("affiliate.columns.date")], ["status", t("affiliate.columns.status")]] as [SortKey, string][]).map(([key, label]) => <Button key={key} type="button" size="sm" variant="outline" aria-pressed={sortKey === key} onClick={() => toggleSort(key)}>{label}{sortKey === key ? (sortDir === "asc" ? " ↑" : " ↓") : ""}</Button>)}
+      </div>
       <div className="overflow-hidden rounded-2xl border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-        <table className="w-full text-sm">
+        <table className="hidden w-full text-sm lg:table">
           <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
             <tr>
               {(
@@ -1198,6 +1195,15 @@ export default function AdminAffiliatePage() {
             )}
           </tbody>
         </table>
+        <div className="space-y-3 p-3 lg:hidden">
+          {attributionLoading ? <p className="p-6 text-center text-sm text-muted-foreground">{t("affiliate.loading")}</p> : attributionUnavailable ? <p className="p-6 text-center text-sm text-destructive">{t("affiliate.errors.loadDescription")}</p> : filteredAttributions.length === 0 ? <p className="p-6 text-center text-sm text-muted-foreground">{t("affiliate.noAttributions")}</p> : filteredAttributions.map((r) => (
+            <AdminMobileRecordCard key={r.id} header={<div className="min-w-0"><p className="break-words font-semibold text-foreground">{r.userName}</p><p className="mt-1 break-words text-sm text-muted-foreground">{r.productName ?? "—"}</p></div>} footer={r.status === "pending" && r.reviewStatus === "pending" && r.reviewVersion !== null ? <div className="space-y-2"><p className="text-xs text-amber-700">{t("affiliate.guestReview.reason")}</p><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={reviewingId === r.id} onClick={() => reviewGuestCommission(r.id, r.reviewVersion!, "release")}>{t("affiliate.guestReview.release")}</Button><Button size="sm" variant="outline" className="text-destructive hover:text-destructive" disabled={reviewingId === r.id} onClick={() => reviewGuestCommission(r.id, r.reviewVersion!, "reject")}>{t("affiliate.guestReview.reject")}</Button></div></div> : r.status === "pending" ? <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={reviewingId === r.id} onClick={() => reviewAttribution(r.id, "accept")}>{t("affiliate.accept")}</Button><Button size="sm" variant="outline" className="text-destructive hover:text-destructive" disabled={reviewingId === r.id} onClick={() => reviewAttribution(r.id, "reject")}>{t("affiliate.reject")}</Button></div> : <span className="text-xs text-muted-foreground">—</span>}>
+              <div className="flex flex-wrap justify-between gap-2 text-sm"><span className="text-muted-foreground">{t("affiliate.columns.date")}: {new Date(r.createdAt).toLocaleDateString(locale)}</span><span className="capitalize">{t("affiliate.mobileStatusLine", { label: t("affiliate.columns.status"), status: t(`affiliate.status.${r.status}`) })}</span></div>
+              <div><p className="text-xs text-muted-foreground">{t("affiliate.columns.commission")}</p><p className="font-mono font-semibold">{formatMYR(r.commissionAmount)}</p></div>
+              {r.status === "pending" && r.releaseCheck && <div className="text-xs text-muted-foreground"><span className="font-medium">{t("affiliate.releasePreview.label")}: </span>{r.releaseCheck.reason ? <><p>{t("affiliate.releasePreview.orderReference", { id: r.orderId })}</p><p>{t(`affiliate.releasePreview.reasons.${releasePreviewReasonKey(r.releaseCheck.reason)}`)}</p>{r.releaseCheck.reason !== "no_show_policy" && r.releaseCheck.reason !== "preview_unavailable" && <a className="underline underline-offset-2" href="/admin/reports/reconciliation">{t("affiliate.releasePreview.openReconciliation")}</a>}</> : r.releaseCheck.matured ? t("affiliate.releasePreview.ready") : t("affiliate.releasePreview.waitingForMaturity", { date: new Date(r.releaseCheck.eligibleAfter).toLocaleDateString(locale) })}</div>}
+            </AdminMobileRecordCard>
+          ))}
+        </div>
       </div>
       <div className="mt-3 flex items-center justify-center gap-3">
         <Button variant="outline" size="sm" disabled={attributionPage <= 1 || attributionLoading} aria-label={t("affiliate.pagination.previous")}

@@ -4,17 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Clock3,
   RefreshCw,
   RotateCcw,
   Search,
   XCircle,
 } from "lucide-react";
+import { Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
+import { AdminMobileRecordCard } from "@/components/admin/admin-mobile-record-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useAppDialog } from "@/components/providers/app-dialog";
@@ -79,7 +79,6 @@ function providerLabel(
 
 export default function AdminRefundsPage() {
   const { t, i18n } = useTranslation("admin");
-  const { t: tCommon } = useTranslation("common");
   const { prompt } = useAppDialog();
   const locale = isAppLocale(i18n.resolvedLanguage)
     ? i18n.resolvedLanguage
@@ -330,7 +329,21 @@ export default function AdminRefundsPage() {
               </h2>
             </div>
           </div>
-          <div className="overflow-x-auto">
+          <div className="space-y-3 p-3 lg:hidden">
+            {loading ? <p className="p-8 text-center text-sm text-muted-foreground">{t("refunds.loading")}</p> : visibleRefunds.length === 0 ? <EmptyState title={search || status ? t("refunds.empty.noMatches") : t("refunds.empty.title")} /> : visibleRefunds.map((refund) => {
+              const simulated = Boolean(refund.provider && SIMULATOR_PROVIDERS.has(refund.provider));
+              const busy = busyId === refund.id;
+              return <AdminMobileRecordCard key={refund.id} header={<div className="min-w-0"><p className="break-all font-semibold text-foreground">{refund.orderNumber ?? refund.orderId}</p><p className="mt-1 text-sm text-muted-foreground">{refund.reason ?? t("refunds.detail.noReason")}</p></div>} footer={<div className="flex flex-wrap gap-2"><StatusBadge status={statusLabel(refund.status)} />{refund.status === "pending" && <><Button size="sm" variant="outline" disabled={busy} onClick={() => void review(refund, "reject")}>{t("refunds.actions.reject")}</Button><Button size="sm" disabled={busy} onClick={() => void review(refund, "approve")}>{t("refunds.actions.approve")}</Button></>}{refund.status === "approved" && simulated && <><Button size="sm" variant="outline" disabled={busy} onClick={() => void simulate(refund.id, "failed")}>{t("refunds.actions.simulateRetryableFailure")}</Button><Button size="sm" disabled={busy} onClick={() => void simulate(refund.id, "succeeded")}>{t("refunds.actions.simulateSuccess")}</Button></>}{refund.failureMessage && <XCircle size={15} aria-label={refund.failureMessage} className="text-destructive" />}{refund.status === "processed" && <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-300" />}{refund.status === "approved" && !simulated && <Clock3 size={15} className="text-amber-600 dark:text-amber-300" />}</div>}>
+                {refund.evidence?.items.map((item, index) => <div key={index} className="text-xs text-muted-foreground"><p>{item.quantity} × {item.name} · {item.vendor}</p><p>{item.venue} · {item.pickupDate} · {item.pickupWindow}</p><p>{item.status === "fulfilled" ? t("eventOperations.collected") : t("eventOperations.uncollected")}{item.collectedAt && ` · ${new Intl.DateTimeFormat(locale, { timeZone: "Asia/Kuala_Lumpur", dateStyle: "short", timeStyle: "short" }).format(new Date(item.collectedAt))}`}{item.scannedBy && ` · ${item.scannedBy}`}</p></div>)}
+                {refund.failureCode && <p className="break-all font-mono text-xs font-semibold text-destructive">{refund.failureCode}</p>}{refund.failureMessage && <p className="break-words text-xs text-destructive">{refund.failureMessage}</p>}
+                <div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">{t("refunds.table.amount")}</p><p className="font-mono font-bold">{formatMYR(refund.amountRm, locale)}</p><p className="text-xs text-muted-foreground">{refund.method ?? "—"}</p></div><div><p className="text-xs text-muted-foreground">{t("refunds.table.provider")}</p><p className="break-words">{providerLabel(refund.provider, t)}</p>{simulated && <span className="text-xs font-semibold text-amber-800 dark:text-amber-200">{t("refunds.status.simulated")}</span>}</div></div>
+                <p className="text-xs text-muted-foreground">{t("refunds.fundingSummary", { walletTopup: formatMYR(refund.walletTopupSen / 100, locale), walletEarnings: formatMYR(refund.walletEarningsSen / 100, locale), provider: formatMYR(refund.externalAmountSen / 100, locale) })}</p>
+                {refund.manualReference && <p className="break-all text-xs text-muted-foreground">{t("refunds.manualReferenceLabel")}: {refund.manualReference}</p>}
+                <div className="flex flex-wrap justify-between gap-2 text-sm"><span><span className="text-xs text-muted-foreground">{t("refunds.table.attempts")}</span><br />{t("refunds.attempt", { count: refund.attemptCount })}</span><span className="text-right"><span className="text-xs text-muted-foreground">{t("refunds.table.age")}</span><br />{formatAge(refund.createdAt)} · {new Date(refund.createdAt).toLocaleDateString(locale)}</span></div>
+              </AdminMobileRecordCard>;
+            })}
+          </div>
+          <div className="hidden overflow-x-auto lg:block">
             <div className="min-w-[980px]">
               <div className="grid grid-cols-[minmax(240px,1.5fr)_130px_minmax(190px,1.2fr)_110px_110px_150px] items-center gap-4 border-b border-border bg-muted/30 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                 <span>{t("refunds.table.request")}</span>
@@ -510,31 +523,7 @@ export default function AdminRefundsPage() {
               )}
             </div>
           </div>
-          <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground">
-            <span>{tCommon("pagination.page", { current: page, total: totalPages })}</span>
-            {totalPages > 1 && (
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={tCommon("accessibility.previousPage")}
-                  disabled={page <= 1 || loading}
-                  onClick={() => setPage((value) => value - 1)}
-                >
-                  <ChevronLeft size={14} />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={tCommon("accessibility.nextPage")}
-                  disabled={page >= totalPages || loading}
-                  onClick={() => setPage((value) => value + 1)}
-                >
-                  <ChevronRight size={14} />
-                </Button>
-              </div>
-            )}
-          </div>
+          <Pagination currentPage={page} totalPages={totalPages} totalItems={total} pageSize={pageSize} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-5 py-3" />
         </div>
     </AdminPageShell>
   );

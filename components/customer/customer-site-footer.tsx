@@ -23,7 +23,7 @@ export function CustomerSiteFooter({ variant = "full", className }: { variant?: 
 
   if (variant === "slim") {
     return (
-      <footer data-site-footer="slim" className={cn("w-full border-t border-border px-4 py-5 text-center text-xs text-muted-foreground", className)}>
+      <footer data-site-footer="slim" className={cn("w-full border-t border-border px-4 py-5 text-center text-xs text-muted-foreground print:hidden", className)}>
         <p>{copyright}</p>
         <LegalFooterLinks className="mt-2" />
       </footer>
@@ -31,7 +31,7 @@ export function CustomerSiteFooter({ variant = "full", className }: { variant?: 
   }
 
   return (
-    <footer data-site-footer="full" aria-label={tCustomer("footer.ariaLabel")} className={cn("w-full border-t border-border bg-card", className)}>
+    <footer data-site-footer="full" aria-label={tCustomer("footer.ariaLabel")} className={cn("w-full border-t border-border bg-card print:hidden", className)}>
       <div className="mx-auto grid max-w-7xl grid-cols-2 gap-x-6 gap-y-8 px-4 py-10 sm:grid-cols-3 sm:px-6 lg:grid-cols-5 lg:px-8">
         {CUSTOMER_FOOTER_GROUPS.map((group) => (
           <nav key={group.id} aria-labelledby={`site-footer-${group.id}`}>

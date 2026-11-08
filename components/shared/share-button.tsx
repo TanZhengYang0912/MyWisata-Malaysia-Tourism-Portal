@@ -63,9 +63,9 @@ interface ShareButtonProps {
 // attribution cookie, but until the redirect learns the `type` param it
 // falls back to /customer/explore instead of landing on the right page.
 const DIRECT_PATH: Record<ShareType, (id: string) => string> = {
-  product: (id) => `/customer/activity/${id}`,
-  vendor: (id) => `/customer/vendor/${id}`,
-  outlet: (id) => `/customer/outlet/${id}`,
+  product: (id) => `/customer/products/${id}`,
+  vendor: (id) => `/customer/vendors/${id}`,
+  outlet: (id) => `/customer/outlets/${id}`,
   // No per-post detail route exists yet (Member 3's recommendations page is
   // list-only) — points at the list until one exists.
   recommendation: () => `/customer/recommendations`,

@@ -1,24 +1,25 @@
 import type { Metadata } from 'next';
 import type { TFunction } from 'i18next';
-import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { ArrowRight, ArrowUpRight, CheckCircle2, Clock3, ExternalLink, MapPin, Navigation, ShieldCheck, Sparkles, Star } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Clock3, ShieldCheck, Star } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { ShareButton } from '@/components/shared/share-button';
 import { ReferencePrice } from "@/components/shared/reference-price";
-import { ProductSaveButton } from "@/components/customer/product-save-button";
+import { Breadcrumbs } from "@/components/shared/breadcrumbs";
+import { VendorListingGrid } from "@/components/customer/vendor-listing-grid";
+import { VendorLocationList, type VendorLocationRow } from "@/components/customer/vendor-location-list";
+import { VendorOperatingHours } from "@/components/customer/vendor-operating-hours";
+import { VendorSectionNav } from "@/components/customer/vendor-section-nav";
 import { selectFeaturedVendorProducts } from '@/lib/customer/vendor-page';
 import { getVendorVisual } from '@/lib/customer/vendor-visual';
 import { resolveOutletImage, type ManagedPlaceImage } from '@/lib/outlet-images';
 import { productImageUrl } from '@/lib/storage/product-image';
 import { getServerTranslation } from '@/lib/i18n/server';
-import { formatHours } from '@/lib/customer/operating-hours';
 import type { OperatingHours } from '@/backend/core/types';
 import { getReviewRatingSummary, getScopedReviewPage } from '@/backend/domains/vendor-reviews';
 import { VendorReviewsList } from '@/components/customer/vendor-reviews-list';
-import { LocalizedContent, LocalizedContentHeading } from '@/components/customer/localized-content';
 import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
 import { MediaGallery } from '@/components/customer/media-gallery';
 import { selectEntityGallery, selectEntityLogo, type EntityMediaRow } from '@/lib/customer/entity-media';
@@ -50,7 +51,6 @@ type OutletOffer = { outlet_id: string; price: number; status: string };
 type CatalogueProduct = {
   id: string;
   name: string;
-  description: string | null;
   productType: string | null;
   requiresBooking: boolean;
   coverUrl: string | null;
@@ -58,11 +58,6 @@ type CatalogueProduct = {
   soldAt: Array<{ id: string; name: string; price: number }>;
   rating: number;
   reviews: number;
-};
-
-type LocationSummary = OutletRecord & {
-  listingCount: number;
-  fromPrice: number | null;
 };
 
 function formatBusinessType(value: string | null, t: TFunction) {
@@ -111,7 +106,7 @@ async function getVendor(vendorId: string) {
 
   const [{ data: outlets }, { data: products }, { data: managedPlaces }] = await Promise.all([
     db.from('outlets').select('id,name,city,state,address,lat,lng,operating_hours,outlet_pages(hero_url)').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
-    db.from('products').select('id,name,description,product_type,requires_booking,base_price,cover_url,outlet_id,tags,outlet_offers(outlet_id,price,status)').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
+    db.from('products').select('id,name,product_type,requires_booking,base_price,cover_url,outlet_id,tags,outlet_offers(outlet_id,price,status)').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
     db.from('places').select('name,image_url').eq('managed_by_vendor_id', vendorId).eq('level', 'poi').eq('status', 'active'),
   ]);
 
@@ -151,17 +146,16 @@ async function getVendor(vendorId: string) {
   const reviewMetrics = new Map((metricRows as { product_id: string; rating: number | string; reviews: number | string }[]).map((row) => [row.product_id, { rating: Number(row.rating), reviews: Number(row.reviews) }]));
 
   const catalogue = productRows.map((product) => {
-    const offers = ((product.outlet_offers ?? []) as OutletOffer[]).filter((offer) => offer.status === 'active' && outletNames.has(offer.outlet_id));
+    const offers = ((product.outlet_offers ?? []) as OutletOffer[]).filter((offer) => offer.status === 'active' && outletNames.has(offer.outlet_id) && offer.price != null && Number.isFinite(Number(offer.price)) && Number(offer.price) >= 0);
     const soldAt = offers.length
       ? offers.map((offer) => ({ id: offer.outlet_id, name: outletNames.get(offer.outlet_id)!, price: Number(offer.price) }))
-      : product.outlet_id && outletNames.has(product.outlet_id)
+      : product.outlet_id && outletNames.has(product.outlet_id) && product.base_price != null && Number.isFinite(Number(product.base_price)) && Number(product.base_price) >= 0
         ? [{ id: product.outlet_id, name: outletNames.get(product.outlet_id)!, price: Number(product.base_price) }]
         : [];
     const metric = reviewMetrics.get(product.id) ?? { rating: 0, reviews: 0 };
     return {
       id: product.id,
       name: product.name,
-      description: product.description as string | null,
       productType: product.product_type as string | null,
       requiresBooking: Boolean(product.requires_booking),
       coverUrl: productImageUrl(product.cover_url as string | null),
@@ -172,11 +166,7 @@ async function getVendor(vendorId: string) {
     } satisfies CatalogueProduct;
   }).filter((product) => product.soldAt.length > 0);
 
-  const locations = outletRows.map((outlet) => {
-    const outletProducts = catalogue.filter((product) => product.soldAt.some((entry) => entry.id === outlet.id));
-    const prices = outletProducts.flatMap((product) => product.soldAt.filter((entry) => entry.id === outlet.id).map((entry) => entry.price));
-    return { ...outlet, listingCount: outletProducts.length, fromPrice: prices.length ? Math.min(...prices) : null } satisfies LocationSummary;
-  });
+  const locations = outletRows;
 
   // Resolve vendor owner's chosen featured products
   const explicitFeaturedIds: string[] = Array.isArray(vendor.featured_product_ids) && vendor.featured_product_ids.length > 0
@@ -184,6 +174,10 @@ async function getVendor(vendorId: string) {
     : productRows
       .filter((product) => Array.isArray(product.tags) && product.tags.some((tag: unknown) => tag === 'featured'))
       .map((product) => product.id);
+
+  // The whole listing, featured products first and the rest by name.
+  const featured = selectFeaturedVendorProducts(catalogue, catalogue.length, explicitFeaturedIds);
+  const featuredIds = new Set(featured.map((product) => product.id));
 
   const [reviewPage, reviewSummary] = await Promise.all([
     getScopedReviewPage("vendor", vendorId, { page: 1, pageSize: 6 }, db),
@@ -195,7 +189,7 @@ async function getVendor(vendorId: string) {
     vendorGallery,
     locations,
     catalogue,
-    featuredProducts: selectFeaturedVendorProducts(catalogue, 4, explicitFeaturedIds),
+    listing: [...featured, ...catalogue.filter((product) => !featuredIds.has(product.id)).sort((left, right) => left.name.localeCompare(right.name))],
     reviewSummary: { rating: reviewSummary.total ? reviewSummary.rating : null, reviews: reviewSummary.total },
     reviews: reviewPage.items,
     reviewRatingBuckets: reviewSummary.buckets,
@@ -213,80 +207,26 @@ export async function generateMetadata({ params }: { params: Promise<{ vendorId:
   // same weighted rating the page itself displays, never a fabricated
   // number (result.reviewSummary.rating is null with zero reviews).
   const description = result.reviewSummary.rating !== null ? `★ ${result.reviewSummary.rating.toFixed(1)} · ${baseDescription}` : baseDescription;
-  const url = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/vendor/${vendorId}`;
+  const url = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/vendors/${vendorId}`;
   return { title: `${result.vendor.name} | ${BRAND_NAME}`, description, openGraph: { title: result.vendor.name, description, url, images: vendorVisual.coverUrl ? [{ url: vendorVisual.coverUrl }] : undefined } };
 }
 
-function vendorProductDetailHref(productId: string, vendorId: string, outletId?: string) {
-  const outletQuery = outletId ? `&outletId=${encodeURIComponent(outletId)}` : '';
-  return `/customer/activity/${productId}?source=vendor${outletQuery}&returnTo=${encodeURIComponent(`/customer/vendor/${vendorId}`)}`;
-}
+// Section targets land just below the customer header and the sticky section nav.
+const sectionScroll = 'scroll-mt-[calc(var(--customer-header-h,4.25rem)+56px)]';
 
-function ProductCard({ product, vendorId, t }: { product: CatalogueProduct; vendorId: string; t: TFunction }) {
-  const href = vendorProductDetailHref(product.id, vendorId, product.soldAt.length === 1 ? product.soldAt[0].id : undefined);
-  return <article className="mw-card relative min-w-0">
-    <Link href={href} aria-label={t('ui.vendor.viewProductDetails')} className="group/product-media block min-w-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15">
-    <div className="mw-card-media h-48 aspect-auto bg-secondary">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {product.coverUrl ? <img src={product.coverUrl} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover/product-media:scale-105" /> : <div className="flex h-full items-center justify-center px-6 text-center text-xs font-semibold uppercase tracking-[0.16em] text-primary/60">{t('ui.vendor.photoComingSoon')}</div>}
-      <span className="absolute left-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-[11px] font-bold text-foreground shadow-sm">{t(`ui.vendor.productTypes.${product.productType ?? 'experience'}`)}</span>
-    </div></Link>
-    <div className="mw-card-body p-4">
-      <div className="flex items-start justify-between gap-3"><LocalizedContentHeading entityType="product" entityId={product.id} field="name" sourceText={product.name} href={href} linkClassName="mw-card-title min-w-0 flex-1 rounded-sm font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40" showTitleAttribute /><p className="shrink-0 text-right text-sm font-bold text-primary"><span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">{t('ui.vendor.from')}</span><ReferencePrice amountMYR={product.fromPrice} /></p></div>
-      <div className="mt-2 min-h-[2.5rem]">{product.description && <p className="break-words whitespace-normal text-xs leading-5 text-muted-foreground"><LocalizedContent entityType="product" entityId={product.id} field="description" sourceText={product.description} /></p>}</div>
-      <div className="mw-card-footer pt-4 text-xs"><span className="font-semibold text-muted-foreground">{t('ui.vendor.locationCount', { count: product.soldAt.length })}</span>{product.reviews > 0 ? <span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-200"><Star size={13} fill="currentColor" /> {product.rating.toFixed(1)} <span className="font-normal text-muted-foreground/60">({product.reviews})</span></span> : <Link href={href} className="font-semibold text-primary">{t('ui.vendor.viewProductDetails')} <ArrowRight size={13} className="ml-0.5 inline" /></Link>}</div>
-    </div>
-    <ProductSaveButton productId={product.id} productName={product.name} className="absolute right-3 top-3 z-10" />
-  </article>;
-}
-
-function LocationCard({ location, vendorId, t }: { location: LocationSummary; vendorId: string; t: TFunction }) {
-  const visual = getVendorVisual({ name: location.name, logoUrl: location.logoUrl });
-  const locationLabel = [location.city, location.state].filter(Boolean).join(', ') || t('ui.labels.malaysia');
-  const hoursLabel = formatHours(location.operatingHours, { scheduleUnavailable: t('ui.outlet.scheduleBeforeBooking'), closed: t('ui.outlet.closed'), day: (day) => t(`ui.labels.days.${day.slice(0, 3).toLowerCase()}`) });
-  const directionsHref = location.lat !== null && location.lng !== null ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.name, locationLabel].join(', '))}`;
-  return <article className="mw-card min-w-0">
-    {/* eslint-disable-next-line @next/next/no-img-element */}
-    <div className="mw-card-media relative h-36 aspect-auto overflow-hidden bg-secondary">{location.coverUrl ? <><img src={location.coverUrl} alt={location.name} className="h-full w-full object-cover" /><div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" /></> : <div className="flex h-full items-center justify-center"><span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/35 bg-white/15 dark:bg-card/15 text-2xl font-black text-white shadow-xl backdrop-blur-sm">{visual.initials}</span></div>}{visual.logoUrl && <span className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-white/95 dark:bg-card/95 p-1 shadow-md"><img src={visual.logoUrl} alt={t('ui.vendor.logoAlt', { vendor: location.name })} className="h-full w-full object-contain" /></span>}<span className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/90">{t('ui.vendor.outletIdentity')}</span><span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-background/95 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-200"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t('ui.vendor.activeOutlet')}</span></div>
-      <div className="mw-card-body p-4"><h3 className="mw-card-title font-bold text-foreground" title={location.name}>{location.name}</h3><p className="mw-card-meta mt-1 flex items-center gap-1 text-sm text-muted-foreground" title={locationLabel}><MapPin size={14} className="shrink-0 text-primary" />{locationLabel}</p><p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-muted-foreground"><Clock3 size={13} className="mt-0.5 shrink-0 text-primary" /><span><span className="font-semibold text-foreground">{t('ui.labels.operatingHours')}:</span> {hoursLabel}</span></p><div className="mt-auto"><div className="mw-card-footer mt-4 border-t border-border pt-3 text-xs"><span className="font-semibold text-muted-foreground">{t('ui.vendor.publishedExperienceCount', { count: location.listingCount })}</span>{location.fromPrice !== null && <span className="inline-flex items-center gap-1 font-semibold text-primary">{t('ui.vendor.from')} <ReferencePrice amountMYR={location.fromPrice} /></span>}</div><div className="mt-4 flex items-center gap-2"><Link href={`/customer/vendor/${vendorId}/outlet/${location.id}`} className="inline-flex h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-primary px-3 text-sm font-semibold text-white hover:bg-primary/90">{t('ui.vendor.viewOutlet')} <ArrowRight size={14} /></Link><a href={directionsHref} target="_blank" rel="noreferrer" aria-label={t('ui.vendor.getDirectionsTo', { outlet: location.name })} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 text-primary hover:bg-secondary"><Navigation size={16} /></a></div></div></div>
-  </article>;
-}
-
-function SingleLocationSummary({ location, vendorId, t }: { location: LocationSummary; vendorId: string; t: TFunction }) {
-  const visual = getVendorVisual({ name: location.name, logoUrl: location.logoUrl });
-  const locationLabel = [location.city, location.state].filter(Boolean).join(', ') || t('ui.labels.malaysia');
-  const hoursLabel = formatHours(location.operatingHours, { scheduleUnavailable: t('ui.outlet.scheduleBeforeBooking'), closed: t('ui.outlet.closed'), day: (day) => t(`ui.labels.days.${day.slice(0, 3).toLowerCase()}`) });
-  const directionsHref = location.lat !== null && location.lng !== null ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.name, locationLabel].join(', '))}`;
-
-  return <article className="rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
-    <div className="flex items-start gap-4">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-secondary text-primary">{visual.logoUrl ? <img src={visual.logoUrl} alt={t('ui.vendor.logoAlt', { vendor: location.name })} className="h-full w-full object-contain p-1" /> : location.coverUrl ? <img src={location.coverUrl} alt={location.name} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-xl font-black">{visual.initials}</div>}</div>
-      <div className="min-w-0">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{t('ui.vendor.outletIdentity')}</p>
-        <h3 className="mt-1 text-xl font-black text-foreground" title={location.name}>{location.name}</h3>
-        <p className="mt-2 flex items-center gap-1 text-sm text-muted-foreground" title={locationLabel}><MapPin size={14} className="shrink-0 text-primary" />{locationLabel}</p>
-        <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-muted-foreground"><Clock3 size={13} className="mt-0.5 shrink-0 text-primary" /><span><span className="font-semibold text-foreground">{t('ui.labels.operatingHours')}:</span> {hoursLabel}</span></p>
-      </div>
-    </div>
-    <div className="mt-5 flex flex-col gap-4 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-6 text-sm">
-        <span className="font-semibold text-muted-foreground">{t('ui.vendor.publishedExperienceCount', { count: location.listingCount })}</span>
-        {location.fromPrice !== null && <span className="inline-flex items-center gap-1 font-semibold text-primary">{t('ui.vendor.from')} <ReferencePrice amountMYR={location.fromPrice} /></span>}
-      </div>
-      <div className="flex items-center gap-2">
-        <Link href={`/customer/vendor/${vendorId}/outlet/${location.id}`} className="inline-flex h-10 items-center justify-center gap-1 rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90">{t('ui.vendor.viewOutlet')} <ArrowRight size={14} /></Link>
-        <a href={directionsHref} target="_blank" rel="noreferrer" aria-label={t('ui.vendor.getDirectionsTo', { outlet: location.name })} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 text-primary hover:bg-secondary"><Navigation size={16} /></a>
-      </div>
-    </div>
-  </article>;
+function Fact({ label, children }: { label: string; children: ReactNode }) {
+  return <div className="min-w-0 bg-card px-[18px] py-4">
+    <p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-muted-foreground">{label}</p>
+    {children}
+  </div>;
 }
 
 export default async function VendorBrandPage({ params }: { params: Promise<{ vendorId: string }> }) {
   const [result, publicEvents] = await Promise.all([getVendor((await params).vendorId), getPublicPromotionCampaigns()]);
   if (!result) notFound();
   const { t } = await getServerTranslation('customer');
-  const { vendor, vendorGallery, locations, catalogue, featuredProducts, reviewSummary, reviews, reviewRatingBuckets } = result;
+  const { vendor, vendorGallery, locations, catalogue, listing, reviewSummary, reviews, reviewRatingBuckets } = result;
+  const locationsById = new Map(locations.map((location) => [location.id, location]));
   const vendorVisual = getVendorVisual({ name: vendor.name, coverUrl: vendor.cover_url, logoUrl: vendor.logo_url });
   const heroImage = vendorVisual.coverUrl;
   const visibleVendorGallery = vendorGallery.filter((item) => item.url !== heroImage);
@@ -294,199 +234,141 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
   const hasMultipleLocations = locations.length > 1;
   const isEventVendor = vendor.kind === 'event';
   const eventItems = vendorEventItems(publicEvents.campaigns, vendor.id, getMalaysiaDateInputValue());
-  const jsonLd = { '@context': 'https://schema.org', '@type': 'Organization', name: vendor.name, description: vendor.description, url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/vendor/${vendor.id}` };
+  const showEventItems = isEventVendor || eventItems.length > 0;
+  const hoursSource = locations.find((location) => location.operatingHours)?.operatingHours ?? null;
+  const lowestPrice = catalogue.length ? Math.min(...catalogue.map((product) => product.fromPrice)) : null;
+  const listingCards = listing.map((product) => ({
+    ...product, vendorId: vendor.id, imageUrl: product.coverUrl, description: null,
+    soldAt: product.soldAt.map((entry) => {
+      const outlet = locationsById.get(entry.id);
+      // Only a single-outlet card reads the hours (its Closed badge and hours summary).
+      return { ...entry, city: outlet?.city ?? null, state: outlet?.state ?? null, operatingHours: product.soldAt.length === 1 ? outlet?.operatingHours ?? null : null };
+    }),
+  }));
+  const locationRows: VendorLocationRow[] = locations.map((location) => {
+    const locationLabel = [location.city, location.state].filter(Boolean).join(', ') || t('ui.labels.malaysia');
+    return {
+      id: location.id,
+      name: location.name,
+      href: `/customer/outlets/${location.id}`,
+      directionsHref: location.lat !== null && location.lng !== null ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.name, locationLabel].join(', '))}`,
+    };
+  });
+  const sectionNavItems = [
+    showEventItems && { id: 'event-items', label: t('ui.vendor.eventItems.title') },
+    !isEventVendor && { id: 'experiences', label: t('ui.vendor.featuredExperiences') },
+    !isEventVendor && { id: 'locations', label: t('ui.labels.locations') },
+    { id: 'about', label: t('ui.vendor.about') },
+    reviewSummary.reviews > 0 && { id: 'reviews', label: t('ui.vendor.reviewsNav', { count: reviewSummary.reviews }) },
+  ].filter((item): item is { id: string; label: string } => Boolean(item));
+  const jsonLd = { '@context': 'https://schema.org', '@type': 'Organization', name: vendor.name, description: vendor.description, url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/customer/vendors/${vendor.id}` };
 
   return <main className="min-h-screen bg-background text-foreground">
+    <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8"><Breadcrumbs label={t('ui.place.breadcrumb')} items={[
+      { label: t('navigation.home'), href: '/customer' },
+      { label: t('navigation.search'), href: '/customer/vendors' },
+      { label: vendor.name },
+    ]} /></div>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
 
-    {/* Top Context Bar (matching Image 2) */}
+    {/* Header: eyebrow, name and badge, with Share as the only action. */}
     <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
-      <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            {t('ui.vendor.partnerProfile')}
-          </p>
-          <p className="mt-1 text-sm font-semibold text-foreground">{vendor.name}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground/60">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-primary">{t('ui.vendor.partnerProfile')}</p>
+          <h1 className="mt-1 break-words font-[family-name:var(--font-display)] text-[26px] font-bold leading-[1.15] text-foreground sm:text-[34px]">{vendor.name}</h1>
+          <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-bold text-primary">
+            <CheckCircle2 size={14} aria-hidden="true" />
             {isEventVendor ? t('ui.vendor.eventItems.eventPartner') : t('ui.labels.verifiedVendor')}
-          </p>
+          </span>
         </div>
-        <div className="flex items-center gap-2">
-          <ShareButton shareType="vendor" contentId={vendor.id} title={vendor.name} />
-        </div>
+        <ShareButton shareType="vendor" contentId={vendor.id} title={vendor.name} />
       </div>
     </div>
 
-    {/* Hero Card (matching Image 2's contained hero) */}
-    <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
-      <div className="overflow-hidden rounded-[1.75rem] border border-border bg-primary shadow-lg">
-        <section
-          className="relative min-h-[280px] overflow-hidden text-white sm:min-h-[340px] lg:min-h-[360px]"
-          style={{
-            backgroundColor: '#030052',
-            ...(heroImage
-              ? {
-                  backgroundImage: `linear-gradient(90deg, rgba(0,0,0,.82), rgba(0,0,0,.2)), url(${heroImage})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                }
-              : {}),
-          }}
-        >
-          {!heroImage && (
-            <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-slate-900" aria-hidden="true" />
-          )}
-          {vendorVisual.logoUrl && <div className="absolute right-6 top-6 flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-white/95 dark:bg-card/95 p-2 shadow-xl">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={vendorVisual.logoUrl} alt={t('ui.vendor.logoAlt', { vendor: vendor.name })} className="h-full w-full object-contain" />
-          </div>}
-          <div className="relative mx-auto flex min-h-[280px] max-w-7xl flex-col justify-end px-6 py-12 text-left sm:min-h-[340px] sm:py-14 lg:min-h-[360px] lg:py-16">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-80">
-              {isEventVendor ? t('ui.vendor.eventItems.eventPartner') : <>{t('ui.outlet.verifiedMyLawatan')} • {vendorType}</>}
-            </p>
-            <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-tight sm:text-6xl">
-              {vendor.name}
-            </h1>
-            {vendor.description && (
-              <p className="mt-4 max-w-2xl text-sm leading-6 opacity-90 sm:text-base">
-                {vendor.description}
-              </p>
-            )}
-          </div>
-        </section>
-      </div>
+    {/* Hero: the cover image only. */}
+    <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
+      <section
+        aria-label={vendor.name}
+        className="relative h-[200px] overflow-hidden rounded-[18px] border border-border bg-primary sm:h-[300px] sm:rounded-[24px]"
+        style={heroImage ? { backgroundImage: `url(${heroImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+      >
+        {!heroImage && <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-slate-900" aria-hidden="true" />}
+        {visibleVendorGallery.length > 0 && <a href="#gallery" className="absolute bottom-3.5 right-3.5 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">{t('ui.vendor.viewPhotos')}</a>}
+      </section>
     </div>
 
-    {/* Public Content Container (matching Image 2's outlet-public-content) */}
     <div className="outlet-public-content mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
-      {/* Visit / Partner Summary Card (matching Image 2's VisitSummary) */}
-      {!isEventVendor && <section className="relative z-10 -mt-8 mb-8 rounded-3xl border border-border bg-card p-5 shadow-lg sm:p-6" aria-label={t('ui.vendor.information')}>
-        <div className="grid gap-5 text-sm text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">
-          <div className="flex items-start gap-3">
-            <MapPin size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{t('ui.labels.location')}</p>
-              <p className="mt-1 font-semibold text-foreground">
-                {hasMultipleLocations
-                  ? `${t('ui.vendor.locationCount', { count: locations.length })} · ${t('ui.vendor.acrossMalaysia')}`
-                  : [locations[0]?.city, locations[0]?.state].filter(Boolean).join(', ') || t('ui.labels.malaysia')}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Clock3 size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{t('ui.labels.operatingHours')}</p>
-              <p className="mt-1 leading-5 text-muted-foreground">
-                {locations.find((l) => l.operatingHours)?.operatingHours
-                  ? formatHours(locations.find((l) => l.operatingHours)!.operatingHours, {
-                      scheduleUnavailable: t('ui.outlet.scheduleBeforeBooking'),
-                      closed: t('ui.outlet.closed'),
-                      day: (day) => t(`ui.labels.days.${day.slice(0, 3).toLowerCase()}`),
-                    })
-                  : t('ui.vendor.checkSchedule')}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Sparkles size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{t('ui.vendor.featuredExperiences')}</p>
-              <p className="mt-1 font-semibold text-foreground">{t('ui.vendor.listingCount', { count: catalogue.length })}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">{t('ui.vendor.readyToExplore')}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            {reviewSummary.rating !== null ? (
-              <Star size={18} className="mt-0.5 shrink-0 text-amber-500" fill="currentColor" aria-hidden="true" />
-            ) : (
-              <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-300" aria-hidden="true" />
-            )}
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-                {reviewSummary.rating !== null ? t('ui.vendor.travellerFavourites') : t('ui.labels.verifiedVendor')}
-              </p>
-              <p className="mt-1 font-semibold text-foreground">
-                {reviewSummary.rating !== null ? `${reviewSummary.rating.toFixed(1)} / 5` : t('ui.labels.verifiedVendor')}
-              </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {reviewSummary.reviews > 0 ? t('ui.vendor.travellerReviewCount', { count: reviewSummary.reviews }) : t('ui.vendor.approvedOnMyLawatan')}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="mt-5 flex flex-wrap gap-2 border-t border-border pt-4">
-          <a
-            href="#experiences"
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary/90"
-          >
-            {t('ui.actions.viewExperiences', 'View experiences')} <ArrowUpRight size={15} aria-hidden="true" />
-          </a>
-          <a
-            href="#locations"
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-primary/20 px-4 py-2.5 text-sm font-semibold text-primary transition hover:bg-secondary"
-          >
-            <Navigation size={15} aria-hidden="true" />
-            {t('ui.labels.locations', 'Locations')} <ArrowUpRight size={15} aria-hidden="true" />
-          </a>
+      {!isEventVendor && <section className="relative z-10 mx-2.5 -mt-[26px] mb-6 overflow-hidden rounded-[20px] border border-border bg-border shadow-lg sm:mx-[22px] sm:-mt-[38px]" aria-label={t('ui.vendor.information')}>
+        <div className="grid gap-px min-[600px]:grid-cols-2 min-[900px]:grid-cols-[1fr_1.4fr_1fr_1fr]">
+          <Fact label={t('ui.labels.location')}>
+            <p className="mt-1 break-words text-sm font-bold text-foreground">
+              {hasMultipleLocations ? t('ui.vendor.acrossMalaysia') : [locations[0]?.city, locations[0]?.state].filter(Boolean).join(', ') || t('ui.labels.malaysia')}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t('ui.vendor.locationCount', { count: locations.length })}</p>
+          </Fact>
+          <Fact label={t('ui.labels.operatingHours')}>
+            <VendorOperatingHours hours={hoursSource} />
+          </Fact>
+          <Fact label={t('ui.vendor.featuredExperiences')}>
+            <p className="mt-1 text-sm font-bold text-foreground">{t('ui.vendor.listingCount', { count: catalogue.length })}</p>
+            {lowestPrice !== null && <p className="mt-0.5 text-xs text-muted-foreground">{t('ui.vendor.from')} <ReferencePrice amountMYR={lowestPrice} /></p>}
+          </Fact>
+          <Fact label={reviewSummary.rating !== null ? t('ui.vendor.travellerFavourites') : t('ui.labels.verifiedVendor')}>
+            <p className="mt-1 flex items-center gap-1 text-sm font-bold text-foreground">
+              {reviewSummary.rating !== null && <Star size={14} className="text-amber-500" fill="currentColor" aria-hidden="true" />}
+              {reviewSummary.rating !== null ? `${reviewSummary.rating.toFixed(1)} / 5` : t('ui.labels.verifiedVendor')}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {reviewSummary.reviews > 0 ? t('ui.vendor.travellerReviewCount', { count: reviewSummary.reviews }) : t('ui.vendor.approvedOnMyLawatan')}
+            </p>
+          </Fact>
         </div>
       </section>}
-      {visibleVendorGallery.length > 0 && <div className="mb-8">
+
+      <div className={isEventVendor ? 'mt-6' : undefined}>
+        <VendorSectionNav items={sectionNavItems} />
+      </div>
+
+      {visibleVendorGallery.length > 0 && <div id="gallery" className={`mb-8 ${sectionScroll}`}>
         <MediaGallery items={visibleVendorGallery} label={t('ui.vendor.galleryLabel', { vendor: vendor.name })} previousLabel={t('ui.vendor.previousGallery')} nextLabel={t('ui.vendor.nextGallery')} slideLabel={t('ui.vendor.gallerySlide')} roleDescription={t('ui.accessibility.carousel')} />
       </div>}
 
       {/* Content Sections */}
-      <div className={isEventVendor ? 'mt-10 space-y-16' : 'space-y-16'}>
-        {(isEventVendor || eventItems.length > 0) && (
-          <section id="event-items" aria-labelledby="event-items-heading">
+      <div className="space-y-12 sm:space-y-16">
+        {showEventItems && (
+          <section id="event-items" aria-labelledby="event-items-heading" className={sectionScroll}>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.eventItems.eyebrow')}</p>
-            <h2 id="event-items-heading" className="mt-2 text-3xl font-black tracking-tight">{t('ui.vendor.eventItems.title')}</h2>
-            <p className="mb-6 mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t('ui.vendor.eventItems.description')}</p>
+            <h2 id="event-items-heading" className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t('ui.vendor.eventItems.title')}</h2>
+            <p className="mb-4 mt-2 max-w-2xl text-sm leading-5 text-muted-foreground sm:mb-6 sm:leading-6">{t('ui.vendor.eventItems.description')}</p>
             <EventItemsTable items={eventItems} />
           </section>
         )}
 
         {!isEventVendor && <>
-        <section id="experiences" aria-labelledby="experiences-heading">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.featuredExperiences')}</p>
-              <h2 id="experiences-heading" className="mt-2 text-3xl font-black tracking-tight">{t('ui.vendor.memorableDay')}</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t('ui.vendor.experienceDescription')}</p>
-            </div>
-            <span className="text-sm font-semibold text-muted-foreground">{t('ui.vendor.publishedListingCount', { count: featuredProducts.length })}</span>
-          </div>
-          {featuredProducts.length ? (
-            <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-              {featuredProducts.map((product) => <ProductCard key={product.id} product={product} vendorId={vendor.id} t={t} />)}
-            </div>
+        <section id="experiences" aria-labelledby="experiences-heading" className={sectionScroll}>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.featuredExperiences')}</p>
+          <h2 id="experiences-heading" className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t('ui.vendor.memorableDay')}</h2>
+          {listingCards.length ? (
+            <VendorListingGrid products={listingCards} returnTo={`/customer/vendors/${vendor.id}`} />
           ) : (
             <div className="mt-6 rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">{t('ui.vendor.noExperiences')}</div>
           )}
         </section>
 
-        <section id="locations" aria-labelledby="locations-heading">
+        <section id="locations" aria-labelledby="locations-heading" className={sectionScroll}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.findAcrossMalaysia')}</p>
-              <h2 id="locations-heading" className="mt-2 text-3xl font-black tracking-tight">{t('ui.vendor.chooseLocationTitle')}</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t('ui.vendor.chooseLocationDescription')}</p>
+              <h2 id="locations-heading" className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t('ui.vendor.chooseLocationTitle')}</h2>
             </div>
-            {hasMultipleLocations && <span className="text-sm font-semibold text-muted-foreground">{t('ui.vendor.activeOutletCount', { count: locations.length })}</span>}
           </div>
-          {locations.length ? hasMultipleLocations ? (
-            <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-              {locations.map((location) => <LocationCard key={location.id} location={location} vendorId={vendor.id} t={t} />)}
-            </div>
-          ) : (
-            <div className="mt-6 max-w-3xl">
-              <SingleLocationSummary location={locations[0]} vendorId={vendor.id} t={t} />
-            </div>
-          ) : <div className="mt-6 rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">{t('ui.vendor.noPublicOutlets')}</div>}
+          {locations.length ? <VendorLocationList locations={locationRows} /> : <div className="mt-6 rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">{t('ui.vendor.noPublicOutlets')}</div>}
         </section>
+        </>}
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,.85fr)]" aria-label={t('ui.vendor.information')}>
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <section className={`grid gap-6 ${isEventVendor ? '' : 'min-[900px]:grid-cols-[minmax(0,1.2fr)_minmax(0,.8fr)]'}`} aria-label={t('ui.vendor.information')}>
+          <div id="about" className={`rounded-2xl border border-border bg-card p-6 shadow-sm ${sectionScroll}`}>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.about')}</p>
             <h2 className="mt-2 text-2xl font-black">{t('ui.vendor.localPartnerTitle')}</h2>
             <p className="mt-4 text-sm leading-7 text-muted-foreground">{vendor.description || t('ui.vendor.fallbackDescription', { vendor: vendor.name })}</p>
@@ -496,7 +378,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
               <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold text-primary">{t('ui.vendor.bookThrough')}</span>
             </div>
           </div>
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          {!isEventVendor && <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.policiesSupport')}</p>
             <h2 className="mt-2 text-2xl font-black">{t('ui.vendor.planDetails')}</h2>
             <div className="mt-5 space-y-4">
@@ -516,12 +398,11 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
             <a href="#locations" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
               {t('ui.labels.chooseOutlet')} <ArrowRight size={15} />
             </a>
-          </div>
+          </div>}
         </section>
-        </>}
 
         {reviewSummary.reviews > 0 && (
-          <section aria-labelledby="reviews-heading" className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <section id="reviews" aria-labelledby="reviews-heading" className={`rounded-2xl border border-border bg-card p-6 shadow-sm ${sectionScroll}`}>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-200">{t('ui.vendor.travellerFavourites')}</p>

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { DirectoryPagination } from "@/components/customer/directory-pagination";
+import { Pagination } from "@/components/shared/pagination";
 import { useAppDialog } from "@/components/providers/app-dialog";
 import { TravelDetailsFields, TravelDetailsSummary, type TravelDetailsDraft } from "@/components/profile/travel-details-fields";
 import { EMPTY_TRAVELLER, sameSavedTravellerInput, TRAVELLERS_PAGE_SIZE, type SavedTraveller, type SavedTravellerInput, type TravellersPage } from "@/lib/profile/travel-details";
@@ -89,7 +89,7 @@ export function SavedTravellers({ userId }: { userId: string }) {
         {traveller.relationship && <p className="text-xs text-muted-foreground">{traveller.relationship}</p>}
         <div className="flex gap-2"><Button variant="outline" size="sm" disabled={busy || editor !== null} aria-label={t("ui.travelDetails.editNamedTraveller", { name: traveller.legalName })} onClick={() => { setEditor({ id: traveller.id, draft: { legalName: traveller.legalName, dateOfBirth: traveller.dateOfBirth, gender: traveller.gender, nationalityCode: traveller.nationalityCode, emergencyContact: traveller.emergencyContact, contactPhone: traveller.contactPhone, relationship: traveller.relationship } }); setError(null); }}>{t("ui.travelDetails.edit")}</Button><Button variant="ghost" size="sm" disabled={busy || editor !== null} aria-label={t("ui.travelDetails.deleteNamedTraveller", { name: traveller.legalName })} onClick={() => void remove(traveller)}>{t("ui.travelDetails.delete")}</Button></div>
       </article>)}</div>}
-      <DirectoryPagination ariaLabel={t("ui.travelDetails.travellersTitle")} itemLabel={t("ui.travelDetails.travellersTitle")} variant="marketplace" pageSize={TRAVELLERS_PAGE_SIZE} currentPage={page} totalPages={current.data.pages} totalItems={current.data.total} onPageChange={(nextPage) => { if (!busy && !editor) setPage(nextPage); }} />
+      <Pagination ariaLabel={t("ui.travelDetails.travellersTitle")} pageSize={TRAVELLERS_PAGE_SIZE} currentPage={page} totalPages={current.data.pages} totalItems={current.data.total} onPageChange={(nextPage) => { if (!busy && !editor) setPage(nextPage); }} />
     </>}
   </div>;
 }

@@ -35,6 +35,7 @@ const INTENTIONAL_IDENTICAL_VALUES = {
     "affiliate.noLimit",
     "navigation.Chatbot",
     "affiliate.columns.status",
+    "affiliate.mobileStatusLine",
     "catalogue.entity.outlet",
     "catalogue.fields.vendor",
     "chatbot.categories.vendor",
@@ -72,30 +73,27 @@ const INTENTIONAL_IDENTICAL_VALUES = {
   ]),
 } as const;
 
-export const ADMIN_ROUTE_I18N_FILES = [
-  "app/admin/access-control/page.tsx",
-  "app/admin/affiliate/page.tsx",
-  "app/admin/ai-assistant/page.tsx",
-  "app/admin/catalogue/page.tsx",
-  "app/admin/chat-reports/page.tsx",
-  "app/admin/chatbot/page.tsx",
-  "app/admin/dashboard/page.tsx",
-  "app/admin/kyc/page.tsx",
-  "app/admin/promotion-campaigns/page.tsx",
-  "app/admin/recommendations/[id]/page.tsx",
-  "app/admin/recommendations/page.tsx",
-  "app/admin/refunds/page.tsx",
-  "app/admin/reports/payouts/page.tsx",
-  "app/admin/rewards/page.tsx",
-  "app/admin/support/page.tsx",
-  "app/admin/users/page.tsx",
-  "app/admin/vendors/page.tsx",
-  "app/admin/wallet/settings/page.tsx",
-  "app/admin/withdrawals/page.tsx",
-] as const;
+function adminRoutePageFiles(directory = "app/admin"): string[] {
+  return readdirSync(resolve(process.cwd(), directory), { withFileTypes: true }).flatMap((entry) => {
+    const path = `${directory}/${entry.name}`;
+    if (entry.isDirectory()) return adminRoutePageFiles(path);
+    return entry.name === "page.tsx" ? [path] : [];
+  }).sort();
+}
+
+/** Every route file is covered, including aliases and routes that delegate UI. */
+export const ADMIN_ROUTE_I18N_FILES = adminRoutePageFiles();
+
+const ADMIN_ROUTE_TRANSLATION_DELEGATES: Record<string, string> = {
+  "app/admin/catalogue/hotel-amenities/page.tsx": "app/admin/hotel-amenities/page.tsx",
+  "app/admin/kyc/[submissionId]/page.tsx": "components/admin/kyc-review-detail.tsx",
+  "app/admin/kyc/mfa/page.tsx": "components/admin/kyc-mfa.tsx",
+  "app/admin/recommendations/[id]/page.tsx": "components/admin/recommendation-detail-view.tsx",
+};
 
 /** The exclusive Task 9 component scope for this worker. */
 export const ADMIN_I18N_FILES = [
+  "components/admin/admin-mobile-actions.tsx",
   "components/admin/kyc-mfa.tsx",
   "components/admin/staff-passkey.tsx",
   "components/admin/hotel-profile-diff.tsx",
@@ -141,6 +139,7 @@ export const PRIOR_TASK_FILES = [
 
 /** Wrappers and pure helpers are inventoried but do not bind translations themselves. */
 export const ADMIN_NON_RENDERING_FILES = [
+  "components/admin/admin-mobile-record-card.tsx",
   "components/admin/staff-mfa.tsx",
   "components/admin/access-control/audit-log-presentation.ts",
   "components/admin/access-control/capability-label.ts",
@@ -206,11 +205,26 @@ function callsBoundTranslator(source: string): boolean {
 }
 
 describe("admin component sitewide i18n contract", () => {
-  it("keeps the exact Task 9 route inventory available to the whole-site audit", () => {
+  it("covers every Admin route with its own or delegated translation binding", () => {
+    expect(ADMIN_ROUTE_I18N_FILES).toHaveLength(43);
     for (const file of ADMIN_ROUTE_I18N_FILES) {
       const source = read(file);
-      if (file === "app/admin/recommendations/[id]/page.tsx") {
-        expect(source).toContain("<RecommendationDetailView");
+      if (file === "app/admin/security/page.tsx") {
+        expect(source).toContain("redirect(staffMfaDestination(");
+      } else if (file === "app/admin/notifications/page.tsx") {
+        expect(source).toContain('useTranslation("common")');
+        expect(source).toContain('<NotificationCenter scope="staff"');
+        expect(callsBoundTranslator(source)).toBe(true);
+      } else if (ADMIN_ROUTE_TRANSLATION_DELEGATES[file]) {
+        if (file === "app/admin/catalogue/hotel-amenities/page.tsx") {
+          expect(source).toContain("export { default } from '@/app/admin/hotel-amenities/page';");
+        }
+        if (file === "app/admin/kyc/[submissionId]/page.tsx") expect(source).toContain("<KycReviewDetail");
+        if (file === "app/admin/kyc/mfa/page.tsx") expect(source).toContain("<KycMfa");
+        if (file === "app/admin/recommendations/[id]/page.tsx") expect(source).toContain("<RecommendationDetailView");
+        const componentSource = read(ADMIN_ROUTE_TRANSLATION_DELEGATES[file]);
+        expect(hasAdminTranslationBinding(componentSource), `${file} delegated renderer must bind admin translations`).toBe(true);
+        expect(callsBoundTranslator(componentSource), `${file} delegated renderer must call its bound translator`).toBe(true);
       } else {
         expect(hasAdminTranslationBinding(source), `${file} must bind admin translations`).toBe(true);
         expect(callsBoundTranslator(source), `${file} must call its bound translator`).toBe(true);
@@ -313,6 +327,7 @@ describe("admin component sitewide i18n contract", () => {
     expect(affiliate).toContain('affiliate.analytics.openPercentage');
     expect(affiliate).toContain('affiliate.status.${f.status}');
     expect(affiliate).toContain('affiliate.status.${r.status}');
+    expect(affiliate).toContain('affiliate.mobileStatusLine');
 
     const vendors = read("app/admin/vendors/page.tsx");
     expect(vendors).toContain("ui.users.status.${owner.kyc_status ?? 'unverified'}");

@@ -17,6 +17,7 @@ import { PortalSidebar, type PortalSidebarSection } from "@/components/layout/po
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { AdminQueueSummaryProvider } from "@/app/admin/admin-queue-summary-context";
 import type { AdminDashboardSummary } from "@/lib/admin/queue-summary";
+import { AdminMobileActions } from "@/components/admin/admin-mobile-actions";
 
 const UNREAD_POLL_MS = 30_000;
 
@@ -327,15 +328,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             type="button"
             onClick={() => setCommandPaletteOpen(true)}
             aria-label={tCommon("command.openPalette")}
-            className="mr-auto flex items-center gap-2 rounded-xl border border-border bg-card/70 px-3 py-1.5 text-xs text-muted-foreground transition hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="mr-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card/70 text-xs text-muted-foreground transition hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:h-9 lg:w-auto lg:justify-start lg:gap-2 lg:px-3 lg:py-1.5"
           >
-            <Search size={14} className="text-muted-foreground" />
-            <span className="hidden sm:inline">{tCommon("command.searchAdminPlaceholder")}</span>
-            <span className="sm:hidden">{tCommon("actions.search")}</span>
-            <kbd className="ml-1 shrink-0 inline-flex items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">{commandShortcutLabel}</kbd>
+            <Search size={18} className="text-muted-foreground lg:size-3.5" />
+            <span className="hidden lg:inline">{tCommon("command.searchAdminPlaceholder")}</span>
+            <kbd className="ml-1 hidden shrink-0 items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground xl:inline-flex">{commandShortcutLabel}</kbd>
           </button>}
-          <div className="flex items-center gap-2">
-            {staffPermissionKeys.includes("admin.withdrawal.approve") && <NotificationBell scope="staff" allHref="/admin/notifications" />}
+          {staffPermissionKeys.includes("admin.withdrawal.approve") && <NotificationBell scope="staff" allHref="/admin/notifications" />}
+          <div className="hidden items-center gap-2 lg:flex">
             <Link
               href="/admin/help"
               aria-label={tAdmin("staffHelp.headerLink")}
@@ -357,6 +357,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <span className="max-w-32 truncate">{currentUser.name}</span>
               <LogOut size={15} aria-hidden="true" />
             </button>
+          </div>
+          <div className="lg:hidden">
+            <AdminMobileActions
+              displayName={currentUser.name}
+              manageDevicesHref={staffPasskeyRequired ? staffVerificationDestination(pathname) : ""}
+              onSignOut={() => void signOut()}
+            />
           </div>
         </header>
         {children}
