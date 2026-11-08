@@ -116,7 +116,6 @@ export function StaffEmployeesPanel({ generation, permissions, onMutation, onCha
 
   return <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
     <h2 className="font-semibold">{t("accessControl.staffEmployees.title")}</h2>
-    <p className="text-sm text-muted-foreground">{t("accessControl.staffEmployees.help")}</p>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     <AdminFilterBar>
       <input aria-label={t("accessControl.staffEmployees.search")} placeholder={t("accessControl.staffEmployees.search")} value={search} maxLength={100} onChange={(event) => { setSearch(event.target.value); setPage(1); }} className={adminFilterControlClassName} />

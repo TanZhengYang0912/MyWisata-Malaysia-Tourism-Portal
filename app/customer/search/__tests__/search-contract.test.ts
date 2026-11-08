@@ -138,7 +138,7 @@ describe("customer vendor search contract", () => {
   });
 
   it("uses a white canvas and the brand blue for vendor surfaces", () => {
-    expect(clientSource).toContain("min-h-screen bg-background");
+    expect(clientSource).toContain('className="min-h-screen overflow-x-clip bg-background text-foreground"');
     expect(clientSource).toContain("text-foreground");
     expect(clientSource).toContain("bg-[#eef2ff]");
     expect(clientSource).not.toContain("#0c6b6d");

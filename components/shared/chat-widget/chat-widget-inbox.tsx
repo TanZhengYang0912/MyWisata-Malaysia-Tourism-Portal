@@ -9,10 +9,11 @@
 // this conditionally), so the poll below starts/stops with the widget
 // itself — no separate "active" gate needed.
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BellOff, CheckCheck, MessageCircle, Search, SlidersHorizontal } from "lucide-react";
-import { countUnreadMessages, formatChatTimestamp, truncateChatMessage } from "@/lib/customer/chat-view";
+import { formatChatTimestamp, truncateChatMessage } from "@/lib/customer/chat-view";
+import { useVisibleReviewRefresh } from "@/hooks/use-visible-review-refresh";
 import type { ChatMessage, ChatThread, Outlet } from "@/backend/core/types";
 import type { SelectedChat } from "@/components/providers/support-chat";
 
@@ -46,8 +47,15 @@ type ApiThread = {
   last_message_at: string | null;
   created_at: string;
   outlets?: ChatOutlet | ChatOutlet[] | null;
-  chat_messages?: RawChatMessage[];
+  // Summary fields from get_chat_thread_summaries (see GET /api/customer/chat).
+  latest_message?: RawChatMessage | null;
+  unread_count?: number;
+  muted?: boolean;
 };
+
+// Poll cadence while the widget is open; useVisibleReviewRefresh runs one
+// request at a time and pauses while the tab is hidden.
+const LIST_REFRESH_MS = 3000;
 
 function toChatMessage(row: RawChatMessage, thread: ApiThread): ChatMessage {
   return {
@@ -64,7 +72,7 @@ function toChatMessage(row: RawChatMessage, thread: ApiThread): ChatMessage {
   };
 }
 
-function normalizeThread(row: ApiThread): { thread: ChatThread; outlet?: ChatOutlet; messages: ChatMessage[] } {
+function normalizeThread(row: ApiThread): { thread: ChatThread; outlet?: ChatOutlet; latest?: ChatMessage; unreadCount: number; muted: boolean } {
   const outlet = Array.isArray(row.outlets) ? row.outlets[0] : row.outlets ?? undefined;
   return {
     thread: {
@@ -75,10 +83,9 @@ function normalizeThread(row: ApiThread): { thread: ChatThread; outlet?: ChatOut
       lastMessageAt: row.last_message_at ?? row.created_at,
     },
     outlet,
-    messages: (row.chat_messages ?? [])
-      .slice()
-      .sort((a, b) => a.created_at.localeCompare(b.created_at))
-      .map((message) => toChatMessage(message, row)),
+    latest: row.latest_message ? toChatMessage(row.latest_message, row) : undefined,
+    unreadCount: row.unread_count ?? 0,
+    muted: Boolean(row.muted),
   };
 }
 
@@ -95,68 +102,57 @@ export function ChatWidgetInbox({ currentUserId, selected, onSelect, widthPx }: 
   const { t: tCommon } = useTranslation("common");
   const [threads, setThreads] = useState<ChatThread[] | null>(null);
   const [outlets, setOutlets] = useState<Map<string, ChatOutlet>>(new Map());
-  const [messagesByThread, setMessagesByThread] = useState<Map<string, ChatMessage[]>>(new Map());
-  const [readMessageIds, setReadMessageIds] = useState<Set<string>>(new Set());
+  const [latestByThread, setLatestByThread] = useState<Map<string, ChatMessage>>(new Map());
+  const [unreadByThread, setUnreadByThread] = useState<Map<string, number>>(new Map());
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ChatFilter>("all");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [mutedThreadIds, setMutedThreadIds] = useState<Set<string>>(new Set());
 
+  // One summary row per thread (latest message, unread count, muted), so a
+  // refresh costs the same however long the conversations get.
+  const loadConversations = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const response = await fetch("/api/customer/chat", { cache: "no-store", signal });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(tCustomer("strictMigration.chat.loadFailed"));
+      const rawThreads = Array.isArray(payload.data?.threads) ? payload.data.threads : [];
+      const normalized: ReturnType<typeof normalizeThread>[] = rawThreads.map((row: ApiThread) => normalizeThread(row));
+      if (signal?.aborted) return;
+
+      setThreads(normalized.map(({ thread }) => thread));
+      setOutlets(new Map(normalized.flatMap(({ outlet }) => outlet ? [[outlet.id, outlet] as const] : [])));
+      setLatestByThread(new Map(normalized.flatMap(({ thread, latest }) => latest ? [[thread.id, latest] as const] : [])));
+      setUnreadByThread(new Map(normalized.map(({ thread, unreadCount }) => [thread.id, unreadCount])));
+      setMutedThreadIds(new Set(normalized.filter(({ muted }) => muted).map(({ thread }) => thread.id)));
+      setLoadError(null);
+    } catch {
+      if (!signal?.aborted) setLoadError(tCustomer("strictMigration.chat.loadFailed"));
+    }
+  }, [tCustomer]);
+
   useEffect(() => {
     if (!currentUserId) return;
-    let cancelled = false;
+    const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load when the widget opens
+    void loadConversations(controller.signal);
+    return () => controller.abort();
+  }, [currentUserId, loadConversations]);
 
-    async function loadConversations() {
-      try {
-        const response = await fetch("/api/customer/chat", { cache: "no-store" });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(tCustomer("strictMigration.chat.loadFailed"));
-        const rawThreads = Array.isArray(payload.data?.threads) ? payload.data.threads : [];
-        const normalized: ReturnType<typeof normalizeThread>[] = rawThreads.map((row: ApiThread) => normalizeThread(row));
-
-        const mutesRes = await fetch("/api/chat/mutes").then((r) => (r.ok ? r.json() : { data: [] })).catch(() => ({ data: [] }));
-
-        if (cancelled) return;
-
-        setThreads(normalized.map(({ thread }) => thread));
-        setOutlets(new Map(normalized.flatMap(({ outlet }) => outlet ? [[outlet.id, outlet] as const] : [])));
-        setMessagesByThread(new Map(normalized.map(({ thread, messages }) => [thread.id, messages])));
-        setReadMessageIds(new Set(Array.isArray(payload.data?.readMessageIds) ? payload.data.readMessageIds : []));
-        setMutedThreadIds(new Set((mutesRes.data ?? []) as string[]));
-        setLoadError(null);
-      } catch {
-        if (!cancelled) setLoadError(tCustomer("strictMigration.chat.loadFailed"));
-      }
-    }
-
-    void loadConversations();
-    const timer = window.setInterval(() => void loadConversations(), 3000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [currentUserId, tCustomer]);
+  useVisibleReviewRefresh({ enabled: Boolean(currentUserId), onRefresh: loadConversations, intervalMs: LIST_REFRESH_MS });
 
   // Read-only here — the mute toggle UI lives on ChatThreadPanel's own
   // header (rendered by the right pane's ChatWidgetVendorThread, which owns
   // the actual POST/DELETE). This list only displays the BellOff badge,
   // refreshed on its own 3s poll — the same eventual-consistency the old
   // two-page inbox/detail split already had.
-  const unreadByThread = useMemo(() => {
-    const counts = new Map<string, number>();
-    messagesByThread.forEach((messages, threadId) => counts.set(threadId, countUnreadMessages(messages, readMessageIds)));
-    return counts;
-  }, [messagesByThread, readMessageIds]);
-
   const visibleThreads = useMemo(() => {
     if (!threads) return [];
     const normalizedQuery = query.trim().toLowerCase();
 
     return threads
       .filter((thread) => {
-        const messages = messagesByThread.get(thread.id) ?? [];
-        const latest = messages[messages.length - 1];
+        const latest = latestByThread.get(thread.id);
         const unreadCount = unreadByThread.get(thread.id) ?? 0;
         const outlet = outlets.get(thread.outletId);
         const matchesFilter = filter === "all" || unreadCount > 0;
@@ -164,7 +160,7 @@ export function ChatWidgetInbox({ currentUserId, selected, onSelect, widthPx }: 
         return matchesFilter && (!normalizedQuery || searchable.includes(normalizedQuery));
       })
       .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt));
-  }, [filter, messagesByThread, outlets, query, threads, unreadByThread]);
+  }, [filter, latestByThread, outlets, query, threads, unreadByThread]);
 
   const isVendorSelected = (threadId: string) => selected?.kind === "vendor" && selected.threadId === threadId;
 
@@ -232,8 +228,7 @@ export function ChatWidgetInbox({ currentUserId, selected, onSelect, widthPx }: 
             ) : (
               visibleThreads.map((thread) => {
                 const outlet = outlets.get(thread.outletId);
-                const messages = messagesByThread.get(thread.id) ?? [];
-                const latest = messages[messages.length - 1];
+                const latest = latestByThread.get(thread.id);
                 const unreadCount = unreadByThread.get(thread.id) ?? 0;
                 const isSelected = isVendorSelected(thread.id);
                 const name = outlet?.name ?? tCustomer("strictMigration.chat.vendorFallback");

@@ -5,6 +5,7 @@ import { Pagination } from "@/components/shared/pagination";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { CalendarClock, ImagePlus, Loader2, MapPin, Megaphone, RefreshCw, Save, Send, ShieldCheck, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { AdminMobileRecordCard } from "@/components/admin/admin-mobile-record-card";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -367,12 +368,60 @@ export default function PromotionCampaignsPage() {
     }
   }
 
+  function renderCampaignActions(campaign: CampaignRow, mobile: boolean) {
+    const buttonClassName = mobile
+      ? "h-auto min-h-11 w-full min-w-0 whitespace-normal px-2 py-2 text-center text-xs leading-tight"
+      : undefined;
+
+    return (
+      <div className={mobile ? "grid grid-cols-2 gap-2" : "flex flex-wrap gap-2 xl:justify-end"}>
+        <Button
+          type="button"
+          variant="outline"
+          size={mobile ? "default" : "sm"}
+          className={buttonClassName}
+          disabled={childEditing || busy || uploading}
+          aria-expanded={openLocationsFor === campaign.id}
+          onClick={() => setOpenLocationsFor((current) => (current === campaign.id ? null : campaign.id))}
+        >
+          <MapPin size={14} /> {t("promotionCampaigns.locations.toggle", { count: campaign.locations?.length ?? 0 })}
+        </Button>
+        {(campaign.status === "draft" || campaign.status === "rejected" || campaign.status === "approved" || campaign.status === "paused") && (
+          <Button
+            type="button"
+            variant="outline"
+            size={mobile ? "default" : "sm"}
+            className={buttonClassName}
+            disabled={busy || childEditing || uploading}
+            onClick={() => void editCampaign(campaign)}
+          >
+            <Save size={14} /> {t("promotionCampaigns.actions.edit")}
+          </Button>
+        )}
+        {actionForStatus(campaign.status).map((action) => (
+          <Button
+            key={action}
+            type="button"
+            size={mobile ? "default" : "sm"}
+            className={buttonClassName}
+            variant={action === "reject" || action === "archive" ? "outline" : "default"}
+            disabled={busy || childEditing || uploading || editing?.id === campaign.id || ((action === "submit" || action === "approve" || action === "resume") && !canPublishRow(campaign))}
+            title={(action === "submit" || action === "approve" || action === "resume") && !canPublishRow(campaign) ? t("promotionCampaigns.form.rowNotReady") : undefined}
+            onClick={() => void transition(campaign, action)}
+          >
+            {action === "approve" ? <ShieldCheck size={14} /> : action === "submit" ? <Send size={14} /> : null}
+            {t(`promotionCampaigns.actions.${action}`)}
+          </Button>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <AdminPageShell>
       <AdminPageHeader
         eyebrow={<><Megaphone size={15} /> {t("promotionCampaigns.eyebrow")}</>}
         title={t("promotionCampaigns.title")}
-        description={t("promotionCampaigns.description")}
         actions={<Button type="button" variant="outline" onClick={() => void reload()} disabled={loading || refreshing || busy || childEditing}><RefreshCw size={15} /> {t("promotionCampaigns.refresh")}</Button>}
       />
 
@@ -383,7 +432,7 @@ export default function PromotionCampaignsPage() {
           {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
           <form noValidate onSubmit={(event) => void saveDraft(event)} className="space-y-5 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div><h2 className="text-lg font-bold text-foreground">{editing ? t("promotionCampaigns.form.editTitle") : t("promotionCampaigns.form.title")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("promotionCampaigns.form.guidance")}</p></div>
+              <div><h2 className="text-lg font-bold text-foreground">{editing ? t("promotionCampaigns.form.editTitle") : t("promotionCampaigns.form.title")}</h2></div>
               {editing && <Button type="button" variant="ghost" disabled={childEditing || busy || uploading} onClick={async () => { if (!dirty || await confirm(t("promotionCampaigns.form.discardConfirm"))) resetForm(); }}><X size={15} /> {t("promotionCampaigns.form.cancelEdit")}</Button>}
             </div>
             {dirty && <p className="text-xs text-muted-foreground">{t("promotionCampaigns.form.unsaved")}</p>}
@@ -469,35 +518,90 @@ export default function PromotionCampaignsPage() {
               <select disabled={childEditing} aria-label={t("ui.pagination.perPage", { count: pageSize })} className={adminFilterControlClassName} value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1); }}>{[15,25,50].map(size => <option key={size} value={size}>{t("ui.pagination.perPage", { count: size })}</option>)}</select>
               <Button type="button" disabled={childEditing} variant="ghost" onClick={() => { setQuery(""); setStatusFilter("all"); setScheduleFilter("all"); setDateFrom(""); setDateTo(""); setPage(1); }}>{tCommon("filters.clear")}</Button>
             </AdminFilterBar>{rangeInvalid && <p role="alert" className="mt-2 text-xs text-destructive">{t("promotionCampaigns.form.invalidRange")}</p>}</div>
-            {filteredCampaigns.length === 0 ? <div className="p-8 text-center"><CalendarClock size={24} className="mx-auto text-muted-foreground" /><p className="mt-3 font-semibold text-foreground">{t(campaigns.length ? "promotionCampaigns.list.noMatches" : "promotionCampaigns.states.empty")}</p><p className="mt-1 text-sm text-muted-foreground">{t("promotionCampaigns.states.emptyDescription")}</p></div> : <div className="divide-y divide-border">{pagedCampaigns.items.map((campaign) => <article key={campaign.id} className="grid gap-4 p-5 xl:grid-cols-[minmax(220px,1fr)_220px_130px_minmax(260px,auto)] xl:items-center">
-              {openLocationsFor === campaign.id && (
-                <div className="order-last rounded-xl border border-border bg-background p-4 xl:col-span-4">
-                  <EventLocationsEditor
-                    campaignId={campaign.id}
-                    locations={toEditableLocations(campaign.locations)}
-                    defaults={locationDefaultsFor(malaysiaLocalDateTime(campaign.starts_at), malaysiaLocalDateTime(campaign.ends_at))}
-                    onSaved={async () => { await load(); }}
-                    onDraftChange={setListLocationEditing}
-                    disabled={busy || campaign.status === "archived"}
-                  />
+            {filteredCampaigns.length === 0 ? <div className="p-8 text-center"><CalendarClock size={24} className="mx-auto text-muted-foreground" /><p className="mt-3 font-semibold text-foreground">{t(campaigns.length ? "promotionCampaigns.list.noMatches" : "promotionCampaigns.states.empty")}</p><p className="mt-1 text-sm text-muted-foreground">{t("promotionCampaigns.states.emptyDescription")}</p></div> : <div className="divide-y divide-border">{pagedCampaigns.items.map((campaign) => {
+              const isFullDayRange = isMalaysiaFullDayRange(campaign.starts_at, campaign.ends_at);
+              const startDate = isFullDayRange
+                ? formatDate(campaign.starts_at, locale, { timeZone: "Asia/Kuala_Lumpur" })
+                : formatDateTime(campaign.starts_at, locale, { timeZone: "Asia/Kuala_Lumpur" });
+              const endDate = isFullDayRange
+                ? formatDate(campaign.ends_at, locale, { timeZone: "Asia/Kuala_Lumpur" })
+                : formatDateTime(campaign.ends_at, locale, { timeZone: "Asia/Kuala_Lumpur" });
+              const scheduleStatus = getAdminEventScheduleStatus(campaign, clock);
+              const allLocationsCancelled = Boolean(campaign.locations?.length && campaign.locations.every((location) => location.status === "cancelled"));
+
+              return (
+                <div key={campaign.id} className="min-w-0">
+                  <AdminMobileRecordCard
+                    className="rounded-none border-0 bg-transparent px-4 py-4 shadow-none xl:hidden"
+                    header={(
+                      <>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="break-words text-sm font-semibold leading-5 text-foreground">{campaign.title}</h3>
+                          <p className="mt-1 break-all text-[11px] leading-4 text-muted-foreground">/customer/events/{campaign.slug}</p>
+                        </div>
+                        <span className="max-w-[42%] shrink-0 break-words rounded-full bg-secondary px-2.5 py-1 text-center text-[11px] font-bold leading-tight text-foreground">
+                          {t(`promotionCampaigns.status.${campaign.status}`)}
+                        </span>
+                      </>
+                    )}
+                    footer={renderCampaignActions(campaign, true)}
+                  >
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="min-w-0">
+                        <p className="break-words text-[10px] font-semibold text-muted-foreground">{t("promotionCampaigns.form.startsAt")}</p>
+                        <p className="mt-1 break-words text-xs leading-5 text-foreground">{startDate}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="break-words text-[10px] font-semibold text-muted-foreground">{t("promotionCampaigns.form.endsAt")}</p>
+                        <p className="mt-1 break-words text-xs leading-5 text-foreground">{endDate}</p>
+                      </div>
+                    </div>
+                    <div className="min-w-0 space-y-1">
+                      <p className="break-words text-xs leading-5 text-muted-foreground">
+                        {t("promotionCampaigns.list.scheduleLine", { status: t(`promotionCampaigns.schedule.${scheduleStatus}`) })}
+                      </p>
+                      {allLocationsCancelled && <p className="break-words text-xs text-destructive">{t("promotionCampaigns.allLocationsCancelled")}</p>}
+                    </div>
+                    {campaign.rejection_note && (
+                      <p className="break-words rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                        <span>{t("promotionCampaigns.list.rejection")}</span><span aria-hidden="true">: </span><span>{campaign.rejection_note}</span>
+                      </p>
+                    )}
+                  </AdminMobileRecordCard>
+
+                  <article className="hidden gap-4 p-5 xl:grid xl:grid-cols-[minmax(220px,1fr)_220px_130px_minmax(260px,auto)] xl:items-center">
+                    <div className="min-w-0"><h3 className="break-words font-semibold text-foreground">{campaign.title}</h3><p className="mt-1 break-all text-xs text-muted-foreground">/customer/events/{campaign.slug}</p>{campaign.rejection_note && <p className="mt-2 break-words rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive"><span>{t("promotionCampaigns.list.rejection")}</span><span aria-hidden="true">: </span><span>{campaign.rejection_note}</span></p>}</div>
+                    <div className="text-xs text-muted-foreground"><p><span>{t("promotionCampaigns.form.startsAt")}</span><span aria-hidden="true">: </span><span>{startDate}</span></p><p className="mt-1"><span>{t("promotionCampaigns.form.endsAt")}</span><span aria-hidden="true">: </span><span>{endDate}</span></p></div>
+                    <div><span className="w-fit rounded-full bg-secondary px-3 py-1 text-xs font-bold text-foreground">{t(`promotionCampaigns.status.${campaign.status}`)}</span>
+                    <p className="mt-2 text-xs text-muted-foreground">{t("promotionCampaigns.list.scheduleLine", { status: t(`promotionCampaigns.schedule.${scheduleStatus}`) })}</p>
+                    {allLocationsCancelled && <p className="text-xs text-destructive">{t("promotionCampaigns.allLocationsCancelled")}</p>}</div>
+                    {renderCampaignActions(campaign, false)}
+                  </article>
+
+                  {openLocationsFor === campaign.id && (
+                    <div className="mx-4 mb-4 rounded-xl border border-border bg-background p-4 xl:mx-5">
+                      <EventLocationsEditor
+                        campaignId={campaign.id}
+                        locations={toEditableLocations(campaign.locations)}
+                        defaults={locationDefaultsFor(malaysiaLocalDateTime(campaign.starts_at), malaysiaLocalDateTime(campaign.ends_at))}
+                        onSaved={async () => { await load(); }}
+                        onDraftChange={setListLocationEditing}
+                        disabled={busy || campaign.status === "archived"}
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
-              <div className="min-w-0"><h3 className="break-words font-semibold text-foreground">{campaign.title}</h3><p className="mt-1 break-all text-xs text-muted-foreground">/customer/events/{campaign.slug}</p>{campaign.rejection_note && <p className="mt-2 break-words rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive"><span>{t("promotionCampaigns.list.rejection")}</span><span aria-hidden="true">: </span><span>{campaign.rejection_note}</span></p>}</div>
-              <div className="text-xs text-muted-foreground"><p><span>{t("promotionCampaigns.form.startsAt")}</span><span aria-hidden="true">: </span><span>{isMalaysiaFullDayRange(campaign.starts_at, campaign.ends_at) ? formatDate(campaign.starts_at, locale, { timeZone: "Asia/Kuala_Lumpur" }) : formatDateTime(campaign.starts_at, locale, { timeZone: "Asia/Kuala_Lumpur" })}</span></p><p className="mt-1"><span>{t("promotionCampaigns.form.endsAt")}</span><span aria-hidden="true">: </span><span>{isMalaysiaFullDayRange(campaign.starts_at, campaign.ends_at) ? formatDate(campaign.ends_at, locale, { timeZone: "Asia/Kuala_Lumpur" }) : formatDateTime(campaign.ends_at, locale, { timeZone: "Asia/Kuala_Lumpur" })}</span></p></div>
-              <div><span className="w-fit rounded-full bg-secondary px-3 py-1 text-xs font-bold text-foreground">{t(`promotionCampaigns.status.${campaign.status}`)}</span>
-              <p className="mt-2 text-xs text-muted-foreground">{t("promotionCampaigns.list.scheduleLine", { status: t(`promotionCampaigns.schedule.${getAdminEventScheduleStatus(campaign, clock)}`) })}</p>
-              {campaign.locations?.length && campaign.locations.every((location) => location.status === "cancelled") ? <p className="text-xs text-destructive">{t("promotionCampaigns.allLocationsCancelled")}</p> : null}</div>
-              <div className="flex flex-wrap gap-2 xl:justify-end"><Button type="button" variant="outline" size="sm" disabled={childEditing || busy || uploading} aria-expanded={openLocationsFor === campaign.id} onClick={() => setOpenLocationsFor((current) => (current === campaign.id ? null : campaign.id))}><MapPin size={14} /> {t("promotionCampaigns.locations.toggle", { count: campaign.locations?.length ?? 0 })}</Button>{(campaign.status === "draft" || campaign.status === "rejected" || campaign.status === "approved" || campaign.status === "paused") && <Button type="button" variant="outline" size="sm" disabled={busy || childEditing || uploading} onClick={() => void editCampaign(campaign)}><Save size={14} /> {t("promotionCampaigns.actions.edit")}</Button>}{actionForStatus(campaign.status).map((action) => <Button key={action} type="button" size="sm" variant={action === "reject" || action === "archive" ? "outline" : "default"} disabled={busy || childEditing || uploading || editing?.id === campaign.id || ((action === "submit" || action === "approve" || action === "resume") && !canPublishRow(campaign))} title={(action === "submit" || action === "approve" || action === "resume") && !canPublishRow(campaign) ? t("promotionCampaigns.form.rowNotReady") : undefined} onClick={() => void transition(campaign, action)}>{action === "approve" ? <ShieldCheck size={14} /> : action === "submit" ? <Send size={14} /> : null}{t(`promotionCampaigns.actions.${action}`)}</Button>)}</div>
-            </article>)}</div>}
+              );
+            })}</div>}
             <Pagination currentPage={pagedCampaigns.page} totalPages={pagedCampaigns.totalPages} totalItems={filteredCampaigns.length} pageSize={pageSize} onPageChange={setPage} disabled={childEditing} className="mt-0 border-t border-border px-5 py-3" />
           </section>
 
           <Dialog open={Boolean(previewUrl)} onOpenChange={(open) => { if (!open) setPreviewUrl(null); }}>
-            <DialogContent className="sm:max-w-xl">
+            <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain sm:max-w-xl">
               <DialogTitle className="sr-only">{t("promotionCampaigns.form.poster")}</DialogTitle>
               {previewUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={previewUrl} alt="" className="w-full rounded-lg object-contain" />
+                <img src={previewUrl} alt="" className="max-h-[calc(100dvh-8rem)] w-full rounded-lg object-contain" />
               )}
             </DialogContent>
           </Dialog>

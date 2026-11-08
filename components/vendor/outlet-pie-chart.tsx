@@ -21,6 +21,9 @@ export default function OutletPieChart({ data, total, salesMode = 'live' }: { da
   const { t, i18n } = useTranslation('vendor');
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const description = salesMode === 'all' ? 'charts.sales.allActivityDescription' : salesMode === 'demo' ? 'charts.sales.demoDescription' : 'charts.product.revenueDistribution';
+  const emptyMessage = salesMode === 'all' ? 'charts.sales.noAllActivity' : salesMode === 'demo' ? 'charts.sales.noDemoActivity' : 'charts.product.noPaidSales';
+  const totalLabel = salesMode === 'all' ? 'ui.dashboard.totalRevenue' : salesMode === 'demo' ? 'ui.dashboard.demoRevenue' : 'charts.product.totalPaidRevenue';
 
   // Top 5 + Others
   const top = data.slice(0, TOP_N);
@@ -41,7 +44,7 @@ export default function OutletPieChart({ data, total, salesMode = 'live' }: { da
             {t('charts.product.topProducts')}
           </div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-foreground">{t('charts.product.salesByProduct')}</h2>
-          <p className="text-sm text-gray-500 dark:text-muted-foreground">{t(salesMode === 'demo' ? 'charts.sales.demoDescription' : 'charts.product.revenueDistribution')}</p>
+          <p className="text-sm text-gray-500 dark:text-muted-foreground">{t(description)}</p>
         </div>
         <div className="rounded-xl bg-secondary p-2 text-primary">
           <ShoppingBag size={20} />
@@ -135,13 +138,13 @@ export default function OutletPieChart({ data, total, salesMode = 'live' }: { da
         </>
       ) : (
         <div className="flex flex-1 items-center justify-center text-sm text-gray-400 dark:text-muted-foreground">
-          {t(salesMode === 'demo' ? 'charts.sales.noDemoActivity' : 'charts.product.noPaidSales')}
+          {t(emptyMessage)}
         </div>
       )}
 
       {/* Footer total */}
       <div className="mt-4 border-t border-gray-100 dark:border-border pt-4">
-        <p className="text-xs text-gray-500 dark:text-muted-foreground">{t(salesMode === 'demo' ? 'ui.dashboard.demoRevenue' : 'charts.product.totalPaidRevenue')}</p>
+        <p className="text-xs text-gray-500 dark:text-muted-foreground">{t(totalLabel)}</p>
         <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">
           {formatMYR(total, locale, { minimumFractionDigits: 2 })}
         </p>

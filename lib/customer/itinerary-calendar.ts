@@ -3,6 +3,7 @@ import type { Booking } from "@/backend/core/types";
 export const CALENDAR_VISIBLE_BOOKINGS = 3;
 const MALAYSIA_TIME_ZONE = "Asia/Kuala_Lumpur";
 
+export type BookingCalendarScope = "upcoming" | "past" | "all";
 export type ItineraryGroupStatus = Booking["status"] | "mixed";
 
 export interface BookingItineraryGroup {
@@ -84,6 +85,42 @@ export function countItineraryGroupsInMonth(bookings: Booking[], monthStart: Dat
     if (!group.slotStartsAt) return false;
     return calendarDateKey(new Date(group.slotStartsAt)).slice(0, 7) === monthKey;
   }).length;
+}
+
+export function getItineraryGroupsOutsideMonth(groups: BookingItineraryGroup[], monthStart: Date) {
+  const monthKey = calendarDateKey(monthStart).slice(0, 7);
+  return groups.filter((group) => {
+    if (!group.slotStartsAt) return true;
+    return calendarDateKey(new Date(group.slotStartsAt)).slice(0, 7) !== monthKey;
+  });
+}
+
+export function getUniqueItineraryActivityNames(bookings: Pick<Booking, "activityName">[]) {
+  return [...new Set(bookings.map((booking) => booking.activityName.trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b));
+}
+
+export function sortBookingsForCalendar(bookings: Booking[], scope: BookingCalendarScope, now: number) {
+  return bookings
+    .map((booking, index) => ({
+      booking,
+      index,
+      startsAt: booking.slotStartsAt ? new Date(booking.slotStartsAt).getTime() : Number.NaN,
+    }))
+    .sort((a, b) => {
+      const aHasDate = Number.isFinite(a.startsAt);
+      const bHasDate = Number.isFinite(b.startsAt);
+      if (aHasDate !== bHasDate) return aHasDate ? -1 : 1;
+      if (!aHasDate || !bHasDate) return a.index - b.index;
+
+      if (scope === "upcoming") return a.startsAt - b.startsAt || a.index - b.index;
+      if (scope === "past") return b.startsAt - a.startsAt || a.index - b.index;
+
+      const distanceDifference = Math.abs(a.startsAt - now) - Math.abs(b.startsAt - now);
+      if (distanceDifference !== 0) return distanceDifference;
+      return b.startsAt - a.startsAt || a.index - b.index;
+    })
+    .map(({ booking }) => booking);
 }
 
 export function formatCalendarDate(date: Date) {

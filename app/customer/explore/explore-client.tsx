@@ -349,29 +349,31 @@ export function ExploreClient({
             </div>
 
             {/* Tab switch */}
-            <div className="inline-flex shrink-0 self-end md:self-auto rounded-2xl border border-border bg-card p-2 shadow-sm">
+            <div className="inline-flex shrink-0 self-end rounded-full border border-border bg-card p-1 md:self-auto">
               <button
                 type="button"
+                aria-pressed={tab === "destinations"}
                 onClick={() => changeTab("destinations")}
-                className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition ${
+                className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
                   tab === "destinations"
-                    ? "bg-primary text-white shadow-sm"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    ? "bg-primary text-white"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Map size={15} />
+                <Map size={15} aria-hidden="true" />
                 {t("ui.explore.destinations")}
               </button>
               <button
                 type="button"
+                aria-pressed={tab === "experiences"}
                 onClick={() => changeTab("experiences")}
-                className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition ${
+                className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
                   tab === "experiences"
-                    ? "bg-primary text-white shadow-sm"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    ? "bg-primary text-white"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Compass size={15} />
+                <Compass size={15} aria-hidden="true" />
                 {t("ui.explore.experiences")}
               </button>
             </div>

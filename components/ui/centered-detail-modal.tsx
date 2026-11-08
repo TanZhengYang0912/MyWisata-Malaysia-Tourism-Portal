@@ -13,12 +13,20 @@ interface Props {
   onClose: () => void;
   children: ReactNode;
   size?: 'md' | 'lg' | 'xl';
+  layout?: 'scroll' | 'fixed';
+  headerClassName?: string;
   className?: string;
+  overlayClassName?: string;
 }
 
-export default function CenteredDetailModal({ eyebrow, title, subtitle, closeLabel, labelledBy, onClose, children, size = 'md', className }: Props) {
+export default function CenteredDetailModal({ eyebrow, title, subtitle, closeLabel, labelledBy, onClose, children, size = 'md', layout = 'scroll', headerClassName, className, overlayClassName }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const sizeClassName = size === 'xl' ? 'max-w-5xl' : size === 'lg' ? 'max-w-2xl' : 'max-w-lg';
+  const titleColorClassName = layout === 'fixed' ? 'text-gray-950 dark:text-foreground' : 'text-gray-950';
+  const layoutClassName = layout === 'fixed'
+    ? `flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden rounded-none bg-white dark:bg-card p-4 shadow-2xl outline-none sm:h-[90vh] sm:max-h-[90vh] sm:rounded-2xl ${sizeClassName}`
+    : `max-h-[90vh] w-full overscroll-contain overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl outline-none ${sizeClassName}`;
 
   useEffect(() => {
     const previousActiveElement = document.activeElement as HTMLElement | null;
@@ -63,7 +71,7 @@ export default function CenteredDetailModal({ eyebrow, title, subtitle, closeLab
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-gray-950/30 p-4 backdrop-blur-[1px]"
+      className={`fixed inset-0 z-40 flex items-center justify-center bg-gray-950/30 p-4 backdrop-blur-[1px] ${overlayClassName || ''}`}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -75,12 +83,12 @@ export default function CenteredDetailModal({ eyebrow, title, subtitle, closeLab
         aria-labelledby={labelledBy || titleId}
         tabIndex={-1}
         onMouseDown={(event) => event.stopPropagation()}
-        className={`max-h-[90vh] w-full overscroll-contain overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl outline-none ${size === 'xl' ? 'max-w-5xl' : size === 'lg' ? 'max-w-2xl' : 'max-w-lg'} ${className || ''}`}
+        className={`${layoutClassName} ${className || ''}`}
       >
-        <div className="flex items-start justify-between gap-4">
+        <div className={`flex items-start justify-between gap-4 ${headerClassName || ''}`}>
           <div className="min-w-0">
             {eyebrow && <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{eyebrow}</p>}
-            <h2 id={titleId} className="mt-1 text-balance text-xl font-bold text-gray-950">{title}</h2>
+            <h2 id={titleId} className={`mt-1 text-balance text-xl font-bold ${titleColorClassName}`}>{title}</h2>
             {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
           </div>
           <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label={closeLabel} title={closeLabel} className="shrink-0 text-gray-400 hover:bg-gray-100 hover:text-gray-700">

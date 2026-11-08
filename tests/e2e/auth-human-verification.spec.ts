@@ -8,8 +8,8 @@ async function fixtures(page: Page) {
   await page.route('https://challenges.cloudflare.com/turnstile/v0/api.js*', (route) => route.fulfill({
     contentType: 'application/javascript',
     body: [
-      'window.__challengeCallbacks = {}; window.__challengeElements = {}; window.turnstile = { ready: callback => callback(),',
-      'render: (element, options) => { const id = String(Math.random()); window.__challengeCallbacks[id] = options; window.__challengeElements[id] = element;',
+      'window.__challengeCallbacks = {}; window.__challengeElements = {}; window.__challengeRenderCount = 0; window.turnstile = { ready: callback => callback(),',
+      'render: (element, options) => { window.__challengeRenderCount += 1; const id = String(Math.random()); window.__challengeCallbacks[id] = options; window.__challengeElements[id] = element;',
       'const button = document.createElement("button"); button.type = "button"; button.textContent = "Complete fixture security check";',
       'button.onclick = () => options.callback("fixture-proof-" + id); element.appendChild(button); return id; },',
       'remove: id => { delete window.__challengeCallbacks[id]; window.__challengeElements[id].replaceChildren(); delete window.__challengeElements[id]; } };',
@@ -17,11 +17,63 @@ async function fixtures(page: Page) {
   }));
 }
 
+test('login shows the security verification screen until the first proof and keeps one-use proofs', async ({ page }) => {
+  await fixtures(page);
+  const proofs: string[] = [];
+  let demoUserLoads = 0;
+  await page.route('**/api/auth/demo-users', async (route) => {
+    demoUserLoads += 1;
+    await route.fulfill({ json: [] });
+  });
+  await page.route('**/auth/v1/token*', async (route) => {
+    proofs.push(route.request().postDataJSON().gotrue_meta_security.captcha_token);
+    await route.fulfill({ status: 400, json: { code: 'invalid_credentials', message: 'Invalid login credentials' } });
+  });
+
+  await page.goto('/login');
+  await expect(page.locator('[data-security-verification-page="true"]')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Performing security verification' })).toBeVisible();
+  await expect(page.locator('form')).toHaveCount(0);
+  await expect(page.getByText('Seeded demo accounts')).toHaveCount(0);
+  expect(demoUserLoads).toBe(0);
+  expect(await page.evaluate(() => (window as unknown as { __challengeRenderCount: number }).__challengeRenderCount)).toBe(1);
+  expect(await page.evaluate(() => {
+    const options = Object.values((window as unknown as {
+      __challengeCallbacks: Record<string, { appearance?: string }>;
+    }).__challengeCallbacks);
+    return options[0]?.appearance;
+  })).toBe('interaction-only');
+
+  await page.getByRole('button', { name: 'Complete fixture security check' }).click();
+  await expect(page.locator('form')).toBeVisible();
+  await expect(page.locator('[data-human-verification="login"]')).toBeHidden();
+  await expect.poll(() => demoUserLoads).toBe(1);
+  await page.getByPlaceholder('Email address').fill('fixture@example.com');
+  await page.getByPlaceholder('Password', { exact: true }).fill('FixturePassword1');
+  await page.locator('form').getByRole('button', { name: 'Sign in', exact: true }).click();
+
+  await expect.poll(() => proofs.length).toBe(1);
+  expect(proofs[0]).toContain('fixture-proof-');
+  await expect(page.getByRole('button', { name: 'Verify again' })).toBeVisible();
+  await expect(page.locator('form')).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __challengeRenderCount: number }).__challengeRenderCount)).toBe(1);
+
+  await page.getByRole('button', { name: 'Verify again' }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __challengeRenderCount: number }).__challengeRenderCount)).toBe(2);
+  await page.getByRole('button', { name: 'Complete fixture security check' }).click();
+  await page.locator('form').getByRole('button', { name: 'Sign in', exact: true }).click();
+
+  await expect.poll(() => proofs.length).toBe(2);
+  expect(proofs[1]).toContain('fixture-proof-');
+  expect(proofs[1]).not.toBe(proofs[0]);
+});
+
 test('a provider failure clears the proof and retains only its public error code', async ({ page }) => {
   await fixtures(page);
   let signupRequests = 0;
   await page.route('**/auth/v1/signup*', route => { signupRequests += 1; return route.fulfill({ status: 400, json: { message: 'Must not send a stale proof' } }); });
   await page.goto('/login?mode=signup');
+  await page.getByRole('button', { name: 'Complete fixture security check' }).click();
   await page.getByPlaceholder('Email address').fill('fixture@example.com');
   await page.getByPlaceholder('Password', { exact: true }).fill('FixturePassword1');
   await page.getByPlaceholder('Confirm password').fill('FixturePassword1');
@@ -30,9 +82,20 @@ test('a provider failure clears the proof and retains only its public error code
     const callbacks = (window as unknown as { __challengeCallbacks: Record<string, Record<string, (code: string) => void>> }).__challengeCallbacks;
     Object.values(callbacks).forEach(entry => entry['error-callback']('110200'));
   });
-  await expect(page.locator('[data-human-verification="signup"]')).toHaveAttribute('data-human-verification-error', '110200');
+  await expect(page.locator('[data-human-verification="login"]')).toHaveAttribute('data-human-verification-error', '110200');
   await page.locator('form').getByRole('button', { name: 'Create account', exact: true }).click();
   expect(signupRequests).toBe(0);
+  await expect(page.getByRole('button', { name: 'Verify again' })).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __challengeRenderCount: number }).__challengeRenderCount)).toBe(1);
+  await page.getByRole('button', { name: 'Verify again' }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __challengeRenderCount: number }).__challengeRenderCount)).toBe(2);
+  await page.getByRole('button', { name: 'Complete fixture security check' }).click();
+  await page.evaluate(() => {
+    const callbacks = (window as unknown as { __challengeCallbacks: Record<string, Record<string, () => void>> }).__challengeCallbacks;
+    Object.values(callbacks).forEach(entry => entry['timeout-callback']());
+  });
+  await expect(page.getByRole('button', { name: 'Verify again' })).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __challengeRenderCount: number }).__challengeRenderCount)).toBe(2);
 });
 
 test('signup and resend require separate human proofs without sending real email', async ({ page }) => {
@@ -48,13 +111,11 @@ test('signup and resend require separate human proofs without sending real email
   });
   await page.clock.install();
   await page.goto('/login?mode=signup');
+  await expect(page.locator('form')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Complete fixture security check' }).click();
   await page.getByPlaceholder('Email address').fill('fixture@example.com');
   await page.getByPlaceholder('Password', { exact: true }).fill('FixturePassword1');
   await page.getByPlaceholder('Confirm password').fill('FixturePassword1');
-  await page.locator('form').getByRole('button', { name: 'Create account', exact: true }).click();
-  await expect(page.getByRole('alert').filter({ hasText: 'Complete the security check' })).toContainText('Complete the security check');
-  expect(sends).toHaveLength(0);
-  await page.getByRole('button', { name: 'Complete fixture security check' }).click();
   await page.locator('form').getByRole('button', { name: 'Create account', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Verify your email' })).toBeVisible();
   expect(sends).toHaveLength(1);
@@ -63,6 +124,7 @@ test('signup and resend require separate human proofs without sending real email
   await page.getByRole('button', { name: 'Resend code', exact: true }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'Complete the security check' })).toContainText('Complete the security check');
   expect(sends).toHaveLength(1);
+  await page.getByRole('button', { name: 'Verify again' }).click();
   await page.getByRole('button', { name: 'Complete fixture security check' }).click();
   await page.getByRole('button', { name: 'Resend code', exact: true }).click();
   await expect.poll(() => sends.length).toBe(2);
@@ -78,15 +140,16 @@ test('unconfirmed password sign-in offers verification recovery and invalidates 
     await route.fulfill({ status: 400, json: { code: 'email_not_confirmed', error_code: 'email_not_confirmed', message: 'Email not confirmed' } });
   });
   await page.goto('/login');
+  await page.getByRole('button', { name: 'Complete fixture security check' }).click();
   await page.getByPlaceholder('Email address').fill('fixture@example.com');
   await page.getByPlaceholder('Password', { exact: true }).fill('FixturePassword1');
-  await page.getByRole('button', { name: 'Complete fixture security check' }).click();
   await page.evaluate(() => {
     const callbacks = (window as unknown as { __challengeCallbacks: Record<string, Record<string, () => void>> }).__challengeCallbacks;
     Object.values(callbacks).forEach((entry) => entry['expired-callback']());
   });
   await page.locator('form').getByRole('button', { name: 'Sign in', exact: true }).click();
   expect(attempts).toBe(0);
+  await page.getByRole('button', { name: 'Verify again' }).click();
   await page.getByRole('button', { name: 'Complete fixture security check' }).click();
   await page.locator('form').getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Verify your email' })).toBeVisible();
@@ -129,6 +192,7 @@ test('password recovery forwards proof without sending real recovery mail', asyn
     await route.fulfill({ json: {} });
   });
   await page.goto('/login');
+  await page.getByRole('button', { name: 'Complete fixture security check' }).click();
   await page.getByRole('button', { name: 'Forgot password?' }).click();
   await page.getByLabel('Email address').fill('fixture@example.com');
   await page.getByRole('button', { name: 'Complete fixture security check' }).click();

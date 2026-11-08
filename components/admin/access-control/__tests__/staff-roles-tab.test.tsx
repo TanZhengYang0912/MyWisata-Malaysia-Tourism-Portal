@@ -283,6 +283,7 @@ describe("StaffRolesTab", () => {
 
     const legacyWalletCard = findOne(container, (element) =>
       element.tagName === "ARTICLE" && element.textContent.includes("Legacy Wallet Approver"));
+    expect(legacyWalletCard.getAttribute("class")).toContain("min-w-0");
     expect(legacyWalletCard.textContent).toContain("accessControl.staffRoles.systemPreset");
     expect(legacyWalletCard.textContent).toContain("accessControl.staffRoles.permissionLabels.withdrawalApprove");
     expect(legacyWalletCard.textContent).not.toContain("admin.withdrawal.approve");

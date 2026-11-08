@@ -27,6 +27,7 @@ async function change(select: TestElement, value: string) {
   await act(async () => { Object.getOwnPropertyDescriptor(Object.getPrototypeOf(select), 'value')?.set?.call(select, value); select.dispatchEvent(new TestEvent(select.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true })); });
 }
 function bodyRows() { return findElements(findOne(container, e => e.tagName === 'TBODY'), e => e.tagName === 'TR'); }
+function mobileCards() { return findElements(container, e => e.getAttribute('data-admin-mobile-record-card') !== null); }
 function button(label: string) { return findOne(container, e => e.tagName === 'BUTTON' && e.getAttribute('aria-label') === label); }
 
 describe('financial reconciliation pagination', () => {
@@ -54,6 +55,11 @@ describe('financial reconciliation pagination', () => {
 
   it('shows 15 rows, places the 16th on page two, and keeps full matching sums and CSV', async () => {
     expect(bodyRows().length).toBe(15);
+    expect(mobileCards().length).toBe(15);
+    expect(mobileCards()[0].textContent).toContain('ORD-01');
+    expect(mobileCards()[0].textContent).toContain('reconciliation.columns.gross');
+    expect(mobileCards()[0].textContent).toContain('RM1.00');
+    expect(mobileCards()[0].textContent).toContain('reconciliation.columns.platformNet');
     expect(bodyRows().map(e => e.textContent).join(' ')).not.toContain('ORD-16');
     const grossCard = findOne(container, e => e.tagName === 'P' && e.textContent === 'reconciliation.metrics.gross').parentNode;
     expect(grossCard?.textContent).toContain('RM16.00');

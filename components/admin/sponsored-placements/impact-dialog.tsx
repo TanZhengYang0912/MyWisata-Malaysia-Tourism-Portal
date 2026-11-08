@@ -30,13 +30,13 @@ export function SponsoredImpactDialog({
         aria-modal="true"
         aria-labelledby="sponsored-impact-title"
         aria-describedby="sponsored-impact-description"
-        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl sm:p-6"
+        className="max-h-[90dvh] w-full max-w-xl overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-5 shadow-2xl sm:p-6"
       >
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-200">
             <AlertTriangle size={19} />
           </div>
-          <div>
+          <div className="min-w-0 break-words">
             <h2 id="sponsored-impact-title" className="text-lg font-bold text-foreground">
               {t(`sponsoredPlacements.preview.${intent === "create" ? "createTitle" : "approveTitle"}`)}
             </h2>
@@ -55,8 +55,8 @@ export function SponsoredImpactDialog({
         {preview.shifts.length > 0 && (
           <ImpactSection icon={<ArrowDown size={17} />} title={t("sponsoredPlacements.preview.shifts")}>
             {preview.shifts.map((item) => (
-              <li key={item.placementId} className="flex items-center justify-between gap-3 rounded-lg bg-secondary/60 px-3 py-2">
-                <span className="font-medium text-foreground">{item.productName}</span>
+            <li key={item.placementId} className="flex flex-col gap-1 rounded-lg bg-secondary/60 px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                <span className="break-words font-medium text-foreground">{item.productName}</span>
                 <span className="shrink-0 text-muted-foreground">{item.fromPosition} {t("sponsoredPlacements.preview.to")} {item.toPosition}</span>
               </li>
             ))}
@@ -65,17 +65,17 @@ export function SponsoredImpactDialog({
 
         {preview.paused.length > 0 && (
           <ImpactSection icon={<PauseCircle size={17} />} title={t("sponsoredPlacements.preview.paused")} tone="warning">
-            {preview.paused.map((item) => <li key={item.placementId}>{item.productName}</li>)}
+            {preview.paused.map((item) => <li key={item.placementId} className="break-words">{item.productName}</li>)}
           </ImpactSection>
         )}
 
         {preview.archived.length > 0 && (
           <ImpactSection icon={<Archive size={17} />} title={t("sponsoredPlacements.preview.archived")}>
-            {preview.archived.map((item) => <li key={item.placementId}>{item.productName}</li>)}
+            {preview.archived.map((item) => <li key={item.placementId} className="break-words">{item.productName}</li>)}
           </ImpactSection>
         )}
 
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button type="button" disabled={busy} onClick={onCancel} className="rounded-full border border-border px-4 py-2 text-sm font-bold text-foreground disabled:opacity-50">
             {t("sponsoredPlacements.preview.cancel")}
           </button>

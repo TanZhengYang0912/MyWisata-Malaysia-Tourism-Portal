@@ -79,7 +79,6 @@ export default function EventRegistrationsPage() {
       <AdminPageHeader
         eyebrow={<><ClipboardCheck size={18} /> {t("eventRegistrations.eyebrow")}</>}
         title={t("eventRegistrations.title")}
-        description={t("eventRegistrations.description")}
       />
       {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
 

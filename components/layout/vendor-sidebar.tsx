@@ -60,7 +60,7 @@ export default function VendorSidebar() {
       : tVendor('shell.roles.teamMember');
   const contextDetail = isOutletManager
     ? user?.activeOutletName || tVendor('shell.outletOperations')
-    : tVendor('shell.workspace');
+    : user?.vendorName;
 
   return (
     <PortalSidebar

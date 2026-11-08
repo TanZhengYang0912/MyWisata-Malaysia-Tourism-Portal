@@ -61,7 +61,7 @@ describe("customer header reference contract", () => {
       'className="hidden min-w-0 flex-1 items-center gap-5 overflow-hidden xl:flex xl:gap-6 group-data-[layout=single]/header:flex group-data-[layout=stacked]/header:hidden"',
     );
     expect(customerLayoutSource).toContain(
-      'className="flex items-center gap-4 overflow-x-auto px-4 py-2 hide-scrollbar xl:hidden group-data-[layout=single]/header:hidden group-data-[layout=stacked]/header:flex"',
+      'className={`flex items-center gap-4 overflow-x-auto px-4 hide-scrollbar xl:hidden group-data-[layout=single]/header:hidden group-data-[layout=stacked]/header:flex ${isTripRoute ? "py-1" : "py-2"}`}',
     );
     expect(customerLayoutSource).not.toMatch(/\bmd:(hidden|flex)\b/);
     expect(hookSource).toContain("--customer-header-h");
@@ -79,7 +79,7 @@ describe("customer header reference contract", () => {
   it("compresses the customer utility row at phone widths to keep account controls visible", () => {
     expect(customerLayoutSource).toContain("px-2 sm:px-6 flex items-center gap-1 sm:gap-8");
     expect(customerLayoutSource).toContain("w-[62px] min-[360px]:w-[84px] min-[420px]:w-[94px] sm:w-[118px]");
-    expect(customerLayoutSource).toContain("<CurrencySwitcher compact codeHiddenOnMobile className=\"w-14 min-[360px]:w-16 min-[420px]:w-20 md:w-24\" />");
+    expect(customerLayoutSource).toContain("<CurrencySwitcher compact hideFlagOnNarrowMobile className=\"w-14 min-[360px]:w-16 min-[420px]:w-20 md:w-24\" />");
   });
 
 });

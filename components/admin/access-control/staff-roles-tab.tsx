@@ -441,20 +441,19 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
       <div className="space-y-5">
         <section className="rounded-2xl border border-border bg-card p-5">
           <h2 className="font-semibold">{t("accessControl.staffRoles.rolesTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("accessControl.staffRoles.rolesHelp")}</p>
-          <div className="mt-3 space-y-3">{roles.map((role) => <article key={role.id} className="rounded-xl border border-border p-3">
+          <div className="mt-3 space-y-3">{roles.map((role) => <article key={role.id} className="min-w-0 rounded-xl border border-border p-3">
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <span className="flex flex-wrap items-center gap-2 font-medium">{role.name}<span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">{t(role.isSystem ? "accessControl.staffRoles.systemPreset" : "accessControl.staffRoles.customRole")}</span></span>
-                {role.description && <p className="mt-1 text-xs text-muted-foreground">{role.description}</p>}
+              <div className="min-w-0">
+                <span className="flex min-w-0 flex-wrap items-center gap-2 break-words font-medium">{role.name}<span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">{t(role.isSystem ? "accessControl.staffRoles.systemPreset" : "accessControl.staffRoles.customRole")}</span></span>
+                {role.description && <p className="mt-1 break-words text-xs text-muted-foreground">{role.description}</p>}
               </div>
               <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${role.isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{t(role.isActive ? "accessControl.status.active" : "accessControl.status.inactive")}</span>
             </div>
             <ul className="mt-3 space-y-1.5">{role.moduleKeys.map((key) => <li key={key} className="rounded-lg bg-muted/30 px-3 py-2">
-              <span className="block text-xs font-medium">{modules.find((module) => module.key === key)?.label ?? key.replace(/[._]/g, " ")}</span>
+              <span className="block break-words text-xs font-medium">{modules.find((module) => module.key === key)?.label ?? key.replace(/[._]/g, " ")}</span>
             </li>)}</ul>
-            <ul className="mt-2 space-y-1">{role.permissionKeys.map((key) => <li key={key} className="text-xs text-muted-foreground">{permissionLabel(key)}</li>)}</ul>
-            <div className="mt-3 flex justify-end gap-2">
+            <ul className="mt-2 space-y-1">{role.permissionKeys.map((key) => <li key={key} className="break-words text-xs text-muted-foreground">{permissionLabel(key)}</li>)}</ul>
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
               {!role.isSystem && <Button size="sm" variant="outline" onClick={() => editRole(role)}>{t("accessControl.staffRoles.editRole")}</Button>}
               <Button size="sm" variant="outline" disabled={!role.isActive} onClick={() => copyRoleTemplate(role)}>{t("accessControl.staffRoles.useTemplate")}</Button>
               {!role.isSystem && <Button size="sm" variant="outline" disabled={!role.isActive} onClick={() => { setInvitationRoleId(role.id); selectRoleForAssignment(role.id); }}>{t("accessControl.staffRoles.useRole")}</Button>}
@@ -485,7 +484,6 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
 
         <section className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center gap-2"><UserPlus className="h-4 w-4 text-primary" /><h2 className="font-semibold">{t("accessControl.staffRoles.assignmentTitle")}</h2></div>
-          <p className="mt-1 text-sm text-muted-foreground">{t("accessControl.staffRoles.assignmentHelp")}</p>
           <ol className="mt-4 space-y-4">
             <li className="rounded-xl border border-border p-4">
               <label htmlFor="assignment-role" className="text-sm font-semibold">{t("accessControl.staffRoles.stepRole")}</label>

@@ -145,7 +145,7 @@ describe("authentication, invitation, lifecycle, and development i18n contract",
     const invitation = source("app/outlet-manager-invitations/[token]/page.tsx");
     expect(invitation).toContain("encodeURIComponent(params.token)");
     expect(invitation).toContain('method: "POST"');
-    expect(invitation).toContain('router.push("/vendor/dashboard")');
+    expect(invitation).toContain('router.push("/vendor/announcements")');
 
     const wizard = source("components/vendor/vendor-invite-wizard.tsx");
     expect(wizard).toContain("submitGuidedVendorClaim");

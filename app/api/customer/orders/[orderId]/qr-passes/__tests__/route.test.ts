@@ -56,6 +56,29 @@ describe("GET customer order QR passes", () => {
     expect(verifyFoodFulfilmentToken(json.data.foodOrders[0].foodToken).claims).toMatchObject({ orderId: "1d4057cf-c821-4b05-a454-61dbdc42d32c", outletId: "food-outlet" });
   });
 
+  it("does not issue ticket QR codes for a product that does not require booking", async () => {
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "orders") return query({ id: "1d4057cf-c821-4b05-a454-61dbdc42d32c", status: "paid", user_id: "customer-1" });
+      if (table === "bookings") return query([{
+        id: "booking-food",
+        order_items: {
+          outlet_id: "outlet-food",
+          vendor_id: "vendor-food",
+          products: { requires_booking: false },
+          outlets: { id: "outlet-food", name: "Food Outlet", vendor_id: "vendor-food", vendors: { id: "vendor-food", name: "Food Vendor" } },
+        },
+        ticket_passes: { id: "pass-food", policy: "group_entry", entry_limit: 2, entries_used: 0, status: "active", valid_from: null, valid_until: null },
+      }]);
+      return query([]);
+    });
+
+    const response = await GET(new Request("http://localhost"), { params: Promise.resolve({ orderId: "1d4057cf-c821-4b05-a454-61dbdc42d32c" }) });
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.data.tickets).toEqual([]);
+  });
+
   it("issues a group-ticket QR with the database guest limit and the matching merchant", async () => {
     mocks.from.mockImplementation((table: string) => {
       if (table === "orders") return query({ id: "1d4057cf-c821-4b05-a454-61dbdc42d32c", status: "paid", user_id: "customer-1" });

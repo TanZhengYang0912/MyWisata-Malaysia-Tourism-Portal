@@ -165,7 +165,7 @@ describe("hotel page", () => {
     const renderer = readFileSync(resolve(process.cwd(), "components/outlet/outlet-page-renderer.tsx"), "utf8");
     expect(renderer).toContain("<HotelPage");
     expect(renderer).not.toContain("StaySection");
-    expect(renderer).toContain("<OutletMenu outlet={outlet} products={products} />");
+    expect(renderer).toContain("<OutletMenu outlet={outlet} products={products} canUseCustomerActions={canUseCustomerActions} />");
   });
 
   it("formats prices with ReferencePrice, never inside a translation string", () => {

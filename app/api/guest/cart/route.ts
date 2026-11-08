@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
 import { databaseUuidSchema as uuid, apiFail } from "@/lib/validation/schemas";
-import { canMergeCartItemLines, cartItemKey } from "@/backend/core/helpers";
+import { canMergeCartItemLines, cartItemKey, sameStayDetails } from "@/backend/core/helpers";
 import { mapCartItem } from "@/backend/domains/commerce";
 import { guestPrivateResponse, isSameOriginMutation, readGuestJson, reserveGuestRateLimit, resolveGuestSession } from "@/lib/checkout/guest-session";
 import { stayBookingDetailsSchema } from "@/lib/validation/schemas";
@@ -47,6 +47,8 @@ async function mutate(request: Request, method: "POST" | "PATCH" | "DELETE") {
     if (!await reserveGuestRateLimit(`cart:${ctx.guestSubjectId}`, 120, 900)) return apiFail("RATE_LIMITED", "Try again later", 429);
     const current = await rows(ctx);
     let error: { message?: string } | null = null;
+    // Unchanged PATCH values skip the write and the re-read (AGENTS.md: avoid unchanged writes).
+    let changed = true;
     if (method === "DELETE") ({ error } = await ctx.db.from("cart_items").delete().eq("cart_id", ctx.cartId));
     else if (method === "PATCH") {
       const body = await readGuestJson(request);
@@ -59,13 +61,15 @@ async function mutate(request: Request, method: "POST" | "PATCH" | "DELETE") {
         if (relation((product as { categories?: { slug: string } | { slug: string }[] | null } | null)?.categories)?.slug !== "accommodation") {
           return apiFail("VALIDATION_FAILED", "Stay details can only be updated for accommodation", 422);
         }
-        ({ error } = await ctx.db.from("cart_items").update({ stay_details: stayUpdate.data.stayDetails }).eq("id", row.id).eq("cart_id", ctx.cartId));
+        if (sameStayDetails(line.stayDetails, stayUpdate.data.stayDetails)) changed = false;
+        else ({ error } = await ctx.db.from("cart_items").update({ stay_details: stayUpdate.data.stayDetails }).eq("id", row.id).eq("cart_id", ctx.cartId));
       } else {
         const parsed = updateQuantitySchema.safeParse(body);
         if (!parsed.success) return apiFail("VALIDATION_FAILED", "Choose a valid quantity", 422);
         const row = current.find((entry) => cartItemKey(mapCartItem(entry as unknown as Parameters<typeof mapCartItem>[0])) === parsed.data.key);
         if (!row) return apiFail("NOT_FOUND", "Cart item not found", 404);
-        ({ error } = parsed.data.quantity === 0
+        if (parsed.data.quantity === Number(row.quantity)) changed = false;
+        else ({ error } = parsed.data.quantity === 0
           ? await ctx.db.from("cart_items").delete().eq("id", row.id).eq("cart_id", ctx.cartId)
           : await ctx.db.from("cart_items").update({ quantity: parsed.data.quantity }).eq("id", row.id).eq("cart_id", ctx.cartId));
       }
@@ -104,7 +108,7 @@ async function mutate(request: Request, method: "POST" | "PATCH" | "DELETE") {
       ({ error } = existing ? await ctx.db.from("cart_items").update(values).eq("id", existing.id).eq("cart_id", ctx.cartId) : await ctx.db.from("cart_items").insert({ cart_id: ctx.cartId, ...values }));
     }
     if (error) return apiFail("GUEST_CART_UNAVAILABLE", "Unable to update cart", 503);
-    return guestPrivateResponse({ items: (await rows(ctx)).map((row) => mapCartItem(row as unknown as Parameters<typeof mapCartItem>[0])) });
+    return guestPrivateResponse({ items: (changed ? await rows(ctx) : current).map((row) => mapCartItem(row as unknown as Parameters<typeof mapCartItem>[0])) });
   } catch { return apiFail("GUEST_CART_UNAVAILABLE", "Unable to update cart", 503); }
 }
 export const POST = (request: Request) => mutate(request, "POST");

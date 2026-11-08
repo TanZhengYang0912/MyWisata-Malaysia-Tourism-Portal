@@ -23,7 +23,7 @@ const vendor: PromotionCampaignPublicVendor = {
 };
 
 describe("PromotionCampaignVendorCard", () => {
-  it("renders a featured detail card with its stall details and destination", () => {
+  it("renders a concise featured detail card with its stall destination", () => {
     const markup = renderToStaticMarkup(
       <PromotionCampaignVendorCard
         vendor={vendor}
@@ -36,7 +36,8 @@ describe("PromotionCampaignVendorCard", () => {
     expect(markup).toContain("sm:min-h-60");
     expect(markup).toContain("Abdul Antiques");
     expect(markup).toContain("ui.promotionCampaigns.stallNumber");
-    expect(markup).toContain("ui.promotionCampaigns.productCount");
+    expect(markup).not.toContain("Antique pieces and collectibles.");
+    expect(markup).not.toContain("ui.promotionCampaigns.productCount");
     expect(markup).toContain('href="/customer/events/antique-event/vendor-1"');
   });
 
@@ -47,6 +48,7 @@ describe("PromotionCampaignVendorCard", () => {
 
     expect(markup).toContain('class="flex min-w-0 flex-col overflow-hidden rounded-2xl');
     expect(markup).not.toContain("sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]");
+    expect(markup).toContain("ui.promotionCampaigns.productCount");
   });
 
   it("identifies the stall number that matched a directory search", () => {

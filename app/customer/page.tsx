@@ -1,8 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { getServerTranslation } from "@/lib/i18n/server";
 import { getRecommendedFeed } from "@/backend/domains/recommend";
-import type { ReasonTag } from "@/backend/domains/recommend-score";
 import { rankFeaturedVendors } from "@/backend/domains/vendor-recommend";
 import { getVendorRatingSummaries } from "@/backend/domains/vendor-reviews";
 import { getCachedComputedActivities } from "@/lib/cache/catalogue-cache";
@@ -10,7 +8,7 @@ import { selectEntityGallery, selectEntityLogo, type EntityMediaRow } from "@/li
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import { popularVendorProducts } from "@/lib/customer/vendor-page";
 import { isOperatingHoursOpenNow } from "@/lib/customer/operating-hours";
-import type { ComputedActivity, OperatingHours, SponsoredPlacement } from "@/backend/core/types";
+import type { OperatingHours, SponsoredPlacement } from "@/backend/core/types";
 import { CustomerHomeClient } from "./customer-home-client";
 import { selectFeaturedPublicCampaigns } from "@/lib/customer/promotion-campaigns";
 import { resolvePromotionCampaignImages } from "@/lib/promotion-campaigns/images";
@@ -31,20 +29,6 @@ const discoverTitleFont = Instrument_Serif({
 
 export default async function CustomerHomePage() {
   const db = await createClient();
-  const { t } = await getServerTranslation("customer");
-
-  // Localize the dominant recommendation reason for the request's language.
-  // Literal `customer:` keys so the i18n extractor attributes them correctly even
-  // though this helper is nested inside the component.
-  const reasonLabel = (reason: ReasonTag | null): string | undefined => {
-    switch (reason) {
-      case "near_you": return t("customer:ui.recommendationReasons.near_you");
-      case "interests": return t("customer:ui.recommendationReasons.interests");
-      case "similar": return t("customer:ui.recommendationReasons.similar");
-      case "hidden_gem": return t("customer:ui.recommendationReasons.hidden_gem");
-      default: return undefined;
-    }
-  };
   const requestedAt = new Date().toISOString();
   const [{ data: { user } }, activities, vendorRows, campaignResult, placementsResult] = await Promise.all([
     db.auth.getUser(),
@@ -104,10 +88,7 @@ export default async function CustomerHomePage() {
       : Promise.resolve({ data: [] }),
   ]);
 
-  const recommended = feed.map((item) => ({
-    ...item.activity,
-    aiTag: reasonLabel(item.reason),
-  })) as ComputedActivity[];
+  const recommended = feed.map((item) => item.activity);
   const { highlightItems, forYouItems } = selectHomeDiscoverySections(activities, recommended, placements, requestedAt);
 
   const mediaByVendorId = new Map<string, EntityMediaRow[]>();

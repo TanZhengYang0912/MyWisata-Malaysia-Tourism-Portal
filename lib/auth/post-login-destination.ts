@@ -4,9 +4,9 @@ import { staffMfaDestination, staffVerificationDestination } from '@/lib/auth/st
 
 const HOME_BY_ROLE: Record<Role, string> = {
   customer: "/customer",
-  vendor_owner: "/vendor/dashboard",
-  outlet_manager: "/vendor/dashboard",
-  event_vendor: "/vendor/events",
+  vendor_owner: "/vendor/announcements",
+  outlet_manager: "/vendor/announcements",
+  event_vendor: "/vendor/announcements",
   admin: "/admin/dashboard",
   approver: "/admin/withdrawals",
   staff: "/staff",

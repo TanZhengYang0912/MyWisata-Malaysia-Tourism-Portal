@@ -12,6 +12,7 @@ const EVENT_VENDOR_ALLOWED = [
   "app/api/notifications/read-all/route.ts",
   "app/api/notifications/route.ts",
   "app/api/vendors/[vendorId]/announcements/[id]/read/route.ts",
+  "app/api/vendors/[vendorId]/announcements/read/route.ts",
   "app/api/vendors/[vendorId]/announcements/route.ts",
   "app/api/vendors/[vendorId]/campaign-listings/[listingId]/route.ts",
   "app/api/vendors/[vendorId]/campaign-registrations/[id]/route.ts",

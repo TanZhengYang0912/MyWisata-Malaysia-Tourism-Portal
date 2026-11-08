@@ -18,6 +18,8 @@ type FeaturedSplitCardProps = {
   contentSlot?: string;
   mediaClassName?: string;
   contentClassName?: string;
+  layout?: "split" | "stacked";
+  className?: string;
 };
 
 export function FeaturedSplitCard({
@@ -35,23 +37,32 @@ export function FeaturedSplitCard({
   contentSlot,
   mediaClassName = "",
   contentClassName = "",
+  layout = "split",
+  className = "",
 }: FeaturedSplitCardProps) {
+  const isStacked = layout === "stacked";
   // With a footer below, the grid clips the stub's bottom notch itself.
-  const gridClassName = `${variant === "event-pass"
-    ? "grid w-full grid-cols-1 lg:min-h-[310px] lg:grid-cols-[44%_minmax(0,1fr)_9rem]"
-    : "grid min-h-[320px] w-full grid-cols-1 md:min-h-[410px] md:grid-cols-[52%_48%]"}${footer ? " overflow-hidden" : ""}`;
+  const gridClassName = `${isStacked
+    ? "grid min-h-0 w-full grid-cols-1"
+    : variant === "event-pass"
+      ? "grid w-full grid-cols-1 lg:min-h-[310px] lg:grid-cols-[44%_minmax(0,1fr)_9rem]"
+      : "grid min-h-[320px] w-full grid-cols-1 md:min-h-[410px] md:grid-cols-[52%_48%]"}${footer ? " overflow-hidden" : ""}`;
   const content = (
     <>
       <div
         data-slot={mediaSlot}
-        className={`relative aspect-[16/9] min-w-0 overflow-hidden bg-secondary ${variant === "event-pass" ? "lg:aspect-auto lg:min-h-[310px]" : "min-h-60 md:aspect-auto md:min-h-[410px]"} ${mediaClassName}`}
+        className={`${isStacked
+          ? "relative aspect-[1.4] min-w-0 overflow-hidden bg-secondary"
+          : `relative aspect-[16/9] min-w-0 overflow-hidden bg-secondary ${variant === "event-pass" ? "lg:aspect-auto lg:min-h-[310px]" : "min-h-60 md:aspect-auto md:min-h-[410px]"}`} ${mediaClassName}`}
       >
         {media}
         {mediaCaption != null && <CardMediaHoverCaption>{mediaCaption}</CardMediaHoverCaption>}
       </div>
       <div
         data-slot={contentSlot}
-        className={`flex min-w-0 flex-col px-6 py-8 sm:px-8 sm:py-9 ${variant === "event-pass" ? "lg:min-h-[310px]" : "min-h-[300px] md:min-h-[410px] md:px-12 md:py-11"} ${contentClassName}`}
+        className={`${isStacked
+          ? "flex min-h-[250px] min-w-0 flex-col px-4 py-4 sm:px-5 sm:py-5"
+          : `flex min-w-0 flex-col px-6 py-8 sm:px-8 sm:py-9 ${variant === "event-pass" ? "lg:min-h-[310px]" : "min-h-[300px] md:min-h-[410px] md:px-12 md:py-11"}`} ${contentClassName}`}
       >
         {children}
       </div>
@@ -60,7 +71,7 @@ export function FeaturedSplitCard({
     </>
   );
 
-  return (
+  const card = (
     <article
       ref={articleRef}
       data-placement-id={dataPlacementId}
@@ -80,4 +91,6 @@ export function FeaturedSplitCard({
       {footer}
     </article>
   );
+
+  return className ? <div className={className}>{card}</div> : card;
 }

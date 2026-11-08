@@ -181,18 +181,16 @@ export async function renderPublicOutletPage({ params, searchParams }: PublicOut
   const sellableIds = [...sellable];
   const sellableSet = new Set(sellableIds);
   const featuredIds = publicDocument.featuredIds.filter((id) => sellableSet.has(id));
-  const [{ data: products }, { data: offers }, { data: slots }, { data: reviewMetrics }] = sellableIds.length
+  const [{ data: products }, { data: offers }, { data: slots }] = sellableIds.length
     ? await Promise.all([
         db.from("products").select("id,name,description,base_price,requires_booking,cover_url,product_type,outlet_id,attributes,categories(name,slug),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved))").eq("status", "active").eq("review_status", "approved").in("id", sellableIds),
         db.from("outlet_offers").select("product_id,price").eq("outlet_id", outletId).eq("status", "active").in("product_id", sellableIds),
         db.from("booking_slots").select("id,product_id,starts_at,status").in("product_id", sellableIds).eq("outlet_id", outletId).eq("status", "available").gt("starts_at", new Date().toISOString()).order("starts_at"),
-        db.from("product_review_metrics").select("product_id,rating,reviews").in("product_id", sellableIds),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
+    : [{ data: [] }, { data: [] }, { data: [] }];
   const offerPriceByProduct = new Map((offers || []).map((offer) => [offer.product_id, Number(offer.price)]));
   const firstSlotByProduct = new Map<string, string>();
   for (const slot of slots || []) if (!firstSlotByProduct.has(slot.product_id)) firstSlotByProduct.set(slot.product_id, slot.id);
-  const metricByProduct = new Map((reviewMetrics || []).map((metric) => [metric.product_id, { rating: Number(metric.rating), reviews: Number(metric.reviews) }]));
   const STAY_SLUG = "accommodation";
   const stayIds = (products || []).filter((p) => relationOne(p.categories)?.slug === STAY_SLUG).map((p) => p.id);
   const [hotelReviewPage, hotelReviewSummary] = await Promise.all([
@@ -227,7 +225,6 @@ export async function renderPublicOutletPage({ params, searchParams }: PublicOut
       const purchaseVariant = getActiveDefaultOutletVariant(variants, outletScopedVariant);
       const availableStock = outletScopedVariant ? getOutletAvailableStock(variants, outletId) : undefined;
       const outletPrice = offerPriceByProduct.get(product.id) ?? Number(product.base_price);
-      const metric = metricByProduct.get(product.id) || { rating: 0, reviews: 0 };
       return {
         id: product.id,
         name: product.name,
@@ -252,8 +249,6 @@ export async function renderPublicOutletPage({ params, searchParams }: PublicOut
         variant_label: purchaseVariant?.name ?? null,
         first_available_slot_id: firstSlotByProduct.get(product.id) ?? null,
         available_stock: availableStock,
-        rating: metric.rating,
-        reviews: metric.reviews,
       };
     }),
     featuredIds

@@ -115,10 +115,13 @@ describe("customer discovery filter contract", () => {
     expect(exploreSource).toContain('data-testid="experience-active-filters"');
   });
 
-  it("keeps the Explore mode switch on the right with the voucher navy active state", () => {
-    expect(exploreSource).toContain("self-end md:self-auto");
-    expect(exploreSource).toContain("rounded-2xl border border-border bg-card p-2 shadow-sm");
-    expect(exploreSource).toContain("bg-primary text-white shadow-sm");
+  it("matches the compact Events pill style while keeping the Explore switch on the right", () => {
+    expect(exploreSource).toMatch(/self-end[^\"]*md:self-auto/);
+    expect(exploreSource).toContain("rounded-full border border-border bg-card p-1");
+    expect(exploreSource).toContain("min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold");
+    expect(exploreSource).toContain('aria-pressed={tab === "destinations"}');
+    expect(exploreSource).toContain('aria-pressed={tab === "experiences"}');
+    expect(exploreSource).toContain("bg-primary text-white");
   });
 
   it("shows the postcard board instead of the StoryMap and the zone grid on Destinations", () => {

@@ -29,6 +29,7 @@ import { VendorReasonModal } from '@/components/admin/vendor-reason-modal';
 import { AdminSegmentedFilter } from '@/components/admin/segmented-filter';
 import { AdminFilterBar, adminFilterControlClassName } from '@/components/admin/filter-bar';
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminMobileRecordCard } from '@/components/admin/admin-mobile-record-card';
 import { useAppDialog } from '@/components/providers/app-dialog';
 import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
@@ -348,7 +349,6 @@ export default function AdminVendorsPage() {
         <AdminPageHeader
           eyebrow={<><Store size={16} /> {t('ui.vendors.eyebrow')}</>}
           title={t('ui.vendors.title')}
-          description={t('ui.vendors.description')}
           actions={<>
             <Link href="/admin/vendors/platform-fees" className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground shadow-sm transition hover:border-ring hover:text-primary">
               <Layers size={16} /> {t('ui.platformFees.title')}
@@ -379,7 +379,6 @@ export default function AdminVendorsPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-bold">{t('ui.vendors.applications.title')}</h2>
-                <p className="mt-1 text-xs text-muted-foreground">{t('ui.vendors.applications.description')}</p>
               </div>
               <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold text-primary">{t('ui.vendors.matching', { count: total })}</span>
             </div>
@@ -433,7 +432,7 @@ export default function AdminVendorsPage() {
           {error && <div className="mx-5 mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
           {notice && <div className="mx-5 mt-4 rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-primary">{notice}</div>}
 
-          <div className="overflow-x-auto">
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[920px] text-left text-sm">
               <thead className="bg-muted text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                 <tr>
@@ -478,6 +477,76 @@ export default function AdminVendorsPage() {
                 })}
               </tbody>
             </table>
+          </div>
+
+          <div className="space-y-3 p-3 lg:hidden">
+            <label className="flex min-h-11 items-center gap-3 rounded-xl border border-border bg-background px-3 text-sm font-medium text-foreground">
+              <input type="checkbox" checked={allCurrentPageSelected} onChange={togglePageSelection} aria-label={t('ui.vendors.selectAllPage')} className="h-4 w-4 rounded border-border accent-[#010066]" />
+              {t('ui.vendors.selectAllPage')}
+            </label>
+            {loading ? (
+              <div className="space-y-3">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-44 animate-pulse rounded-2xl bg-muted" />)}</div>
+            ) : vendors.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border px-4 py-10 text-center">
+                <Search size={22} className="mx-auto mb-3 text-muted-foreground" />
+                <p className="font-semibold text-foreground">{t('ui.vendors.empty.title')}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t('ui.vendors.empty.description')}</p>
+              </div>
+            ) : vendors.map((vendor) => {
+              const owner = ownerOf(vendor);
+              const isSelected = selectedIds.includes(vendor.id);
+              return (
+                <AdminMobileRecordCard
+                  key={vendor.id}
+                  header={
+                    <div className="flex min-w-0 flex-1 items-start gap-3">
+                      <label className="flex h-11 w-11 shrink-0 items-center justify-center">
+                        <input type="checkbox" checked={isSelected} onChange={() => toggleSelected(vendor.id)} aria-label={t('ui.vendors.selectVendor', { name: vendor.name })} className="h-4 w-4 rounded border-border accent-[#010066]" />
+                      </label>
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-sm font-bold text-primary">{initials(vendor.name)}</div>
+                      <div className="min-w-0 flex-1">
+                        <p className="break-words font-bold text-foreground">{vendor.name}</p>
+                        {vendor.kind === 'event' && <span className="mt-1 inline-flex rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-900 dark:text-amber-200">{t('ui.vendors.eventVendor.badge')}</span>}
+                        <div className="mt-1 flex min-w-0 items-center gap-1 text-[11px] text-muted-foreground">
+                          <code className="min-w-0 break-all font-mono">{vendor.id}</code>
+                          <button type="button" onClick={() => void copyVendorId(vendor.id)} aria-label={t('ui.vendors.drawer.copyId')} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-primary hover:bg-secondary"><Copy size={15} aria-hidden="true" /></button>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                  footer={
+                    <button type="button" onClick={() => setActiveVendor(vendor)} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border px-3 text-sm font-semibold text-foreground transition hover:bg-secondary">
+                      {t('ui.actions.review')} <ChevronRight size={16} aria-hidden="true" />
+                    </button>
+                  }
+                >
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                    <div className="col-span-2 min-w-0">
+                      <dt className="text-xs font-medium text-muted-foreground">{t('ui.table.owner')}</dt>
+                      <dd className="mt-1 break-words font-semibold text-foreground">{owner.full_name ?? t('ui.vendors.ownerUnnamed')}</dd>
+                      <dd className="mt-0.5 break-all text-xs text-muted-foreground">{owner.email ?? t('ui.vendors.noEmail')}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-muted-foreground">{t('ui.table.footprint')}</dt>
+                      <dd className="mt-1 text-foreground">{t('ui.vendors.outlets', { count: countOf(vendor.outlets) })}</dd>
+                      <dd className="mt-0.5 text-foreground">{t('ui.vendors.listings', { count: countOf(vendor.products) })}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-muted-foreground">{t('ui.table.kyc')}</dt>
+                      <dd className={`mt-1 break-words text-sm font-semibold ${owner.kyc_status === 'approved' ? 'text-primary' : owner.kyc_status === 'pending' ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>{t(`ui.users.status.${owner.kyc_status ?? 'unverified'}`)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-muted-foreground">{t('ui.table.status')}</dt>
+                      <dd className="mt-1 flex flex-wrap items-center gap-1"><StatusBadge status={vendor.status === 'suspended' ? t('ui.vendors.status.suspended') : vendor.status} />{vendor.status === 'approved' && vendor.approval_email_sent_at && <span className="text-[10px] font-semibold text-teal-700 dark:text-teal-400">{t('ui.vendors.status.welcomed')}</span>}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-muted-foreground">{t('ui.table.submitted')}</dt>
+                      <dd className="mt-1 text-foreground">{format(new Date(vendor.created_at), 'd MMM yyyy')}</dd>
+                    </div>
+                  </dl>
+                </AdminMobileRecordCard>
+              );
+            })}
           </div>
 
           {total === 0 ? <p className="border-t border-border px-5 py-4 text-xs text-muted-foreground">{t('ui.vendors.noResults')}</p> : <Pagination currentPage={page} totalPages={pageCount} totalItems={total} pageSize={PAGE_SIZE} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-5 py-3" />}
@@ -537,19 +606,19 @@ function VendorDrawer({ vendor, busyAction, onClose, onAction, onCopy, approvedR
   const onboarding = Array.isArray(vendor.vendor_onboarding_profiles) ? vendor.vendor_onboarding_profiles[0] : vendor.vendor_onboarding_profiles;
   const actionBusy = busyAction?.endsWith(`:${vendor.id}`);
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4 backdrop-blur-[2px] sm:p-6" role="dialog" aria-modal="true" aria-label={t('ui.vendors.detailsAria', { name: vendor.name })} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-    <aside className="flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl sm:max-h-[calc(100vh-3rem)]">
-      <div className="flex items-start justify-between border-b border-border px-6 py-5"><div><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendors.drawer.profile')}</p><h2 className="mt-1 text-xl font-bold tracking-[-0.03em] text-foreground">{vendor.name}</h2><p className="mt-1 text-xs text-muted-foreground">/{vendor.slug}</p></div><button type="button" onClick={onClose} aria-label={t('ui.vendors.drawer.closeDetails')} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={19} /></button></div>
+    <aside className="flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card shadow-2xl sm:max-h-[calc(100dvh-3rem)]">
+      <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-card px-6 py-5"><div className="min-w-0"><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendors.drawer.profile')}</p><h2 className="mt-1 break-words text-xl font-bold tracking-[-0.03em] text-foreground">{vendor.name}</h2><p className="mt-1 break-all text-xs text-muted-foreground">/{vendor.slug}</p></div><button type="button" onClick={onClose} aria-label={t('ui.vendors.drawer.closeDetails')} className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"><X size={19} /></button></div>
       <div className="flex-1 space-y-6 px-6 py-6">
         <div className="flex items-center justify-between"><span className="flex items-center"><StatusBadge status={vendor.status === 'suspended' ? t('ui.vendors.status.suspended') : vendor.status} />{vendor.status === 'approved' && vendor.approval_email_sent_at && <span className="ml-1.5 text-[10px] font-semibold text-teal-700 dark:text-teal-400">· {t('ui.vendors.status.welcomed')}</span>}</span><span className="text-xs text-muted-foreground">{t('ui.vendors.drawer.added', { date: format(new Date(vendor.created_at), 'd MMM yyyy') })}</span></div>
-        <div className="rounded-2xl bg-muted p-4"><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t('ui.vendors.drawer.id')}</p><div className="mt-2 flex items-center justify-between gap-3"><code className="truncate text-xs text-foreground">{vendor.id}</code><button type="button" onClick={onCopy} className="shrink-0 rounded-lg bg-card p-2 text-primary shadow-sm hover:bg-secondary" aria-label={t('ui.vendors.drawer.copyId')}><Copy size={15} /></button></div></div>
-        <div><h3 className="mb-3 text-sm font-bold text-foreground">{t('ui.vendors.drawer.ownerVerification')}</h3><div className="flex items-center gap-3 rounded-xl border border-border p-3"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-sm font-bold text-primary">{initials(owner.full_name ?? t('ui.vendors.ownerUnnamed'))}</div><div className="min-w-0"><p className="truncate text-sm font-semibold text-foreground">{owner.full_name ?? t('ui.vendors.ownerUnnamed')}</p><p className="truncate text-xs text-muted-foreground">{owner.email ?? t('ui.vendors.noEmail')}</p></div><span className="ml-auto shrink-0 text-right text-[11px] font-semibold text-muted-foreground">{t('ui.vendors.kyc')}<br /><span className={owner.kyc_status === 'approved' ? 'text-primary' : 'text-amber-700 dark:text-amber-400'}>{t(`ui.users.status.${owner.kyc_status ?? 'unverified'}`)}</span></span></div></div>
+        <div className="min-w-0 rounded-2xl bg-muted p-4"><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t('ui.vendors.drawer.id')}</p><div className="mt-2 flex items-center justify-between gap-3"><code className="min-w-0 break-all text-xs text-foreground">{vendor.id}</code><button type="button" onClick={onCopy} className="shrink-0 rounded-lg bg-card p-2 text-primary shadow-sm hover:bg-secondary" aria-label={t('ui.vendors.drawer.copyId')}><Copy size={15} /></button></div></div>
+        <div><h3 className="mb-3 text-sm font-bold text-foreground">{t('ui.vendors.drawer.ownerVerification')}</h3><div className="flex flex-wrap items-center gap-3 rounded-xl border border-border p-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-bold text-primary">{initials(owner.full_name ?? t('ui.vendors.ownerUnnamed'))}</div><div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold text-foreground">{owner.full_name ?? t('ui.vendors.ownerUnnamed')}</p><p className="break-all text-xs text-muted-foreground">{owner.email ?? t('ui.vendors.noEmail')}</p></div><span className="shrink-0 text-right text-[11px] font-semibold text-muted-foreground">{t('ui.vendors.kyc')}<br /><span className={owner.kyc_status === 'approved' ? 'text-primary' : 'text-amber-700 dark:text-amber-400'}>{t(`ui.users.status.${owner.kyc_status ?? 'unverified'}`)}</span></span></div></div>
         <div><h3 className="mb-3 text-sm font-bold text-foreground">{t('ui.vendors.drawer.footprint')}</h3><div className="grid grid-cols-2 gap-3"><Metric icon={MapPin} label={t('ui.vendors.outletLabel')} value={countOf(vendor.outlets)} /><Metric icon={Package} label={t('ui.vendors.listingLabel')} value={countOf(vendor.products)} /></div></div>
         <div><h3 className="mb-2 text-sm font-bold text-foreground">{t('ui.vendors.drawer.businessOnboarding')}</h3><dl className="divide-y divide-slate-100 dark:divide-border rounded-xl border border-border text-sm"><DetailRow label={t('ui.vendors.details.businessType')} value={vendor.business_type?.replaceAll('_', ' ') ?? t('ui.vendors.notProvided')} /><DetailRow label={t('ui.vendors.details.legalName')} value={onboarding?.legal_business_name ?? t('ui.vendors.notProvided')} /><DetailRow label={t('ui.vendors.details.registration')} value={onboarding?.registration_number ?? t('ui.vendors.notProvided')} /><DetailRow label={t('ui.vendors.details.contact')} value={onboarding?.contact_name ?? onboarding?.contact_email ?? t('ui.vendors.notProvided')} /><DetailRow label={t('ui.vendors.details.onboarding')} value={onboarding?.status ?? t('ui.vendors.notStarted')} /><DetailRow label={t('ui.vendors.details.documents')} value={String(countOf(vendor.vendor_documents))} /><DetailRow label={t('ui.vendors.details.approvedOn')} value={vendor.approved_at ? format(new Date(vendor.approved_at), 'd MMM yyyy') : t('ui.vendors.notApproved')} /><DetailRow label={t('ui.vendors.details.reviewNote')} value={onboarding?.review_note ?? vendor.rejection_reason ?? t('ui.vendors.noNote')} /></dl></div>
         <VendorFeeTier vendorId={vendor.id} />
         {vendor.status === 'approved' && approvedRecs.length > 0 && <div><h3 className="mb-2 text-sm font-bold text-foreground">{t('ui.vendors.recommendations.title')}</h3><p className="mb-2 text-xs leading-5 text-muted-foreground">{t('ui.vendors.recommendations.description')}</p><div className="flex gap-2"><select value={selectedRecommendation} onChange={(event) => onSelectRecommendation(event.target.value)} className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2.5 text-xs text-muted-foreground"><option value="">{t('ui.vendors.recommendations.select')}</option>{approvedRecs.map((recommendation) => <option key={recommendation.id} value={recommendation.id}>{recommendation.vendor_name}</option>)}</select><button type="button" onClick={onLinkRecommendation} disabled={linkingRecommendation || !selectedRecommendation} className="rounded-xl bg-secondary px-3 py-2.5 text-xs font-semibold text-primary disabled:opacity-40">{linkingRecommendation ? t('ui.vendors.recommendations.linking') : t('ui.vendors.recommendations.link')}</button></div></div>}
         {vendor.description && <div><h3 className="mb-2 text-sm font-bold text-foreground">{t('ui.vendors.details.description')}</h3><p className="rounded-xl bg-muted p-3 text-sm leading-6 text-muted-foreground">{vendor.description}</p></div>}
       </div>
-      <div className="border-t border-border px-6 py-5"><div className="flex flex-wrap gap-2">{vendor.status === 'pending' && <><DrawerAction label={t('ui.vendors.actions.approveVendor')} icon={Check} onClick={() => onAction('approve')} tone="primary" disabled={Boolean(actionBusy)} /><DrawerAction label={t('ui.actions.requestInfo')} icon={Clipboard} onClick={() => onAction('request_information')} tone="primary" disabled={Boolean(actionBusy)} /><DrawerAction label={t('ui.actions.reject')} icon={XCircle} onClick={() => onAction('reject')} tone="danger" disabled={Boolean(actionBusy)} /></>}{vendor.status === 'approved' && !vendor.approval_email_sent_at && <DrawerAction label={t('ui.vendors.approvalEmail.send')} icon={Mail} onClick={onOpenApprovalEmail} tone="primary" disabled={Boolean(actionBusy)} />}{vendor.status === 'approved' && <DrawerAction label={t('ui.vendors.actions.suspendVendor')} icon={Archive} onClick={() => onAction('suspend')} tone="danger" disabled={Boolean(actionBusy)} />}{vendor.status === 'suspended' && <DrawerAction label={t('ui.vendors.actions.reactivateVendor')} icon={RefreshCw} onClick={() => onAction('unsuspend')} tone="primary" disabled={Boolean(actionBusy)} />}<button type="button" onClick={onClose} className="ml-auto rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-muted">{t('ui.actions.close')}</button></div></div>
+      <div className="sticky bottom-0 z-10 border-t border-border bg-card px-6 py-5"><div className="flex flex-wrap gap-2">{vendor.status === 'pending' && <><DrawerAction label={t('ui.vendors.actions.approveVendor')} icon={Check} onClick={() => onAction('approve')} tone="primary" disabled={Boolean(actionBusy)} /><DrawerAction label={t('ui.actions.requestInfo')} icon={Clipboard} onClick={() => onAction('request_information')} tone="primary" disabled={Boolean(actionBusy)} /><DrawerAction label={t('ui.actions.reject')} icon={XCircle} onClick={() => onAction('reject')} tone="danger" disabled={Boolean(actionBusy)} /></>}{vendor.status === 'approved' && !vendor.approval_email_sent_at && <DrawerAction label={t('ui.vendors.approvalEmail.send')} icon={Mail} onClick={onOpenApprovalEmail} tone="primary" disabled={Boolean(actionBusy)} />}{vendor.status === 'approved' && <DrawerAction label={t('ui.vendors.actions.suspendVendor')} icon={Archive} onClick={() => onAction('suspend')} tone="danger" disabled={Boolean(actionBusy)} />}{vendor.status === 'suspended' && <DrawerAction label={t('ui.vendors.actions.reactivateVendor')} icon={RefreshCw} onClick={() => onAction('unsuspend')} tone="primary" disabled={Boolean(actionBusy)} />}<button type="button" onClick={onClose} className="ml-auto rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-muted">{t('ui.actions.close')}</button></div></div>
     </aside>
   </div>;
 }

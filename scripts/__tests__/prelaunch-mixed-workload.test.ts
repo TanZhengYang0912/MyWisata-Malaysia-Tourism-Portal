@@ -18,6 +18,10 @@ import { fixtureSvg } from '@/lib/kyc/runtime/ocr-synthetic-fixtures.cjs';
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 type Row = Record<string, unknown>;
 
+function ilikeMatch(value: unknown, pattern: string) {
+  return String(value ?? '').toLowerCase().includes(pattern.replace(/%/g, '').toLowerCase());
+}
+
 function syntheticCatalogue() {
   const outlet = { id: 'synthetic-outlet', vendor_id: 'synthetic-vendor', name: 'Penang outlet',
     city: 'George Town', state: 'Penang', status: 'active', review_status: 'approved',
@@ -26,7 +30,8 @@ function syntheticCatalogue() {
     outlet_id: outlet.id, name: `Penang synthetic activity ${index}`, base_price: 12, requires_booking: true,
     status: 'active', review_status: 'approved', created_at: '2026-01-01', categories: { name: 'Activity', slug: 'activity' },
     outlet_offers: [], product_variants: [], price_rules: [] }));
-  const rows: Record<string, Row[]> = { products, outlets: [outlet],
+  const rows: Record<string, Row[]> = { products, outlets: [outlet], outlet_offers: [],
+    categories: [{ id: 'synthetic-category', name: 'Activity', slug: 'activity' }],
     vendors: [{ id: 'synthetic-vendor', name: 'Penang synthetic vendor', kind: 'shop', status: 'approved', outlets: [outlet] }],
     product_review_metrics: products.map(product => ({ product_id: product.id, rating: 4, reviews: 1 })) };
   let queries = 0;
@@ -41,6 +46,14 @@ function syntheticCatalogue() {
         select: (_fields: string) => builder,
         eq: (key: string, value: unknown) => { result = result.filter(row => row[key] === value); return builder; },
         in: (key: string, values: unknown[]) => { result = result.filter(row => values.includes(row[key])); return builder; },
+        // Global search narrows candidates with ilike filters before loading them.
+        ilike: (key: string, pattern: string) => { result = result.filter(row => ilikeMatch(row[key], pattern)); return builder; },
+        or: (filters: string) => {
+          const conditions = filters.split(',').map(part => part.split('.ilike.'));
+          result = result.filter(row => conditions.some(([key, pattern]) => ilikeMatch(row[key], pattern)));
+          return builder;
+        },
+        limit: (count: number) => { rangeEnd = Math.min(rangeEnd, rangeStart + count - 1); return builder; },
         order: (key: string, options?: { ascending?: boolean }) => {
           const direction = options?.ascending === false ? -1 : 1;
           result = [...result].sort((left, right) => String(left[key]).localeCompare(String(right[key])) * direction);

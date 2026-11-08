@@ -401,7 +401,7 @@ describe("ExploreClient URL-backed advanced filters", () => {
     expect(openNow.textContent).toContain("Open now");
     expect(findElements(container, (element) => element.getAttribute("role") === "checkbox" && element.getAttribute("aria-label") === "Open now")).toHaveLength(0);
     await click(openNow);
-    expect(findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-pressed") === "true").textContent).toContain("Open now");
+    expect(findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-label") === "Open now" && element.getAttribute("aria-pressed") === "true").textContent).toContain("Open now");
 
     const typeGroups = findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("experience-type-toggle-") ?? false);
     expect(typeGroups).toHaveLength(4);

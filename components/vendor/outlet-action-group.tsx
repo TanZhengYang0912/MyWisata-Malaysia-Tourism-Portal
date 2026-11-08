@@ -29,7 +29,7 @@ export default function OutletActionGroup({ actions, ariaLabel, layout = 'card' 
   if (!actions.length) return null;
 
   return (
-    <div role="group" aria-label={ariaLabel} className={layout === 'detail' ? 'grid grid-cols-1 gap-2 sm:grid-cols-2' : 'flex flex-wrap items-center justify-end gap-1'}>
+    <div role="group" aria-label={ariaLabel} className={layout === 'detail' ? 'grid grid-cols-1 gap-2 sm:grid-cols-2' : 'grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end sm:gap-1'}>
       {actions.map(({ id, label, onSelect, variant, icon: Icon, ariaLabel: actionAriaLabel }) => (
         <Button
           key={id}
@@ -38,7 +38,7 @@ export default function OutletActionGroup({ actions, ariaLabel, layout = 'card' 
           onClick={onSelect}
           aria-label={actionAriaLabel}
           data-outlet-action={id}
-          className={`${layout === 'detail' ? 'min-h-10 w-full rounded-xl px-4 py-2.5 text-sm' : 'min-h-9 rounded-lg px-2.5 py-2 text-xs'} ${layout === 'detail' && variant === 'destructive' ? 'sm:col-span-2' : ''} font-semibold ${variantClasses[variant]}`}
+          className={`${layout === 'detail' ? 'min-h-11 w-full rounded-xl px-4 py-2.5 text-sm' : 'min-h-11 w-full rounded-lg px-3 py-2.5 text-sm sm:min-h-10 sm:w-auto sm:px-2.5 sm:py-2 sm:text-xs'} ${layout === 'detail' && variant === 'destructive' ? 'sm:col-span-2' : ''} font-semibold ${variantClasses[variant]}`}
         >
           {Icon && <Icon size={layout === 'detail' ? 15 : 16} aria-hidden="true" />}
           {label}

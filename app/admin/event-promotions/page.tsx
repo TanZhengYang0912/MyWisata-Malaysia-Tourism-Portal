@@ -121,7 +121,6 @@ export default function AdminEventPromotionsPage() {
       <AdminPageHeader
         eyebrow={<><Megaphone size={18} /> {t("eventPromotions.eyebrow")}</>}
         title={t("eventPromotions.title")}
-        description={t("eventPromotions.description")}
       />
       {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
 

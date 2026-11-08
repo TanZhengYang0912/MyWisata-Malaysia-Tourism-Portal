@@ -248,7 +248,7 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
   const canManageLocalization = currentUser?.role === "super_admin";
   const reasonAction = action === "reject" || action === "request_changes";
   const reviewDecision = detail.availableActions.length > 0 ? (
-    <section className="rounded-2xl border border-border bg-card p-5 xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
+    <section className="rounded-2xl border border-border bg-card p-5 xl:sticky xl:top-6 xl:max-h-[calc(100dvh-3rem)] xl:overflow-y-auto xl:overscroll-contain">
       <h2 className="font-bold text-foreground">{t("recommendation.detail.reviewDecision")}</h2>
       <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("recommendation.detail.reviewDecisionHint")}</p>
       {currentUser?.role === "super_admin" && (
@@ -354,8 +354,8 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="font-bold text-foreground">{t("recommendation.detail.fields.googleLocation")}</h2>
-                <p className="mt-2 text-sm font-semibold text-foreground">{detail.location?.name ?? t("recommendation.detail.notProvided")}</p>
-                <p className="mt-1 text-sm leading-5 text-muted-foreground">{detail.location?.address ?? t("recommendation.detail.noAddressRecorded")}</p>
+                <p className="mt-2 break-words text-sm font-semibold text-foreground">{detail.location?.name ?? t("recommendation.detail.notProvided")}</p>
+                <p className="mt-1 break-words text-sm leading-5 text-muted-foreground">{detail.location?.address ?? t("recommendation.detail.noAddressRecorded")}</p>
               </div>
               {mapUrl && (
                 <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
@@ -400,17 +400,17 @@ export function RecommendationDetailView({ recommendationId }: { recommendationI
         <aside className="space-y-6">
           <section className="rounded-2xl border border-border bg-card p-5">
             <h2 className="font-bold text-foreground">{t("recommendation.detail.contributor")}</h2>
-            <div className="mt-4 flex items-center gap-2">
-              <p className="text-sm font-semibold text-foreground">{detail.author.name}</p>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <p className="min-w-0 break-words text-sm font-semibold text-foreground">{detail.author.name}</p>
               <VerifiedContributorBadge verified={detail.author.isVerifiedContributor} />
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{detail.author.email ?? t("recommendation.detail.emailUnavailable")}</p>
+            <p className="mt-1 break-all text-xs text-muted-foreground">{detail.author.email ?? t("recommendation.detail.emailUnavailable")}</p>
           </section>
 
           <section id={EVIDENCE_TARGET_IDS.contact} className="rounded-2xl border border-border bg-card p-5">
             <h2 className="font-bold text-foreground">{t("recommendation.detail.contactMethods")}</h2>
             <div className="mt-4 space-y-3 text-sm">
-              <p className="flex items-center gap-2"><Phone size={14} className="text-muted-foreground" /> {detail.contact.phone ?? t("recommendation.detail.notProvided")}</p>
+              <p className="flex items-start gap-2 break-all"><Phone size={14} className="mt-0.5 shrink-0 text-muted-foreground" /> {detail.contact.phone ?? t("recommendation.detail.notProvided")}</p>
               <p className="flex items-center gap-2 break-all"><Mail size={14} className="shrink-0 text-muted-foreground" /> {detail.contact.email ?? t("recommendation.detail.notProvided")}</p>
               <p className="flex items-start gap-2 break-all"><ExternalLink size={14} className="mt-0.5 shrink-0 text-muted-foreground" /> {detail.contact.website ?? t("recommendation.detail.notProvided")}</p>
             </div>

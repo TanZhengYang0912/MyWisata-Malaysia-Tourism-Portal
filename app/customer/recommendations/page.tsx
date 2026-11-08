@@ -258,7 +258,6 @@ function RecommendationsContent() {
       <CustomerPageTitle
         eyebrow={tCustomer("ui.recommendations.community")}
         title={tCustomer("ui.recommendations.title")}
-        description={tCustomer("ui.recommendations.description")}
         icon={<Star size={14} className="text-accent" />}
         actions={<Button onClick={() => { if (gate(CUSTOMER_CAPABILITY.RECOMMENDATION_SUBMIT, "/customer/recommendations")) {
             if (editing) { setEditing(null); setRetainedImages([]); setImages([]); setLocation(null); setForm({ name: "", description: "", whyRecommend: "", category: "", phone: "", email: "", website: "", imageAttested: false }); }

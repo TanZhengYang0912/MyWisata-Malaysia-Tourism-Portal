@@ -3,7 +3,7 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bell, BellOff, Check, CheckCheck, FileText, Flag, Languages, MessageCircle, Mic, MicOff, Paperclip, Receipt, Reply, Send, Tag, X } from "lucide-react";
+import { ArrowLeft, Bell, BellOff, Check, CheckCheck, FileText, Flag, Languages, MessageCircle, Mic, MicOff, Paperclip, Plus, Receipt, Reply, Send, Tag, X } from "lucide-react";
 import { formatChatTimestamp, truncateChatMessage } from "@/lib/customer/chat-view";
 import type { ChatMessage } from "@/backend/core/types";
 import type { PendingChatContext } from "@/components/providers/support-chat";
@@ -30,6 +30,13 @@ const SPEECH_ERROR_TEXT: Record<SpeechInputErrorKind, string> = {
   network: "Voice input needs a connection",
   unknown: "Voice input isn't available right now",
 };
+
+const MAX_CHAT_TEXTAREA_HEIGHT = 120;
+
+export function fitChatTextarea(textarea: Pick<HTMLTextAreaElement, "scrollHeight" | "style">) {
+  textarea.style.height = "auto";
+  textarea.style.height = String(Math.min(textarea.scrollHeight, MAX_CHAT_TEXTAREA_HEIGHT)) + "px";
+}
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
 const REPORT_REASONS = [
@@ -103,6 +110,8 @@ export function ChatThreadPanel({
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement>(null);
+  const composerActionsRef = useRef<HTMLDetailsElement>(null);
 
   // Feature 3: per-message translation cache (client-side, this session
   // only — the server already caches by messageId+targetLang, so a remount
@@ -124,6 +133,11 @@ export function ChatThreadPanel({
   // the composer directly (the idiomatic non-effect pattern — see the
   // hook's own doc comment), never auto-sends.
   const speech = useSpeechInput({ lang: resolveRecognitionLang(targetLang), onTranscriptChange: setText });
+
+  useEffect(() => {
+    const textarea = messageInputRef.current;
+    if (textarea) fitChatTextarea(textarea);
+  }, [text]);
 
   async function toggleTranslate(message: ChatMessage) {
     if (showTranslated[message.id]) {
@@ -260,6 +274,10 @@ export function ChatThreadPanel({
     }
   }
 
+  function closeComposerActions() {
+    if (composerActionsRef.current) composerActionsRef.current.open = false;
+  }
+
   function handleFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -281,6 +299,10 @@ export function ChatThreadPanel({
   }
 
   const counterpartInitial = counterpart.name.trim().slice(0, 1).toUpperCase() || "?";
+  const hasComposerContent = Boolean(text.trim() || pendingFile);
+  const showSpeechAction = speech.isSupported && (speech.isListening || !hasComposerContent);
+  const speechActionVisibility = showSpeechAction ? "flex" : "hidden md:flex";
+  const sendActionVisibility = showSpeechAction ? "hidden md:flex" : "flex";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
@@ -525,7 +547,7 @@ export function ChatThreadPanel({
       </div>
 
       {!readOnly && (
-        <div className="border-t border-border bg-background px-5 py-4 sm:px-7">
+        <div className="border-t border-border bg-background px-4 py-3 sm:px-7 sm:py-4">
           {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
           {speech.error && <p className="mb-2 text-xs text-destructive">{SPEECH_ERROR_TEXT[speech.error]}</p>}
           {pendingContext && (
@@ -577,7 +599,7 @@ export function ChatThreadPanel({
               </button>
             </div>
           )}
-          {aiReply && <div className="mx-auto mb-3 max-w-2xl"><AiWritingAssistant
+          {aiReply && <div className="mx-auto mb-2 max-w-2xl md:mb-3"><AiWritingAssistant
             compact
             label={t("strictMigration.chat.aiReplyAssistant")}
             buttonLabel={t("strictMigration.chat.suggestReply")}
@@ -588,7 +610,7 @@ export function ChatThreadPanel({
             onApply={() => { if (aiReply.draft) { setText(aiReply.draft); aiReply.onDiscard(); } }}
             onDiscard={aiReply.onDiscard}
           /></div>}
-          <form onSubmit={handleSubmit} className="mx-auto flex max-w-2xl items-end gap-2">
+          <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-2xl min-w-0 items-end gap-2">
             <label className="sr-only" htmlFor="chat-message">
               {t("strictMigration.chat.messagePerson", { name: counterpart.name })}
             </label>
@@ -599,34 +621,90 @@ export function ChatThreadPanel({
               onChange={handleFileSelected}
               className="hidden"
             />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-              aria-label={t("strictMigration.chat.attachFile")}
+            <details
+              ref={composerActionsRef}
+              className="relative shrink-0 md:hidden"
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  event.currentTarget.open = false;
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape" && event.currentTarget.open) {
+                  event.preventDefault();
+                  event.currentTarget.open = false;
+                  event.currentTarget.querySelector("summary")?.focus();
+                }
+              }}
             >
-              <Paperclip size={16} />
-            </button>
-            {onAttachOrder && (
+              <summary
+                aria-label={t("ui.chat.moreActions")}
+                title={t("ui.chat.moreActions")}
+                className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-2xl border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              >
+                <Plus size={16} />
+              </summary>
+              <div className="absolute bottom-full left-0 z-20 mb-2 min-w-48 rounded-2xl border border-border bg-card p-2 shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeComposerActions();
+                    fileInputRef.current?.click();
+                  }}
+                  disabled={uploading}
+                  className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label={t("strictMigration.chat.attachFile")}
+                >
+                  <Paperclip size={16} />
+                  {t("strictMigration.chat.attachFile")}
+                </button>
+                {onAttachOrder && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closeComposerActions();
+                      onAttachOrder();
+                    }}
+                    className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm text-foreground transition-colors hover:bg-secondary"
+                    aria-label={t("ui.chat.attachOrder")}
+                  >
+                    <Receipt size={16} />
+                    {t("ui.chat.attachOrder")}
+                  </button>
+                )}
+              </div>
+            </details>
+            <div className="hidden shrink-0 items-center gap-2 md:flex">
               <button
                 type="button"
-                onClick={onAttachOrder}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                aria-label={t("ui.chat.attachOrder")}
-                title={t("ui.chat.attachOrder")}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label={t("strictMigration.chat.attachFile")}
               >
-                <Receipt size={16} />
+                <Paperclip size={16} />
               </button>
-            )}
+              {onAttachOrder && (
+                <button
+                  type="button"
+                  onClick={onAttachOrder}
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  aria-label={t("ui.chat.attachOrder")}
+                  title={t("ui.chat.attachOrder")}
+                >
+                  <Receipt size={16} />
+                </button>
+              )}
+            </div>
             <textarea
+              ref={messageInputRef}
               id="chat-message"
               value={text}
               onChange={(event) => setText(event.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={pendingFile ? t("strictMigration.chat.addCaption") : t("strictMigration.chat.messagePerson", { name: counterpart.name })}
               rows={1}
-              className="min-h-11 min-w-0 flex-1 resize-none rounded-2xl border border-border bg-input-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+              className="min-h-11 max-h-30 min-w-0 flex-1 resize-none overflow-y-auto rounded-2xl border border-border bg-input-background px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
             />
             {speech.isSupported && (
               <button
@@ -635,25 +713,25 @@ export function ChatThreadPanel({
                 disabled={sending || uploading}
                 aria-label={speech.isListening ? "Stop listening" : "Speak your message"}
                 title={speech.isListening ? "Stop listening" : "Speak your message"}
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                className={speechActionVisibility + " h-11 w-11 shrink-0 items-center justify-center rounded-2xl border transition-colors disabled:cursor-not-allowed disabled:opacity-40 " + (
                   speech.isListening
                     ? "border-destructive bg-destructive/10 text-destructive animate-pulse"
                     : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
-                }`}
+                )}
               >
                 {speech.isListening ? <MicOff size={16} /> : <Mic size={16} />}
               </button>
             )}
             <button
               type="submit"
-              disabled={sending || uploading || (!text.trim() && !pendingFile)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={sending || uploading || !hasComposerContent}
+              className={sendActionVisibility + " h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"}
               aria-label={t("ui.actions.send")}
             >
               <Send size={16} />
             </button>
           </form>
-          <p className="mx-auto mt-2 max-w-2xl text-center text-[11px] text-muted-foreground">
+          <p className="mx-auto mt-2 w-full max-w-2xl px-1 text-left text-xs leading-4 text-muted-foreground md:px-0 md:text-center">
             {t("strictMigration.chat.safetyNotice")}
           </p>
         </div>

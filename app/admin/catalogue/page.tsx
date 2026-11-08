@@ -13,6 +13,7 @@ import { AdminBatchActionBar } from '@/components/admin/batch-action-bar';
 import { AdminSegmentedFilter } from '@/components/admin/segmented-filter';
 import { AdminFilterBar } from '@/components/admin/filter-bar';
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminMobileRecordCard } from '@/components/admin/admin-mobile-record-card';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
 import { useVisibleReviewRefresh } from '@/hooks/use-visible-review-refresh';
@@ -264,8 +265,65 @@ export default function CatalogueReviewPage() {
         {error && <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
         <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="border-b border-border bg-muted/50 px-5 py-3"><AdminBatchActionBar selectedCount={selectedVisibleCount} onClear={() => setSelectedIds(new Set())} onApply={(action) => void applyBatch(action as 'approve' | 'change_requested' | 'reject')} actions={[{ value: 'approve', label: t('batchActions.approve') }, { value: 'change_requested', label: t('batchActions.request_changes') }, { value: 'reject', label: t('batchActions.reject') }]} busy={Boolean(busy?.startsWith('batch:'))} /></div>
-          <div className="hidden grid-cols-[36px_110px_minmax(220px,1.5fr)_minmax(150px,1fr)_150px_90px] gap-4 border-b border-border bg-muted/50 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground md:grid"><span><input type="checkbox" aria-label={t('catalogue.accessibility.selectAll')} checked={visible.length > 0 && selectedVisibleCount === visible.length} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); visible.forEach((item) => { const key = `${item.entityType}:${item.id}`; if (event.target.checked) next.add(key); else next.delete(key); }); return next; })} /></span><span>{t('catalogue.columns.type')}</span><span>{t('catalogue.columns.submission')}</span><span>{t('catalogue.columns.vendorLocation')}</span><span>{t('catalogue.columns.submitted')}</span><span className="text-right">{t('catalogue.columns.action')}</span></div>
-          {loading ? <div className="space-y-3 p-5">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-16 animate-pulse rounded-xl bg-muted" />)}</div> : visible.length === 0 ? <div className="px-6 py-20 text-center text-sm text-muted-foreground"><ClipboardCheck className="mx-auto mb-3 opacity-30" size={36} /><p>{t('catalogue.empty')}</p></div> : <div className="divide-y divide-border">{visible.map((item) => { const key = `${item.entityType}:${item.id}`; return <article key={key} className="grid gap-3 px-4 py-4 md:grid-cols-[36px_110px_minmax(220px,1.5fr)_minmax(150px,1fr)_150px_90px] md:items-center md:gap-4 md:px-5"><div><input type="checkbox" aria-label={t('catalogue.accessibility.selectItem', { item: item.entityLabel })} checked={selectedIds.has(key)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); if (event.target.checked) next.add(key); else next.delete(key); return next; })} /></div><div><StatusBadge status={t(labelKeys[item.entityType])} /></div><div className="min-w-0"><p className="truncate font-semibold text-foreground">{item.entityLabel}</p><p className="mt-1 truncate text-xs text-muted-foreground">{item.display_id || item.id} · {item.context || t('catalogue.fallback.noLocation')}</p></div><div className="min-w-0"><p className="truncate text-sm font-medium text-foreground">{item.vendors?.name || t('catalogue.fallback.unknownVendor')}</p><p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{t('catalogue.status.pendingReview')}</p></div><div className="text-sm text-muted-foreground">{new Date(item.created_at).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })}</div><div className="flex justify-end gap-1"><button type="button" title={t('catalogue.actions.openReview')} onClick={() => setActive(item)} className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-primary"><Eye size={16} /></button><button type="button" title={t('batchActions.approve')} disabled={!!busy} onClick={() => void review(item, 'approve')} className="rounded-lg p-2 text-primary hover:bg-secondary disabled:opacity-40"><Check size={16} /></button></div></article>; })}</div>}
+          <div className="hidden lg:block">
+            <div className="grid grid-cols-[36px_110px_minmax(220px,1.5fr)_minmax(150px,1fr)_150px_90px] gap-4 border-b border-border bg-muted/50 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              <span><input type="checkbox" aria-label={t('catalogue.accessibility.selectAll')} checked={visible.length > 0 && selectedVisibleCount === visible.length} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); visible.forEach((item) => { const key = `${item.entityType}:${item.id}`; if (event.target.checked) next.add(key); else next.delete(key); }); return next; })} /></span>
+              <span>{t('catalogue.columns.type')}</span>
+              <span>{t('catalogue.columns.submission')}</span>
+              <span>{t('catalogue.columns.vendorLocation')}</span>
+              <span>{t('catalogue.columns.submitted')}</span>
+              <span className="text-right">{t('catalogue.columns.action')}</span>
+            </div>
+            {loading ? <div className="space-y-3 p-5">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-16 animate-pulse rounded-xl bg-muted" />)}</div> : visible.length === 0 ? <div className="px-6 py-20 text-center text-sm text-muted-foreground"><ClipboardCheck className="mx-auto mb-3 opacity-30" size={36} /><p>{t('catalogue.empty')}</p></div> : <div className="divide-y divide-border">{visible.map((item) => { const key = `${item.entityType}:${item.id}`; return <article key={key} className="grid gap-3 px-4 py-4 lg:grid-cols-[36px_110px_minmax(220px,1.5fr)_minmax(150px,1fr)_150px_90px] lg:items-center lg:gap-4 lg:px-5"><div><input type="checkbox" aria-label={t('catalogue.accessibility.selectItem', { item: item.entityLabel })} checked={selectedIds.has(key)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); if (event.target.checked) next.add(key); else next.delete(key); return next; })} /></div><div><StatusBadge status={t(labelKeys[item.entityType])} /></div><div className="min-w-0"><p className="truncate font-semibold text-foreground">{item.entityLabel}</p><p className="mt-1 truncate text-xs text-muted-foreground">{item.display_id || item.id} · {item.context || t('catalogue.fallback.noLocation')}</p></div><div className="min-w-0"><p className="truncate text-sm font-medium text-foreground">{item.vendors?.name || t('catalogue.fallback.unknownVendor')}</p><p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{t('catalogue.status.pendingReview')}</p></div><div className="text-sm text-muted-foreground">{new Date(item.created_at).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })}</div><div className="flex justify-end gap-1"><button type="button" title={t('catalogue.actions.openReview')} onClick={() => setActive(item)} className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-primary"><Eye size={16} /></button><button type="button" title={t('batchActions.approve')} disabled={!!busy} onClick={() => void review(item, 'approve')} className="rounded-lg p-2 text-primary hover:bg-secondary disabled:opacity-40"><Check size={16} /></button></div></article>; })}</div>}
+          </div>
+          <div className="space-y-3 p-3 lg:hidden">
+            <label className="flex min-h-11 items-center gap-3 rounded-xl border border-border bg-background px-3 text-sm font-medium text-foreground">
+              <input type="checkbox" aria-label={t('catalogue.accessibility.selectAll')} checked={visible.length > 0 && selectedVisibleCount === visible.length} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); visible.forEach((item) => { const key = `${item.entityType}:${item.id}`; if (event.target.checked) next.add(key); else next.delete(key); }); return next; })} />
+              {t('catalogue.accessibility.selectAll')}
+            </label>
+            {loading ? <div className="space-y-3">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-40 animate-pulse rounded-xl bg-muted" />)}</div> : visible.length === 0 ? <div className="px-3 py-10 text-center text-sm text-muted-foreground"><ClipboardCheck className="mx-auto mb-3 opacity-30" size={36} /><p>{t('catalogue.empty')}</p></div> : visible.map((item) => {
+              const key = `${item.entityType}:${item.id}`;
+              return (
+                <AdminMobileRecordCard
+                  key={key}
+                  header={
+                    <div className="flex min-w-0 flex-1 items-start gap-3">
+                      <label className="flex h-11 w-11 shrink-0 items-center justify-center">
+                        <input type="checkbox" aria-label={t('catalogue.accessibility.selectItem', { item: item.entityLabel })} checked={selectedIds.has(key)} onChange={(event) => setSelectedIds((previous) => { const next = new Set(previous); if (event.target.checked) next.add(key); else next.delete(key); return next; })} />
+                      </label>
+                      <div className="min-w-0 flex-1">
+                        <StatusBadge status={t(labelKeys[item.entityType])} />
+                        <p className="mt-2 break-words font-semibold text-foreground">{item.entityLabel}</p>
+                        <p className="mt-1 break-all text-xs text-muted-foreground">{item.display_id || item.id}</p>
+                        <p className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-400">{t('catalogue.status.pendingReview')}</p>
+                      </div>
+                    </div>
+                  }
+                  footer={
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <button type="button" onClick={() => setActive(item)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 text-sm font-semibold text-foreground hover:bg-secondary">
+                        <Eye size={16} aria-hidden="true" /> {t('catalogue.actions.openReview')}
+                      </button>
+                      <button type="button" disabled={!!busy} onClick={() => void review(item, 'approve')} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+                        <Check size={16} aria-hidden="true" /> {t('batchActions.approve')}
+                      </button>
+                    </div>
+                  }
+                >
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                    <div className="col-span-2 min-w-0">
+                      <dt className="text-xs font-medium text-muted-foreground">{t('catalogue.columns.vendorLocation')}</dt>
+                      <dd className="mt-1 break-words font-medium text-foreground">{item.vendors?.name || t('catalogue.fallback.unknownVendor')} · {item.context || t('catalogue.fallback.noLocation')}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-muted-foreground">{t('catalogue.columns.submitted')}</dt>
+                      <dd className="mt-1 text-foreground">{new Date(item.created_at).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })}</dd>
+                    </div>
+                  </dl>
+                </AdminMobileRecordCard>
+              );
+            })}
+          </div>
         </section>
         <Pagination currentPage={page} totalPages={totalPages} totalItems={total} pageSize={pageSize} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-1 py-2" />
       {active && (

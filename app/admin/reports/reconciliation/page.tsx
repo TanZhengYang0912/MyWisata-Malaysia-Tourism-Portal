@@ -10,6 +10,7 @@ import { formatMYRFromSen } from "@/lib/i18n/format";
 import { csvRow } from "@/lib/admin/csv";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
+import { AdminMobileRecordCard } from "@/components/admin/admin-mobile-record-card";
 import { malaysiaDateTimeLocalToIso } from '@/lib/datetime/malaysia';
 import { filterOrderReconciliationRows, summarizeOrderReconciliationRows, formatReconciliationSen, type ReconciliationFilters } from '@/lib/admin/reconciliation-filtering';
 import { DEFAULT_EVENT_OPERATIONS_FILTERS, EVENT_CASE_KINDS, EVENT_CASE_HANDLING, EVENT_CASE_OWNERS, EVENT_CASE_DEADLINES, type EventOperationsFilters } from '@/lib/admin/event-operations-filters';
@@ -298,7 +299,13 @@ export default function ReconciliationPage() {
             {filteredReport.rows.length === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">{t(data?.rows.length ? 'reconciliation.filters.noMatches' : 'reconciliation.noOrders')}</p>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="space-y-3 lg:hidden">
+                {pagedRows.items.map((r) => <AdminMobileRecordCard key={r.orderId} header={<div className="min-w-0"><p className="break-words font-mono text-sm font-semibold">{r.orderDisplayId ?? t('reconciliation.filters.orderWithoutNumber')}</p><p className="mt-1 text-sm text-muted-foreground">{r.paidAt ? new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "Asia/Kuala_Lumpur" }).format(new Date(r.paidAt)) : "—"} · {statusLabel(r.status)}</p></div>} className={r.platformNetNegative ? "border-amber-300 bg-amber-50/60 dark:border-amber-500/30 dark:bg-amber-500/10" : ""}>
+                  <div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">{t("reconciliation.columns.gross")}</p><p className="font-mono">{formatReconciliationSen(r.grossSen)}</p></div><div><p className="text-xs text-muted-foreground">{t("reconciliation.columns.fee")}</p><p className="font-mono text-muted-foreground">{formatReconciliationSen(r.platformFeeSen)}</p></div><div><p className="text-xs text-muted-foreground">{t("reconciliation.columns.vendorNet")}</p><p className="font-mono">{formatReconciliationSen(r.vendorNetSen)}</p></div><div><p className="text-xs text-muted-foreground">{t("reconciliation.columns.affiliate")}</p><p className="font-mono text-muted-foreground">{r.affiliatePayoutSen ? `−${formatReconciliationSen(r.affiliatePayoutSen)}` : "—"}</p></div><div><p className="text-xs text-muted-foreground">{t("reconciliation.columns.recommendation")}</p><p className="font-mono text-muted-foreground">{r.recommendationPayoutSen ? `−${formatReconciliationSen(r.recommendationPayoutSen)}` : "—"}</p></div><div><p className="text-xs text-muted-foreground">{t("reconciliation.columns.platformNet")}</p><p className={`font-mono font-bold ${r.platformNetNegative ? "text-destructive" : "text-foreground"}`}>{formatReconciliationSen(r.platformNetSen)}</p></div></div>
+                </AdminMobileRecordCard>)}
+              </div>
+            )}
+            {filteredReport.rows.length > 0 && <div className="hidden overflow-x-auto lg:block">
                 <table className="w-full min-w-[820px] text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -329,8 +336,7 @@ export default function ReconciliationPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
-            )}
+              </div>}
             <Pagination currentPage={pagedRows.page} totalPages={pagedRows.totalPages} totalItems={filteredRows.length} pageSize={financialPageSize} onPageChange={setFinancialPage} disabled={loading} className="mt-4 border-t border-border pt-3" />
           </div>
           </>}

@@ -34,6 +34,13 @@ export type VendorNavigationSection = {
 
 const VENDOR_OWNER_SECTIONS: VendorNavigationSection[] = [
   {
+    labelKey: "communication",
+    items: [
+      { href: "/vendor/announcements", label: "Announcements", icon: Bell },
+      { href: "/vendor/inbox", label: "Inbox", icon: MessageCircle },
+    ],
+  },
+  {
     labelKey: "workspace",
     items: [
       { href: "/vendor/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -56,13 +63,6 @@ const VENDOR_OWNER_SECTIONS: VendorNavigationSection[] = [
     items: [{ href: "/vendor/wallet", label: "Wallet", icon: Wallet }],
   },
   {
-    labelKey: "communication",
-    items: [
-      { href: "/vendor/inbox", label: "Inbox", icon: MessageCircle },
-      { href: "/vendor/announcements", label: "Announcements", icon: Bell },
-    ],
-  },
-  {
     labelKey: "insights",
     items: [{ href: "/vendor/analytics", label: "Analytics", icon: ChartNoAxesCombined }],
   },
@@ -77,6 +77,13 @@ const VENDOR_OWNER_SECTIONS: VendorNavigationSection[] = [
 ];
 
 const OUTLET_MANAGER_SECTIONS: VendorNavigationSection[] = [
+  {
+    labelKey: "communication",
+    items: [
+      { href: "/vendor/announcements", label: "Announcements", icon: Bell },
+      { href: "/vendor/inbox", label: "Inbox", icon: MessageCircle },
+    ],
+  },
   {
     labelKey: "workspace",
     items: [
@@ -95,10 +102,6 @@ const OUTLET_MANAGER_SECTIONS: VendorNavigationSection[] = [
     ],
   },
   {
-    labelKey: "communication",
-    items: [{ href: "/vendor/inbox", label: "Inbox", icon: MessageCircle }],
-  },
-  {
     labelKey: "insights",
     items: [{ href: "/vendor/analytics", label: "Analytics", icon: ChartNoAxesCombined }],
   },
@@ -106,6 +109,10 @@ const OUTLET_MANAGER_SECTIONS: VendorNavigationSection[] = [
 
 // Event vendors: no outlets, catalogue, bookings or paid promotions.
 const EVENT_VENDOR_SECTIONS: VendorNavigationSection[] = [
+  {
+    labelKey: "communication",
+    items: [{ href: "/vendor/announcements", label: "Announcements", icon: Bell }],
+  },
   {
     labelKey: "workspace",
     items: [{ href: "/vendor/events", label: "Events", icon: PartyPopper }],
@@ -120,10 +127,6 @@ const EVENT_VENDOR_SECTIONS: VendorNavigationSection[] = [
   {
     labelKey: "finance",
     items: [{ href: "/vendor/wallet", label: "Wallet", icon: Wallet }],
-  },
-  {
-    labelKey: "communication",
-    items: [{ href: "/vendor/announcements", label: "Announcements", icon: Bell }],
   },
 ];
 

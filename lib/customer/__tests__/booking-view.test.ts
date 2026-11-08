@@ -11,6 +11,7 @@ describe('booking view copy and stats', () => {
       title: 'Booking calendar',
       historyAction: 'View booking history',
     });
+    expect(getBookingViewCopy('upcoming')).not.toHaveProperty('description');
     expect(getBookingViewStats([
       { slotStartsAt: '2026-07-20T12:00:00.000Z', status: 'confirmed' },
       { slotStartsAt: '2026-08-20T12:00:00.000Z', status: 'confirmed' },

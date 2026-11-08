@@ -132,7 +132,6 @@
   "notifications": {
     "title": "通知",
     "label": "通知",
-    "adminDescription": "发给你员工账号的新任务与更新。",
     "all": "全部",
     "unread": "未读",
     "markAllAsRead": "全部标为已读",

@@ -3,44 +3,24 @@
 // their own tickets with an unread admin reply; an admin gets the count of
 // ALL tickets with an unread customer reply (the queue-wide "there's stuff
 // to look at" signal, not just their own assigned tickets).
+//
+// The count is one aggregate RPC. There is deliberately no app-side fallback:
+// the old one loaded every open ticket and reply on each poll. If the RPC
+// fails, the badge keeps its last-known count (every caller treats a non-200
+// as "leave it").
 
 import { createClient } from '@/lib/supabase/server';
-import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
-import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
-import { getLatestReplyTimestamps, isUnread } from '@/lib/support/unread';
 
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  const { data: rpcCount, error: countError } = await supabase.rpc('get_support_unread_count');
-  if (!countError && typeof rpcCount === 'number') return apiOk({ count: rpcCount });
-
-  // Retain the existing compatibility path until the aggregate RPC migration
-  // has been applied in every environment.
-
-  const service = createServiceClient();
-  const isAdmin = await isSuperAdmin(supabase, user.id);
-
-  if (isAdmin) {
-    const { data: tickets } = await service
-      .from('support_tickets')
-      .select('id, admin_last_read_at')
-      .not('status', 'in', '(resolved,closed)');
-    const rows = tickets ?? [];
-    const latestCustomerReplies = await getLatestReplyTimestamps(service, rows.map((t) => t.id), 'customer');
-    const count = rows.filter((t) => isUnread(t.admin_last_read_at, latestCustomerReplies.get(t.id))).length;
-    return apiOk({ count });
+  const { data: count, error } = await supabase.rpc('get_support_unread_count');
+  if (error || typeof count !== 'number') {
+    console.error('[support/unread-count] get_support_unread_count failed', error?.message ?? 'non-numeric result');
+    return apiFail('UNREAD_COUNT_UNAVAILABLE', 'Unread count is unavailable right now', 503);
   }
-
-  const { data: tickets } = await service
-    .from('support_tickets')
-    .select('id, customer_last_read_at')
-    .eq('user_id', user.id);
-  const rows = tickets ?? [];
-  const latestAdminReplies = await getLatestReplyTimestamps(service, rows.map((t) => t.id), 'admin');
-  const count = rows.filter((t) => isUnread(t.customer_last_read_at, latestAdminReplies.get(t.id))).length;
   return apiOk({ count });
 }

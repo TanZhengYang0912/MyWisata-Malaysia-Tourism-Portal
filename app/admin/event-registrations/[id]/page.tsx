@@ -299,9 +299,9 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
             </Button>
           )}
           <Dialog open={stallEditOpen} onOpenChange={(open) => { if (!changingStall) setStallEditOpen(open); }}>
-            <DialogContent>
-              <DialogTitle>{t("eventRegistrations.changeStall")}</DialogTitle>
-              <p className="text-sm text-muted-foreground">{detail.stallNumber} → {stallNumber || detail.stallNumber}</p>
+            <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain">
+              <DialogTitle className="break-words">{t("eventRegistrations.changeStall")}</DialogTitle>
+              <p className="break-words text-sm text-muted-foreground">{detail.stallNumber} → {stallNumber || detail.stallNumber}</p>
               <label className="text-sm font-semibold">
                 {t("eventRegistrations.stallNumberLabel")}
                 <Input value={stallNumber} maxLength={40} onChange={(event) => setStallNumber(event.target.value)} />
@@ -326,10 +326,10 @@ export default function EventRegistrationDetailPage({ params }: { params: Promis
           )}
 
           <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-            <DialogContent className="sm:max-w-2xl">
+            <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain sm:max-w-2xl">
               <DialogTitle className="sr-only">{detail.vendorName}</DialogTitle>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={detail.stallPosterUrl} alt="" className="w-full rounded-lg object-contain" />
+              <img src={detail.stallPosterUrl} alt="" className="max-h-[calc(100dvh-8rem)] w-full rounded-lg object-contain" />
             </DialogContent>
           </Dialog>
         </>

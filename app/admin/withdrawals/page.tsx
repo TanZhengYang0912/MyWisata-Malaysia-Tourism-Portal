@@ -125,11 +125,14 @@ export default function AdminWithdrawalsPage() {
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_10px_rgba(1,0,102,0.06)]">
         <div className="border-b border-border px-5 py-4"><h2 className="font-bold text-foreground">{t("withdrawals.queue.title", { count: total })}</h2></div>
-        <div className="overflow-x-auto">
+        <div className="hidden overflow-x-auto lg:block">
           <div className="min-w-[940px]">
             <div className="grid grid-cols-[minmax(210px,1.35fr)_120px_145px_150px_120px_145px_32px] items-center gap-4 border-b border-border bg-muted/30 px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground"><span>{t("withdrawals.table.customer")}</span><span>{t("withdrawals.table.amount")}</span><span>{t("withdrawals.table.riskPriority")}</span><span>{t("withdrawals.table.approvalProgress")}</span><span>{t("withdrawals.table.ageSla")}</span><span>{t("withdrawals.table.status")}</span><span aria-hidden="true" /></div>
             {loading && items.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">{t("withdrawals.loading")}</div> : items.length === 0 ? <EmptyState title={t("withdrawals.empty.noRequests")} /> : <div className="divide-y divide-border">{items.map((item) => <WithdrawalReviewQueueRow key={item.id} item={item} locale={locale} t={(key, options) => t(key, options)} formatAmount={formatMYRFromSen} formatAge={formatAge} displayStatus={displayStatus} />)}</div>}
           </div>
+        </div>
+        <div className="space-y-3 p-3 lg:hidden">
+          {loading && items.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">{t("withdrawals.loading")}</div> : items.length === 0 ? <EmptyState title={t("withdrawals.empty.noRequests")} /> : items.map((item) => <WithdrawalReviewQueueRow key={item.id} item={item} locale={locale} t={(key, options) => t(key, options)} formatAmount={formatMYRFromSen} formatAge={formatAge} displayStatus={displayStatus} compact />)}
         </div>
         <Pagination currentPage={page} totalPages={totalPages} totalItems={total} pageSize={pageSize} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-5 py-3" />
       </section>

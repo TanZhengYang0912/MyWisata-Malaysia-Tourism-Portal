@@ -4,6 +4,7 @@ import { generateAiText } from '@/lib/ai/provider';
 
 describe('generateAiText', () => {
   beforeEach(() => {
+    delete process.env.LLM_API_KEY;
     delete process.env.QWEN_API_KEY;
     delete process.env.QWEN_MODEL;
     delete process.env.QWEN_FALLBACK_MODEL;
@@ -16,6 +17,7 @@ describe('generateAiText', () => {
   });
 
   afterEach(() => {
+    delete process.env.LLM_API_KEY;
     delete process.env.QWEN_API_KEY;
     delete process.env.QWEN_MODEL;
     delete process.env.QWEN_FALLBACK_MODEL;
@@ -30,8 +32,87 @@ describe('generateAiText', () => {
     await expect(generateAiText('system', 'user')).resolves.toEqual({ available: false, reason: 'not_configured' });
   });
 
+  it('uses Gemini when explicitly selected and parses candidate text', async () => {
+    process.env.LLM_API_KEY = 'test-token';
+    process.env.QWEN_API_KEY = 'qwen-token';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      candidates: [{ content: { parts: [{ text: 'Draft ' }, { text: 'copy' }] } }],
+    }), { status: 200 }));
+
+    await expect(generateAiText('system', 'user', { provider: 'gemini', temperature: 0.2, maxTokens: 175 })).resolves.toEqual({
+      available: true,
+      provider: 'gemini',
+      model: 'gemini-flash-lite-latest',
+      content: 'Draft copy',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': 'test-token' },
+        cache: 'no-store',
+      }),
+    );
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
+      systemInstruction: { parts: [{ text: 'system' }] },
+      contents: [{ role: 'user', parts: [{ text: 'user' }] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 175 },
+    });
+  });
+
+  it('does not fall back to Qwen when explicit Gemini credentials are missing', async () => {
+    process.env.QWEN_API_KEY = 'qwen-token';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      choices: [{ message: { content: 'Qwen draft' } }],
+    }), { status: 200 }));
+
+    await expect(generateAiText('system', 'user', { provider: 'gemini' })).resolves.toEqual({
+      available: false,
+      reason: 'not_configured',
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('reports Gemini rate limiting separately', async () => {
+    process.env.LLM_API_KEY = 'test-token';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('rate limited', { status: 429 }));
+
+    await expect(generateAiText('system', 'user', { provider: 'gemini' })).resolves.toEqual({
+      available: false,
+      reason: 'rate_limited',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns unavailable when Gemini provides no candidate text', async () => {
+    process.env.LLM_API_KEY = 'test-token';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      candidates: [{ content: { parts: [] } }],
+    }), { status: 200 }));
+
+    await expect(generateAiText('system', 'user', { provider: 'gemini' })).resolves.toEqual({
+      available: false,
+      reason: 'unavailable',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('reports a privacy block before the missing-provider state for sensitive input', async () => {
     await expect(generateAiText('system', 'Call me at 012-3456789')).resolves.toEqual({ available: false, reason: 'sensitive_input' });
+  });
+
+  it('blocks sensitive input before a configured Gemini request', async () => {
+    process.env.LLM_API_KEY = 'test-token';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      candidates: [{ content: { parts: [{ text: 'Draft copy' }] } }],
+    }), { status: 200 }));
+
+    await expect(generateAiText('system', 'Call me at 012-3456789', { provider: 'gemini' })).resolves.toEqual({
+      available: false,
+      reason: 'sensitive_input',
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('uses the ModelScope OpenAI-compatible endpoint when its key is configured', async () => {

@@ -20,6 +20,11 @@ describe("vendor reviews list and contract", () => {
     expect(listSource).toContain("source=vendor");
   });
 
+  it("keeps rating filters in one horizontally scrollable row on mobile", () => {
+    expect(listSource).toContain("flex w-full min-w-0 flex-nowrap gap-2 overflow-x-auto overscroll-x-contain hide-scrollbar py-1");
+    expect(listSource).toContain("min-h-10 shrink-0 whitespace-nowrap");
+  });
+
   it("integrates VendorReviewsList into the vendor page", () => {
     expect(pageSource).toContain("import { VendorReviewsList");
     expect(pageSource).toContain("<VendorReviewsList reviews={reviews} ratingBuckets={reviewRatingBuckets} totalReviews={reviewSummary.reviews} vendorId={vendor.id} />");

@@ -26,30 +26,11 @@ export async function POST(_request: Request, { params }: Props) {
     return apiFail('FORBIDDEN', 'Not a participant in this conversation', 403);
   }
 
+  // One INSERT ... SELECT (mark_chat_thread_read, service-role only) instead
+  // of loading every message ID and every existing read row first.
   const service = createServiceClient();
-  const { data: messages, error: messagesError } = await service
-    .from('chat_messages')
-    .select('id')
-    .eq('thread_id', threadId)
-    .neq('sender_id', user.id);
-  if (messagesError) return apiFail('DB_ERROR', messagesError.message, 500);
-  const messageIds = (messages ?? []).map((message) => message.id);
-  if (messageIds.length === 0) return apiOk({ threadId, readCount: 0 });
-
-  const { data: alreadyRead, error: readIdsError } = await service
-    .from('chat_message_reads')
-    .select('message_id')
-    .eq('user_id', user.id)
-    .in('message_id', messageIds);
-  if (readIdsError) return apiFail('DB_ERROR', readIdsError.message, 500);
-  const readIds = new Set((alreadyRead ?? []).map((row) => row.message_id));
-  const unreadIds = messageIds.filter((id) => !readIds.has(id));
-  if (unreadIds.length === 0) return apiOk({ threadId, readCount: 0 });
-
-  const { error: readError } = await service
-    .from('chat_message_reads')
-    .upsert(unreadIds.map((id) => ({ message_id: id, user_id: user.id })), { onConflict: 'message_id,user_id' });
+  const { data: readCount, error: readError } = await service.rpc('mark_chat_thread_read', { p_user_id: user.id, p_thread_id: threadId });
   if (readError) return apiFail('DB_ERROR', readError.message, 500);
 
-  return apiOk({ threadId, readCount: unreadIds.length });
+  return apiOk({ threadId, readCount: Number(readCount ?? 0) });
 }

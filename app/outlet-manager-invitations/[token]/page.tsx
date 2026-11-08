@@ -66,7 +66,7 @@ export default function OutletManagerInvitationPage() {
     setBusy(false);
     if (!response.ok) { setError(body.error?.message || t("outletInvitation.acceptError")); return; }
     setMessage(t("outletInvitation.accepted"));
-    router.push("/vendor/dashboard");
+    router.push("/vendor/announcements");
     router.refresh();
   }
 

@@ -5,6 +5,7 @@ import { RefreshCw, Search } from 'lucide-react';
 import { Pagination } from '@/components/shared/pagination';
 import { AdminFilterBar, adminFilterControlClassName } from '@/components/admin/filter-bar';
 import { AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminMobileRecordCard } from '@/components/admin/admin-mobile-record-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -197,7 +198,6 @@ export default function AdminOrdersPage() {
       <AdminPageHeader
         eyebrow={t('orderOperations.eyebrow')}
         title={t('orderOperations.title')}
-        description={t('orderOperations.description')}
         actions={<Button variant="outline" onClick={() => void loadOrders()} disabled={loading}><RefreshCw size={15} />{t('orderOperations.refresh')}</Button>}
       />
 
@@ -232,7 +232,22 @@ export default function AdminOrdersPage() {
         ) : orders.length === 0 ? (
           <p className="p-8 text-center text-sm text-muted-foreground">{t('orderOperations.empty')}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="space-y-3 p-3 lg:hidden">
+            {orders.map((order) => (
+              <AdminMobileRecordCard
+                key={order.id}
+                header={<div className="min-w-0"><p className="break-all font-mono text-sm font-semibold">{order.display_id ?? order.id}</p><p className="mt-1 text-sm text-muted-foreground">{t(`orderOperations.statuses.${STATUS_OPTIONS.includes(order.status as typeof STATUS_OPTIONS[number]) ? order.status : 'all'}`)}</p></div>}
+                footer={order.isGuest && order.canCorrectGuestContact && ['paid', 'completed'].includes(order.status) && order.customer.email ? <Button size="sm" variant="outline" onClick={() => void openGuestContactCorrection(order)}>{t('orderOperations.contactCorrection.action')}</Button> : undefined}
+              >
+                <div><p className="text-xs font-semibold text-muted-foreground">{t('orderOperations.customer')}</p><p className="mt-1 font-medium">{order.customer.name ?? t('orderOperations.unknownCustomer')}</p><p className="break-all text-sm text-muted-foreground">{order.customer.email ?? '—'}</p></div>
+                <div><p className="text-xs font-semibold text-muted-foreground">{t('orderOperations.items')}</p><ul className="mt-1 space-y-3">{order.items.map((item) => <li key={item.id}><p className="font-medium">{item.quantity} × {item.productName}</p>{item.eventListingId && item.pickupDate && ['pending', 'ready'].includes(item.fulfilStatus) && <Button className="mt-1" size="sm" variant="outline" onClick={() => void resolveShortage(item)}>{t('eventOperations.shortage')}</Button>}<p className="text-xs text-muted-foreground">{item.vendorName ?? '—'} · {item.outletName ?? '—'} · {t('orderOperations.fulfilment')}: {item.fulfilStatus}</p></li>)}</ul></div>
+                <div><p className="text-xs font-semibold text-muted-foreground">{t('orderOperations.payment')}</p>{(order.payments?.length ? order.payments : order.payment ? [order.payment] : []).length ? (order.payments?.length ? order.payments : order.payment ? [order.payment] : []).map((payment, index) => <p key={index} className="mt-1 text-sm">{payment.method} · {formatMoney(payment.amount, order.currency || 'MYR', locale)} <span className="text-muted-foreground">· {payment.status}</span></p>) : <p className="mt-1 text-sm">{t('orderOperations.paymentPending')}</p>}</div>
+                <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-3"><span className="text-sm text-muted-foreground">{t('orderOperations.created')}: {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(order.created_at))}</span><span className="font-semibold">{t('orderOperations.total')}: {formatMoney(order.total_amount, order.currency || 'MYR', locale)}</span></div>
+              </AdminMobileRecordCard>
+            ))}
+          </div>
+        )}
+        {!loading && orders.length > 0 && <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[900px] text-left text-sm">
               <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -287,8 +302,7 @@ export default function AdminOrdersPage() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
+          </div>}
         <Pagination currentPage={page} totalPages={pageCount} totalItems={total} pageSize={PAGE_SIZE} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-4 py-3" />
       </section>
       <Dialog open={Boolean(correctionOrder)} onOpenChange={(open) => { if (!open && !correctionBusy) setCorrectionOrder(null); }}>

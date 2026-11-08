@@ -132,7 +132,6 @@
   "notifications": {
     "title": "Notifications",
     "label": "Notifications",
-    "adminDescription": "New tasks and updates assigned to your staff account.",
     "all": "All",
     "unread": "Unread",
     "markAllAsRead": "Mark all as read",

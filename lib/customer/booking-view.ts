@@ -27,7 +27,6 @@ export function getBookingViewCopy(scope: BookingViewScope) {
   return {
     eyebrow: 'Your itinerary',
     title: 'Booking calendar',
-    description: 'See the experiences you have planned ahead.',
     historyAction: 'View booking history',
   };
 }

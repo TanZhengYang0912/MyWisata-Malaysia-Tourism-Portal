@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'next/navigation';
-import { Check, CirclePlus, Copy, Eye, Percent, Search, ToggleLeft, ToggleRight, Upload, X } from 'lucide-react';
+import { Check, CirclePlus, Copy, Eye, MoreHorizontal, Percent, Search, ToggleLeft, ToggleRight, Upload, X } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import VoucherForm from '@/components/vendor/voucher-form';
 import { StatusBadge } from '@/components/ui/badge';
@@ -23,6 +23,8 @@ import { getMalaysiaDateRangeDefaults } from "@/lib/datetime/date-input";
 import { Button } from '@/components/ui/button';
 import CenteredDetailModal from '@/components/ui/centered-detail-modal';
 import { VoucherMetricCard } from '@/components/vendor/voucher-metric-card';
+import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
+import { MobileFilterToggle } from '@/components/vendor/compact-filter-bar';
 
 interface VoucherData { id: string; code: string; name: string; voucher_type: string; discount_value: number; min_spend: number; max_uses: number | null; uses_count: number; valid_from: string | null; valid_until: string | null; is_active: boolean; status: string; vendor_review_status?: string | null; buy_quantity?: number | null; free_quantity?: number | null; product_id?: string | null; outlets?: { id?: string; name?: string; city?: string; state?: string } | null }
 interface VoucherAnalytics { voucherId: string; code: string; name: string; outletName: string; views: number; entries: number; applies: number; redemptions: number; uniqueCustomers: number; redemptionRate: number | null; discount: number; revenue: number; revenueImpact: number }
@@ -74,6 +76,9 @@ export default function VendorVouchersPage() {
   const [analyticsFrom, setAnalyticsFrom] = useState('');
   const [analyticsTo, setAnalyticsTo] = useState('');
   const [analyticsOutlet, setAnalyticsOutlet] = useState('');
+  const [performanceFiltersOpen, setPerformanceFiltersOpen] = useState(false);
+  const [voucherActionsOpen, setVoucherActionsOpen] = useState(false);
+  const performanceFilterCount = Number(analyticsRange !== '30d') + Number(Boolean(analyticsOutlet)) + Number(analyticsRange === 'custom' && Boolean(analyticsFrom)) + Number(analyticsRange === 'custom' && Boolean(analyticsTo));
   const [bulkMessage, setBulkMessage] = useState('');
   const [uploadOpen, setUploadOpen] = useState(false);
   const [csvBuilderOpen, setCsvBuilderOpen] = useState(false);
@@ -418,22 +423,35 @@ export default function VendorVouchersPage() {
 
   return (
     <div className="space-y-8 text-foreground">
-      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary"><Percent size={15} /> {t('ui.vouchers.campaignControl')}</div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-foreground">{t('ui.vouchers.title')}</h1>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-muted-foreground">{t('ui.vouchers.description')}</p>
-        </div>
-        <div className="flex flex-wrap items-end gap-2">
-          {(isVendorOwner || isOutletManager) && <Button type="button" variant="outline" onClick={openUploadDialog} className="h-10 rounded-xl border-primary/20 px-4 font-semibold text-primary hover:border-primary/40 hover:bg-secondary"><Upload size={16} /> {t('ui.vouchers.uploadCsv')}</Button>}
-          <Button type="button" onClick={() => setShowForm(true)} className="h-10 rounded-xl bg-primary px-4 font-semibold shadow-sm"><CirclePlus size={17} /> {t('ui.vouchers.createVoucher')}</Button>
-        </div>
-      </header>
+      <VendorPageHeader
+        eyebrow={<><Percent size={15} aria-hidden="true" /> {t('ui.vouchers.campaignControl')}</>}
+        title={t('ui.vouchers.title')}
+      />
       {bulkMessage && <div className="rounded-2xl border border-primary/10 bg-secondary/70 px-4 py-3 text-sm text-primary">{bulkMessage} <span className="ml-1 text-xs">{t('ui.vouchers.csvColumns')}</span></div>}
 
-      <section data-voucher-workspace="summary" className="rounded-2xl border border-border bg-card p-3 shadow-sm">
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{summaryMetrics.map((metric) => <VoucherMetricCard key={metric.label} {...metric} density="compact" />)}</div>
+      <section data-voucher-workspace="summary" className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        {summaryMetrics.map((metric) => <VoucherMetricCard key={metric.label} {...metric} density="comfortable" />)}
       </section>
+
+      <div className="flex justify-end">
+        <details
+          className="group relative"
+          open={voucherActionsOpen}
+          onToggle={(event) => setVoucherActionsOpen(event.currentTarget.open)}
+        >
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 [&::-webkit-details-marker]:hidden">
+            <MoreHorizontal size={17} aria-hidden="true" /> {t('actions.moreActions')}
+          </summary>
+          <div className="absolute right-0 z-20 mt-2 flex w-56 flex-col gap-1 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card p-2 shadow-xl">
+            {(isVendorOwner || isOutletManager) && <Button type="button" variant="ghost" onClick={() => { setVoucherActionsOpen(false); openUploadDialog(); }} className="min-h-11 w-full justify-start rounded-lg px-3 py-2 text-left text-sm font-semibold text-gray-700 shadow-none dark:text-foreground">
+              <Upload size={16} aria-hidden="true" /> {t('ui.vouchers.uploadCsv')}
+            </Button>}
+            <Button type="button" variant="ghost" onClick={() => { setVoucherActionsOpen(false); setShowForm(true); }} className="min-h-11 w-full justify-start rounded-lg px-3 py-2 text-left text-sm font-semibold text-gray-700 shadow-none dark:text-foreground">
+              <CirclePlus size={17} aria-hidden="true" /> {t('ui.vouchers.createVoucher')}
+            </Button>
+          </div>
+        </details>
+      </div>
 
       <div data-voucher-workspace="filters" className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm md:flex-row md:items-center md:justify-between"><div className="flex gap-1 overflow-x-auto rounded-xl bg-secondary p-1">{statuses.map((item) => <button key={item} type="button" onClick={() => { setStatus(item); setPagination((current) => ({ ...current, page: 1 })); }} className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${status === item ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{t(`ui.vouchers.statuses.${item}`)}</button>)}</div><label className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} /><input value={q} onChange={(event) => setQ(event.target.value)} placeholder={t('ui.vouchers.searchPlaceholder')} className="h-10 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 md:w-64" /></label></div>
       {isVendorOwner && <BatchActionBar selectedCount={selectedIds.length} total={pagination.total} allFilteredSelected={allFilteredSelected} onSelectAllFiltered={() => { setAllFilteredSelected(true); setSelectedIds(vouchers.map((voucher) => voucher.id)); }} onClear={() => { setSelectedIds([]); setAllFilteredSelected(false); setBatchMessage(''); }} onApply={requestBatchAction} actions={[{ value: 'activate', label: t('ui.vouchers.activateSelected') }, { value: 'deactivate', label: t('ui.vouchers.deactivateSelected') }]} busy={batchBusy || actionBusy} message={batchMessage} />}
@@ -443,11 +461,23 @@ export default function VendorVouchersPage() {
 
       {isVendorOwner && <section data-voucher-workspace="performance" className="rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-3 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
-          <div><div className="mb-2 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary"><Percent size={14} /> {t('ui.vouchers.campaignControl')}</div><p className="text-lg font-bold text-foreground">{t('ui.vouchers.performance')}</p><p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{t('ui.vouchers.performanceDescription')}</p></div>
-          <div className="flex flex-wrap gap-2"><select value={analyticsRange} onChange={(event) => setAnalyticsRange(event.target.value as typeof analyticsRange)} className="h-10 rounded-xl border border-border bg-background px-3 text-xs font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"><option value="all">{t('ui.vouchers.allTime')}</option><option value="7d">{t('ui.vouchers.last7Days')}</option><option value="30d">{t('ui.vouchers.last30Days')}</option><option value="12m">{t('ui.vouchers.last12Months')}</option><option value="custom">{t('ui.vouchers.customDates')}</option></select><select value={analyticsOutlet} onChange={(event) => setAnalyticsOutlet(event.target.value)} className="h-10 max-w-48 rounded-xl border border-border bg-background px-3 text-xs text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"><option value="">{t('ui.vouchers.allOutlets')}</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}</select>{analyticsRange === 'custom' && <><input type="date" value={analyticsFrom} onFocus={primeAnalyticsDateRange} onChange={(event) => setAnalyticsFrom(event.target.value)} className="h-10 rounded-xl border border-border bg-background px-3 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" /><input type="date" value={analyticsTo} min={analyticsFrom || undefined} onFocus={primeAnalyticsDateRange} onChange={(event) => setAnalyticsTo(event.target.value)} className="h-10 rounded-xl border border-border bg-background px-3 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" /></>}</div>
+          <div><div className="mb-2 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary"><Percent size={14} /> {t('ui.vouchers.campaignControl')}</div><p className="text-lg font-bold text-foreground">{t('ui.vouchers.performance')}</p></div>
+          <div className="hidden flex-wrap gap-2 lg:flex">
+            <select value={analyticsRange} onChange={(event) => setAnalyticsRange(event.target.value as typeof analyticsRange)} className="h-11 rounded-xl border border-border bg-background px-3 text-sm font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"><option value="all">{t('ui.vouchers.allTime')}</option><option value="7d">{t('ui.vouchers.last7Days')}</option><option value="30d">{t('ui.vouchers.last30Days')}</option><option value="12m">{t('ui.vouchers.last12Months')}</option><option value="custom">{t('ui.vouchers.customDates')}</option></select>
+            <select value={analyticsOutlet} onChange={(event) => setAnalyticsOutlet(event.target.value)} aria-label={t('ui.vouchers.allOutlets')} className="h-11 max-w-48 rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"><option value="">{t('ui.vouchers.allOutlets')}</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}</select>
+            {analyticsRange === 'custom' && <><input type="date" aria-label={t('ui.orders.fromDate')} value={analyticsFrom} onFocus={primeAnalyticsDateRange} onChange={(event) => setAnalyticsFrom(event.target.value)} className="h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" /><input type="date" aria-label={t('ui.orders.toDate')} value={analyticsTo} min={analyticsFrom || undefined} onFocus={primeAnalyticsDateRange} onChange={(event) => setAnalyticsTo(event.target.value)} className="h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" /></>}
+          </div>
+          <div className="lg:hidden">
+            <MobileFilterToggle controlId="voucher-performance-filters" isOpen={performanceFiltersOpen} selectedFilterCount={performanceFilterCount} onToggle={() => setPerformanceFiltersOpen((open) => !open)} />
+            <div id="voucher-performance-filters" className={`${performanceFiltersOpen ? 'grid' : 'hidden'} mt-2 gap-2 sm:grid-cols-2`}>
+              <select value={analyticsRange} onChange={(event) => setAnalyticsRange(event.target.value as typeof analyticsRange)} aria-label={t('ui.vouchers.performance')} className="h-11 min-w-0 rounded-xl border border-border bg-background px-3 text-sm font-semibold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"><option value="all">{t('ui.vouchers.allTime')}</option><option value="7d">{t('ui.vouchers.last7Days')}</option><option value="30d">{t('ui.vouchers.last30Days')}</option><option value="12m">{t('ui.vouchers.last12Months')}</option><option value="custom">{t('ui.vouchers.customDates')}</option></select>
+              <select value={analyticsOutlet} onChange={(event) => setAnalyticsOutlet(event.target.value)} aria-label={t('ui.vouchers.allOutlets')} className="h-11 min-w-0 rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"><option value="">{t('ui.vouchers.allOutlets')}</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}</select>
+              {analyticsRange === 'custom' && <><input type="date" aria-label={t('ui.orders.fromDate')} value={analyticsFrom} onFocus={primeAnalyticsDateRange} onChange={(event) => setAnalyticsFrom(event.target.value)} className="h-11 min-w-0 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" /><input type="date" aria-label={t('ui.orders.toDate')} value={analyticsTo} min={analyticsFrom || undefined} onFocus={primeAnalyticsDateRange} onChange={(event) => setAnalyticsTo(event.target.value)} className="h-11 min-w-0 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" /></>}
+            </div>
+          </div>
         </div>
         <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(260px,0.7fr)]">
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-2">{analyticsMetrics.map((metric) => <VoucherMetricCard key={metric.label} {...metric} density="compact" />)}</div>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-2">{analyticsMetrics.map((metric) => <VoucherMetricCard key={metric.label} {...metric} density="compact" />)}</div>
           <article className="rounded-2xl border border-primary/15 bg-secondary/45 p-4">
             {bestVoucher ? <><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.13em] text-primary">{t('ui.vouchers.bestPerformingPrefix')}</p><p className="mt-2 font-mono text-sm font-bold text-foreground">{bestVoucher.code}</p></div><span className="rounded-full bg-card px-2.5 py-1 text-xs font-semibold text-primary shadow-sm">{t('ui.vouchers.usesCount', { count: bestVoucher.redemptions })}</span></div><p className="mt-3 font-semibold text-foreground">{bestVoucher.name}</p><p className="mt-1 text-sm text-muted-foreground">{bestVoucher.outletName}</p><p className="mt-4 text-xs leading-5 text-muted-foreground">{bestVoucher.redemptionRate === null ? t('ui.vouchers.unlimitedUsage') : t('ui.vouchers.usageCap', { percent: bestVoucher.redemptionRate })} · {t('ui.vouchers.analyticsAmounts', { revenue: formatMYRNumber(bestVoucher.revenue), discount: formatMYRNumber(bestVoucher.discount), impact: formatMYRNumber(bestVoucher.revenueImpact) })}</p></> : <p className="text-sm text-muted-foreground">{t('ui.vouchers.noAnalyticsMatches')}</p>}
           </article>

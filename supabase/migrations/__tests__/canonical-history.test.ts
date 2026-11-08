@@ -6,6 +6,11 @@ const migrationsDirectory = resolve(process.cwd(), "supabase/migrations");
 const baselinePath = resolve(process.cwd(), "supabase/canonical-migration-baseline.json");
 // Keep post-baseline migrations explicit; this is separate from the canonical baseline.
 const approvedForwardMigrations = [
+  "20261106014314_chat_thread_summaries.sql",
+  "20261107120518_repair_tng_ewallet_destination_label.sql",
+  "20261107124912_vendor_outlet_listing_summary.sql",
+  "20261107193541_harden_wallet_split_checkout_method.sql",
+  "20261106010022_voucher_view_once_per_day.sql",
   "20261105090000_profile_avatar_reservation_state_resolution.sql",
   "20261104163453_profile_avatar_assets.sql",
   "20261104162914_profile_noop_writes.sql",
@@ -354,6 +359,16 @@ const approvedForwardMigrations = [
   "20261019180100_hotel_data_fill.sql",
   "20261020085328_review_rating_metrics_by_scope.sql",
   "20261022195929_vendor_managed_product_types_outlet_badges.sql",
+  "20261105132730_vendor_announcement_batch_read.sql",
+  "20261106044323_event_vendor_self_registration.sql",
+  "20261106091900_exclude_non_ticket_products_from_admission_history.sql",
+  "20260909182755_remove_kek_lok_si_zero_price_admission.sql",
+  "20260910042951_seed_kuala_lumpur_admission_showcase.sql",
+  "20261105094626_admin_campaign_noop_save.sql",
+  "20261105095628_admin_support_ticket_atomic_transition.sql",
+  "20261106093323_bound_admin_access_control_reads.sql",
+  "20261106093324_staff_jit_role_permissions.sql",
+  "20261106115747_staff_jit_kyc_operation_tickets.sql",
 ];
 
 function migrationFiles() {

@@ -128,6 +128,60 @@ describe("FeedbackCollection", () => {
     expect(findElements(container, (element) => element.getAttribute("data-icon") === "star")).toHaveLength(0);
   });
 
+  it("stacks a review rating below the author on narrow screens", async () => {
+    const items: FeedbackReviewItem[] = [{
+      id: "review-mobile",
+      author: "Customer D",
+      date: "Sep 12, 2026",
+      preview: "A readable phone-sized review preview",
+      content: longBody,
+      rating: 4,
+      ratingLabel: "4.0 / 5",
+    }];
+
+    await render(<FeedbackCollection mode="reviews" items={items} />);
+
+    const responsiveHeader = findElements(container, (element) =>
+      element.className.includes("flex-col") && element.className.includes("sm:flex-row"),
+    );
+
+    expect(responsiveHeader).toHaveLength(1);
+    expect(responsiveHeader[0].className).toContain("items-start");
+    expect(container.textContent).toContain("Customer D");
+    expect(container.textContent).toContain("4.0 / 5");
+  });
+
+  it("uses tighter mobile spacing for reviews while preserving tip card spacing", async () => {
+    const reviewItems: FeedbackReviewItem[] = [{
+      id: "review-compact",
+      author: "Customer E",
+      date: "Sep 12, 2026",
+      preview: "A compact review preview",
+      content: longBody,
+      rating: 4,
+      ratingLabel: "4.0 / 5",
+    }];
+
+    await render(<FeedbackCollection mode="reviews" items={reviewItems} />);
+
+    const reviewTrigger = findElements(container, (element) => element.hasAttribute("data-feedback-trigger"))[0];
+    const reviewPreview = findElements(container, (element) => element.className.includes("line-clamp-1"))[0];
+    expect(reviewTrigger?.className).toContain("p-3 sm:p-4");
+    expect(reviewPreview?.className).toContain("leading-5 sm:mt-2 sm:leading-6");
+
+    await render(<FeedbackCollection mode="tips" items={[{
+      id: "tip-spacing",
+      author: "Customer F",
+      date: "Sep 4, 2026",
+      preview: "A tip preview",
+      content: longBody,
+    }]} />);
+
+    const tipTrigger = findElements(container, (element) => element.hasAttribute("data-feedback-trigger"))[0];
+    expect(tipTrigger?.className).toContain("p-4");
+    expect(tipTrigger?.className).not.toContain("p-3 sm:p-4");
+  });
+
   it("uses native keyboard-focusable buttons for card activation", async () => {
     const items: FeedbackTipItem[] = [{ id: "tip-2", author: "Customer C", date: "Today", preview: "Short preview", content: longBody }];
     await render(<FeedbackCollection mode="tips" items={items} />);

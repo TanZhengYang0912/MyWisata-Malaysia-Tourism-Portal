@@ -21,7 +21,7 @@ export function cartItemKey(item: CartItemIdentity): string {
   return item.cartItemId ? `cart-item:${item.cartItemId}` : cartItemTupleKey(item);
 }
 
-function sameStayDetails(a: StayBookingDetails | null | undefined, b: StayBookingDetails | null | undefined): boolean {
+export function sameStayDetails(a: StayBookingDetails | null | undefined, b: StayBookingDetails | null | undefined): boolean {
   if (!a || !b) return !a && !b;
   return a.primaryGuestName === b.primaryGuestName
     && (a.additionalGuestNames ?? []).length === (b.additionalGuestNames ?? []).length

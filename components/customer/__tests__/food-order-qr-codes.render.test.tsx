@@ -80,10 +80,10 @@ describe("FoodOrderQrCodes rendered merchant and QR layout", () => {
   });
 
   it.each([
-    { locale: "en", merchant: "Provided by Baboon House", mode: "Takeaway" },
-    { locale: "ms", merchant: "Disediakan oleh Baboon House", mode: "Bungkus" },
-    { locale: "zh-CN", merchant: "提供方：Baboon House", mode: "打包" },
-  ])("renders $locale merchant copy without keys and keeps QR after details", async ({ locale, merchant, mode }) => {
+    { locale: "en", providerCopy: "Provided by Baboon House", mode: "Takeaway" },
+    { locale: "ms", providerCopy: "Disediakan oleh Baboon House", mode: "Bungkus" },
+    { locale: "zh-CN", providerCopy: "提供方：Baboon House", mode: "打包" },
+  ])("omits redundant $locale QR instructions and keeps pass details", async ({ locale, providerCopy, mode }) => {
     await act(async () => { await i18n.changeLanguage(locale); });
     await render(<I18nextProvider i18n={i18n}><FoodOrderQrCodes orderId="order-a" /></I18nextProvider>);
 
@@ -94,7 +94,10 @@ describe("FoodOrderQrCodes rendered merchant and QR layout", () => {
     expect(card.childNodes[0]).toBe(details);
     expect(card.childNodes[1]).toBe(qr);
     expect(details.textContent).toContain("Armenian Street Kitchen");
-    expect(details.textContent).toContain(merchant);
+    expect(details.textContent).not.toContain(providerCopy);
+    for (const key of ["foodOrderQrDescription", "takeawayScanHint", "dineInScanHint"]) {
+      expect(container.textContent).not.toContain(i18n.t(`ui.booking.${key}`));
+    }
     expect(container.textContent).toContain(mode);
     expect(container.textContent).toContain("2 × Nasi Lemak");
     expect(container.textContent).not.toMatch(/ui\.[a-zA-Z]/);

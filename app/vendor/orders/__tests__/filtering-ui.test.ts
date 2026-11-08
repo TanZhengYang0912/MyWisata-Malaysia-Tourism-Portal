@@ -13,9 +13,9 @@ const apiSource = readFileSync(
 
 describe("vendor order filtering UI", () => {
   it("keeps the default toolbar simple and exposes advanced filters on demand", () => {
-    expect(pageSource).toContain("SlidersHorizontal");
+    expect(pageSource).toContain('import { MobileFilterToggle } from "@/components/vendor/compact-filter-bar"');
     expect(pageSource).toContain("filtersOpen");
-    expect(pageSource).toContain('aria-controls="order-filters"');
+    expect(pageSource).toContain('controlId="order-filters"');
     expect(pageSource).toContain('t("ui.orders.needsAttention")');
     expect(pageSource).toContain('t("ui.orders.applyFilters")');
     expect(pageSource).toContain("activeFilterCount");
