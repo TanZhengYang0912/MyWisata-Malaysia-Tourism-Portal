@@ -4190,7 +4190,14 @@
     "otherGroup": "Other",
     "backToHelp": "All help topics",
     "openPage": "Open this page",
-    "notAvailable": "This guide is not available for your account. Go back to see the help topics you can use."
+    "notAvailable": "This guide is not available for your account. Go back to see the help topics you can use.",
+    "workflows": "Workflows",
+    "lifecycle": "Status lifecycle",
+    "by": "By {{who}}",
+    "partOf": "Part of {{workflow}}, step {{step}} of {{total}}",
+    "previousStep": "Previous: {{title}}",
+    "nextStep": "Next: {{title}}",
+    "workflowNotAvailable": "This workflow is not available for your account. Go back to see the help topics you can use."
   },
   "hotelAmenities": {
     "eyebrow": "Hotels",

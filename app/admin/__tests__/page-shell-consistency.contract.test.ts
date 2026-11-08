@@ -17,6 +17,7 @@ const ADMIN_ROUTE_PAGES = [
   "app/admin/event-registrations/[id]/page.tsx",
   "app/admin/event-registrations/page.tsx",
   "app/admin/help/[slug]/page.tsx",
+  "app/admin/help/flows/[slug]/page.tsx",
   "app/admin/help/page.tsx",
   "app/admin/hotel-amenities/page.tsx",
   "app/admin/kyc/[submissionId]/page.tsx",
@@ -70,8 +71,8 @@ function discoverAdminRoutePages(directory = "app/admin"): string[] {
 
 describe("admin page-shell consistency contract", () => {
   it("keeps the complete Admin route inventory", () => {
-    expect(ADMIN_ROUTE_PAGES).toHaveLength(42);
-    expect(new Set(ADMIN_ROUTE_PAGES)).toHaveLength(42);
+    expect(ADMIN_ROUTE_PAGES).toHaveLength(43);
+    expect(new Set(ADMIN_ROUTE_PAGES)).toHaveLength(43);
     expect(discoverAdminRoutePages()).toEqual([...ADMIN_ROUTE_PAGES].sort());
 
     for (const route of ADMIN_ROUTE_PAGES) {
@@ -80,7 +81,7 @@ describe("admin page-shell consistency contract", () => {
   });
 
   it("requires each direct Admin route to import and render the shared shell", () => {
-    expect(DIRECT_ADMIN_SHELL_ROUTE_PAGES).toHaveLength(39);
+    expect(DIRECT_ADMIN_SHELL_ROUTE_PAGES).toHaveLength(40);
     for (const route of DIRECT_ADMIN_SHELL_ROUTE_PAGES) {
       const source = read(route);
       expect(source, `${route} must import AdminPageShell`).toMatch(/import[\s\S]*AdminPageShell[\s\S]*from[\s\S]*admin-page-shell/);

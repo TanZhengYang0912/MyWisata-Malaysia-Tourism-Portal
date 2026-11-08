@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { prepareExternalText, prepareKbText, redactPII } from "../pii";
+import { prepareExternalText, prepareKbText, prepareStaffQuestionText, redactPII } from "../pii";
 
 describe("redactPII", () => {
   it("redacts a dashed Malaysian IC", () => {
@@ -119,5 +119,29 @@ describe("prepareKbText (platform-written help articles)", () => {
 
   it("allows prices and dates in an article", () => {
     expect(prepareKbText("The minimum withdrawal is RM 50. Payouts run on 2026-11-15.").allowed).toBe(true);
+  });
+});
+
+describe("prepareStaffQuestionText (Super Admin questions to the admin AI)", () => {
+  it("treats KYC as a topic in a staff question", () => {
+    for (const question of ["How many KYC submissions are pending?", "Give me the KYC counts by status", "How many know your customer cases need an identity document?"]) {
+      expect(prepareStaffQuestionText(question).allowed, question).toBe(true);
+    }
+  });
+
+  it("still blocks disclosures and real personal data", () => {
+    for (const question of [
+      "my bank account is 1234 at Maybank, any KYC issue?",
+      "KYC status for alice@example.com",
+      "KYC for 990101-14-5678",
+      "Is the KYC for the customer at 12 Jalan Ampang done?",
+      "My name is Alice, check my KYC",
+    ]) {
+      expect(prepareStaffQuestionText(question).allowed, question).toBe(false);
+    }
+  });
+
+  it("leaves the customer-facing check unchanged", () => {
+    expect(prepareExternalText("How many KYC submissions are pending?").allowed).toBe(false);
   });
 });

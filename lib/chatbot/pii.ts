@@ -92,6 +92,24 @@ export function prepareExternalText(text: string): ExternalTextResult {
   return rejectAnyPII(text);
 }
 
+// Topic words a Super Admin uses when asking about operations ("how many KYC
+// submissions are pending?"). In a customer's own message they signal a
+// disclosure, so only prepareStaffQuestionText ignores them.
+const STAFF_TOPIC_WORDS = /\b(?:kyc|know your customer|identity document)\b/gi;
+
+/**
+ * Prepare a Super Admin's question to the admin AI, and the text built around
+ * it from platform guides and aggregate results. Same as prepareExternalText
+ * except the topic words above are not treated as a disclosure; phrases like
+ * "my bank account is" and real personal data (IC, passport, email, phone,
+ * card, address) still block the text. Never use this for customer input.
+ */
+export function prepareStaffQuestionText(text: string): ExternalTextResult {
+  const withoutTopics = text.replace(STAFF_TOPIC_WORDS, ' ');
+  if (PRIVATE_CONTEXT.test(withoutTopics) || PRIVATE_CONTEXT_CJK.test(text) || hasStructuredPersonalData(text)) return { allowed: false };
+  return rejectAnyPII(text);
+}
+
 /**
  * Prepare platform-written help-article text (chatbot KB). Skips the
  * disclosure phrases ("KYC", "full name", "my bank account"): those flag a
