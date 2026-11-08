@@ -28,6 +28,12 @@ export type AdminRole = 'super_admin' | 'admin_or_approver';
 export interface AdminCapability {
   /** Stable slug the picker returns. */
   name: string;
+  /**
+   * Title shown in Staff Help when the sidebar label differs from `name`
+   * (e.g. the reconciliation page is "Order Breakdown" in the sidebar).
+   * Keep it equal to the English sidebar label so staff can search for it.
+   */
+  title?: string;
   /** One line shown to the picker LLM — what questions this entry answers. */
   description: string;
   /** Where it lives in the admin panel. */
@@ -108,7 +114,27 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     source: 'app/api/admin/catalogue/reviews/route.ts, lib/validation/vendor-schemas.ts',
   },
   {
+    name: 'hotel_amenities',
+    title: 'Hotel Amenities',
+    description: 'Managing the amenity checklist hotels tick in their hotel profile.',
+    path: '/admin/catalogue/hotel-amenities',
+    role: 'admin_or_approver',
+    actions: [
+      'Open it from Catalogue Review with the manage hotel amenities button',
+      'See every amenity with its code, English, Malay and Chinese labels, and whether it is active',
+      'Add an amenity with a code, the three labels and an icon',
+      'Activate or deactivate an amenity',
+    ],
+    notes: [
+      'Needs the catalogue review permission.',
+      'Codes use 2 to 40 lowercase letters, numbers and underscores, and must be unique; labels are up to 60 characters.',
+    ],
+    keywords: ['hotel amenity', 'hotel amenities', 'amenity checklist'],
+    source: 'app/admin/hotel-amenities/page.tsx, app/api/admin/hotel-amenities/route.ts',
+  },
+  {
     name: 'sponsored_placements',
+    title: 'Sponsored Ads',
     description:
       'Reviewing and approving vendor-submitted sponsored product placements — paid promotional slots targeted by state/category over a time window.',
     path: '/admin/sponsored-placements',
@@ -170,18 +196,28 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   {
     name: 'kyc_review',
     description:
-      'Reviewing customer KYC identity verification submissions and their uploaded ID documents.',
+      'Reviewing customer KYC identity verification: the review queue, document checks, two-reviewer approval, information requests, rejections, identity resolutions and KYC security status.',
     path: '/admin/kyc',
     role: 'admin_or_approver',
     actions: [
-      'Browse KYC submissions and open one to review it',
-      'View the uploaded ID document images (front and back)',
-      'Approve a submission, reject it, or request more information',
-      'Attach a reason code to the decision',
+      'Work the review queue oldest first: start the next applicant or continue your current review, filter by review status, and search by name, email or document type',
+      'Open the front and back document images in a short-lived secure viewer and compare them with the identity captured at submission and the automated OCR check (matched, mismatch, unreadable or unavailable)',
+      'Approve: open both current images, enter the actual document type, issuing country, the name and the document number you read, say why manual confirmation was needed, and pick an independent second reviewer',
+      'As the second reviewer, inspect both images yourself and confirm the same name and number; the approval can be submitted once both confirmations are recorded',
+      'Reject with a reason (expired, incomplete, details do not match, suspected tampering, unreadable, or other with at least 10 characters of detail), or request more information from the customer',
+      'Start an identity resolution for a conflict or correction: replace an account\'s previous identity, record a historical identity conflict, or freeze a contested legacy ownership record. It needs an independent second resolver; both confirm the current evidence, then it can be applied, or cancelled with a reason',
+      'Check KYC security status: the latest document cleanup run, document-access alerts, and whether their notifications are queued',
     ],
-    notes: ['KYC approval is what unlocks withdrawals for that customer.'],
-    keywords: ['kyc', 'identity verification', 'id document', 'identity document'],
-    source: 'app/api/admin/kyc/review/route.ts, kyc/submissions, kyc/documents/[submissionId]/[side], lib/validation/schemas.ts',
+    notes: [
+      'KYC approval is what unlocks withdrawals for that customer.',
+      'KYC review needs an authenticator code on top of your sign-in; the first time, you set one up on /admin/kyc/mfa.',
+      'Opening a case assigns it to you. A case assigned to another reviewer stays visible, but only its assignee or a Super Admin can decide it.',
+      'The document number you enter becomes a protected match key; it is not stored in plain text.',
+      'A case waiting for the customer (information requested) cannot be decided until they resubmit.',
+      'Applying an identity resolution only reserves or transfers the identity key for fresh verification; the account stays unverified until a normal KYC approval succeeds. Identity resolution needs its own staff permission.',
+    ],
+    keywords: ['kyc', 'identity verification', 'id document', 'identity document', 'second reviewer', 'identity resolution'],
+    source: 'app/admin/kyc/page.tsx, components/admin/kyc-review-detail.tsx, app/api/admin/kyc/{review,review/confirm,review/countersign,identity-resolutions,security-status,work}/route.ts',
   },
   {
     name: 'withdrawals',
@@ -209,7 +245,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   {
     name: 'wallet_settings',
     description:
-      'Configuring wallet and withdrawal policy — clearance days, minimum withdrawal, dual-approval threshold, escalation timers — and managing who holds the wallet approver role.',
+      'Configuring wallet and withdrawal policy — clearance days, minimum withdrawal, dual-approval threshold and escalation timers.',
     path: '/admin/wallet/settings',
     role: 'super_admin',
     actions: [
@@ -217,14 +253,34 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'Change the minimum withdrawal amount',
       'Change the dual-approval threshold that decides which withdrawals need two approvers',
       'Change the escalation window (24–168 hours) and the hold escalation window (24–720 hours)',
-      'Grant or revoke the wallet approver role for a user',
     ],
     notes: [
       'Super Admin only.',
       'Every settings change requires a reason of at least 10 characters and a reason category.',
+      'Who can approve withdrawals is managed on Wallet Approvers (see wallet_approvers).',
     ],
-    keywords: ['wallet setting', 'clearance period', 'clearance days', 'dual approval threshold', 'minimum withdrawal', 'wallet approver', 'escalation window'],
-    source: 'app/api/admin/wallet-settings/route.ts, wallet-approvers/route.ts, lib/validation/schemas.ts',
+    keywords: ['wallet setting', 'clearance period', 'clearance days', 'dual approval threshold', 'minimum withdrawal', 'escalation window'],
+    source: 'app/api/admin/wallet-settings/route.ts, lib/validation/schemas.ts',
+  },
+  {
+    name: 'wallet_approvers',
+    title: 'Wallet Approvers',
+    description: 'Managing who holds the Wallet Approver role, the staff who can approve customer withdrawals.',
+    path: '/admin/wallet/approvers',
+    role: 'super_admin',
+    actions: [
+      'See the current wallet approvers, whether each account is active, and when the role was granted',
+      'Grant the Wallet Approver role to an active user',
+      'Revoke the role from a current approver',
+    ],
+    notes: [
+      'Super Admin only.',
+      'Each grant or revoke needs a reason category (role granted, role revoked, coverage change or other) and a reason of 10 to 500 characters, then a confirmation.',
+      'The last active wallet approver cannot be removed.',
+      'Super Admins and existing approvers are not offered as new approvers.',
+    ],
+    keywords: ['wallet approver', 'wallet approvers', 'approver role', 'grant approver', 'revoke approver'],
+    source: 'app/admin/wallet/approvers/page.tsx, app/api/admin/wallet-approvers/route.ts, lib/validation/wallet-reason-schemas.ts',
   },
   {
     name: 'platform_fees',
@@ -262,6 +318,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'reconciliation',
+    title: 'Order Breakdown',
     description:
       'The order money-reconciliation report — per-order and monthly totals of gross revenue, platform commission, vendor net, and what was paid out to affiliates and recommenders.',
     path: '/admin/reports/reconciliation',
@@ -476,6 +533,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'event_campaigns',
+    title: 'Events',
     description:
       'Creating and running pop-up events (vendor-fair campaigns): drafting an event, adding its locations with dates, hours, stall capacity and vendor application deadlines, publishing, pausing, archiving, and cancelling a location.',
     path: '/admin/promotion-campaigns',
@@ -507,6 +565,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'event_registrations',
+    title: 'Event Stalls',
     description:
       'Reviewing vendor stall applications for event locations: approving with a booth number, rejecting, requesting changes, changing an assigned booth, and removing a stall.',
     path: '/admin/event-registrations',
@@ -532,6 +591,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'event_promotions',
+    title: 'Event Ads',
     description:
       'Reviewing vendor-paid event promotions (outside events vendors advertise on the home page), pausing or resuming paid ones, and setting the promotion price and daily capacity.',
     path: '/admin/event-promotions',
@@ -645,6 +705,23 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     ],
     keywords: ['system settings', 'pause new orders', 'pause orders', 'pause email', 'emergency switch'],
     source: 'app/admin/system-settings/page.tsx, app/api/admin/system-settings/route.ts, lib/platform/operations-settings.ts, supabase/migrations/20261015062555_platform_operations_settings.sql',
+  },
+  {
+    name: 'staff_notifications',
+    title: 'Notifications',
+    description: 'The staff notification inbox: wallet, support, account security and message notifications.',
+    path: '/admin/notifications',
+    role: 'admin_or_approver',
+    actions: [
+      'Open it from the bell in the admin header (View all)',
+      'Filter by category: all, wallet, support, account and security, or messages',
+      'Open a notification to go to the related page, and mark all as read',
+    ],
+    notes: [
+      'The bell is shown to staff who can approve withdrawals.',
+    ],
+    keywords: ['staff notification', 'staff notifications', 'notification inbox', 'admin notifications'],
+    source: 'app/admin/notifications/page.tsx, components/shared/notification-center.tsx, app/admin/layout.tsx',
   },
   {
     name: 'staff_sign_in_security',

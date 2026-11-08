@@ -16,6 +16,7 @@ const ALWAYS_VISIBLE = "staff_sign_in_security";
 export type StaffHelpGroup = { key: string; label: string; sections: AdminCapability[] };
 
 export function sectionTitle(capability: AdminCapability): string {
+  if (capability.title) return capability.title;
   const words = capability.name.replace(/_/g, " ");
   return words.charAt(0).toUpperCase() + words.slice(1);
 }

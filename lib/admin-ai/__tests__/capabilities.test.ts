@@ -1,3 +1,4 @@
+import enAdmin from '@/app/i18n/locales/en/admin.json';
 import { describe, expect, it } from 'vitest';
 import {
   CAPABILITY_REGISTRY,
@@ -136,5 +137,37 @@ describe('admin capability registry', () => {
     expect(overview).toContain('/admin/users (Super Admin only)');
     expect(overview).not.toContain('route.ts');
     expect(overview).not.toContain('lib/validation');
+  });
+});
+
+describe('Staff Help coverage', () => {
+  const byName = (name: string) => CAPABILITY_REGISTRY.find((capability) => capability.name === name);
+
+  it('has a guide for every admin page that had none', () => {
+    expect(byName('wallet_approvers')?.path).toBe('/admin/wallet/approvers');
+    expect(byName('staff_notifications')?.path).toBe('/admin/notifications');
+    expect(byName('hotel_amenities')?.path).toBe('/admin/catalogue/hotel-amenities');
+  });
+
+  it('routes the new guides on the fast path', () => {
+    expect(matchCapabilityByKeywords('how do I add a wallet approver')?.name).toBe('wallet_approvers');
+    expect(matchCapabilityByKeywords('where are my staff notifications')?.name).toBe('staff_notifications');
+    expect(matchCapabilityByKeywords('how do I add hotel amenities')?.name).toBe('hotel_amenities');
+    expect(matchCapabilityByKeywords('how does the kyc second reviewer work')?.name).toBe('kyc_review');
+    expect(matchCapabilityByKeywords('how do I change the clearance period')?.name).toBe('wallet_settings');
+  });
+
+  it('describes the current KYC flow, not only approve and reject', () => {
+    const kyc = JSON.stringify(byName('kyc_review'));
+    for (const phrase of ['second reviewer', 'identity resolution', 'authenticator', 'security status']) expect(kyc.toLowerCase()).toContain(phrase);
+  });
+
+  it('titles renamed pages with their English sidebar label', () => {
+    const navigation = (enAdmin as { navigation: Record<string, string> }).navigation;
+    expect(byName('reconciliation')?.title).toBe(navigation['Reconciliation']);
+    expect(byName('event_campaigns')?.title).toBe(navigation['Promotion Campaigns']);
+    expect(byName('event_registrations')?.title).toBe(navigation['Event Registrations']);
+    expect(byName('event_promotions')?.title).toBe(navigation['Event Promos']);
+    expect(byName('sponsored_placements')?.title).toBe(navigation['Sponsored Placements']);
   });
 });

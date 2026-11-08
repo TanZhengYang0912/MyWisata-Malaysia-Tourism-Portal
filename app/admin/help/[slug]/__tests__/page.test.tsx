@@ -27,7 +27,7 @@ async function render(role: string, slug: string, hrefs: string[] = []) {
 
 it("shows the full guide with its page link, actions and rules", async () => {
   await render("super_admin", "event-registrations");
-  expect(container.textContent).toContain("Event registrations");
+  expect(container.textContent).toContain("Event Stalls");
   expect(container.textContent).toContain("Approve a pending registration by confirming a booth number");
   expect(container.textContent).toContain("staffHelp.notes");
   const hrefs = findElements(container, (element) => element.tagName === "A").map((element) => element.getAttribute("href"));
