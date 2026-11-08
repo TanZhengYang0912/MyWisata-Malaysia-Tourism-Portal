@@ -23,7 +23,18 @@
 // update the matching entry — the `source` field is there to make that
 // lookup mechanical.
 
+import { workflowsForGuide } from './workflows';
+
 export type AdminRole = 'super_admin' | 'admin_or_approver';
+
+export interface LifecycleStage {
+  /** The status as shown on the page. */
+  status: string;
+  /** Who moves an item into this status. */
+  by: string;
+  /** What the status means and what can happen next. */
+  detail: string;
+}
 
 export interface AdminCapability {
   /** Stable slug the picker returns. */
@@ -49,6 +60,12 @@ export interface AdminCapability {
   /** Constraints/gotchas that are real (validation minimums, dual approval…). */
   notes?: string[];
   /**
+   * For a page that runs a whole activity on its own: the statuses an item
+   * moves through, in order, including side paths. Status names match what
+   * staff see on the page.
+   */
+  lifecycle?: LifecycleStage[];
+  /**
    * Distinctive phrases that identify this section, used by the keyword
    * fast-path in matchCapabilityByKeywords(). Keep them SPECIFIC: a phrase
    * that could plausibly belong to two sections must not be here, since an
@@ -63,7 +80,7 @@ export interface AdminCapability {
 export const CAPABILITY_REGISTRY: AdminCapability[] = [
   {
     name: 'dashboard',
-    description: 'The admin Overview/dashboard page — where to see platform activity at a glance.',
+    description: 'The admin Overview/dashboard page: where to see platform activity at a glance.',
     path: '/admin/dashboard',
     role: 'admin_or_approver',
     actions: [
@@ -79,7 +96,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     path: '/admin/vendors',
     role: 'admin_or_approver',
     actions: [
-      'Approve a vendor application — this also grants the applicant the vendor_owner role automatically',
+      'Approve a vendor application: this also grants the applicant the vendor_owner role automatically',
       'Reject an application, with an optional rejection reason',
       'Request more information, which puts the application into a needs-information state',
       'Send the vendor approval email, either written yourself or started from an AI draft',
@@ -87,8 +104,8 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'Link an approved recommendation to a vendor, or send a recommendation invite',
     ],
     notes: [
-      'Approving is what activates the vendor account — until then nothing they set up is visible to travellers.',
-      'The reason typed for a reject, suspend, or request-more-information action is not cosmetic — it becomes the body of the actual email and in-app notification the vendor receives. A "Draft with AI" button on that reason box will draft it (rejection notice / suspension warning / follow-up request) for the admin to edit before confirming.',
+      'Approving is what activates the vendor account: until then nothing they set up is visible to travellers.',
+      'The reason typed for a reject, suspend, or request-more-information action is not cosmetic: it becomes the body of the actual email and in-app notification the vendor receives. A "Draft with AI" button on that reason box will draft it (rejection notice / suspension warning / follow-up request) for the admin to edit before confirming.',
     ],
     keywords: ['vendor application', 'approve a vendor', 'vendor approval', 'reject a vendor', 'suspend a vendor', 'approval email'],
     source:
@@ -97,7 +114,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   {
     name: 'catalogue_review',
     description:
-      'Reviewing vendor-submitted listings — outlets, products, and vouchers — that are waiting for approval before going live.',
+      'Reviewing vendor-submitted listings (outlets, products, and vouchers) that are waiting for approval before going live.',
     path: '/admin/catalogue',
     role: 'admin_or_approver',
     actions: [
@@ -107,7 +124,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'Attach a review note explaining the decision',
     ],
     notes: [
-      'Only items still in pending_review can be actioned — one already reviewed returns a conflict.',
+      'Only items still in pending_review can be actioned: one already reviewed returns a conflict.',
       'Every decision is written to content_reviews and notifies the vendor.',
     ],
     keywords: ['catalogue', 'catalog', 'pending listing', 'approve a product', 'approve an outlet', 'approve a voucher', 'listing review'],
@@ -136,13 +153,13 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     name: 'sponsored_placements',
     title: 'Sponsored Ads',
     description:
-      'Reviewing and approving vendor-submitted sponsored product placements — paid promotional slots targeted by state/category over a time window.',
+      'Reviewing and approving vendor-submitted sponsored product placements: paid promotional slots targeted by state/category over a time window.',
     path: '/admin/sponsored-placements',
     role: 'admin_or_approver',
     actions: [
       'See placements grouped by lifecycle: active, pending approval, drafts, paused, archived/rejected',
-      'Create a placement for a product — a specific state or all states, a specific category or all categories, a start/end window, and a priority',
-      'Preview the impact of creating or approving a placement before committing — what it would displace',
+      'Create a placement for a product: a specific state or all states, a specific category or all categories, a start/end window, and a priority',
+      'Preview the impact of creating or approving a placement before committing: what it would displace',
       'Approve a pending placement, or reject it with a reason',
       'Pause an active placement',
     ],
@@ -163,7 +180,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'Clear a bio restriction on an account',
     ],
     notes: [
-      'Super Admin only — this section is hidden from the admin and approver roles.',
+      'Super Admin only: this section is hidden from the admin and approver roles.',
       'Every action requires a reason of at least 10 characters.',
       'An account with a pending or processing withdrawal cannot be deleted this way.',
     ],
@@ -178,7 +195,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     path: '/admin/access-control',
     role: 'super_admin',
     actions: [
-      'Staff Roles tab: the real, currently-enforced system — see and manage which staff/admin users hold which role/permission, invite new staff, review role candidates',
+      'Staff Roles tab: the real, currently-enforced system. See and manage which staff/admin users hold which role/permission, invite new staff, review role candidates',
       'Capabilities tab: browse the newer entitlements engine\'s capability key definitions',
       'Policies tab: author and version policies (draft, pending_approval, scheduled, active, retired) for the new engine',
       'Assignments tab: assign a policy/capability to a subject (user, role, plan, or partner) in the new engine',
@@ -187,8 +204,8 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     ],
     notes: [
       'Super Admin only.',
-      'The Capabilities / Policies / Assignments / Audit Log tabs belong to a SHADOW entitlements engine — it is not yet the live authorization path and grants or denies nothing on its own.',
-      'Real staff access is still governed by the Staff Roles tab (the staff_permissions table / has_staff_permission RPC) — the same system every gated admin route checks.',
+      'The Capabilities / Policies / Assignments / Audit Log tabs belong to a SHADOW entitlements engine: it is not yet the live authorization path and grants or denies nothing on its own.',
+      'Real staff access is still governed by the Staff Roles tab (the staff_permissions table / has_staff_permission RPC): the same system every gated admin route checks.',
     ],
     keywords: ['access control', 'staff role', 'staff permission', 'entitlements', 'shadow report', 'policy engine'],
     source: 'app/admin/access-control/page.tsx, components/admin/access-control/*, app/api/admin/access-control/*, lib/entitlements/*, lib/staff-permissions/server.ts',
@@ -216,6 +233,14 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'A case waiting for the customer (information requested) cannot be decided until they resubmit.',
       'Applying an identity resolution only reserves or transfers the identity key for fresh verification; the account stays unverified until a normal KYC approval succeeds. Identity resolution needs its own staff permission.',
     ],
+    lifecycle: [
+      { status: 'Draft', by: 'Customer', detail: 'Started but not yet submitted.' },
+      { status: 'Pending review', by: 'Customer', detail: 'Submitted and waiting in the review queue, oldest first. Opening it assigns it to that reviewer.' },
+      { status: 'Info requested', by: 'Reviewer', detail: 'More information was asked for. Nothing more can be decided until the customer resubmits.' },
+      { status: 'Superseded', by: 'System', detail: 'When the customer resubmits after an information request, the earlier submission is replaced and the new one goes back to Pending review.' },
+      { status: 'Approved', by: 'Reviewer and an independent second reviewer', detail: 'Both confirmed the identity evidence. The customer is now KYC verified, which unlocks withdrawals.' },
+      { status: 'Rejected', by: 'Reviewer', detail: 'Declined with a reason.' },
+    ],
     keywords: ['kyc', 'identity verification', 'id document', 'identity document', 'second reviewer', 'identity resolution'],
     source: 'app/admin/kyc/page.tsx, components/admin/kyc-review-detail.tsx, app/api/admin/kyc/{review,review/confirm,review/countersign,identity-resolutions,security-status,work}/route.ts',
   },
@@ -234,9 +259,19 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     ],
     notes: [
       'Approving or rejecting requires a note of at least 10 characters plus a reason category.',
-      'Requests at or above the configured dual-approval threshold need two different approvers — the first approval is recorded and waits for a second approver before any payout happens.',
+      'Requests at or above the configured dual-approval threshold need two different approvers: the first approval is recorded and waits for a second approver before any payout happens.',
       'The threshold itself is configurable in Wallet Settings.',
       'Approving, retrying a payout, and overriding a fraud block each need a fresh passkey confirmation tied to that exact withdrawal; if the withdrawal changes before you confirm, refresh and confirm again.',
+    ],
+    lifecycle: [
+      { status: 'Pending', by: 'Customer', detail: 'Requested from the Wallet page. The amount moves from earnings to reserved while it waits for review.' },
+      { status: 'Pending second approval', by: 'Approver or Super Admin', detail: 'At or above the dual-approval threshold, the first approval is recorded here and a different approver must also approve.' },
+      { status: 'Approved, then Processing', by: 'System', detail: 'Once it has enough approvals, the payout is sent to the payment provider.' },
+      { status: 'Paid', by: 'System', detail: 'The payment provider confirmed the payout.' },
+      { status: 'Failed', by: 'System', detail: 'The payment provider could not pay out. Staff can retry the payout after a fresh passkey confirmation.' },
+      { status: 'Hold', by: 'Approver or Super Admin', detail: 'Paused for checking. Resuming it returns it to review.' },
+      { status: 'Overdue', by: 'System', detail: 'Still waiting after the escalation window, so Super Admins are notified. It can still be approved, held or rejected.' },
+      { status: 'Rejected', by: 'Approver or Super Admin', detail: 'Declined with a reason. The reserved amount goes back to the customer\'s earnings.' },
     ],
     keywords: ['withdrawal', 'payout request', 'approve a payout', 'dual approval', 'fraud override'],
     source:
@@ -245,7 +280,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   {
     name: 'wallet_settings',
     description:
-      'Configuring wallet and withdrawal policy — clearance days, minimum withdrawal, dual-approval threshold and escalation timers.',
+      'Configuring wallet and withdrawal policy: clearance days, minimum withdrawal, dual-approval threshold and escalation timers.',
     path: '/admin/wallet/settings',
     role: 'super_admin',
     actions: [
@@ -285,7 +320,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   {
     name: 'platform_fees',
     description:
-      'Setting what the platform charges vendors — three shared vendor tiers (each a % of the item price or a fixed RM per item), the sales needed for each tier, and the fixed per-item fee for items sold at events.',
+      'Setting what the platform charges vendors: three shared vendor tiers (each a % of the item price or a fixed RM per item), the sales needed for each tier, and the fixed per-item fee for items sold at events.',
     path: '/admin/vendors/platform-fees',
     role: 'super_admin',
     actions: [
@@ -305,13 +340,13 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'payout_reports',
-    description: 'The payout report — platform-wide payout figures, and exporting them as CSV.',
+    description: 'The payout report: platform-wide payout figures, and exporting them as CSV.',
     path: '/admin/reports/payouts',
     role: 'super_admin',
     actions: ['View the payout report for a chosen period', 'Export the report as a CSV file'],
     notes: [
       'Super Admin only.',
-      'This report is platform-wide payouts — it is not specific to affiliate or recommendation earnings.',
+      'This report is platform-wide payouts: it is not specific to affiliate or recommendation earnings.',
     ],
     keywords: ['payout report', 'payout csv', 'export payouts'],
     source: 'app/api/admin/reports/payouts/route.ts, app/admin/reports/payouts/page.tsx, lib/admin/csv.ts',
@@ -320,7 +355,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     name: 'reconciliation',
     title: 'Order Breakdown',
     description:
-      'The order money-reconciliation report — per-order and monthly totals of gross revenue, platform commission, vendor net, and what was paid out to affiliates and recommenders.',
+      'The order money-reconciliation report: per-order and monthly totals of gross revenue, platform commission, vendor net, and what was paid out to affiliates and recommenders.',
     path: '/admin/reports/reconciliation',
     role: 'super_admin',
     actions: [
@@ -344,7 +379,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   {
     name: 'recommendations',
     description:
-      'Reviewing customer-submitted vendor recommendations — approving, rejecting, or requesting changes.',
+      'Reviewing customer-submitted vendor recommendations: approving, rejecting, or requesting changes.',
     path: '/admin/recommendations',
     role: 'admin_or_approver',
     actions: [
@@ -355,7 +390,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     ],
     notes: [
       'Rejecting or requesting changes requires a reason of at least 10 characters.',
-      'Approving does not pay the recommender — the reward only activates once the vendor actually joins and the recommendation converts. Clearing that reward is a separate section — see recommendation_rewards.',
+      'Approving does not pay the recommender: the reward only activates once the vendor actually joins and the recommendation converts. Clearing that reward is a separate section: see recommendation_rewards.',
     ],
     keywords: ['recommendation', 'recommended business', 'request changes'],
     source:
@@ -363,20 +398,20 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'recommendation_rewards',
-    description: 'Clearing pending recommendation rewards that are past their hold period — the recommendation equivalent of rewards_clearing.',
+    description: 'Clearing pending recommendation rewards that are past their hold period: the recommendation equivalent of rewards_clearing.',
     path: '/admin/recommendations/rewards',
     role: 'admin_or_approver',
     actions: [
       'Run recommendation reward clearing, which confirms rewards past their hold and reverses any that no longer qualify',
       'See how many were cleared, reversed, or skipped after a run',
     ],
-    notes: ['This page is not in the admin sidebar — reach it directly at /admin/recommendations/rewards. Not the same page as /admin/rewards, which clears AFFILIATE earnings.'],
+    notes: ['This page is not in the admin sidebar: reach it directly at /admin/recommendations/rewards. Not the same page as /admin/rewards, which clears AFFILIATE earnings.'],
     keywords: ['recommendation reward', 'recommendation rewards', 'recommendation clearing'],
     source: 'app/admin/recommendations/rewards/page.tsx, app/api/admin/recommendations/run-clearing/route.ts',
   },
   {
     name: 'support_tickets',
-    description: 'Working the customer support ticket queue — reading, replying, and changing a ticket status or category.',
+    description: 'Working the customer support ticket queue: reading, replying, and changing a ticket status or category.',
     path: '/admin/support',
     role: 'admin_or_approver',
     actions: [
@@ -387,9 +422,9 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'Review customer-safety moderation flags from the panel on this page',
     ],
     notes: [
-      'Every new ticket is auto-classified (Gemini AI, keyword matcher as a fallback if the AI call fails) into one of: booking, payment, vendor, withdrawal, kyc, technical, affiliate, general — shown as a badge next to each ticket subject with which method classified it (ai/keyword/manual).',
-      'Each category is routed to a named team (e.g. withdrawal -> Wallet Team, kyc -> KYC Team) shown as a badge on the ticket — a label for which team\'s queue it belongs in via the category filter, not an automatic assignment to a specific staff member (assigned_to still requires an admin to pick it up).',
-      'An admin can always override the AI\'s category from the dropdown next to each ticket — that also re-routes its team label immediately.',
+      'Every new ticket is auto-classified (Gemini AI, keyword matcher as a fallback if the AI call fails) into one of: booking, payment, vendor, withdrawal, kyc, technical, affiliate, general: shown as a badge next to each ticket subject with which method classified it (ai/keyword/manual).',
+      'Each category is routed to a named team (e.g. withdrawal -> Wallet Team, kyc -> KYC Team) shown as a badge on the ticket: a label for which team\'s queue it belongs in via the category filter, not an automatic assignment to a specific staff member (assigned_to still requires an admin to pick it up).',
+      'An admin can always override the AI\'s category from the dropdown next to each ticket: that also re-routes its team label immediately.',
     ],
     keywords: ['support ticket', 'ticket queue', 'reply to a customer', 'reply to a ticket', 'moderation flag', 'ticket category', 'ticket routing', 'admin team'],
     source: 'app/api/admin/tickets/route.ts, tickets/[id], app/api/support/tickets/[id]/replies, components/admin/moderation-flags-panel.tsx, lib/chatbot/classify.ts, lib/chatbot/classify-ai.ts, lib/support/team-routing.ts',
@@ -397,7 +432,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   {
     name: 'chat_reports',
     description:
-      'Handling reports that users filed about vendor/customer chat conversations — resolving or dismissing them, and banning abusive reporters.',
+      'Handling reports that users filed about vendor/customer chat conversations: resolving or dismissing them, and banning abusive reporters.',
     path: '/admin/chat-reports',
     role: 'admin_or_approver',
     actions: [
@@ -405,13 +440,13 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'Resolve or dismiss a report with a resolution reason: action taken, no violation, insufficient evidence, or spam/abuse',
       'Add an optional resolution note',
       'Ban a repeat false reporter from filing further reports, or lift that ban',
-      'Change the auto-archive threshold (Super Admin only) — how many days of inactivity (1–3650) before an open chat thread is automatically archived; archiving only changes status, message history is kept',
+      'Change the auto-archive threshold (Super Admin only): how many days of inactivity (1–3650) before an open chat thread is automatically archived; archiving only changes status, message history is kept',
     ],
     notes: [
-      'These are reports about chats between users and vendors — not the same thing as the chatbot oversight page, and not the same thing as staff_conduct (which covers support-ticket/staff conduct reports).',
+      'These are reports about chats between users and vendors: not the same thing as the chatbot oversight page, and not the same thing as staff_conduct (which covers support-ticket/staff conduct reports).',
       'The ban applies to the person who filed the report, not the person reported.',
-      'While a report is open, both the reporting customer and the admin see a persistent "reported — under review" line on that conversation. The reported party never sees it, so an investigation isn\'t tipped off.',
-      'The auto-archive threshold control only shows for Super Admins — everyone else with access to this page can still review/resolve/dismiss reports.',
+      'While a report is open, both the reporting customer and the admin see a persistent "reported, under review" line on that conversation. The reported party never sees it, so an investigation isn\'t tipped off.',
+      'The auto-archive threshold control only shows for Super Admins: everyone else with access to this page can still review/resolve/dismiss reports.',
     ],
     keywords: ['chat report', 'reported chat', 'report ban', 'reported conversation', 'dismiss a report', 'resolve a report'],
     source: 'app/api/admin/chat-reports/route.ts, chat-reports/[reportId], report-bans/[userId], chat-settings',
@@ -419,7 +454,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   {
     name: 'affiliate',
     description:
-      'The affiliate admin section — commission stats, fraud flags and sweeps, commission tier rates, disabled affiliate links, and the affiliate report export.',
+      'The affiliate admin section: commission stats, fraud flags and sweeps, commission tier rates, disabled affiliate links, and the affiliate report export.',
     path: '/admin/affiliate',
     role: 'admin_or_approver',
     actions: [
@@ -427,7 +462,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'Review fraud flags and either confirm or dismiss each one',
       'Run a fraud sweep',
       'Run affiliate commission clearing',
-      'Edit a commission tier — its rate percentage and minimum referrals',
+      'Edit a commission tier: its rate percentage and minimum referrals',
       'Reactivate a disabled affiliate link',
       'Export the affiliate report',
     ],
@@ -441,13 +476,13 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   {
     name: 'chatbot_oversight',
     description:
-      'The chatbot oversight page — chatbot answer/escalation stats, unanswered questions, and managing the customer FAQ knowledge base (add, edit, activate, AI-draft, reindex).',
+      'The chatbot oversight page: chatbot answer/escalation stats, unanswered questions, and managing the customer FAQ knowledge base (add, edit, activate, AI-draft, reindex).',
     path: '/admin/chatbot',
     role: 'admin_or_approver',
     actions: [
       'See chatbot stats: questions asked, answer rate, escalation rate',
       'See the top unanswered questions, and answers customers marked unhelpful (a KB doc exists but needs improving, not creating)',
-      'See the top questions that most often end in a support ticket regardless of what the bot answered — the escalation rate tells you HOW OFTEN that happens, this list tells you WHICH topics, so Help Centre effort goes where it is actually needed',
+      'See the top questions that most often end in a support ticket regardless of what the bot answered: the escalation rate tells you HOW OFTEN that happens, this list tells you WHICH topics, so Help Centre effort goes where it is actually needed',
       'Add a knowledge base entry, or start one from an AI draft based on a failed question',
       'Edit an existing entry, and activate or deactivate entries (individually or in batch)',
       'Reindex the knowledge base so new or edited entries become searchable',
@@ -462,7 +497,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'ai_assistant',
-    description: 'This assistant itself — what it can answer, and how.',
+    description: 'This assistant itself: what it can answer, and how.',
     path: '/admin/ai-assistant',
     role: 'super_admin',
     actions: [
@@ -471,8 +506,8 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
     ],
     notes: [
       'Super Admin only.',
-      'Data answers only ever come from pre-registered aggregate queries — the assistant never returns a customer’s personal data.',
-      'Staff conduct review used to live on this page but moved to its own section — see staff_conduct.',
+      'Data answers only ever come from pre-registered aggregate queries: the assistant never returns a customer’s personal data.',
+      'Staff conduct review used to live on this page but moved to its own section: see staff_conduct.',
     ],
     keywords: ['ai assistant', 'this assistant'],
     source: 'app/api/admin-ai/ask/route.ts, lib/admin-ai/queries.ts',
@@ -480,19 +515,19 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   {
     name: 'staff_conduct',
     description:
-      'Reviewing staff/admin conduct in chats — messages the system automatically flagged for profanity or slurs, and chats a user reported.',
+      'Reviewing staff/admin conduct in chats: messages the system automatically flagged for profanity or slurs, and chats a user reported.',
     path: '/admin/staff-conduct',
     role: 'super_admin',
     actions: [
       'Flagged Conduct tab: admin/staff messages the system detected as containing profanity or slurs, shown uncensored with who sent it and to whom',
-      "Reported Chat tab: chats a user reported via the Report button — currently populated from customer<->admin SUPPORT TICKET conversations only",
+      "Reported Chat tab: chats a user reported via the Report button, currently populated from customer<->admin SUPPORT TICKET conversations only",
       'Open the full message transcript behind a flag or report',
       'Mark a flagged item reviewed',
     ],
     notes: [
       'Super Admin only.',
-      'Not the same thing as /admin/chat-reports, which handles reports about CUSTOMER<->VENDOR chat conversations (scam/abuse/spam) — this page is about support-ticket conduct and staff behaviour, not vendor chat.',
-      'Moved out of /admin/ai-assistant into its own nav entry — it is a moderation tool, not an AI capability.',
+      'Not the same thing as /admin/chat-reports, which handles reports about CUSTOMER<->VENDOR chat conversations (scam/abuse/spam): this page is about support-ticket conduct and staff behaviour, not vendor chat.',
+      'Moved out of /admin/ai-assistant into its own nav entry: it is a moderation tool, not an AI capability.',
     ],
     keywords: ['staff conduct', 'flagged conduct', 'profanity', 'admin misconduct'],
     source: 'app/admin/staff-conduct/page.tsx, components/admin/staff-conduct-panel.tsx, app/api/admin/conduct-flags/route.ts, app/api/admin/chat-conduct-reports/route.ts, lib/moderation/chat-conduct-reports.ts',
@@ -500,19 +535,19 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   {
     name: 'moderation_words',
     description:
-      'Adding words to the auto-censor list — words that get masked wherever profanity/slurs are already masked (tickets, comments, chatbot, chat).',
+      'Adding words to the auto-censor list: words that get masked wherever profanity/slurs are already masked (tickets, comments, chatbot, chat).',
     path: '/admin/moderation-words',
     role: 'super_admin',
     actions: [
       'Add a word (any language) to be auto-censored, tagged as either "profanity" or "slur"',
-      'Optionally tag a word with a language label, for the admin\'s own reference — this label is not enforced',
+      'Optionally tag a word with a language label, for the admin\'s own reference: this label is not enforced',
       'Toggle a word active/inactive without deleting it',
       'Delete a word from the list',
     ],
     notes: [
       'Super Admin only.',
-      'Supplements — does not replace — the built-in, hardcoded English profanity/slur lists (lib/moderation/wordlists.ts). Words added here are for cases the built-in list misses, especially other languages.',
-      'Takes effect immediately on the next message — no redeploy needed.',
+      'Supplements (does not replace) the built-in, hardcoded English profanity/slur lists (lib/moderation/wordlists.ts). Words added here are for cases the built-in list misses, especially other languages.',
+      'Takes effect immediately on the next message: no redeploy needed.',
       'Applies everywhere existing profanity masking already runs: support tickets, place comments, the customer chatbot, the admin AI assistant, and customer<->vendor chat.',
     ],
     keywords: ['banned word', 'custom word', 'word list', 'censor list', 'moderation word', 'add a word'],
@@ -527,7 +562,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'See how many affiliate attributions are past their hold and ready to confirm',
       'Run clearing to confirm them',
     ],
-    notes: ['This page is not in the admin sidebar — reach it directly at /admin/rewards.'],
+    notes: ['This page is not in the admin sidebar: reach it directly at /admin/rewards.'],
     keywords: ['clear earnings', 'clearing earnings', 'rewards clearing', 'pending earnings clearing'],
     source: 'app/admin/rewards/page.tsx, app/api/admin/clear-earnings/route.ts',
   },
@@ -665,6 +700,14 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'Only pending refunds can be reviewed. If the pickup evidence changed since you opened it, refresh before deciding.',
       'Approving a refund for items that were already collected needs an explanation in the note.',
       'Customers refund the whole order, with one active request per order; approved refunds go back to the original payment method, with the wallet-paid part returned to the wallet, and the vendor\'s earnings for that order are reversed.',
+    ],
+    lifecycle: [
+      { status: 'Pending', by: 'Customer', detail: 'The customer asked to refund the whole order. An order can have one active request at a time.' },
+      { status: 'Approved', by: 'Super Admin', detail: 'Approved after checking the pickup evidence. The refund to the original payment method starts, with the wallet-paid part returned to the wallet.' },
+      { status: 'Processed', by: 'System', detail: 'The payment provider completed the refund.' },
+      { status: 'Failed', by: 'System', detail: 'The payment provider could not complete the refund.' },
+      { status: 'Rejected', by: 'Super Admin', detail: 'Declined, with an optional note.' },
+      { status: 'Simulated', by: 'System', detail: 'A refund of a test payment made with the payment simulator. No real money moved.' },
     ],
     keywords: ['refund request', 'approve a refund', 'reject a refund', 'refund review', 'refund evidence', 'manual refund'],
     source: 'app/admin/refunds/page.tsx, app/api/admin/refunds/route.ts, app/api/admin/refunds/[refundId]/route.ts, request_order_refund, sync_paid_order_vendor_settlement',
@@ -831,5 +874,13 @@ export function capabilityContext(capability: AdminCapability): string {
     'What you can do here:',
     ...capability.actions.map((a) => `- ${a}`),
     ...(capability.notes?.length ? ['Important:', ...capability.notes.map((n) => `- ${n}`)] : []),
+    ...(capability.lifecycle?.length
+      ? ['Status lifecycle, in order:', ...capability.lifecycle.map((stage) => `- ${stage.status} (by ${stage.by}): ${stage.detail}`)]
+      : []),
+    ...workflowsForGuide(capability.name).map(({ workflow, index }) => {
+      const before = workflow.steps[index - 1]?.guide;
+      const after = workflow.steps[index + 1]?.guide;
+      return `Part of the ${workflow.title} workflow, step ${index + 1} of ${workflow.steps.length}${before ? `; before this: ${before}` : ''}${after ? `; next: ${after}` : ''}.`;
+    }),
   ].join('\n');
 }

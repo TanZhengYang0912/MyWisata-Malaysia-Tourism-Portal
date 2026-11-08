@@ -4190,7 +4190,14 @@
     "otherGroup": "其他",
     "backToHelp": "全部帮助主题",
     "openPage": "打开此页面",
-    "notAvailable": "您的账户无法查看此指南。返回即可查看您可以使用的帮助主题。"
+    "notAvailable": "您的账户无法查看此指南。返回即可查看您可以使用的帮助主题。",
+    "workflows": "工作流程",
+    "lifecycle": "状态流程",
+    "by": "操作方：{{who}}",
+    "partOf": "属于“{{workflow}}”，第 {{step}} 步，共 {{total}} 步",
+    "previousStep": "上一步：{{title}}",
+    "nextStep": "下一步：{{title}}",
+    "workflowNotAvailable": "你的账户无法查看此工作流程。返回查看你可以使用的帮助主题。"
   },
   "hotelAmenities": {
     "eyebrow": "酒店",

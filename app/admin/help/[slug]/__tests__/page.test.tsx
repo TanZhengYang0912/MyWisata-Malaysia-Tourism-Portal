@@ -56,3 +56,27 @@ it("tells a staff member a Super Admin section was granted to their account", as
   expect(container.textContent).toContain("staffHelp.whoGranted");
   expect(container.textContent).not.toContain("staffHelp.whoSuperAdmin");
 });
+
+it("shows the status lifecycle in order on a page that runs a whole activity", async () => {
+  await render("super_admin", "withdrawals");
+  const lifecycle = findElements(container, (element) => element.getAttribute("data-staff-help-lifecycle") !== null)[0];
+  expect(lifecycle?.textContent).toContain("staffHelp.lifecycle");
+  const text = lifecycle?.textContent ?? "";
+  expect(text.indexOf("Pending second approval")).toBeGreaterThan(text.indexOf("Pending"));
+  expect(text).toContain("Rejected");
+});
+
+it("links a guide to its workflow and the neighbouring steps", async () => {
+  await render("super_admin", "event-registrations");
+  const partOf = findElements(container, (element) => element.getAttribute("data-staff-help-part-of") === "event-lifecycle")[0];
+  expect(partOf?.textContent).toContain("staffHelp.partOf");
+  const hrefs = findElements(partOf!, (element) => element.tagName === "A").map((element) => element.getAttribute("href"));
+  expect(hrefs).toEqual(["/admin/help/flows/event-lifecycle", "/admin/help/event-campaigns", "/admin/help/orders"]);
+});
+
+it("does not link a neighbouring step the staff member cannot open", async () => {
+  await render("approver", "event-registrations", ["/admin/event-registrations"]);
+  const partOf = findElements(container, (element) => element.getAttribute("data-staff-help-part-of") === "event-lifecycle")[0];
+  const hrefs = findElements(partOf!, (element) => element.tagName === "A").map((element) => element.getAttribute("href"));
+  expect(hrefs).toEqual(["/admin/help/flows/event-lifecycle"]);
+});

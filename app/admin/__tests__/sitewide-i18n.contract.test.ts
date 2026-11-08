@@ -206,7 +206,7 @@ function callsBoundTranslator(source: string): boolean {
 
 describe("admin component sitewide i18n contract", () => {
   it("covers every Admin route with its own or delegated translation binding", () => {
-    expect(ADMIN_ROUTE_I18N_FILES).toHaveLength(42);
+    expect(ADMIN_ROUTE_I18N_FILES).toHaveLength(43);
     for (const file of ADMIN_ROUTE_I18N_FILES) {
       const source = read(file);
       if (file === "app/admin/security/page.tsx") {

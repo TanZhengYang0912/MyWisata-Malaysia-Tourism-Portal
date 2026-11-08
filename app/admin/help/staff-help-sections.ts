@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/providers/auth";
 import { CAPABILITY_REGISTRY, type AdminCapability } from "@/lib/admin-ai/capabilities";
 import { staffNavigationSections } from "@/lib/staff-permissions/navigation";
+import { STAFF_WORKFLOWS, type StaffWorkflow } from "@/lib/admin-ai/workflows";
 
 // Shared by the Staff Help list (/admin/help) and each guide (/admin/help/[slug]).
 // Plan: Docs/plans/2026-10-16-1530-staff-help-page.md. Display-only; every
@@ -40,6 +41,14 @@ export type StaffHelpAudience = "staff" | "superAdmin" | "granted";
 export function sectionAudience(capability: AdminCapability, isSuperAdmin: boolean): StaffHelpAudience {
   if (capability.role !== "super_admin") return "staff";
   return isSuperAdmin ? "superAdmin" : "granted";
+}
+
+export function workflowHref(workflow: StaffWorkflow): string {
+  return `/admin/help/flows/${workflow.slug}`;
+}
+
+export function findGuideByName(name: string): AdminCapability | undefined {
+  return CAPABILITY_REGISTRY.find((capability) => capability.name === name);
 }
 
 export function findGuide(slug: string): AdminCapability | undefined {
@@ -78,9 +87,16 @@ export function useStaffHelpSections() {
       (group ?? other).sections.push(capability);
     }
 
+    // A workflow is listed when at least one of its pages is visible; steps on
+    // pages this staff member cannot open are shown without a link.
+    const visibleNames = new Set(visible.map((capability) => capability.name));
+    const workflows = STAFF_WORKFLOWS.filter((workflow) => workflow.steps.some((step) => visibleNames.has(step.guide)));
+
     return {
       isSuperAdmin,
       visible,
+      visibleNames,
+      workflows,
       groups: [...groups, other].filter((group) => group.sections.length > 0),
     };
   }, [isSuperAdmin, staffModules, t]);

@@ -4190,7 +4190,14 @@
     "otherGroup": "Lain-lain",
     "backToHelp": "Semua topik bantuan",
     "openPage": "Buka halaman ini",
-    "notAvailable": "Panduan ini tidak tersedia untuk akaun anda. Kembali untuk melihat topik bantuan yang boleh anda gunakan."
+    "notAvailable": "Panduan ini tidak tersedia untuk akaun anda. Kembali untuk melihat topik bantuan yang boleh anda gunakan.",
+    "workflows": "Aliran kerja",
+    "lifecycle": "Kitaran status",
+    "by": "Oleh {{who}}",
+    "partOf": "Sebahagian daripada {{workflow}}, langkah {{step}} daripada {{total}}",
+    "previousStep": "Sebelum: {{title}}",
+    "nextStep": "Seterusnya: {{title}}",
+    "workflowNotAvailable": "Aliran kerja ini tidak tersedia untuk akaun anda. Kembali untuk melihat topik bantuan yang boleh anda gunakan."
   },
   "hotelAmenities": {
     "eyebrow": "Hotel",

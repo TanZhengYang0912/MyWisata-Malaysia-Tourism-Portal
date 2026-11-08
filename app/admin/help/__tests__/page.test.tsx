@@ -97,3 +97,18 @@ it("labels each section's audience from the viewer's point of view", async () =>
   expect(badge("event_campaigns")).not.toContain("staffHelp.whoSuperAdmin");
   expect(badge("withdrawals")).toContain("staffHelp.whoStaff");
 });
+
+it("lists workflows above the guides, only when one of their pages is visible, and hides them while searching", async () => {
+  await act(async () => { root.render(<AdminHelpPage />); });
+  expect(attr(container, "data-staff-help-workflow")).toEqual(["event-lifecycle"]);
+  expect(findElements(container, (element) => element.getAttribute("data-staff-help-workflow") === "event-lifecycle")[0]?.getAttribute("href")).toBe("/admin/help/flows/event-lifecycle");
+  await search("booth number");
+  expect(attr(container, "data-staff-help-workflow")).toEqual([]);
+});
+
+it("does not list a workflow to staff who can open none of its pages", async () => {
+  mocks.role = "approver";
+  mocks.menu = [["finance", "Finance", ["/admin/withdrawals"]]];
+  await act(async () => { root.render(<AdminHelpPage />); });
+  expect(attr(container, "data-staff-help-workflow")).toEqual([]);
+});
