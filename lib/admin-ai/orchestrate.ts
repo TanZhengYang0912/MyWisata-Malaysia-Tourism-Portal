@@ -24,7 +24,11 @@ import {
   capabilityRegistryDescription,
   capabilityContext,
   capabilityOverviewContext,
+  matchWorkflowByKeywords,
+  workflowContext,
+  workflowRegistryDescription,
 } from './capabilities';
+import { findWorkflow } from './workflows';
 
 const pickerResponseSchema = z.union([
   z.object({ query: z.null() }).strict(),
@@ -78,7 +82,8 @@ details), even when the question named a specific customer. So: answer plainly a
 DATA RESULT, including when it's a count "for" a named customer — that count is not PII, do not
 refuse to state it.
 
-Be concise and professional.
+Be concise and professional. Reply in the same language as the admin's question (English, Malay
+or Chinese).
 
 Reply in PLAIN TEXT ONLY — the UI renders your response as-is, with no markdown parser. Never use
 markdown syntax: no "*", no "**", no "-" or "•" bullets, no "#" headings, no backticks. For a
@@ -119,11 +124,18 @@ question is about — questions like "how do I do X", "where do I X", "what is t
 Sections:
 ${capabilityRegistryDescription()}
 
+Workflows (activities that move across several sections):
+${workflowRegistryDescription()}
+
+Use a workflow name (for example "workflow:event-lifecycle") when the admin asks how a whole
+activity runs from start to finish, what happens after a step, or what order things happen in.
+
 Use "overview" if the admin is asking broadly what they can do across the whole admin panel, or
 what sections exist, rather than about one specific section.
 
 Respond with ONLY strict JSON, no markdown, no commentary:
 - If one section fits: {"capability": "<name>"}
+- If a workflow fits: {"capability": "workflow:<slug>"}
 - If the question is broad/panel-wide: {"capability": "overview"}
 - If none fit: {"capability": null}`;
 
@@ -134,10 +146,16 @@ from the SECTION INFO provided below. It is the complete set of facts you may us
 
 Never invent a step, a button, a permission, a limit, or a turnaround time that is not in SECTION
 INFO. If SECTION INFO does not cover what was asked, say what the section does cover and point to
-its path, rather than guessing.
+its page, rather than guessing.
 
-Always state where to go (the path) and, when SECTION INFO says a section is Super Admin only, say
+Always state where to go by the page name given in SECTION INFO. Never write a web address or a path
+such as /admin/... . When SECTION INFO says a section is Super Admin only, say
 so — an approver reading a confident answer about a section they cannot open is a wasted trip.
+
+When SECTION INFO is a WORKFLOW, list every step in order, each with its page name and who acts.
+
+Reply in the same language as the admin's question (English, Malay or Chinese). Keep page names
+exactly as SECTION INFO gives them.
 
 Be concise and professional: a short answer, then the specific steps or options if the question
 asked how.
@@ -190,8 +208,14 @@ async function answerCapabilityQuestion(
   let capabilityUsed: string;
 
   // Fast path: an unambiguous keyword hit skips the picker call entirely.
-  const keywordMatch = matchCapabilityByKeywords(question);
-  if (keywordMatch) {
+  // A workflow phrase ("event lifecycle") is more specific than a section
+  // keyword, so it is checked first.
+  const workflowMatch = matchWorkflowByKeywords(question);
+  const keywordMatch = workflowMatch ? null : matchCapabilityByKeywords(question);
+  if (workflowMatch) {
+    context = workflowContext(workflowMatch);
+    capabilityUsed = `workflow:${workflowMatch.slug}`;
+  } else if (keywordMatch) {
     context = capabilityContext(keywordMatch);
     capabilityUsed = keywordMatch.name;
   } else {
@@ -206,6 +230,11 @@ async function answerCapabilityQuestion(
       if (parsed.data.capability === 'overview') {
         context = capabilityOverviewContext();
         capabilityUsed = 'overview';
+      } else if (parsed.data.capability.startsWith('workflow:')) {
+        const workflow = findWorkflow(parsed.data.capability.slice('workflow:'.length));
+        if (!workflow) return null;
+        context = workflowContext(workflow);
+        capabilityUsed = `workflow:${workflow.slug}`;
       } else {
         const capability = findCapability(parsed.data.capability);
         // A hallucinated section name is treated as no match — same rule as

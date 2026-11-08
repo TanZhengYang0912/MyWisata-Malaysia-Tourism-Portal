@@ -23,7 +23,7 @@
 // update the matching entry — the `source` field is there to make that
 // lookup mechanical.
 
-import { workflowsForGuide } from './workflows';
+import { STAFF_WORKFLOWS, workflowsForGuide, type StaffWorkflow } from './workflows';
 
 export type AdminRole = 'super_admin' | 'admin_or_approver';
 
@@ -80,6 +80,7 @@ export interface AdminCapability {
 export const CAPABILITY_REGISTRY: AdminCapability[] = [
   {
     name: 'dashboard',
+    title: 'Overview',
     description: 'The admin Overview/dashboard page: where to see platform activity at a glance.',
     path: '/admin/dashboard',
     role: 'admin_or_approver',
@@ -91,6 +92,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'vendor_approvals',
+    title: 'Vendor review',
     description:
       'Reviewing vendor applications: approving, rejecting, or requesting more information from a vendor; sending the approval email; suspending a vendor; linking a recommendation to a vendor.',
     path: '/admin/vendors',
@@ -113,6 +115,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'catalogue_review',
+    title: 'Catalogue',
     description:
       'Reviewing vendor-submitted listings (outlets, products, and vouchers) that are waiting for approval before going live.',
     path: '/admin/catalogue',
@@ -169,6 +172,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'user_management',
+    title: 'Users',
     description:
       'Managing platform user accounts: suspending, unsuspending, deleting, restoring an account, or clearing a bio restriction.',
     path: '/admin/users',
@@ -190,6 +194,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'access_control',
+    title: 'Access Control',
     description:
       'Staff role/permission management (the live authorization system), plus a newer policy-based entitlements engine still running in shadow mode for parity-testing before cutover.',
     path: '/admin/access-control',
@@ -212,6 +217,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'kyc_review',
+    title: 'KYC',
     description:
       'Reviewing customer KYC identity verification: the review queue, document checks, two-reviewer approval, information requests, rejections, identity resolutions and KYC security status.',
     path: '/admin/kyc',
@@ -279,6 +285,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'wallet_settings',
+    title: 'Wallet',
     description:
       'Configuring wallet and withdrawal policy: clearance days, minimum withdrawal, dual-approval threshold and escalation timers.',
     path: '/admin/wallet/settings',
@@ -340,6 +347,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'payout_reports',
+    title: 'Payouts',
     description: 'The payout report: platform-wide payout figures, and exporting them as CSV.',
     path: '/admin/reports/payouts',
     role: 'super_admin',
@@ -373,7 +381,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
       'There is no platform wallet or cash-out: customer payments already land in the company account. Recording a transfer moves no money; it logs a transfer finance already made, so "available to transfer" stays accurate.',
       'Available to transfer = platform net on confirmed settlements (past their hold period) minus transfers already recorded. Recording more than that is refused. Transfers cannot be edited or deleted, only voided with a reason, and each action is in the audit log.',
     ],
-    keywords: ['reconciliation', 'platform commission', 'platform fee', 'vendor net', 'platform net', 'platform funds', 'transfer log', 'cash out', 'money owed'],
+    keywords: ['reconciliation', 'order breakdown', 'platform commission', 'platform fee', 'vendor net', 'platform net', 'platform funds', 'platform earnings', 'transfer log', 'record a transfer', 'cash out', 'money owed'],
     source: 'app/admin/reports/reconciliation/page.tsx, app/api/admin/reconciliation/route.ts, lib/admin/reconciliation.ts, lib/vendor/settlement.ts',
   },
   {
@@ -411,6 +419,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'support_tickets',
+    title: 'Support',
     description: 'Working the customer support ticket queue: reading, replying, and changing a ticket status or category.',
     path: '/admin/support',
     role: 'admin_or_approver',
@@ -431,6 +440,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'chat_reports',
+    title: 'Chat Reports',
     description:
       'Handling reports that users filed about vendor/customer chat conversations: resolving or dismissing them, and banning abusive reporters.',
     path: '/admin/chat-reports',
@@ -475,6 +485,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'chatbot_oversight',
+    title: 'Chatbot',
     description:
       'The chatbot oversight page: chatbot answer/escalation stats, unanswered questions, and managing the customer FAQ knowledge base (add, edit, activate, AI-draft, reindex).',
     path: '/admin/chatbot',
@@ -497,6 +508,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'ai_assistant',
+    title: 'AI Assistant',
     description: 'This assistant itself: what it can answer, and how.',
     path: '/admin/ai-assistant',
     role: 'super_admin',
@@ -514,6 +526,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'staff_conduct',
+    title: 'Staff Conduct',
     description:
       'Reviewing staff/admin conduct in chats: messages the system automatically flagged for profanity or slurs, and chats a user reported.',
     path: '/admin/staff-conduct',
@@ -534,6 +547,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'moderation_words',
+    title: 'Moderation Words',
     description:
       'Adding words to the auto-censor list: words that get masked wherever profanity/slurs are already masked (tickets, comments, chatbot, chat).',
     path: '/admin/moderation-words',
@@ -649,6 +663,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'vendor_announcements',
+    title: 'Announcements',
     description: 'Sending announcements to vendors, including invitations to join a vendor-fair event.',
     path: '/admin/announcements',
     role: 'super_admin',
@@ -686,6 +701,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'refund_review',
+    title: 'Refunds',
     description: 'Reviewing customer refund requests: checking the pickup and fulfilment evidence, then approving or rejecting.',
     path: '/admin/refunds',
     role: 'super_admin',
@@ -735,6 +751,7 @@ export const CAPABILITY_REGISTRY: AdminCapability[] = [
   },
   {
     name: 'system_settings',
+    title: 'System Settings',
     description: 'Emergency platform switches: pausing new customer orders and pausing custom email delivery.',
     path: '/admin/system-settings',
     role: 'super_admin',
@@ -847,12 +864,44 @@ export function capabilityRegistryDescription(): string {
  * NO_MATCH_ANSWER comment in orchestrate.ts warns about leaking. What this
  * returns is no more than the admin's own sidebar already shows them.
  */
+/** The page name staff see: the sidebar label when set, otherwise the guide name in words. */
+export function capabilityTitle(capability: AdminCapability): string {
+  if (capability.title) return capability.title;
+  const words = capability.name.replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** Workflows the how-to picker may choose, as "workflow:<slug>: summary" lines. */
+export function workflowRegistryDescription(): string {
+  return STAFF_WORKFLOWS.map((workflow) => `- workflow:${workflow.slug}: ${workflow.title}. ${workflow.summary}`).join('\n');
+}
+
+/** Every step of a workflow, in order, with page names: what the assistant answers from. */
+export function workflowContext(workflow: StaffWorkflow): string {
+  const pageName = (guide: string) => {
+    const found = CAPABILITY_REGISTRY.find((c) => c.name === guide);
+    return found ? capabilityTitle(found) : guide;
+  };
+  return [
+    `WORKFLOW: ${workflow.title}`,
+    workflow.summary,
+    '## Steps, in order:',
+    ...workflow.steps.map((step, index) => `- Step ${index + 1}, on the ${pageName(step.guide)} page (by ${step.by}): ${step.what}`),
+  ].join('\n');
+}
+
+/** Whole-word keyword match for workflows, checked before the section fast path. */
+export function matchWorkflowByKeywords(question: string): StaffWorkflow | null {
+  const normalized = ` ${question.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()} `;
+  return STAFF_WORKFLOWS.find((workflow) => workflow.keywords.some((keyword) => normalized.includes(` ${keyword} `))) ?? null;
+}
+
 export function capabilityOverviewContext(): string {
   return [
     'SECTIONS OF THE ADMIN PANEL:',
     ...CAPABILITY_REGISTRY.map((c) => {
       const gate = c.role === 'super_admin' ? ' (Super Admin only)' : '';
-      return `- ${c.path}${gate}: ${c.actions[0]}`;
+      return `- ${capabilityTitle(c)}${gate}: ${c.actions[0]}`;
     }),
   ].join('\n');
 }
@@ -868,8 +917,9 @@ export function capabilityContext(capability: AdminCapability): string {
       : 'Who can use it: admin, approver, or super admin.';
 
   return [
-    `SECTION: ${capability.name}`,
-    `Where: ${capability.path}`,
+    `SECTION: ${capabilityTitle(capability)}`,
+    // Staff navigate by page name; the assistant is never given the address.
+    `Where: the ${capabilityTitle(capability)} page`,
     roleLine,
     // Headings start with '## ' so the bank-account pattern in lib/chatbot/pii.ts
     // cannot read a line ending in "account" plus the next heading word as an
@@ -881,8 +931,12 @@ export function capabilityContext(capability: AdminCapability): string {
       ? ['## Status lifecycle, in order:', ...capability.lifecycle.map((stage) => `- ${stage.status} (by ${stage.by}): ${stage.detail}`)]
       : []),
     ...workflowsForGuide(capability.name).map(({ workflow, index }) => {
-      const before = workflow.steps[index - 1]?.guide;
-      const after = workflow.steps[index + 1]?.guide;
+      const pageName = (guide: string | undefined) => {
+        const found = guide ? CAPABILITY_REGISTRY.find((c) => c.name === guide) : undefined;
+        return found ? capabilityTitle(found) : undefined;
+      };
+      const before = pageName(workflow.steps[index - 1]?.guide);
+      const after = pageName(workflow.steps[index + 1]?.guide);
       return `Part of the ${workflow.title} workflow, step ${index + 1} of ${workflow.steps.length}${before ? `; before this: ${before}` : ''}${after ? `; next: ${after}` : ''}.`;
     }),
   ].join('\n');

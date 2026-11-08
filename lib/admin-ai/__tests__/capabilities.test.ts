@@ -5,6 +5,7 @@ import {
   findCapability,
   matchCapabilityByKeywords,
   capabilityContext,
+  capabilityTitle,
   capabilityOverviewContext,
   capabilityRegistryDescription,
 } from '@/lib/admin-ai/capabilities';
@@ -42,7 +43,8 @@ describe('admin capability registry', () => {
     expect(users).toBeDefined();
     const context = capabilityContext(users!);
     expect(context).toContain('Super Admin only');
-    expect(context).toContain('/admin/users');
+    expect(context).toContain('Where: the Users page');
+    expect(context).not.toContain('/admin/');
   });
 
   it('says who can use a non-super-admin section', () => {
@@ -131,10 +133,12 @@ describe('admin capability registry', () => {
     expect(findCapability('recommendation_rewards')?.path).toBe('/admin/recommendations/rewards');
   });
 
-  it('builds an overview that lists paths without leaking internal slugs or sources', () => {
+  it('builds an overview that lists page names without leaking addresses, slugs or sources', () => {
     const overview = capabilityOverviewContext();
-    expect(overview).toContain('/admin/withdrawals');
-    expect(overview).toContain('/admin/users (Super Admin only)');
+    expect(overview).toContain('- Withdrawals:');
+    expect(overview).toContain('- Order Breakdown (Super Admin only):');
+    expect(overview).toContain('- Users (Super Admin only):');
+    expect(overview).not.toContain('/admin/');
     expect(overview).not.toContain('route.ts');
     expect(overview).not.toContain('lib/validation');
   });
@@ -162,13 +166,21 @@ describe('Staff Help coverage', () => {
     for (const phrase of ['second reviewer', 'identity resolution', 'authenticator', 'security status']) expect(kyc.toLowerCase()).toContain(phrase);
   });
 
-  it('titles renamed pages with their English sidebar label', () => {
+  it('titles every sidebar page with its English sidebar label', () => {
     const navigation = (enAdmin as { navigation: Record<string, string> }).navigation;
-    expect(byName('reconciliation')?.title).toBe(navigation['Reconciliation']);
-    expect(byName('event_campaigns')?.title).toBe(navigation['Promotion Campaigns']);
-    expect(byName('event_registrations')?.title).toBe(navigation['Event Registrations']);
-    expect(byName('event_promotions')?.title).toBe(navigation['Event Promos']);
-    expect(byName('sponsored_placements')?.title).toBe(navigation['Sponsored Placements']);
+    // Guide name -> the sidebar module label it belongs to.
+    const sidebarModule: Record<string, string> = {
+      dashboard: 'Overview', vendor_approvals: 'Vendor Approvals', catalogue_review: 'Catalogue Review', user_management: 'User Management',
+      kyc_review: 'KYC Review', withdrawals: 'Withdrawals', refund_review: 'Refunds', wallet_settings: 'Wallet Settings',
+      payout_reports: 'Payout Reports', reconciliation: 'Reconciliation', recommendations: 'Recommendations', support_tickets: 'Support Tickets',
+      chat_reports: 'Chat Reports', affiliate: 'Affiliate', chatbot_oversight: 'Chatbot', ai_assistant: 'AI Assistant',
+      staff_conduct: 'Staff Conduct', access_control: 'Access Control', sponsored_placements: 'Sponsored Placements',
+      event_campaigns: 'Promotion Campaigns', orders: 'Orders', event_promotions: 'Event Promos', event_registrations: 'Event Registrations',
+      vendor_announcements: 'Announcements', system_settings: 'System Settings',
+    };
+    for (const [name, moduleLabel] of Object.entries(sidebarModule)) {
+      expect(capabilityTitle(byName(name)!), name).toBe(navigation[moduleLabel]);
+    }
   });
 });
 

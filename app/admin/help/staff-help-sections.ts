@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/providers/auth";
-import { CAPABILITY_REGISTRY, type AdminCapability } from "@/lib/admin-ai/capabilities";
+import { CAPABILITY_REGISTRY, capabilityTitle, type AdminCapability } from "@/lib/admin-ai/capabilities";
 import { staffNavigationSections } from "@/lib/staff-permissions/navigation";
 import { STAFF_WORKFLOWS, type StaffWorkflow } from "@/lib/admin-ai/workflows";
 
@@ -17,9 +17,7 @@ const ALWAYS_VISIBLE = "staff_sign_in_security";
 export type StaffHelpGroup = { key: string; label: string; sections: AdminCapability[] };
 
 export function sectionTitle(capability: AdminCapability): string {
-  if (capability.title) return capability.title;
-  const words = capability.name.replace(/_/g, " ");
-  return words.charAt(0).toUpperCase() + words.slice(1);
+  return capabilityTitle(capability);
 }
 
 export function guideSlug(capability: AdminCapability): string {

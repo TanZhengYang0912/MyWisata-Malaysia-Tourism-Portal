@@ -25,7 +25,8 @@ describe('Staff Help workflows and lifecycles', () => {
 
   it('gives the AI assistant the lifecycle and workflow position', () => {
     expect(capabilityContext(findCapability('withdrawals')!)).toContain('Status lifecycle, in order:');
-    expect(capabilityContext(findCapability('event_registrations')!)).toContain('Part of the Event lifecycle workflow, step 2 of 6; before this: event_campaigns; next: orders.');
+    expect(capabilityContext(findCapability('event_registrations')!)).toContain('Part of the Event lifecycle workflow, step 2 of 6; before this: Events; next: Orders.');
+    for (const capability of CAPABILITY_REGISTRY) expect(capabilityContext(capability), capability.name).not.toContain('/admin/');
   });
 
   it('keeps em dashes and admin addresses out of everything Staff Help shows', () => {
@@ -42,5 +43,20 @@ describe('Staff Help workflows and lifecycles', () => {
     expect(shown.filter((text) => text.includes(EM_DASH))).toEqual([]);
     // Staff reach pages by name and the Open this page button, never by typing an address.
     expect(shown.filter((text) => text.includes('/admin/'))).toEqual([]);
+  });
+});
+
+describe('workflow context for the AI assistant', () => {
+  it('gives every step in order with page names, and passes the staff privacy check', async () => {
+    const { workflowContext, matchWorkflowByKeywords } = await import('../capabilities');
+    const { prepareStaffQuestionText } = await import('@/lib/chatbot/pii');
+    const context = workflowContext(STAFF_WORKFLOWS[0]);
+    expect(context.split('\n').filter((line) => line.startsWith('- Step '))).toHaveLength(STAFF_WORKFLOWS[0].steps.length);
+    expect(context).toContain('- Step 2, on the Event Stalls page');
+    expect(context).not.toContain('/admin/');
+    expect(context).not.toContain(EM_DASH);
+    expect(prepareStaffQuestionText(`ADMIN QUESTION: walk me through it\n\nSECTION INFO:\n${context}`).allowed).toBe(true);
+    expect(matchWorkflowByKeywords('Walk me through the event lifecycle')?.slug).toBe('event-lifecycle');
+    expect(matchWorkflowByKeywords('how do I approve a withdrawal')).toBeNull();
   });
 });

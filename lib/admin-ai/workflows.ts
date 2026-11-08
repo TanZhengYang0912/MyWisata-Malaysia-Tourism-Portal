@@ -18,6 +18,8 @@ export interface StaffWorkflow {
   slug: string;
   title: string;
   summary: string;
+  /** Specific phrases that route a question straight to this workflow (whole words). */
+  keywords: string[];
   steps: StaffWorkflowStep[];
 }
 
@@ -26,6 +28,7 @@ export const STAFF_WORKFLOWS: StaffWorkflow[] = [
     slug: 'event-lifecycle',
     title: 'Event lifecycle',
     summary: 'From creating an event to settling its stall sales: the pages involved, in order, and who acts at each step.',
+    keywords: ['event lifecycle', 'event workflow', 'event process', 'event flow', 'whole event'],
     steps: [
       {
         guide: 'event_campaigns',

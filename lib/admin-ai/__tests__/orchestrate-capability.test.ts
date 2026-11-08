@@ -117,4 +117,57 @@ describe('answerAdminQuestion — how-to path', () => {
     expect(result.capabilityUsed).toBeNull();
     expect(callGemini).toHaveBeenCalledTimes(2); // picker + phraser only
   });
+
+  it('answers "walk me through the event lifecycle" from every workflow step, with page names', async () => {
+    callGemini
+      .mockResolvedValueOnce('{"query": null}')
+      .mockResolvedValueOnce('Step 1 Events ... Step 6 Order Breakdown');
+
+    const result = await answerAdminQuestion(service, 'Walk me through the event lifecycle from start to finish');
+
+    expect(result.capabilityUsed).toBe('workflow:event-lifecycle');
+    expect(callGemini).toHaveBeenCalledTimes(2);
+    const phraserUserText = String(callGemini.mock.calls[1][1]);
+    for (const page of ['Events', 'Event Stalls', 'Orders', 'Refunds', 'Event exceptions', 'Order Breakdown']) {
+      expect(phraserUserText).toContain(`on the ${page} page`);
+    }
+    expect(phraserUserText).not.toContain('event_campaigns');
+    expect(phraserUserText).not.toContain('/admin/');
+  });
+
+  it('lets the picker choose a workflow when no phrase matches', async () => {
+    callGemini
+      .mockResolvedValueOnce('{"query": null}')
+      .mockResolvedValueOnce('{"capability": "workflow:event-lifecycle"}')
+      .mockResolvedValueOnce('Six steps.');
+
+    const result = await answerAdminQuestion(service, 'In what order do the event pages get used?');
+
+    expect(result.capabilityUsed).toBe('workflow:event-lifecycle');
+    expect(String(callGemini.mock.calls[1][0])).toContain('workflow:event-lifecycle');
+    expect(String(callGemini.mock.calls[2][1])).toContain('WORKFLOW: Event lifecycle');
+  });
+
+  it('treats an unknown workflow from the picker as no match', async () => {
+    callGemini
+      .mockResolvedValueOnce('{"query": null}')
+      .mockResolvedValueOnce('{"capability": "workflow:no-such-flow"}');
+
+    const result = await answerAdminQuestion(service, 'In what order do the mystery pages get used?');
+
+    expect(result.capabilityUsed).toBeNull();
+    expect(callGemini).toHaveBeenCalledTimes(2);
+  });
+
+  it('labels a guide by its page name and asks for replies in the question\'s language', async () => {
+    callGemini
+      .mockResolvedValueOnce('{"query": null}')
+      .mockResolvedValueOnce('Pergi ke halaman KYC.');
+
+    await answerAdminQuestion(service, 'how does the kyc second reviewer work?');
+
+    expect(String(callGemini.mock.calls[1][1])).toContain('SECTION: KYC\n');
+    expect(String(callGemini.mock.calls[1][1])).not.toContain('kyc_review');
+    expect(String(callGemini.mock.calls[1][0])).toContain('Reply in the same language as the admin\'s question');
+  });
 });
