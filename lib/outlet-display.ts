@@ -16,6 +16,12 @@ export function outletShortName(name?: string | null, vendorName?: string | null
   return separator > 0 ? value.slice(separator + 3).trim() || value : value;
 }
 
+/** True when the outlet label only repeats the vendor, e.g. a single outlet named after its vendor. */
+export function outletRepeatsVendor(name?: string | null, vendorName?: string | null) {
+  const vendor = (vendorName || '').trim().toLowerCase();
+  return Boolean(vendor) && outletShortName(name, vendorName).trim().toLowerCase() === vendor;
+}
+
 export function outletLocation(city?: string | null, state?: string | null) {
   return [city, state].filter(Boolean).join(', ') || 'Malaysia';
 }

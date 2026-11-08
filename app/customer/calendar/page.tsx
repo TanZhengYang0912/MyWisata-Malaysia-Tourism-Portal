@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BookingDayDrawer } from "@/components/customer/booking-day-drawer";
-import { DirectoryPagination } from "@/components/customer/directory-pagination";
+import { Pagination } from "@/components/shared/pagination";
 import type { Booking, Outlet } from "@/backend/core/types";
 import { activityHref, isActivityHistory } from "@/lib/customer/activity-navigation";
 import { countItineraryGroupsInMonth, getHiddenItineraryGroupCount, getItineraryGroupsOutsideMonth, getUniqueItineraryActivityNames, groupBookings, groupBookingsByDay, sortBookingsForCalendar, type BookingCalendarScope, type BookingItineraryGroup } from "@/lib/customer/itinerary-calendar";
@@ -286,15 +286,13 @@ export default function CustomerCalendarPage() {
             {otherItineraryGroups.length > 0 && <section aria-label={tCustomer("ui.calendar.otherBookings")} className={`space-y-3 border-t border-border p-4 ${shouldPromoteOtherBookings ? "order-1 md:order-2" : "order-2"}`}>
               <h2 className="text-sm font-bold text-foreground">{tCustomer("ui.calendar.otherBookings")}</h2>
               {visibleOtherItineraryGroups.map(renderItineraryCard)}
-              <DirectoryPagination
+              <Pagination
                 ariaLabel={tCustomer("ui.calendar.otherBookings")}
                 currentPage={otherBookingsPage}
-                itemLabel={tCustomer("ui.labels.bookings")}
                 onPageChange={setOtherBookingsPage}
                 pageSize={OTHER_BOOKINGS_PAGE_SIZE}
                 totalItems={otherItineraryGroups.length}
                 totalPages={otherBookingsPageCount}
-                variant="marketplace"
               />
             </section>}
           </div>

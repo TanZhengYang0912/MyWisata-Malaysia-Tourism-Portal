@@ -15,7 +15,3 @@ export function getEffectiveOutletCount(
     [activityOutletId, ...outletChoices.map((choice) => choice.outletId)].filter(Boolean),
   ).size;
 }
-
-export function shouldRequireOutletSelection(source: string | null, effectiveOutletCount: number): boolean {
-  return source === "vendor" && effectiveOutletCount > 1;
-}

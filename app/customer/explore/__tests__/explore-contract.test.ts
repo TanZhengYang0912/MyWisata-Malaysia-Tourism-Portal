@@ -42,8 +42,11 @@ describe("customer discovery filter contract", () => {
     expect(exploreSource).toContain("timeTo");
     expect(exploreSource).toContain("onClear");
     expect(exploreSource).toContain("EXPERIENCE_PAGE_SIZE");
-    expect(exploreSource).toContain("<DirectoryPagination");
-    expect(exploreSource).toContain('placeholder={t("ui.map.searchExperience")}');
+    expect(exploreSource).toContain("<Pagination");
+    expect(exploreSource).not.toContain("<DirectoryPagination");
+    // The search hint now lives in DiscoverySearchField itself.
+    expect(exploreSource).not.toContain('placeholder={t("ui.map.searchExperience")}');
+    expect(filterSource).toContain('placeholder ?? t("ui.discovery.searchPlaceholder")');
   });
 
   it("clips document-level horizontal overflow without breaking sticky navigation", () => {
@@ -57,14 +60,14 @@ describe("customer discovery filter contract", () => {
     expect(searchSource).toContain("<CustomerDiscoveryFilterPanel");
     expect(searchSource).toContain("operatingDays");
     expect(searchSource).toContain("hoursMode");
-    expect(searchSource).toContain('placeholder={t("ui.search.searchVendors")}');
+    expect(searchSource).toContain('<DiscoverySearchField value={filters.q} onChange={(q) => updateFilters({ q })} placeholder={t("ui.search.searchVendors")} />');
     expect(filterSource).toContain('t("ui.discovery.state")');
   });
 
-  it("uses the shared sidebar and numbered marketplace pagination on Experiences", () => {
+  it("uses the shared sidebar and the shared pager on Experiences", () => {
     expect(exploreSource).toContain("<DialogContent");
     expect(exploreSource).toContain("<DialogTrigger asChild>");
-    expect(exploreSource).toContain('variant="marketplace"');
+    expect(exploreSource).toContain("totalPages={totalExperiencePages}");
     expect(exploreSource).not.toContain("visibleLimit");
     expect(exploreSource).not.toContain("setVisibleLimit");
     expect(exploreSource).not.toContain('t("ui.discovery.showAll"');
@@ -99,7 +102,7 @@ describe("customer discovery filter contract", () => {
     expect(searchSource).toContain("<CustomerDiscoveryFilterPanel");
     expect(searchSource).toContain("operatingDays");
     expect(searchSource).toContain("hoursMode");
-    expect(searchSource).toContain('placeholder={t("ui.search.searchVendors")}');
+    expect(searchSource).toContain('<DiscoverySearchField value={filters.q} onChange={(q) => updateFilters({ q })} placeholder={t("ui.search.searchVendors")} />');
     expect(filterSource).toContain('t("ui.discovery.state")');
   });
 
@@ -109,7 +112,7 @@ describe("customer discovery filter contract", () => {
     expect(exploreSource).toContain("DiscoverySearchField");
     expect(filterSource).toContain('mode === "experiences"');
     expect(filterSource).toContain("Checkbox");
-    expect(exploreSource).toContain("showSummary={false}");
+    expect(exploreSource).toContain('data-testid="experience-active-filters"');
   });
 
   it("matches the compact Events pill style while keeping the Explore switch on the right", () => {
@@ -121,21 +124,9 @@ describe("customer discovery filter contract", () => {
     expect(exploreSource).toContain("bg-primary text-white");
   });
 
-  it("orders explore destination zones by tourism prominence starting with Federal Territory", () => {
-    const zoneMatch = exploreSource.match(/const ZONE_ORDER = \[([\s\S]*?)\];/);
-    expect(zoneMatch).toBeTruthy();
-    const parsedZones = (zoneMatch?.[1] ?? "")
-      .split(",")
-      .map((s) => s.trim().replace(/['"]/g, ""))
-      .filter(Boolean);
-    expect(parsedZones[0]).toBe("Federal Territory");
-    expect(parsedZones).toEqual([
-      "Federal Territory",
-      "Northern Malaysia",
-      "Central Malaysia",
-      "Southern Malaysia",
-      "Borneo Malaysia",
-      "East Coast Malaysia",
-    ]);
+  it("shows the postcard board instead of the StoryMap and the zone grid on Destinations", () => {
+    expect(exploreSource).not.toContain("<StoryMap");
+    expect(exploreSource).not.toContain("ZONE_ORDER");
+    expect(exploreSource).toContain("<ExplorePostcardBoard activities={displayActivities}");
   });
 });

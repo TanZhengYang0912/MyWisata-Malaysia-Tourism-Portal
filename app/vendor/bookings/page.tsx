@@ -24,7 +24,7 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { StatusBadge } from "@/components/ui/badge";
 import SlotForm from "@/components/vendor/slot-form";
-import PaginationControls from "@/components/vendor/pagination-controls";
+import { Pagination as SharedPagination } from "@/components/shared/pagination";
 import BatchActionBar from "@/components/vendor/batch-action-bar";
 import CompactThumbnail from "@/components/vendor/compact-thumbnail";
 import {
@@ -1137,16 +1137,15 @@ export default function VendorBookingsPage() {
           )}
 
           {!loading && (
-            <PaginationControls
-              page={pagination.page}
+            <SharedPagination
+              currentPage={pagination.page}
               totalPages={pagination.totalPages}
-              total={pagination.total}
+              totalItems={pagination.total}
               pageSize={pagination.pageSize}
               onPageChange={(page) => {
                 setPagination((current) => ({ ...current, page }));
                 loadData(page);
-              }}
-            />
+              }} className="mt-0 border-t border-border px-4 py-3" />
           )}
         </section>
       ) : (
@@ -1992,13 +1991,12 @@ function OperatingHoursPanel({
               </div>
             )}
           </div>
-          <PaginationControls
-            page={pagination.page}
+          <SharedPagination
+            currentPage={pagination.page}
             totalPages={pagination.totalPages}
-            total={pagination.total}
+            totalItems={pagination.total}
             pageSize={pagination.pageSize}
-            onPageChange={(page) => loadData(page)}
-          />
+            onPageChange={(page) => loadData(page)} className="mt-0 border-t border-border px-4 py-3" />
         </div>
       </div>
     </div>

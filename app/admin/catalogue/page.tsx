@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { Pagination } from '@/components/shared/pagination';
 import { Button } from '@/components/ui/button';
 import { Check, ChevronLeft, ChevronRight, ClipboardCheck, Eye, MessageSquare, RefreshCw, X } from 'lucide-react';
 import { StatusBadge } from '@/components/shared/status-badge';
@@ -324,10 +325,7 @@ export default function CatalogueReviewPage() {
             })}
           </div>
         </section>
-        <div className="flex items-center justify-between border-t border-border px-1 py-2 text-xs text-muted-foreground">
-          <span>{t('catalogue.pagination.range', { first: total === 0 ? 0 : (page - 1) * pageSize + 1, last: Math.min(page * pageSize, total), total })}</span>
-          <div className="flex items-center gap-2"><span>{t('catalogue.pagination.pageOf', { page, totalPages: Math.max(totalPages, 1) })}</span><Button size="sm" variant="outline" aria-label={t('actions.previous')} disabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={14} /></Button><Button size="sm" variant="outline" aria-label={t('actions.next')} disabled={page >= totalPages || loading} onClick={() => setPage((value) => value + 1)}><ChevronRight size={14} /></Button></div>
-        </div>
+        <Pagination currentPage={page} totalPages={totalPages} totalItems={total} pageSize={pageSize} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-1 py-2" />
       {active && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 sm:p-6" onClick={() => setActive(null)}>
           <aside role="dialog" aria-modal="true" aria-labelledby="catalogue-review-title" onClick={(event) => event.stopPropagation()} className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl sm:p-6">

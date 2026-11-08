@@ -75,8 +75,13 @@ describe("product breadcrumb context", () => {
     expect(trail.join()).not.toContain("nope");
   });
 
-  it("omits the outlet while a vendor-source product still requires a choice", () => {
-    expect(hrefs(render("source=vendor", [outlet("cheap", 5), outlet("dear", 9)]))).toEqual(["/customer", "/customer/vendors", "/customer/vendors/v1"]);
+  it("selects the default outlet for a multi-outlet product reached from a vendor page, ready to buy", () => {
+    const markup = render("source=vendor", [outlet("cheap", 5), outlet("dear", 9)], activity("cheap", "food"));
+    expect(hrefs(markup)).toEqual(["/customer", "/customer/vendors", "/customer/vendors/v1", "/customer/outlets/cheap"]);
+    expect(markup).toContain("strictMigration.activityDetail.availableAtChoose");
+    expect(markup).toContain("ui.actions.addToCart");
+    expect(markup).not.toContain("ui.activity.chooseOutletContinue");
+    expect(markup).not.toContain("ui.labels.chooseOutlet");
   });
 
   it("includes the single actual outlet for a one-outlet product", () => {

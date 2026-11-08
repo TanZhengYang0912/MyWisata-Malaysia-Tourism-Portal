@@ -71,7 +71,11 @@
   "pagination": {
     "page": "Page {{current}} of {{total}}",
     "items": "{{count}} items",
-    "showing": "Showing {{first}}–{{last}} of {{total}}"
+    "showing": "Showing {{first}}–{{last}} of {{total}}",
+    "range": "{{from}}–{{to}} of {{total}} results",
+    "navLabel": "Pagination",
+    "goToPage": "Go to page",
+    "ofTotal": "of {{total}} pages"
   },
   "statuses": {
     "draft": "Draft",
@@ -115,7 +119,9 @@
     "search": "Search",
     "previousPage": "Previous page",
     "nextPage": "Next page",
-    "openNavigation": "Open navigation menu"
+    "openNavigation": "Open navigation menu",
+    "firstPage": "First page",
+    "lastPage": "Last page"
   },
   "filters": {
     "searchByName": "Search by name…",

@@ -71,7 +71,11 @@
   "pagination": {
     "page": "Halaman {{current}} daripada {{total}}",
     "items": "{{count}} item",
-    "showing": "Menunjukkan {{first}}–{{last}} daripada {{total}}"
+    "showing": "Menunjukkan {{first}}–{{last}} daripada {{total}}",
+    "range": "{{from}}–{{to}} daripada {{total}} hasil",
+    "navLabel": "Penomboran halaman",
+    "goToPage": "Pergi ke halaman",
+    "ofTotal": "daripada {{total}} halaman"
   },
   "statuses": {
     "draft": "Draf",
@@ -115,7 +119,9 @@
     "search": "Cari",
     "previousPage": "Halaman sebelumnya",
     "nextPage": "Halaman seterusnya",
-    "openNavigation": "Buka menu navigasi"
+    "openNavigation": "Buka menu navigasi",
+    "firstPage": "Halaman pertama",
+    "lastPage": "Halaman terakhir"
   },
   "filters": {
     "searchByName": "Cari mengikut nama…",

@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Pagination } from "@/components/shared/pagination";
 import { useActionFeedback } from "@/components/providers/action-feedback";
-import { CalendarClock, ChevronLeft, ChevronRight, ImagePlus, Loader2, MapPin, Megaphone, RefreshCw, Save, Send, ShieldCheck, X } from "lucide-react";
+import { CalendarClock, ImagePlus, Loader2, MapPin, Megaphone, RefreshCw, Save, Send, ShieldCheck, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AdminMobileRecordCard } from "@/components/admin/admin-mobile-record-card";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
@@ -592,10 +593,7 @@ export default function PromotionCampaignsPage() {
                 </div>
               );
             })}</div>}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
-              <span>{tCommon("pagination.showing", { first: filteredCampaigns.length ? (pagedCampaigns.page - 1) * pageSize + 1 : 0, last: Math.min(pagedCampaigns.page * pageSize, filteredCampaigns.length), total: filteredCampaigns.length })}</span>
-              <div className="flex items-center gap-2"><span>{t("ui.pagination.pageOf", { page: pagedCampaigns.page, total: pagedCampaigns.totalPages })}</span>{pagedCampaigns.totalPages > 1 && <><Button type="button" variant="outline" size="sm" aria-label={tCommon("accessibility.previousPage")} disabled={pagedCampaigns.page <= 1 || childEditing} onClick={() => setPage(pagedCampaigns.page - 1)}><ChevronLeft size={14} /></Button><Button type="button" variant="outline" size="sm" aria-label={tCommon("accessibility.nextPage")} disabled={pagedCampaigns.page >= pagedCampaigns.totalPages || childEditing} onClick={() => setPage(pagedCampaigns.page + 1)}><ChevronRight size={14} /></Button></>}</div>
-            </div>
+            <Pagination currentPage={pagedCampaigns.page} totalPages={pagedCampaigns.totalPages} totalItems={filteredCampaigns.length} pageSize={pageSize} onPageChange={setPage} disabled={childEditing} className="mt-0 border-t border-border px-5 py-3" />
           </section>
 
           <Dialog open={Boolean(previewUrl)} onOpenChange={(open) => { if (!open) setPreviewUrl(null); }}>

@@ -4,14 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Clock3,
   RefreshCw,
   RotateCcw,
   Search,
   XCircle,
 } from "lucide-react";
+import { Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
@@ -80,7 +79,6 @@ function providerLabel(
 
 export default function AdminRefundsPage() {
   const { t, i18n } = useTranslation("admin");
-  const { t: tCommon } = useTranslation("common");
   const { prompt } = useAppDialog();
   const locale = isAppLocale(i18n.resolvedLanguage)
     ? i18n.resolvedLanguage
@@ -525,31 +523,7 @@ export default function AdminRefundsPage() {
               )}
             </div>
           </div>
-          <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground">
-            <span>{tCommon("pagination.page", { current: page, total: totalPages })}</span>
-            {totalPages > 1 && (
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={tCommon("accessibility.previousPage")}
-                  disabled={page <= 1 || loading}
-                  onClick={() => setPage((value) => value - 1)}
-                >
-                  <ChevronLeft size={14} />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={tCommon("accessibility.nextPage")}
-                  disabled={page >= totalPages || loading}
-                  onClick={() => setPage((value) => value + 1)}
-                >
-                  <ChevronRight size={14} />
-                </Button>
-              </div>
-            )}
-          </div>
+          <Pagination currentPage={page} totalPages={totalPages} totalItems={total} pageSize={pageSize} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-5 py-3" />
         </div>
     </AdminPageShell>
   );

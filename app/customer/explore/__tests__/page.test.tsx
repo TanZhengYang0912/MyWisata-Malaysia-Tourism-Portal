@@ -13,15 +13,6 @@ vi.mock("../explore-client", () => ({ ExploreClient: () => null }));
 
 import ExplorePage from "../page";
 
-function placesQuery(result: unknown) {
-  const query: Record<string, unknown> = {};
-  query.select = vi.fn(() => query);
-  query.eq = vi.fn(() => query);
-  query.then = (resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) =>
-    Promise.resolve(result).then(resolve, reject);
-  return query;
-}
-
 function upstreamError(status: number) {
   return {
     message: `<!DOCTYPE html><html><head><title>supabase.co | ${status}: Connection timed out</title>`,
@@ -33,24 +24,19 @@ describe("customer Explore server data fallback", () => {
     vi.clearAllMocks();
     mocks.getActivities.mockResolvedValue([]);
     mocks.getStates.mockResolvedValue([]);
-    mocks.createClient.mockResolvedValue({
-      from: vi.fn(() => placesQuery({ data: [], error: null })),
-    });
+    // Explore no longer queries Supabase directly; the client only feeds getStatesWithPlaces (mocked).
+    mocks.createClient.mockResolvedValue({});
   });
 
   it("renders with empty data when Supabase returns transient server errors", async () => {
     mocks.getActivities.mockRejectedValue(upstreamError(522));
     mocks.getStates.mockRejectedValue(upstreamError(503));
-    mocks.createClient.mockResolvedValue({
-      from: vi.fn(() => placesQuery({ data: null, error: upstreamError(502), status: 502 })),
-    });
 
     const page = await ExplorePage();
 
     expect(page.props).toMatchObject({
       initialActivities: [],
       statesWithPlaces: [],
-      placeCountByState: {},
       dataUnavailable: true,
     });
   });
@@ -58,17 +44,13 @@ describe("customer Explore server data fallback", () => {
   it("preserves successful Explore data when one source is temporarily unavailable", async () => {
     const activities = [{ id: "activity-1" }];
     mocks.getActivities.mockResolvedValue(activities);
-    mocks.getStates.mockResolvedValue(["Sabah"]);
-    mocks.createClient.mockResolvedValue({
-      from: vi.fn(() => placesQuery({ data: null, error: upstreamError(503), status: 503 })),
-    });
+    mocks.getStates.mockRejectedValue(upstreamError(503));
 
     const page = await ExplorePage();
 
     expect(page.props).toMatchObject({
       initialActivities: activities,
-      statesWithPlaces: ["Sabah"],
-      placeCountByState: {},
+      statesWithPlaces: [],
       dataUnavailable: true,
     });
   });

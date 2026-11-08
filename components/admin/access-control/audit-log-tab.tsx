@@ -1,9 +1,10 @@
 "use client";
 
-import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, RefreshCw, Search } from "lucide-react";
+import { ArrowRight, ArrowUpRight, RefreshCw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { Pagination } from "@/components/shared/pagination";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMobileRecordCard } from "@/components/admin/admin-mobile-record-card";
 import { capabilityLabel } from "@/components/admin/access-control/capability-label";
@@ -111,7 +112,7 @@ export function AuditLogTab({ focus, onViewEntity }: { focus: AuditFocus | null;
       <div className="hidden overflow-x-auto lg:block">
         <table className="w-full min-w-[1050px] text-left text-sm"><thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.whenMyt")}</th><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.actor")}</th><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.action")}</th><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.target")}</th><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.policyVersion")}</th><th className="px-4 py-3 whitespace-nowrap">{t("accessControl.audit.trace")}</th><th className="px-4 py-3 whitespace-nowrap text-right">{t("accessControl.audit.details")}</th></tr></thead><tbody className="divide-y divide-border">{result.items.map((item) => { const target = focusTargetForAuditEvent(item.entityType, item.entityId); const policyVersion = field(item.after, "policyVersionId") ?? field(item.before, "policyVersionId"); const trace = field(item.after, "traceReference") ?? field(item.before, "traceReference"); return <AuditRow key={item.id} item={item} locale={locale} selected={focus?.eventId === item.id} expanded={expanded === item.id} summaryId={`audit-change-summary-desktop-${item.id}`} policyVersion={policyVersion} trace={trace} target={target} onExpand={() => setExpanded((value) => value === item.id ? null : item.id)} onViewEntity={() => target && onViewEntity(target)} />; })}</tbody></table>
       </div>
-      {loading && result.items.length === 0 ? <State text={t("accessControl.states.loading")} /> : result.items.length === 0 ? <State text={t("accessControl.states.noAuditEvents")} /> : <Pager page={result.page} totalPages={result.totalPages} loading={loading} setPage={setPage} />}
+      {loading && result.items.length === 0 ? <State text={t("accessControl.states.loading")} /> : result.items.length === 0 ? <State text={t("accessControl.states.noAuditEvents")} /> : <Pagination currentPage={result.page} totalPages={result.totalPages} totalItems={result.total} pageSize={result.pageSize} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-5 py-3" />}
     </section>
   </div>;
 }
@@ -211,4 +212,3 @@ function AuditPayload({ title, value }: { title: string; value: Record<string, u
 function field(value: Record<string, unknown> | null, key: string) { return value && typeof value[key] === "string" ? value[key] as string : null; }
 function formatDate(value: string, locale: "en" | "ms" | "zh-CN") { const timestamp = Date.parse(value); return Number.isFinite(timestamp) ? `${formatDateTime(timestamp, locale, { timeZone: "Asia/Kuala_Lumpur" })} MYT` : value; }
 function State({ text }: { text: string }) { return <div className="px-5 py-12 text-center text-sm text-muted-foreground">{text}</div>; }
-function Pager({ page, totalPages, loading, setPage }: { page: number; totalPages: number; loading: boolean; setPage: React.Dispatch<React.SetStateAction<number>> }) { const { t } = useTranslation("admin"); return <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground"><span>{t("accessControl.pagination.pageOf", { page, total: Math.max(totalPages, 1) })}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={loading || page <= 1} onClick={() => setPage((value) => value - 1)}><ChevronLeft /></Button><Button size="sm" variant="outline" disabled={loading || page >= totalPages} onClick={() => setPage((value) => value + 1)}><ChevronRight /></Button></div></div>; }

@@ -17,9 +17,9 @@ describe("partner vendor card sizing contract", () => {
     expect(searchSource).toContain("grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4");
   });
 
-  it("shows a featured badge for featured partners and a verified badge otherwise", () => {
-    expect(source).toContain('t("ui.search.verifiedLocalPartner")');
-    expect(source).toContain('t("ui.search.featuredPartner")');
-    expect(source).toContain("isFeatured ?");
+  it("labels only featured partners, with the shared photo label", () => {
+    expect(source).toContain("<PhotoCardLabels featured={isFeatured} />");
+    expect(source).not.toContain('t("ui.search.verifiedLocalPartner")');
+    expect(source).not.toContain('t("ui.search.featuredPartner")');
   });
 });

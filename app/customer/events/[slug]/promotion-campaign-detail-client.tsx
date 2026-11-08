@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 import { LocalizedContent } from "@/components/customer/localized-content";
-import { DirectoryPagination } from "@/components/customer/directory-pagination";
+import { Pagination } from "@/components/shared/pagination";
 import { PromotionCampaignVendorCard } from "@/components/customer/promotion-campaign-vendor-card";
 import { Input } from "@/components/ui/input";
 import { formatDate, formatDateTime } from "@/lib/i18n/format";
@@ -197,10 +197,9 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
             </div>
           )}
 
-          <DirectoryPagination
+          <Pagination
             ariaLabel={t("ui.promotionCampaigns.vendorPages")}
             currentPage={safeVendorPage}
-            itemLabel={t("ui.promotionCampaigns.vendorsLabel")}
             onPageChange={setVendorPage}
             pageSize={VENDOR_PAGE_SIZE}
             totalItems={filteredVendors.length}

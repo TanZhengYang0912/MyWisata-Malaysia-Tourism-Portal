@@ -5,7 +5,6 @@ import { format } from 'date-fns';
 import {
   Archive,
   Check,
-  ChevronLeft,
   ChevronRight,
   Clipboard,
   Copy,
@@ -23,6 +22,7 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
+import { Pagination } from '@/components/shared/pagination';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { AiDraftEmailModal } from '@/components/admin/ai-draft-email-modal';
 import { VendorReasonModal } from '@/components/admin/vendor-reason-modal';
@@ -549,14 +549,7 @@ export default function AdminVendorsPage() {
             })}
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-border px-5 py-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <span>{total === 0 ? t('ui.vendors.noResults') : t('ui.vendors.range', { first: (page - 1) * PAGE_SIZE + 1, last: Math.min(page * PAGE_SIZE, total), total })}</span>
-            {pageCount > 1 && <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1 || loading} className="rounded-lg border border-border bg-card p-2 text-muted-foreground disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={16} /></button>
-              <span className="min-w-[75px] text-center font-semibold text-muted-foreground">{t('ui.pagination.pageOf', { page, total: pageCount })}</span>
-              <button type="button" onClick={() => setPage((current) => Math.min(pageCount, current + 1))} disabled={page === pageCount || loading} className="rounded-lg border border-border bg-card p-2 text-muted-foreground disabled:cursor-not-allowed disabled:opacity-40"><ChevronRight size={16} /></button>
-            </div>}
-          </div>
+          {total === 0 ? <p className="border-t border-border px-5 py-4 text-xs text-muted-foreground">{t('ui.vendors.noResults')}</p> : <Pagination currentPage={page} totalPages={pageCount} totalItems={total} pageSize={PAGE_SIZE} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-5 py-3" />}
         </section>
       {activeVendor && <VendorDrawer vendor={activeVendor} busyAction={busyAction} onClose={() => setActiveVendor(null)} onAction={(action) => void handleAction(activeVendor, action)} onCopy={() => void copyVendorId(activeVendor.id)} approvedRecs={approvedRecs} selectedRecommendation={selectedRec[activeVendor.id] ?? ''} linkingRecommendation={linkingVendor === activeVendor.id} onSelectRecommendation={(value) => setSelectedRec((current) => ({ ...current, [activeVendor.id]: value }))} onLinkRecommendation={() => void handleLinkRecommendation(activeVendor.id)} onOpenApprovalEmail={() => onOpenApprovalEmail(activeVendor)} />}
 
