@@ -41,6 +41,12 @@ it('rejects malformed IPC and removes unknown metadata before returning it', () 
     metrics: { initializationMs: 1, childRssBytes: 1, cpu: { user: 1, system: 1 }, internalPath: '/never', manifest: { engine: 'tesseract-js-7.0.0-v1', version: '7.0.0', coreVersion: '7.0.0',
       models: ['eng', 'msa', 'chi_sim'].map(code => ({ code, version: '1.0.0', sha256: 'a'.repeat(64), path: '/never' })) } } });
   expect(result.ok).toBe(true); expect(JSON.stringify(result)).not.toMatch(/never|rawText|internalPath/);
+  if (result.ok) {
+    expect(parseNodeKycOcrOutcome({ ...result, fields: { ...result.fields, visualComparisonStatus: 'consistent' } }))
+      .toMatchObject({ ok: false, failureCode: 'invalid_response' });
+    expect(parseNodeKycOcrOutcome({ ...result, metrics: { ...result.metrics, recognitionPasses: 9 } }))
+      .toMatchObject({ ok: false, failureCode: 'invalid_response' });
+  }
 });
 it('does not leave a child alive after its actual parent is SIGKILLed', async () => {
   const parent = spawn(process.execPath, ['-e', `const {fork}=require('node:child_process');const c=fork(process.argv[1],[],{env:{NODE_ENV:'production'},execArgv:[],stdio:['ignore','ignore','ignore','ipc']});c.once('spawn',()=>process.send(c.pid));process.on('message',()=>{});`, resolve('lib/kyc/runtime/tesseract-process.cjs')],

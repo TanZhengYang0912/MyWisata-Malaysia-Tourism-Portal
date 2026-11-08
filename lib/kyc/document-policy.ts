@@ -10,6 +10,7 @@ export function isSupportedDocumentNumber(documentType: KycDocumentType, value: 
   const normalized = value.trim().toUpperCase();
   if (documentType === 'passport') {
     return /^G[0-9]{8}$/.test(normalized)
+      || /^E[0-9]{8}$/.test(normalized)
       || /^E[A-HJ-NP-Z][0-9]{7}$/.test(normalized);
   }
   return /^\d{6}-?\d{2}-?\d{4}$/.test(normalized);

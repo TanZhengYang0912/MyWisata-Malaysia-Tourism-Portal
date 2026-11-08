@@ -11,6 +11,7 @@ describe('KYC document policy', () => {
   it('accepts the existing MyKad number shape and Chinese ordinary passport series', () => {
     expect(isSupportedDocumentNumber('national_id', '900101-14-5678')).toBe(true);
     expect(isSupportedDocumentNumber('passport', 'G12345678')).toBe(true);
+    expect(isSupportedDocumentNumber('passport', 'E12345678')).toBe(true);
     expect(isSupportedDocumentNumber('passport', 'F12345678')).toBe(false);
     expect(isSupportedDocumentNumber('passport', 'EA1234567')).toBe(true);
     expect(isSupportedDocumentNumber('passport', 'EI1234567')).toBe(false);

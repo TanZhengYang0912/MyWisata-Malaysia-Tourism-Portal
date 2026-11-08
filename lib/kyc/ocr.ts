@@ -1,9 +1,11 @@
 import 'server-only';
 import { isIP } from 'node:net';
+import { createHash } from 'node:crypto';
 import { extractKycFieldsInNode } from './node-ocr-engine';
 
 import { hashICWithHmac, normalizeIC } from './hash';
 import { hasRequiredKycEvidence } from './document-policy';
+import { extractKycFields, validatePassportLayout, normalizePassportName } from './runtime/ocr-fields.cjs';
 export { requiresManualKycReview } from './ocr-policy';
 
 export type KycOcrStatus = 'matched' | 'mismatch' | 'unreadable' | 'unavailable';
@@ -36,6 +38,7 @@ export type KycOcrResult = {
   mrzStatus?: 'valid' | 'invalid' | 'unreadable' | 'unsupported';
   visualComparisonStatus?: 'consistent' | 'conflict' | 'incomplete';
   visualMismatchFields?: string[];
+  visualMissingFields?: string[];
 };
 
 export type KycOcrPreviewResult = {
@@ -45,6 +48,7 @@ export type KycOcrPreviewResult = {
   expiryDate: string | null;
   mrzStatus?: 'valid' | 'invalid' | 'unreadable' | 'unsupported';
   visualComparisonStatus?: 'consistent' | 'conflict' | 'incomplete';
+  visualMissingFields?: string[];
   confidence: number | null;
   providerModel: string;
   failureCode?: KycOcrFailureCode;
@@ -62,6 +66,10 @@ type ExtractedOcr = {
   mrzStatus?: unknown;
   visualComparisonStatus?: unknown;
   visualMismatchFields?: unknown;
+  visualMissingFields?: unknown;
+  passportEvidenceVersion?: unknown;
+  passportLayout?: unknown;
+  evidenceSha256?: unknown;
 };
 
 const DEFAULT_MODEL = 'private-ocr-v1';
@@ -111,8 +119,9 @@ export function privateKycOcrConfiguration() {
   } catch { return null; }
 }
 
-async function readPrivateResult(response: Response): Promise<ExtractedOcr | null> {
-  if (!response.body || Number(response.headers.get('content-length')) > 16384) return null;
+async function readPrivateResult(response: Response, passport = false): Promise<ExtractedOcr | null> {
+  const maximumBytes = passport ? 65536 : 16384;
+  if (!response.body || Number(response.headers.get('content-length')) > maximumBytes) return null;
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
@@ -121,13 +130,25 @@ async function readPrivateResult(response: Response): Promise<ExtractedOcr | nul
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > 16384) { await reader.cancel(); return null; }
+      if (size > maximumBytes) { await reader.cancel(); return null; }
       chunks.push(value);
     }
     const data: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
     return data && typeof data === 'object' && !Array.isArray(data) ? data as ExtractedOcr : null;
   } catch { return null; }
   finally { reader.releaseLock(); }
+}
+
+/** Recompute passport facts from spatially separated observations; a provider's status flag is not evidence. */
+function privateFields(fields: ExtractedOcr | null, input: Pick<KycOcrInput, 'documentType' | 'front'>): ExtractedOcr | null {
+  if (!fields || input.documentType !== 'passport') return fields;
+  try {
+    // This binds the trusted private worker response to this image, not to a claimed user/identity.
+    const expectedDigest = createHash('sha256').update(input.front.bytes).digest('hex');
+    if (fields.evidenceSha256 !== expectedDigest) return null;
+    const frontLayout = validatePassportLayout(fields.passportLayout);
+    return extractKycFields({ front: [], back: [], frontLayout }, 'passport');
+  } catch { return null; }
 }
 
 export type KycOcrRuntimeConfiguration =
@@ -174,7 +195,7 @@ export async function extractKycPreviewFields(input: Pick<KycOcrInput, 'document
         return { status: 'unavailable', holderName: null, documentNumber: null, expiryDate: null, confidence: null, providerModel,
           failureCode: retryable ? 'service_unavailable' : [401, 403].includes(response.status) ? 'service_auth' : 'service_rejected', retryable };
       }
-      fields = await readPrivateResult(response);
+      fields = privateFields(await readPrivateResult(response, input.documentType === 'passport'), input);
       if (!fields || (typeof fields.unreadable !== 'boolean' && typeof fields.documentNumber !== 'string')) {
         return { status: 'unavailable', holderName: null, documentNumber: null, expiryDate: null, confidence: null, providerModel, failureCode: 'invalid_response' };
       }
@@ -187,7 +208,9 @@ export async function extractKycPreviewFields(input: Pick<KycOcrInput, 'document
     const visualComparisonStatus = ['consistent', 'conflict', 'incomplete'].includes(String(fields.visualComparisonStatus))
       ? fields.visualComparisonStatus as KycOcrPreviewResult['visualComparisonStatus'] : undefined;
     return { status: fields.unreadable === true || !documentNumber ? 'unreadable' : 'extracted', holderName, documentNumber,
-      expiryDate: nullableDate(fields.expiryDate), mrzStatus, visualComparisonStatus, confidence, providerModel };
+      expiryDate: nullableDate(fields.expiryDate), mrzStatus, visualComparisonStatus,
+      visualMissingFields: Array.isArray(fields.visualMissingFields) ? fields.visualMissingFields.filter((field): field is string => typeof field === 'string' && /^[a-z_]{1,40}$/.test(field)).slice(0, 8) : undefined,
+      confidence, providerModel };
   } catch (error) {
     const timeout = error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name);
     return { status: 'unavailable', holderName: null, documentNumber: null, expiryDate: null, confidence: null, providerModel,
@@ -200,7 +223,11 @@ async function compareExtractedKycFields(extracted: ExtractedOcr, input: KycOcrI
   const documentNumber = nullableText(extracted.documentNumber, 40);
   const confidence = nullableConfidence(extracted.confidence);
   if (extracted.unreadable === true || !documentNumber) {
-    return { status: 'unreadable', holderName, documentNumberHmac: null, documentNumberLast4: null, expiryDate: nullableDate(extracted.expiryDate), confidence, mismatchFields: [], providerModel };
+    const mrzStatus = input.documentType === 'passport' && ['valid', 'invalid', 'unreadable', 'unsupported'].includes(String(extracted.mrzStatus))
+      ? extracted.mrzStatus as KycOcrResult['mrzStatus'] : undefined;
+    const mismatchFields = input.documentType === 'passport' ? [mrzStatus === 'unsupported' ? 'country_unsupported' : mrzStatus === 'invalid' ? 'mrz_invalid' : 'mrz_unreadable'] : [];
+    return { status: 'unreadable', holderName, documentNumberHmac: null, documentNumberLast4: null, expiryDate: nullableDate(extracted.expiryDate), confidence, mismatchFields, providerModel,
+      ...(input.documentType === 'passport' ? { mrzStatus, visualComparisonStatus: 'incomplete' as const } : {}) };
   }
 
   const extractedHmac = await hashICWithHmac(documentNumber, input.hmacKey);
@@ -216,17 +243,23 @@ async function compareExtractedKycFields(extracted: ExtractedOcr, input: KycOcrI
     ? extracted.visualComparisonStatus as KycOcrResult['visualComparisonStatus'] : undefined;
   const visualMismatchFields = Array.isArray(extracted.visualMismatchFields)
     ? extracted.visualMismatchFields.filter((field): field is string => typeof field === 'string' && /^[a-z_]{1,40}$/.test(field)).slice(0, 8) : [];
+  const visualMissingFields = Array.isArray(extracted.visualMissingFields)
+    ? extracted.visualMissingFields.filter((field): field is string => typeof field === 'string' && /^[a-z_]{1,40}$/.test(field)).slice(0, 8) : [];
   if (input.documentType === 'passport') {
     if (mrzStatus !== 'valid') mismatchFields.push('mrz_invalid');
     if (issuerCountry !== 'CN' || nationality !== 'CN') mismatchFields.push('country_unsupported');
-    if (visualComparisonStatus !== 'consistent') mismatchFields.push('visual_comparison_incomplete');
+    if (visualComparisonStatus !== 'consistent') mismatchFields.push(visualComparisonStatus === 'conflict' ? 'visual_comparison_conflict' : 'visual_comparison_incomplete');
+    if (extracted.passportEvidenceVersion !== 2) mismatchFields.push('source_unverified');
     mismatchFields.push(...visualMismatchFields);
+    mismatchFields.push(...visualMissingFields.map((field) => `missing_${field}`));
   }
   const name = (value: string) => value.normalize('NFKC').replace(/\s+/g, ' ').trim().toUpperCase();
-  if (input.expectedHolderName && (!holderName || name(holderName) !== name(input.expectedHolderName))) mismatchFields.push('holder_name');
+  const normalizeName = input.documentType === 'passport' ? normalizePassportName : name;
+  if (input.expectedHolderName && (!holderName || normalizeName(holderName) !== normalizeName(input.expectedHolderName))) mismatchFields.push('holder_name');
   const compact = normalizeIC(documentNumber);
   const expiryDate = nullableDate(extracted.expiryDate);
   if (input.documentType === 'passport' && expiryDate && expiryDate < new Date().toISOString().slice(0, 10)) mismatchFields.push('expired_document');
+  if (input.documentType === 'passport' && !expiryDate) mismatchFields.push('missing_expiry_date');
   return {
     status: mismatchFields.length === 0 ? 'matched' : 'mismatch',
     holderName,
@@ -241,6 +274,7 @@ async function compareExtractedKycFields(extracted: ExtractedOcr, input: KycOcrI
     mrzStatus,
     visualComparisonStatus,
     visualMismatchFields,
+    visualMissingFields,
   };
 }
 
@@ -266,7 +300,7 @@ export async function runKycOcr(input: KycOcrInput): Promise<KycOcrResult> {
       const retryable = response.status === 408 || response.status === 429 || response.status >= 500;
       return unavailable(providerModel, retryable ? 'service_unavailable' : [401, 403].includes(response.status) ? 'service_auth' : 'service_rejected', retryable);
     }
-    const extracted = await readPrivateResult(response);
+    const extracted = privateFields(await readPrivateResult(response, input.documentType === 'passport'), input);
     if (!extracted || (typeof extracted.unreadable !== 'boolean' && typeof extracted.documentNumber !== 'string')) return unavailable(providerModel, 'invalid_response');
     return await compareExtractedKycFields(extracted, input, providerModel);
   } catch (error) {

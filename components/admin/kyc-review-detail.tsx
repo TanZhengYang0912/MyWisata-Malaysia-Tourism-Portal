@@ -438,11 +438,11 @@ export function KycReviewDetailContent({
                   {submission.ocr.mismatchFields.length > 0 ? (
                     <p className="mt-1 flex items-start gap-1 text-destructive">
                       <FileWarning size={14} className="mt-0.5 shrink-0" />
-                      {t("kyc.ocr.mismatch", { fields: submission.ocr.mismatchFields.join(", ").replaceAll("_", " ") })}
+                      {t("kyc.ocr.mismatch", { fields: submission.ocr.mismatchFields.map((field) => t(`kyc.ocr.issueCodes.${field}`, { defaultValue: field.replaceAll("_", " ") })).join(", ") })}
                     </p>
-                  ) : (
+                  ) : submission.ocr.status === "matched" && (submission.docType !== "passport" || submission.ocr.visualComparisonStatus === "consistent") ? (
                     <p className="mt-1 text-primary">{t("kyc.ocr.noMismatch")}</p>
-                  )}
+                  ) : <p className="mt-1 text-muted-foreground">{t("kyc.ocr.reviewRequired")}</p>}
                 </div>
               </div>
             ) : <p className="mt-3 text-sm text-muted-foreground">{t("kyc.detail.noAutomatedChecks")}</p>}

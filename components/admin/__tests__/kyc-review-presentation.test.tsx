@@ -27,6 +27,7 @@ const translations: Record<string, string> = {
   "kyc.ocr.documentEnding": "Document ending: {{number}}",
   "kyc.ocr.expiryDate": "Expiry date: {{date}}",
   "kyc.ocr.noMismatch": "No OCR mismatch detected",
+  "kyc.ocr.reviewRequired": "Manual review required",
   "kyc.status.pending": "Pending review",
   "kyc.status.infoRequested": "Info requested",
   "kyc.status.approved": "Approved",
@@ -107,7 +108,7 @@ describe("KYC review presentation", () => {
     expect(markup).not.toContain("Reject");
   });
 
-  async function renderDetail(status: AdminKycSubmission["status"], canDecide = true) {
+  async function renderDetail(status: AdminKycSubmission["status"], canDecide = true, overrides: Partial<AdminKycSubmission> = {}) {
     const detailPath = resolve(process.cwd(), "components/admin/kyc-review-detail.tsx");
     expect(existsSync(detailPath), "dedicated KYC detail component must exist").toBe(true);
     if (!existsSync(detailPath)) return "";
@@ -122,6 +123,7 @@ describe("KYC review presentation", () => {
       },
       submission: {
         ...pendingSubmission,
+        ...overrides,
         assignedTo: "33333333-3333-4333-8333-333333333333",
         claimedAt: "2026-07-15T08:02:00.000Z",
         legalIdentity: {
@@ -180,6 +182,15 @@ describe("KYC review presentation", () => {
     expect(markup).toContain("Reject KYC");
     expect(markup).toContain("Review history");
     expect(markup).toContain("Your identity verification is complete.");
+  });
+
+  it("does not show a successful comparison for incomplete or unreadable passport evidence", async () => {
+    for (const status of ["unreadable", "matched"] as const) {
+      const markup = await renderDetail("pending", true, { docType: "passport", documents: [{ side: "front" }],
+        ocr: { ...pendingSubmission.ocr!, status, visualComparisonStatus: "incomplete", mismatchFields: [] } });
+      expect(markup).toContain("Manual review required");
+      expect(markup).not.toContain("No OCR mismatch detected");
+    }
   });
 
   it("hides decision actions when the pending submission belongs to another reviewer", async () => {
