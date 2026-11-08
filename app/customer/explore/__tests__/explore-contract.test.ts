@@ -60,7 +60,7 @@ describe("customer discovery filter contract", () => {
     expect(searchSource).toContain("<CustomerDiscoveryFilterPanel");
     expect(searchSource).toContain("operatingDays");
     expect(searchSource).toContain("hoursMode");
-    expect(searchSource).not.toContain('placeholder={t("ui.search.searchVendors")}');
+    expect(searchSource).toContain('<DiscoverySearchField value={filters.q} onChange={(q) => updateFilters({ q })} placeholder={t("ui.search.searchVendors")} />');
     expect(filterSource).toContain('t("ui.discovery.state")');
   });
 
@@ -102,7 +102,7 @@ describe("customer discovery filter contract", () => {
     expect(searchSource).toContain("<CustomerDiscoveryFilterPanel");
     expect(searchSource).toContain("operatingDays");
     expect(searchSource).toContain("hoursMode");
-    expect(searchSource).not.toContain('placeholder={t("ui.search.searchVendors")}');
+    expect(searchSource).toContain('<DiscoverySearchField value={filters.q} onChange={(q) => updateFilters({ q })} placeholder={t("ui.search.searchVendors")} />');
     expect(filterSource).toContain('t("ui.discovery.state")');
   });
 

@@ -255,7 +255,7 @@ describe("customer home first viewport", () => {
 
     expect(forYouSection).toContain("forYouItems.map((activity)");
     expect(forYouSection).toContain("<ActivityCard");
-    expect(forYouSection).toContain('<ProductCard key={activity.id} listing={toDiscoveryCatalogueCard(activity, { labels: false })} returnTo="/customer" recommendationReason={activity.aiTag ?? undefined} />');
+    expect(forYouSection).toContain('<ProductCard key={activity.id} listing={toDiscoveryCatalogueCard(activity, { labels: false })} returnTo="/customer" />');
     expect(forYouSection).not.toContain("detailsRevealStyle");
     expect(highlightsSection).toContain("<ActivityCard");
     expect(highlightsSection).not.toContain("detailsRevealStyle");

@@ -32,7 +32,7 @@ type ActivityCardItem = ComputedActivity & {
 
 type DiscoveryCardProps = { activity: ActivityCardItem; returnTo?: string; outletId?: string; source?: string; onSponsoredClick?: () => void; hideDiscoveryBadges?: boolean };
 type VendorListingProps = { vendorListing: VendorProductCardData; returnTo: string };
-type CatalogueProductCardProps = { listing: ProductCatalogueCardData; returnTo: string; source?: "home" | "vendor"; onSponsoredClick?: () => void; recommendationReason?: string };
+type CatalogueProductCardProps = { listing: ProductCatalogueCardData; returnTo: string; source?: "home" | "vendor"; onSponsoredClick?: () => void };
 
 export const badgeClass = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]";
 
@@ -48,7 +48,7 @@ export function ProductCard(props: DiscoveryCardProps | VendorListingProps | Cat
   return <DiscoveryActivityCard {...props} />;
 }
 
-function VendorListingCard({ listing: product, returnTo, source, onSponsoredClick, recommendationReason }: CatalogueProductCardProps) {
+function VendorListingCard({ listing: product, returnTo, source, onSponsoredClick }: CatalogueProductCardProps) {
   const { t } = useTranslation("customer");
   const wishlist = useOptionalWishlist();
   const href = buildProductPath(product.id, returnTo, product.pinnedOutletId ?? product.singleOutlet?.id, source);
@@ -83,7 +83,6 @@ function VendorListingCard({ listing: product, returnTo, source, onSponsoredClic
         {product.openNowSummary && <> · <span className="font-semibold text-emerald-700 dark:text-emerald-300">{t("ui.vendor.openNowCount", { count: product.openNowSummary.openOutletCount })}</span></>}
       </p>}
       {product.description && <p className="break-words text-xs text-muted-foreground"><LocalizedContent entityType="product" entityId={product.id} field="description" sourceText={product.description} /></p>}
-      {recommendationReason && <AiTag text={recommendationReason} />}
     </>}
     detailsId={`vendor-product-details-${product.id}`}
     action={{ href, label: product.requiresBooking ? t("ui.actions.bookNow") : t("ui.actions.buyNow"), onClick: onSponsoredClick }}

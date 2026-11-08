@@ -81,6 +81,6 @@ describe("related vendor section", () => {
     expect(source).toContain('id="more-from-outlet-heading" className="text-xl font-black tracking-tight sm:text-2xl">{t("ui.activity.moreFromVendor")}</h2>');
     expect(source).toContain('t("ui.actions.visitVendor")');
     expect(source).toContain("relatedProducts.map((product) => (");
-    expect(source).toContain("<ActivityCard");
+    expect(source).toContain("<ProductCard");
   });
 });

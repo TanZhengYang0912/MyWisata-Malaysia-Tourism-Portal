@@ -75,11 +75,6 @@ describe("vendor product cards", () => {
     expect(markup).not.toContain("ui.vendor.locationCount");
     expect(markup).toContain("outletId=o9");
   });
-  it("keeps a For You reason as the last drawer line", () => {
-    const markup = renderToStaticMarkup(<ActivityCard listing={toVendorCatalogueCard(product)} returnTo="/customer" recommendationReason="Because you like food" />);
-    expect(markup).toContain("Because you like food");
-    expect(markup.indexOf("Because you like food")).toBeGreaterThan(markup.indexOf("ui.vendor.locationCount"));
-  });
   it("labels paid and merchant-featured discovery cards, alone or together", () => {
     const base = toVendorCatalogueCard(product);
     const render = (flags: { sponsored?: boolean; featured?: boolean }) => renderToStaticMarkup(<ActivityCard listing={{ ...base, ...flags }} returnTo="/customer/explore" />);
