@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { hashICWithHmac } from '@/lib/kyc/hash';
-import { abandonAndRemoveKycEvidence, buildKycEvidencePaths, createKycEvidenceRevision, validateKycUploadFile } from '@/lib/kyc/submission';
+import { abandonAndRemoveKycEvidence, buildKycEvidencePaths, createKycEvidenceRevision, hasDuplicateKycDocumentSides, validateKycUploadFile } from '@/lib/kyc/submission';
 import { prepareKycEvidenceImage } from '@/lib/kyc/evidence-image';
 import { readBoundedFormData, RequestBodyError } from '@/lib/validation/request-body';
 import { withPortalWorkload, WorkloadUnavailableError } from '@/lib/operations/workload';
@@ -176,6 +176,9 @@ export async function POST(request: Request) {
 
   const frontEvidenceHash = createHash('sha256').update(images[0]).digest('hex');
   const backEvidenceHash = images[1] ? createHash('sha256').update(images[1]).digest('hex') : null;
+  if (docType === 'national_id' && hasDuplicateKycDocumentSides(frontEvidenceHash, backEvidenceHash)) {
+    return apiFail('DUPLICATE_DOCUMENT_SIDES', 'The same photo cannot be used for both sides of a MyKad', 422);
+  }
   const evidenceRevision = createKycEvidenceRevision(frontEvidenceHash, backEvidenceHash);
   if (draftId && prepared.draftEvidenceRevision !== evidenceRevision) {
     return apiFail('DRAFT_CONFLICT', 'Saved KYC evidence changed; reload it before submitting', 409);

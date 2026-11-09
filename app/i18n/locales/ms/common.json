@@ -442,6 +442,19 @@
     "zoom": "Zum",
     "confirm": "Guna potongan ini",
     "failed": "Foto ini tidak dapat dipangkas. Cuba foto lain.",
-    "hint": "Bentuk disyorkan {{shape}} (contohnya {{size}} piksel). Foto berbentuk lain boleh dipangkas selepas anda memilihnya."
+    "hint": "Bentuk disyorkan {{shape}} (contohnya {{size}} piksel). Foto berbentuk lain boleh dipangkas selepas anda memilihnya.",
+    "selectFront": "Pangkas bahagian hadapan MyKad",
+    "selectBack": "Pangkas bahagian belakang MyKad",
+    "reviewSides": "Semak kedua-dua bahagian",
+    "twoSidesDescription": "Pilih setiap kad secara berasingan. Pastikan keempat-empat tepi dan semua teks berada dalam bingkai.",
+    "front": "Hadapan",
+    "back": "Belakang",
+    "nextToBack": "Pangkas belakang",
+    "previewBoth": "Semak kedua-dua bahagian",
+    "confirmBoth": "Gunakan kedua-dua potongan",
+    "editFront": "Laraskan hadapan",
+    "editBack": "Laraskan belakang",
+    "swapSides": "Tukar hadapan dan belakang",
+    "twoSidesFailed": "Potongan bertindih, melebihi foto atau tidak dapat disediakan. Laraskan potongan atau pilih dua foto berasingan."
   }
 }

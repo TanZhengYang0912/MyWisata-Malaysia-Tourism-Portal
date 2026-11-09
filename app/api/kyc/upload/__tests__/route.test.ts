@@ -5,7 +5,7 @@ import { runKycOcr } from '@/lib/kyc/ocr';
 
 vi.mock('@/lib/operations/workload', () => ({ withPortalWorkload: async (_scope: string, work: (signal: AbortSignal) => Promise<unknown>) => work(new AbortController().signal), WorkloadUnavailableError: class extends Error {} }));
 vi.mock('@/lib/checkout/guest-session', () => ({ reserveGuestRateLimit: vi.fn().mockResolvedValue(true) }));
-vi.mock('@/lib/kyc/evidence-image', () => ({ prepareKycEvidenceImage: vi.fn().mockResolvedValue({ ocr: Buffer.from('clean'), stored: Buffer.from('watermarked') }) }));
+vi.mock('@/lib/kyc/evidence-image', () => ({ prepareKycEvidenceImage: vi.fn(async (bytes: Buffer) => ({ ocr: Buffer.from(`clean:${bytes.toString()}`), stored: Buffer.from(`watermarked:${bytes.toString()}`) })) }));
 
 const getUser = vi.fn();
 const authenticatedRpc = vi.fn();
@@ -29,7 +29,8 @@ vi.mock('@/lib/kyc/hash', () => ({
   normalizeIC: (value: string) => value.replace(/[-\s]/g, '').toUpperCase(),
 }));
 vi.mock('@/lib/kyc/submission', () => ({
-  validateKycUploadFile: vi.fn().mockResolvedValue({ ok: true, buffer: new ArrayBuffer(8) }),
+  validateKycUploadFile: vi.fn(async (file: File) => ({ ok: true, buffer: await file.arrayBuffer() })),
+  hasDuplicateKycDocumentSides: (front: string | null, back: string | null) => Boolean(front && back && front === back),
   createKycEvidenceRevision: vi.fn(() => 'f'.repeat(64)),
   buildKycEvidencePaths: vi.fn((_owner: string, _submission: string, _token: string, _frontMime: string, backMime: string | null) => ({
     front: '11111111-1111-4111-8111-111111111111/33333333-3333-4333-8333-333333333333/44444444-4444-4444-8444-444444444444/front.jpg',
@@ -54,7 +55,7 @@ const { POST } = await import('../route');
 
 describe('POST /api/kyc/upload', () => {
   beforeEach(() => {
-    vi.mocked(prepareKycEvidenceImage).mockReset().mockResolvedValue({ ocr: Buffer.from('clean'), stored: Buffer.from('watermarked') });
+    vi.mocked(prepareKycEvidenceImage).mockReset().mockImplementation(async (bytes: Buffer) => ({ ocr: Buffer.from(`clean:${bytes.toString()}`), stored: Buffer.from(`watermarked:${bytes.toString()}`) }));
     vi.mocked(abandonAndRemoveKycEvidence).mockReset().mockResolvedValue({ ok: true });
     activeLookup.mockReset().mockResolvedValue({data:[],error:null});
     getUser.mockReset();
@@ -79,11 +80,25 @@ describe('POST /api/kyc/upload', () => {
     const response = await POST(new Request('http://localhost/api/kyc/upload', { method: 'POST', body: form }));
     expect(response.status).toBe(201);
     expect(upload).toHaveBeenCalledTimes(2);
-    expect(upload.mock.calls.every((call) => call[1].equals(Buffer.from('watermarked')))).toBe(true);
+    expect(upload.mock.calls.map((call) => Buffer.from(call[1]).toString()).sort()).toEqual(['watermarked:back', 'watermarked:front']);
     expect(runKycOcr).not.toHaveBeenCalled();
     expect(serviceRpc).not.toHaveBeenCalledWith('record_kyc_ocr_result', expect.anything());
     expect(authenticatedRpc).toHaveBeenCalledWith('finalize_kyc_submission', expect.anything());
     await expect(response.json()).resolves.toMatchObject({ data: { status: 'pending', ocrStatus: 'queued', manualReviewRequired: true } });
+  });
+
+  it('rejects identical MyKad sides before beginning a submission', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: '11111111-1111-4111-8111-111111111111' } } });
+    const form = new FormData();
+    form.set('ocrConsent', 'true'); form.set('holderName', 'Example Holder'); form.set('operationId', '44444444-4444-4444-8444-444444444444');
+    form.set('icNumber', '900101-14-5678'); form.set('docType', 'national_id');
+    form.set('frontFile', new File(['same photo'], 'front.jpg', { type: 'image/jpeg' }));
+    form.set('backFile', new File(['same photo'], 'renamed.jpg', { type: 'image/jpeg' }));
+    const response = await POST(new Request('http://localhost/api/kyc/upload', { method: 'POST', body: form }));
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'DUPLICATE_DOCUMENT_SIDES' } });
+    expect(serviceRpc).not.toHaveBeenCalled();
+    expect(upload).not.toHaveBeenCalled();
   });
 
   it('submits the exact saved draft evidence without reprocessing or trusting client paths', async () => {
@@ -97,6 +112,8 @@ describe('POST /api/kyc/upload', () => {
       .mockResolvedValueOnce({ data: `${owner}/drafts/${draftId}/object/back.jpg`, error: null })
       .mockResolvedValueOnce({ data: { submissionId, state: 'processing' }, error: null })
       .mockResolvedValue({ error: null });
+    download.mockResolvedValueOnce({ data: new Blob(['front stored'], { type: 'image/jpeg' }), error: null })
+      .mockResolvedValueOnce({ data: new Blob(['back stored'], { type: 'image/jpeg' }), error: null });
     authenticatedRpc.mockResolvedValue({ error: null });
     const form = new FormData();
     for (const [key, value] of Object.entries({ ocrConsent: 'true', holderName: 'Example Holder', operationId, draftId, draftVersion: '2', docType: 'national_id', icNumber: '900101-14-5678' })) form.set(key, value);
@@ -104,7 +121,7 @@ describe('POST /api/kyc/upload', () => {
     expect(response.status).toBe(201);
     expect(download).toHaveBeenCalledTimes(2);
     expect(prepareKycEvidenceImage).not.toHaveBeenCalled();
-    expect(upload.mock.calls.every((call) => call[1].equals(Buffer.from('watermarked')))).toBe(true);
+    expect(upload.mock.calls.map((call) => Buffer.from(call[1]).toString()).sort()).toEqual(['back stored', 'front stored']);
     expect(authenticatedRpc).toHaveBeenCalledWith('finalize_kyc_submission_with_ocr_v2', expect.objectContaining({
       p_draft_id: draftId, p_draft_revision: 'f'.repeat(64), p_source_revision: null, p_operation_id: operationId,
     }));

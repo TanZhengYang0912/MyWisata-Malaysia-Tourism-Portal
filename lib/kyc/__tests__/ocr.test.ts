@@ -69,6 +69,24 @@ describe('runKycOcr', () => {
     request.mockResolvedValue(privateResponse(JSON.stringify({ passportLayout, evidenceSha256: '0'.repeat(64) })));
     await expect(runKycOcr(input({ documentType: 'passport', back: undefined }))).resolves.toMatchObject({ status: 'unavailable', failureCode: 'invalid_response' });
   });
+  it('returns only the two allowlisted passport field evidence states in a preview', async () => {
+    configure();
+    vi.stubEnv('KYC_CHINESE_PASSPORT_OCR_ENABLED', 'true');
+    const values = ['Passport No. EA1234567', 'Name LI, WEI MING', 'Date of birth 01 JAN 1990',
+      'Date of expiry 01 JAN 2030', 'Nationality CHINESE', 'Country code CHN', 'Sex M',
+      'P<CHNLI<<WEI<MING'.padEnd(44, '<'), 'EA12345676CHN9001011M3001019<<<<<<<<<<<<<<04'];
+    const passportLayout = { schemaVersion: 1, width: 1000, height: 1000, lines: values.map((text, i) => ({ text, confidence: 99,
+      bbox: { x0: 100, x1: 900, y0: 20 + i * 100, y1: 45 + i * 100 } })) };
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(privateResponse(JSON.stringify({ passportLayout,
+      evidenceSha256: createHash('sha256').update(imageBytes).digest('hex') })));
+
+    const result = await extractKycPreviewFields(input({ documentType: 'passport', back: undefined }));
+
+    expect(result).toMatchObject({ passportFieldEvidence: { holderName: 'matched', documentNumber: 'matched' } });
+    expect(result).not.toHaveProperty('visualFieldStatuses');
+    expect(result).not.toHaveProperty('mrzLine1');
+    expect(result).not.toHaveProperty('passportLayout');
+  });
   it('rejects a private provider self-assertion without source observations', async () => {
     configure(); vi.stubEnv('KYC_CHINESE_PASSPORT_OCR_ENABLED', 'true');
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(privateResponse(JSON.stringify({ holderName: 'LI WEI MING', documentNumber: 'EA1234567',

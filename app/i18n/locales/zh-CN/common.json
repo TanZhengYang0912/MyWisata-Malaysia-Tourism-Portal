@@ -442,6 +442,19 @@
     "zoom": "缩放",
     "confirm": "使用此裁剪",
     "failed": "无法裁剪这张照片，请换一张照片。",
-    "hint": "建议比例 {{shape}}（例如 {{size}} 像素）。其他比例的照片可在选择后裁剪。"
+    "hint": "建议比例 {{shape}}（例如 {{size}} 像素）。其他比例的照片可在选择后裁剪。",
+    "selectFront": "框选 MyKad 正面",
+    "selectBack": "框选 MyKad 背面",
+    "reviewSides": "检查证件正反面",
+    "twoSidesDescription": "分别框选两面完整证件，确保四边和文字都在框内。",
+    "front": "正面",
+    "back": "背面",
+    "nextToBack": "框选背面",
+    "previewBoth": "预览正反面",
+    "confirmBoth": "使用这两张裁剪图",
+    "editFront": "调整正面",
+    "editBack": "调整背面",
+    "swapSides": "交换正反面",
+    "twoSidesFailed": "两块区域有重叠、超出照片范围或无法生成。请调整选区，或分别上传两张照片。"
   }
 }

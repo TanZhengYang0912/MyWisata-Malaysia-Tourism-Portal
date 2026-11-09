@@ -16,11 +16,14 @@ vi.mock('@/lib/operations/workload', () => ({
 }));
 vi.mock('@/lib/kyc/submission', () => ({
   validateKycUploadFile: vi.fn(async (file: File) => ({ ok: true, buffer: await file.arrayBuffer() })),
+  hasDuplicateKycDocumentSides: (front: string | null, back: string | null) => Boolean(front && back && front === back),
   createKycEvidenceRevision: vi.fn(() => 'f'.repeat(64)),
 }));
 vi.mock('@/lib/kyc/evidence-image', () => ({ prepareKycEvidenceImage: vi.fn(async (bytes: Buffer) => ({ stored: Buffer.concat([Buffer.from('watermarked:'),bytes]), ocr: Buffer.concat([Buffer.from('clean:'),bytes]) })) }));
 vi.mock('@/lib/kyc/ocr', () => ({ extractKycPreviewFields: vi.fn().mockResolvedValue({ status: 'extracted', holderName: 'LI WEI MING', documentNumber: 'EA1234567', expiryDate: '2030-01-01',
-  confidence: 0.9, providerModel: 'local-test', issuerCountry: 'CN', nationality: 'CN', mrzStatus: 'valid', visualComparisonStatus: 'consistent' }) }));
+  confidence: 0.9, providerModel: 'local-test', issuerCountry: 'CN', nationality: 'CN', mrzStatus: 'valid', visualComparisonStatus: 'consistent',
+  passportFieldEvidence: { holderName: 'matched', documentNumber: 'matched', mrzLine1: 'SHOULD_NOT_LEAK' },
+  visualFieldStatuses: { holder_name: 'matched', document_number: 'matched' }, mrzLine1: 'SHOULD_NOT_LEAK' }) }));
 vi.mock('@/lib/kyc/hash', () => ({ hashICWithHmac: vi.fn().mockResolvedValue({ algorithm: 'hmac_sha256_v1', value: 'a'.repeat(64) }) }));
 
 const { GET, POST } = await import('../route');
@@ -36,7 +39,9 @@ describe('/api/kyc/draft', () => {
     vi.stubEnv('KYC_CHINESE_PASSPORT_OCR_ENABLED','true'); vi.stubEnv('KYC_IC_HMAC_KEY','test-hmac-secret');
     vi.stubEnv('KYC_OCR_PREVIEW_USER_LIMIT','3'); vi.stubEnv('KYC_OCR_PREVIEW_IP_LIMIT','10'); vi.stubEnv('KYC_OCR_PREVIEW_RATE_WINDOW_SECONDS','600');
     getUser.mockResolvedValue({ data: { user: { id: owner } } });
-    rpc.mockReset(); upload.mockReset().mockResolvedValue({ error: null }); download.mockReset().mockResolvedValue({ data: null, error: new Error('not found') }); remove.mockReset().mockResolvedValue({ error: null });
+    rpc.mockReset().mockImplementation((name: string) => name === 'is_kyc_draft_storage_path_referenced'
+      ? Promise.resolve({ data: false, error: null }) : Promise.resolve({ data: [], error: null }));
+    upload.mockReset().mockResolvedValue({ error: null }); download.mockReset().mockResolvedValue({ data: null, error: new Error('not found') }); remove.mockReset().mockResolvedValue({ error: null });
     vi.mocked(extractKycPreviewFields).mockClear();
   });
 
@@ -72,6 +77,19 @@ describe('/api/kyc/draft', () => {
     const save = rpc.mock.calls.find(([name]) => name === 'save_kyc_draft_v2')?.[1];
     expect(save).toMatchObject({ p_front_input_sha256: expect.any(String), p_back_input_sha256: expect.any(String) });
     expect(JSON.stringify(save)).not.toContain('900101');
+  });
+
+  it('rejects identical MyKad sides before uploading or saving a draft', async () => {
+    rpc.mockResolvedValueOnce({ data: [], error: null });
+    const form = new FormData();
+    form.set('documentType', 'national_id'); form.set('holderName', 'A Person');
+    form.set('frontFile', new File(['same photo'], 'front.jpg', { type: 'image/jpeg' }));
+    form.set('backFile', new File(['same photo'], 'renamed.jpg', { type: 'image/jpeg' }));
+    const response = await POST(new Request('https://example.test/api/kyc/draft', { method: 'POST', body: form }));
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'DUPLICATE_DOCUMENT_SIDES' } });
+    expect(upload).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalledWith('save_kyc_draft_v2', expect.anything());
   });
 
   it('supports metadata-only draft saves without image uploads or watermark work', async () => {
@@ -129,11 +147,16 @@ describe('/api/kyc/draft', () => {
     expect(Buffer.from(upload.mock.calls[0][1]).toString()).toBe('watermarked:passport page');
     expect(extractKycPreviewFields).toHaveBeenCalledWith(expect.objectContaining({front:expect.objectContaining({bytes:expect.any(Uint8Array)})}));
     const ocrInput=vi.mocked(extractKycPreviewFields).mock.calls[0][0];
+    expect(Object.keys(ocrInput).sort()).toEqual(['documentType', 'front']);
     expect(Buffer.from(ocrInput.front.bytes).toString()).toBe('clean:passport page');
     expect(rpc).toHaveBeenCalledWith('claim_kyc_draft_ocr_operation',expect.objectContaining({p_operation_id:'44444444-4444-4444-8444-444444444444'}));
     expect(rpc).toHaveBeenCalledWith('register_kyc_draft_ocr_staging_paths',expect.objectContaining({p_storage_paths:[`${owner}/drafts/${draftId}/staging/44444444-4444-4444-8444-444444444444/front.jpg`]}));
     expect(rpc).toHaveBeenCalledWith('complete_kyc_draft_ocr_operation_v2',expect.objectContaining({p_status:'extracted',p_document_number_hmac:'a'.repeat(64)}));
-    await expect(response.json()).resolves.toMatchObject({data:{draft:{id:draftId,version:1},preview:{holderName:'LI WEI MING'}}});
+    const body = await response.json();
+    expect(body).toMatchObject({data:{draft:{id:draftId,version:1},preview:{holderName:'LI WEI MING',passportFieldEvidence:{holderName:'matched',documentNumber:'matched'}}}});
+    expect(Object.keys(body.data.preview.passportFieldEvidence).sort()).toEqual(['documentNumber', 'holderName']);
+    expect(JSON.stringify(body)).not.toContain('SHOULD_NOT_LEAK');
+    expect(JSON.stringify(body)).not.toContain('visualFieldStatuses');
   });
 
   it('does not upload or run OCR when the same operation is already processing', async () => {

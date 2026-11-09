@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { readBoundedFormData, RequestBodyError } from '@/lib/validation/request-body';
-import { validateKycUploadFile } from '@/lib/kyc/submission';
+import { hasDuplicateKycDocumentSides, validateKycUploadFile } from '@/lib/kyc/submission';
 import { prepareKycEvidenceImage } from '@/lib/kyc/evidence-image';
 import { extractKycPreviewFields } from '@/lib/kyc/ocr';
 import { hashICWithHmac, normalizeIC } from '@/lib/kyc/hash';
@@ -64,6 +64,7 @@ export async function POST(request: Request) {
         const prepared = await prepareKycEvidenceImage(Buffer.from(checked.buffer), entry.type);
         return { side, mimeType: entry.type, bytes: new Uint8Array(prepared.ocr), inputSha256, cleanSha256: createHash('sha256').update(prepared.ocr).digest('hex') };
       }));
+      if (draft.document_type === 'national_id' && hasDuplicateKycDocumentSides(preparedImages[0]?.inputSha256 ?? null, preparedImages[1]?.inputSha256 ?? null)) throw new Error('duplicate_document_sides');
       signal.throwIfAborted();
       const preview = await extractKycPreviewFields({ documentType: draft.document_type,
         front: { mimeType: preparedImages[0].mimeType, bytes: preparedImages[0].bytes },
@@ -96,6 +97,7 @@ export async function POST(request: Request) {
     return noStore(apiOk({ preview: { status: result.status, holderName: result.holderName, documentNumber: result.documentNumber,
       expiryDate: result.expiryDate, mrzStatus: result.mrzStatus, visualComparisonStatus: result.visualComparisonStatus } }));
   } catch (error) {
+    if (error instanceof Error && error.message === 'duplicate_document_sides') return noStore(apiFail('DUPLICATE_DOCUMENT_SIDES', 'The same photo cannot be used for both sides of a MyKad', 422));
     if (error instanceof Error && error.message === 'clean_source_required') return noStore(apiFail('SOURCE_REQUIRED', 'Re-select the original document photo before running OCR', 409));
     if (error instanceof Error && error.message === 'clean_source_changed') return noStore(apiFail('SOURCE_CHANGED', 'The original document changed; save it again before running OCR', 409));
     if (error instanceof Error && error.message === 'invalid_clean_source') return noStore(apiFail('INVALID_EVIDENCE', 'The selected document photo is invalid', 422));
