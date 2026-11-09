@@ -28,6 +28,7 @@ export function CapabilitiesTab({ focusId, onViewAudit }: { focusId: string | nu
   const [category, setCategory] = useState("");
   const [enabled, setEnabled] = useState("");
   const [page, setPage] = useState(1);
+  const pageSize = PAGE_SIZE;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [edit, setEdit] = useState<EditState | null>(null);
@@ -36,7 +37,7 @@ export function CapabilitiesTab({ focusId, onViewAudit }: { focusId: string | nu
   const [saving, setSaving] = useState(false);
   const [receipt, setReceipt] = useState<MutationReceipt | null>(null);
 
-  const query = useMemo(() => buildAccessControlQuery({ page, pageSize: PAGE_SIZE, search, category, enabled }), [category, enabled, page, search]);
+  const query = useMemo(() => buildAccessControlQuery({ page, pageSize, search, category, enabled }), [category, enabled, page, pageSize, search]);
   const load = useCallback(async () => {
     setLoading(true); setError("");
     try {

@@ -31,6 +31,7 @@ interface AuthContextValue {
   staffRoleNames: string[];
   staffPermissionKeys: StaffPermissionKey[];
   staffModules: StaffModule[];
+  staffPermissionExpiresAt: string | null;
   loading: boolean;
   switchUser: (id: string, user?: User, captchaToken?: string) => Promise<StaffSessionUser | null>;
   refreshUser: () => Promise<void>;
@@ -38,7 +39,12 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const GUEST_CAPABILITIES = resolveCustomerCapabilities(null);
-type StaffSessionUser = User & { staffVerified: boolean; staffPasskeyRequired: boolean; staffMfaRequired: boolean };
+type StaffSessionUser = User & {
+  staffVerified: boolean;
+  staffPasskeyRequired: boolean;
+  staffMfaRequired: boolean;
+  staffPermissionExpiresAt: string | null;
+};
 
 type AuthMeUser = {
   staffVerified?: boolean;
@@ -65,6 +71,7 @@ type AuthMeUser = {
   staffRoleNames: string[];
   staffPermissionKeys: StaffPermissionKey[];
   staffModules: StaffModule[];
+  staffPermissionExpiresAt?: string | null;
 };
 
 type AuthRequest = { generation: number; controller: AbortController };
@@ -79,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [staffRoleNames, setStaffRoleNames] = useState<string[]>([]);
   const [staffPermissionKeys, setStaffPermissionKeys] = useState<StaffPermissionKey[]>([]);
   const [staffModules, setStaffModules] = useState<StaffModule[]>([]);
+  const [staffPermissionExpiresAt, setStaffPermissionExpiresAt] = useState<string | null>(null);
   const [staffVerified, setStaffVerified] = useState(false);
   const [staffPasskeyRequired, setStaffPasskeyRequired] = useState(true);
   const [staffMfaRequired, setStaffMfaRequired] = useState(false);
@@ -124,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setStaffRoleNames([]);
     setStaffPermissionKeys([]);
     setStaffModules([]);
+    setStaffPermissionExpiresAt(null);
   }, []);
 
   const loadSupabaseUser = useCallback(async (authUserId: string, request = beginRequest()): Promise<StaffSessionUser | null> => {
@@ -160,6 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       staffRoleNames: row.staffRoleNames,
       staffPermissionKeys: row.staffPermissionKeys,
       staffModules: row.staffModules ?? [],
+      staffPermissionExpiresAt: row.staffPermissionExpiresAt ?? null,
       vendorId: row.activeVendorId ?? undefined,
       vendorName: row.activeVendorName ?? undefined,
       outletId: row.activeOutletIds[0] ?? undefined,
@@ -174,6 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setStaffRoleNames(row.staffRoleNames);
       setStaffPermissionKeys(row.staffPermissionKeys);
       setStaffModules(row.staffModules ?? []);
+      setStaffPermissionExpiresAt(row.staffPermissionExpiresAt ?? null);
       setStaffVerified(row.staffVerified === true);
       setStaffPasskeyRequired(row.staffPasskeyRequired !== false);
       setStaffMfaRequired(row.staffMfaRequired !== false);
@@ -326,6 +337,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     staffRoleNames,
     staffPermissionKeys,
     staffModules,
+    staffPermissionExpiresAt,
     loading,
     switchUser,
     refreshUser,

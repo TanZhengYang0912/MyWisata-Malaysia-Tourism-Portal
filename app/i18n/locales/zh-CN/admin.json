@@ -106,6 +106,7 @@
       "submit": "提交",
       "approve": "批准",
       "reject": "拒绝",
+      "stateDuration": "{{state}}｜{{duration}}",
       "pause": "暂停"
     },
     "categories": {
@@ -174,6 +175,7 @@
       "policies": "策略",
       "assignments": "分配",
       "staff-roles": "员工角色",
+      "jit-approvals": "临时权限审批",
       "audit-log": "审计日志"
     },
     "actions": {
@@ -194,7 +196,25 @@
       "revoke": "撤销",
       "openTarget": "打开目标",
       "hide": "收起",
-      "inspect": "查看详情"
+      "inspect": "查看详情",
+      "loadMore": "加载更多"
+    },
+    "jit": {
+      "title": "临时权限申请",
+      "description": "审核符合资格的员工提出的限时权限申请。",
+      "decisionReason": "审批原因",
+      "minutes": "{{count}} 分钟",
+      "minutes_one": "{{count}} 分钟",
+      "minutes_other": "{{count}} 分钟",
+      "stateDuration": "{{state}}｜{{duration}}",
+      "permissionLabel": "KYC 审核",
+      "staffMember": "员工",
+      "approve": "批准",
+      "reject": "拒绝",
+      "loading": "正在加载申请…",
+      "empty": "目前没有待审核的申请。",
+      "updated": "申请已更新。",
+      "error": "无法加载或更新临时权限申请。请刷新并查看最新状态。"
     },
     "accessibility": {
       "tabs": "访问控制分区",
@@ -328,6 +348,9 @@
       "active": "角色已启用",
       "permissions": "按模块划分的权限",
       "modules": "模块",
+      "jitPermissions": "此角色可申请的临时权限",
+      "jitPermissionHelp": "符合条件的员工可申请此权限 30 或 60 分钟；这不会授予永久权限。",
+      "jitLabel": "可申请临时权限：{{permission}}",
       "lockedGroup": "不可拆分模块组合：{{group}}",
       "reviewSave": "复核角色变更",
       "rolesTitle": "可用权限角色",
@@ -1372,7 +1395,7 @@
       },
       "vendors": {
         "cta": "打开商家队列",
-        "detail": "平台中未验证的门店",
+        "detail": "等待审核的商家申请",
         "title": "商家审批"
       },
       "withdrawals": {
@@ -1397,7 +1420,8 @@
       "twoApprovers": "等待两位审批人",
       "withdrawalRequests": "{{count}} 个提现请求",
       "withdrawalRequests_one": "{{count}} 个提现请求",
-      "withdrawalRequests_other": "{{count}} 个提现请求"
+      "withdrawalRequests_other": "{{count}} 个提现请求",
+      "authorizedQueues": "你有权查看的待办队列"
     },
     "oldestWithdrawal": "最早提现",
     "openApprovals": "查看审批",
@@ -1417,7 +1441,9 @@
     "openItems_one": "{{count}} 个待处理项目",
     "openItems_other": "{{count}} 个待处理项目",
     "walletPending_one": "{{count}} 个请求需要决定，{{amount}} 正在审核中。",
-    "walletPending_other": "{{count}} 个请求需要决定，{{amount}} 正在审核中。"
+    "walletPending_other": "{{count}} 个请求需要决定，{{amount}} 正在审核中。",
+    "queueUnavailable": "待办数据暂时不可用",
+    "staleData": "刷新失败，当前显示上次成功加载的数据。"
   },
   "kyc": {
     "accessibility": {
@@ -1455,6 +1481,16 @@
       "numberMismatch": "号码与 OCR 不一致",
       "ocrUnavailable": "OCR 无法使用",
       "ocrUnreadable": "OCR 无法识别",
+        "ocrSourceUnavailable": "无法取得原始识别照片",
+        "ocrVisibleFieldsIncomplete": "可见字段不完整",
+        "ocrTranscriptionError": "MRZ 转录错误",
+        "transcriptionCorrection": "请说明根据原图更正了 OCR 的哪些内容",
+        "nationality": "国籍",
+        "birthDate": "出生日期",
+        "expiryDate": "有效期",
+        "sex": "性别",
+        "mrzLine1": "MRZ 第一行",
+        "mrzLine2": "MRZ 第二行",
       "openBothDocuments": "请先打开证件正反面图片，再进行确认。",
       "secondaryReviewer": "独立第二审核员",
       "secondaryReviewerRequired": "请先选择一名符合条件的第二审核员。",
@@ -1559,9 +1595,39 @@
       "check": "OCR 检查：",
       "documentEnding": "证件号码后四位：{{number}}",
       "expiryDate": "到期日：{{date}}",
+      "passportCountry": "签发国 / 国籍：{{issuer}} / {{nationality}}",
+      "mrzStatus": "机读区：{{status}} · 可见字段比对：{{comparison}}",
       "extractedName": "提取的姓名：{{name}}",
       "mismatch": "不匹配：{{fields}}",
       "noMismatch": "未检测到 OCR 不匹配",
+      "reviewRequired": "需要人工核对",
+      "issueCodes": {
+        "document_number": "证件号码",
+        "holder_name": "完整姓名",
+        "birth_date": "出生日期",
+        "expiry_date": "有效期",
+        "nationality": "国籍",
+        "issuer_country": "签发国",
+        "sex": "性别",
+        "missing_document_number": "未读到：证件号码",
+        "missing_holder_name": "未读到：完整姓名",
+        "missing_birth_date": "未读到：出生日期",
+        "missing_expiry_date": "未读到：有效期",
+        "missing_nationality": "未读到：国籍",
+        "missing_issuer_country": "未读到：签发国",
+        "missing_sex": "未读到：性别",
+        "mrz_invalid": "MRZ校验失败",
+        "mrz_unreadable": "未读到MRZ",
+        "visual_comparison_conflict": "可见字段与MRZ不一致",
+        "country_unsupported": "护照国家不在支持范围",
+        "visual_comparison_incomplete": "可见字段比对不完整",
+        "source_unverified": "字段来源未验证",
+        "expired_document": "证件已过期",
+        "ocr_source_unavailable": "OCR 来源不可用",
+        "expired_or_missing": "有效期缺失或证件已过期",
+        "unknown": "其他识别问题",
+        "confidence_unvalidated": "识别结果需要人工复核"
+      },
       "status": {
         "matched": "匹配",
         "mismatch": "不匹配",
@@ -2096,6 +2162,7 @@
       "errors": {
         "batchUpdate": "一个或多个工单无法更新。",
         "batchUpdateFailed": "批量更新工单失败。",
+        "loadTickets": "无法加载客服工单。",
         "sendReply": "无法发送回复。",
         "sendReplyTryAgain": "无法发送回复，请重试。",
         "updateCategory": "无法更新工单类别。",
@@ -2134,6 +2201,8 @@
       "statusLabel": "状态",
       "ticketMarked": "工单已标记为{{status}}。",
       "title": "支持工单",
+      "retry": "重试",
+      "unknownUser": "未知用户",
       "unanswered": "未回复",
       "unansweredLower": "未回复",
       "unreadOnly": "仅未读",
@@ -3606,6 +3675,61 @@
     "next": "下一页",
     "errors": {
       "load": "无法加载订单，请重试。"
+    },
+    "detail": {
+      "eyebrow": "订单运营",
+      "title": "订单详情",
+      "customerType": "{{type}}订单",
+      "customerTypes": {
+        "account": "账户用户",
+        "guest": "访客"
+      },
+      "back": "返回订单列表",
+      "status": "状态",
+      "total": "订单总额",
+      "paymentMethod": "付款方式",
+      "created": "创建时间",
+      "paid": "付款时间",
+      "completed": "完成时间",
+      "customerTypeLabel": "顾客类型",
+      "updated": "最后更新",
+      "items": "商品与履约",
+      "noItems": "没有商品记录。",
+      "payments": "付款记录",
+      "processed": "处理时间",
+      "noPayments": "没有付款记录。",
+      "bookings": "预约",
+      "checkedIn": "核销时间",
+      "noBookings": "没有预约记录。",
+      "passes": "门票",
+      "checkIns": "核销记录",
+      "refunds": "退款",
+      "noRefunds": "没有退款记录。",
+      "moreInTimeline": "部分记录显示在下方时间线中。",
+      "timeline": "订单时间线",
+      "noTimeline": "没有时间线记录。",
+      "loading": "正在加载订单详情…",
+      "loadError": "无法加载订单详情，请重试。",
+      "retry": "重试",
+      "loadMore": "加载更多",
+      "eventKinds": {
+        "order": "订单",
+        "fulfilment": "履约",
+        "payment": "付款",
+        "refund": "退款",
+        "booking": "预约",
+        "check_in": "核销"
+      },
+      "itemContext": "{{quantity}}｜{{vendor}}｜{{outlet}}",
+      "fulfilmentContext": "{{status}}｜{{date}}",
+      "paymentContext": "{{method}}｜{{status}}",
+      "processedAt": "处理时间：{{date}}",
+      "checkedInAt": "核销时间：{{date}}",
+      "passCounts": "门票：{{passes}} · 核销记录：{{checkIns}}",
+      "statusAt": "状态：{{status}}",
+      "refundDates": "{{created}}｜{{processed}}",
+      "quantity_one": "{{count}} 件",
+      "quantity_other": "{{count}} 件"
     }
   },
   "moderationWords": {

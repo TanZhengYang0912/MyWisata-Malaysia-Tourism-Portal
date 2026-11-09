@@ -6,7 +6,7 @@ import type { KycOcrInput } from './ocr';
 import type { ExtractedKycFields } from './runtime/ocr-fields.cjs';
 
 export type ModelManifest = { engine: string; version: string; coreVersion: string; models: { code: string; version: string; sha256: string }[] };
-export type NodeOcrMetrics = { initializationMs: number; childRssBytes: number; cpu: { user: number; system: number }; manifest: ModelManifest };
+export type NodeOcrMetrics = { initializationMs: number; recognitionPasses?: number; childRssBytes: number; cpu: { user: number; system: number }; manifest: ModelManifest };
 export type NodeKycOcrOutcome = { ok: true; fields: ExtractedKycFields; metrics: NodeOcrMetrics } |
   { ok: false; failureCode: 'configuration' | 'service_unavailable' | 'timeout' | 'invalid_response' | 'evidence_invalid'; retryable: boolean };
 let busy = false;
@@ -23,17 +23,41 @@ export function parseNodeKycOcrOutcome(value: unknown): NodeKycOcrOutcome {
   const fields = data.fields as Record<string, unknown>;
   const text = (key: string, max: number) => fields[key] === null || (typeof fields[key] === 'string' && (fields[key] as string).length <= max);
   const metrics = data.metrics as NodeOcrMetrics | undefined;
-  if (!text('holderName', 160) || !text('documentNumber', 40) || fields.expiryDate !== null || typeof fields.unreadable !== 'boolean' ||
+  if (!text('holderName', 160) || !text('documentNumber', 40) || !(fields.expiryDate === null || typeof fields.expiryDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fields.expiryDate)) || typeof fields.unreadable !== 'boolean' ||
     !(fields.confidence === null || (typeof fields.confidence === 'number' && Number.isFinite(fields.confidence) && fields.confidence >= 0 && fields.confidence <= 1)) ||
     !metrics || !Number.isFinite(metrics.initializationMs) || !Number.isFinite(metrics.childRssBytes) || !metrics.manifest || metrics.manifest.engine !== 'tesseract-js-7.0.0-v1') return failure('invalid_response');
   if (!metrics.cpu || ![metrics.cpu.user, metrics.cpu.system, metrics.initializationMs, metrics.childRssBytes].every(value => typeof value === 'number' && Number.isFinite(value) && value >= 0) ||
+    metrics.recognitionPasses !== undefined && (!Number.isSafeInteger(metrics.recognitionPasses) || metrics.recognitionPasses < 1 || metrics.recognitionPasses > 8) ||
     metrics.manifest.version !== '7.0.0' || metrics.manifest.coreVersion !== '7.0.0' || !Array.isArray(metrics.manifest.models) || metrics.manifest.models.length !== 3 ||
     metrics.manifest.models.some((model, index) => model.code !== ['eng', 'msa', 'chi_sim'][index] || model.version !== '1.0.0' || !/^[a-f0-9]{64}$/.test(model.sha256))) return failure('invalid_response');
-  const safeMetrics: NodeOcrMetrics = { initializationMs: metrics.initializationMs, childRssBytes: metrics.childRssBytes, cpu: { user: metrics.cpu.user, system: metrics.cpu.system },
+  const safeMetrics: NodeOcrMetrics = { initializationMs: metrics.initializationMs, ...(metrics.recognitionPasses === undefined ? {} : { recognitionPasses: metrics.recognitionPasses }), childRssBytes: metrics.childRssBytes, cpu: { user: metrics.cpu.user, system: metrics.cpu.system },
     manifest: { engine: metrics.manifest.engine, version: metrics.manifest.version, coreVersion: metrics.manifest.coreVersion,
       models: metrics.manifest.models.map(({ code, version, sha256 }) => ({ code, version, sha256 })) } };
+  const nullableCountry = (key: string) => fields[key] === null || fields[key] === undefined || typeof fields[key] === 'string' && /^[A-Z]{2}$/.test(fields[key] as string);
+  const comparisonFields = ['document_number', 'holder_name', 'birth_date', 'expiry_date', 'nationality', 'issuer_country', 'sex'];
+  const fieldList = (value: unknown) => value === undefined || Array.isArray(value) && value.length <= comparisonFields.length
+    && value.every((field) => typeof field === 'string' && comparisonFields.includes(field));
+  if (!nullableCountry('issuerCountry') || !nullableCountry('nationality')
+    || fields.mrzStatus !== undefined && !['valid', 'invalid', 'unreadable', 'unsupported'].includes(String(fields.mrzStatus))
+    || fields.visualComparisonStatus !== undefined && !['consistent', 'conflict', 'incomplete'].includes(String(fields.visualComparisonStatus))
+    || !fieldList(fields.visualMismatchFields) || !fieldList(fields.visualMissingFields)
+    || fields.passportEvidenceVersion !== undefined && fields.passportEvidenceVersion !== 2) return failure('invalid_response');
+  let visualFieldStatuses: ExtractedKycFields['visualFieldStatuses'];
+  if (fields.visualFieldStatuses !== undefined) {
+    if (!fields.visualFieldStatuses || typeof fields.visualFieldStatuses !== 'object' || Array.isArray(fields.visualFieldStatuses)) return failure('invalid_response');
+    const statuses = fields.visualFieldStatuses as Record<string, unknown>;
+    if (Object.keys(statuses).length !== comparisonFields.length || comparisonFields.some((field) => !['matched', 'missing', 'conflict'].includes(String(statuses[field])))) return failure('invalid_response');
+    visualFieldStatuses = Object.fromEntries(comparisonFields.map((field) => [field, statuses[field]])) as ExtractedKycFields['visualFieldStatuses'];
+  }
+  if (fields.visualComparisonStatus === 'consistent' && (fields.passportEvidenceVersion !== 2 || !visualFieldStatuses ||
+    Object.values(visualFieldStatuses).some((value) => value !== 'matched') || (fields.visualMismatchFields as string[] | undefined)?.length ||
+    (fields.visualMissingFields as string[] | undefined)?.length)) return failure('invalid_response');
   return { ok: true, fields: { holderName: fields.holderName as string | null, documentNumber: fields.documentNumber as string | null,
-    expiryDate: null, confidence: fields.confidence as number | null, unreadable: fields.unreadable }, metrics: safeMetrics };
+    expiryDate: fields.expiryDate as string | null, confidence: fields.confidence as number | null, unreadable: fields.unreadable,
+    issuerCountry: fields.issuerCountry as string | null | undefined, nationality: fields.nationality as string | null | undefined,
+    mrzStatus: fields.mrzStatus as ExtractedKycFields['mrzStatus'], visualComparisonStatus: fields.visualComparisonStatus as ExtractedKycFields['visualComparisonStatus'],
+    visualMismatchFields: fields.visualMismatchFields as string[] | undefined, visualMissingFields: fields.visualMissingFields as string[] | undefined,
+    passportEvidenceVersion: fields.passportEvidenceVersion as 2 | undefined, visualFieldStatuses }, metrics: safeMetrics };
   } catch { return failure('invalid_response'); }
 }
 

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createHash } from 'node:crypto';
 
 vi.mock('server-only', () => ({}));
 
@@ -42,6 +43,39 @@ afterEach(() => {
 });
 
 describe('runKycOcr', () => {
+  it('keeps Chinese passport OCR disabled unless the explicit sample-evaluation gate is enabled', async () => {
+    configure();
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    const passport = input({ documentType: 'passport', back: undefined, enteredDocumentNumber: 'EA1234567' });
+    await expect(extractKycPreviewFields(passport)).resolves.toMatchObject({ status: 'unavailable', failureCode: 'configuration' });
+    await expect(runKycOcr(passport)).resolves.toMatchObject({ status: 'unavailable' });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('recomputes passport comparisons from bounded geometry and preserves full-name input', async () => {
+    configure();
+    vi.stubEnv('KYC_CHINESE_PASSPORT_OCR_ENABLED', 'true');
+    const values = ['Passport No. EA1234567', 'Name LI, WEI MING', 'Date of birth 01 JAN 1990',
+      'Date of expiry 01 JAN 2030', 'Nationality CHINESE', 'Country code CHN', 'Sex M',
+      'P<CHNLI<<WEI<MING'.padEnd(44, '<'), 'EA12345676CHN9001011M3001019<<<<<<<<<<<<<<04'];
+    const passportLayout = { schemaVersion: 1, width: 1000, height: 1000, lines: values.map((text, i) => ({ text, confidence: 99,
+      bbox: { x0: 100, x1: 900, y0: 20 + i * 100, y1: 45 + i * 100 } })) };
+    const request = vi.spyOn(globalThis, 'fetch').mockResolvedValue(privateResponse(JSON.stringify({ passportLayout,
+      evidenceSha256: createHash('sha256').update(imageBytes).digest('hex') })));
+    const result = await runKycOcr(input({ documentType: 'passport', back: undefined, enteredDocumentNumber: 'EA1234567', expectedHolderName: 'LI, WEI MING' }));
+    expect(result).toMatchObject({ status: 'matched', expiryDate: '2030-01-01', issuerCountry: 'CN', nationality: 'CN', mrzStatus: 'valid', visualComparisonStatus: 'consistent' });
+    expect(result).not.toHaveProperty('passportLayout');
+    expect(result).not.toHaveProperty('birthDate');
+    request.mockResolvedValue(privateResponse(JSON.stringify({ passportLayout, evidenceSha256: '0'.repeat(64) })));
+    await expect(runKycOcr(input({ documentType: 'passport', back: undefined }))).resolves.toMatchObject({ status: 'unavailable', failureCode: 'invalid_response' });
+  });
+  it('rejects a private provider self-assertion without source observations', async () => {
+    configure(); vi.stubEnv('KYC_CHINESE_PASSPORT_OCR_ENABLED', 'true');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(privateResponse(JSON.stringify({ holderName: 'LI WEI MING', documentNumber: 'EA1234567',
+      unreadable: false, visualComparisonStatus: 'consistent', mrzStatus: 'valid', issuerCountry: 'CN', nationality: 'CN' })));
+    await expect(runKycOcr(input({ documentType: 'passport', back: undefined }))).resolves.toMatchObject({ status: 'unavailable', failureCode: 'invalid_response' });
+  });
+
   it('returns full extracted number only in the temporary owner preview result', async () => {
     configure();
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(privateResponse(JSON.stringify({

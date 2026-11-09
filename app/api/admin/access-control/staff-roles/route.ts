@@ -59,12 +59,13 @@ export async function GET() {
   const { db, response } = await requireStaffRoleManagementSuperAdmin();
   if (response) return response;
 
-  const [rolesResult, permissionsResult, modulesResult] = await Promise.all([
+  const [rolesResult, permissionsResult, modulesResult, jitPermissionsResult] = await Promise.all([
     db.from("staff_roles").select("id,name,description,is_system,is_active,created_by,created_at,updated_at").order("name", { ascending: true }),
     db.from("staff_role_permissions").select("role_id,staff_permissions(key)"),
     db.from("staff_role_modules").select("role_id,staff_modules(key)"),
+    db.from("staff_role_jit_permissions").select("role_id,staff_permissions(key)"),
   ]);
-  if (rolesResult.error || permissionsResult.error || modulesResult.error) {
+  if (rolesResult.error || permissionsResult.error || modulesResult.error || jitPermissionsResult.error) {
     return apiFail("STAFF_ROLES_UNAVAILABLE", "Unable to load staff roles", 503);
   }
 
@@ -80,6 +81,12 @@ export async function GET() {
     if (!key) continue;
     moduleKeysByRole.set(row.role_id, [...(moduleKeysByRole.get(row.role_id) ?? []), key]);
   }
+  const jitPermissionKeysByRole = new Map<string, string[]>();
+  for (const row of jitPermissionsResult.data ?? []) {
+    const key = permissionKeyFromRelation(row.staff_permissions);
+    if (!key) continue;
+    jitPermissionKeysByRole.set(row.role_id, [...(jitPermissionKeysByRole.get(row.role_id) ?? []), key]);
+  }
 
 
   return apiOk({
@@ -94,6 +101,7 @@ export async function GET() {
       updatedAt: role.updated_at,
       moduleKeys: moduleKeysByRole.get(role.id) ?? [],
       permissionKeys: keysByRole.get(role.id) ?? [],
+      jitPermissionKeys: jitPermissionKeysByRole.get(role.id) ?? [],
     })),
     assignments: [],
     employees: [],

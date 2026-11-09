@@ -12,6 +12,8 @@ const updateStaffRoleSchema = z.object({
   description: z.string().trim().max(100).nullable().optional().default(null),
   moduleKeys: z.array(z.string().regex(/^[a-z][a-z0-9_]*$/)).max(100)
     .refine((keys) => new Set(keys).size === keys.length, "Module keys must be unique"),
+  jitPermissionKeys: z.array(z.enum(["admin.kyc.review"])).max(1).default([])
+    .refine((keys) => new Set(keys).size === keys.length, "JIT permission keys must be unique"),
   active: z.boolean(),
   updatedAt: z.string().datetime(),
   reason: z.string().trim().min(10).max(500),
@@ -54,12 +56,13 @@ export async function PATCH(request: Request, context: Context) {
   const parsed = await parseBody(request, updateStaffRoleSchema);
   if (!parsed.ok) return parsed.response;
 
-  const { error } = await db.rpc("update_staff_role_with_modules", {
+  const { error } = await db.rpc("update_staff_role_with_modules_and_jit", {
     p_role_id: roleId,
     p_name: parsed.data.name,
     p_description: parsed.data.description,
     p_module_keys: parsed.data.moduleKeys,
     p_active: parsed.data.active,
+    p_jit_permission_keys: parsed.data.jitPermissionKeys,
     p_expected_updated_at: parsed.data.updatedAt,
     p_reason: parsed.data.reason,
   });

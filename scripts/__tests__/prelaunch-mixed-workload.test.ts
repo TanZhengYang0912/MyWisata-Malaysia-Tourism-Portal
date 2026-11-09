@@ -71,13 +71,13 @@ function syntheticCatalogue() {
   };
 }
 
-it('measures bounded browsing with real image preparation/worker and synthetic external boundaries', async () => {
+it('measures bounded browsing with real image preparation and synthetic observation processing', async () => {
   const settings = {
     KYC_PRESCREENING_ENABLED: 'true', KYC_PRESCREENING_BATCH_SIZE: '1', KYC_PRESCREENING_MAX_RUNNING: '1',
     KYC_PRESCREENING_LEASE_SECONDS: '60', KYC_PRESCREENING_MAX_ATTEMPTS: '2', KYC_PRESCREENING_RETRY_SECONDS: '60',
     KYC_PRESCREENING_DRAIN_ENABLED: 'false', KYC_IC_HMAC_KEY: 'synthetic-local-hmac-key',
     KYC_PRIVATE_OCR_URL: 'http://127.0.0.1:1/synthetic-ocr', KYC_PRIVATE_OCR_TOKEN: 'synthetic-local-token-only',
-    KYC_PRIVATE_OCR_TIMEOUT_MS: '1000', KYC_PRIVATE_OCR_MIN_CONFIDENCE: '',
+    KYC_PRIVATE_OCR_TIMEOUT_MS: '1000', KYC_PRIVATE_OCR_MIN_CONFIDENCE: '0.8',
   };
   for (const [key, value] of Object.entries(settings)) vi.stubEnv(key, value);
   let ocrCalls = 0;
@@ -114,11 +114,18 @@ it('measures bounded browsing with real image preparation/worker and synthetic e
               expect(args.p_limit).toBe(1);
               claimed = true;
               return { data: [{ id: `synthetic-job-${index}`, submissionId: `synthetic-case-${index}`, leaseToken: 'synthetic-lease',
-                documentType: 'national_id', expectedDocumentNumberHmac: 'a'.repeat(64), expectedHolderName: null,
+                evidenceRevision: 'synthetic-evidence-revision', documentType: 'national_id', expectedDocumentNumberHmac: 'a'.repeat(64), expectedHolderName: 'SYNTHETIC PERSON',
                 documents: [{ side: 'front', path: 'synthetic/front', mimeType: 'image/jpeg' }, { side: 'back', path: 'synthetic/back', mimeType: 'image/jpeg' }] }], error: null };
             }
+            if (name === 'get_kyc_submission_ocr_observation_v2') {
+              expect(args.p_artifact_revision).toBe('synthetic-evidence-revision');
+              return { data: { status: 'extracted', engine: 'private-ocr-v1', holderName: 'SYNTHETIC PERSON',
+                documentNumberHmac: 'a'.repeat(64), documentNumberLast4: '0001', expiryDate: null, confidence: 0.99,
+                issuerCountry: null, nationality: null, mrzStatus: null, visualComparisonStatus: null,
+                sourceRevision: 'synthetic-source-revision', artifactRevision: 'synthetic-evidence-revision' }, error: null };
+            }
             expect(name).toBe('finish_kyc_prescreening_job');
-            expect(args.p_result).toMatchObject({ status: 'unreadable' });
+            expect(args.p_result).toMatchObject({ status: 'matched', providerModel: 'private-ocr-v1' });
             completedJobs += 1;
             return { data: true, error: null };
           },
@@ -168,9 +175,9 @@ it('measures bounded browsing with real image preparation/worker and synthetic e
   }
   const baseline = await phase(false);
   const mixed = await phase(true);
-  expect(ocrCalls).toBe(4);
+  expect(ocrCalls).toBe(0);
   const report = { experiment: 'local_real_application_stages_synthetic_boundaries', baseline, mixed,
-    scope: 'Handler invocations, no HTTP/proxy/upload transport; real catalogue logic, Sharp watermark, worker/OCR contract. DB/Storage/OCR transport are synthetic. No model inference, real identity, remote services or host capacity certification.' };
+    scope: 'Handler invocations, no HTTP/proxy/upload transport; real catalogue logic and Sharp watermark with synthetic stored OCR observations. No worker OCR or database/Storage transport occurs in this pre-screening phase. No model inference, real identity, remote services or host capacity certification.' };
   console.log(JSON.stringify(report));
   if (process.env.MYLAWATAN_RECORD_MIXED_WORKLOAD === '1') {
     await writeFile('/tmp/mywisata-mixed-workload-20261021.json', JSON.stringify(report, null, 2), { mode: 0o600 });

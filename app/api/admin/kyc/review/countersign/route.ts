@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { requireKycReviewer } from '@/lib/kyc/reviewer-auth';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
+import { issueKycServiceOperationTicket } from '@/lib/kyc/service-operation-ticket';
 
 const schema = z.object({
   submissionId: z.string().uuid(),
@@ -18,8 +19,18 @@ export async function POST(request: Request) {
   const ttl = Number(process.env.KYC_REVIEW_CONFIRMATION_TTL_SECONDS);
   if (!Number.isInteger(ttl) || ttl <= 0) return apiFail('KYC_UNAVAILABLE', 'KYC review is temporarily unavailable', 503);
 
+  const ticket = await issueKycServiceOperationTicket(db, {
+    submissionId: parsed.data.submissionId,
+    action: 'evidence.revision',
+    expectedVersion: parsed.data.expectedVersion,
+  });
+  if (!ticket) return apiFail('KYC_CASE_UNAVAILABLE', 'KYC case is temporarily unavailable', 503);
   const service = createServiceClient();
-  const { data: revision, error: revisionError } = await service.rpc('get_kyc_evidence_revision', { p_submission_id: parsed.data.submissionId });
+  const { data: revision, error: revisionError } = await service.rpc('get_kyc_evidence_revision_v2', {
+    p_ticket_id: ticket.ticketId,
+    p_submission_id: parsed.data.submissionId,
+    p_review_version: ticket.reviewVersion,
+  });
   if (revisionError || typeof revision !== 'string') return apiFail('KYC_CASE_UNAVAILABLE', 'KYC case is temporarily unavailable', 503);
   const { error } = await db.rpc('authorize_kyc_countersign', {
     p_submission_id: parsed.data.submissionId,

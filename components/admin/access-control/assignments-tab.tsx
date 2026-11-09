@@ -37,40 +37,25 @@ export function AssignmentsTab({ focusId, onViewAudit }: { focusId: string | nul
   const { t } = useTranslation("admin");
   const [result, setResult] = useState<PageResult<AssignmentRecord>>({ items: [], page: 1, pageSize: PAGE_SIZE, total: 0, totalPages: 0 });
   const [capabilities, setCapabilities] = useState<CapabilityRecord[]>([]);
+  const pageSize = PAGE_SIZE;
   const [search, setSearch] = useState(""); const [subjectType, setSubjectType] = useState(""); const [status, setStatus] = useState(""); const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [showCreate, setShowCreate] = useState(false); const [form, setForm] = useState(initialForm);
   const [pending, setPending] = useState<PendingMutation | null>(null); const [assignmentConfirmOpen, setAssignmentConfirmOpen] = useState(false); const [saving, setSaving] = useState(false); const [receipt, setReceipt] = useState<MutationReceipt | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserCandidate | null>(null);
   const loadRequestId = useRef(0);
-  const query = useMemo(() => buildAccessControlQuery({ page, pageSize: PAGE_SIZE, search, subjectType, status }), [page, search, status, subjectType]);
+  const query = useMemo(() => buildAccessControlQuery({ page, pageSize, search, subjectType, status }), [page, pageSize, search, status, subjectType]);
 
   const load = useCallback(async () => {
     const requestId = ++loadRequestId.current;
     setLoading(true); setError("");
     try {
-      const [assignmentsResponse, capabilitiesResponse] = await Promise.all([
-        fetch(`/api/admin/access-control/assignments?${query}`, { cache: "no-store" }),
-        fetch("/api/admin/access-control/capabilities?page=1&pageSize=100", { cache: "no-store" }),
-      ]);
+      const assignmentsResponse = await fetch(`/api/admin/access-control/assignments?${query}`, { cache: "no-store" });
       const assignmentsBody = await assignmentsResponse.json() as ApiEnvelope<PageResult<AssignmentRecord>>;
-      const capabilitiesBody = await capabilitiesResponse.json() as ApiEnvelope<PageResult<CapabilityRecord>>;
       if (requestId !== loadRequestId.current) return;
       if (!assignmentsResponse.ok || !assignmentsBody.data) {
         throw new Error(errorMessage(assignmentsBody, t("accessControl.errors.loadAssignments")));
       }
-      if (!capabilitiesResponse.ok || !capabilitiesBody.data) {
-        throw new Error(errorMessage(capabilitiesBody, t("accessControl.errors.loadCapabilities")));
-      }
       setResult(assignmentsBody.data);
-      setCapabilities(capabilitiesBody.data.items);
-      setForm((current) => {
-        const selected = capabilitiesBody.data!.items.find((item) => item.key === current.capabilityKey);
-        if (capabilityAvailability(selected, current.effect) === "available") return current;
-        const fallback = capabilitiesBody.data!.items.find(
-          (item) => capabilityAvailability(item, current.effect) === "available",
-        );
-        return { ...current, capabilityKey: fallback?.key ?? "" };
-      });
     } catch (caught) {
       if (requestId !== loadRequestId.current) return;
       setCapabilities([]);
@@ -81,6 +66,43 @@ export function AssignmentsTab({ focusId, onViewAudit }: { focusId: string | nul
     }
     finally { if (requestId === loadRequestId.current) setLoading(false); }
   }, [query, t]);
+
+  useEffect(() => {
+    if (!showCreate) return;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      const params = new URLSearchParams({ page: "1", pageSize: "100", manuallyAssignable: "true" });
+      try {
+        const response = await fetch(`/api/admin/access-control/capabilities?${params}`, { cache: "no-store", signal: controller.signal });
+        const body = await response.json() as ApiEnvelope<PageResult<CapabilityRecord>>;
+        if (!response.ok || !body.data) throw new Error(errorMessage(body, t("accessControl.errors.loadCapabilities")));
+        let items = body.data.items;
+        const selectedKey = form.capabilityKey;
+        if (selectedKey && !items.some((item) => item.key === selectedKey)) {
+          const selectedParams = new URLSearchParams({ page: "1", pageSize: "1", key: selectedKey });
+          const selectedResponse = await fetch(`/api/admin/access-control/capabilities?${selectedParams}`, { cache: "no-store", signal: controller.signal });
+          const selectedBody = await selectedResponse.json() as ApiEnvelope<PageResult<CapabilityRecord>>;
+          if (selectedResponse.ok && selectedBody.data) items = [...items, ...selectedBody.data.items];
+        }
+        if (!controller.signal.aborted) {
+          setCapabilities(items);
+          setForm((current) => {
+            if (items.some((item) => item.key === current.capabilityKey)) return current;
+            return { ...current, capabilityKey: items.find((item) => capabilityAvailability(item, current.effect) === "available")?.key ?? "" };
+          });
+        }
+      } catch (caught) {
+        if (!controller.signal.aborted) {
+          setCapabilities([]);
+          setForm((current) => ({ ...current, capabilityKey: "" }));
+          setPending(null);
+          setAssignmentConfirmOpen(false);
+          setError(caught instanceof Error ? caught.message : t("accessControl.errors.loadCapabilities"));
+        }
+      }
+    }, 180);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [form.capabilityKey, showCreate, t]);
   useEffect(() => {
     const timeoutId = setTimeout(() => { void load(); }, 0);
     return () => clearTimeout(timeoutId);

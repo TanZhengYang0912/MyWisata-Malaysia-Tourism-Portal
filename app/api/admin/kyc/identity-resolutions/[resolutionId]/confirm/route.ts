@@ -4,6 +4,7 @@ import { requireKycReviewer } from '@/lib/kyc/reviewer-auth';
 import { hashICWithHmac } from '@/lib/kyc/hash';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
+import { issueKycServiceOperationTicket } from '@/lib/kyc/service-operation-ticket';
 
 type Props = { params: Promise<{ resolutionId: string }> };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -47,19 +48,26 @@ export async function POST(request: Request, { params }: Props) {
     return apiFail('AUTHORIZATION_UNAVAILABLE', 'Unable to verify reviewer session', 503);
   }
   const service = createServiceClient();
-  const [{ data: submission, error: submissionError }, { data: revision, error: revisionError }] = await Promise.all([
-    service.from('kyc_submissions').select('document_type,review_version').eq('id', snapshot.caseId).maybeSingle(),
-    service.rpc('get_kyc_evidence_revision', { p_submission_id: snapshot.caseId }),
-  ]);
-  if (submissionError || revisionError || !submission || typeof revision !== 'string') return apiFail('KYC_CASE_UNAVAILABLE', 'KYC case is temporarily unavailable', 503);
+  const { data: submission, error: submissionError } = await service
+    .from('kyc_submissions').select('document_type,review_version').eq('id', snapshot.caseId).maybeSingle();
+  if (submissionError || !submission) return apiFail('KYC_CASE_UNAVAILABLE', 'KYC case is temporarily unavailable', 503);
   if (submission.review_version === null || submission.review_version === undefined) return apiFail('CONFLICT', 'Reload this case before confirming', 409);
+  const ticket = await issueKycServiceOperationTicket(db, {
+    submissionId: snapshot.caseId,
+    action: 'resolution.confirmation.stage',
+    expectedVersion: parsed.data.version,
+    targetId: resolutionId,
+    purpose: role,
+  });
+  if (!ticket) return apiFail('AUTHORIZATION_UNAVAILABLE', 'Unable to authorize identity confirmation', 503);
   if (parsed.data.actualDocumentType !== submission.document_type || parsed.data.issuerCountry.toUpperCase() !== 'MY') {
     return apiFail('VALIDATION_FAILED', 'The actual document type and issuing country do not match this KYC case', 422);
   }
   let fingerprint: Awaited<ReturnType<typeof hashICWithHmac>>;
   try { fingerprint = await hashICWithHmac(parsed.data.documentNumber); }
   catch { return apiFail('SERVER_CONFIGURATION', 'KYC review is temporarily unavailable', 503); }
-  const { data: confirmationId, error: stageError } = await service.rpc('stage_kyc_resolution_confirmation', {
+  const { data: confirmationId, error: stageError } = await service.rpc('stage_kyc_resolution_confirmation_with_ticket', {
+    p_ticket_id: ticket.ticketId,
     p_expected_actor_id: user.id,
     p_expected_session_id: sessionId,
     p_resolution_id: resolutionId,

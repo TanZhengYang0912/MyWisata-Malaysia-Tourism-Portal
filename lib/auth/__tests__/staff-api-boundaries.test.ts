@@ -17,7 +17,7 @@ beforeEach(() => { vi.clearAllMocks(); mocks.assurance.mockImplementation(async 
 describe('staff assurance before privileged data or service use', () => {
   it.each([
     ['refund list', () => refunds(new Request("https://mylawatan.my/api/admin/refunds"))], ['refund action', () => refund(request(), { params: Promise.resolve({ refundId: id }) })],
-    ['queue counts', () => counts()], ['financial outcome', () => outcome(request(), { params: Promise.resolve({ orderId: id }) })],
+    ['queue counts', () => counts(new Request('https://mylawatan.my/api/admin/navigation/counts'))], ['financial outcome', () => outcome(request(), { params: Promise.resolve({ orderId: id }) })],
     ['simulator refund', () => simulator(request(), { params: Promise.resolve({ refundId: id }) })],
   ])('denies %s without privileged reads', async (_name, action) => {
     expect((await action()).status).toBe(403);

@@ -6,6 +6,8 @@ const migrationsDirectory = resolve(process.cwd(), "supabase/migrations");
 const baselinePath = resolve(process.cwd(), "supabase/canonical-migration-baseline.json");
 // Keep post-baseline migrations explicit; this is separate from the canonical baseline.
 const approvedForwardMigrations = [
+  "20261105095628_admin_support_ticket_atomic_transition.sql",
+  "20261105094626_admin_campaign_noop_save.sql",
   "20261109062020_chinese_passport_single_page_evidence.sql",
   "20261109062539_kyc_clean_ocr_and_manual_confirmation.sql",
   "20261109084435_reconcile_qr_redemption_history.sql",
@@ -373,10 +375,10 @@ const approvedForwardMigrations = [
   "20261106091900_exclude_non_ticket_products_from_admission_history.sql",
   "20260909182755_remove_kek_lok_si_zero_price_admission.sql",
   "20260910042951_seed_kuala_lumpur_admission_showcase.sql",
-  "20261105094626_admin_campaign_noop_save.sql",
-  "20261105095628_admin_support_ticket_atomic_transition.sql",
+  "20261105200653_admin_dashboard_withdrawal_summary.sql",
   "20261106093323_bound_admin_access_control_reads.sql",
   "20261106093324_staff_jit_role_permissions.sql",
+  "20261106113000_admin_support_queue_pagination.sql",
   "20261106115747_staff_jit_kyc_operation_tickets.sql",
 ];
 

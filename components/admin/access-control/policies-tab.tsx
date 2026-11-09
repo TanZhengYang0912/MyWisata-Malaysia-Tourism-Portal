@@ -35,16 +35,18 @@ function requirementValue(requirement: RequirementDraft): boolean | string {
 export function PoliciesTab({ focusId, onViewAudit }: { focusId: string | null; onViewAudit: (focus: AuditFocus) => void }) {
   const { t } = useTranslation("admin");
   const [result, setResult] = useState<PageResult<PolicySummary>>({ items: [], page: 1, pageSize: PAGE_SIZE, total: 0, totalPages: 0 });
-  const [search, setSearch] = useState(""); const [status, setStatus] = useState(""); const [page, setPage] = useState(1);
+  const [search, setSearch] = useState(""); const [status, setStatus] = useState(""); const [page, setPage] = useState(1); const pageSize = PAGE_SIZE;
   const [loading, setLoading] = useState(true); const [error, setError] = useState("");
   const [selected, setSelected] = useState<PolicySummary | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [versions, setVersions] = useState<PolicyVersionSummary[]>([]); const [versionsLoading, setVersionsLoading] = useState(false);
+  const [versionCursor, setVersionCursor] = useState<number | null>(null);
+  const [versionsHasMore, setVersionsHasMore] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]); const [showCreate, setShowCreate] = useState(false); const [form, setForm] = useState<VersionForm>(initialForm);
   const [pending, setPending] = useState<PendingAction | null>(null); const [policyConfirmOpen, setPolicyConfirmOpen] = useState(false); const [saving, setSaving] = useState(false); const [receipt, setReceipt] = useState<MutationReceipt | null>(null);
   const confirmationTransitionRef = useRef(false);
 
-  const query = useMemo(() => buildAccessControlQuery({ page, pageSize: PAGE_SIZE, search, status }), [page, search, status]);
+  const query = useMemo(() => buildAccessControlQuery({ page, pageSize, search, status }), [page, pageSize, search, status]);
   const loadPolicies = useCallback(async () => {
     setLoading(true); setError("");
     try {
@@ -59,13 +61,34 @@ export function PoliciesTab({ focusId, onViewAudit }: { focusId: string | null; 
   const loadVersions = useCallback(async (policy: PolicySummary) => {
     setVersionsLoading(true); setError(""); setCompareIds([]);
     try {
-      const response = await fetch(`/api/admin/access-control/policies/${policy.id}/versions`, { cache: "no-store" });
-      const body = await response.json() as ApiEnvelope<{ items: PolicyVersionSummary[] }>;
+      const response = await fetch(`/api/admin/access-control/policies/${policy.id}/versions?pageSize=25`, { cache: "no-store" });
+      const body = await response.json() as ApiEnvelope<{ items: PolicyVersionSummary[]; hasMore: boolean; nextCursor: number | null }>;
       if (!response.ok || !body.data) throw new Error(errorMessage(body, t("accessControl.errors.loadVersions")));
       setVersions(body.data.items);
+      setVersionCursor(body.data.nextCursor);
+      setVersionsHasMore(body.data.hasMore);
     } catch (caught) { setError(caught instanceof Error ? caught.message : t("accessControl.errors.loadVersions")); }
     finally { setVersionsLoading(false); }
   }, [t]);
+
+  const loadMoreVersions = useCallback(async () => {
+    if (!selected || versionCursor === null || versionsLoading) return;
+    setVersionsLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams({ pageSize: "25", beforeVersion: String(versionCursor) });
+      const response = await fetch(`/api/admin/access-control/policies/${selected.id}/versions?${params}`, { cache: "no-store" });
+      const body = await response.json() as ApiEnvelope<{ items: PolicyVersionSummary[]; hasMore: boolean; nextCursor: number | null }>;
+      if (!response.ok || !body.data) throw new Error(errorMessage(body, t("accessControl.errors.loadVersions")));
+      setVersions((current) => [...current, ...body.data!.items.filter((item) => !current.some((existing) => existing.id === item.id))]);
+      setVersionCursor(body.data.nextCursor);
+      setVersionsHasMore(body.data.hasMore);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : t("accessControl.errors.loadVersions"));
+    } finally {
+      setVersionsLoading(false);
+    }
+  }, [selected, t, versionCursor, versionsLoading]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => { void loadPolicies(); }, 0);
@@ -137,7 +160,7 @@ export function PoliciesTab({ focusId, onViewAudit }: { focusId: string | null; 
   const compareVersions = compareIds.map((id) => versions.find((version) => version.id === id)).filter(Boolean) as PolicyVersionSummary[];
 
   return <div className="space-y-4">
-    <AdminFilterBar><label className="min-w-[220px] flex-1"><span className="sr-only">{t("accessControl.filters.searchPolicies")}</span><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("accessControl.filters.searchPolicies")} className={`${adminFilterControlClassName} w-full pl-9`} /></div></label><select value={status} onChange={(event) => setStatus(event.target.value)} aria-label={t("accessControl.filters.policyStatus")} className={adminFilterControlClassName}>{STATUSES.map((value) => <option key={value || "all"} value={value}>{value ? t(`accessControl.status.${value}`) : t("accessControl.filters.allStatuses")}</option>)}</select><Button variant="outline" size="sm" onClick={() => void loadPolicies()} disabled={loading}><RefreshCw className={loading ? "animate-spin" : ""} /> {t("accessControl.actions.refresh")}</Button></AdminFilterBar>
+      <AdminFilterBar><label className="min-w-[220px] flex-1"><span className="sr-only">{t("accessControl.filters.searchPolicies")}</span><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("accessControl.filters.searchPolicies")} className={`${adminFilterControlClassName} w-full pl-9`} /></div></label><select value={status} onChange={(event) => setStatus(event.target.value)} aria-label={t("accessControl.filters.policyStatus")} className={adminFilterControlClassName}>{STATUSES.map((value) => <option key={value || "all"} value={value}>{value ? t(`accessControl.status.${value}`) : t("accessControl.filters.allStatuses")}</option>)}</select><Button variant="outline" size="sm" onClick={() => void loadPolicies()} disabled={loading}><RefreshCw className={loading ? "animate-spin" : ""} /> {t("accessControl.actions.refresh")}</Button></AdminFilterBar>
     {receipt && !detailsOpen && <div role="status" className="flex items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-primary"><span>{receipt.receiptAvailable === false ? t("accessControl.feedback.committedReceiptUnavailable") : t("accessControl.feedback.policyUpdated")}</span>{receipt.auditEventId && <Button size="sm" variant="outline" onClick={() => onViewAudit({ eventId: receipt.auditEventId!, entityId: receipt.policyVersionId ?? receipt.policyId })}>{t("accessControl.actions.viewAuditEvent")}</Button>}</div>}
     {error && !detailsOpen && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -162,7 +185,7 @@ export function PoliciesTab({ focusId, onViewAudit }: { focusId: string | null; 
           {error && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
           <div className="flex justify-end"><Button size="sm" onClick={() => { setShowCreate((value) => !value); setForm(initialForm()); }}><Plus /> {t("accessControl.actions.newVersion")}</Button></div>
           {showCreate && <VersionEditor form={form} setForm={setForm} saving={saving} onSave={() => void createVersion()} />}
-          <div><div className="flex items-center justify-between"><h3 className="font-semibold text-foreground">{t("accessControl.policies.versionHistory")}</h3></div>{versionsLoading ? <State text={t("accessControl.states.loading")} /> : versions.length === 0 ? <State text={t("accessControl.states.noVersions")} /> : <div className="mt-3 space-y-2">{versions.map((version) => <VersionRow key={version.id} version={version} compared={compareIds.includes(version.id)} onCompare={() => setCompareIds((current) => current.includes(version.id) ? current.filter((id) => id !== version.id) : current.length < 2 ? [...current, version.id] : [current[1], version.id])} onAction={(type) => { setPolicyConfirmOpen(false); setPending({ type, version, reason: "" }); }} />)}</div>}</div>
+          <div><h3 className="font-semibold text-foreground">{t("accessControl.policies.versionHistory")}</h3>{versionsLoading && versions.length === 0 ? <State text={t("accessControl.states.loading")} /> : versions.length === 0 ? <State text={t("accessControl.states.noVersions")} /> : <div className="mt-3 space-y-2">{versions.map((version) => <VersionRow key={version.id} version={version} compared={compareIds.includes(version.id)} onCompare={() => setCompareIds((current) => current.includes(version.id) ? current.filter((id) => id !== version.id) : current.length < 2 ? [...current, version.id] : [current[1], version.id])} onAction={(type) => { setPolicyConfirmOpen(false); setPending({ type, version, reason: "" }); }} />)}</div>}{versionsHasMore && <Button variant="outline" disabled={versionsLoading || !selected} onClick={() => void loadMoreVersions()}>{t("accessControl.actions.loadMore")}</Button>}</div>
           {compareVersions.length === 2 && <div className="rounded-xl border border-border bg-muted/20 p-4"><h3 className="flex items-center gap-2 font-semibold"><GitCompare /> {t("accessControl.policies.comparison")}</h3><div className="mt-3 grid gap-3 md:grid-cols-2">{compareVersions.map((version) => <VersionDetail key={version.id} version={version} />)}</div></div>}
           {pending && <div className="rounded-xl border border-border bg-card p-4"><h3 className="font-semibold">{t(`accessControl.policyActions.${pending.type}`)}</h3><p className="mt-1 text-sm text-muted-foreground">{t("accessControl.policies.actionReason")}</p><textarea value={pending.reason} onChange={(event) => setPending({ ...pending, reason: event.target.value })} maxLength={2000} className="mt-3 min-h-24 w-full rounded-xl border border-border bg-background p-3 text-sm" placeholder={t("accessControl.forms.reasonPlaceholder")} /><div className="mt-3 flex justify-end gap-2"><Button variant="outline" onClick={() => { setPending(null); setPolicyConfirmOpen(false); }}>{t("accessControl.actions.cancel")}</Button><Button onClick={() => { confirmationTransitionRef.current = true; setDetailsOpen(false); setPolicyConfirmOpen(true); }} disabled={pending.reason.trim().length < 10}>{t("accessControl.actions.reviewChange")}</Button></div></div>}
         </>}

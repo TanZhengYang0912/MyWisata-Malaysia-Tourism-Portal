@@ -1,6 +1,6 @@
 import type { AdminKycSubmission, AdminKycSubmissionDetail } from '@/backend/core/types';
 
-export const ADMIN_KYC_SUBMISSION_SELECT = 'id,user_id,document_type,status,queue_position,created_at,reviewed_at,reviewer_id,review_reason_code,review_reason_detail,kyc_submission_documents(side),kyc_ocr_results(status,holder_name,document_number_last4,expiry_date,confidence,mismatch_fields,processed_at)';
+export const ADMIN_KYC_SUBMISSION_SELECT = 'id,user_id,document_type,status,queue_position,created_at,reviewed_at,reviewer_id,review_reason_code,review_reason_detail,kyc_submission_documents(side),kyc_ocr_results(status,holder_name,document_number_last4,expiry_date,confidence,mismatch_fields,issuer_country,nationality,mrz_status,visual_comparison_status,processed_at)';
 export const ADMIN_KYC_SUBMISSION_DETAIL_SELECT = `kyc_prescreening_jobs(status,outcome,updated_at),assigned_to,claimed_at,legal_name_snapshot,email_snapshot,phone_snapshot,identity_snapshot_captured_at,${ADMIN_KYC_SUBMISSION_SELECT}`;
 
 export type AdminKycSubmissionRow = {
@@ -22,6 +22,10 @@ export type AdminKycSubmissionRow = {
     expiry_date: string | null;
     confidence: number | null;
     mismatch_fields: string[] | null;
+    issuer_country: string | null;
+    nationality: string | null;
+    mrz_status: NonNullable<AdminKycSubmission['ocr']>['mrzStatus'];
+    visual_comparison_status: NonNullable<AdminKycSubmission['ocr']>['visualComparisonStatus'];
     processed_at: string;
   }[] | null;
 };
@@ -49,6 +53,10 @@ export function mapAdminKycSubmission(row: AdminKycSubmissionRow): AdminKycSubmi
           expiryDate: ocr.expiry_date,
           confidence: ocr.confidence,
           mismatchFields: ocr.mismatch_fields ?? [],
+          issuerCountry: ocr.issuer_country,
+          nationality: ocr.nationality,
+          mrzStatus: ocr.mrz_status,
+          visualComparisonStatus: ocr.visual_comparison_status,
           processedAt: ocr.processed_at,
         }
       : null,

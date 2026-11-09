@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import {
   Archive,
@@ -125,12 +126,13 @@ function initials(name: string) {
 
 export default function AdminVendorsPage() {
   const { t } = useTranslation('admin');
+  const searchParams = useSearchParams();
   const { confirm, prompt } = useAppDialog();
   const [vendors, setVendors] = useState<VendorData[]>([]);
   const [counts, setCounts] = useState<Record<FilterStatus, number>>({ all: 0, pending: 0, approved: 0, welcomed: 0, rejected: 0, suspended: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<FilterStatus>('all');
+  const [filter, setFilter] = useState<FilterStatus>(() => searchParams.get('filter') === 'pending' ? 'pending' : 'all');
   const [search, setSearch] = useState('');
   const [stateFilter, setStateFilter] = useState('all');
   const [kycFilter, setKycFilter] = useState<KycFilter>('all');

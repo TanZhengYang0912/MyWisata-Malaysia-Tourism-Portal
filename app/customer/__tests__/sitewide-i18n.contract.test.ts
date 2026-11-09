@@ -117,6 +117,7 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/customer-breadcrumbs.tsx",
   "components/customer/customer-primary-navigation.tsx",
   "components/customer/kyc-photo-preview.tsx",
+  "components/customer/kyc-document-camera-dialog.tsx",
   "components/customer/customer-qr-pass-card.tsx",
   "components/customer/customer-qr-pass-section.tsx",
   "components/customer/destination-preview-modal.tsx",

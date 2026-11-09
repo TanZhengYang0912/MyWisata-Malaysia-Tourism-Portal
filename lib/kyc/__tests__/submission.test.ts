@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { abandonAndRemoveKycEvidence, buildKycEvidencePaths, validateKycUploadFile } from '../submission';
+import { abandonAndRemoveKycEvidence, buildKycEvidencePaths, createKycEvidenceRevision, validateKycUploadFile } from '../submission';
 
 describe('KYC server submission helpers', () => {
+  it('uses a stable, side-aware evidence revision for one or two document pages', () => {
+    const front = 'a'.repeat(64);
+    const back = 'b'.repeat(64);
+    expect(createKycEvidenceRevision(front, null)).toMatch(/^[a-f0-9]{64}$/);
+    expect(createKycEvidenceRevision(front, back)).not.toBe(createKycEvidenceRevision(front, null));
+    expect(() => createKycEvidenceRevision('invalid', null)).toThrow('invalid_kyc_evidence_hash');
+  });
   it('binds both sides to one UUID token without exposing a client-selected path', () => {
     const paths = buildKycEvidencePaths(
       '2e2a8372-1c5f-4ba5-a645-f0a319c57b98',

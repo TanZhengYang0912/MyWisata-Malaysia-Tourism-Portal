@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { listAccessControlState } from "@/lib/entitlements/admin";
+import { getAccessControlGeneration, listAccessControlState } from "@/lib/entitlements/admin";
 import { apiFail, apiOk } from "@/lib/validation/schemas";
 
 export type AccessControlRecord = Record<string, unknown>;
@@ -57,6 +57,9 @@ export function accessControlFailure(error: unknown): Response {
   if (message.includes("policy_state_unavailable") || message.includes("policy_unavailable")) {
     return apiFail("POLICY_STATE_UNAVAILABLE", "Access Control policy state is unavailable", 503);
   }
+  if (message.includes("invalid_access_control_query")) {
+    return validationFailure();
+  }
   if (message.includes("policy_version_not_found") || message.includes("policy_not_found")
       || message.includes("rollback_target_not_found") || message.includes("assignment_not_found")
       || message.includes("assignment_subject_not_found") || message.includes("capability_not_found")) {
@@ -91,7 +94,7 @@ export async function mutationReceipt(
   data: Record<string, unknown>,
   status = 200,
 ) {
-  const [{ data: auditEvent, error: auditError }, stateResult] = await Promise.all([
+  const [{ data: auditEvent, error: auditError }, generationResult] = await Promise.all([
     db.from("audit_logs")
       .select("id")
       .eq("actor_id", actorId)
@@ -100,17 +103,18 @@ export async function mutationReceipt(
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    loadAccessControlStateResponse(),
+    getAccessControlGeneration().then((generation) => ({ generation, failed: false as const }))
+      .catch(() => ({ generation: null, failed: true as const })),
   ]);
 
-  if (auditError || !auditEvent?.id || stateResult.response || !stateResult.state) {
+  if (auditError || !auditEvent?.id || generationResult.failed) {
     return apiOk({
       ...data,
       committed: true,
       entityId,
       action,
       auditEventId: auditError ? null : auditEvent?.id ?? null,
-      generation: stateResult.state?.generation ?? null,
+      generation: generationResult.generation,
       receiptAvailable: false,
     }, { status: 202 });
   }
@@ -118,7 +122,7 @@ export async function mutationReceipt(
   return apiOk({
     ...data,
     auditEventId: auditEvent.id,
-    generation: stateResult.state.generation,
+    generation: generationResult.generation,
     committed: true,
     entityId,
     action,

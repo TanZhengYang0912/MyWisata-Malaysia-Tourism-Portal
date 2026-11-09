@@ -56,9 +56,9 @@ describe('admin navigation shell', () => {
     expect(layoutSource).toContain('/api/admin/navigation/counts');
     expect(layoutSource).toContain('pendingCountFor');
     expect(layoutSource).toContain('accessibility.pendingItems');
-    expect(layoutSource).toContain('pendingCounts.catalogue');
-    expect(layoutSource).toContain('pendingCounts.withdrawals');
-    expect(layoutSource).toContain('pendingCounts.chatReports');
+    expect(layoutSource).toContain('currentCounts.catalogue');
+    expect(layoutSource).toContain('currentCounts.withdrawals');
+    expect(layoutSource).toContain('currentCounts.chatReports');
     expect(layoutSource).not.toContain('currentUser.role === "staff" ? 0');
     expect(layoutSource).not.toContain('!staffAccessReady || !currentUser || currentUser.role === "staff"');
   });

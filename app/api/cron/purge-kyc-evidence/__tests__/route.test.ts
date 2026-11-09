@@ -24,7 +24,8 @@ describe('POST /api/cron/purge-kyc-evidence', () => {
   });
 
   it('supports authenticated scheduler GET requests', async () => {
-    rpc.mockResolvedValue({ data: [], error: null });
+    rpc.mockImplementation((name:string)=>Promise.resolve(name==='purge_kyc_draft_ocr_operations'
+      ?{data:[{marked_for_reconciliation:0,deleted:0}],error:null}:{data:[],error:null}));
     const response = await GET(new Request('http://localhost', { headers: { authorization: 'Bearer cron-test-secret' } }));
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ claimed: 0, purged: 0, failed: 0 });
@@ -47,6 +48,7 @@ describe('POST /api/cron/purge-kyc-evidence', () => {
         return Promise.resolve({ data: [{ submission_id: submissionId, side: 'front', storage_path: path }], error: null });
       }
       if (name === 'confirm_purged_kyc_evidence') return Promise.resolve({ data: true, error: null });
+      if (name === 'purge_kyc_draft_ocr_operations') return Promise.resolve({data:[{marked_for_reconciliation:0,deleted:0}],error:null});
       throw new Error(`unexpected rpc ${name}`);
     });
     remove.mockResolvedValue({ data: [{ name: path }], error: null });
@@ -69,10 +71,9 @@ describe('POST /api/cron/purge-kyc-evidence', () => {
 
   it('does not confirm metadata when object deletion fails', async () => {
     const submissionId = '00000000-0000-0000-0000-000000000002';
-    rpc.mockResolvedValue({
-      data: [{ submission_id: submissionId, side: 'back', storage_path: 'private/opaque.bin' }],
-      error: null,
-    });
+    rpc.mockImplementation((name:string)=>Promise.resolve(name==='purge_kyc_draft_ocr_operations'
+      ?{data:[{marked_for_reconciliation:0,deleted:0}],error:null}
+      :{data:[{ submission_id: submissionId, side: 'back', storage_path: 'private/opaque.bin' }],error:null}));
     remove.mockResolvedValue({ data: null, error: new Error('storage unavailable') });
 
     const response = await POST(new Request('http://localhost/api/cron/purge-kyc-evidence', {
@@ -81,7 +82,7 @@ describe('POST /api/cron/purge-kyc-evidence', () => {
 
     expect(response.status).toBe(502);
     expect(await response.json()).toMatchObject({ claimed: 1, purged: 0, failed: 1 });
-    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith('purge_kyc_draft_ocr_operations',{p_limit:500});
     expect(finish).toHaveBeenCalledWith(expect.anything(), expect.any(String), { claimed: 1, purged: 0, failed: 1, failureCode: 'storage_failed' });
   });
   it('records claim failures and keeps raw errors private', async () => {
@@ -106,7 +107,8 @@ describe('POST /api/cron/purge-kyc-evidence', () => {
     expect(remove).not.toHaveBeenCalled();
   });
   it('does not claim success when completion persistence fails', async () => {
-    rpc.mockResolvedValue({ data: [], error: null });
+    rpc.mockImplementation((name:string)=>Promise.resolve(name==='purge_kyc_draft_ocr_operations'
+      ?{data:[{marked_for_reconciliation:0,deleted:0}],error:null}:{data:[],error:null}));
     finish.mockRejectedValueOnce(new Error('private details'));
     const response = await POST(new Request('http://localhost', { headers: { authorization: 'Bearer cron-test-secret' } }));
     expect(response.status).toBe(503);

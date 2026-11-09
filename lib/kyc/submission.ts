@@ -1,4 +1,5 @@
 import { validateMagicBytes } from './magic-bytes';
+import { createHash } from 'node:crypto';
 
 const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_SIZE = 5 * 1024 * 1024;
@@ -30,13 +31,20 @@ export function buildKycEvidencePaths(
   submissionId: string,
   token: string,
   frontMimeType: string,
-  backMimeType: string,
-): { front: string; back: string } {
+  backMimeType: string | null,
+): { front: string; back: string | null } {
   const prefix = `${userId}/${submissionId}/${token}`;
   return {
     front: `${prefix}/front.${extensionForMime(frontMimeType)}`,
-    back: `${prefix}/back.${extensionForMime(backMimeType)}`,
+    back: backMimeType ? `${prefix}/back.${extensionForMime(backMimeType)}` : null,
   };
+}
+
+export function createKycEvidenceRevision(frontEvidenceSha256: string, backEvidenceSha256: string | null): string {
+  const validHash = (value: string | null) => value === null || /^[a-f0-9]{64}$/.test(value);
+  if (!/^[a-f0-9]{64}$/.test(frontEvidenceSha256) || !validHash(backEvidenceSha256)) throw new Error('invalid_kyc_evidence_hash');
+  return createHash('sha256').update('kyc-evidence-v2\0').update(frontEvidenceSha256).update('\0')
+    .update(backEvidenceSha256 ?? '').digest('hex');
 }
 
 type RpcResult = { data: boolean | null; error: unknown | null };
@@ -49,14 +57,14 @@ export async function abandonAndRemoveKycEvidence({
   service,
 }: {
   submissionId: string;
-  paths: { front: string; back: string };
+  paths: { front: string; back: string | null };
   authenticated: { rpc: (name: 'abandon_kyc_submission', args: { p_submission_id: string }) => PromiseLike<RpcResult> };
   service: { storage: { from: (bucket: 'kyc-documents') => { remove: (paths: string[]) => Promise<RemoveResult> } } };
 }): Promise<{ ok: true } | { ok: false; reason: 'draft_not_abandoned' | 'object_removal_failed' }> {
   const abandoned = await authenticated.rpc('abandon_kyc_submission', { p_submission_id: submissionId });
   if (abandoned.error || abandoned.data !== true) return { ok: false, reason: 'draft_not_abandoned' };
 
-  const removed = await service.storage.from('kyc-documents').remove([paths.front, paths.back]);
+  const removed = await service.storage.from('kyc-documents').remove([paths.front, ...(paths.back ? [paths.back] : [])]);
   if (removed.error) return { ok: false, reason: 'object_removal_failed' };
   return { ok: true };
 }
