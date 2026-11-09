@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migration = readFileSync('supabase/migrations/20261107171000_chinese_passport_single_page_evidence.sql', 'utf8');
+const migration = readFileSync('supabase/migrations/20261109062020_chinese_passport_single_page_evidence.sql', 'utf8');
 
 describe('Chinese passport single-page KYC migration', () => {
   it('keeps passport drafts single-page and requires both MyKad/driver pages', () => {
