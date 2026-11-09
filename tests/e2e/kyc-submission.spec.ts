@@ -11,7 +11,13 @@ async function signInAsCustomer(page: import('@playwright/test').Page) {
 test.describe('KYC submission', () => {
   test('requires both valid document sides and submits the dual-file contract', async ({ page }) => {
     await page.route('**/api/kyc/submission', (route) => route.fulfill({ json: { data: { submission: null } } }));
+    let draftBody = '';
     let uploadBody = '';
+    await page.route('**/api/kyc/draft', async (route) => {
+      if (route.request().method() === 'GET') return route.fulfill({ json: { data: { draft: null, capabilities: { documentCapture: false, qualityMode: 'off', cleanOcr: true, chinesePassportOcr: true } } } });
+      draftBody = route.request().postData() ?? '';
+      return route.fulfill({ json: { data: { draft: { id: '00000000-0000-4000-8000-000000000003', version: 1, holderName: 'A Person', documentType: 'national_id', expiresAt: '2026-11-03T00:00:00.000Z' } } } });
+    });
     await page.route('**/api/kyc/upload', async (route) => {
       uploadBody = route.request().postData() ?? '';
       await route.fulfill({ status: 201, json: { data: { submissionId: '00000000-0000-4000-8000-000000000001', status: 'pending' } } });
@@ -19,6 +25,7 @@ test.describe('KYC submission', () => {
 
     await signInAsCustomer(page);
     await page.goto('/customer/kyc');
+    await page.getByLabel('Name on document').fill('A Person');
 
     const submit = page.getByRole('button', { name: 'Submit for review' });
     await expect(submit).toBeDisabled();
@@ -26,26 +33,33 @@ test.describe('KYC submission', () => {
     await page.getByLabel(/front of document/i).setInputFiles({ name: 'front.png', mimeType: 'image/png', buffer: VALID_PNG });
     await expect(submit).toBeDisabled();
     await page.getByLabel(/back of document/i).setInputFiles({ name: 'back.png', mimeType: 'image/png', buffer: VALID_PNG });
-    await page.getByRole('checkbox').check();
+    await page.getByRole('checkbox').nth(0).check();
+    await page.getByRole('checkbox').nth(1).check();
+    await page.getByRole('checkbox').nth(2).check();
     await expect(submit).toBeEnabled();
 
     await submit.click();
-    await expect.poll(() => uploadBody).toContain('frontFile');
-    expect(uploadBody).toContain('backFile');
+    await expect.poll(() => uploadBody).toContain('draftId');
+    expect(uploadBody).toContain('draftVersion');
+    expect(draftBody).toContain('frontFile');
+    expect(draftBody).toContain('backFile');
   });
 
-  test('lets the customer correct OCR fields before the confirmed values are submitted', async ({ page }) => {
+  test('preserves entered values and applies independent OCR suggestions only on click', async ({ page }) => {
     await page.route('**/api/kyc/submission', (route) => route.fulfill({ json: { data: { submission: null } } }));
+    let draftPostCount = 0;
+    let uploadBody = '';
     await page.route('**/api/kyc/draft', async (route) => {
-      if (route.request().method() === 'GET') return route.fulfill({ json: { data: { draft: null } } });
+      if (route.request().method() === 'GET') return route.fulfill({ json: { data: { draft: null, capabilities: { documentCapture: false, qualityMode: 'off', cleanOcr: true, chinesePassportOcr: true } } } });
+      draftPostCount += 1;
+      const body = route.request().postData() ?? '';
+      if (body.includes('save_and_recognize')) return route.fulfill({ json: { data: { draft: {
+        id: '00000000-0000-4000-8000-000000000003', version: 1, holderName: 'ENTERED NAME', documentType: 'national_id', expiresAt: '2026-11-03T00:00:00.000Z',
+      }, preview: { status: 'extracted', holderName: 'OCR NAME', documentNumber: '900101145678' } } } });
       return route.fulfill({ json: { data: { draft: {
-        id: '00000000-0000-4000-8000-000000000003', version: 1, holderName: 'OCR NAME', documentType: 'national_id', expiresAt: '2026-11-03T00:00:00.000Z',
+        id: '00000000-0000-4000-8000-000000000003', version: 2, holderName: 'OCR NAME', documentType: 'national_id', expiresAt: '2026-11-03T00:00:00.000Z',
       } } } });
     });
-    await page.route('**/api/kyc/preview', (route) => route.fulfill({ json: { data: { preview: {
-      status: 'extracted', holderName: 'OCR NAME', documentNumber: '900101145678',
-    } } } }));
-    let uploadBody = '';
     await page.route('**/api/kyc/upload', async (route) => {
       uploadBody = route.request().postData() ?? '';
       await route.fulfill({ status: 201, json: { data: { submissionId: '00000000-0000-4000-8000-000000000004', status: 'pending' } } });
@@ -53,22 +67,73 @@ test.describe('KYC submission', () => {
 
     await signInAsCustomer(page);
     await page.goto('/customer/kyc');
+    await page.getByLabel('Name on document').fill('ENTERED NAME');
+    await page.getByLabel('IC / Passport number').fill('910202105432');
     await page.getByLabel(/front of document/i).setInputFiles({ name: 'front.png', mimeType: 'image/png', buffer: VALID_PNG });
     await page.getByLabel(/back of document/i).setInputFiles({ name: 'back.png', mimeType: 'image/png', buffer: VALID_PNG });
-    await page.getByRole('checkbox').check();
+    await page.getByRole('checkbox').nth(0).check();
+    await page.getByRole('checkbox').nth(1).check();
+    await page.getByRole('checkbox').nth(2).check();
     await page.getByRole('button', { name: 'Read document' }).click();
 
     const nameField = page.getByLabel('Name on document');
     const numberField = page.getByLabel('IC / Passport number');
+    await expect(nameField).toHaveValue('ENTERED NAME');
+    await expect(numberField).toHaveValue('910202105432');
+    await expect(page.getByText('Photo reads: OCR NAME')).toBeVisible();
+    await expect(page.getByText('Photo reads: 900101145678')).toBeVisible();
+    expect(draftPostCount).toBe(1);
+    await page.getByRole('button', { name: 'Use this name' }).click();
     await expect(nameField).toHaveValue('OCR NAME');
+    await expect(numberField).toHaveValue('910202105432');
+    await page.getByRole('button', { name: 'Use this number' }).click();
     await expect(numberField).toHaveValue('900101145678');
-    await nameField.fill('CORRECTED NAME');
-    await numberField.fill('910202105432');
+    expect(draftPostCount).toBe(1);
     await page.getByRole('button', { name: 'Submit for review' }).click();
-    await expect.poll(() => uploadBody).toContain('CORRECTED NAME');
-    expect(uploadBody).toContain('910202105432');
-    expect(uploadBody).not.toContain('OCR NAME');
-    expect(uploadBody).not.toContain('900101145678');
+    await expect.poll(() => uploadBody).toContain('OCR NAME');
+    expect(uploadBody).toContain('900101145678');
+    expect(uploadBody).not.toContain('ENTERED NAME');
+    expect(uploadBody).not.toContain('910202105432');
+  });
+
+  test('keeps correct entered values when OCR proposes different values', async ({ page }) => {
+    await page.route('**/api/kyc/submission', (route) => route.fulfill({ json: { data: { submission: null } } }));
+    let draftPostCount = 0;
+    let uploadBody = '';
+    await page.route('**/api/kyc/draft', async (route) => {
+      if (route.request().method() === 'GET') return route.fulfill({ json: { data: { draft: null, capabilities: { documentCapture: false, qualityMode: 'off', cleanOcr: true, chinesePassportOcr: true } } } });
+      draftPostCount += 1;
+      const body = route.request().postData() ?? '';
+      return route.fulfill({ json: { data: { draft: {
+        id: '00000000-0000-4000-8000-000000000003', version: draftPostCount, holderName: 'CORRECT NAME', documentType: 'national_id', expiresAt: '2026-11-03T00:00:00.000Z',
+      }, ...(body.includes('save_and_recognize') ? { preview: { status: 'extracted', holderName: 'OCR WRONG', documentNumber: '910202105432' } } : {}) } } });
+    });
+    await page.route('**/api/kyc/upload', async (route) => {
+      uploadBody = route.request().postData() ?? '';
+      await route.fulfill({ status: 201, json: { data: { submissionId: '00000000-0000-4000-8000-000000000004', status: 'pending' } } });
+    });
+
+    await signInAsCustomer(page);
+    await page.goto('/customer/kyc');
+    const nameField = page.getByLabel('Name on document');
+    const numberField = page.getByLabel('IC / Passport number');
+    await nameField.fill('CORRECT NAME');
+    await numberField.fill('900101145678');
+    await page.getByLabel(/front of document/i).setInputFiles({ name: 'front.png', mimeType: 'image/png', buffer: VALID_PNG });
+    await page.getByLabel(/back of document/i).setInputFiles({ name: 'back.png', mimeType: 'image/png', buffer: VALID_PNG });
+    await page.getByRole('checkbox').nth(0).check();
+    await page.getByRole('checkbox').nth(1).check();
+    await page.getByRole('checkbox').nth(2).check();
+    await page.getByRole('button', { name: 'Read document' }).click();
+
+    await expect(nameField).toHaveValue('CORRECT NAME');
+    await expect(numberField).toHaveValue('900101145678');
+    await expect(page.getByText('Photo reads: OCR WRONG')).toBeVisible();
+    await page.getByRole('button', { name: 'Submit for review' }).click();
+    await expect.poll(() => uploadBody).toContain('CORRECT NAME');
+    expect(uploadBody).toContain('900101145678');
+    expect(uploadBody).not.toContain('OCR WRONG');
+    expect(uploadBody).not.toContain('910202105432');
   });
 
   test('renders a deterministic rejected submission with safe recovery details', async ({ page }) => {

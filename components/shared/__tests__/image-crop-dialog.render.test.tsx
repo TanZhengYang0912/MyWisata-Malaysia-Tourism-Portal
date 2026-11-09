@@ -39,7 +39,7 @@ beforeEach(async () => {
     onload: (() => void) | null = null;
     set src(_value: string) { queueMicrotask(() => this.onload?.()); }
   });
-  vi.stubGlobal("URL", Object.assign(Object.create(URL), { createObjectURL: () => "blob:photo", revokeObjectURL: vi.fn() }));
+  vi.stubGlobal("URL", Object.assign(Object.create(URL), { createObjectURL: vi.fn(() => "blob:photo"), revokeObjectURL: vi.fn() }));
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container as unknown as Element);
@@ -64,6 +64,15 @@ async function pick(shape: ImageShape): Promise<{ result: Promise<File | null> }
   return { result };
 }
 
+async function pickBothSides(file: File = photo): Promise<{ result: Promise<{ front: File; back: File } | null> }> {
+  let result: Promise<{ front: File; back: File } | null> = Promise.resolve(null);
+  await act(async () => {
+    result = captured.hook!.cropToTwoDocumentSides(file);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  return { result };
+}
+
 describe("useImageCrop", () => {
   it("returns a photo that already fits the shape unchanged, without opening the dialog", async () => {
     size.width = 1600; size.height = 1200;
@@ -82,5 +91,29 @@ describe("useImageCrop", () => {
 
     await expect(result).resolves.toBeNull();
     expect(container.textContent).not.toContain("imageCrop.title");
+  });
+
+  it("opens one combined-photo crop flow and releases its source when cancelled", async () => {
+    size.width = 1800; size.height = 2400;
+    const { result } = await pickBothSides();
+    expect(findOne(container, (element) => element.getAttribute("data-image-crop-dialog") === "document-sides")).toBeTruthy();
+    const cancel = findOne(container, (element) => element.tagName === "BUTTON" && element.textContent === "actions.cancel");
+    await act(async () => { cancel.dispatchEvent(new TestEvent("click", { bubbles: true })); });
+    await expect(result).resolves.toBeNull();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:photo");
+  });
+
+  it("rejects oversized combined photos before opening a crop dialog", async () => {
+    size.width = 6000; size.height = 4000;
+    await expect((await pickBothSides()).result).resolves.toBeNull();
+    expect(container.textContent).not.toContain("imageCrop.reviewSides");
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:photo");
+  });
+
+  it("checks file size and MIME type before creating a source object URL", async () => {
+    size.width = 1800; size.height = 2400;
+    const oversized = new File([new Uint8Array(5 * 1024 * 1024 + 1)], "large.jpg", { type: "image/jpeg" });
+    await expect((await pickBothSides(oversized)).result).resolves.toBeNull();
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
   });
 });

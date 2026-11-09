@@ -38,3 +38,15 @@ export function croppedFileName(name: string, type: ReturnType<typeof croppedOut
   const base = name.replace(/\.[^./\\]+$/, '') || 'photo';
   return `${base}.${extension}`;
 }
+
+export type ImageCropArea = { x: number; y: number; width: number; height: number };
+
+export function isValidNonOverlappingCropPair(first: ImageCropArea, second: ImageCropArea, imageWidth: number, imageHeight: number): boolean {
+  const validArea = (area: ImageCropArea) => [area.x, area.y, area.width, area.height].every(Number.isFinite)
+    && area.x >= 0 && area.y >= 0 && area.width > 0 && area.height > 0
+    && area.x + area.width <= imageWidth && area.y + area.height <= imageHeight;
+  if (!(imageWidth > 0 && imageHeight > 0) || !validArea(first) || !validArea(second)) return false;
+  const overlapWidth = Math.max(0, Math.min(first.x + first.width, second.x + second.width) - Math.max(first.x, second.x));
+  const overlapHeight = Math.max(0, Math.min(first.y + first.height, second.y + second.height) - Math.max(first.y, second.y));
+  return overlapWidth === 0 || overlapHeight === 0;
+}

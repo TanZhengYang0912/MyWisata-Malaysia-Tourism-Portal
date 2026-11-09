@@ -22,13 +22,14 @@ import { useSearchParams } from "next/navigation";
 import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 import { postLoginPath } from "@/lib/auth/guest-mode";
 import { ApiErrorNotice } from "@/components/shared/api-error-notice";
-import { compareKycDraftValues } from "@/lib/kyc/draft-client";
-import { getRequiredKycDocumentSides, hasRequiredKycFramingConfirmation } from "@/lib/kyc/document-policy";
+import { compareKycDraftValues, compareKycOcrField, type KycOcrPreviewValues } from "@/lib/kyc/draft-client";
+import { getRequiredKycDocumentSides, hasRequiredKycFramingConfirmation, isSupportedDocumentNumber } from "@/lib/kyc/document-policy";
+import { useImageCrop } from "@/components/shared/image-crop-dialog";
 
-const IC_PATTERNS: Record<string, { regex: RegExp; hintKey: string }> = {
-  national_id:     { regex: /^\d{6}-?\d{2}-?\d{4}$/, hintKey: "ui.kyc.myKadHint" },
-  driving_license: { regex: /^\d{6}-?\d{2}-?\d{4}$/, hintKey: "ui.kyc.drivingLicenseHint" },
-  passport:        { regex: /^(?:G[0-9]{8}|E[A-HJ-NP-Z][0-9]{7})$/, hintKey: "ui.kyc.passportHint" },
+const IC_PATTERNS: Record<string, { hintKey: string }> = {
+  national_id:     { hintKey: "ui.kyc.myKadHint" },
+  driving_license: { hintKey: "ui.kyc.drivingLicenseHint" },
+  passport:        { hintKey: "ui.kyc.passportHint" },
 };
 
 function createKycSchema(t: TFunction<"customer">) {
@@ -37,7 +38,7 @@ function createKycSchema(t: TFunction<"customer">) {
     docType:  z.enum(["national_id", "passport", "driving_license"]),
   }).superRefine((val, ctx) => {
     const pattern = IC_PATTERNS[val.docType];
-    if (pattern && !pattern.regex.test(val.icNumber.toUpperCase())) {
+    if (val.icNumber && !isSupportedDocumentNumber(val.docType, val.icNumber)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["icNumber"], message: t(pattern.hintKey) });
     }
   });
@@ -61,10 +62,11 @@ function KycPageContent() {
   const searchParams = useSearchParams();
   const continuation = postLoginPath(searchParams.get("next"));
   const { showFeedback } = useActionFeedback();
+  const { cropToTwoDocumentSides, cropDialog } = useImageCrop();
   const [submitting,        setSubmitting]        = useState(false);
   const [form,              setForm]              = useState<{ icNumber: string; docType: "national_id" | "passport" | "driving_license" }>({ icNumber: "", docType: "national_id" });
   const [holderName,        setHolderName]        = useState("");
-  const [ocrFields,         setOcrFields]          = useState<{ holderName: string | null; documentNumber: string | null; expiryDate: string | null; mrzStatus?: string; visualComparisonStatus?: string; status: string } | null>(null);
+  const [ocrFields,         setOcrFields]          = useState<KycOcrPreviewValues & { expiryDate: string | null; generation: number } | null>(null);
   const [previewing,        setPreviewing]         = useState(false);
   const [savingDraft,       setSavingDraft]        = useState(false);
   const [draftId,           setDraftId]            = useState<string | null>(null);
@@ -79,17 +81,20 @@ function KycPageContent() {
   const submitOperationIdRef = useRef<string | null>(null);
   const isMountedRef = useRef(false);
   const evidenceGenerationRef = useRef(0);
+  const [evidenceGeneration, setEvidenceGeneration] = useState(0);
   const nameEditRevisionRef = useRef(0);
   const numberEditRevisionRef = useRef(0);
   const previewRequestRef = useRef(false);
+  const kycMutationRef = useRef<"preview" | "draft" | "submit" | null>(null);
   const recognitionOperationRef = useRef<string | null>(null);
   const [draftCapabilities, setDraftCapabilities] = useState({ documentCapture: false, qualityMode: "off" as "off" | "advisory", cleanOcr: false, chinesePassportOcr: false });
-  const ocrResultCacheRef = useRef<{ generation: number; preview: { holderName: string | null; documentNumber: string | null; expiryDate: string | null; mrzStatus?: string; visualComparisonStatus?: string; status: string } } | null>(null);
+  const ocrResultCacheRef = useRef<{ generation: number; preview: KycOcrPreviewValues & { expiryDate: string | null } } | null>(null);
   const [formError,         setFormError]         = useState<string | null>(null);
   const [fileErrors,        setFileErrors]        = useState<{ front: string | null; back: string | null }>({ front: null, back: null });
   const [submitError,       setSubmitError]       = useState<string | null>(null);
   const [frontFile,         setFrontFile]         = useState<File | null>(null);
   const [backFile,          setBackFile]          = useState<File | null>(null);
+  const [duplicateDocumentSidesResult, setDuplicateDocumentSidesResult] = useState<{ generation: number; isDuplicate: boolean } | null>(null);
   const [frontFramingConfirmed, setFrontFramingConfirmed] = useState(false);
   const [backFramingConfirmed, setBackFramingConfirmed] = useState(false);
   const [frontOriginal,     setFrontOriginal]     = useState(false);
@@ -103,6 +108,9 @@ function KycPageContent() {
   const [activeSubmission,  setActiveSubmission]  = useState<CustomerKycSubmission | null | undefined>(undefined);
   const frontFileInputRef = useRef<HTMLInputElement>(null);
   const backFileInputRef = useRef<HTMLInputElement>(null);
+  const combinedFileInputRef = useRef<HTMLInputElement>(null);
+  const holderNameInputRef = useRef<HTMLInputElement>(null);
+  const documentNumberInputRef = useRef<HTMLInputElement>(null);
 
   const kycStatus = verificationFacts?.kycStatus ?? "unverified";
   const isVerified = kycStatus === "approved";
@@ -137,6 +145,7 @@ function KycPageContent() {
     }
     let active = true;
     const initialEvidenceGeneration = evidenceGenerationRef.current;
+    const initialNameRevision = nameEditRevisionRef.current;
     (async () => {
       try {
         const operationKey = `mylawatan:kyc-operation:${currentUser.id}`;
@@ -172,13 +181,17 @@ function KycPageContent() {
         const restoreGeneration = initialEvidenceGeneration;
         const draft = draftResponse.ok ? draftBody.data?.draft : null;
         if (draft?.id && typeof draft.version === "number") {
-          setDraftId(draft.id);
-          setDraftVersion(draft.version);
-          setHolderName(typeof draft.holderName === "string" ? draft.holderName : "");
-          setForm((value) => ({ ...value, docType: draft.documentType }));
-          setDraftBaseline({ documentType: draft.documentType, holderName: typeof draft.holderName === "string" ? draft.holderName : "" });
-          setFrontChanged(false);
-          setBackChanged(false);
+          const canRestoreMetadata = evidenceGenerationRef.current === restoreGeneration
+            && nameEditRevisionRef.current === initialNameRevision;
+          if (canRestoreMetadata) {
+            setDraftId(draft.id);
+            setDraftVersion(draft.version);
+            setHolderName(typeof draft.holderName === "string" ? draft.holderName : "");
+            setForm((value) => ({ ...value, docType: draft.documentType }));
+            setDraftBaseline({ documentType: draft.documentType, holderName: typeof draft.holderName === "string" ? draft.holderName : "" });
+            setFrontChanged(false);
+            setBackChanged(false);
+          }
           const restore = async (side: "front" | "back") => {
             const image = await fetch(`/api/kyc/draft/documents/${draft.id}/${side}`, { cache: "no-store" });
             if (!image.ok) return null;
@@ -201,6 +214,7 @@ function KycPageContent() {
 
   function handleFileChange(side: "front" | "back", file: File | null) {
     evidenceGenerationRef.current += 1;
+    setEvidenceGeneration(evidenceGenerationRef.current);
     recognitionOperationRef.current = null;
     if (currentUser) window.sessionStorage.removeItem(`mylawatan:kyc-preview-operation:${currentUser.id}`);
     ocrResultCacheRef.current = null;
@@ -214,9 +228,38 @@ function KycPageContent() {
     setFileErrors((errors) => ({ ...errors, [side]: localizedKycFileError(file, tCustomer) }));
   }
 
+  async function splitCombinedMyKadPhoto(file: File | null) {
+    if (!file || submitting || savingDraft || previewing) return;
+    const startingGeneration = evidenceGenerationRef.current;
+    const sourceError = localizedKycFileError(file, tCustomer);
+    if (sourceError) { setOcrNotice(sourceError); return; }
+    const result = await cropToTwoDocumentSides(file);
+    if (startingGeneration !== evidenceGenerationRef.current || !isMountedRef.current) return;
+    if (!result) { setOcrNotice(tCustomer("ui.kyc.combinedPhotoFailed")); return; }
+    const frontError = localizedKycFileError(result.front, tCustomer);
+    const backError = localizedKycFileError(result.back, tCustomer);
+    if (frontError || backError) { setOcrNotice(tCustomer("ui.kyc.combinedPhotoFailed")); return; }
+    evidenceGenerationRef.current += 1;
+    setEvidenceGeneration(evidenceGenerationRef.current);
+    recognitionOperationRef.current = null;
+    if (currentUser) window.sessionStorage.removeItem(`mylawatan:kyc-preview-operation:${currentUser.id}`);
+    ocrResultCacheRef.current = null;
+    setOcrFields(null);
+    setDraftNotice(null);
+    setFrontFile(result.front); setBackFile(result.back);
+    setFrontChanged(true); setBackChanged(true);
+    setFrontOriginal(true); setBackOriginal(true);
+    setFrontFramingConfirmed(true); setBackFramingConfirmed(true);
+    setDuplicateDocumentSidesResult(null);
+    setFileErrors({ front: null, back: null });
+    setOcrNotice(null);
+    setSubmitError(null);
+  }
+
   function handleDocumentTypeChange(documentType: typeof form.docType) {
     if (documentType === form.docType) return;
     evidenceGenerationRef.current += 1;
+    setEvidenceGeneration(evidenceGenerationRef.current);
     recognitionOperationRef.current = null;
     if (currentUser) window.sessionStorage.removeItem(`mylawatan:kyc-preview-operation:${currentUser.id}`);
     ocrResultCacheRef.current = null;
@@ -226,6 +269,7 @@ function KycPageContent() {
     setOcrNotice(null);
     setFrontFile(null);
     setBackFile(null);
+    setDuplicateDocumentSidesResult(null);
     setFrontFramingConfirmed(false);
     setBackFramingConfirmed(false);
     setFrontOriginal(false);
@@ -236,11 +280,11 @@ function KycPageContent() {
   }
 
   async function previewDocument() {
-    const snapshot = { frontFile, backFile, documentType: form.docType, generation: evidenceGenerationRef.current,
+    const snapshot = { frontFile, backFile, documentType: form.docType, holderName, documentNumber: form.icNumber, generation: evidenceGenerationRef.current,
       nameRevision: nameEditRevisionRef.current, numberRevision: numberEditRevisionRef.current };
     if (!snapshot.frontFile || (snapshot.documentType !== "passport" && !snapshot.backFile)
       || !hasRequiredKycFramingConfirmation(snapshot.documentType, frontFramingConfirmed, backFramingConfirmed)
-      || previewRequestRef.current || !ocrConsent) return;
+      || previewRequestRef.current || kycMutationRef.current || !ocrConsent) return;
     if (!draftCapabilities.cleanOcr || snapshot.documentType === "passport" && !draftCapabilities.chinesePassportOcr) return;
     if (!frontOriginal || snapshot.documentType !== "passport" && !backOriginal) {
       setOcrNotice(tCustomer("ui.kyc.previewOriginalRequired"));
@@ -248,6 +292,7 @@ function KycPageContent() {
     }
     if (ocrResultCacheRef.current?.generation === snapshot.generation) return;
     previewRequestRef.current = true;
+    kycMutationRef.current = "preview";
     setPreviewing(true); setFormError(null); setOcrNotice(null);
     try {
       const operationKey = currentUser ? `mylawatan:kyc-preview-operation:${currentUser.id}` : null;
@@ -273,7 +318,7 @@ function KycPageContent() {
       const data = new FormData();
       data.set("intent", "save_and_recognize"); data.set("operationId", operationId); data.set("ocrConsent", "true");
       data.set("draftId", draftId ?? ""); if (draftVersion !== null) data.set("version", String(draftVersion));
-      data.set("documentType", snapshot.documentType); data.set("holderName", holderName.trim());
+      data.set("documentType", snapshot.documentType); data.set("holderName", snapshot.holderName.trim());
       data.set("frontFile", snapshot.frontFile);
       if (snapshot.documentType !== "passport" && snapshot.backFile) data.set("backFile", snapshot.backFile);
       const response = await fetch("/api/kyc/draft", { method: "POST", body: data });
@@ -281,6 +326,7 @@ function KycPageContent() {
       if (!isMountedRef.current) return;
       if (snapshot.generation !== evidenceGenerationRef.current) return;
       if (!response.ok) {
+        if (body.error?.code === "DUPLICATE_DOCUMENT_SIDES") throw new Error(tCustomer("ui.kyc.duplicateDocumentSides"));
         if (["SOURCE_REQUIRED", "SOURCE_CHANGED"].includes(body.error?.code)) throw new Error(tCustomer("ui.kyc.previewOriginalRequired"));
         if (["OPERATION_COMPLETED", "OPERATION_RECONCILIATION_REQUIRED"].includes(body.error?.code)) {
           recognitionOperationRef.current = null;
@@ -292,7 +338,7 @@ function KycPageContent() {
       const saved = body.data?.draft;
       if (!saved?.id || typeof saved.version !== "number") throw new Error(tCustomer("ui.kyc.previewUnavailable"));
       setDraftId(saved.id); setDraftVersion(saved.version);
-      setDraftBaseline({ documentType: snapshot.documentType, holderName: holderName.trim() });
+      setDraftBaseline({ documentType: snapshot.documentType, holderName: snapshot.holderName.trim() });
       setFrontChanged(false); setBackChanged(false);
       const preview = body.data?.preview;
       if (!preview) throw new Error(tCustomer("ui.kyc.previewUnavailable"));
@@ -300,18 +346,27 @@ function KycPageContent() {
       if (operationKey) window.sessionStorage.removeItem(operationKey);
       ocrResultCacheRef.current = { generation: snapshot.generation, preview };
       setOcrFields({ holderName: preview.holderName ?? null, documentNumber: preview.documentNumber ?? null,
-        expiryDate: preview.expiryDate ?? null, mrzStatus: preview.mrzStatus, visualComparisonStatus: preview.visualComparisonStatus, status: preview.status });
-      if (preview.holderName && snapshot.nameRevision === nameEditRevisionRef.current) setHolderName(preview.holderName);
-      if (preview.documentNumber && snapshot.numberRevision === numberEditRevisionRef.current) setForm((value) => ({ ...value, icNumber: preview.documentNumber }));
+        expiryDate: preview.expiryDate ?? null, mrzStatus: preview.mrzStatus, visualComparisonStatus: preview.visualComparisonStatus,
+        passportFieldEvidence: preview.passportFieldEvidence, status: preview.status, generation: snapshot.generation });
+      if (snapshot.documentType === "passport" && preview.visualComparisonStatus !== "conflict") {
+        const nameResult = compareKycOcrField(snapshot.documentType, "holderName", snapshot.holderName, preview);
+        const numberResult = compareKycOcrField(snapshot.documentType, "documentNumber", snapshot.documentNumber, preview);
+        if (!snapshot.holderName.trim() && !holderName.trim() && snapshot.nameRevision === nameEditRevisionRef.current
+          && nameResult.status === "empty" && preview.holderName) setHolderName(preview.holderName);
+        if (!snapshot.documentNumber.trim() && !form.icNumber.trim() && snapshot.numberRevision === numberEditRevisionRef.current
+          && numberResult.status === "empty" && preview.documentNumber) setForm((value) => ({ ...value, icNumber: preview.documentNumber! }));
+      }
       if (preview.status !== "extracted" || snapshot.documentType === "passport" && preview.visualComparisonStatus !== "consistent") setOcrNotice(tCustomer("ui.kyc.previewManualEntry"));
     } catch (error) {
       setOcrNotice(error instanceof Error ? error.message : tCustomer("ui.kyc.previewUnavailable"));
     } finally {
+      if (kycMutationRef.current === "preview") kycMutationRef.current = null;
       if (isMountedRef.current) { previewRequestRef.current = false; setPreviewing(false); }
     }
   }
 
-  async function saveDraft(): Promise<{ id: string; version: number } | null> {
+  async function saveDraft(fromSubmission = false): Promise<{ id: string; version: number } | null> {
+    if (kycMutationRef.current && !(fromSubmission && kycMutationRef.current === "submit")) return null;
     const snapshot = { generation: evidenceGenerationRef.current, nameRevision: nameEditRevisionRef.current,
       documentType: form.docType, holderName: holderName.trim(), frontFile, backFile, frontChanged, backChanged,
       draftId, draftVersion, draftBaseline };
@@ -325,6 +380,8 @@ function KycPageContent() {
       }, { ...snapshot.draftBaseline, frontChanged: false, backChanged: false });
       if (!comparison.changed) return { id: snapshot.draftId, version: snapshot.draftVersion };
     }
+    const ownsMutation = !fromSubmission;
+    if (ownsMutation) kycMutationRef.current = "draft";
     setSavingDraft(true); setDraftNotice(null);
     try {
       const data = new FormData();
@@ -337,7 +394,9 @@ function KycPageContent() {
       const response = await fetch("/api/kyc/draft", { method: "POST", body: data });
       const body = await response.json().catch(() => ({}));
       if (!isMountedRef.current) return null;
-      if (!response.ok) throw new Error(body.error?.message ?? tCustomer("ui.kyc.draftSaveFailed"));
+      if (snapshot.generation !== evidenceGenerationRef.current) return null;
+      if (!response.ok) throw new Error(body.error?.code === "DUPLICATE_DOCUMENT_SIDES"
+        ? tCustomer("ui.kyc.duplicateDocumentSides") : body.error?.message ?? tCustomer("ui.kyc.draftSaveFailed"));
       setDraftId(body.data.draft.id); setDraftVersion(body.data.draft.version);
       if (snapshot.generation !== evidenceGenerationRef.current) return null;
       setDraftNotice(tCustomer("ui.kyc.draftSaved"));
@@ -345,12 +404,15 @@ function KycPageContent() {
       if (snapshot.generation === evidenceGenerationRef.current) { setFrontChanged(false); setBackChanged(false); }
       return { id: body.data.draft.id as string, version: body.data.draft.version as number };
     } catch (error) { setDraftNotice(error instanceof Error ? error.message : tCustomer("ui.kyc.draftSaveFailed")); return null; }
-    finally { if (isMountedRef.current) setSavingDraft(false); }
+    finally {
+      if (ownsMutation && kycMutationRef.current === "draft") kycMutationRef.current = null;
+      if (isMountedRef.current) setSavingDraft(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!currentUser) return;
+    if (!currentUser || kycMutationRef.current) return;
     setFormError(null);
     setFileErrors({ front: null, back: null });
     setSubmitError(null);
@@ -366,11 +428,12 @@ function KycPageContent() {
     }
     if (!ocrConsent && !submitUncertain) { setSubmitError(tCustomer("ui.kyc.consentRequired")); return; }
 
+    kycMutationRef.current = "submit";
     setSubmitting(true);
     try {
       const savedDraft = submitUncertain && draftId && draftVersion !== null
         ? { id: draftId, version: draftVersion }
-        : await saveDraft();
+        : await saveDraft(true);
       if (!isMountedRef.current) return;
       if (!savedDraft) { setSubmitting(false); return; }
       const fd = new FormData();
@@ -391,7 +454,9 @@ function KycPageContent() {
         setSubmitRequestId(body.error?.requestId ?? null);
         if (res.status >= 500) setSubmitUncertain(true);
         else { submitOperationIdRef.current = null; window.localStorage.removeItem(`mylawatan:kyc-operation:${currentUser.id}`); }
-        throw new Error((body as { error?: { message?: string } })?.error?.message ?? tCustomer("ui.kyc.submissionFailed"));
+        const submissionError = body as { error?: { code?: string; message?: string } };
+        throw new Error(submissionError.error?.code === "DUPLICATE_DOCUMENT_SIDES"
+          ? tCustomer("ui.kyc.duplicateDocumentSides") : submissionError.error?.message ?? tCustomer("ui.kyc.submissionFailed"));
       }
       const { data: resData } = await res.json() as { data: { submissionId: string; status: "pending"; manualReviewRequired?: boolean } };
       if (!isMountedRef.current) return;
@@ -416,6 +481,9 @@ function KycPageContent() {
       if (!isMountedRef.current) return;
       setFrontFile(null);
       setBackFile(null);
+      evidenceGenerationRef.current += 1;
+      setEvidenceGeneration(evidenceGenerationRef.current);
+      ocrResultCacheRef.current = null;
       setFrontFramingConfirmed(false);
       setBackFramingConfirmed(false);
       setOcrConsent(false);
@@ -429,6 +497,7 @@ function KycPageContent() {
       if (submitOperationIdRef.current) setSubmitUncertain(true);
       showFeedback("error", message);
     } finally {
+      if (kycMutationRef.current === "submit") kycMutationRef.current = null;
       if (isMountedRef.current) setSubmitting(false);
     }
   }
@@ -436,7 +505,47 @@ function KycPageContent() {
   const canStartNewSubmission = !activeSubmission || ["rejected", "info_requested", "superseded", "withdrawn"].includes(activeSubmission.status);
   const showForm = canSubmit && !isVerified && !loading && canStartNewSubmission;
   const framingConfirmed = hasRequiredKycFramingConfirmation(form.docType, frontFramingConfirmed, backFramingConfirmed);
-  const submitDisabled = submitting || !frontFile || (form.docType !== "passport" && !backFile) || !framingConfirmed || !holderName.trim() || Boolean(fileErrors.front || (form.docType !== "passport" && fileErrors.back));
+  const duplicateDocumentSides = duplicateDocumentSidesResult?.generation === evidenceGeneration && duplicateDocumentSidesResult.isDuplicate;
+  const evidenceControlsDisabled = submitting || savingDraft || previewing;
+  const submitDisabled = submitting || savingDraft || previewing || duplicateDocumentSides || !frontFile || (form.docType !== "passport" && !backFile) || !framingConfirmed || !holderName.trim() || Boolean(fileErrors.front || (form.docType !== "passport" && fileErrors.back));
+
+  useEffect(() => {
+    let active = true;
+    if (form.docType !== "national_id" || !frontFile || !backFile) {
+      return () => { active = false; };
+    }
+    void Promise.all([frontFile, backFile].map(async (file) => {
+      const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+      return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+    })).then(([frontHash, backHash]) => { if (active) setDuplicateDocumentSidesResult({ generation: evidenceGeneration, isDuplicate: frontHash === backHash }); })
+      .catch(() => { /* The server remains the authoritative duplicate-image guard. */ });
+    return () => { active = false; };
+  }, [form.docType, frontFile, backFile, evidenceGeneration]);
+  const currentOcrPreview = ocrFields?.generation === evidenceGeneration
+    ? ocrFields : null;
+  const nameOcrComparison = currentOcrPreview
+    ? compareKycOcrField(form.docType, "holderName", holderName, currentOcrPreview) : null;
+  const numberOcrComparison = currentOcrPreview
+    ? compareKycOcrField(form.docType, "documentNumber", form.icNumber, currentOcrPreview) : null;
+
+  function adoptOcrCandidate(field: "holderName" | "documentNumber") {
+    const preview = currentOcrPreview;
+    if (!preview || preview !== ocrFields || !frontFile || evidenceGenerationRef.current !== ocrResultCacheRef.current?.generation
+      || previewRequestRef.current || submitting || savingDraft || submitUncertain) return;
+    const value = field === "holderName" ? holderName : form.icNumber;
+    const comparison = compareKycOcrField(form.docType, field, value, preview);
+    if ((comparison.status !== "different" && comparison.status !== "empty") || !comparison.candidate) return;
+    if (field === "holderName") {
+      nameEditRevisionRef.current += 1;
+      setHolderName(comparison.candidate);
+      holderNameInputRef.current?.focus();
+    } else {
+      numberEditRevisionRef.current += 1;
+      setForm((current) => ({ ...current, icNumber: comparison.candidate! }));
+      setFormError(null);
+      documentNumberInputRef.current?.focus();
+    }
+  }
 
   async function refreshOperationStatus() {
     const operationId = submitOperationIdRef.current;
@@ -618,8 +727,15 @@ function KycPageContent() {
 
           <div className="space-y-1">
             <label htmlFor="kyc-holder-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer(form.docType === "passport" ? "ui.kyc.passportLatinName" : "ui.kyc.holderName")}</label>
-            <input id="kyc-holder-name" value={holderName} onChange={(event) => { nameEditRevisionRef.current += 1; recognitionOperationRef.current = null; if (currentUser) window.sessionStorage.removeItem(`mylawatan:kyc-preview-operation:${currentUser.id}`); setHolderName(event.target.value); }} maxLength={100}
+            <input id="kyc-holder-name" ref={holderNameInputRef} value={holderName} disabled={evidenceControlsDisabled} onChange={(event) => { nameEditRevisionRef.current += 1; recognitionOperationRef.current = null; if (currentUser) window.sessionStorage.removeItem(`mylawatan:kyc-preview-operation:${currentUser.id}`); setHolderName(event.target.value); }} maxLength={100}
               className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30" />
+            {nameOcrComparison?.status === "matched" && <p className="text-xs text-muted-foreground" role="status">{tCustomer("ui.kyc.ocrFieldMatched")}</p>}
+            {(nameOcrComparison?.status === "different" || nameOcrComparison?.status === "empty") && nameOcrComparison.candidate && <div className="flex flex-wrap items-center gap-2 text-xs" role="status">
+              <span className="text-muted-foreground">{tCustomer("ui.kyc.ocrFieldSuggestion", { value: nameOcrComparison.candidate })}</span>
+              <Button type="button" variant="outline" size="sm" disabled={previewing || savingDraft || submitting || submitUncertain} onClick={() => adoptOcrCandidate("holderName")}>{tCustomer("ui.kyc.useOcrName")}</Button>
+            </div>}
+            {nameOcrComparison?.status === "document_conflict" && <p className="text-xs text-amber-700 dark:text-amber-200" role="status">{tCustomer("ui.kyc.ocrDocumentConflict")}</p>}
+            {nameOcrComparison?.status === "unconfirmed" && <p className="text-xs text-muted-foreground" role="status">{tCustomer("ui.kyc.ocrFieldUnconfirmed")}</p>}
           </div>
 
           <div className="space-y-1">
@@ -628,19 +744,29 @@ function KycPageContent() {
             </label>
             <input
               id="kyc-ic-number"
+              ref={documentNumberInputRef}
               value={form.icNumber}
+              disabled={evidenceControlsDisabled}
               onChange={(e) => { numberEditRevisionRef.current += 1; setForm((f) => ({ ...f, icNumber: e.target.value })); setFormError(null); }}
               placeholder={tCustomer(IC_PATTERNS[form.docType]?.hintKey ?? "ui.kyc.idPlaceholder")}
               className="w-full px-3 py-2.5 text-sm rounded-xl border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
               style={{ borderColor: formError ? "var(--destructive)" : "var(--border)" }}
             />
             {formError && <p className="text-xs text-destructive">{formError}</p>}
+            {numberOcrComparison?.status === "matched" && <p className="text-xs text-muted-foreground" role="status">{tCustomer("ui.kyc.ocrFieldMatched")}</p>}
+            {(numberOcrComparison?.status === "different" || numberOcrComparison?.status === "empty") && numberOcrComparison.candidate && <div className="flex flex-wrap items-center gap-2 text-xs" role="status">
+              <span className="text-muted-foreground">{tCustomer("ui.kyc.ocrFieldSuggestion", { value: numberOcrComparison.candidate })}</span>
+              <Button type="button" variant="outline" size="sm" disabled={previewing || savingDraft || submitting || submitUncertain} onClick={() => adoptOcrCandidate("documentNumber")}>{tCustomer("ui.kyc.useOcrNumber")}</Button>
+            </div>}
+            {numberOcrComparison?.status === "document_conflict" && <p className="text-xs text-amber-700 dark:text-amber-200" role="status">{tCustomer("ui.kyc.ocrDocumentConflict")}</p>}
+            {numberOcrComparison?.status === "unconfirmed" && <p className="text-xs text-muted-foreground" role="status">{tCustomer("ui.kyc.ocrFieldUnconfirmed")}</p>}
           </div>
 
           <div className="space-y-1">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.kyc.documentType")}</label>
             <select
               value={form.docType}
+              disabled={evidenceControlsDisabled}
               onChange={(e) => handleDocumentTypeChange(e.target.value as typeof form.docType)}
               className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
             >
@@ -650,6 +776,15 @@ function KycPageContent() {
             </select>
           </div>
 
+          {form.docType === "national_id" && <div className="space-y-2">
+            <input ref={combinedFileInputRef} type="file" accept={KYC_ACCEPTED_TYPES.join(",")} className="sr-only"
+              onChange={(event) => { void splitCombinedMyKadPhoto(event.target.files?.[0] ?? null); event.target.value = ""; }} />
+            <Button type="button" variant="outline" disabled={evidenceControlsDisabled}
+              onClick={() => frontFile && frontOriginal ? void splitCombinedMyKadPhoto(frontFile) : combinedFileInputRef.current?.click()}>
+              {frontFile && frontOriginal ? tCustomer("ui.kyc.splitCurrentMyKadPhoto") : tCustomer("ui.kyc.useCombinedMyKadPhoto")}
+            </Button>
+          </div>}
+
           {getRequiredKycDocumentSides(form.docType).map((side) => {
             const file = side === "front" ? frontFile : backFile;
             const inputRef = side === "front" ? frontFileInputRef : backFileInputRef;
@@ -658,12 +793,12 @@ function KycPageContent() {
             return <div className="space-y-1" key={side}>
               <label htmlFor={`kyc-${side}-file`} className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{sideLabel}</label>
               <input id={`kyc-${side}-file`} ref={inputRef} type="file" accept={KYC_ACCEPTED_TYPES.join(",")} className="sr-only"
-                onChange={(e) => handleFileChange(side, e.target.files?.[0] ?? null)} />
+                onChange={(e) => handleFileChange(side, e.target.files?.[0] ?? null)} disabled={evidenceControlsDisabled} />
               <div className="flex gap-2">
-              {draftCapabilities.documentCapture && <Button type="button" variant="outline" onClick={() => setCameraSide(side)} className="flex-1">
+              {draftCapabilities.documentCapture && <Button type="button" variant="outline" disabled={evidenceControlsDisabled} onClick={() => setCameraSide(side)} className="flex-1">
                 {tCustomer("ui.kyc.cameraOpen")}
               </Button>}
-              <button type="button" onClick={() => inputRef.current?.click()}
+              <button type="button" disabled={evidenceControlsDisabled} onClick={() => inputRef.current?.click()}
                 className="w-full flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition-colors"
                 style={{ borderColor: fileError ? "var(--destructive)" : file ? "var(--primary)" : "var(--border)", backgroundColor: file ? "color-mix(in srgb, var(--primary) 6%, transparent)" : "transparent" }}>
                 {file ? <><FileCheck2 size={22} className="text-primary" /><p className="text-sm font-semibold text-primary">{file.name}</p><p className="text-xs text-muted-foreground">{tCustomer("strictMigration.kyc.fileMeta", { size: (file.size / 1024 / 1024).toFixed(2), type: tCustomer("ui.kyc.clickChange") })}</p></>
@@ -675,29 +810,30 @@ function KycPageContent() {
                 label={sideLabel}
                 documentType={form.docType}
                 confirmed={side === "front" ? frontFramingConfirmed : backFramingConfirmed}
+                disabled={evidenceControlsDisabled}
                 onConfirmationChange={side === "front" ? setFrontFramingConfirmed : setBackFramingConfirmed}
               />
               {fileError && <p className="text-xs text-destructive">{fileError}</p>}
             </div>;
           })}
+          {duplicateDocumentSides && <p className="text-xs text-amber-700 dark:text-amber-200" role="alert">{tCustomer("ui.kyc.duplicateDocumentSides")}</p>}
 
           <label className="flex items-start gap-3 rounded-xl border border-border p-3 text-xs text-muted-foreground">
-            <input type="checkbox" checked={ocrConsent} onChange={(e) => setOcrConsent(e.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" />
+            <input type="checkbox" checked={ocrConsent} disabled={evidenceControlsDisabled} onChange={(e) => setOcrConsent(e.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" />
             <span>{tCustomer("ui.kyc.consent")}</span>
           </label>
 
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" disabled={!draftCapabilities.cleanOcr || form.docType === "passport" && !draftCapabilities.chinesePassportOcr || !frontFile || (form.docType !== "passport" && !backFile) || !framingConfirmed || previewing || !ocrConsent} onClick={() => void previewDocument()}>
+            <Button type="button" variant="outline" disabled={evidenceControlsDisabled || duplicateDocumentSides || !draftCapabilities.cleanOcr || form.docType === "passport" && !draftCapabilities.chinesePassportOcr || !frontFile || (form.docType !== "passport" && !backFile) || !framingConfirmed || !ocrConsent} onClick={() => void previewDocument()}>
               {previewing ? tCustomer("ui.kyc.previewing") : tCustomer("ui.kyc.recognizeDocument")}
             </Button>
-            <Button type="button" variant="outline" disabled={!frontFile || (form.docType !== "passport" && !backFile) || savingDraft} onClick={() => void saveDraft()}>
+            <Button type="button" variant="outline" disabled={evidenceControlsDisabled || duplicateDocumentSides || !frontFile || (form.docType !== "passport" && !backFile)} onClick={() => void saveDraft()}>
               {savingDraft ? tCustomer("ui.kyc.savingDraft") : tCustomer("ui.kyc.saveDraft")}
             </Button>
           </div>
-          {ocrFields && <div className="text-xs text-muted-foreground">
-            <p>{tCustomer("ui.kyc.ocrEditableNotice")}</p>
-            {ocrFields.expiryDate && <p>{tCustomer("ui.kyc.expiryDate", { date: ocrFields.expiryDate })}</p>}
-            {ocrFields.mrzStatus && <p>{tCustomer("ui.kyc.mrzStatus", { status: ocrFields.mrzStatus })}</p>}
+          {currentOcrPreview && <div className="text-xs text-muted-foreground">
+            {currentOcrPreview.expiryDate && <p>{tCustomer("ui.kyc.expiryDate", { date: currentOcrPreview.expiryDate })}</p>}
+            {currentOcrPreview.mrzStatus && <p>{tCustomer("ui.kyc.mrzStatus", { status: currentOcrPreview.mrzStatus })}</p>}
           </div>}
           {draftNotice && <p className="text-xs text-muted-foreground" role="status">{draftNotice}</p>}
 
@@ -713,6 +849,7 @@ function KycPageContent() {
       <KycDocumentCameraDialog open={cameraSide !== null} documentType={form.docType} qualityMode={draftCapabilities.qualityMode}
         onOpenChange={(open) => { if (!open) setCameraSide(null); }}
         onAccept={(file) => { if (cameraSide) handleFileChange(cameraSide, file); }} />
+      {cropDialog}
     </>
   );
 }

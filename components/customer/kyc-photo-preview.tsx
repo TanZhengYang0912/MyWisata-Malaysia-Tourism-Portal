@@ -5,11 +5,12 @@ import { useTranslation } from "react-i18next";
 import type { KycDocumentType } from "@/lib/kyc/document-policy";
 
 /** Local-only preview. No upload, quality verdict, persistence or OCR. */
-export function KycPhotoPreview({ file, label, documentType, confirmed, onConfirmationChange }: {
+export function KycPhotoPreview({ file, label, documentType, confirmed, disabled = false, onConfirmationChange }: {
   file: File | null;
   label: string;
   documentType: KycDocumentType;
   confirmed: boolean;
+  disabled?: boolean;
   onConfirmationChange(confirmed: boolean): void;
 }) {
   const { t } = useTranslation("customer");
@@ -34,6 +35,7 @@ export function KycPhotoPreview({ file, label, documentType, confirmed, onConfir
       <input
         type="checkbox"
         checked={confirmed}
+        disabled={disabled}
         onChange={(event) => onConfirmationChange(event.currentTarget.checked)}
         className="mt-0.5 h-4 w-4 accent-primary"
       />

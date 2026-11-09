@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { abandonAndRemoveKycEvidence, buildKycEvidencePaths, createKycEvidenceRevision, validateKycUploadFile } from '../submission';
+import { abandonAndRemoveKycEvidence, buildKycEvidencePaths, createKycEvidenceRevision, hasDuplicateKycDocumentSides, validateKycUploadFile } from '../submission';
 
 describe('KYC server submission helpers', () => {
   it('uses a stable, side-aware evidence revision for one or two document pages', () => {
@@ -8,6 +8,13 @@ describe('KYC server submission helpers', () => {
     expect(createKycEvidenceRevision(front, null)).toMatch(/^[a-f0-9]{64}$/);
     expect(createKycEvidenceRevision(front, back)).not.toBe(createKycEvidenceRevision(front, null));
     expect(() => createKycEvidenceRevision('invalid', null)).toThrow('invalid_kyc_evidence_hash');
+  });
+  it('detects only equal, valid same-application front and back hashes', () => {
+    const hash = 'a'.repeat(64);
+    expect(hasDuplicateKycDocumentSides(hash, hash)).toBe(true);
+    expect(hasDuplicateKycDocumentSides(hash, 'b'.repeat(64))).toBe(false);
+    expect(hasDuplicateKycDocumentSides(null, null)).toBe(false);
+    expect(hasDuplicateKycDocumentSides('invalid', 'invalid')).toBe(false);
   });
   it('binds both sides to one UUID token without exposing a client-selected path', () => {
     const paths = buildKycEvidencePaths(

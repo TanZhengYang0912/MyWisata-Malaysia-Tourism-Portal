@@ -90,6 +90,8 @@ export type KycOcrPreviewResult = {
   nationality?: string | null;
   mrzStatus?: 'valid' | 'invalid' | 'unreadable' | 'unsupported';
   visualComparisonStatus?: 'consistent' | 'conflict' | 'incomplete';
+  /** Reduced, image-bound evidence for fields the customer may compare in the preview. */
+  passportFieldEvidence?: { holderName?: 'matched' | 'missing' | 'conflict'; documentNumber?: 'matched' | 'missing' | 'conflict' };
   visualMissingFields?: string[];
   confidence: number | null;
   providerModel: string;
@@ -109,6 +111,7 @@ type ExtractedOcr = {
   visualComparisonStatus?: unknown;
   visualMismatchFields?: unknown;
   visualMissingFields?: unknown;
+  visualFieldStatuses?: unknown;
   passportEvidenceVersion?: unknown;
   passportLayout?: unknown;
   evidenceSha256?: unknown;
@@ -249,9 +252,19 @@ export async function extractKycPreviewFields(input: Pick<KycOcrInput, 'document
       ? fields.mrzStatus as KycOcrPreviewResult['mrzStatus'] : undefined;
     const visualComparisonStatus = ['consistent', 'conflict', 'incomplete'].includes(String(fields.visualComparisonStatus))
       ? fields.visualComparisonStatus as KycOcrPreviewResult['visualComparisonStatus'] : undefined;
+    const visualFieldStatuses = fields.visualFieldStatuses && typeof fields.visualFieldStatuses === 'object' && !Array.isArray(fields.visualFieldStatuses)
+      ? fields.visualFieldStatuses as Record<string, unknown> : null;
+    const passportFieldEvidence = input.documentType === 'passport' && visualFieldStatuses
+      ? {
+        ...( ['matched', 'missing', 'conflict'].includes(String(visualFieldStatuses.holder_name))
+          ? { holderName: visualFieldStatuses.holder_name as 'matched' | 'missing' | 'conflict' } : {}),
+        ...( ['matched', 'missing', 'conflict'].includes(String(visualFieldStatuses.document_number))
+          ? { documentNumber: visualFieldStatuses.document_number as 'matched' | 'missing' | 'conflict' } : {}),
+      }
+      : undefined;
     return { status: fields.unreadable === true || !documentNumber ? 'unreadable' : 'extracted', holderName, documentNumber,
       expiryDate: nullableDate(fields.expiryDate), issuerCountry: nullableText(fields.issuerCountry, 2)?.toUpperCase() ?? null,
-      nationality: nullableText(fields.nationality, 2)?.toUpperCase() ?? null, mrzStatus, visualComparisonStatus,
+      nationality: nullableText(fields.nationality, 2)?.toUpperCase() ?? null, mrzStatus, visualComparisonStatus, passportFieldEvidence,
       visualMissingFields: Array.isArray(fields.visualMissingFields) ? fields.visualMissingFields.filter((field): field is string => typeof field === 'string' && /^[a-z_]{1,40}$/.test(field)).slice(0, 8) : undefined,
       confidence, providerModel };
   } catch (error) {

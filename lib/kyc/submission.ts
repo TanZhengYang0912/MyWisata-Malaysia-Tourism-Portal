@@ -47,6 +47,11 @@ export function createKycEvidenceRevision(frontEvidenceSha256: string, backEvide
     .update(backEvidenceSha256 ?? '').digest('hex');
 }
 
+export function hasDuplicateKycDocumentSides(frontSha256: string | null, backSha256: string | null): boolean {
+  const validHash = (value: string | null): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+  return validHash(frontSha256) && validHash(backSha256) && frontSha256 === backSha256;
+}
+
 type RpcResult = { data: boolean | null; error: unknown | null };
 type RemoveResult = { error: unknown | null };
 
