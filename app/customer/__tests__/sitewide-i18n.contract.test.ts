@@ -213,7 +213,6 @@ const inventoryRoots = [
   "app/customer",
   "app/guest",
   "components/customer",
-  "components/guest",
   "components/map",
   "components/demo-map",
   "components/outlet",
