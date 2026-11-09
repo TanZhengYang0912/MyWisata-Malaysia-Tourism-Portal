@@ -50,7 +50,6 @@ describe("Outlet Manager shop preview", () => {
         outlet={outlet}
         products={[product]}
         mode="public"
-        canUseCustomerActions={false}
       />,
     );
 

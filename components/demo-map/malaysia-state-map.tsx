@@ -177,29 +177,27 @@ function handleStateKeyDown(event: React.KeyboardEvent<SVGGElement>, action: () 
   }
 }
 
-/** Only the state shapes and a dot per state, for the Explore postcard board. A click always selects. */
+/** Only the state shapes, for the Explore postcard board (which draws its own pins). A click always selects. */
 export function MalaysiaStateOutline({
   highlightedStateId,
   onHoverState,
   onSelectState,
+  viewBox = `0 ${MAP_VIEWBOX_TOP} ${WIDTH} ${MAP_VIEWBOX_HEIGHT}`,
+  regionTransforms,
 }: {
   highlightedStateId: string | null;
   onHoverState: React.Dispatch<React.SetStateAction<string | null>>;
   onSelectState: (stateId: string) => void;
+  /** The board draws the map in its own px; without these the plain map viewBox is used. */
+  viewBox?: string;
+  regionTransforms?: Record<StateRegion, string>;
 }) {
   // renderRegionFeatures toggles to null when the clicked state is the highlighted one; that null means this state.
   const select = (stateId: string | null) => { const id = stateId ?? highlightedStateId; if (id) onSelectState(id); };
   return (
-    <svg viewBox={`0 ${MAP_VIEWBOX_TOP} ${WIDTH} ${MAP_VIEWBOX_HEIGHT}`} preserveAspectRatio="none" className="block h-full w-full overflow-visible">
-      {renderRegionFeatures(peninsularFeatures, "peninsular", highlightedStateId, select, onHoverState, handleStateKeyDown)}
-      {renderRegionFeatures(borneoFeatures, "borneo", highlightedStateId, select, onHoverState, handleStateKeyDown)}
-      <g aria-hidden="true" pointerEvents="none">
-        {DEMO_STATES.map((state) => {
-          const point = stateAnchor(state.id)!;
-          const hot = state.id === highlightedStateId;
-          return <circle key={state.id} data-state-dot={state.id} cx={point.x} cy={point.y} r={hot ? 24 : 16} className={`${hot ? "fill-[var(--mw-string)]" : "fill-primary"} stroke-card`} strokeWidth={5} />;
-        })}
-      </g>
+    <svg viewBox={viewBox} preserveAspectRatio="none" className="block h-full w-full overflow-visible">
+      <g transform={regionTransforms?.peninsular}>{renderRegionFeatures(peninsularFeatures, "peninsular", highlightedStateId, select, onHoverState, handleStateKeyDown)}</g>
+      <g transform={regionTransforms?.borneo}>{renderRegionFeatures(borneoFeatures, "borneo", highlightedStateId, select, onHoverState, handleStateKeyDown)}</g>
     </svg>
   );
 }

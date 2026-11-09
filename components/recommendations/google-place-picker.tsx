@@ -66,7 +66,8 @@ export function GooglePlacePicker({ value, onChange }: { value: RecommendationLo
 
   return <div className="space-y-2">
     <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('strictMigration.googleMaps.location')}</label>
-    <div className="relative"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input ref={input} aria-label={t('strictMigration.googleMaps.searchLabel')} placeholder={t('strictMigration.googleMaps.searchPlaceholder')} className="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" /></div>
+    {/* Same look as DiscoverySearchField; Google autocomplete needs its own ref'd input, so only the classes are shared. */}
+    <label className="flex min-h-12 min-w-0 items-center gap-2.5 border-b-2 border-primary/15 px-1 transition-colors hover:border-primary/40 focus-within:border-primary"><Search size={18} className="shrink-0 text-primary" aria-hidden="true" /><input ref={input} aria-label={t('strictMigration.googleMaps.searchLabel')} placeholder={t('strictMigration.googleMaps.searchPlaceholder')} className="min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground" /></label>
     <div ref={mapElement} aria-label={t('strictMigration.googleMaps.picker')} className="h-64 w-full overflow-hidden rounded-xl border border-border bg-muted" />
     {mapReady && !value && <p className="text-xs text-muted-foreground">{t('strictMigration.googleMaps.hint')}</p>}
     {value && <div className="flex gap-2 rounded-xl bg-primary/5 p-3 text-xs text-foreground"><MapPin size={15} className="shrink-0 text-primary" /><span><strong>{value.name}</strong><br />{value.formattedAddress}</span></div>}

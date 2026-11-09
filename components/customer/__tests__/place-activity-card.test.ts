@@ -3,22 +3,23 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(resolve(process.cwd(), "components/customer/place-activity-card.tsx"), "utf8");
+const frameSource = readFileSync(resolve(process.cwd(), "components/customer/card-frame.tsx"), "utf8");
 const placeActivitySource = readFileSync(resolve(process.cwd(), "components/customer/place-activity-section.tsx"), "utf8");
 const placeAccessSource = readFileSync(resolve(process.cwd(), "components/customer/place-access-section.tsx"), "utf8");
 const placeInformationSource = readFileSync(resolve(process.cwd(), "components/customer/place-informational-activity-section.tsx"), "utf8");
 
 describe("place activity card", () => {
-  it("provides the shared horizontal card frame for free and paid activities", () => {
-    expect(source).toContain("sm:flex-row");
-    expect(source).toContain("sm:w-[35%]");
-    expect(source).toContain("border-t border-border pt-4");
-    expect(source).toContain("action?: ReactNode");
+  it("uses the shared CardFrame place layout: photo 45% and 4:3 from md up, stacked on phones", () => {
+    expect(source).toContain('layout="place"');
+    expect(frameSource).toContain("md:grid md:grid-cols-[45%_minmax(0,1fr)]");
+    expect(frameSource).toContain("aspect-[4/3]");
   });
 
-  it("supports a non-link public activity without an external destination", () => {
+  it("supports a non-link free or official item without an external destination", () => {
     expect(source).toContain("href?: string");
-    expect(source).toContain("href ? (");
-    expect(source).toContain("imageUrl ? (");
+    expect(frameSource).toContain("{href ? (");
+    expect(placeAccessSource).not.toContain("href=");
+    expect(placeInformationSource).not.toContain("href=");
   });
 
   it("does not render a customer-facing third-party source link", () => {
@@ -26,18 +27,23 @@ describe("place activity card", () => {
     expect(source).not.toContain('target="_blank"');
   });
 
-  it("keeps item descriptions out of all shared place activity cards", () => {
-    expect(source).not.toContain("description");
-    expect(placeActivitySource).not.toContain("description={");
-    expect(placeAccessSource).not.toContain("description={");
-    expect(placeInformationSource).not.toContain("description={");
-    expect(source).toContain("text-lg font-bold leading-tight text-foreground");
-    expect(source).toContain("price: ReactNode");
-    expect(source).toContain("footer: ReactNode");
+  it("shows each item's description on every place card", () => {
+    expect(placeActivitySource).toContain("description={product.description}");
+    expect(placeAccessSource).toContain("description={access.description}");
+    expect(placeInformationSource).toContain("description={activity.description}");
   });
 
-  it("uses serializable localized heading props for translated activity titles", () => {
-    expect(source).toContain("<LocalizedContentHeading");
-    expect(source).not.toContain("{({ text, control }) =>");
+  it("drops the Venue Details entry, the relation row and the per-card action buttons", () => {
+    expect(placeInformationSource).not.toContain("Dialog");
+    expect(placeInformationSource).not.toContain("venueDetails");
+    expect(placeActivitySource).not.toContain("ui.place.relations");
+    expect(placeActivitySource).not.toContain("ui.actions.bookNow");
+    expect(source).not.toContain("action?: ReactNode");
+  });
+
+  it("keeps free and official items from looking purchasable", () => {
+    expect(placeAccessSource).not.toContain("ReferencePrice");
+    expect(placeInformationSource).not.toContain("ReferencePrice");
+    expect(placeInformationSource).toContain("officialInformationLabel");
   });
 });

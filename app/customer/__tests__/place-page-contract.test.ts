@@ -40,7 +40,7 @@ describe("place page layout and copy", () => {
     expect(accessSource).toContain("<PlaceActivityCard");
     expect(accessSource).toContain("imageUrl={access.imageUrl}");
     expect(accessSource).not.toContain("imageUrl={place.imageUrl}");
-    expect(accessSource).toContain("freeToExplore");
+    expect(accessSource).toContain("description={access.description}");
   });
 
   it("singularises the activity and vendor counts", () => {

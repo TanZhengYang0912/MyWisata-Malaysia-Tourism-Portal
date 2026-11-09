@@ -20,15 +20,13 @@ describe("customer vendor profile image contract", () => {
     expect(pageSource).toContain("outlet_pages(hero_url)");
   });
 
-  it("keeps outlet rows focused on the name and actions", () => {
+  it("shows each location as an OutletCard: vendor, outlet, location and open state, no hours or directions", () => {
     const rowSource = locationSource.slice(locationSource.indexOf("export function VendorLocationList"));
-    expect(rowSource).toContain("{location.name}");
-    expect(rowSource).toContain("ui.vendor.directions");
-    expect(rowSource).toContain("ui.vendor.viewOutlet");
-    expect(rowSource).not.toContain("location.city");
-    expect(rowSource).not.toContain("location.state");
-    expect(rowSource).not.toContain("location.operatingHours");
-    expect(rowSource).not.toContain("useOutletOpenStatus");
+    expect(rowSource).toContain("<OutletCard");
+    expect(rowSource).toContain("isOperatingHoursOpenNow(location.operatingHours, now)");
+    expect(rowSource).not.toContain("formatPeriods");
+    expect(rowSource).not.toContain("ui.vendor.directions");
+    expect(pageSource).toContain('getScopeRatingSummaries("outlet"');
     expect(pageSource).not.toContain("ui.vendor.chooseLocationDescription");
     expect(pageSource).not.toContain("ui.vendor.activeOutletCount");
   });
@@ -44,7 +42,7 @@ describe("customer vendor commerce boundary", () => {
     expect(vendorProductDetailHref("p1", "v1", "o1")).toContain("outletId=o1");
     expect(vendorProductDetailHref("p1", "v1")).not.toContain("outletId=");
     expect(pageSource).toContain("<VendorListingGrid");
-    expect(listingSource).toContain("listing={toVendorCatalogueCard(product)}");
+    expect(listingSource).toContain("listing={{ ...toVendorCatalogueCard(product), vendorName }}");
   });
 
   it("keeps location copy singular when a vendor has one outlet", () => {
@@ -52,12 +50,11 @@ describe("customer vendor commerce boundary", () => {
     expect(pageSource).toContain("ui.vendor.chooseLocationTitle");
   });
 
-  it("shows every outlet as one row with directions and a link to the outlet", () => {
+  it("shows every outlet through the shared location list with a link to the outlet", () => {
     expect(pageSource).toContain("<VendorLocationList locations={locationRows} />");
     expect(pageSource).not.toContain("function LocationCard");
     expect(pageSource).not.toContain("function SingleLocationSummary");
-    expect(locationSource).toContain("ui.vendor.directions");
-    expect(locationSource).toContain("ui.vendor.viewOutlet");
+    expect(pageSource).toContain("href: `/customer/outlets/${location.id}`");
   });
 
   it("keeps the vendor gallery distinct from the cover hero", () => {

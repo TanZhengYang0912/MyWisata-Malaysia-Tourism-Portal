@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import Image from "next/image";
 import Link from "next/link";
 import { AlertTriangle, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, GripVertical, ImageOff, Loader2, LocateFixed, Map as MapIcon, Navigation, Pencil, Plus, Search, ShoppingCart, SlidersHorizontal, Sparkles, Star, X } from "lucide-react";
+import { DiscoverySearchField } from "@/components/customer/discovery-filters";
 import { MapView, type MapPin } from "@/components/map/map-view";
 import { Pagination } from "@/components/shared/pagination";
 import { CATEGORIES, getBookingSlots, getOutlet } from "@/backend/domains/catalogue";
@@ -920,12 +921,12 @@ export function MapClient({
           <div>
             <div className="flex items-center gap-2">
               <GripVertical size={14} className="shrink-0 cursor-grab text-muted-foreground" />
-              <input
+              <DiscoverySearchField
                 autoFocus
                 value={editStopInput}
-                onChange={(event) => setEditStopInput(event.target.value)}
+                onChange={setEditStopInput}
                 placeholder={tCustomer("strictMigration.tripPlanner.searchNewLocation")}
-                className="min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                ariaLabel={tCustomer("strictMigration.tripPlanner.searchNewLocation")}
               />
               <button onClick={() => setEditingStopId(null)} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-muted" aria-label={tCustomer("ui.map.cancelEdit")}>
                 <X size={14} />

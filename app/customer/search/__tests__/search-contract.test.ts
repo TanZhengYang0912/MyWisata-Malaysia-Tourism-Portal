@@ -120,10 +120,10 @@ describe("customer vendor search contract", () => {
   });
 
   it("keeps partner discovery controls in one unified filter surface", () => {
-    expect(clientSource.match(/data-testid="partner-filter-bar"/g)).toHaveLength(1);
+    expect(clientSource.match(/bar: "partner-filter-bar"/g)).toHaveLength(1);
     expect(clientSource).toContain("<CustomerDiscoveryFilterPanel");
     expect(clientSource).toContain('data-testid="partner-view-control"');
-    expect(clientSource).toContain('data-testid="partner-sort-control"');
+    expect(clientSource).toContain('sort: "partner-sort-control"');
     expect(clientSource).toContain('t("ui.search.activeFilters")');
     expect(filterSource).toContain('includeAll={includeAllCategories}');
     expect(filterSource).toContain('headingKey="ui.search.category"');

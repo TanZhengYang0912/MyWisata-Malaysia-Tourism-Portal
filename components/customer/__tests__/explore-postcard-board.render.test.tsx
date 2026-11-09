@@ -80,6 +80,22 @@ describe("ExplorePostcardBoard", () => {
     expect(grid().getAttribute("class")).toContain("lg:hidden");
   });
 
+  it("has no heading, pins every state with a small dot and lets each string open its postcard", async () => {
+    expect(container.textContent).not.toContain("ui.explore.statesAndCities");
+    expect(container.textContent).not.toContain("ui.explore.exploreByDestination");
+    expect(findOne(container, (element) => element.tagName === "SECTION").getAttribute("aria-label")).toBe("ui.explore.destinations");
+    const dots = findElements(board(), (element) => element.getAttribute("data-state-dot") !== null);
+    expect(dots).toHaveLength(16);
+    expect(dots.every((dot) => dot.getAttribute("r") === "4.5")).toBe(true);
+    const hits = findElements(board(), (element) => element.getAttribute("data-string-hit") !== null);
+    expect(hits).toHaveLength(16);
+    expect(hits[0].getAttribute("stroke-width")).toBe("14");
+    expect(hits[0].getAttribute("pointer-events")).toBe("stroke");
+    await click(findOne(board(), (element) => element.getAttribute("data-string-hit") === "sabah"));
+    expect(dialog()).toBeDefined();
+    expect(dialog().textContent).toContain("Sabah");
+  });
+
   it("opens a state's back with its tagline, three picks, a sponsored P.S. and the place link", async () => {
     await click(openButton(board(), "Sabah"));
     const back = dialog();

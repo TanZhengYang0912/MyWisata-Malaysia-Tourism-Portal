@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { selectFullOutletMenu } from '@/lib/customer/outlet-shop';
 
 describe('public outlet menu', () => {
-  it("keeps the Vendor shop preview read-only", async () => {
-    const source = await import("node:fs").then(({ readFileSync }) => readFileSync("components/vendor/outlet-shop-preview.tsx", "utf8"));
-
-    expect(source).toContain("canUseCustomerActions={false}");
+  it("keeps the Vendor shop preview read-only: save and share need the customer wishlist, which the preview never mounts", async () => {
+    const { readFileSync } = await import("node:fs");
+    expect(readFileSync("components/vendor/outlet-shop-preview.tsx", "utf8")).not.toContain("WishlistProvider");
+    expect(readFileSync("components/customer/product-save-button.tsx", "utf8")).toContain("if (!wishlist) return null;");
+    expect(readFileSync("components/customer/product-card.tsx", "utf8")).toContain("{wishlist && <ShareButton");
   });
-
   it('keeps all sellable products while putting configured featured products first', () => {
     const products = [
       { id: 'product-a', name: 'A', featured: false },
@@ -24,69 +24,25 @@ describe('public outlet menu', () => {
 
   it('keeps product details tied to the outlet that owns the purchase context', async () => {
     const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
-    expect(source).toContain('outletId=${encodeURIComponent(outletId)}');
-    expect(source).toContain('returnTo=${encodeURIComponent(`/customer/outlets/${outletId}`)}');
+    expect(source).toContain('pinnedOutletId: outlet.id');
+    expect(source).toContain('returnTo={`/customer/outlets/${outlet.id}`}');
   });
-
-  it('uses the professional four-column card treatment for public outlet menus', async () => {
+  it('uses the shared ProductCard in the four-column public outlet menu', async () => {
     const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
     expect(source).toContain('xl:grid-cols-4');
-    expect(source).toContain('aspect-[4/3]');
+    expect(source).toContain('<ProductCard');
     expect(source).toContain('t("ui.outletMenu.availableAt"');
   });
-
-  it("shows the existing photo fallback when a product image URL fails", async () => {
+  it('has no card-level Add to cart or Buy buttons; buying happens on the product page', async () => {
     const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
-    const card = source.slice(source.indexOf('export function OutletProductCard'), source.indexOf('export function OutletMenu'));
-
-    expect(card).toContain('onError={() => setFailedImageUrl(imageUrl)}');
-    expect(card).toContain('failedImageUrl !== imageUrl');
-    expect(card).toContain('fallbackImage(t("ui.outlet.photoComingSoon"))');
-  });
-
-  it('shows only essential product details while preserving save and purchase actions', async () => {
-    const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
-    const card = source.slice(
-      source.indexOf('export function OutletProductCard'),
-      source.indexOf('export function OutletMenu'),
-    );
     const menu = source.slice(source.indexOf('export function OutletMenu'));
-
-    expect(card).toContain('productDetailHref(product.id, outlet.id)');
-    expect(card).toContain('ProductSaveButton productId={product.id}');
-    expect(card).toContain('formatMYRNumber(Number(product.base_price))');
-    expect(card).toContain('getOutletProductAction');
-    expect(card).toContain('<CartActions outlet={outlet} product={product} />');
-    expect(card).toContain('ui.outletMenu.chooseTime');
-    expect(card).not.toContain('categoryLabel');
-    expect(card).not.toContain('product.featured');
-    expect(card).not.toContain('ui.outletMenu.availableAt');
-    expect(card).not.toContain('ratingLabel');
-    expect(card).not.toContain('ui.cart.inStock');
-    expect(card).not.toContain('ui.cart.outOfStock');
+    expect(source).not.toContain('CartActions');
+    expect(source).not.toContain('useCart');
+    expect(source).not.toContain('getOutletProductAction');
+    expect(source).toContain('fromPrice: Number(product.base_price)');
     expect(menu).not.toContain('ui.labels.mylawatanOutlet');
     expect(menu).not.toContain('ui.outletMenu.listingCount');
   });
-
-  it('keeps public menu cards focused on product facts without descriptive copy', async () => {
-    const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
-    const card = source.slice(
-      source.indexOf('export function OutletProductCard'),
-      source.indexOf('export function OutletMenu'),
-    );
-
-    expect(card).not.toContain('line-clamp-2');
-    expect(card).not.toContain('truncate');
-    expect(card).toContain('break-words text-base font-bold leading-snug text-foreground');
-    expect(card).not.toContain('ui.outletMenu.availableAt');
-    expect(card).toContain('formatMYRNumber(Number(product.base_price))');
-    expect(card).not.toContain('product.description');
-    expect(card).not.toContain('descriptionFallback');
-
-    const menu = source.slice(source.indexOf('export function OutletMenu'));
-    expect(menu).not.toContain('t("ui.outletMenu.description")');
-  });
-
   it('keeps short menus from leaving a wide empty panel', async () => {
     const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
     expect(source).toContain('products.length <= 2');
@@ -97,24 +53,6 @@ describe('public outlet menu', () => {
     const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
     const menu = source.slice(source.indexOf('export function OutletMenu'));
     expect(menu).toContain('t("ui.outletMenu.availableAt", { outlet: outlet.name })');
-  });
-
-  it('uses one detail link when a product is not ready for direct purchase', async () => {
-    const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
-    expect(source).toContain('t(action.reason === "slot_required" ? "ui.outletMenu.chooseTime"');
-    expect(source).not.toContain('disabled={Boolean(working) || action.kind !== "cart"}');
-  });
-
-  it('mounts the customer capability gate only for cart-capable cards', async () => {
-    const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/outlet-menu.tsx', 'utf8'));
-    const card = source.slice(
-      source.indexOf('export function OutletProductCard'),
-      source.indexOf('export function OutletMenu'),
-    );
-
-    expect(source).toContain('function CartActions');
-    expect(card).not.toContain('useCustomerCapabilityGate');
-    expect(card).toMatch(/action\.kind === "cart" \? \(\s*canUseCustomerActions && <CartActions outlet=\{outlet\} product=\{product\} \/>/);
   });
 
   it('shows the current outlet position when the vendor has multiple outlets', async () => {
@@ -139,5 +77,11 @@ describe('public outlet menu', () => {
     const source = await import('node:fs').then(({ readFileSync }) => readFileSync('app/customer/vendor/[vendorId]/outlet/[outletId]/page.tsx', 'utf8'));
     expect(source).not.toContain('product_review_metrics');
     expect(source).not.toContain('metricByProduct');
+  });
+
+  it('loads the menu cards\' product ratings in one batched lookup', async () => {
+    const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/public-outlet-page.tsx', 'utf8'));
+    expect(source.match(/getScopeRatingSummaries\("product"/g)).toHaveLength(1);
+    expect(source).toContain('rating: productRatings?.get(product.id)?.value ?? 0');
   });
 });

@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Trip } from "@/backend/domains/trips";
-import { ArrowUpRight, Calendar, Filter, Navigation, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
+import { ArrowUpRight, Calendar, Filter, Navigation, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { DiscoverySearchField } from "@/components/customer/discovery-filters";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { createTripAction, deleteTripAction, restoreLegacyTripsAction } from "./actions";
@@ -233,11 +234,7 @@ export function TripHubClient({ initialTrips, initialTripNameSequence, hasLegacy
                 <p className="mt-1 pl-10 text-xs text-muted-foreground">{t("ui.trip.results", { count: visibleTrips.length })}</p>
               </div>
               <div className="flex min-w-0 gap-2 md:hidden">
-                <label className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-border bg-background px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10">
-                  <Search size={15} className="shrink-0 text-primary" aria-hidden="true" />
-                  <span className="sr-only">{t("ui.trip.searchPlaceholder")}</span>
-                  <input value={tripFilters.query} onChange={(event) => updateTripFilter("query", event.target.value)} placeholder={t("ui.trip.searchPlaceholder")} aria-label={t("ui.trip.searchPlaceholder")} className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground" />
-                </label>
+                <DiscoverySearchField value={tripFilters.query} onChange={(query) => updateTripFilter("query", query)} placeholder={t("ui.trip.searchPlaceholder")} ariaLabel={t("ui.trip.searchPlaceholder")} />
                 <button type="button" onClick={() => setMobileFiltersOpen((open) => !open)} aria-expanded={mobileFiltersOpen} aria-controls="trip-mobile-advanced-filters" className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${mobileFiltersOpen || hasActiveFilters || tripFilters.sort !== "newest" ? "border-primary bg-secondary text-primary" : "border-border bg-background text-foreground hover:border-primary/30"}`}>
                   <Filter size={14} className="text-primary" aria-hidden="true" />
                   <span>{t("ui.trip.filterTitle")}</span>
@@ -256,11 +253,9 @@ export function TripHubClient({ initialTrips, initialTripNameSequence, hasLegacy
 
             <div className="hidden border-t border-border px-4 py-4 sm:px-5 md:block">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(140px,0.8fr)_minmax(140px,0.8fr)_minmax(160px,0.9fr)]">
-                <label className="flex min-h-11 items-center gap-2.5 rounded-xl border border-border bg-background px-3.5 py-2.5 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10">
-                  <Search size={16} className="shrink-0 text-primary" aria-hidden="true" />
-                  <span className="sr-only">{t("ui.trip.searchPlaceholder")}</span>
-                  <input value={tripFilters.query} onChange={(event) => updateTripFilter("query", event.target.value)} placeholder={t("ui.trip.searchPlaceholder")} aria-label={t("ui.trip.searchPlaceholder")} className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground" />
-                </label>
+                <div className="flex min-w-0">
+                  <DiscoverySearchField value={tripFilters.query} onChange={(query) => updateTripFilter("query", query)} placeholder={t("ui.trip.searchPlaceholder")} ariaLabel={t("ui.trip.searchPlaceholder")} />
+                </div>
                 <label className="flex flex-col justify-center rounded-xl border border-border bg-background px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
                   <span>{t("ui.trip.fromDate")}</span>
                   <input type="date" value={tripFilters.from} onFocus={primeDateRange} onChange={(event) => updateTripFilter("from", event.target.value)} aria-label={t("ui.trip.fromDate")} className="mt-0.5 bg-transparent text-sm font-semibold normal-case tracking-normal text-foreground outline-none" />

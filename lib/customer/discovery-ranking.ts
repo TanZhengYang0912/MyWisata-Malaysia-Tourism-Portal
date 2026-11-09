@@ -130,9 +130,19 @@ export function selectHomeDiscoverySections(
   const ranked = rankDiscoveryResults({ activities: organic, placements, filters: parseDiscoveryQuery(new URLSearchParams()), now });
   const ordinary = groupAccommodationByProperty<DiscoveryResult & { property?: DiscoveryPropertySummary }>(ranked);
   return {
-    highlightItems: ordinary.filter((activity) => activity.salesSummary?.outletCount !== 0).slice(0, 4),
+    highlightItems: ordinary.filter((activity) => activity.salesSummary?.outletCount !== 0).slice(0, HOME_HIGHLIGHT_LIMIT),
     forYouItems: groupAccommodationByProperty(recommended).filter((activity) => !oldHighlightIds.has(activity.id)).slice(0, 4),
   };
+}
+
+export const HOME_HIGHLIGHT_LIMIT = 12;
+export const HOME_HIGHLIGHTS_PER_PAGE = 4;
+
+/** One page of Home highlights (4 per page); the page is clamped to the ones that exist. */
+export function pageHomeHighlights<T>(items: T[], page: number) {
+  const pageCount = Math.ceil(items.length / HOME_HIGHLIGHTS_PER_PAGE);
+  const current = Math.min(Math.max(0, page), Math.max(0, pageCount - 1));
+  return { items: items.slice(current * HOME_HIGHLIGHTS_PER_PAGE, (current + 1) * HOME_HIGHLIGHTS_PER_PAGE), page: current, pageCount };
 }
 
 /** Same grouping for ranked items that carry extra data (e.g. For You's reasons): the best-ranked room keeps its slot. */

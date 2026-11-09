@@ -12,7 +12,8 @@ describe("customer commerce entry points", () => {
   });
 
   it("routes destination products through the outlet-aware activity detail", () => {
-    expect(destinationSource).toContain("/customer/products/${product.id}");
+    expect(destinationSource).toContain("<ProductCard");
     expect(destinationSource).not.toContain("/customer/experience/${product.id}");
+    expect(readFileSync(resolve(process.cwd(), "components/customer/product-card.tsx"), "utf8")).toContain("buildProductPath(product.id");
   });
 });

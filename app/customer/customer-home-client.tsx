@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, MapPin, Sparkles } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, ChevronRight, MapPin, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ComputedActivity, DiscoveryPropertySummary, DiscoveryResult } from "@/backend/core/types";
 import { ActivityCard } from "@/components/customer/activity-card";
@@ -22,6 +22,8 @@ import { EventPartnersSection, type EventPartner } from "@/components/customer/e
 import { HomeDestinationWormIndicator } from "@/components/customer/home-destination-worm-indicator";
 import { useHomeDestinationPager } from "@/components/customer/use-home-destination-pager";
 import { Button } from "@/components/ui/button";
+import { SeeMoreLink } from "@/components/customer/see-more-link";
+import { pageHomeHighlights } from "@/lib/customer/discovery-ranking";
 
 const HERO_CROSSFADE_DURATION_MS = 240;
 // Match the card widths from the responsive rail, including its outer and trailing padding.
@@ -98,14 +100,18 @@ export function CustomerHomeClient({
       keepalive: true,
     });
   }, []);
+  const [highlightPage, setHighlightPage] = useState(0);
+  const highlights = pageHomeHighlights(highlightItems, highlightPage);
+  const visibleHighlights = highlights.items;
+  // Impressions only for the highlight page actually shown.
   useEffect(() => {
-    for (const activity of highlightItems) {
+    for (const activity of visibleHighlights) {
       const placementId = activity.sponsorship?.placementId;
       if (!placementId || impressedPlacementIds.current.has(placementId)) continue;
       impressedPlacementIds.current.add(placementId);
       recordSponsoredEvent(activity, "impression");
     }
-  }, [highlightItems, recordSponsoredEvent]);
+  }, [visibleHighlights, recordSponsoredEvent]);
   const discoverTitleWords = t("ui.guest.discoverMalaysia").trim().split(/\s+/);
   const discoverTitleLead = discoverTitleWords.length > 1
     ? discoverTitleWords.slice(0, -1).join(" ")
@@ -362,12 +368,29 @@ export function CustomerHomeClient({
                   {t("ui.home.featuredHighlights")}
                 </h2>
               </div>
-              <Link href="/customer/explore" className="inline-flex min-h-10 shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
-                {t("ui.actions.viewAll")} <ArrowRight size={14} />
-              </Link>
+              <div className="flex shrink-0 items-center gap-3">
+                {highlights.pageCount > 1 && (
+                  <div className="inline-flex items-center" data-testid="home-highlights-pager">
+                    {([[ChevronLeft, -1, "accessibility.previousPage", highlights.page <= 0], [ChevronRight, 1, "accessibility.nextPage", highlights.page >= highlights.pageCount - 1]] as const).map(([Icon, step, label, atEdge]) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => setHighlightPage(highlights.page + step)}
+                        disabled={atEdge}
+                        aria-label={t(label, { ns: "common" })}
+                        aria-controls="featured-highlights-grid"
+                        className="inline-flex h-10 w-7 items-center justify-center text-primary transition-[color,transform] duration-150 hover:text-accent focus-visible:text-accent focus-visible:outline-none active:scale-[0.85] active:text-accent disabled:cursor-not-allowed disabled:text-primary/20 disabled:active:scale-100"
+                      >
+                        <Icon size={16} aria-hidden="true" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <SeeMoreLink href="/customer/explore" />
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-              {highlightItems.map((activity) => (
+            <div id="featured-highlights-grid" className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+              {visibleHighlights.map((activity) => (
                 activity.property
                   ? <ActivityCard key={activity.id} activity={activity} onSponsoredClick={activity.sponsorship ? () => recordSponsoredEvent(activity, "click") : undefined} />
                   : <ProductCard key={activity.id} listing={toDiscoveryCatalogueCard(activity)} returnTo="/customer" source="home" onSponsoredClick={activity.sponsorship ? () => recordSponsoredEvent(activity, "click") : undefined} />
@@ -382,9 +405,7 @@ export function CustomerHomeClient({
               <h2 id="for-you-heading" className="flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
                 <Sparkles size={19} className="text-primary" aria-hidden="true" /> {t("ui.home.forYou")}
               </h2>
-              <Link href="/customer/for-you" className="inline-flex min-h-10 shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
-                {t("ui.actions.viewAll")} <ArrowRight size={14} />
-              </Link>
+              <SeeMoreLink href="/customer/for-you" />
             </div>
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
               {forYouItems.map((activity) => (
@@ -419,9 +440,7 @@ export function CustomerHomeClient({
                 <MapPin size={15} aria-hidden="true" />
                 {nearbyLoading ? t("ui.states.loading") : t("ui.map.useCurrentLocation")}
               </button>
-              <Link href="/customer/vendors" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
-                {t("ui.home.viewPartners")} <ArrowRight size={14} />
-              </Link>
+              <SeeMoreLink href="/customer/vendors" />
             </div>
           </div>
 
@@ -430,18 +449,7 @@ export function CustomerHomeClient({
             <p role="status" aria-live="polite" className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">{t("ui.states.loading")}</p>
           ) : nearbyPartners && nearbyPartners.length > 0 ? (
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-              {nearbyPartners.slice(0, 4).map((partner, index) => {
-                const primaryOutlet = partner.outlets[0];
-                const location = [primaryOutlet?.city, primaryOutlet?.state].filter(Boolean).join(", ") || t("ui.labels.malaysia");
-                return <VendorCard
-                  key={partner.id}
-                  vendor={partner}
-                  description={partner.description}
-                  descriptionFallback={t("ui.home.vendorDescription", { location })}
-                  distanceLabel={t("ui.home.distanceAway", { distance: partner.distanceKm.toFixed(1) })}
-                  index={index}
-                />;
-              })}
+              {nearbyPartners.slice(0, 4).map((partner, index) => <VendorCard key={partner.id} vendor={partner} index={index} />)}
             </div>
           ) : nearbyPartners ? (
             <p className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
@@ -455,14 +463,10 @@ export function CustomerHomeClient({
         <section className="mt-12">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-2xl font-bold font-[family-name:var(--font-display)]">{t("ui.home.featuredPartners")}</h2>
-            <Link href="/customer/vendors" className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">{t("ui.home.viewPartners")} <ArrowRight size={14} /></Link>
+            <SeeMoreLink href="/customer/vendors" />
           </div>
           <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-            {vendors.slice(0, 4).map((vendor, index) => {
-              const primaryOutlet = vendor.outlets[0];
-              const location = [primaryOutlet?.city, primaryOutlet?.state].filter(Boolean).join(", ") || t("ui.labels.malaysia");
-              return <VendorCard key={vendor.id} vendor={vendor} description={vendor.description} descriptionFallback={t("ui.home.vendorDescription", { location })} index={index} isFeatured />;
-            })}
+            {vendors.slice(0, 4).map((vendor, index) => <VendorCard key={vendor.id} vendor={vendor} index={index} />)}
           </div>
         </section>
       </div>
