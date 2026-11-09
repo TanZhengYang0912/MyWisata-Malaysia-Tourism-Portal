@@ -14,7 +14,7 @@ import { hashGuestCredential } from "@/lib/checkout/guest-session";
 function query(data: unknown, error: { code: string; message: string } | null = null) {
   const result = Promise.resolve({ data, error });
   const builder: Record<string, unknown> = {};
-  for (const key of ["select", "eq", "is", "gt"]) builder[key] = vi.fn(() => builder);
+  for (const key of ["select", "eq", "is", "gt", "in"]) builder[key] = vi.fn(() => builder);
   builder.maybeSingle = vi.fn(() => result);
   builder.then = result.then.bind(result);
   return builder;
@@ -27,6 +27,8 @@ describe("GET customer order QR passes", () => {
     mocks.from.mockImplementation((table: string) => {
       if (table === "orders") return query({ id: "1d4057cf-c821-4b05-a454-61dbdc42d32c", status: "paid", user_id: "customer-1" });
       if (table === "bookings") return query([{ id: "booking-1", order_items: { outlet_id: "outlet-1", vendor_id: "vendor-a", outlets: { id: "outlet-1", name: "North Outlet", vendor_id: "vendor-a", vendors: { id: "vendor-a", name: "Vendor A" } } }, ticket_passes: { id: "pass-1", policy: "multi_entry", entry_limit: 3, entries_used: 1, status: "active", valid_from: "2026-09-21T10:00:00Z", valid_until: "2026-10-21T10:00:00Z" } }]);
+      if (table === "ticket_pickup_codes") return query([{ ticket_pass_id: "pass-1", code: "TABCDEFGHJK" }]);
+      if (table === "food_pickup_codes") return query([{ order_id: "1d4057cf-c821-4b05-a454-61dbdc42d32c", outlet_id: "food-outlet", code: "FABCDEFGHJK" }]);
       return query([{
         outlet_id: "food-outlet",
         vendor_id: "vendor-b",
@@ -77,6 +79,61 @@ describe("GET customer order QR passes", () => {
 
     expect(response.status).toBe(200);
     expect(json.data.tickets).toEqual([]);
+  });
+
+  it("issues the existing ticket QR and pickup code for a paid slotless admission", async () => {
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "orders") return query({ id: "1d4057cf-c821-4b05-a454-61dbdc42d32c", status: "paid", user_id: "customer-1" });
+      if (table === "bookings") return query([{
+        id: "booking-walk-in",
+        status: "confirmed",
+        slot_id: null,
+        booking_slots: null,
+        order_items: {
+          outlet_id: "outlet-museum",
+          vendor_id: "vendor-museum",
+          products: { requires_booking: false, product_places: [{ relation_type: "admission" }] },
+          outlets: { id: "outlet-museum", name: "Istana Lama", vendor_id: "vendor-museum", vendors: { id: "vendor-museum", name: "Museum" } },
+        },
+        ticket_passes: { id: "pass-walk-in", policy: "group_entry", entry_limit: 39, entries_used: 0, status: "active", valid_from: null, valid_until: null },
+      }]);
+      if (table === "ticket_pickup_codes") return query([{ ticket_pass_id: "pass-walk-in", code: "TABCDEFGHJK" }]);
+      return query([]);
+    });
+
+    const response = await GET(new Request("http://localhost"), { params: Promise.resolve({ orderId: "1d4057cf-c821-4b05-a454-61dbdc42d32c" }) });
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.data.tickets[0]).toMatchObject({ bookingId: "booking-walk-in", ticketCode: "T-ABCDE-FGHJK", entryLimit: 39 });
+    expect(mocks.from.mock.calls.map(([table]) => table)).not.toContain("booking_slots");
+  });
+
+  it("issues the existing ticket QR before its future booking slot starts", async () => {
+    mocks.from.mockImplementation((table: string) => {
+      if (table === "orders") return query({ id: "1d4057cf-c821-4b05-a454-61dbdc42d32c", status: "paid", user_id: "customer-1" });
+      if (table === "bookings") return query([{
+        id: "booking-future",
+        status: "confirmed",
+        slot_id: "slot-future",
+        booking_slots: { starts_at: "2099-01-01T00:00:00.000Z" },
+        order_items: {
+          outlet_id: "outlet-museum",
+          vendor_id: "vendor-museum",
+          products: { requires_booking: true, product_places: [] },
+          outlets: { id: "outlet-museum", name: "Museum Front Desk", vendor_id: "vendor-museum", vendors: { id: "vendor-museum", name: "Museum" } },
+        },
+        ticket_passes: { id: "pass-future", policy: "single_entry", entry_limit: 1, entries_used: 0, status: "active", valid_from: "2099-01-01T00:00:00.000Z", valid_until: null },
+      }]);
+      if (table === "ticket_pickup_codes") return query([{ ticket_pass_id: "pass-future", code: "TABCDEFGHJK" }]);
+      return query([]);
+    });
+
+    const response = await GET(new Request("http://localhost"), { params: Promise.resolve({ orderId: "1d4057cf-c821-4b05-a454-61dbdc42d32c" }) });
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.data.tickets[0]).toMatchObject({ bookingId: "booking-future", ticketCode: "T-ABCDE-FGHJK", entriesUsed: 0 });
   });
 
   it("issues a group-ticket QR with the database guest limit and the matching merchant", async () => {
@@ -176,6 +233,10 @@ describe("GET customer order QR passes", () => {
     mocks.from.mockImplementation((table: string) => {
       if (table === "orders") return query({ id: "1d4057cf-c821-4b05-a454-61dbdc42d32c", status: "paid", user_id: "customer-1" });
       if (table === "bookings") return query([]);
+      if (table === "event_pickup_codes") return query([
+        { group_key: "event:1d4057cf-c821-4b05-a454-61dbdc42d32c:vendor-e:loc-1:2099-12-31:44444444-4444-4444-8444-444444444444", code: "EABCDEFGHJK" },
+        { group_key: "event:1d4057cf-c821-4b05-a454-61dbdc42d32c:vendor-e:loc-1:2099-12-31:55555555-5555-4555-8555-555555555555", code: "EJKLMNPQRST" },
+      ]);
       return query([
         { vendor_id: "vendor-e", event_location_id: "loc-1", pickup_date: "2099-12-31", pickup_slot_id: "44444444-4444-4444-8444-444444444444", slot_starts_at: "2099-12-31T02:00:00.000Z", product_name: "Kuih", variant_name: "Main hall · 10:00–11:00", quantity: 2, fulfil_status: "pending", vendors: { name: "Kuih Stall" }, outlet_id: null, products: null },
         { vendor_id: "vendor-e", event_location_id: "loc-1", pickup_date: "2099-12-31", pickup_slot_id: "44444444-4444-4444-8444-444444444444", slot_starts_at: "2099-12-31T02:00:00.000Z", product_name: "Teh", variant_name: "Main hall · 10:00–11:00", quantity: 1, fulfil_status: "pending", vendors: { name: "Kuih Stall" }, outlet_id: null, products: null },
@@ -190,9 +251,10 @@ describe("GET customer order QR passes", () => {
     expect(pickups).toHaveLength(2);
     const morning = pickups.find((pickup: { pickupLabels: string[] }) => pickup.pickupLabels[0] === "Main hall · 10:00–11:00");
     const afternoon = pickups.find((pickup: { pickupLabels: string[] }) => pickup.pickupLabels[0] === "Main hall · 12:00–13:00");
-    expect(morning).toMatchObject({ vendorName: "Kuih Stall", pickupDate: "2099-12-31", pickupLabels: ["Main hall · 10:00–11:00"], status: "pending" });
+    expect(morning).toMatchObject({ vendorName: "Kuih Stall", pickupDate: "2099-12-31", pickupLabels: ["Main hall · 10:00–11:00"], status: "pending", eventCode: "E-ABCDE-FGHJK" });
     expect(morning.items).toEqual([{ name: "Kuih", quantity: 2 }, { name: "Teh", quantity: 1 }]);
     expect(afternoon.items).toEqual([{ name: "Nasi", quantity: 1 }]);
+    expect(afternoon.eventCode).toBe("E-JKLMN-PQRST");
     const verifiedMorning = verifyEventPickupToken(morning.eventToken);
     expect(verifiedMorning.valid).toBe(true);
     expect(verifiedMorning.claims).toMatchObject({ orderId: "1d4057cf-c821-4b05-a454-61dbdc42d32c", vendorId: "vendor-e", locationId: "loc-1", pickupDate: "2099-12-31", pickupSlotId: "44444444-4444-4444-8444-444444444444" });
@@ -231,6 +293,7 @@ describe('retail pickup database UUID compatibility through real order authoriza
       let data: unknown = [];
       if (table === 'guest_order_access_sessions') data = sessionAvailable ? { order_id: ids.orderId, created_at: '2020-01-01T00:00:00Z' } : null;
       if (table === 'orders') data = { id: ids.orderId, status: orderStatus, user_id: subject === 'account' ? 'customer-1' : null, guest_subject_id: subject === 'guest' ? 'guest-fixture' : null, guest_session_revoked_at: null };
+      if (table === 'retail_pickup_codes') data = [{ order_item_id: ids.orderItemId, code: 'PABCDEFGHJK' }];
       if (table === 'order_items') data = [{
         id: ids.orderItemId, vendor_id: ids.vendorId, outlet_id: ids.outletId, product_name: 'Synthetic retail', variant_name: 'Box', quantity: 2,
         food_fulfilment_mode: null, food_qr_scanned_at: null, retail_qr_scanned_at: scannedAt, fulfil_status: fulfilStatus,
@@ -249,7 +312,7 @@ describe('retail pickup database UUID compatibility through real order authoriza
     const response = await load();
     expect(response.status).toBe(200);
     const pass = (await response.json()).data.retailPickups[0];
-    expect(pass).toMatchObject({ orderItemId: ids.orderItemId, quantity: 2, status: 'pending' });
+    expect(pass).toMatchObject({ orderItemId: ids.orderItemId, quantity: 2, status: 'pending', retailCode: 'P-ABCDE-FGHJK' });
     expect(verifyRetailPickupToken(pass.retailToken, secret)).toMatchObject({ valid: true, claims: ids });
     const orderRead = reads.find(read => read.table === 'orders')!.builder;
     expect(orderRead.eq).toHaveBeenCalledWith('id', ids.orderId);
@@ -285,7 +348,7 @@ describe('retail pickup database UUID compatibility through real order authoriza
     fulfilStatus = fulfil!; scannedAt = scanned; refundStatus = refund;
     const response = await load();
     expect(response.status).toBe(200);
-    expect((await response.json()).data.retailPickups[0]).toMatchObject({ status: expected, retailToken: null });
+    expect((await response.json()).data.retailPickups[0]).toMatchObject({ status: expected, retailToken: null, retailCode: null });
   });
   it('excludes cancelled retail lines', async () => {
     fulfilStatus = 'cancelled';

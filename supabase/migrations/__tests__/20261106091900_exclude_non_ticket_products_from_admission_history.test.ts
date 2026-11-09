@@ -23,15 +23,21 @@ function latestRedemptionHistoryFunction() {
   return latest.source.slice(start, end);
 }
 
+function normalizeSql(sql: string) {
+  return sql.replace(/\s+/g, " ").replace(/\(\s+/g, "(").replace(/\s+\)/g, ")").trim();
+}
+
 describe("vendor redemption ticket eligibility migration", () => {
-  it("only classifies bookings for products that require booking as tickets", () => {
+  it("includes admission-linked products and excludes unrelated non-ticket products", () => {
     const functionSql = latestRedemptionHistoryFunction();
     const ticketBranches = functionSql.split("UNION ALL").filter((branch) => /SELECT\s+(?:e|b)\.id::TEXT,\s*'ticket'/.test(branch));
 
     expect(ticketBranches).toHaveLength(2);
     for (const branch of ticketBranches) {
       expect(branch).toContain("LEFT JOIN public.products product ON product.id = oi.product_id");
-      expect(branch).toContain("product.id IS NULL OR product.requires_booking IS TRUE");
+      expect(normalizeSql(branch)).toContain(
+        "AND (product.id IS NULL OR product.requires_booking IS TRUE OR EXISTS (SELECT 1 FROM public.product_places AS admission_place WHERE admission_place.product_id = product.id AND admission_place.relation_type = 'admission'))",
+      );
     }
   });
 });

@@ -20,3 +20,21 @@ export function buildSignedTicketQrPayload(
 ): string {
   return buildBookingQrPayload(bookingId, origin, passToken);
 }
+
+export function buildTicketPassQrPayload({
+  bookingId,
+  orderId,
+  ticketCode,
+  passToken,
+  origin,
+}: {
+  bookingId: string;
+  orderId?: string | null;
+  ticketCode?: string | null;
+  passToken?: string;
+  origin?: string;
+}): string {
+  if (ticketCode) return ticketCode.replace(/-/g, "");
+  if (orderId) return "";
+  return passToken ? buildBookingQrPayload(bookingId, origin, passToken) : "";
+}

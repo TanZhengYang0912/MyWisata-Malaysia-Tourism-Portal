@@ -15,15 +15,23 @@ export type ProductTicketAdmissionConfig = {
   ticketValidityDays: number | null;
 };
 
-/**
- * Products without a current relation remain eligible for legacy passes. A
- * linked product must explicitly require booking to use ticket admission.
- */
+function hasAdmissionPlace(value: unknown): boolean {
+  const relations = Array.isArray(value) ? value : [value];
+  return relations.some((relation) =>
+    typeof relation === 'object'
+    && relation !== null
+    && 'relation_type' in relation
+    && relation.relation_type === 'admission',
+  );
+}
+
+/** Products without a current relation remain eligible for legacy passes. */
 export function isTicketEligibleProduct(product: unknown): boolean {
   const relation = Array.isArray(product) ? product[0] : product;
   if (relation === null || relation === undefined) return true;
   if (typeof relation !== 'object' || !('requires_booking' in relation)) return false;
-  return relation.requires_booking === true;
+  if (relation.requires_booking === true) return true;
+  return 'product_places' in relation && hasAdmissionPlace(relation.product_places);
 }
 
 export const DEFAULT_PRODUCT_TICKET_ADMISSION: ProductTicketAdmissionConfig = {

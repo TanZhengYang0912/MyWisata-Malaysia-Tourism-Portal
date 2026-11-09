@@ -58,4 +58,14 @@ describe("Vendor camera scanner contract", () => {
     const scanner = read("components/vendor/redemption-scanner.tsx");
     expect(scanner.match(/item\.item\.details/g)).toHaveLength(3);
   });
+
+  it("does not silently choose the first of multiple outlets and carries event reservation context", () => {
+    const scanner = read("components/vendor/redemption-scanner.tsx");
+    const reservations = read("app/vendor/event-orders/page.tsx");
+    expect(scanner).toContain("outlets.length === 1 ? outlets[0]?.id ?? \"\" : \"\"");
+    expect(scanner).toContain('payload.error?.code === "FOOD_ORDER_FULFILLED"');
+    expect(scanner).toContain('item.kind === "food_order" ? t("ui.scanner.foodOrderKind")');
+    expect(reservations).toContain("locationId=");
+    expect(reservations).toContain("date=");
+  });
 });
