@@ -25,8 +25,6 @@ import { getOutlets } from "@/backend/domains/catalogue";
 import { formatStayRange } from "@/lib/customer/booking-view";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
-import { CustomerQrPassCard } from "@/components/customer/customer-qr-pass-card";
-import { BookingQrCode } from "@/components/customer/booking-qr-code";
 import { OrderPickupQrCodes } from "@/app/customer/orders/[id]/order-pickup-qr-codes";
 import { Button } from "@/components/ui/button";
 import type { Booking, Order, Outlet } from "@/backend/core/types";
@@ -529,62 +527,26 @@ export default function OrderDetailPage() {
                 </section>
               )}
 
-              {/* Digital Entry Pass / QR Codes if Bookings exist */}
-              {bookings.length > 0 && isPaid && (
-                <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                  <div className="border-b border-border bg-secondary/40 px-5 py-4 sm:px-6">
-                    <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-primary">
-                      {tCustomer("ui.booking.entryPass")}
-                    </h2>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {tCustomer("ui.booking.scanAtOutlet")}
-                    </p>
-                  </div>
-                  <div>
-                    {bookings.map((b) => (
-                      <CustomerQrPassCard
-                        key={b.id}
-                        title={b.activityName}
-                        merchantLabel={outletMap.get(b.outletId)?.vendorName
-                          ? tCustomer("ui.labels.providedBy", { vendor: outletMap.get(b.outletId)?.vendorName })
-                          : undefined}
-                        outletLabel={outletMap.get(b.outletId)?.name
-                          ? `${tCustomer("ui.labels.outlet")}: ${outletMap.get(b.outletId)?.name}`
-                          : undefined}
-                        qr={
-                          <BookingQrCode
-                            className="w-full"
-                            bookingId={b.id}
-                            orderId={order.id}
-                            size={176}
-                            passToken={b.passToken}
-                            policy={b.policy}
-                            entryLimit={b.entryLimit}
-                            entriesUsed={b.entriesUsed}
-                            validUntil={b.validUntil}
-                          />
-                        }
-                      >
-                        {b.slotStartsAt && (
-                          <p className="flex min-w-0 items-center gap-2 text-sm font-medium text-muted-foreground">
-                            <CalendarDays size={15} className="shrink-0 text-primary" aria-hidden="true" />
-                            <span>{b.categorySlug === "accommodation" ? `${formatStayRange(b.slotStartsAt, b.nights ?? 1, locale)} · ${tCustomer("ui.property.nightsSummary", { count: b.nights ?? 1 })}` : dateTimeLabel(b.slotStartsAt, locale)}</span>
-                          </p>
-                        )}
-                        <div className="mt-3 flex min-w-0 flex-col gap-1 border-t border-border pt-3">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            {tCustomer("ui.labels.bookingReference")}
-                          </p>
-                          <p className="break-all font-[family-name:var(--font-mono)] text-xs font-semibold text-primary">
-                            {b.id}
-                          </p>
-                        </div>
-                      </CustomerQrPassCard>
-                    ))}
-                  </div>
-                </section>
-              )}
-              {isPaid && <OrderPickupQrCodes key={`${order.id}:${currentUser?.id ?? "guest-session"}`} orderId={order.id} />}
+              {isPaid && <OrderPickupQrCodes
+                key={`${order.id}:${currentUser?.id ?? "guest-session"}`}
+                orderId={order.id}
+                tickets={bookings.map((booking) => ({
+                  bookingId: booking.id,
+                  activityName: booking.activityName,
+                  vendorName: outletMap.get(booking.outletId)?.vendorName ?? null,
+                  outletName: outletMap.get(booking.outletId)?.name ?? null,
+                  slotLabel: booking.slotStartsAt
+                    ? booking.categorySlug === "accommodation"
+                      ? `${formatStayRange(booking.slotStartsAt, booking.nights ?? 1, locale)} · ${tCustomer("ui.property.nightsSummary", { count: booking.nights ?? 1 })}`
+                      : dateTimeLabel(booking.slotStartsAt, locale)
+                    : null,
+                  passToken: booking.passToken,
+                  policy: booking.policy,
+                  entryLimit: booking.entryLimit,
+                  entriesUsed: booking.entriesUsed,
+                  validUntil: booking.validUntil ?? null,
+                }))}
+              />}
             </div>
 
             {/* Right Column: Order Summary & Quick Action Card (1 Col) */}
@@ -876,44 +838,6 @@ export default function OrderDetailPage() {
             </div>
           </div>
         </div>
-
-        {/* Verification QR Pass (if applicable) */}
-        {bookings.length > 0 && isPaid && (
-          <div className="mt-8 border border-gray-300 dark:border-border rounded-xl p-4 break-inside-avoid">
-            <div className="mb-4">
-              <p className="font-bold text-sm text-gray-900 dark:text-foreground uppercase tracking-wide">
-                {tCustomer("ui.booking.entryPass")}
-              </p>
-              <p className="text-xs text-gray-600 dark:text-muted-foreground mt-1 max-w-sm">
-                {tCustomer("ui.booking.scanAtOutlet")}
-              </p>
-            </div>
-            <div className="space-y-4">
-              {bookings.map((booking) => (
-                <div key={booking.id} className="flex items-center justify-between gap-4 break-inside-avoid border-t border-gray-200 dark:border-border pt-4 first:border-t-0 first:pt-0">
-                  <div>
-                    <p className="font-bold text-sm text-gray-900 dark:text-foreground">{booking.activityName}</p>
-                    <p className="text-[11px] font-mono text-gray-500 dark:text-muted-foreground mt-2">
-                      {tCustomer("ui.orders.bookingId", { id: booking.id })}
-                    </p>
-                  </div>
-                  <div className="p-1 border border-gray-200 dark:border-border rounded-lg">
-                    <BookingQrCode
-                      bookingId={booking.id}
-                      orderId={order.id}
-                      size={96}
-                      passToken={booking.passToken}
-                      policy={booking.policy}
-                      entryLimit={booking.entryLimit}
-                      entriesUsed={booking.entriesUsed}
-                      validUntil={booking.validUntil}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Legal & Support Footer */}
         <div className="mt-12 border-t border-gray-200 dark:border-border pt-4 text-center text-[10px] text-gray-400 dark:text-muted-foreground">

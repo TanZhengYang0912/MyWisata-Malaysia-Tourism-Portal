@@ -5,7 +5,11 @@ import { verifyEventPickupToken } from "@/lib/events/event-pickup-token";
 
 interface Props { params: Promise<{ vendorId: string }> }
 
-const fulfilSchema = z.object({ eventToken: z.string().trim().min(1).max(2_000) }).strict();
+const fulfilSchema = z.object({
+  eventToken: z.string().trim().min(1).max(2_000),
+  eventLocationId: z.string().uuid(),
+  pickupDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+}).strict();
 
 /** POST: mark an event reservation collected. Accepted only on its pickup date, by its vendor. */
 export async function POST(request: Request, { params }: Props) {
@@ -20,6 +24,9 @@ export async function POST(request: Request, { params }: Props) {
   if (!verification.valid) return apiFail("INVALID_EVENT_PICKUP", "This pickup code is invalid", 400);
   const claims = verification.claims;
   if (claims.vendorId !== vendorId) return apiFail("FORBIDDEN", "This pickup belongs to another vendor", 403);
+  if (claims.locationId !== parsed.data.eventLocationId || claims.pickupDate !== parsed.data.pickupDate) {
+    return apiFail("EVENT_CONTEXT_MISMATCH", "This pickup code belongs to a different event location or date", 409);
+  }
 
   const { data, error } = await access.access.serviceDb.rpc("fulfil_event_pickup", {
     p_order_id: claims.orderId,

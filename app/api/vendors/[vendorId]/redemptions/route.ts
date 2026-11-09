@@ -7,7 +7,7 @@ interface Props {
 
 export interface RedemptionRecord {
   id: string;
-  kind: 'voucher' | 'ticket' | 'event_pickup' | 'retail_pickup';
+  kind: 'voucher' | 'ticket' | 'event_pickup' | 'retail_pickup' | 'food_order';
   redeemedAt: string;
   outlet: {
     id: string | null;
@@ -31,7 +31,7 @@ export interface RedemptionRecord {
   } | null;
 }
 
-const allowedKinds = new Set(['all', 'voucher', 'ticket', 'event_pickup', 'retail_pickup']);
+const allowedKinds = new Set(['all', 'voucher', 'ticket', 'event_pickup', 'retail_pickup', 'food_order']);
 
 function positiveInteger(value: string | null, fallback: number, maximum: number) {
   if (!value || !/^\d+$/.test(value)) return fallback;

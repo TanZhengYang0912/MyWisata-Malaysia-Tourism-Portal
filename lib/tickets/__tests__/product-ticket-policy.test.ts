@@ -31,12 +31,15 @@ describe('product ticket admission policy', () => {
     ).toBe(false);
   });
 
-  it('only treats a known product as ticket-eligible when booking is required', () => {
+  it('accepts bookable products and explicitly linked admissions, but rejects other non-bookable products', () => {
     expect(ticketPolicy.isTicketEligibleProduct).toBeDefined();
     if (typeof ticketPolicy.isTicketEligibleProduct !== 'function') return;
 
     expect(ticketPolicy.isTicketEligibleProduct({ requires_booking: true })).toBe(true);
     expect(ticketPolicy.isTicketEligibleProduct({ requires_booking: false })).toBe(false);
+    expect(ticketPolicy.isTicketEligibleProduct({ requires_booking: false, product_places: { relation_type: 'admission' } })).toBe(true);
+    expect(ticketPolicy.isTicketEligibleProduct({ requires_booking: false, product_places: [{ relation_type: 'admission' }] })).toBe(true);
+    expect(ticketPolicy.isTicketEligibleProduct({ requires_booking: false, product_places: [{ relation_type: 'addon' }] })).toBe(false);
     expect(ticketPolicy.isTicketEligibleProduct({ requires_booking: null })).toBe(false);
     expect(ticketPolicy.isTicketEligibleProduct(null)).toBe(true);
   });

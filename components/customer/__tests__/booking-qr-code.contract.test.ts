@@ -11,7 +11,7 @@ const locales = ["en", "zh-CN", "ms"] as const;
 
 describe("customer booking QR enlarge interaction", () => {
   it("shows a pending state while the initial order pass is being issued", () => {
-    expect(componentSource).toContain("useState(Boolean(orderId && !passToken))");
+    expect(componentSource).toContain("useState(Boolean(orderId && !refreshManagedByParent && !qrPayload))");
     expect(componentSource).toContain('refreshing ? t("ui.booking.qrPreparing") : t("ui.booking.qrUnavailable")');
 
     for (const locale of locales) {
@@ -28,9 +28,10 @@ describe("customer booking QR enlarge interaction", () => {
     expect(componentSource).toContain("DialogContent");
     expect(componentSource).toContain('aria-label={t("ui.booking.qrEnlargeAction")}');
     expect(componentSource).toContain("QRCode.toDataURL");
-    expect(componentSource).toContain("width: 320");
-    expect(componentSource).toContain("buildBookingQrPayload(bookingId, window.location.origin, liveToken)");
-    expect(componentSource).toContain("liveToken && enlargedQr?.token === liveToken ? enlargedQr.dataUrl : undefined");
+    expect(componentSource).toContain("getCustomerPassQrOptions(320)");
+    expect(componentSource).toContain("buildTicketPassQrPayload({");
+    expect(componentSource).toContain("ticketCode: ticket.ticketCode");
+    expect(componentSource).toContain("currentQrPayload && enlargedQr?.payload === currentQrPayload ? enlargedQr.dataUrl : undefined");
     expect(componentSource).toContain("if (!ticket) return;");
     expect(componentSource).not.toContain("setLiveToken(ticket?.passToken)");
   });

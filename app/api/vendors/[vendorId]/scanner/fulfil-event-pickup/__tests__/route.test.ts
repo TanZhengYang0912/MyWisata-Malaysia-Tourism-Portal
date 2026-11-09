@@ -12,11 +12,11 @@ vi.mock('@/lib/vendor-authorization', () => ({ authorizeVendor: mocks.authorizeV
 
 import { POST } from '../route';
 
-function request(eventToken: string) {
+function request(eventToken: string, eventLocationId: string = LOCATION_ID, pickupDate: string = futureDate) {
   return new Request(`http://localhost/api/vendors/${VENDOR_ID}/scanner/fulfil-event-pickup`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ eventToken }),
+    body: JSON.stringify({ eventToken, eventLocationId, pickupDate }),
   });
 }
 
@@ -51,6 +51,25 @@ describe('POST fulfil-event-pickup', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('fulfil_event_pickup', expect.objectContaining({ p_pickup_slot_id: null }));
   });
 
+  it("requires the fulfilment context to match the signed location and date", async () => {
+    const token = signEventPickupToken({ orderId: ORDER_ID, vendorId: VENDOR_ID, locationId: LOCATION_ID, pickupDate: futureDate, issuedAt: 1 });
+
+    const missingContext = await POST(new Request(`http://localhost/api/vendors/${VENDOR_ID}/scanner/fulfil-event-pickup`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventToken: token }),
+    }), params);
+    expect(missingContext.status).toBe(422);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+
+    const mismatch = await POST(request(token, '77777777-7777-4777-8777-777777777777', futureDate), params);
+    expect(mismatch.status).toBe(409);
+    await expect(mismatch.json()).resolves.toMatchObject({ error: { code: 'EVENT_CONTEXT_MISMATCH' } });
+
+    const wrongDate = await POST(request(token, LOCATION_ID, '2020-01-01'), params);
+    expect(wrongDate.status).toBe(409);
+    await expect(wrongDate.json()).resolves.toMatchObject({ error: { code: 'EVENT_CONTEXT_MISMATCH' } });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it("refuses another vendor's pickup code", async () => {
     const token = signEventPickupToken({ orderId: ORDER_ID, vendorId: OTHER_VENDOR_ID, locationId: LOCATION_ID, pickupDate: futureDate, issuedAt: 1 });
 
@@ -63,7 +82,7 @@ describe('POST fulfil-event-pickup', () => {
   it('refuses a code whose pickup date has passed', async () => {
     const token = signEventPickupToken({ orderId: ORDER_ID, vendorId: VENDOR_ID, locationId: LOCATION_ID, pickupDate: '2020-01-01', issuedAt: 1 });
 
-    const response = await POST(request(token), params);
+    const response = await POST(request(token, LOCATION_ID, '2020-01-01'), params);
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'EVENT_PICKUP_EXPIRED' } });

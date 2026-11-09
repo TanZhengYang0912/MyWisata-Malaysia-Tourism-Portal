@@ -38,6 +38,15 @@ function tableRows(table: string) {
   if (table === "vendors") return [{ id: VENDOR_ID, name: "Event Partner", status: "approved", kind: "event" }];
   if (table === "audit_logs") return database.auditLogs;
   if (table === "promotion_campaign_locations") return [database.location];
+  if (table === "event_pickup_codes") return [{
+    group_key: `event:${ORDER_ID}:${VENDOR_ID}:${LOCATION_ID}:${database.orderItems[0]?.pickup_date}:${SLOT_ID}`,
+    code: "EABCDEFGHJK",
+    order_id: ORDER_ID,
+    vendor_id: VENDOR_ID,
+    location_id: LOCATION_ID,
+    pickup_date: database.orderItems[0]?.pickup_date,
+    pickup_slot_id: SLOT_ID,
+  }];
   if (table === "users") return [
     { id: CUSTOMER_ID, full_name: "Aina Customer", email: "aina@example.test" },
     { id: OPERATOR_ID, full_name: "Event Operator", email: "operator@example.test" },
@@ -120,17 +129,18 @@ describe("event partner payment-to-scan flow", () => {
     expect(qrPayload.data.eventPickups).toHaveLength(1);
     const pass = qrPayload.data.eventPickups[0];
     expect(verifyEventPickupToken(pass.eventToken).claims).toMatchObject({ orderId: ORDER_ID, vendorId: VENDOR_ID, locationId: LOCATION_ID, pickupSlotId: SLOT_ID });
+    expect(pass.eventCode).toBe("E-ABCDE-FGHJK");
 
-    const scanValue = `http://localhost/customer/orders/${ORDER_ID}?event_t=${pass.eventToken}`;
+    const scanValue = pass.eventCode;
     const scanResponse = await resolveScan(new Request(`http://localhost/api/vendors/${VENDOR_ID}/scanner/resolve`, {
-      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ rawValue: scanValue }),
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ rawValue: scanValue, eventLocationId: LOCATION_ID, pickupDate: database.orderItems[0].pickup_date }),
     }), { params: Promise.resolve({ vendorId: VENDOR_ID }) });
     const scanPayload = await scanResponse.json();
     expect(scanResponse.status).toBe(200);
     expect(scanPayload.data.items.map((item: { name: string }) => item.name)).toEqual(["Kuih", "Teh"]);
 
     const fulfilResponse = await fulfilPickup(new Request(`http://localhost/api/vendors/${VENDOR_ID}/scanner/fulfil-event-pickup`, {
-      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ eventToken: pass.eventToken }),
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ eventToken: pass.eventToken, eventLocationId: LOCATION_ID, pickupDate: database.orderItems[0].pickup_date }),
     }), { params: Promise.resolve({ vendorId: VENDOR_ID }) });
     expect(fulfilResponse.status).toBe(200);
     expect(database.orderItems.every((row) => row.fulfil_status === "fulfilled")).toBe(true);

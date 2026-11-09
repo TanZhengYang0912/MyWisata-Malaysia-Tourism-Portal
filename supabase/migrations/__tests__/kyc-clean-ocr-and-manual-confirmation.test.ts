@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const migrationPath = resolve(process.cwd(), 'supabase/migrations/20261109042323_kyc_clean_ocr_and_manual_confirmation.sql');
+const migrationPath = resolve(process.cwd(), 'supabase/migrations/20261109062539_kyc_clean_ocr_and_manual_confirmation.sql');
 
 describe('clean OCR source and manual passport approval migration contract', () => {
   it('requires trusted source/artifact/parser binding for every OCR observation and link', () => {

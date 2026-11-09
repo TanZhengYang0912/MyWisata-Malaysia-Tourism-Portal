@@ -3,10 +3,12 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const pageSource = readFileSync(resolve(process.cwd(), "app/customer/orders/[id]/page.tsx"), "utf8");
+const orderPassSource = readFileSync(resolve(process.cwd(), "app/customer/orders/[id]/order-pickup-qr-codes.tsx"), "utf8");
 
 describe("customer order detail actions", () => {
   it("uses the shared real booking QR and keeps refund/print actions available", () => {
-    expect(pageSource).toContain("BookingQrCode");
+    expect(pageSource).toContain("OrderPickupQrCodes");
+    expect(orderPassSource).toContain("BookingQrCode");
     expect(pageSource).toContain('tCustomer("ui.actions.requestRefund")');
     expect(pageSource).toContain('tCustomer("ui.actions.printReceipt")');
     expect(pageSource).not.toContain("Demo QR");
@@ -25,7 +27,7 @@ describe("customer order detail actions", () => {
 
   it("shows the checkout date for one-night accommodation items", () => {
     expect(pageSource).toContain('item.categorySlug === "accommodation"');
-    expect(pageSource).toContain('b.categorySlug === "accommodation"');
+    expect(pageSource).toContain('booking.categorySlug === "accommodation"');
   });
 
   it("shows the guest preferences stored on an accommodation order", () => {
@@ -47,14 +49,15 @@ describe("customer order detail actions", () => {
       resolve(process.cwd(), "components/customer/customer-qr-pass-card.tsx"),
       "utf8",
     );
-    expect(pageSource).toContain("CustomerQrPassCard");
+    expect(orderPassSource).toContain("CustomerQrPassCard");
     expect(sharedCard).toContain("sm:grid-cols-[minmax(0,1fr)_11rem]");
     expect(sharedCard).toContain("sm:w-44");
     expect(sharedCard.indexOf('data-qr-pass-details="true"')).toBeLessThan(
       sharedCard.indexOf('data-qr-pass-code="true"'),
     );
-    expect(pageSource).toContain("dateTimeLabel(b.slotStartsAt, locale)");
-    expect(pageSource).toContain('tCustomer("ui.labels.bookingReference")');
+    expect(orderPassSource).toContain("ticket.slotLabel");
+    expect(orderPassSource).toContain("outletLabel=");
+    expect(orderPassSource).not.toContain("bookingReference");
   });
 
   it("explains pending payment and only renders provider resume actions after server verification", () => {

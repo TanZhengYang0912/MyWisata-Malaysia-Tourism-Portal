@@ -23,6 +23,10 @@ export interface Database {
       cart_items: { Row: CartItemRow; Insert: Partial<CartItemRow>; Update: Partial<CartItemRow> };
       orders: { Row: OrderRow; Insert: Partial<OrderRow>; Update: Partial<OrderRow> };
       order_items: { Row: OrderItemRow; Insert: Partial<OrderItemRow>; Update: Partial<OrderItemRow> };
+      retail_pickup_codes: { Row: RetailPickupCodeRow; Insert: Partial<RetailPickupCodeRow>; Update: Partial<RetailPickupCodeRow> };
+      event_pickup_codes: { Row: EventPickupCodeRow; Insert: Partial<EventPickupCodeRow>; Update: Partial<EventPickupCodeRow> };
+      ticket_pickup_codes: { Row: TicketPickupCodeRow; Insert: Partial<TicketPickupCodeRow>; Update: Partial<TicketPickupCodeRow> };
+      food_pickup_codes: { Row: FoodPickupCodeRow; Insert: Partial<FoodPickupCodeRow>; Update: Partial<FoodPickupCodeRow> };
       bookings: { Row: BookingRow; Insert: Partial<BookingRow>; Update: Partial<BookingRow> };
       wallets: { Row: WalletRow; Insert: Partial<WalletRow>; Update: Partial<WalletRow> };
       wallet_ledger: { Row: WalletLedgerRow; Insert: Partial<WalletLedgerRow>; Update: Partial<WalletLedgerRow> };
@@ -272,10 +276,40 @@ export interface OrderItemRow {
   created_at: string;
 }
 
+export interface RetailPickupCodeRow {
+  order_item_id: string;
+  code: string;
+  created_at: string;
+}
+
+export interface EventPickupCodeRow {
+  group_key: string;
+  code: string;
+  order_id: string;
+  vendor_id: string;
+  location_id: string;
+  pickup_date: string;
+  pickup_slot_id: string | null;
+  created_at: string;
+}
+
+export interface TicketPickupCodeRow {
+  ticket_pass_id: string;
+  code: string;
+  created_at: string;
+}
+
+export interface FoodPickupCodeRow {
+  order_id: string;
+  outlet_id: string;
+  code: string;
+  created_at: string;
+}
+
 export interface BookingRow {
   id: string;
   order_item_id: string;
-  slot_id: string;
+  slot_id: string | null;
   customer_id: string;
   status: 'confirmed' | 'checked_in' | 'no_show' | 'cancelled';
   demo_qr_code: string | null;
