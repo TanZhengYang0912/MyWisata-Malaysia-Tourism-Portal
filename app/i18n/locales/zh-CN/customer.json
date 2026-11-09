@@ -1501,6 +1501,9 @@
       },
       "previewAlt": "已选择的{{side}}照片",
       "previewGuidance": "请确认照片只有一张证件、四角完整，姓名和号码清楚可读。避免反光、手指遮字及拼图。此预览不会验证身份。",
+      "confirmDocumentFrame": "我已确认整张证件边缘和所有文字均完整可见。",
+      "confirmPassportFrame": "我已确认护照资料页完整，底部两行机读区（MRZ）清晰可见。",
+      "framingConfirmationRequired": "请检查照片，并确认所需证件面均完整可见。",
       "previewUnavailable": "浏览器无法显示此照片。你可以更换照片；提交时服务器仍会进行校验。"
     },
     "recommendations": {

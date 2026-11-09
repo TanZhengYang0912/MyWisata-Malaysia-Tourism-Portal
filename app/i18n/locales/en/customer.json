@@ -1496,6 +1496,9 @@
       },
       "previewAlt": "Selected {{side}} photo",
       "previewGuidance": "Check that this photo shows one document, all four corners, and a readable name and number. Avoid glare, fingers covering text, and collages. This preview does not verify your identity.",
+      "confirmDocumentFrame": "I checked that all document edges and text are visible.",
+      "confirmPassportFrame": "I checked the full passport data page and both MRZ lines are visible.",
+      "framingConfirmationRequired": "Review the photo and confirm that the required document sides are complete.",
       "previewUnavailable": "This browser could not display the photo. You may replace it; the server will still validate your submission."
     },
     "recommendations": {

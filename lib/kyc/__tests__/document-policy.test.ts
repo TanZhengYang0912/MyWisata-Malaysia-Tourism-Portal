@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getRequiredKycDocumentSides, hasRequiredKycEvidence, isSupportedDocumentNumber } from '../document-policy';
+import { getRequiredKycDocumentSides, hasRequiredKycEvidence, hasRequiredKycFramingConfirmation, isSupportedDocumentNumber } from '../document-policy';
 
 describe('KYC document policy', () => {
   it('requires only the passport biodata page and keeps MyKad two-sided', () => {
@@ -23,5 +23,13 @@ describe('KYC document policy', () => {
     expect(hasRequiredKycEvidence('national_id', image, null)).toBe(false);
     expect(hasRequiredKycEvidence('national_id', image, image)).toBe(true);
     expect(hasRequiredKycEvidence('passport', image, null)).toBe(true);
+  });
+
+  it('requires photo confirmation for every side required by the selected document type', () => {
+    expect(hasRequiredKycFramingConfirmation('passport', true, false)).toBe(true);
+    expect(hasRequiredKycFramingConfirmation('national_id', true, false)).toBe(false);
+    expect(hasRequiredKycFramingConfirmation('national_id', true, true)).toBe(true);
+    expect(hasRequiredKycFramingConfirmation('driving_license', true, true)).toBe(true);
+    expect(hasRequiredKycFramingConfirmation('passport', false, true)).toBe(false);
   });
 });

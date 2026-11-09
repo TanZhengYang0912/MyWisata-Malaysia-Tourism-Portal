@@ -6,6 +6,10 @@ export function getRequiredKycDocumentSides(documentType: KycDocumentType): read
   return documentType === 'passport' ? ['front'] : ['front', 'back'];
 }
 
+export function hasRequiredKycFramingConfirmation(documentType: KycDocumentType, front: boolean, back: boolean): boolean {
+  return front && (documentType === 'passport' || back);
+}
+
 export function isSupportedDocumentNumber(documentType: KycDocumentType, value: string): boolean {
   const normalized = value.trim().toUpperCase();
   if (documentType === 'passport') {

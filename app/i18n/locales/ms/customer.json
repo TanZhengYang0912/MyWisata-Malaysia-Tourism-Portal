@@ -1501,6 +1501,9 @@
       },
       "previewAlt": "Foto {{side}} yang dipilih",
       "previewGuidance": "Pastikan foto menunjukkan satu dokumen, keempat-empat penjuru serta nama dan nombor yang jelas. Elakkan silau, jari menutup teks dan kolaj. Pratonton ini tidak mengesahkan identiti anda.",
+      "confirmDocumentFrame": "Saya telah memastikan semua tepi dokumen dan teks kelihatan.",
+      "confirmPassportFrame": "Saya telah memastikan seluruh halaman biodata dan kedua-dua baris MRZ kelihatan.",
+      "framingConfirmationRequired": "Semak foto dan sahkan semua bahagian dokumen yang diperlukan lengkap.",
       "previewUnavailable": "Pelayar ini tidak dapat memaparkan foto. Anda boleh menggantikannya; pelayan tetap akan menyemak penyerahan anda."
     },
     "recommendations": {
