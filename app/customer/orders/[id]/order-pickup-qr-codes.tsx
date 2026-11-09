@@ -144,6 +144,7 @@ export function OrderPickupQrCodes({ orderId, tickets: ticketPresentations = [] 
         return <CustomerQrPassCard
           key={ticket.bookingId}
           title={ticket.activityName}
+          merchantLabel={ticket.vendorName ? t("ui.labels.providedBy", { vendor: ticket.vendorName }) : undefined}
           outletLabel={ticket.outletName ? `${t("ui.labels.outlet")}: ${ticket.outletName}` : undefined}
           mobileStacked
           qr={<BookingQrCode
