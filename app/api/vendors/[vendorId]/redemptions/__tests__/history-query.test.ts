@@ -35,6 +35,17 @@ describe("Vendor redemption history query", () => {
     });
   });
 
+  it("passes food-order history filters to the shared, outlet-scoped history query", async () => {
+    const response = await GET(new Request(`http://localhost/api/vendors/${VENDOR_ID}/redemptions?kind=food_order&outletId=${OUTLET_ID}`), { params: Promise.resolve({ vendorId: VENDOR_ID }) });
+
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith("list_vendor_redemption_history", expect.objectContaining({
+      p_kind: "food_order",
+      p_scope_outlet_ids: [OUTLET_ID],
+      p_outlet_id: OUTLET_ID,
+    }));
+  });
+
   it("rejects an outlet outside the authorized vendor scope", async () => {
     const response = await GET(new Request(`http://localhost/api/vendors/${VENDOR_ID}/redemptions?outletId=88888888-8888-4888-8888-888888888888`), { params: Promise.resolve({ vendorId: VENDOR_ID }) });
     expect(response.status).toBe(403);

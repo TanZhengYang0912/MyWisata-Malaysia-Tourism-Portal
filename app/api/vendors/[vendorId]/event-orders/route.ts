@@ -7,6 +7,8 @@ interface Props { params: Promise<{ vendorId: string }> }
 type Row = {
   id: string;
   order_id: string;
+  event_location_id: string;
+  promotion_campaign_locations: { id: string; name: string } | { id: string; name: string }[] | null;
   pickup_date: string;
   variant_name: string | null;
   product_name: string;
@@ -27,7 +29,7 @@ export async function GET(request: Request, { params }: Props) {
 
   let query = access.access.serviceDb
     .from('order_items')
-    .select('id,order_id,pickup_date,variant_name,product_name,quantity,line_total,fulfil_status,orders!inner(display_id,status)')
+    .select('id,order_id,event_location_id,promotion_campaign_locations(id,name),pickup_date,variant_name,product_name,quantity,line_total,fulfil_status,orders!inner(display_id,status)')
     .eq('vendor_id', vendorId)
     .not('event_location_id', 'is', null)
     .in('orders.status', ['paid', 'completed'])
@@ -42,10 +44,13 @@ export async function GET(request: Request, { params }: Props) {
   return apiOk({
     items: ((data ?? []) as Row[]).map((row) => {
       const order = Array.isArray(row.orders) ? row.orders[0] : row.orders;
+      const location = Array.isArray(row.promotion_campaign_locations) ? row.promotion_campaign_locations[0] : row.promotion_campaign_locations;
       return {
         id: row.id,
         orderId: row.order_id,
         displayId: order?.display_id ?? row.order_id.slice(0, 8).toUpperCase(),
+        locationId: row.event_location_id,
+        locationName: location?.name ?? 'Event location',
         pickupDate: row.pickup_date,
         pickupLabel: row.variant_name,
         itemName: row.product_name,

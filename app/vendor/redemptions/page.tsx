@@ -18,6 +18,7 @@ import {
   Store,
   Ticket,
   TicketPercent,
+  TicketCheck,
   Users,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
@@ -54,7 +55,7 @@ export default function VendorRedemptionsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [outletFilter, setOutletFilter] = useState('');
-  const [kindFilter, setKindFilter] = useState<'all' | 'voucher' | 'ticket' | 'event_pickup' | 'retail_pickup'>('all');
+  const [kindFilter, setKindFilter] = useState<'all' | 'voucher' | 'ticket' | 'event_pickup' | 'retail_pickup' | 'food_order'>('all');
   const [search, setSearch] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -140,7 +141,7 @@ export default function VendorRedemptionsPage() {
       `"${r.item.details}"`,
       `"${r.customer.name.replace(/"/g, '""')}"`,
       `"${r.customer.email}"`,
-      `"${r.staff?.name || 'Self-service'}"`,
+      `"${r.staff?.name || t('ui.redemptions.staffNotRecorded', 'Not recorded')}"`,
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...csvRows.map((row) => row.join(','))].join('\n');
@@ -237,6 +238,7 @@ export default function VendorRedemptionsPage() {
                 { value: 'voucher', label: t('ui.redemptions.filters.vouchers', 'Vouchers') },
                 { value: 'ticket', label: t('ui.redemptions.filters.tickets', 'Tickets') },
                 { value: 'retail_pickup', label: t('ui.redemptions.filters.retail', 'Retail pickups') },
+                { value: 'food_order', label: t('ui.redemptions.filters.foodOrders', 'Food scans') },
               ] as const
             ).map((item) => (
               <button
@@ -355,6 +357,8 @@ export default function VendorRedemptionsPage() {
                     <div className="flex min-w-0 flex-wrap gap-2">
                       {record.kind === 'voucher' ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-200"><TicketPercent size={13} aria-hidden="true" /> {t('ui.redemptions.kindVoucher', 'Voucher')}</span>
+                      ) : record.kind === 'food_order' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 dark:bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:text-orange-200"><TicketCheck size={13} aria-hidden="true" /> {t('ui.redemptions.kindFoodOrder', 'Food order scan')}</span>
                       ) : record.kind === 'retail_pickup' ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"><PackageCheck size={13} aria-hidden="true" /> {t('ui.redemptions.kindRetailPickup', 'Retail pickup')}</span>
                       ) : record.kind === 'event_pickup' ? (
@@ -376,7 +380,7 @@ export default function VendorRedemptionsPage() {
                 <dl className="grid gap-2 border-t border-border pt-3 text-xs sm:grid-cols-2">
                   <div className="min-w-0"><dt className="font-semibold text-muted-foreground">{t('ui.redemptions.table.outlet', 'Outlet')}</dt><dd className="mt-0.5 break-words font-medium text-foreground">{record.outlet.name}</dd><dd className="mt-0.5 flex items-start gap-1 text-muted-foreground"><MapPin size={12} className="mt-0.5 shrink-0" aria-hidden="true" /> {record.outlet.location}</dd></div>
                   <div className="min-w-0"><dt className="font-semibold text-muted-foreground">{t('ui.redemptions.table.customer', 'Customer')}</dt><dd className="mt-0.5 break-words font-medium text-foreground">{record.customer.name}</dd><dd className="break-all text-muted-foreground">{record.customer.email}</dd></div>
-                  <div className="min-w-0 sm:col-span-2"><dt className="font-semibold text-muted-foreground">{t('ui.redemptions.table.verifiedBy', 'Verified By')}</dt><dd className="mt-0.5 break-words text-foreground">{record.staff ? <span className="inline-flex items-center gap-1"><Users size={12} className="shrink-0 text-primary" aria-hidden="true" />{record.staff.name} <span className="text-muted-foreground">· {record.staff.email}</span></span> : t('ui.redemptions.selfService', 'Counter checkout')}</dd></div>
+                  <div className="min-w-0 sm:col-span-2"><dt className="font-semibold text-muted-foreground">{t('ui.redemptions.table.verifiedBy', 'Verified By')}</dt><dd className="mt-0.5 break-words text-foreground">{record.staff ? <span className="inline-flex items-center gap-1"><Users size={12} className="shrink-0 text-primary" aria-hidden="true" />{record.staff.name} <span className="text-muted-foreground">· {record.staff.email}</span></span> : t('ui.redemptions.staffNotRecorded', 'Not recorded')}</dd></div>
                 </dl>
               </VendorMobileRecordCard>
             ))}
@@ -403,6 +407,11 @@ export default function VendorRedemptionsPage() {
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-200">
                           <TicketPercent size={13} />
                           <span>{t('ui.redemptions.kindVoucher', 'Voucher')}</span>
+                        </span>
+                      ) : r.kind === 'food_order' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 dark:bg-orange-500/10 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:text-orange-200">
+                          <TicketCheck size={13} />
+                          <span>{t('ui.redemptions.kindFoodOrder', 'Food order scan')}</span>
                         </span>
                       ) : r.kind === 'retail_pickup' ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
@@ -476,7 +485,7 @@ export default function VendorRedemptionsPage() {
                           <p className="text-[11px] text-gray-400 dark:text-muted-foreground">{r.staff.email}</p>
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.selfService', 'Counter checkout')}</span>
+                        <span className="text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.staffNotRecorded', 'Not recorded')}</span>
                       )}
                     </td>
 

@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { signEventPickupToken } from "@/lib/events/event-pickup-token";
 import { signFoodFulfilmentToken } from "@/lib/food/food-fulfilment-token";
 import { signRetailPickupToken } from "@/lib/orders/retail-pickup-token";
+import { createRetailPickupCode } from "@/lib/orders/retail-pickup-code";
+import { createPickupCode } from "@/lib/pickup-code";
 
 type FoodOrderPass = {
   outletId: string;
@@ -11,6 +13,7 @@ type FoodOrderPass = {
   status: "pending" | "checked_in" | "fulfilled";
   items: { name: string; variant: string | null; quantity: number }[];
   foodToken: string;
+  codeEligible: boolean;
 };
 
 type EventPickupPass = {
@@ -20,6 +23,17 @@ type EventPickupPass = {
   status: "pending" | "collected";
   items: { name: string; quantity: number }[];
   eventToken: string;
+  codeContext: EventPickupCodeContext;
+  eventCode: string | null;
+};
+
+type EventPickupCodeContext = {
+  groupKey: string;
+  orderId: string;
+  vendorId: string;
+  locationId: string;
+  pickupDate: string;
+  pickupSlotId: string | null;
 };
 
 type RetailPickupPass = {
@@ -31,6 +45,7 @@ type RetailPickupPass = {
   name: string;
   variant: string | null;
   retailToken: string | null;
+  retailCode: string | null;
 };
 
 export class OrderPickupPassError extends Error {
@@ -40,12 +55,172 @@ export class OrderPickupPassError extends Error {
   }
 }
 
+export async function loadOrCreateTicketPickupCodes(db: SupabaseClient, ticketPassIds: string[]) {
+  const uniqueTicketPassIds = [...new Set(ticketPassIds)];
+  const codeByTicketPassId = new Map<string, string>();
+  if (uniqueTicketPassIds.length === 0) return codeByTicketPassId;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const { data, error } = await db.from("ticket_pickup_codes")
+      .select("ticket_pass_id,code")
+      .in("ticket_pass_id", uniqueTicketPassIds);
+    if (error) throw new OrderPickupPassError("DB_ERROR", "Unable to load ticket pickup codes");
+
+    codeByTicketPassId.clear();
+    for (const row of data ?? []) codeByTicketPassId.set(row.ticket_pass_id, row.code);
+    const missingTicketPassIds = uniqueTicketPassIds.filter((ticketPassId) => !codeByTicketPassId.has(ticketPassId));
+    if (missingTicketPassIds.length === 0) return codeByTicketPassId;
+
+    const { error: insertError } = await db.from("ticket_pickup_codes").upsert(
+      missingTicketPassIds.map((ticketPassId) => ({ ticket_pass_id: ticketPassId, code: createPickupCode("ticket") })),
+      { onConflict: "ticket_pass_id", ignoreDuplicates: true },
+    );
+    if (insertError && insertError.code !== "23505") {
+      throw new OrderPickupPassError("DB_ERROR", "Unable to create ticket pickup codes");
+    }
+  }
+
+  const { data, error } = await db.from("ticket_pickup_codes")
+    .select("ticket_pass_id,code")
+    .in("ticket_pass_id", uniqueTicketPassIds);
+  if (error) throw new OrderPickupPassError("DB_ERROR", "Unable to verify ticket pickup codes");
+  codeByTicketPassId.clear();
+  for (const row of data ?? []) codeByTicketPassId.set(row.ticket_pass_id, row.code);
+  if (uniqueTicketPassIds.some((ticketPassId) => !codeByTicketPassId.has(ticketPassId))) {
+    throw new OrderPickupPassError("DB_ERROR", "Unable to create a unique ticket pickup code");
+  }
+  return codeByTicketPassId;
+}
+
+export async function loadOrCreateFoodPickupCodes(db: SupabaseClient, orderId: string, outletIds: string[]) {
+  const uniqueOutletIds = [...new Set(outletIds)];
+  const codeByOutletId = new Map<string, string>();
+  if (uniqueOutletIds.length === 0) return codeByOutletId;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const { data, error } = await db.from("food_pickup_codes")
+      .select("outlet_id,code")
+      .eq("order_id", orderId)
+      .in("outlet_id", uniqueOutletIds);
+    if (error) throw new OrderPickupPassError("DB_ERROR", "Unable to load food pickup codes");
+
+    codeByOutletId.clear();
+    for (const row of data ?? []) codeByOutletId.set(row.outlet_id, row.code);
+    const missingOutletIds = uniqueOutletIds.filter((outletId) => !codeByOutletId.has(outletId));
+    if (missingOutletIds.length === 0) return codeByOutletId;
+
+    const { error: insertError } = await db.from("food_pickup_codes").upsert(
+      missingOutletIds.map((outletId) => ({ order_id: orderId, outlet_id: outletId, code: createPickupCode("food") })),
+      { onConflict: "order_id,outlet_id", ignoreDuplicates: true },
+    );
+    if (insertError && insertError.code !== "23505") {
+      throw new OrderPickupPassError("DB_ERROR", "Unable to create food pickup codes");
+    }
+  }
+
+  const { data, error } = await db.from("food_pickup_codes")
+    .select("outlet_id,code")
+    .eq("order_id", orderId)
+    .in("outlet_id", uniqueOutletIds);
+  if (error) throw new OrderPickupPassError("DB_ERROR", "Unable to verify food pickup codes");
+  codeByOutletId.clear();
+  for (const row of data ?? []) codeByOutletId.set(row.outlet_id, row.code);
+  if (uniqueOutletIds.some((outletId) => !codeByOutletId.has(outletId))) {
+    throw new OrderPickupPassError("DB_ERROR", "Unable to create a unique food pickup code");
+  }
+  return codeByOutletId;
+}
+
 function isMissingFoodFulfilmentColumn(error: { code?: string; message?: string } | null) {
   return error?.code === "42703" && (
     error.message?.includes("order_items.food_fulfilment_mode") === true
     || error.message?.includes("order_items.food_qr_scanned_at") === true
     || error.message?.includes("order_items.retail_qr_scanned_at") === true
   );
+}
+
+export async function loadOrCreateRetailPickupCodes(db: SupabaseClient, orderItemIds: string[]) {
+  const uniqueOrderItemIds = [...new Set(orderItemIds)];
+  const codeByOrderItemId = new Map<string, string>();
+  if (uniqueOrderItemIds.length === 0) return codeByOrderItemId;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const { data, error } = await db.from("retail_pickup_codes")
+      .select("order_item_id,code")
+      .in("order_item_id", uniqueOrderItemIds);
+    if (error) throw new OrderPickupPassError("DB_ERROR", "Unable to load retail pickup codes");
+
+    codeByOrderItemId.clear();
+    for (const row of data ?? []) codeByOrderItemId.set(row.order_item_id, row.code);
+    const missingOrderItemIds = uniqueOrderItemIds.filter((orderItemId) => !codeByOrderItemId.has(orderItemId));
+    if (missingOrderItemIds.length === 0) return codeByOrderItemId;
+
+    const { error: insertError } = await db.from("retail_pickup_codes").upsert(
+      missingOrderItemIds.map((orderItemId) => ({ order_item_id: orderItemId, code: createRetailPickupCode() })),
+      { onConflict: "order_item_id", ignoreDuplicates: true },
+    );
+    if (insertError && insertError.code !== "23505") {
+      throw new OrderPickupPassError("DB_ERROR", "Unable to create retail pickup codes");
+    }
+  }
+
+  const { data, error } = await db.from("retail_pickup_codes")
+    .select("order_item_id,code")
+    .in("order_item_id", uniqueOrderItemIds);
+  if (error) throw new OrderPickupPassError("DB_ERROR", "Unable to verify retail pickup codes");
+  codeByOrderItemId.clear();
+  for (const row of data ?? []) codeByOrderItemId.set(row.order_item_id, row.code);
+  if (uniqueOrderItemIds.some((orderItemId) => !codeByOrderItemId.has(orderItemId))) {
+    throw new OrderPickupPassError("DB_ERROR", "Unable to create a unique retail pickup code");
+  }
+  return codeByOrderItemId;
+}
+
+export async function loadOrCreateEventPickupCodes(db: SupabaseClient, groups: EventPickupCodeContext[]) {
+  const groupByKey = new Map(groups.map((group) => [group.groupKey, group]));
+  const uniqueGroups = [...groupByKey.values()];
+  const codeByGroupKey = new Map<string, string>();
+  if (uniqueGroups.length === 0) return codeByGroupKey;
+
+  const groupKeys = uniqueGroups.map((group) => group.groupKey);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const { data, error } = await db.from("event_pickup_codes")
+      .select("group_key,code")
+      .in("group_key", groupKeys);
+    if (error) throw new OrderPickupPassError("DB_ERROR", "Unable to load event pickup codes");
+
+    codeByGroupKey.clear();
+    for (const row of data ?? []) codeByGroupKey.set(row.group_key, row.code);
+    const missingGroups = uniqueGroups.filter((group) => !codeByGroupKey.has(group.groupKey));
+    if (missingGroups.length === 0) return codeByGroupKey;
+
+    const { error: insertError } = await db.from("event_pickup_codes").upsert(
+      missingGroups.map((group) => ({
+        group_key: group.groupKey,
+        code: createPickupCode("event"),
+        order_id: group.orderId,
+        vendor_id: group.vendorId,
+        location_id: group.locationId,
+        pickup_date: group.pickupDate,
+        pickup_slot_id: group.pickupSlotId,
+      })),
+      { onConflict: "group_key", ignoreDuplicates: true },
+    );
+    if (insertError && insertError.code !== "23505") {
+      throw new OrderPickupPassError("DB_ERROR", "Unable to create event pickup codes");
+    }
+  }
+
+  const { data, error } = await db.from("event_pickup_codes")
+    .select("group_key,code")
+    .in("group_key", groupKeys);
+  if (error) throw new OrderPickupPassError("DB_ERROR", "Unable to verify event pickup codes");
+  codeByGroupKey.clear();
+  for (const row of data ?? []) codeByGroupKey.set(row.group_key, row.code);
+  if (groupKeys.some((groupKey) => !codeByGroupKey.has(groupKey))) {
+    throw new OrderPickupPassError("DB_ERROR", "Unable to create a unique event pickup code");
+  }
+  return codeByGroupKey;
 }
 
 type EventPickupRow = {
@@ -82,6 +257,7 @@ async function loadEventPickups(db: SupabaseClient, orderId: string): Promise<Ev
     allFulfilled: boolean;
     items: { name: string; quantity: number }[];
     token: string;
+    codeContext: EventPickupCodeContext;
   }>();
   for (const dateRows of dateGroups.values()) {
     const allRowsHaveSlot = dateRows.every((row) => Boolean(row.pickup_slot_id && row.slot_starts_at && Number.isFinite(new Date(row.slot_starts_at).getTime())));
@@ -112,6 +288,14 @@ async function loadEventPickups(db: SupabaseClient, orderId: string): Promise<Ev
             ...(allRowsHaveSlot ? { pickupSlotId: row.pickup_slot_id as string } : {}),
             issuedAt: Date.now(),
           }),
+          codeContext: {
+            groupKey: `event:${orderId}:${row.vendor_id}:${row.event_location_id}:${row.pickup_date}:${allRowsHaveSlot ? row.pickup_slot_id as string : "date"}`,
+            orderId,
+            vendorId: row.vendor_id,
+            locationId: row.event_location_id,
+            pickupDate: row.pickup_date,
+            pickupSlotId: allRowsHaveSlot ? row.pickup_slot_id as string : null,
+          },
         };
         groups.set(key, group);
       }
@@ -126,6 +310,7 @@ async function loadEventPickups(db: SupabaseClient, orderId: string): Promise<Ev
     ...group,
     status: allFulfilled ? "collected" : "pending",
     eventToken: token,
+    eventCode: null,
   }));
 }
 
@@ -146,6 +331,7 @@ export async function loadOrderPickupPasses(db: SupabaseClient, orderId: string)
     mode: "dine_in" | "takeaway";
     allFulfilled: boolean;
     allScanned: boolean;
+    hasScanned: boolean;
     items: { name: string; variant: string | null; quantity: number }[];
   }>();
   for (const row of (orderItems ?? []) as Array<{
@@ -174,17 +360,19 @@ export async function loadOrderPickupPasses(db: SupabaseClient, orderId: string)
     }
     let group = foodGroups.get(row.outlet_id);
     if (!group) {
-      group = { outletId: row.outlet_id, outletName: outlet.name, vendorName: vendor.name, mode: row.food_fulfilment_mode, allFulfilled: true, allScanned: true, items: [] };
+      group = { outletId: row.outlet_id, outletName: outlet.name, vendorName: vendor.name, mode: row.food_fulfilment_mode, allFulfilled: true, allScanned: true, hasScanned: false, items: [] };
       foodGroups.set(row.outlet_id, group);
     }
     if (group.mode !== row.food_fulfilment_mode) throw new OrderPickupPassError("FOOD_ORDER_INCONSISTENT", "Food items at one outlet have inconsistent service modes");
     if (row.fulfil_status !== "fulfilled") group.allFulfilled = false;
     if (!row.food_qr_scanned_at) group.allScanned = false;
+    else group.hasScanned = true;
     group.items.push({ name: row.product_name, variant: row.variant_name, quantity: row.quantity });
   }
 
-  const foodOrders = [...foodGroups.values()].map(({ allFulfilled, allScanned, ...group }) => ({
+  const foodOrders = [...foodGroups.values()].map(({ allFulfilled, allScanned, hasScanned, ...group }) => ({
     ...group,
+    codeEligible: !allFulfilled && !hasScanned,
     status: allFulfilled ? "fulfilled" as const : group.mode === "dine_in" && allScanned ? "checked_in" as const : "pending" as const,
     foodToken: signFoodFulfilmentToken({ orderId, outletId: group.outletId, issuedAt: Date.now() }),
   }));
@@ -214,7 +402,7 @@ export async function loadOrderPickupPasses(db: SupabaseClient, orderId: string)
       || !["failed", "rejected"].includes(status)
       || Boolean(refund.provider_refund_id || refund.provider_failure_code || refund.provider_failure_message);
   });
-  const retailPickups: RetailPickupPass[] = retailRows.map((row) => {
+  const retailPasses = retailRows.map((row) => {
     const outlet = Array.isArray(row.outlets) ? row.outlets[0] : row.outlets;
     const vendor = Array.isArray(outlet?.vendors) ? outlet.vendors[0] : outlet?.vendors;
     if (!row.outlet_id || !outlet?.name || outlet.id !== row.outlet_id || outlet.vendor_id !== row.vendor_id
@@ -236,5 +424,9 @@ export async function loadOrderPickupPasses(db: SupabaseClient, orderId: string)
       : null;
     return { orderItemId: row.id, vendorName: vendor?.name ?? "", outletName: outlet.name, status, quantity: row.quantity, name: row.product_name, variant: row.variant_name, retailToken };
   });
+  const retailPickups: RetailPickupPass[] = retailPasses.map((pass) => ({
+    ...pass,
+    retailCode: null,
+  }));
   return { foodOrders, eventPickups: await loadEventPickups(db, orderId), retailPickups };
 }

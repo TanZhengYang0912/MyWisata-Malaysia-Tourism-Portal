@@ -59,11 +59,11 @@ function setupRows(rows: unknown[]) {
   });
 }
 
-async function resolve(rawValue: string) {
+async function resolve(rawValue: string, eventLocationId?: string, pickupDate?: string) {
   return POST(new Request(`http://localhost/api/vendors/${VENDOR_ID}/scanner/resolve`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ rawValue }),
+    body: JSON.stringify({ rawValue, ...(eventLocationId ? { eventLocationId } : {}), ...(pickupDate ? { pickupDate } : {}) }),
   }), { params: Promise.resolve({ vendorId: VENDOR_ID }) });
 }
 
@@ -84,10 +84,31 @@ describe("event pickup scanner preview", () => {
   it("rejects a same-day scan before the booked slot starts", async () => {
     setupRows([eventLine("Kuih", MORNING_SLOT_ID, MORNING_START)]);
 
-    const response = await resolve(codeFor(MORNING_SLOT_ID));
+    const response = await resolve(codeFor(MORNING_SLOT_ID), LOCATION_ID, PICKUP_DATE);
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({ error: { code: "EVENT_PICKUP_NOT_YET" } });
+  });
+
+  it("requires the scanner's selected event location and date to match the QR", async () => {
+    const missingContext = await resolve(codeFor(MORNING_SLOT_ID));
+    expect(missingContext.status).toBe(409);
+    await expect(missingContext.json()).resolves.toMatchObject({ error: { code: "EVENT_CONTEXT_REQUIRED" } });
+
+    const wrongLocation = await resolve(codeFor(MORNING_SLOT_ID), "66666666-6666-4666-8666-666666666666", PICKUP_DATE);
+    expect(wrongLocation.status).toBe(409);
+    await expect(wrongLocation.json()).resolves.toMatchObject({ error: { code: "EVENT_CONTEXT_MISMATCH" } });
+
+    const wrongDate = await resolve(codeFor(MORNING_SLOT_ID), LOCATION_ID, "2026-10-08");
+    expect(wrongDate.status).toBe(409);
+    await expect(wrongDate.json()).resolves.toMatchObject({ error: { code: "EVENT_CONTEXT_MISMATCH" } });
+  });
+
+  it("does not resolve other code types at an event reservation station", async () => {
+    const response = await resolve("http://localhost/customer/orders/not-an-event-pickup", LOCATION_ID, PICKUP_DATE);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: "EVENT_CODE_REQUIRED" } });
   });
 
   it("accepts the exact start time and returns only the slot named by the QR", async () => {
@@ -97,7 +118,7 @@ describe("event pickup scanner preview", () => {
       eventLine("Nasi", AFTERNOON_SLOT_ID, AFTERNOON_START),
     ]);
 
-    const response = await resolve(codeFor(MORNING_SLOT_ID));
+    const response = await resolve(codeFor(MORNING_SLOT_ID), LOCATION_ID, PICKUP_DATE);
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ data: { kind: "event_pickup", items: [{ name: "Kuih" }] } });
@@ -110,7 +131,7 @@ describe("event pickup scanner preview", () => {
       eventLine("Nasi", AFTERNOON_SLOT_ID, AFTERNOON_START),
     ]);
 
-    const response = await resolve(codeFor());
+    const response = await resolve(codeFor(), LOCATION_ID, PICKUP_DATE);
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({ error: { code: "EVENT_PICKUP_NOT_YET" } });

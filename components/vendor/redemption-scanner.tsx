@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import {
@@ -40,9 +41,9 @@ type ResolvedScan =
 
 interface RecentScanItem {
   id: string;
-  kind: "voucher" | "ticket" | "event_pickup" | "retail_pickup";
+  kind: "voucher" | "ticket" | "event_pickup" | "retail_pickup" | "food_order";
   redeemedAt: string;
-  outlet: { id: string; name: string };
+  outlet: { id: string | null; name: string };
   item: { code?: string; name: string; details: string; discountValue?: number };
   customer: { name: string; email: string };
 }
@@ -92,7 +93,9 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
   const { t } = useTranslation("vendor");
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
-  const [outletId, setOutletId] = useState(outlets[0]?.id ?? "");
+  const [outletId, setOutletId] = useState(outlets.length === 1 ? outlets[0]?.id ?? "" : "");
+  const [eventContext, setEventContext] = useState<{ locationId: string; pickupDate: string; locationName: string } | null>(null);
+  const [isScannerContextReady, setIsScannerContextReady] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraFacingMode, setCameraFacingMode] = useState<CameraFacingMode>("environment");
   const [manualValue, setManualValue] = useState("");
@@ -116,19 +119,32 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
   const [recentLogs, setRecentLogs] = useState<RecentScanItem[]>([]);
 
   useEffect(() => {
-    if (!outletId && outlets[0]?.id) {
-      // Outlet options arrive after the authenticated vendor scope is loaded.
+    if (!outletId && outlets.length === 1 && outlets[0]?.id) {
+      // Only a single authorized outlet is unambiguous enough to select automatically.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setOutletId(outlets[0].id);
     }
   }, [outletId, outlets]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const locationId = params.get("locationId") ?? "";
+    const pickupDate = params.get("date") ?? "";
+    if (params.get("mode") === "event-pickup" && /^[0-9a-f-]{36}$/i.test(locationId) && /^\d{4}-\d{2}-\d{2}$/.test(pickupDate)) {
+      // The signed QR is checked against these reservation-derived values by both APIs.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEventContext({ locationId, pickupDate, locationName: params.get("locationName") || t("ui.scanner.eventLocation", "Event location") });
+    }
+    setIsScannerContextReady(true);
+  }, [t]);
+
   const loadStationData = useCallback(async () => {
-    if (!vendorId) return;
+    if (!vendorId || !isScannerContextReady) return;
     setLoadingStats(true);
     try {
       const params = new URLSearchParams({ pageSize: "8" });
-      if (outletId) params.set("outletId", outletId);
+      if (eventContext) params.set("kind", "event_pickup");
+      else if (outletId) params.set("outletId", outletId);
       const response = await fetch(`/api/vendors/${vendorId}/redemptions?${params.toString()}`, { cache: "no-store" });
       const payload = await response.json() as { data?: { stats?: RedemptionApiStats; items?: RecentScanItem[] } };
       if (response.ok && payload.data) {
@@ -140,7 +156,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
     } finally {
       setLoadingStats(false);
     }
-  }, [outletId, vendorId]);
+  }, [eventContext, isScannerContextReady, outletId, vendorId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -174,10 +190,14 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
       const response = await fetch(`/api/vendors/${vendorId}/scanner/resolve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Event pickups are not tied to an outlet; vendors without outlets scan only those.
-        body: JSON.stringify({ rawValue, ...(outletId ? { outletId } : {}) }),
+        body: JSON.stringify({
+          rawValue,
+          ...(outletId ? { outletId } : {}),
+          ...(eventContext ? { eventLocationId: eventContext.locationId, pickupDate: eventContext.pickupDate } : {}),
+        }),
       });
-      const payload = await response.json() as { data?: ResolvedScan; error?: { message?: string } };
+      const payload = await response.json() as { data?: ResolvedScan; error?: { code?: string; message?: string } };
+      if (payload.error?.code === "FOOD_ORDER_FULFILLED") void loadStationData();
       if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? t("ui.scanner.invalidCode"));
       setResult(payload.data);
       if (soundEnabled) playBeep(true);
@@ -190,7 +210,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
     } finally {
       setBusy(false);
     }
-  }, [outletId, soundEnabled, t, vendorId]);
+  }, [eventContext, loadStationData, outletId, soundEnabled, t, vendorId]);
 
   useEffect(() => {
     const videoElement = videoRef.current;
@@ -252,10 +272,12 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
           ? t("ui.scanner.ticketAcceptedCount", { used: progress.entries_used ?? 0, total: progress.entry_limit ?? 1, remaining: progress.remaining ?? 0 })
           : t("ui.scanner.ticketAccepted");
       } else if (result.kind === "event_pickup") {
+        if (!eventContext) throw new Error(t("ui.scanner.eventContextRequired", "Open this scanner from a reservation at the selected event location and date."));
+        const pickupContext = eventContext;
         const response = await fetch(`/api/vendors/${vendorId}/scanner/fulfil-event-pickup`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ eventToken: result.eventToken }),
+          body: JSON.stringify({ eventToken: result.eventToken, eventLocationId: pickupContext.locationId, pickupDate: pickupContext.pickupDate }),
         });
         const payload = await response.json() as { error?: { message?: string } };
         if (!response.ok) throw new Error(payload.error?.message ?? t("ui.scanner.commitFailed"));
@@ -309,8 +331,8 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
     if (value) await resolve(value);
   }
 
-  const assignedOutlet = outlets.find((o) => o.id === outletId) ?? outlets[0];
-  const assignedOutletName = assignedOutlet?.name || t("ui.scanner.assignedOutlet", "Assigned outlet");
+  const assignedOutlet = outlets.find((o) => o.id === outletId);
+  const assignedOutletName = eventContext?.locationName ?? assignedOutlet?.name ?? t("ui.scanner.selectOutlet", "Select an outlet");
   const ticketRemaining = result?.kind === "ticket"
     ? result.pass?.remaining ?? Math.max(0, (result.pass?.entry_limit ?? result.quantity) - (result.pass?.entries_used ?? 0))
     : null;
@@ -437,17 +459,31 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
         </div>
 
         {/* Outlet Switcher (event-only vendors have none) */}
-        {outlets.length === 0 ? (
-          <span className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t("ui.scanner.eventPickupsOnly")}</span>
+        {eventContext ? (
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-violet-700 dark:text-violet-200" data-event-scan-context>
+            <span>{eventContext.locationName}</span>
+            <span aria-hidden="true">·</span>
+            <time dateTime={eventContext.pickupDate}>{eventContext.pickupDate}</time>
+          </div>
+        ) : outlets.length === 0 ? (
+          <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-muted-foreground">
+            <span>{t("ui.scanner.eventPickupsOnly")}</span>
+            <Link href="/vendor/event-orders" className="font-semibold text-primary underline-offset-4 hover:underline">{t("ui.scanner.openReservations", "Open reservations")}</Link>
+          </div>
         ) : outlets.length > 1 ? (
           <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-muted-foreground">
             <span>{t("ui.scanner.outlet")}:</span>
             <select
               value={outletId}
-              onChange={(event) => setOutletId(event.target.value)}
+              onChange={(event) => {
+                setOutletId(event.target.value);
+                setResult(null);
+                setScanError("");
+              }}
               className="h-9 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-2.5 text-xs font-medium text-gray-800 dark:text-foreground outline-none focus:border-primary"
               disabled={cameraOn || busy}
             >
+              <option value="" disabled>{t("ui.scanner.selectOutlet", "Select an outlet")}</option>
               {outlets.map((outlet) => (
                 <option key={outlet.id} value={outlet.id}>
                   {outlet.name}
@@ -459,7 +495,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
           <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-muted-foreground">
             <span>{t("ui.scanner.outlet")}:</span>
             <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-secondary px-2.5 py-1 text-xs font-bold text-primary">
-              {outlets[0]?.name || t("ui.scanner.assignedOutlet", "Assigned outlet")}
+              {assignedOutlet?.name || t("ui.scanner.assignedOutlet", "Assigned outlet")}
             </span>
           </div>
         )}
@@ -508,7 +544,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                         setMessage("");
                         setCameraOn((current) => !current);
                       }}
-                      disabled={busy || (!outletId && outlets.length > 0)}
+                      disabled={busy || (!outletId && !eventContext)}
                       className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#ffcc00] px-4 py-2.5 text-sm font-bold text-[#010066] transition hover:brightness-105 disabled:opacity-50"
                     >
                       {cameraOn ? (
@@ -565,7 +601,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                     <button
                       type="button"
                       onClick={() => void resolveManual()}
-                      disabled={!manualValue.trim() || busy || (!outletId && outlets.length > 0)}
+                      disabled={!manualValue.trim() || busy || (!outletId && !eventContext)}
                       className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-primary/90 disabled:opacity-50"
                     >
                       {busy ? <Loader2 size={16} className="animate-spin" /> : <ScanLine size={16} />}
@@ -608,7 +644,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                               className="flex min-w-0 items-start gap-2 rounded-xl border border-gray-100 dark:border-border bg-white dark:bg-card p-2.5 text-xs shadow-sm"
                             >
                               <div className="mt-0.5 rounded-lg bg-secondary p-1.5 text-primary">
-                                {item.kind === "voucher" ? <Tag size={13} /> : item.kind === "event_pickup" ? <Clock size={13} /> : item.kind === "retail_pickup" ? <ClipboardCheck size={13} /> : <Ticket size={13} />}
+                                {item.kind === "voucher" ? <Tag size={13} /> : item.kind === "food_order" ? <TicketCheck size={13} /> : item.kind === "event_pickup" ? <Clock size={13} /> : item.kind === "retail_pickup" ? <ClipboardCheck size={13} /> : <Ticket size={13} />}
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="truncate font-semibold text-gray-900 dark:text-foreground">{item.item.name}</p>
@@ -813,8 +849,8 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                                   : "bg-primary/10 text-primary"
                               }`}
                             >
-                              {item.kind === "voucher" ? <Tag size={10} aria-hidden="true" /> : item.kind === "retail_pickup" ? <ClipboardCheck size={10} aria-hidden="true" /> : <Ticket size={10} aria-hidden="true" />}
-                              <span>{item.kind === "retail_pickup" ? t("ui.scanner.retailPickupKind") : item.kind === "event_pickup" ? t("ui.scanner.eventPickupKind") : item.kind === "voucher" ? t("ui.scanner.voucherKind") : t("ui.scanner.ticketKind")}</span>
+                              {item.kind === "voucher" ? <Tag size={10} aria-hidden="true" /> : item.kind === "food_order" ? <TicketCheck size={10} aria-hidden="true" /> : item.kind === "retail_pickup" ? <ClipboardCheck size={10} aria-hidden="true" /> : <Ticket size={10} aria-hidden="true" />}
+                              <span>{item.kind === "food_order" ? t("ui.scanner.foodOrderKind") : item.kind === "retail_pickup" ? t("ui.scanner.retailPickupKind") : item.kind === "event_pickup" ? t("ui.scanner.eventPickupKind") : item.kind === "voucher" ? t("ui.scanner.voucherKind") : t("ui.scanner.ticketKind")}</span>
                             </span>
                             <h4 className="mt-1.5 break-words text-sm font-semibold text-gray-900 dark:text-foreground">{item.item.name}</h4>
                           </div>
@@ -871,8 +907,8 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                                   : "bg-primary/10 text-primary"
                               }`}
                             >
-                              {item.kind === "voucher" ? <Tag size={10} /> : item.kind === "retail_pickup" ? <ClipboardCheck size={10} /> : <Ticket size={10} />}
-                              <span>{item.kind === "retail_pickup" ? t("ui.scanner.retailPickupKind") : item.kind === "event_pickup" ? t("ui.scanner.eventPickupKind") : item.kind === "voucher" ? t("ui.scanner.voucherKind") : t("ui.scanner.ticketKind")}</span>
+                              {item.kind === "voucher" ? <Tag size={10} /> : item.kind === "food_order" ? <TicketCheck size={10} /> : item.kind === "retail_pickup" ? <ClipboardCheck size={10} /> : <Ticket size={10} />}
+                              <span>{item.kind === "food_order" ? t("ui.scanner.foodOrderKind") : item.kind === "retail_pickup" ? t("ui.scanner.retailPickupKind") : item.kind === "event_pickup" ? t("ui.scanner.eventPickupKind") : item.kind === "voucher" ? t("ui.scanner.voucherKind") : t("ui.scanner.ticketKind")}</span>
                             </span>
                           </td>
                           <td className="px-4 py-3 font-semibold text-gray-900 dark:text-foreground">

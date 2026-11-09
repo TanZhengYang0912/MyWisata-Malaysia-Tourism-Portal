@@ -41,7 +41,7 @@ describe("vendor scanner food order resolution", () => {
   let ticketPass: { id: string; policy: string; entry_limit: number; entries_used: number; status: string; valid_from: string | null; valid_until: string | null };
   let ticketSlotStartsAt: string | null;
   let ticketBookingStatus: string;
-  let ticketProduct: { requires_booking: boolean } | null;
+  let ticketProduct: { requires_booking: boolean; product_places?: { relation_type: string } | { relation_type: string }[] | null } | null;
   beforeEach(() => {
     vi.clearAllMocks();
     ticketSlotStartsAt = null;
@@ -144,6 +144,21 @@ describe("vendor scanner food order resolution", () => {
     }), { params: Promise.resolve({ vendorId: ids.vendor }) });
     expect(response.status).toBe(200);
     expect((await response.json()).data).toMatchObject({ kind: "ticket", vendorName: "Vendor A", outletName: "North Outlet", pass: { id: passId, entries_used: 0, entry_limit: 1 } });
+  });
+
+  it("resolves an explicitly linked walk-in admission without a slot lookup", async () => {
+    ticketProduct = { requires_booking: false, product_places: [{ relation_type: "admission" }] };
+    const bookingId = "55555555-5555-4555-8555-555555555555";
+    const passToken = signTicketPassToken({ passId: ticketPass.id, bookingId, outletId: ids.outlet, issuedAt: Date.now() });
+    const response = await POST(new Request("http://localhost", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ outletId: ids.outlet, rawValue: "http://localhost/customer/bookings/" + bookingId + "?t=" + passToken }),
+    }), { params: Promise.resolve({ vendorId: ids.vendor }) });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).data).toMatchObject({ kind: "ticket", bookingId, pass: { id: ticketPass.id, remaining: 1 } });
+    expect(mocks.from.mock.calls.map(([table]) => table)).not.toContain("booking_slots");
   });
 
   it("rejects an existing ticket pass when its product no longer requires booking", async () => {

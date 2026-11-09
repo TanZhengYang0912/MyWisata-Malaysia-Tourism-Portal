@@ -1,11 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CalendarDays, CheckCircle2, Clock3 } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock3, RefreshCw } from "lucide-react";
 import QRCode from "qrcode";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { CustomerQrPassCard } from "@/components/customer/customer-qr-pass-card";
+import { CustomerQrPassSection } from "@/components/customer/customer-qr-pass-section";
+import { PickupCodeCopy } from "@/components/customer/pickup-code-copy";
+import { EnlargeableQrCode } from "@/components/customer/enlargeable-qr-code";
+import { getCustomerPassQrOptions } from "@/lib/customer/pass-qr-options";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { formatEventDate } from "@/lib/promotion-campaigns/locations";
 
@@ -17,11 +22,12 @@ type EventPickupPass = {
   status: "pending" | "collected";
   items: { name: string; quantity: number }[];
   eventToken: string;
+  eventCode: string | null;
 };
 type EventPickupPassDisplay = EventPickupPass & { qr: string };
 
 /** QR codes for collecting event reservations — one per stall and pickup date, valid on that date only. */
-export function EventPickupQrCodes({ orderId, passes: controlledPasses }: { orderId: string; passes?: EventPickupPassDisplay[] }) {
+export function EventPickupQrCodes({ orderId, passes: controlledPasses, onRefresh, parentRefreshing = false }: { orderId: string; passes?: EventPickupPassDisplay[]; onRefresh?: () => void; parentRefreshing?: boolean }) {
   const { t, i18n } = useTranslation("customer");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [passes, setPasses] = useState<EventPickupPassDisplay[]>([]);
@@ -34,11 +40,9 @@ export function EventPickupQrCodes({ orderId, passes: controlledPasses }: { orde
         setPasses([]);
         return;
       }
-      setPasses(await Promise.all((payload.data?.eventPickups ?? []).map(async (pass) => {
-        const url = new URL("/customer/orders/" + encodeURIComponent(orderId), window.location.origin);
-        url.searchParams.set("event_t", pass.eventToken);
-        return { ...pass, qr: await QRCode.toDataURL(url.toString(), { width: 144, margin: 2, errorCorrectionLevel: "M" }) };
-      })));
+      setPasses(await Promise.all((payload.data?.eventPickups ?? []).map(async (pass) => pass.status === "pending" && pass.eventCode
+        ? { ...pass, qr: await QRCode.toDataURL(pass.eventCode.replace(/-/g, ""), getCustomerPassQrOptions(512)) }
+        : { ...pass, qr: "" })));
     } catch {
       setPasses([]);
     }
@@ -56,42 +60,46 @@ export function EventPickupQrCodes({ orderId, passes: controlledPasses }: { orde
   if (visiblePasses.length === 0) return null;
 
   return (
-    <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-labelledby="event-pickup-qr-heading">
-      <div className="border-b border-border bg-secondary/40 px-5 py-4 sm:px-6">
-        <h2 id="event-pickup-qr-heading" className="text-sm font-bold uppercase tracking-[0.14em] text-primary">{t("ui.eventPickup.title")}</h2>
-        <p className="mt-1 text-xs text-muted-foreground">{t("ui.eventPickup.description")}</p>
-      </div>
+    <CustomerQrPassSection
+      headingId="event-pickup-qr-heading"
+      title={t("ui.eventPickup.title")}
+      action={<Button type="button" variant="outline" size="sm" onClick={() => onRefresh ? onRefresh() : void refresh()} disabled={onRefresh ? parentRefreshing : false}>
+        <RefreshCw size={14} aria-hidden="true" />{t("ui.pickupPasses.refresh")}
+      </Button>}
+    >
       {visiblePasses.map((pass) => {
         const collected = pass.status === "collected";
+        const collectible = pass.status === "pending" && Boolean(pass.eventCode);
         const date = formatEventDate(pass.pickupDate, locale);
         return (
           <CustomerQrPassCard
             key={pass.eventToken}
             title={pass.pickupLabels.join(", ")}
-            merchantLabel={t("ui.labels.providedBy", { vendor: pass.vendorName })}
+            mobileStacked
             qr={
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={pass.qr} alt={t("ui.eventPickup.qrAlt", { date })} className="aspect-square w-full rounded-lg bg-white object-contain" />
+              collectible && pass.qr
+                ? <EnlargeableQrCode src={pass.qr} alt={t("ui.eventPickup.qrAlt", { date })} />
+                : <div className="grid aspect-square w-full place-items-center rounded-lg bg-muted text-center text-xs text-muted-foreground">{t("ui.pickupPasses.noActiveQr")}</div>
             }
           >
             <p className="flex items-center gap-1.5 text-sm font-semibold text-primary"><CalendarDays size={14} aria-hidden="true" />{date}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{t("ui.eventPickup.validOn", { date })}</p>
+            <ul className="mt-3 space-y-1 text-sm text-foreground">
+              {pass.items.map((item, index) => <li key={item.name + index}>{item.quantity} × {item.name}</li>)}
+            </ul>
+            {collectible && pass.eventCode && <PickupCodeCopy code={pass.eventCode} />}
             <Badge
               variant="outline"
               role="status"
-              className={`mt-3 max-w-full justify-start gap-2 whitespace-normal rounded-xl px-3 py-2 text-left text-sm font-bold [&>svg]:size-4 ${collected
+              className={`mt-5 max-w-full justify-start gap-2 whitespace-normal rounded-xl px-3 py-2 text-left text-sm font-bold [&>svg]:size-4 ${collected
                 ? "border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200"
                 : "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200"}`}
             >
               {collected ? <CheckCircle2 aria-hidden="true" /> : <Clock3 aria-hidden="true" />}
               <span>{t(`ui.eventPickup.status.${pass.status}`)}</span>
             </Badge>
-            <ul className="mt-3 space-y-1 text-sm text-foreground">
-              {pass.items.map((item, index) => <li key={item.name + index}>{item.quantity} × {item.name}</li>)}
-            </ul>
           </CustomerQrPassCard>
         );
       })}
-    </section>
+    </CustomerQrPassSection>
   );
 }

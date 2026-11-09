@@ -2,12 +2,15 @@ import { z } from "zod";
 import { apiFail, apiOk, databaseUuidSchema, parseBody } from "@/lib/validation/schemas";
 import { authorizeVendor } from "@/lib/vendor-authorization";
 import { getBookingOrderItem } from "@/lib/vendor/booking-scope";
-import { verifyTicketPassToken } from "@/lib/tickets/tokens";
+import { signTicketPassToken, verifyTicketPassToken } from "@/lib/tickets/tokens";
 import { isTicketEligibleProduct } from "@/lib/tickets/product-ticket-policy";
 import { verifyVoucherStoreToken } from "@/lib/vouchers/store-token";
-import { verifyFoodFulfilmentToken } from "@/lib/food/food-fulfilment-token";
-import { verifyEventPickupToken } from "@/lib/events/event-pickup-token";
+import { signFoodFulfilmentToken, verifyFoodFulfilmentToken } from "@/lib/food/food-fulfilment-token";
+import { signEventPickupToken, verifyEventPickupToken } from "@/lib/events/event-pickup-token";
 import { verifyRetailPickupToken } from "@/lib/orders/retail-pickup-token";
+import { signRetailPickupToken } from "@/lib/orders/retail-pickup-token";
+import { normalizeRetailPickupCode } from "@/lib/orders/retail-pickup-code";
+import { normalizePickupCode } from "@/lib/pickup-code";
 import { getMalaysiaDateInputValue } from "@/lib/datetime/date-input";
 
 interface Props { params: Promise<{ vendorId: string }> }
@@ -15,6 +18,8 @@ interface Props { params: Promise<{ vendorId: string }> }
 const scanSchema = z.object({
   rawValue: z.string().trim().min(1).max(4_000),
   outletId: databaseUuidSchema.optional(),
+  eventLocationId: databaseUuidSchema.optional(),
+  pickupDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 }).strict();
 
 function selectedOutlet(outletId: string | undefined, allowedOutletIds: string[]) {
@@ -86,13 +91,50 @@ export async function POST(request: Request, { params }: Props) {
   const parsed = await parseBody(request, scanSchema);
   if (!parsed.ok) return parsed.response;
 
-  const eventPickup = parseEventPickupPayload(parsed.data.rawValue);
+  let eventPickup = parseEventPickupPayload(parsed.data.rawValue);
+  if (!eventPickup) {
+    const shortCode = normalizePickupCode(parsed.data.rawValue, "event");
+    if (shortCode) {
+      if (!parsed.data.eventLocationId || !parsed.data.pickupDate) {
+        return apiFail("EVENT_CONTEXT_REQUIRED", "Open event scanning from a reservation at the selected location and date", 409);
+      }
+
+      const { data: codeRow, error: codeError } = await access.access.serviceDb.from("event_pickup_codes")
+        .select("order_id,vendor_id,location_id,pickup_date,pickup_slot_id")
+        .eq("code", shortCode)
+        .maybeSingle();
+      if (codeError) return apiFail("DB_ERROR", "Unable to verify this event pickup code", 500);
+      if (!codeRow) return apiFail("INVALID_EVENT_PICKUP", "This event pickup code is invalid", 400);
+      if (codeRow.vendor_id !== vendorId) return apiFail("FORBIDDEN", "This pickup belongs to another vendor", 403);
+      if (codeRow.location_id !== parsed.data.eventLocationId || codeRow.pickup_date !== parsed.data.pickupDate) {
+        return apiFail("EVENT_CONTEXT_MISMATCH", "This pickup code belongs to a different event location or date", 409);
+      }
+
+      eventPickup = {
+        orderId: codeRow.order_id,
+        eventToken: signEventPickupToken({
+          orderId: codeRow.order_id,
+          vendorId: codeRow.vendor_id,
+          locationId: codeRow.location_id,
+          pickupDate: codeRow.pickup_date,
+          ...(codeRow.pickup_slot_id ? { pickupSlotId: codeRow.pickup_slot_id } : {}),
+          issuedAt: Date.now(),
+        }),
+      };
+    }
+  }
   if (eventPickup) {
     const verification = verifyEventPickupToken(eventPickup.eventToken);
     if (!verification.valid && "expired" in verification) return apiFail("EVENT_PICKUP_EXPIRED", "This pickup code was only valid on its pickup date", 409);
     if (!verification.valid || verification.claims.orderId !== eventPickup.orderId) return apiFail("INVALID_EVENT_PICKUP", "This pickup code is invalid", 400);
     const claims = verification.claims;
     if (claims.vendorId !== vendorId) return apiFail("FORBIDDEN", "This pickup belongs to another vendor", 403);
+    if (!parsed.data.eventLocationId || !parsed.data.pickupDate) {
+      return apiFail("EVENT_CONTEXT_REQUIRED", "Open event scanning from a reservation at the selected location and date", 409);
+    }
+    if (claims.locationId !== parsed.data.eventLocationId || claims.pickupDate !== parsed.data.pickupDate) {
+      return apiFail("EVENT_CONTEXT_MISMATCH", "This pickup code belongs to a different event location or date", 409);
+    }
     if (claims.pickupDate > getMalaysiaDateInputValue()) return apiFail("EVENT_PICKUP_NOT_YET", `This pickup is for ${claims.pickupDate}`, 409);
 
     const { data: order, error: orderError } = await access.access.serviceDb.from("orders").select("status").eq("id", claims.orderId).maybeSingle();
@@ -131,11 +173,45 @@ export async function POST(request: Request, { params }: Props) {
       items: items.map((item) => ({ id: item.id, name: item.product_name, variant: item.variant_name, quantity: item.quantity })),
     });
   }
+  if (parsed.data.eventLocationId || parsed.data.pickupDate) {
+    return apiFail("EVENT_CODE_REQUIRED", "This reservation station only accepts event pickup codes", 400);
+  }
 
   const outlet = selectedOutlet(parsed.data.outletId, access.access.outletIds);
   if (!outlet.ok) return outlet.response;
 
-  const retailPickup = parseRetailPickupPayload(parsed.data.rawValue);
+  let retailPickup = parseRetailPickupPayload(parsed.data.rawValue);
+  if (!retailPickup) {
+    const shortCode = normalizeRetailPickupCode(parsed.data.rawValue);
+    if (shortCode) {
+      const { data: codeRow, error: codeError } = await access.access.serviceDb.from("retail_pickup_codes")
+        .select("order_item_id")
+        .eq("code", shortCode)
+        .maybeSingle();
+      if (codeError) return apiFail("DB_ERROR", "Unable to verify this collection code", 500);
+      if (!codeRow) return apiFail("INVALID_RETAIL_PICKUP", "This collection code is invalid", 400);
+
+      const { data: item, error: itemError } = await access.access.serviceDb.from("order_items")
+        .select("id,order_id,vendor_id,outlet_id")
+        .eq("id", codeRow.order_item_id)
+        .eq("vendor_id", vendorId)
+        .eq("outlet_id", outlet.outletId)
+        .maybeSingle();
+      if (itemError) return apiFail("DB_ERROR", "Unable to verify this collection code", 500);
+      if (!item) return apiFail("FORBIDDEN", "This code is not valid at the selected outlet", 403);
+
+      retailPickup = {
+        orderId: item.order_id,
+        retailToken: signRetailPickupToken({
+          orderId: item.order_id,
+          orderItemId: item.id,
+          vendorId: item.vendor_id,
+          outletId: item.outlet_id,
+          issuedAt: Math.floor(Date.now() / 1000),
+        }),
+      };
+    }
+  }
   if (retailPickup) {
     const verification = verifyRetailPickupToken(retailPickup.retailToken);
     if (!verification.valid || verification.claims.orderId !== retailPickup.orderId) return apiFail("INVALID_RETAIL_PICKUP", "This collection code is invalid", 400);
@@ -180,7 +256,38 @@ export async function POST(request: Request, { params }: Props) {
     });
   }
 
-  const ticket = parseBookingPayload(parsed.data.rawValue);
+  let ticket = parseBookingPayload(parsed.data.rawValue);
+  if (!ticket) {
+    const shortCode = normalizePickupCode(parsed.data.rawValue, "ticket");
+    if (shortCode) {
+      const { data: codeRow, error: codeError } = await access.access.serviceDb.from("ticket_pickup_codes")
+        .select("ticket_pass_id")
+        .eq("code", shortCode)
+        .maybeSingle();
+      if (codeError) return apiFail("DB_ERROR", "Unable to verify this ticket code", 500);
+      if (!codeRow) return apiFail("INVALID_TICKET", "This ticket code is invalid", 400);
+
+      const { data: pass, error: passError } = await access.access.serviceDb.from("ticket_passes")
+        .select("id,booking_id,policy,entry_limit,valid_until")
+        .eq("id", codeRow.ticket_pass_id)
+        .maybeSingle();
+      if (passError) return apiFail("DB_ERROR", "Unable to verify this ticket code", 500);
+      if (!pass) return apiFail("INVALID_TICKET", "This ticket code is invalid", 400);
+
+      ticket = {
+        bookingId: pass.booking_id,
+        passToken: signTicketPassToken({
+          passId: pass.id,
+          bookingId: pass.booking_id,
+          outletId: outlet.outletId,
+          policy: pass.policy,
+          entryLimit: pass.entry_limit,
+          issuedAt: Date.now(),
+          ...(pass.valid_until ? { exp: Math.floor(new Date(pass.valid_until).getTime() / 1000) } : {}),
+        }),
+      };
+    }
+  }
   if (ticket) {
     if (!ticket.passToken) return apiFail("INVALID_TICKET", "This ticket code is invalid", 400);
     const verification = verifyTicketPassToken(ticket.passToken);
@@ -188,7 +295,7 @@ export async function POST(request: Request, { params }: Props) {
 
     const { data: booking, error } = await access.access.serviceDb
       .from("bookings")
-      .select("id,slot_id,status,order_items(order_id,vendor_id,outlet_id,quantity,product_name,products(requires_booking),outlets(id,name,vendor_id,vendors(id,name))),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)")
+      .select("id,slot_id,status,order_items(order_id,vendor_id,outlet_id,quantity,product_name,products(requires_booking,product_places(relation_type)),outlets(id,name,vendor_id,vendors(id,name))),ticket_passes(id,policy,entry_limit,entries_used,status,valid_from,valid_until)")
       .eq("id", ticket.bookingId)
       .maybeSingle();
     if (error) return apiFail("DB_ERROR", error.message, 500);
@@ -237,7 +344,23 @@ export async function POST(request: Request, { params }: Props) {
     return apiOk({ kind: "ticket", bookingId: ticket.bookingId, passToken: ticket.passToken, outletId: outlet.outletId, outletName: ticketOutlet.name, vendorName: ticketVendor.name, status: booking.status, productName, quantity, pass: { ...pass, remaining: Math.max(0, pass.entry_limit - pass.entries_used) } });
   }
 
-  const foodOrder = parseFoodOrderPayload(parsed.data.rawValue);
+  let foodOrder = parseFoodOrderPayload(parsed.data.rawValue);
+  if (!foodOrder) {
+    const shortCode = normalizePickupCode(parsed.data.rawValue, "food");
+    if (shortCode) {
+      const { data: codeRow, error: codeError } = await access.access.serviceDb.from("food_pickup_codes")
+        .select("order_id,outlet_id")
+        .eq("code", shortCode)
+        .maybeSingle();
+      if (codeError) return apiFail("DB_ERROR", "Unable to verify this food pickup code", 500);
+      if (!codeRow) return apiFail("INVALID_FOOD_ORDER", "This food pickup code is invalid", 400);
+
+      foodOrder = {
+        orderId: codeRow.order_id,
+        foodToken: signFoodFulfilmentToken({ orderId: codeRow.order_id, outletId: codeRow.outlet_id, issuedAt: Date.now() }),
+      };
+    }
+  }
   if (foodOrder) {
     const verification = verifyFoodFulfilmentToken(foodOrder.foodToken);
     if (!verification.valid || verification.claims?.orderId !== foodOrder.orderId || verification.claims.outletId !== outlet.outletId) {

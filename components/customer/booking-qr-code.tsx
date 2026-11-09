@@ -6,7 +6,8 @@ import { Expand } from "lucide-react";
 import Image from "next/image";
 import QRCode from "qrcode";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { buildBookingQrPayload } from "@/lib/customer/booking-qr";
+import { buildTicketPassQrPayload } from "@/lib/customer/booking-qr";
+import { getCustomerPassQrOptions } from "@/lib/customer/pass-qr-options";
 import { ticketProgress } from "@/lib/customer/ticket-progress";
 
 interface BookingQrCodeProps {
@@ -18,6 +19,8 @@ interface BookingQrCodeProps {
   entryLimit?: number;
   entriesUsed?: number;
   validUntil?: string;
+  qrPayload?: string;
+  refreshManagedByParent?: boolean;
   className?: string;
 }
 
@@ -30,39 +33,72 @@ export function BookingQrCode({
   entryLimit,
   entriesUsed,
   validUntil,
+  qrPayload,
+  refreshManagedByParent = false,
   className,
 }: BookingQrCodeProps) {
   const { t } = useTranslation("customer");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState(false);
-  const [liveToken, setLiveToken] = useState(passToken);
-  const [liveEntriesUsed, setLiveEntriesUsed] = useState(entriesUsed);
-  const [liveValidUntil, setLiveValidUntil] = useState(validUntil);
-  const [refreshing, setRefreshing] = useState(Boolean(orderId && !passToken));
+  const [refreshedPass, setRefreshedPass] = useState<{
+    bookingId: string;
+    sourceToken?: string;
+    sourceEntriesUsed?: number;
+    sourceValidUntil?: string;
+    token: string;
+    ticketCode: string | null;
+    entriesUsed: number;
+    validUntil: string | undefined;
+  }>();
+  const [refreshing, setRefreshing] = useState(Boolean(orderId && !refreshManagedByParent && !qrPayload));
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
-  const [enlargedQr, setEnlargedQr] = useState<{ token: string; dataUrl: string }>();
+  const [enlargedQr, setEnlargedQr] = useState<{ payload: string; dataUrl: string }>();
   const [enlargedQrError, setEnlargedQrError] = useState<string>();
+  const currentRefreshedPass = refreshedPass?.bookingId === bookingId
+    && refreshedPass.sourceToken === passToken
+    && refreshedPass.sourceEntriesUsed === entriesUsed
+    && refreshedPass.sourceValidUntil === validUntil
+    ? refreshedPass
+    : undefined;
+  const liveToken = currentRefreshedPass?.token ?? passToken;
+  const liveEntriesUsed = currentRefreshedPass?.entriesUsed ?? entriesUsed;
+  const liveValidUntil = currentRefreshedPass?.validUntil ?? validUntil;
+  const qrOrigin = typeof window === "undefined" ? undefined : window.location.origin;
+  const currentQrPayload = qrPayload ?? buildTicketPassQrPayload({
+    bookingId,
+    orderId,
+    ticketCode: currentRefreshedPass?.ticketCode,
+    passToken: liveToken,
+    origin: qrOrigin,
+  });
 
   const refreshPass = useCallback(async () => {
-    if (!orderId) return;
+    if (!orderId || refreshManagedByParent) return;
     setRefreshing(true);
     try {
       const response = await fetch(`/api/customer/orders/${encodeURIComponent(orderId)}/qr-passes`, { cache: "no-store" });
-      const payload = await response.json() as { data?: { tickets?: Array<{ bookingId: string; passToken: string; entriesUsed: number; validUntil: string | null }> } };
+      const payload = await response.json() as { data?: { tickets?: Array<{ bookingId: string; passToken: string; ticketCode: string | null; entriesUsed: number; validUntil: string | null }> } };
       const ticket = response.ok ? payload.data?.tickets?.find((item) => item.bookingId === bookingId) : undefined;
       if (!ticket) return;
-      setLiveToken(ticket.passToken);
-      setLiveEntriesUsed(ticket.entriesUsed);
-      setLiveValidUntil(ticket.validUntil ?? undefined);
+      setRefreshedPass({
+        bookingId,
+        sourceToken: passToken,
+        sourceEntriesUsed: entriesUsed,
+        sourceValidUntil: validUntil,
+        token: ticket.passToken,
+        ticketCode: ticket.ticketCode,
+        entriesUsed: ticket.entriesUsed,
+        validUntil: ticket.validUntil ?? undefined,
+      });
     } catch {
       // Keep the server-rendered pass usable while the refresh endpoint is unavailable.
     } finally {
       setRefreshing(false);
     }
-  }, [bookingId, orderId]);
+  }, [bookingId, entriesUsed, orderId, passToken, refreshManagedByParent, validUntil]);
 
   useEffect(() => {
-    if (!orderId) return;
+    if (!orderId || refreshManagedByParent) return;
     let active = true;
     const refresh = async () => {
       if (!active) return;
@@ -77,50 +113,40 @@ export function BookingQrCode({
       window.removeEventListener("focus", refresh);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [entriesUsed, orderId, passToken, refreshPass, validUntil]);
+  }, [entriesUsed, orderId, passToken, refreshManagedByParent, refreshPass, validUntil]);
 
   useEffect(() => {
-    if (!bookingId || !canvasRef.current || !liveToken) return;
+    if (!bookingId || !canvasRef.current || !currentQrPayload) return;
     const canvas = canvasRef.current;
     let active = true;
     setError(false);
     void QRCode.toCanvas(
       canvas,
-      buildBookingQrPayload(bookingId, window.location.origin, liveToken),
-      {
-        width: size,
-        margin: 2,
-        errorCorrectionLevel: "M",
-        color: { dark: "#010066", light: "#ffffff" },
-      },
+      currentQrPayload,
+      getCustomerPassQrOptions(size),
     ).catch(() => {
       if (active) setError(true);
     });
     return () => {
       active = false;
     };
-  }, [bookingId, size, liveToken]);
+  }, [bookingId, currentQrPayload, size]);
 
   useEffect(() => {
-    if (!qrDialogOpen || !bookingId || !liveToken) return;
+    if (!qrDialogOpen || !bookingId || !currentQrPayload) return;
     let active = true;
     void QRCode.toDataURL(
-      buildBookingQrPayload(bookingId, window.location.origin, liveToken),
-      {
-        width: 320,
-        margin: 4,
-        errorCorrectionLevel: "H",
-        color: { dark: "#010066", light: "#ffffff" },
-      },
+      currentQrPayload,
+      getCustomerPassQrOptions(320),
     ).then((dataUrl) => {
-      if (active) setEnlargedQr({ token: liveToken, dataUrl });
+      if (active) setEnlargedQr({ payload: currentQrPayload, dataUrl });
     }).catch(() => {
-      if (active) setEnlargedQrError(liveToken);
+      if (active) setEnlargedQrError(currentQrPayload);
     });
     return () => {
       active = false;
     };
-  }, [bookingId, liveToken, qrDialogOpen]);
+  }, [bookingId, currentQrPayload, qrDialogOpen]);
 
   if (error) {
     return (
@@ -138,13 +164,13 @@ export function BookingQrCode({
     : progress?.unit === "visits"
     ? t("ui.booking.entryUnits.visits")
     : t("ui.booking.entryUnits.guests");
-  const currentEnlargedQr = liveToken && enlargedQr?.token === liveToken ? enlargedQr.dataUrl : undefined;
-  const currentEnlargedQrError = Boolean(liveToken && enlargedQrError === liveToken);
+  const currentEnlargedQr = currentQrPayload && enlargedQr?.payload === currentQrPayload ? enlargedQr.dataUrl : undefined;
+  const currentEnlargedQrError = Boolean(currentQrPayload && enlargedQrError === currentQrPayload);
 
   return (
     <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
       <div className={`flex min-w-0 flex-col items-center gap-1.5 ${className ?? ""}`}>
-        {liveToken ? (
+        {currentQrPayload ? (
           <button
             type="button"
             aria-label={t("ui.booking.qrEnlargeAction")}
@@ -182,7 +208,7 @@ export function BookingQrCode({
             )}
           </div>
         )}
-        {orderId && (
+        {orderId && !refreshManagedByParent && (
           <button type="button" onClick={() => void refreshPass()} disabled={refreshing} className="text-[10px] font-medium text-primary underline disabled:opacity-50">
             {t("ui.booking.refreshPass")}
           </button>
