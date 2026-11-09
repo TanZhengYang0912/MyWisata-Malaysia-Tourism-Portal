@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAppDialog } from '@/components/providers/app-dialog';
 import { useTranslation } from 'react-i18next';
+import Link from 'next/link';
 
 type OrderItem = {
   id: string;
@@ -263,7 +264,9 @@ export default function AdminOrdersPage() {
                 {orders.map((order) => (
                   <tr key={order.id} className="align-top">
                     <td className="px-4 py-4">
-                      <p className="font-mono text-xs font-semibold text-foreground">{order.display_id ?? order.id}</p>
+                      <Link className="font-mono text-xs font-semibold text-primary hover:underline" href={`/admin/orders/${order.id}?returnTo=${encodeURIComponent(`/admin/orders?search=${encodeURIComponent(search)}&status=${status}&page=${page}`)}`}>
+                        {order.display_id ?? order.id}
+                      </Link>
                       {order.display_id && <p className="mt-1 font-mono text-[10px] text-muted-foreground">{order.id}</p>}
                       <p className="mt-1 capitalize text-muted-foreground">{t(`orderOperations.statuses.${STATUS_OPTIONS.includes(order.status as typeof STATUS_OPTIONS[number]) ? order.status : 'all'}`)}</p>
                       {order.isGuest && order.canCorrectGuestContact && ['paid', 'completed'].includes(order.status) && order.customer.email && <Button className="mt-2" size="sm" variant="outline" onClick={() => void openGuestContactCorrection(order)}>{t('orderOperations.contactCorrection.action')}</Button>}

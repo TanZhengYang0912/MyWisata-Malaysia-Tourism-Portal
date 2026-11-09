@@ -2,18 +2,19 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { hashICWithHmac } from '@/lib/kyc/hash';
-import { abandonAndRemoveKycEvidence, buildKycEvidencePaths, validateKycUploadFile } from '@/lib/kyc/submission';
+import { abandonAndRemoveKycEvidence, buildKycEvidencePaths, createKycEvidenceRevision, validateKycUploadFile } from '@/lib/kyc/submission';
 import { prepareKycEvidenceImage } from '@/lib/kyc/evidence-image';
 import { readBoundedFormData, RequestBodyError } from '@/lib/validation/request-body';
 import { withPortalWorkload, WorkloadUnavailableError } from '@/lib/operations/workload';
 import { reserveGuestRateLimit } from '@/lib/checkout/guest-session';
 import { createHash } from 'node:crypto';
 import { normalizeIC } from '@/lib/kyc/hash';
+import { getRequiredKycDocumentSides, isSupportedDocumentNumber, type KycDocumentType } from '@/lib/kyc/document-policy';
 
 const IC_PATTERNS: Record<string, RegExp> = {
   national_id: /^\d{6}-?\d{2}-?\d{4}$/,
   driving_license: /^\d{6}-?\d{2}-?\d{4}$/,
-  passport: /^[A-Za-z]{1,2}[0-9]{6,8}$/,
+  passport: /^[A-Za-z][A-Za-z0-9]{7,8}$/,
 };
 
 function safeSubmissionFailure(error: unknown) {
@@ -61,21 +62,24 @@ async function prepareUpload(request: Request, signal: AbortSignal, ownerId: str
   const draftVersion = formData.get('draftVersion');
   const frontFile = formData.get('frontFile');
   const backFile = formData.get('backFile');
+  const requiredSides = typeof docType === 'string' && ['national_id', 'passport', 'driving_license'].includes(docType)
+    ? getRequiredKycDocumentSides(docType as KycDocumentType) : ['front', 'back'];
   if (typeof icNumber !== 'string' || typeof holderName !== 'string' || holderName.trim().length < 2 || holderName.trim().length > 100
     || typeof docType !== 'string' || typeof operationId !== 'string' || !/^[0-9a-f-]{36}$/i.test(operationId)
     || draftId !== null && (typeof draftId !== 'string' || !/^[0-9a-f-]{36}$/i.test(draftId))
-    || (draftId === null && (!(frontFile instanceof File) || !(backFile instanceof File)))
+    || (draftId === null && (!(frontFile instanceof File) || requiredSides.includes('back') && !(backFile instanceof File)))
     || (draftId !== null && (typeof draftVersion !== 'string' || !/^\d+$/.test(draftVersion)))) {
     return apiFail('MISSING_FIELDS', 'holderName, icNumber, docType, operationId, and current KYC evidence are required', 422);
   }
   if (!(docType in IC_PATTERNS)) {
     return apiFail('INVALID_DOC_TYPE', 'docType must be national_id, passport, or driving_license', 422);
   }
-  if (!IC_PATTERNS[docType].test(icNumber.trim().toUpperCase())) {
+  if (!IC_PATTERNS[docType].test(icNumber.trim().toUpperCase()) || !isSupportedDocumentNumber(docType as KycDocumentType, icNumber)) {
     return apiFail('INVALID_IC', 'IC number format does not match document type', 422);
   }
 
-  let frontMimeType: string; let backMimeType: string; let images: Buffer[];
+  let frontMimeType: string; let backMimeType: string | null = null; let images: Buffer[];
+  let draftOcrSourceRevision: string | null = null; let draftEvidenceRevision: string | null = null;
   if (typeof draftId === 'string') {
     const { data, error } = await service.rpc('get_kyc_draft', { p_owner_user_id: ownerId });
     const draft = Array.isArray(data) ? data[0] : data;
@@ -83,7 +87,9 @@ async function prepareUpload(request: Request, signal: AbortSignal, ownerId: str
       || draft.document_type !== docType || draft.holder_name !== holderName.trim()) {
       return apiFail('DRAFT_CONFLICT', 'Saved KYC draft changed; reload it before submitting', 409);
     }
-    const [frontPath, backPath] = await Promise.all((['front', 'back'] as const).map(async (side) => {
+    draftOcrSourceRevision = typeof draft.ocr_source_revision === 'string' ? draft.ocr_source_revision : null;
+    draftEvidenceRevision = typeof draft.evidence_revision === 'string' ? draft.evidence_revision : null;
+    const paths = await Promise.all(requiredSides.map(async (side) => {
       const { data: path, error: pathError } = await service.rpc('get_kyc_draft_document', {
         p_owner_user_id: ownerId, p_draft_id: draftId, p_side: side,
       });
@@ -91,32 +97,32 @@ async function prepareUpload(request: Request, signal: AbortSignal, ownerId: str
       return path;
     }));
     const bucket = service.storage.from('kyc-documents');
-    const [front, back] = await Promise.all([bucket.download(frontPath), bucket.download(backPath)]);
-    if (front.error || !front.data || back.error || !back.data) return apiFail('DRAFT_EVIDENCE_UNAVAILABLE', 'Saved KYC evidence is unavailable', 503);
-    frontMimeType = front.data.type; backMimeType = back.data.type;
-    images = [Buffer.from(await front.data.arrayBuffer()), Buffer.from(await back.data.arrayBuffer())];
+    const downloads = await Promise.all(paths.map((path) => bucket.download(path)));
+    if (downloads.some((item) => item.error || !item.data)) return apiFail('DRAFT_EVIDENCE_UNAVAILABLE', 'Saved KYC evidence is unavailable', 503);
+    frontMimeType = downloads[0].data!.type; backMimeType = downloads[1]?.data?.type ?? null;
+    images = await Promise.all(downloads.map(async (item) => Buffer.from(await item.data!.arrayBuffer())));
   } else {
-    const frontUpload = frontFile as File; const backUpload = backFile as File;
-    const [front, back] = await Promise.all([validateKycUploadFile(frontUpload), validateKycUploadFile(backUpload)]);
+    const frontUpload = frontFile as File; const backUpload = backFile instanceof File ? backFile : null;
+    const [front, back] = await Promise.all([validateKycUploadFile(frontUpload), backUpload ? validateKycUploadFile(backUpload) : Promise.resolve(null)]);
     if (!front.ok) return apiFail(front.code, 'Front document must be a valid JPEG, PNG, or WebP photo under 5 MB', 422);
-    if (!back.ok) return apiFail(back.code, 'Back document must be a valid JPEG, PNG, or WebP photo under 5 MB', 422);
+    if (requiredSides.includes('back') && (!back || !back.ok)) return apiFail(back && !back.ok ? back.code : 'INVALID_FILE_CONTENT', 'Back document must be a valid JPEG, PNG, or WebP photo under 5 MB', 422);
     let preparedImages: Awaited<ReturnType<typeof prepareKycEvidenceImage>>[];
     try {
       preparedImages = [];
       signal.throwIfAborted();
       preparedImages.push(await prepareKycEvidenceImage(Buffer.from(front.buffer), frontUpload.type));
       signal.throwIfAborted();
-      preparedImages.push(await prepareKycEvidenceImage(Buffer.from(back.buffer), backUpload.type));
+      if (back?.ok && backUpload) preparedImages.push(await prepareKycEvidenceImage(Buffer.from(back.buffer), backUpload.type));
       signal.throwIfAborted();
     } catch { return apiFail('INVALID_FILE_CONTENT', 'Documents must be decodable photos under the image limits', 422); }
-    frontMimeType = frontUpload.type; backMimeType = backUpload.type;
+    frontMimeType = frontUpload.type; backMimeType = backUpload?.type ?? null;
     images = preparedImages.map((image) => image.stored);
   }
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(frontMimeType) || !['image/jpeg', 'image/png', 'image/webp'].includes(backMimeType)) {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(frontMimeType) || (backMimeType !== null && !['image/jpeg', 'image/png', 'image/webp'].includes(backMimeType))) {
     return apiFail('INVALID_DOCUMENT_EVIDENCE', 'KYC document evidence is invalid', 422);
   }
   return { icNumber, holderName: holderName.trim(), docType, operationId, draftId: typeof draftId === 'string' ? draftId : null,
-    frontMimeType, backMimeType, images };
+    draftOcrSourceRevision, draftEvidenceRevision, frontMimeType, backMimeType, images };
 }
 
 export async function POST(request: Request) {
@@ -128,17 +134,26 @@ export async function POST(request: Request) {
   // must remain after image validation. Its atomic check still fences races.
   const service = createServiceClient();
   const idempotencyKey = request.headers.get('Idempotency-Key');
+  let existingOperation: { state: string; submissionId: string | null } | null = null;
   if (idempotencyKey && /^[0-9a-f-]{36}$/i.test(idempotencyKey)) {
-    const { data: previousOperation } = await authenticated.rpc('get_my_kyc_operation', { p_operation_id: idempotencyKey });
-    if (previousOperation && typeof previousOperation === 'object' && 'state' in previousOperation
-      && previousOperation.state === 'succeeded' && 'submissionId' in previousOperation && typeof previousOperation.submissionId === 'string') {
-      return apiOk({ submissionId: previousOperation.submissionId, status: 'pending', operationId: idempotencyKey, manualReviewRequired: true });
+    try {
+      const { data } = await authenticated.rpc('get_my_kyc_operation', { p_operation_id: idempotencyKey });
+      if (data && typeof data === 'object' && 'state' in data && 'submissionId' in data
+        && typeof data.state === 'string' && (typeof data.submissionId === 'string' || data.submissionId === null)) {
+        existingOperation = { state: data.state, submissionId: data.submissionId };
+      }
+    } catch { /* The active-submission lookup below remains the fail-closed guard. */ }
+    if (existingOperation?.state === 'succeeded' && existingOperation.submissionId) {
+      return apiOk({ submissionId: existingOperation.submissionId, status: 'pending', operationId: idempotencyKey, manualReviewRequired: true });
     }
   }
   const { data: activeCases, error: availabilityError } = await service.from('kyc_submissions')
     .select('id').eq('user_id', user.id).in('status', ['draft', 'pending']).limit(1);
   if (availabilityError || !Array.isArray(activeCases)) return apiFail('KYC_UNAVAILABLE', 'KYC submission is temporarily unavailable', 503);
-  if (activeCases.length) return apiFail('ACTIVE_SUBMISSION_EXISTS', 'You already have an active KYC submission', 409);
+  const activeIsSameOperation = activeCases.length === 1
+    && existingOperation?.state === 'processing'
+    && existingOperation.submissionId === activeCases[0].id;
+  if (activeCases.length && !activeIsSameOperation) return apiFail('ACTIVE_SUBMISSION_EXISTS', 'You already have an active KYC submission', 409);
 
 
   if (!await reserveGuestRateLimit(`kyc-upload:${user.id}`, 3, 600)) {
@@ -159,7 +174,12 @@ export async function POST(request: Request) {
   try { fingerprint = await hashICWithHmac(icNumber.trim()); }
   catch { return apiFail('SERVER_CONFIGURATION', 'KYC submission is temporarily unavailable', 503); }
 
-  const evidenceRevision = createHash('sha256').update(images[0]).update(images[1]).digest('hex');
+  const frontEvidenceHash = createHash('sha256').update(images[0]).digest('hex');
+  const backEvidenceHash = images[1] ? createHash('sha256').update(images[1]).digest('hex') : null;
+  const evidenceRevision = createKycEvidenceRevision(frontEvidenceHash, backEvidenceHash);
+  if (draftId && prepared.draftEvidenceRevision !== evidenceRevision) {
+    return apiFail('DRAFT_CONFLICT', 'Saved KYC evidence changed; reload it before submitting', 409);
+  }
   const { data: operation, error: beginError } = await service.rpc('begin_kyc_submission_v2', {
     p_operation_id: operationId,
     p_user_id: user.id,
@@ -212,32 +232,39 @@ export async function POST(request: Request) {
       return apiFail('UPLOAD_FAILED', 'Unable to upload KYC documents', 502);
     }
 
-    const backUpload = await service.storage.from('kyc-documents').upload(paths.back, images[1], {
-      contentType: backMimeType, upsert: true,
-    });
-    if (backUpload.error) {
-      if (!await cleanup()) return apiFail('CLEANUP_FAILED', 'KYC submission state could not be safely resolved', 500);
-      return apiFail('UPLOAD_FAILED', 'Unable to upload KYC documents', 502);
+    if (paths.back && backMimeType && images[1]) {
+      const backUpload = await service.storage.from('kyc-documents').upload(paths.back, images[1], {
+        contentType: backMimeType, upsert: true,
+      });
+      if (backUpload.error) {
+        if (!await cleanup()) return apiFail('CLEANUP_FAILED', 'KYC submission state could not be safely resolved', 500);
+        return apiFail('UPLOAD_FAILED', 'Unable to upload KYC documents', 502);
+      }
     }
 
     // Finalization atomically enqueues private pre-screening in the database.
     // Only watermarked evidence persists; OCR never delays the upload request.
-    const { error: finalizeError } = await authenticated.rpc('finalize_kyc_submission', {
-      p_submission_id: submissionId,
-      p_front_path: paths.front,
-      p_back_path: paths.back,
-    });
+    const { error: finalizeError } = draftId
+      ? await authenticated.rpc('finalize_kyc_submission_with_ocr_v2', {
+        p_submission_id: submissionId,
+        p_front_path: paths.front,
+        p_back_path: paths.back,
+        p_draft_id: draftId,
+        p_draft_revision: prepared.draftEvidenceRevision,
+        p_source_revision: prepared.draftOcrSourceRevision,
+        p_operation_id: operationId,
+      })
+      : await authenticated.rpc('finalize_kyc_submission', {
+        p_submission_id: submissionId,
+        p_front_path: paths.front,
+        p_back_path: paths.back,
+      });
     if (finalizeError) {
       if (!await cleanup()) return apiFail('CLEANUP_FAILED', 'KYC submission state could not be safely resolved', 500);
       return safeSubmissionFailure(finalizeError);
     }
 
     await service.rpc('complete_kyc_submit_operation', { p_operation_id: operationId, p_submission_id: submissionId, p_owner_user_id: user.id });
-    if (draftId) {
-      await service.rpc('link_kyc_ocr_observation', { p_owner_user_id: user.id, p_draft_id: draftId, p_submission_id: submissionId, p_evidence_revision: evidenceRevision });
-      await service.rpc('mark_kyc_draft_submitted', { p_owner_user_id: user.id, p_draft_id: draftId, p_submission_id: submissionId });
-    }
-
     return apiOk({
       submissionId,
       status: 'pending',

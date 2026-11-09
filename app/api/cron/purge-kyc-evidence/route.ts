@@ -21,6 +21,8 @@ export async function POST(request: Request) {
   catch { return NextResponse.json({ error: 'purge_record_unavailable', requestId }, { status: 503 }); }
 
   const result: PurgeRunResult = { claimed: 0, purged: 0, failed: 0, failureCode: null };
+  let operationsMarkedForReconciliation = 0;
+  let operationsPurged = 0;
   let status = 200;
   try {
     const { data, error } = await service.rpc('purge_expired_kyc_evidence');
@@ -61,13 +63,29 @@ export async function POST(request: Request) {
     status = 500;
   }
 
+  try {
+    const { data, error } = await service.rpc('purge_kyc_draft_ocr_operations', { p_limit: 500 });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row || !Number.isSafeInteger(row.marked_for_reconciliation) || !Number.isSafeInteger(row.deleted)) {
+      result.failureCode ??= 'operation_cleanup_failed';
+      status = 500;
+    } else {
+      operationsMarkedForReconciliation = row.marked_for_reconciliation;
+      operationsPurged = row.deleted;
+    }
+  } catch {
+    result.failureCode ??= 'operation_cleanup_failed';
+    status = 500;
+  }
+
   try { await finishKycPurgeRun(service, runId, result); }
   catch {
     log('error', '[cron/purge-kyc-evidence] run persistence failed', { requestId });
     return NextResponse.json({ error: 'purge_record_unavailable', requestId }, { status: 503 });
   }
   if (result.failureCode) log('error', '[cron/purge-kyc-evidence] run failed', { requestId, failureCode: result.failureCode });
-  return NextResponse.json({ claimed: result.claimed, purged: result.purged, failed: result.failed, requestId }, { status });
+  return NextResponse.json({ claimed: result.claimed, purged: result.purged, failed: result.failed,
+    operationsMarkedForReconciliation, operationsPurged, requestId }, { status });
 }
 
 export const GET = POST;

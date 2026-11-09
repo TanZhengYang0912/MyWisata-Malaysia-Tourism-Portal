@@ -7,6 +7,8 @@ import sharp from 'sharp';
 const stages = ['initial', 'correction', 'resubmission', 'qa'];
 const groups = ['baseline', 'assisted'];
 const documentTypes = ['national_id', 'passport', 'driving_license'];
+const sources = ['public-mock', 'authorized-mykad', 'authorized-passport'];
+const layouts = ['mykad-labelled', 'mykad-unlabelled', 'passport-biodata', 'passport-cover', 'passport-legacy', 'other-unsupported'];
 const registryKeys = ['caseId', 'personGroup', 'documentGroup', 'reviewCaseGroup', 'split', 'source', 'layout', 'truthStatus', 'documentType', 'group', 'stage'];
 const scenarios = ['reference', 'jpeg-75', 'jpeg-40', 'width-900', 'blur-1', 'blur-2', 'rotate-4', 'rotate-minus-4', 'darken-070', 'glare-obscured', 'filter-normalise'];
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -15,6 +17,23 @@ const invalid = () => { throw new Error('sample_manifest_invalid'); };
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const keysAllowed = (value, keys) => object(value) && Object.keys(value).every(key => keys.includes(key));
 const text = (value, max) => typeof value === 'string' && value.length > 0 && value.length <= max;
+const requiredSides = documentType => documentType === 'passport' ? ['front'] : ['front', 'back'];
+const validImageFilename = value => typeof value === 'string' && /^[a-zA-Z0-9_-]+\.(png|jpe?g|webp)$/i.test(value);
+function validateManifestSides(item) {
+  const sides = requiredSides(item.documentType);
+  if (sides.some(side => !validImageFilename(item[side]))) invalid();
+  // A passport is a single biodata-page input. Rejecting a declared back page
+  // prevents a caller from accidentally treating a visa/cover page as evidence.
+  if (item.documentType === 'passport' && Object.hasOwn(item, 'back')) invalid();
+}
+function validateDocumentMetadata(row) {
+  const passportLayouts = ['passport-biodata', 'passport-cover', 'passport-legacy'];
+  const mykadLayouts = ['mykad-labelled', 'mykad-unlabelled'];
+  if (row.source === 'authorized-passport' && row.documentType !== 'passport') invalid();
+  if (row.documentType === 'passport' && !passportLayouts.includes(row.layout) && row.layout !== 'other-unsupported') invalid();
+  if (row.documentType !== 'passport' && passportLayouts.includes(row.layout)) invalid();
+  if (row.documentType !== 'passport' && row.layout !== 'other-unsupported' && !mykadLayouts.includes(row.layout)) invalid();
+}
 async function privateFile(filename, maximum) {
   const meta = await fs.lstat(filename);
   if (!meta.isFile() || meta.isSymbolicLink() || (meta.mode & 0o777) !== 0o600 || meta.uid !== process.getuid?.() || meta.size > maximum) invalid();
@@ -51,9 +70,10 @@ export function validateStudyPartition(registry) {
   for (const row of registry) {
     if (!keysAllowed(row, registryKeys) || Object.keys(row).length !== registryKeys.length ||
       !['caseId', 'personGroup', 'documentGroup', 'reviewCaseGroup'].every(key => typeof row[key] === 'string' && uuid.test(row[key])) ||
-      !['development', 'validation', 'holdout'].includes(row.split) || !['public-mock', 'authorized-mykad'].includes(row.source) ||
-      !['mykad-labelled', 'mykad-unlabelled', 'other-unsupported'].includes(row.layout) || !['double-checked', 'disputed'].includes(row.truthStatus) ||
+      !['development', 'validation', 'holdout'].includes(row.split) || !sources.includes(row.source) ||
+      !layouts.includes(row.layout) || !['double-checked', 'disputed'].includes(row.truthStatus) ||
       !documentTypes.includes(row.documentType) || !groups.includes(row.group) || !stages.includes(row.stage) || cases.has(row.caseId)) invalid();
+    validateDocumentMetadata(row);
     cases.add(row.caseId);
     assign(persons, row.personGroup, JSON.stringify([row.split, row.group]));
     assign(documents, row.documentGroup, JSON.stringify([row.personGroup, row.split, row.source, row.layout, row.documentType]));
@@ -85,6 +105,7 @@ function studyMetadata(manifest, seal) {
       !text(item.expectedHolderName, 160) || !text(item.expectedDocumentNumber, 40) ||
       !(item.profile === null || (keysAllowed(item.profile, ['holderName', 'enteredDocumentNumber']) && Object.keys(item.profile).length === 2 &&
         (item.profile.holderName === null || text(item.profile.holderName, 160)) && (item.profile.enteredDocumentNumber === null || text(item.profile.enteredDocumentNumber, 40))))) invalid();
+    validateManifestSides(item);
     declared.add(item.caseId);
   }
 }
@@ -99,7 +120,7 @@ function aggregateMetadata(items, scenario) {
   }
   return { selected: items.length, people: new Set(items.map(item => item.personGroup)).size,
     documents: new Set(items.map(item => item.documentGroup)).size, cases: new Set(items.map(item => item.reviewCaseGroup)).size,
-    images: items.length * 2, strata: [...strata.values()],
+    images: items.reduce((sum, item) => sum + requiredSides(item.documentType).length, 0), strata: [...strata.values()],
     assignedCases: Object.fromEntries(groups.map(group => [group, new Set(items.filter(item => item.group === group).map(item => item.reviewCaseGroup)).size])) };
 }
 
@@ -114,7 +135,7 @@ function lazyStudy(plans, manifest) {
         const images = [];
         try {
           for (const file of files) images.push({ mimeType: file.mimeType, bytes: await readPrivateFile(file.file, maximumBytes) });
-          yield { ...item, scenario: manifest.scenario, front: images[0], back: images[1] };
+          yield { ...item, scenario: manifest.scenario, front: images[0], ...(images[1] ? { back: images[1] } : {}) };
         } catch { throw new Error('sample_manifest_invalid'); }
         finally { for (const image of images) image.bytes.fill(0); }
       }
@@ -145,10 +166,10 @@ export async function loadAuthorizedSamples(env = process.env, manual = false) {
       if (!item || typeof item !== 'object' || (!version2 && Object.keys(item).some(key => !['front', 'back', 'documentType', 'expectedHolderName', 'expectedDocumentNumber', 'group', 'stage'].includes(key))) ||
         !['national_id', 'passport', 'driving_license'].includes(item.documentType) || !['baseline', 'assisted'].includes(item.group) || !stages.includes(item.stage) ||
         typeof item.expectedHolderName !== 'string' || item.expectedHolderName.length > 160 || typeof item.expectedDocumentNumber !== 'string' || item.expectedDocumentNumber.length > 40) invalid();
+      validateManifestSides(item);
       const files = [];
-      for (const side of ['front', 'back']) {
+      for (const side of requiredSides(item.documentType)) {
         const name = item[side];
-        if (typeof name !== 'string' || !/^[a-zA-Z0-9_-]+\.(png|jpe?g|webp)$/i.test(name)) invalid();
         const file = path.join(root, name);
         await privateFile(file, maximumBytes);
         if (await fs.realpath(file) !== file) invalid();
@@ -162,12 +183,12 @@ export async function loadAuthorizedSamples(env = process.env, manual = false) {
       const images = [];
       try {
         for (const file of files) images.push({ mimeType: file.mimeType, bytes: await readPrivateFile(file.file, maximumBytes) });
-        loaded.push({ ...item, front: images[0], back: images[1] });
+        loaded.push({ ...item, front: images[0], ...(images[1] ? { back: images[1] } : {}) });
       } catch { for (const image of images) image.bytes.fill(0); invalid(); }
     }
     return loaded;
   } catch {
-    for (const item of loaded) { item.front.bytes.fill(0); item.back.bytes.fill(0); }
+    for (const item of loaded) { item.front?.bytes.fill(0); item.back?.bytes.fill(0); }
     throw new Error('sample_manifest_invalid');
   }
 }
@@ -244,7 +265,9 @@ export async function makeCorruptionVariant(image, scenario, timeoutMs = 5000) {
 }
 
 const fieldCounters = denominator => ({ denominator, correct: 0, wrong: 0, unknown: 0, engineErrors: 0, transformErrors: 0, notRun: denominator });
-const eligible = row => row.truthStatus === 'double-checked' && row.documentType === 'national_id' && row.layout !== 'other-unsupported';
+const eligible = row => row.truthStatus === 'double-checked'
+  && ((row.documentType === 'national_id' && row.layout !== 'other-unsupported')
+    || (row.documentType === 'passport' && row.layout === 'passport-biodata'));
 function counterFields(denominator) { return { holderName: fieldCounters(denominator), documentNumber: fieldCounters(denominator) }; }
 function finishFields(fields) {
   for (const field of Object.values(fields)) {
@@ -260,18 +283,71 @@ function durations(values) {
     p95Ms: sorted[Math.ceil(sorted.length * 0.95) - 1] };
 }
 
+function passportCheckCounter(denominator, statuses) {
+  return { denominator, ...Object.fromEntries([...statuses, 'missing'].map(status => [status, 0])),
+    missingFields: 0, conflictingFields: 0, engineErrors: 0, transformErrors: 0,
+    notRun: denominator, totalMs: 0, meanMs: null };
+}
+function passportChecks(denominator) {
+  return { mrz: passportCheckCounter(denominator, ['valid', 'invalid', 'unreadable', 'unsupported']),
+    visualComparison: passportCheckCounter(denominator, ['consistent', 'conflict', 'incomplete']) };
+}
+function finishPassportChecks(checks) {
+  for (const counter of Object.values(checks)) {
+    const processed = counter.denominator - counter.notRun;
+    counter.meanMs = processed ? counter.totalMs / processed : null;
+  }
+}
+function fieldsArray(value) { return Array.isArray(value) ? value.slice(0, 256) : []; }
+function fieldStatusCount(value, status) {
+  return object(value) ? Object.values(value).slice(0, 256).filter(fieldStatus => fieldStatus === status).length : 0;
+}
+function passportEvidence(sample, front, back) {
+  return sample.documentType === 'passport'
+    ? { documentType: sample.documentType, front }
+    : { documentType: sample.documentType, front, back };
+}
+function recordPassportChecks(checks, result, category, elapsedMs) {
+  const fields = result?.fields ?? {};
+  for (const [kind, counter] of Object.entries(checks)) {
+    counter.notRun -= 1;
+    counter.totalMs += elapsedMs;
+    if (category) {
+      counter[category] += 1;
+      continue;
+    }
+    const status = kind === 'mrz' ? fields.mrzStatus : fields.visualComparisonStatus;
+    const statuses = kind === 'mrz' ? ['valid', 'invalid', 'unreadable', 'unsupported'] : ['consistent', 'conflict', 'incomplete'];
+    if (statuses.includes(status)) counter[status] += 1;
+    else counter.missing += 1;
+    const missing = fieldsArray(kind === 'mrz'
+      ? (fields.mrzMissingFields ?? fields.missingMrzFields)
+      : (fields.visualMissingFields ?? fields.visualComparisonMissingFields));
+    const conflicting = fieldsArray(kind === 'mrz'
+      ? (fields.mrzConflictingFields ?? fields.mrzMismatchFields)
+      : (fields.visualMismatchFields ?? fields.visualComparisonConflictingFields));
+    const visualMissing = kind === 'visualComparison' ? fieldStatusCount(fields.visualFieldStatuses, 'missing') : 0;
+    const visualConflicting = kind === 'visualComparison' ? fieldStatusCount(fields.visualFieldStatuses, 'conflict') : 0;
+    counter.missingFields += missing.length || visualMissing || (status === 'incomplete' ? 1 : 0);
+    counter.conflictingFields += conflicting.length || visualConflicting || (status === 'conflict' ? 1 : 0);
+  }
+}
+
 async function evaluateStudy(samples, recognize, options) {
   const now = options.now ?? (() => performance.now());
   const budget = Math.min(300000, Math.max(0, options.budgetMs ?? 300000));
   const deadline = now() + budget;
   const strata = samples.summary.strata.map(row => ({ ...row, fields: counterFields(eligible(row) ? row.selected : 0) }));
   const denominator = strata.reduce((sum, row) => sum + row.fields.holderName.denominator, 0);
+  const passportDenominator = strata.filter(row => eligible(row) && row.documentType === 'passport')
+    .reduce((sum, row) => sum + row.selected, 0);
   const report = { schemaVersion: 2, protocolVersion: samples.protocolVersion, scenario: samples.scenario, kind: 'descriptive_field_evaluation',
     samples: 0, numberExact: 0, nameExact: 0, unknown: 0, wrongFields: 0, engineErrors: 0, transformErrors: 0, totalMs: 0,
     counts: { selected: samples.summary.selected, people: samples.summary.people, documents: samples.summary.documents, cases: samples.summary.cases, images: samples.summary.images,
       eligible: denominator, disputed: strata.filter(row => row.truthStatus === 'disputed').reduce((sum, row) => sum + row.selected, 0),
-      unsupported: strata.filter(row => row.truthStatus !== 'disputed' && !eligible(row)).reduce((sum, row) => sum + row.selected, 0), processed: 0, notRun: denominator, variants: 0 },
-    fields: counterFields(denominator), strata, latency: durations([]),
+      unsupported: strata.filter(row => row.truthStatus !== 'disputed' && !eligible(row)).reduce((sum, row) => sum + row.selected, 0),
+      passportEligible: passportDenominator, processed: 0, notRun: denominator, variants: 0 },
+    fields: counterFields(denominator), strata, latency: durations([]), passportChecks: passportChecks(passportDenominator),
     identityAuthenticity: 'unmeasured', finalApprovalError: 'unmeasured', productionFalseMatch: 'unmeasured' };
   const times = [];
   const iterator = samples[Symbol.asyncIterator]();
@@ -286,9 +362,9 @@ async function evaluateStudy(samples, recognize, options) {
       let result, category = null;
       const begin = now();
       try {
-        for (const side of ['front', 'back']) variants.push(await makeCorruptionVariant(sample[side], samples.scenario, Math.min(5000, deadline - now() - 25000)));
+        for (const side of requiredSides(sample.documentType)) variants.push(await makeCorruptionVariant(sample[side], samples.scenario, Math.min(5000, deadline - now() - 25000)));
         if (deadline - now() < 25000) break;
-        try { result = await recognize({ documentType: sample.documentType, front: variants[0], back: variants[1] }); }
+        try { result = await recognize(passportEvidence(sample, variants[0], variants[1])); }
         catch { category = 'engineErrors'; }
         if (!category && result?.ok !== true) category = 'engineErrors';
       } catch { category = 'transformErrors'; }
@@ -297,6 +373,7 @@ async function evaluateStudy(samples, recognize, options) {
       times.push(ms); report.totalMs += ms; report.samples += 1; report.counts.processed += 1; report.counts.notRun -= 1;
       if (samples.scenario !== 'reference') report.counts.variants += 1;
       if (category) report[category] += 1;
+      if (sample.documentType === 'passport') recordPassportChecks(report.passportChecks, result, category, ms);
       for (const [field, expected, legacy] of [['holderName', 'expectedHolderName', 'nameExact'], ['documentNumber', 'expectedDocumentNumber', 'numberExact']]) {
         const actual = result?.fields?.[field];
         const outcome = category ?? (!text(actual, field === 'holderName' ? 160 : 40) ? 'unknown' :
@@ -310,6 +387,7 @@ async function evaluateStudy(samples, recognize, options) {
   } finally { await iterator.return(); }
   finishFields(report.fields);
   for (const row of strata) finishFields(row.fields);
+  finishPassportChecks(report.passportChecks);
   report.latency = durations(times);
   return report;
 }
@@ -317,18 +395,29 @@ async function evaluateStudy(samples, recognize, options) {
 /** @returns {Promise<Awaited<ReturnType<typeof evaluateStudy>> | { schemaVersion: 1, kind: 'legacy_exploratory_field_evaluation', samples: number, numberExact: number, nameExact: number, unknown: number, wrongFields: number, engineErrors: number, totalMs: number }>} */
 export async function evaluateSamples(samples, recognize, options = {}) {
   if (samples?.schemaVersion === 2) return evaluateStudy(samples, recognize, options);
-  const report = { schemaVersion: 1, kind: 'legacy_exploratory_field_evaluation', samples: 0, numberExact: 0, nameExact: 0, unknown: 0, wrongFields: 0, engineErrors: 0, totalMs: 0 };
+  const passportDenominator = samples.filter(sample => sample.documentType === 'passport').length;
+  const report = { schemaVersion: 1, kind: 'legacy_exploratory_field_evaluation', samples: 0, numberExact: 0, nameExact: 0, unknown: 0, wrongFields: 0, engineErrors: 0, totalMs: 0,
+    passportChecks: passportChecks(passportDenominator) };
   for (const sample of samples) {
     const begin = performance.now();
-    const result = await recognize({ documentType: sample.documentType, front: sample.front, back: sample.back });
-    report.totalMs += performance.now() - begin; report.samples += 1;
-    if (!result.ok) { report.engineErrors += 1; continue; }
+    let result, category = null;
+    try { result = await recognize(passportEvidence(sample, sample.front, sample.back)); }
+    catch { category = 'engineErrors'; }
+    const elapsedMs = Math.max(0, performance.now() - begin);
+    report.totalMs += elapsedMs; report.samples += 1;
+    if (category || result?.ok !== true) {
+      report.engineErrors += 1;
+      if (sample.documentType === 'passport') recordPassportChecks(report.passportChecks, result, 'engineErrors', elapsedMs);
+      continue;
+    }
+    if (sample.documentType === 'passport') recordPassportChecks(report.passportChecks, result, null, elapsedMs);
     for (const [field, expected, count] of [['documentNumber', 'expectedDocumentNumber', 'numberExact'], ['holderName', 'expectedHolderName', 'nameExact']]) {
       if (!result.fields[field]) report.unknown += 1;
       else if (normalizeEvaluationField(field, result.fields[field]) === normalizeEvaluationField(field, sample[expected])) report[count] += 1;
       else report.wrongFields += 1;
     }
   }
+  finishPassportChecks(report.passportChecks);
   return report;
 }
 
@@ -349,7 +438,8 @@ export async function createBlindReviewPresentation(sample, runOcr) {
   const hmacKey = randomBytes(32).toString('hex');
   let result;
   try {
-    result = await runOcr({ documentType: sample.documentType, front: sample.front, back: sample.back,
+    const input = passportEvidence(sample, sample.front, sample.back);
+    result = await runOcr({ ...input,
       expectedHolderName: profile.holderName, enteredDocumentNumber: profile.enteredDocumentNumber, hmacKey });
   } catch { result = null; }
   const valid = result && ['matched', 'mismatch', 'unreadable', 'unavailable'].includes(result.status);

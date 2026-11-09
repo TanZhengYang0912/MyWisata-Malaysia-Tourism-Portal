@@ -106,6 +106,7 @@
       "submit": "Submit",
       "approve": "Approve",
       "reject": "Reject",
+      "stateDuration": "{{state}} · {{duration}}",
       "pause": "Pause"
     },
     "categories": {
@@ -174,6 +175,7 @@
       "policies": "Policies",
       "assignments": "Assignments",
       "staff-roles": "Staff Roles",
+      "jit-approvals": "JIT approvals",
       "audit-log": "Audit Log"
     },
     "actions": {
@@ -194,7 +196,25 @@
       "revoke": "Revoke",
       "openTarget": "Open target",
       "hide": "Hide",
-      "inspect": "Inspect"
+      "inspect": "Inspect",
+      "loadMore": "Load more"
+    },
+    "jit": {
+      "title": "Temporary access requests",
+      "description": "Review eligible staff requests for short lived permissions.",
+      "decisionReason": "Decision reason",
+      "minutes": "{{count}} minutes",
+      "minutes_one": "{{count}} minute",
+      "minutes_other": "{{count}} minutes",
+      "stateDuration": "{{state}} · {{duration}}",
+      "permissionLabel": "KYC review",
+      "staffMember": "Staff member",
+      "approve": "Approve",
+      "reject": "Reject",
+      "loading": "Loading requests…",
+      "empty": "No requests are waiting for review.",
+      "updated": "Request updated.",
+      "error": "Unable to update or load temporary access requests. Refresh and check the latest status."
     },
     "accessibility": {
       "tabs": "Access Control sections",
@@ -328,6 +348,9 @@
       "active": "Role is active",
       "permissions": "Permissions by module",
       "modules": "Modules",
+      "jitPermissions": "Temporary permissions available to this role",
+      "jitPermissionHelp": "Eligible staff can request this permission for 30 or 60 minutes. It does not grant permanent access.",
+      "jitLabel": "Temporary request: {{permission}}",
       "lockedGroup": "Bundled module: {{group}}",
       "reviewSave": "Review role change",
       "rolesTitle": "Available permission roles",
@@ -1372,7 +1395,7 @@
       },
       "vendors": {
         "cta": "Open vendor queue",
-        "detail": "Unverified outlets in the platform queue",
+        "detail": "Vendor applications awaiting review",
         "title": "Vendor approvals"
       },
       "withdrawals": {
@@ -1397,7 +1420,8 @@
       "twoApprovers": "Waiting for two approvers",
       "withdrawalRequests": "{{count}} withdrawal requests",
       "withdrawalRequests_one": "{{count}} withdrawal requests",
-      "withdrawalRequests_other": "{{count}} withdrawal requests"
+      "withdrawalRequests_other": "{{count}} withdrawal requests",
+      "authorizedQueues": "Queues you can access"
     },
     "oldestWithdrawal": "Oldest withdrawal",
     "openApprovals": "Open approvals",
@@ -1417,7 +1441,9 @@
     "openItems_one": "{{count}} open items",
     "openItems_other": "{{count}} open items",
     "walletPending_one": "{{count}} requests need a decision, with {{amount}} in review.",
-    "walletPending_other": "{{count}} requests need a decision, with {{amount}} in review."
+    "walletPending_other": "{{count}} requests need a decision, with {{amount}} in review.",
+    "queueUnavailable": "Queue data temporarily unavailable",
+    "staleData": "Refresh failed. Showing the last successful results."
   },
   "kyc": {
     "accessibility": {
@@ -1455,6 +1481,16 @@
       "numberMismatch": "Number differs from OCR",
       "ocrUnavailable": "OCR unavailable",
       "ocrUnreadable": "OCR unreadable",
+        "ocrSourceUnavailable": "OCR source unavailable",
+        "ocrVisibleFieldsIncomplete": "Visible fields incomplete",
+        "ocrTranscriptionError": "MRZ transcription error",
+        "transcriptionCorrection": "What was corrected from the OCR result?",
+        "nationality": "Nationality",
+        "birthDate": "Birth date",
+        "expiryDate": "Expiry date",
+        "sex": "Sex",
+        "mrzLine1": "MRZ line 1",
+        "mrzLine2": "MRZ line 2",
       "openBothDocuments": "Open both the front and back images before confirming.",
       "secondaryReviewer": "Independent second reviewer",
       "secondaryReviewerRequired": "Select an eligible second reviewer first.",
@@ -1559,9 +1595,39 @@
       "check": "OCR check:",
       "documentEnding": "Last four digits of document number: {{number}}",
       "expiryDate": "Expiry date: {{date}}",
+      "passportCountry": "Issuing country / nationality: {{issuer}} / {{nationality}}",
+      "mrzStatus": "MRZ: {{status}} · visible field comparison: {{comparison}}",
       "extractedName": "Extracted name: {{name}}",
       "mismatch": "Mismatch: {{fields}}",
       "noMismatch": "No OCR mismatch detected",
+      "reviewRequired": "Manual review required",
+      "issueCodes": {
+        "document_number": "Document number",
+        "holder_name": "Full name",
+        "birth_date": "Date of birth",
+        "expiry_date": "Expiry date",
+        "nationality": "Nationality",
+        "issuer_country": "Issuing country",
+        "sex": "Sex",
+        "missing_document_number": "Not read: Document number",
+        "missing_holder_name": "Not read: Full name",
+        "missing_birth_date": "Not read: Date of birth",
+        "missing_expiry_date": "Not read: Expiry date",
+        "missing_nationality": "Not read: Nationality",
+        "missing_issuer_country": "Not read: Issuing country",
+        "missing_sex": "Not read: Sex",
+        "mrz_invalid": "MRZ validation failed",
+        "mrz_unreadable": "MRZ could not be read",
+        "visual_comparison_conflict": "Visible fields conflict with MRZ",
+        "country_unsupported": "Unsupported passport country",
+        "visual_comparison_incomplete": "Visible-field comparison incomplete",
+        "source_unverified": "Field source unavailable",
+        "expired_document": "Expired document",
+        "ocr_source_unavailable": "OCR source unavailable",
+        "expired_or_missing": "Expiry missing or document expired",
+        "unknown": "Other recognition issue",
+        "confidence_unvalidated": "Recognition requires review"
+      },
       "status": {
         "matched": "Matched",
         "mismatch": "Mismatch",
@@ -2096,6 +2162,7 @@
       "errors": {
         "batchUpdate": "One or more tickets could not be updated.",
         "batchUpdateFailed": "Batch ticket update failed.",
+        "loadTickets": "Could not load support tickets.",
         "sendReply": "Could not send reply.",
         "sendReplyTryAgain": "Could not send reply. Please try again.",
         "updateCategory": "Could not update ticket category.",
@@ -2134,6 +2201,8 @@
       "statusLabel": "Status",
       "ticketMarked": "Ticket marked {{status}}.",
       "title": "Support Tickets",
+      "retry": "Try again",
+      "unknownUser": "Unknown user",
       "unanswered": "Unanswered",
       "unansweredLower": "unanswered",
       "unreadOnly": "Unread only",
@@ -3606,6 +3675,61 @@
     "next": "Next",
     "errors": {
       "load": "Could not load orders. Try again."
+    },
+    "detail": {
+      "eyebrow": "Order operations",
+      "title": "Order details",
+      "customerType": "{{type}} order",
+      "customerTypes": {
+        "account": "Account",
+        "guest": "Guest"
+      },
+      "back": "Back to orders",
+      "status": "Status",
+      "total": "Order total",
+      "paymentMethod": "Payment method",
+      "created": "Created",
+      "paid": "Paid",
+      "completed": "Completed",
+      "customerTypeLabel": "Customer type",
+      "updated": "Last updated",
+      "items": "Items and fulfilment",
+      "noItems": "No items recorded.",
+      "payments": "Payments",
+      "processed": "Processed",
+      "noPayments": "No payment records.",
+      "bookings": "Bookings",
+      "checkedIn": "Checked in",
+      "noBookings": "No bookings recorded.",
+      "passes": "Ticket passes",
+      "checkIns": "Check-ins",
+      "refunds": "Refunds",
+      "noRefunds": "No refunds recorded.",
+      "moreInTimeline": "Some records are shown in the timeline below.",
+      "timeline": "Order timeline",
+      "noTimeline": "No timeline events recorded.",
+      "loading": "Loading order details…",
+      "loadError": "Unable to load order details. Try again.",
+      "retry": "Retry",
+      "loadMore": "Load more",
+      "eventKinds": {
+        "order": "Order",
+        "fulfilment": "Fulfilment",
+        "payment": "Payment",
+        "refund": "Refund",
+        "booking": "Booking",
+        "check_in": "Check-in"
+      },
+      "itemContext": "{{quantity}} · {{vendor}} · {{outlet}}",
+      "fulfilmentContext": "{{status}} · {{date}}",
+      "paymentContext": "{{method}} · {{status}}",
+      "processedAt": "Processed: {{date}}",
+      "checkedInAt": "Checked in: {{date}}",
+      "passCounts": "Ticket passes: {{passes}} · Check-ins: {{checkIns}}",
+      "statusAt": "Status: {{status}}",
+      "refundDates": "{{created}} · {{processed}}",
+      "quantity_one": "{{count}} unit",
+      "quantity_other": "{{count}} units"
     }
   },
   "moderationWords": {

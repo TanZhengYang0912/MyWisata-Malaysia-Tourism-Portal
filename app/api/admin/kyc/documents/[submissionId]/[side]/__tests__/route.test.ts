@@ -27,7 +27,9 @@ describe('GET /api/admin/kyc/documents/[submissionId]/[side]', () => {
   beforeEach(() => vi.clearAllMocks());
   it.each(['image/jpeg', 'application/pdf'])('returns private %s bytes without signed URLs or internal paths and disables caching', async (contentType) => {
     getUser.mockResolvedValue({ data: { user: { id: '33333333-3333-4333-8333-333333333333' } } });
-    rpc.mockResolvedValue({ data: true, error: null });
+    rpc.mockImplementation(async (name: string) => name === 'issue_kyc_service_operation_ticket'
+      ? { data: { ticketId: '88888888-8888-4888-8888-888888888888', reviewVersion: 3, evidenceRevision: 'evidence-v3' }, error: null }
+      : { data: true, error: null });
     const download = vi.fn().mockResolvedValue({ data: new Blob(['image-bytes'], { type: contentType }), error: null });
     const serviceRpc = vi.fn().mockResolvedValue({ data: { storage_path: 'private/user/front.jpg', access_id: '66666666-6666-4666-8666-666666666666' }, error: null });
     createServiceClient.mockReturnValue({ rpc: serviceRpc, storage: { from: () => ({ download }) } });
@@ -36,7 +38,12 @@ describe('GET /api/admin/kyc/documents/[submissionId]/[side]', () => {
     expect(response.headers.get('cache-control')).toContain('no-store');
     expect(response.headers.get('content-type')).toBe(contentType);
     expect(response.headers.get('x-kyc-document-access-id')).toBe('66666666-6666-4666-8666-666666666666');
-    expect(serviceRpc).toHaveBeenCalledWith('get_kyc_document_view_v2', expect.objectContaining({ p_side: 'front' }));
+    expect(rpc).toHaveBeenCalledWith('issue_kyc_service_operation_ticket', expect.objectContaining({
+      p_submission_id: '22222222-2222-4222-8222-222222222222', p_action: 'document.view', p_side: 'front',
+    }));
+    expect(serviceRpc).toHaveBeenCalledWith('get_kyc_document_view_v3', expect.objectContaining({
+      p_side: 'front', p_ticket_id: '88888888-8888-4888-8888-888888888888', p_evidence_revision: 'evidence-v3',
+    }));
     expect(await response.text()).toBe('image-bytes');
   });
   it('returns 401 before validating malformed route parameters', async () => {

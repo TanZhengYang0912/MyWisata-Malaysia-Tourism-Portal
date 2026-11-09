@@ -1,4 +1,4 @@
-export type AccessControlTabId = "overview" | "capabilities" | "policies" | "assignments" | "staff-roles" | "audit-log";
+export type AccessControlTabId = "overview" | "capabilities" | "policies" | "assignments" | "staff-roles" | "jit-approvals" | "audit-log";
 
 export type ApiError = { code?: string; message?: string };
 export type ApiEnvelope<T> = { data?: T | null; error?: ApiError | null };
@@ -64,6 +64,7 @@ export type StaffRoleRecord = {
   isActive: boolean;
   moduleKeys: string[];
   permissionKeys: string[];
+  jitPermissionKeys: string[];
   createdBy: string | null;
   createdAt: string | null;
   updatedAt: string | null;

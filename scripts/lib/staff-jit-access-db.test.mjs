@@ -1,0 +1,116 @@
+// Disposable PostgreSQL replay for JIT schema, request state and access boundaries.
+// Run with: npm exec --yes --package=@electric-sql/pglite -- node scripts/lib/staff-jit-access-db.test.mjs
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const packagePath = (process.env.PATH ?? '').split(path.delimiter)
+  .map((directory) => path.resolve(directory, '../@electric-sql/pglite/dist/index.js'))
+  .find((file) => fs.existsSync(file));
+if (!packagePath) throw new Error('Run with npm exec --yes --package=@electric-sql/pglite -- node scripts/lib/staff-jit-access-db.test.mjs');
+const { PGlite } = await import(pathToFileURL(packagePath).href);
+const db = new PGlite();
+const actor = '11111111-1111-4111-8111-111111111111';
+const roleId = '22222222-2222-4222-8222-222222222222';
+const assignmentId = '33333333-3333-4333-8333-333333333333';
+const sessionId = '44444444-4444-4444-8444-444444444444';
+
+await db.exec(`
+  CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+  CREATE SCHEMA auth; CREATE SCHEMA app_private;
+  CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT current_setting('request.jwt.claims',true)::jsonb $$;
+  CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT (auth.jwt()->>'sub')::uuid $$;
+  CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT auth.jwt()->>'role' $$;
+  CREATE TABLE auth.users(id uuid PRIMARY KEY);
+  CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid NOT NULL,not_after timestamptz);
+  CREATE TABLE auth.mfa_amr_claims(session_id uuid,authentication_method text,updated_at timestamptz DEFAULT now());
+  CREATE TABLE public.users(id uuid PRIMARY KEY,email text,full_name text,status text);
+  CREATE TABLE public.roles(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),name text UNIQUE);
+  CREATE TABLE public.user_roles(user_id uuid,role_id uuid,vendor_id uuid,outlet_id uuid);
+  CREATE TABLE public.staff_roles(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),name text,description text,is_active boolean DEFAULT true,is_system boolean DEFAULT false,updated_at timestamptz DEFAULT now());
+  CREATE TABLE public.staff_role_assignments(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),role_id uuid,user_id uuid,assigned_by uuid,revoked_at timestamptz,created_at timestamptz DEFAULT now());
+  CREATE TABLE public.staff_permissions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),key text UNIQUE,module text,action text,description text);
+  CREATE TABLE public.staff_modules(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),key text UNIQUE,label text,label_key text,description text,section_key text,section_label text,section_label_key text,section_sort_order int DEFAULT 0,href text,icon_key text,sort_order int DEFAULT 0,is_active boolean DEFAULT true);
+  CREATE TABLE public.staff_role_modules(role_id uuid,module_id uuid,PRIMARY KEY(role_id,module_id));
+  CREATE TABLE public.staff_module_permissions(module_id uuid,permission_id uuid,PRIMARY KEY(module_id,permission_id));
+  CREATE TABLE public.staff_role_permissions(role_id uuid,permission_id uuid,PRIMARY KEY(role_id,permission_id));
+  CREATE TABLE public.staff_module_legacy_roles(module_id uuid,role_name text,grants_permissions boolean,PRIMARY KEY(module_id,role_name));
+  CREATE TABLE public.staff_module_groups(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),key text,name text,is_active boolean DEFAULT true);
+  CREATE TABLE public.staff_module_group_members(group_id uuid,module_id uuid);
+  CREATE TABLE public.audit_logs(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),actor_id uuid,action text,entity_type text,entity_id uuid,before_data jsonb,after_data jsonb,note text,created_at timestamptz DEFAULT now());
+  CREATE TABLE app_private.staff_passkey_credentials(credential_id text PRIMARY KEY,user_id uuid NOT NULL,user_handle text,revoked_at timestamptz,counter bigint DEFAULT 0,device_type text,backed_up boolean DEFAULT false);
+  CREATE TABLE app_private.staff_session_assurance(session_id uuid PRIMARY KEY,user_id uuid NOT NULL,credential_id text NOT NULL,verified_at timestamptz DEFAULT now(),expires_at timestamptz DEFAULT now()+interval '12 hours');
+  CREATE TABLE app_private.staff_passkey_challenges(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid,session_id uuid,operation text CHECK(operation IN ('register','login','approve','retry-payout','fraud-override','manage')),challenge text,user_handle text,binding jsonb,label text,expires_at timestamptz DEFAULT now()+interval '5 minutes',consumed_at timestamptz,finalized_at timestamptz,reservation_token uuid);
+  CREATE FUNCTION public.is_active_global_staff_super_admin(p_user_id uuid) RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT EXISTS(SELECT 1 FROM public.user_roles ur JOIN public.roles r ON r.id=ur.role_id JOIN public.users u ON u.id=ur.user_id WHERE ur.user_id=p_user_id AND ur.vendor_id IS NULL AND ur.outlet_id IS NULL AND r.name='super_admin' AND u.status='active') $$;
+  CREATE FUNCTION app_private.caller_lacks_aal2(p_user_id uuid) RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT auth.role()='authenticated' AND p_user_id IS NOT DISTINCT FROM auth.uid() AND coalesce(auth.jwt()->>'aal','')<>'aal2' $$;
+  CREATE FUNCTION public.validate_staff_reason(p_reason text) RETURNS void LANGUAGE plpgsql AS $$ BEGIN IF length(btrim(p_reason)) NOT BETWEEN 10 AND 500 THEN RAISE EXCEPTION 'staff_reason_required'; END IF; END $$;
+  CREATE FUNCTION public.validate_staff_module_keys(p_keys text[]) RETURNS text[] LANGUAGE sql AS $$ SELECT COALESCE(p_keys,ARRAY[]::text[]) $$;
+  CREATE FUNCTION public.sync_staff_role_permissions(p_role_id uuid) RETURNS void LANGUAGE sql AS $$ SELECT $$;
+  CREATE FUNCTION app_private.staff_passkey_service() RETURNS void LANGUAGE sql AS $$ SELECT $$;
+  CREATE FUNCTION app_private.staff_password_session(p_user_id uuid,p_session_id uuid) RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT EXISTS(SELECT 1 FROM auth.sessions WHERE id=p_session_id AND user_id=p_user_id) $$;
+  CREATE FUNCTION app_private.has_staff_permission(p_user_id uuid,p_permission_key text) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
+  CREATE FUNCTION public.has_staff_permission(p_user_id uuid,p_permission_key text) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
+  CREATE FUNCTION app_private.get_my_staff_access() RETURNS jsonb LANGUAGE sql AS $$ SELECT '{}'::jsonb $$;
+  GRANT USAGE ON SCHEMA public,auth,app_private TO anon,authenticated,service_role;
+  INSERT INTO auth.users VALUES('${actor}');
+  INSERT INTO public.users VALUES('${actor}','staff@example.test','Test Staff','active');
+  INSERT INTO public.roles(id,name) VALUES('55555555-5555-4555-8555-555555555555','staff');
+  INSERT INTO public.user_roles(user_id,role_id) VALUES('${actor}','55555555-5555-4555-8555-555555555555');
+  INSERT INTO public.staff_roles(id,name) VALUES('${roleId}','KYC reviewers');
+  INSERT INTO public.staff_permissions(id,key,module,action) VALUES('66666666-6666-4666-8666-666666666666','admin.kyc.review','kyc','review');
+  INSERT INTO public.staff_role_assignments(id,role_id,user_id,assigned_by) VALUES('${assignmentId}','${roleId}','${actor}','${actor}');
+  INSERT INTO auth.sessions(id,user_id,not_after) VALUES('${sessionId}','${actor}',NULL);
+  INSERT INTO auth.mfa_amr_claims(session_id,authentication_method) VALUES('${sessionId}','password'),('${sessionId}','webauthn');
+`);
+await db.exec(fs.readFileSync('supabase/migrations/20261106093324_staff_jit_role_permissions.sql', 'utf8'));
+await db.query("SELECT set_config('request.jwt.claims',$1,false)", [JSON.stringify({ role: 'authenticated', sub: actor, aal: 'aal2', session_id: sessionId })]);
+await db.exec('SET ROLE authenticated');
+await db.query("SELECT set_config('request.jwt.claims',$1,false)", [JSON.stringify({ role: 'authenticated', sub: actor, aal: 'aal1', session_id: sessionId })]);
+assert.equal((await db.query("SELECT app_private.has_staff_permission($1,'admin.kyc.review') AS allowed", [actor])).rows[0].allowed, false,
+  'AAL1 callers must not receive permanent staff permissions through the permission resolver');
+await db.query("SELECT set_config('request.jwt.claims',$1,false)", [JSON.stringify({ role: 'authenticated', sub: actor, aal: 'aal2', session_id: sessionId })]);
+const statusInitially = (await db.query('SELECT public.get_my_staff_jit_status() AS value')).rows[0].value;
+assert.equal(statusInitially.enabled, false, 'JIT must be off by default');
+assert.equal(statusInitially.eligible, false);
+await assert.rejects(db.query("SELECT public.request_staff_jit_access('77777777-7777-4777-8777-777777777777','admin.kyc.review',30,'Need temporary review access')"), /staff_jit_disabled/);
+await assert.rejects(db.query('SELECT * FROM app_private.staff_jit_requests'), /permission denied/);
+await db.exec('RESET ROLE');
+await db.query("INSERT INTO public.staff_role_jit_permissions(role_id,permission_id) VALUES($1,$2)", [roleId,'66666666-6666-4666-8666-666666666666']);
+await db.query("UPDATE app_private.staff_jit_configuration SET enabled=true WHERE singleton");
+await db.exec('SET ROLE authenticated');
+const statusEligible = (await db.query('SELECT public.get_my_staff_jit_status() AS value')).rows[0].value;
+assert.equal(statusEligible.enabled, true);
+assert.equal(statusEligible.eligible, true);
+const requestKey = '77777777-7777-4777-8777-777777777777';
+const request = (await db.query("SELECT public.request_staff_jit_access($1,'admin.kyc.review',30,'Need temporary review access') AS value", [requestKey])).rows[0].value;
+assert.equal(request.state, 'pending');
+const retry = (await db.query("SELECT public.request_staff_jit_access($1,'admin.kyc.review',30,'Need temporary review access') AS value", [requestKey])).rows[0].value;
+assert.equal(retry.id, request.id, 'same key and payload are idempotent');
+await assert.rejects(db.query("SELECT public.request_staff_jit_access('88888888-8888-4888-8888-888888888888','admin.kyc.review',30,'Need temporary review access')"), /staff_jit_request_open/);
+await assert.rejects(db.query("SELECT public.request_staff_jit_access($1,'admin.kyc.review',60,'Different request payload')", [requestKey]), /staff_jit_idempotency_conflict/);
+await db.exec('RESET ROLE');
+await db.query("INSERT INTO public.roles(id,name) VALUES('99999999-9999-4999-8999-999999999999','super_admin')");
+await db.query("INSERT INTO public.user_roles(user_id,role_id) VALUES($1,'99999999-9999-4999-8999-999999999999')", [actor]);
+await db.exec('SET ROLE authenticated');
+await assert.rejects(db.query(`SELECT public.update_staff_role_with_modules_and_jit(
+  $1,'KYC reviewers',NULL,ARRAY[]::text[],true,ARRAY[]::text[],now(),'Change role permissions')`, [roleId]),
+  /staff_jit_admin_assurance_required/, 'direct role/JIT configuration RPC must require a fresh Passkey assurance');
+const page = (await db.query('SELECT public.list_staff_jit_requests(1,25,NULL,false) AS value')).rows[0].value;
+assert.equal(page.total, 1);
+assert.equal(page.items[0].id, request.id);
+await db.exec('RESET ROLE');
+await db.query("UPDATE app_private.staff_jit_requests SET state='active',session_id=$2,activated_at=now(),expires_at=now()+interval '30 minutes' WHERE id=$1", [request.id,sessionId]);
+await db.query("SELECT set_config('request.jwt.claims',$1,false)", [JSON.stringify({ role: 'authenticated', sub: actor, aal: 'aal2', session_id: sessionId })]);
+await db.exec('SET ROLE authenticated');
+const accessProjection = (await db.query('SELECT app_private.get_my_staff_access() AS value')).rows[0].value;
+assert.equal(typeof accessProjection.jitExpiresAt, 'string', `the auth permission projection exposes the active session lease expiry: ${JSON.stringify(accessProjection)}`);
+assert.ok(Date.parse(accessProjection.jitExpiresAt) > Date.now(), 'the projected JIT lease expiry must still be in the future');
+await db.exec('RESET ROLE');
+await db.query("SELECT set_config('request.jwt.claims',$1,false)", [JSON.stringify({ role: 'authenticated', sub: '99999999-9999-4999-8999-999999999999', aal: 'aal2', session_id: sessionId })]);
+await db.exec('SET ROLE authenticated');
+const anotherUser = (await db.query('SELECT public.get_my_staff_jit_status() AS value')).rows[0].value;
+assert.equal(anotherUser.eligible, false, 'JIT eligibility is isolated to the assigned account');
+await db.exec('RESET ROLE');
+await db.close();
+console.log('JIT PostgreSQL replay passed: default-off gate, role eligibility, account isolation, idempotency, open-request lock and private-table ACL.');

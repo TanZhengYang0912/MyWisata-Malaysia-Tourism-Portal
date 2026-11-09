@@ -26,6 +26,7 @@ const ADMIN_ROUTE_PAGES = [
   "app/admin/moderation-words/page.tsx",
   "app/admin/notifications/page.tsx",
   "app/admin/orders/page.tsx",
+  "app/admin/orders/[orderId]/page.tsx",
   "app/admin/promotion-campaigns/page.tsx",
   "app/admin/recommendations/[id]/page.tsx",
   "app/admin/recommendations/page.tsx",
@@ -51,6 +52,7 @@ const ADMIN_ROUTE_PAGES = [
 const ADMIN_SHELL_EXCEPTIONS = [
   "app/admin/catalogue/hotel-amenities/page.tsx",
   "app/admin/kyc/mfa/page.tsx",
+  "app/admin/orders/[orderId]/page.tsx",
   "app/admin/security/page.tsx",
 ] as const;
 
@@ -71,8 +73,8 @@ function discoverAdminRoutePages(directory = "app/admin"): string[] {
 
 describe("admin page-shell consistency contract", () => {
   it("keeps the complete Admin route inventory", () => {
-    expect(ADMIN_ROUTE_PAGES).toHaveLength(43);
-    expect(new Set(ADMIN_ROUTE_PAGES)).toHaveLength(43);
+    expect(ADMIN_ROUTE_PAGES).toHaveLength(44);
+    expect(new Set(ADMIN_ROUTE_PAGES)).toHaveLength(44);
     expect(discoverAdminRoutePages()).toEqual([...ADMIN_ROUTE_PAGES].sort());
 
     for (const route of ADMIN_ROUTE_PAGES) {
@@ -93,6 +95,7 @@ describe("admin page-shell consistency contract", () => {
     expect([...ADMIN_SHELL_EXCEPTIONS].sort()).toEqual([
       "app/admin/catalogue/hotel-amenities/page.tsx",
       "app/admin/kyc/mfa/page.tsx",
+      "app/admin/orders/[orderId]/page.tsx",
       "app/admin/security/page.tsx",
     ]);
 

@@ -74,6 +74,7 @@ export async function GET() {
   let staffRoleNames: string[] = [];
   let staffPermissionKeys: StaffPermissionKey[] = [];
   let staffModules: StaffModule[] = [];
+  let staffPermissionExpiresAt: string | null = null;
   let staffVerified = false;
   let staffMfaRequired = false;
   const staffPasskeyRequired = staffPasskeyEnforcementEnabled();
@@ -94,6 +95,10 @@ export async function GET() {
       ? access.permissionKeys.filter((key): key is StaffPermissionKey => typeof key === 'string' && isStaffPermissionKey(key))
       : [];
     staffModules = parseStaffModules(access.modules);
+    const jitExpiresAt = access.jitExpiresAt;
+    if (typeof jitExpiresAt === 'string' && Number.isFinite(Date.parse(jitExpiresAt))) {
+      staffPermissionExpiresAt = jitExpiresAt;
+    }
   }
   const managerAssignments = (managerRows || []) as ManagerAssignmentRow[];
   const vendorIds = [...new Set([
@@ -171,6 +176,7 @@ export async function GET() {
       staffRoleNames,
       staffPermissionKeys,
       staffModules,
+      staffPermissionExpiresAt,
       staffVerified,
       staffPasskeyRequired,
       staffMfaRequired,

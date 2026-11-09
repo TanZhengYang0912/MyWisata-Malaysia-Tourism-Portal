@@ -122,6 +122,8 @@ export const capabilitiesFiltersSchema = z.object({
   riskLevel: z.enum(["low", "medium", "high", "critical"]).optional(),
   enabled: optionalBooleanQuerySchema,
   customerVisible: optionalBooleanQuerySchema,
+  key: z.string().trim().min(1).max(160).optional(),
+  manuallyAssignable: optionalBooleanQuerySchema,
 }).strict();
 
 export const policiesFiltersSchema = z.object({

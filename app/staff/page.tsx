@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useRequireRole } from "@/components/providers/auth";
 import { createClient } from "@/lib/supabase/client";
 import { NotificationBell } from "@/components/shared/notification-bell";
+import { StaffJitPanel } from "@/components/admin/staff-jit-panel";
 
 export default function StaffHomePage() {
   const router = useRouter();
@@ -35,6 +36,8 @@ export default function StaffHomePage() {
         {staffPasskeyRequired && <Link href="/auth/staff-verification?next=%2Fstaff" className="rounded-full border border-border px-4 py-2 text-sm">{t("staffSecurity")}</Link>}
         <Button type="button" variant="outline" onClick={signOut} className="gap-2"><LogOut size={16} />{t("staffHome.signOut")}</Button>
       </header>
+
+      <StaffJitPanel />
 
       <section className="mt-7">
         <h2 className="text-lg font-bold text-foreground">{t("staffHome.assignedWork")}</h2>

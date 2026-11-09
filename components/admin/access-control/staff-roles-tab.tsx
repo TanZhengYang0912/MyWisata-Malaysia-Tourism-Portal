@@ -4,7 +4,6 @@ import { RefreshCw, Search, ShieldCheck, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Pagination } from "@/components/shared/pagination";
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
 import { useAppDialog } from "@/components/providers/app-dialog";
 import { adminFilterControlClassName } from "@/components/admin/filter-bar";
@@ -28,6 +27,7 @@ import { StaffModulesPanel } from "@/components/admin/access-control/staff-modul
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/i18n/format";
 import { isAppLocale } from "@/lib/i18n/locale";
+import { runStaffPasskey } from "@/lib/auth/staff-passkey-browser";
 
 type RolesPayload = {
   roles: StaffRoleRecord[];
@@ -47,6 +47,7 @@ type RoleForm = {
   name: string;
   description: string;
   moduleKeys: string[];
+  jitPermissionKeys: string[];
   active: boolean;
   reason: string;
   updatedAt: string | null;
@@ -57,6 +58,7 @@ const EMPTY_FORM: RoleForm = {
   name: "",
   description: "",
   moduleKeys: [],
+  jitPermissionKeys: [],
   active: true,
   reason: "",
   updatedAt: null,
@@ -207,6 +209,7 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
       name: role.name,
       description: role.description ?? "",
       moduleKeys: [...role.moduleKeys],
+      jitPermissionKeys: [...(role.jitPermissionKeys ?? [])],
       active: role.isActive,
       reason: "",
       updatedAt: role.updatedAt,
@@ -245,6 +248,7 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
     setError("");
     try {
       const editing = Boolean(form.id);
+      if (editing) await runStaffPasskey({ operation: "manage" });
       const response = await fetch(
         editing ? `/api/admin/access-control/staff-roles/${form.id}` : "/api/admin/access-control/staff-roles",
         {
@@ -254,6 +258,7 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
             name: form.name.trim(),
             description: form.description.trim(),
             moduleKeys: [...form.moduleKeys].sort(),
+            ...(editing ? { jitPermissionKeys: [...form.jitPermissionKeys].sort() } : {}),
             ...(editing ? { active: form.active } : {}),
             ...(editing ? { updatedAt: form.updatedAt } : {}),
             reason: form.reason.trim(),
@@ -434,6 +439,13 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
             </label>)}</div>
           </div>)}
         </fieldset>
+        {form.id && <fieldset className="mt-4 rounded-xl border border-border p-4" disabled={roles.find((role) => role.id === form.id)?.isSystem}>
+          <legend className="px-1 text-sm font-semibold">{t("accessControl.staffRoles.jitPermissions")}</legend>
+          <label className="flex items-start gap-3 rounded-lg bg-muted/30 p-3 text-sm">
+            <input type="checkbox" checked={form.jitPermissionKeys.includes("admin.kyc.review")} onChange={(event) => setForm((current) => ({ ...current, jitPermissionKeys: event.target.checked ? ["admin.kyc.review"] : [] }))} />
+            <span><span className="block font-medium">{permissionLabel("admin.kyc.review")}</span><span className="mt-1 block text-xs text-muted-foreground">{t("accessControl.staffRoles.jitPermissionHelp")}</span></span>
+          </label>
+        </fieldset>}
         <Field htmlFor="role-reason" label={t("accessControl.forms.reason")}><textarea id="role-reason" name="role-reason" value={form.reason} onChange={(event) => setForm({ ...form, reason: event.target.value })} maxLength={500} className="min-h-24 w-full rounded-xl border border-border bg-background p-3 text-sm" placeholder={t("accessControl.forms.reasonPlaceholder")} /></Field>
         <div className="mt-4 flex justify-end gap-2">{form.id && <Button variant="outline" onClick={() => setForm(EMPTY_FORM)}>{t("accessControl.actions.cancel")}</Button>}<Button disabled={roleSaveDisabled || saving} onClick={() => setConfirmOpen(true)}><ShieldCheck />{t("accessControl.staffRoles.reviewSave")}</Button></div>
       </section>
@@ -443,16 +455,17 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
           <h2 className="font-semibold">{t("accessControl.staffRoles.rolesTitle")}</h2>
           <div className="mt-3 space-y-3">{roles.map((role) => <article key={role.id} className="min-w-0 rounded-xl border border-border p-3">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <span className="flex min-w-0 flex-wrap items-center gap-2 break-words font-medium">{role.name}<span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">{t(role.isSystem ? "accessControl.staffRoles.systemPreset" : "accessControl.staffRoles.customRole")}</span></span>
-                {role.description && <p className="mt-1 break-words text-xs text-muted-foreground">{role.description}</p>}
+              <div>
+                <span className="flex flex-wrap items-center gap-2 font-medium">{role.name}<span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">{t(role.isSystem ? "accessControl.staffRoles.systemPreset" : "accessControl.staffRoles.customRole")}</span></span>
+                {role.description && <p className="mt-1 text-xs text-muted-foreground">{role.description}</p>}
               </div>
               <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${role.isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{t(role.isActive ? "accessControl.status.active" : "accessControl.status.inactive")}</span>
             </div>
             <ul className="mt-3 space-y-1.5">{role.moduleKeys.map((key) => <li key={key} className="rounded-lg bg-muted/30 px-3 py-2">
-              <span className="block break-words text-xs font-medium">{modules.find((module) => module.key === key)?.label ?? key.replace(/[._]/g, " ")}</span>
+              <span className="block text-xs font-medium">{modules.find((module) => module.key === key)?.label ?? key.replace(/[._]/g, " ")}</span>
             </li>)}</ul>
             <ul className="mt-2 space-y-1">{role.permissionKeys.map((key) => <li key={key} className="break-words text-xs text-muted-foreground">{permissionLabel(key)}</li>)}</ul>
+            {(role.jitPermissionKeys ?? []).length > 0 && <ul className="mt-2 space-y-1">{(role.jitPermissionKeys ?? []).map((key) => <li key={key} className="text-xs text-primary">{t("accessControl.staffRoles.jitLabel", { permission: permissionLabel(key) })}</li>)}</ul>}
             <div className="mt-3 flex flex-wrap justify-end gap-2">
               {!role.isSystem && <Button size="sm" variant="outline" onClick={() => editRole(role)}>{t("accessControl.staffRoles.editRole")}</Button>}
               <Button size="sm" variant="outline" disabled={!role.isActive} onClick={() => copyRoleTemplate(role)}>{t("accessControl.staffRoles.useTemplate")}</Button>
@@ -478,7 +491,7 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
             </div>
             <p className="text-xs text-muted-foreground">{t("accessControl.staffEmployees.total", { count: invitationTotal })}</p>
             {invitations.length === 0 ? <p className="text-xs text-muted-foreground">{t("accessControl.staffRoles.noPendingInvitations")}</p> : <ul className="space-y-2">{invitations.map((item) => <li key={item.id} className="rounded-xl border border-border p-3 text-xs"><p className="font-semibold">{item.invitedEmail}</p><p>{t("accessControl.staffRoles.invitationListEntry", { roleName: item.roleName, status: t(`accessControl.staffEmployees.invitationStatuses.${item.status}`), delivery: t(`accessControl.staffRoles.delivery.${item.deliveryStatus}`) })}</p><p className="mt-1 text-muted-foreground">{t("accessControl.staffRoles.expiresAt", { value: `${formatDateTime(item.expiresAt, locale, { timeZone: "Asia/Kuala_Lumpur" })} MYT` })}</p>{["pending", "expired"].includes(item.status) && <div className="mt-2 flex gap-2"><Button size="sm" variant="outline" disabled={saving} onClick={() => void resendInvitation(item.id)}>{t("accessControl.staffRoles.resendInvitation")}</Button><Button size="sm" variant="outline" disabled={saving} onClick={() => void revokeInvitation(item.id)}>{t("accessControl.staffRoles.revokeInvitation")}</Button></div>}</li>)}</ul>}
-            <Pagination currentPage={invitationPage} totalPages={invitationTotalPages} totalItems={invitationTotal} pageSize={invitationPageSize} onPageChange={setInvitationPage} disabled={loading} className="mt-0" />
+            <div className="flex items-center justify-between text-xs"><span>{t("accessControl.pagination.pageOf", { page: invitationPage, total: Math.max(invitationTotalPages, 1) })}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={loading || invitationPage <= 1} onClick={() => setInvitationPage((value) => value - 1)}>{t("accessControl.accessibility.previousPage")}</Button><Button size="sm" variant="outline" disabled={loading || invitationPage >= invitationTotalPages} onClick={() => setInvitationPage((value) => value + 1)}>{t("accessControl.accessibility.nextPage")}</Button></div></div>
           </div>
         </section>
 

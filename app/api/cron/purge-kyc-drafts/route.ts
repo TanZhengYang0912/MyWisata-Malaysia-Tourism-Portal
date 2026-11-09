@@ -60,6 +60,19 @@ export async function POST(request: Request) {
   const { data: orphanRows, error: orphanError } = await service.rpc('claim_kyc_draft_cleanup_orphans', { p_limit: batch, p_lease_seconds: lease });
   if (orphanError || !Array.isArray(orphanRows)) failed++;
   else for (const orphan of orphanRows as Array<{ orphan_id: string; storage_path: string }>) {
+    const { data: draftReferenced, error: draftReferenceError } = await service.rpc('is_kyc_draft_storage_path_referenced', {
+      p_storage_path: orphan.storage_path,
+    });
+    if (draftReferenceError || typeof draftReferenced !== 'boolean') {
+      failed++;
+      await service.rpc('finish_kyc_draft_cleanup_orphan', { p_orphan_id: orphan.orphan_id, p_succeeded: false });
+      continue;
+    }
+    if (draftReferenced) {
+      failed++;
+      await service.rpc('finish_kyc_draft_cleanup_orphan', { p_orphan_id: orphan.orphan_id, p_succeeded: false });
+      continue;
+    }
     const { data: references, error: referenceError } = await service.from('kyc_submission_documents')
       .select('storage_path').eq('storage_path', orphan.storage_path).limit(1);
     const isReferenced = Array.isArray(references) && references.length > 0;

@@ -535,6 +535,10 @@ export interface AdminKycSubmission {
     expiryDate: string | null;
     confidence: number | null;
     mismatchFields: string[];
+    issuerCountry?: string | null;
+    nationality?: string | null;
+    mrzStatus?: "valid" | "invalid" | "unreadable" | "unsupported" | null;
+    visualComparisonStatus?: "consistent" | "conflict" | "incomplete" | null;
     processedAt: string;
   } | null;
 }

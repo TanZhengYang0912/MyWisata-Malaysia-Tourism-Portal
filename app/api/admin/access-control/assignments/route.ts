@@ -1,7 +1,6 @@
-import { setEntitlementAssignment } from "@/lib/entitlements/admin";
+import { listAccessControlAssignments, setEntitlementAssignment } from "@/lib/entitlements/admin";
 import { getAdminUserLabel } from "@/lib/admin/identity";
 import { requireAccessControlSuperAdmin } from "@/lib/entitlements/admin-guard";
-import { createServiceClient } from "@/lib/supabase/service";
 import { apiOk, parseBody } from "@/lib/validation/schemas";
 import {
   assignmentSchema,
@@ -10,23 +9,12 @@ import {
 } from "@/lib/validation/entitlement-schemas";
 import {
   accessControlFailure,
-  loadAccessControlStateResponse,
   mutationReceipt,
-  paginate,
   stringField,
   validationFailure,
 } from "@/app/api/admin/access-control/_shared";
 
 export const dynamic = "force-dynamic";
-
-function assignmentStatus(row: Record<string, unknown>, now: number) {
-  if (stringField(row, "revoked_at", "revokedAt")) return "revoked";
-  const startsAt = stringField(row, "starts_at", "startsAt");
-  const expiresAt = stringField(row, "expires_at", "expiresAt");
-  if (startsAt && Date.parse(startsAt) > now) return "scheduled";
-  if (expiresAt && Date.parse(expiresAt) <= now) return "expired";
-  return "active";
-}
 
 export async function GET(request: Request) {
   const { response } = await requireAccessControlSuperAdmin();
@@ -34,50 +22,35 @@ export async function GET(request: Request) {
   const parsed = parseSearchParams(request.url, assignmentsFiltersSchema);
   if (!parsed.success) return validationFailure();
 
-  const result = await loadAccessControlStateResponse();
-  if (result.response || !result.state) return result.response!;
-  const filters = parsed.data;
-  const search = filters.search?.toLowerCase();
-  const now = Date.now();
-  const items = result.state.assignments.map((row) => ({
-    id: stringField(row, "id"),
-    subjectType: stringField(row, "subject_type", "subjectType"),
-    subjectId: stringField(row, "subject_id", "subjectId"),
-    capabilityKey: stringField(row, "capability_key", "capabilityKey"),
-    effect: stringField(row, "effect"),
-    startsAt: stringField(row, "starts_at", "startsAt"),
-    expiresAt: stringField(row, "expires_at", "expiresAt"),
-    reason: stringField(row, "reason"),
-    grantedBy: stringField(row, "granted_by", "grantedBy"),
-    revokedBy: stringField(row, "revoked_by", "revokedBy"),
-    revokedAt: stringField(row, "revoked_at", "revokedAt"),
-    createdAt: stringField(row, "created_at", "createdAt"),
-    status: assignmentStatus(row, now),
-  })).filter((item) => (!search || item.subjectId?.toLowerCase().includes(search) || item.capabilityKey?.toLowerCase().includes(search))
-    && (!filters.subjectType || item.subjectType === filters.subjectType)
-    && (!filters.capabilityKey || item.capabilityKey === filters.capabilityKey)
-    && (!filters.effect || item.effect === filters.effect)
-    && (!filters.status || item.status === filters.status));
-
-  const page = paginate(items, filters.page, filters.pageSize);
-  const userIds = [...new Set(page.items.filter((item) => item.subjectType === "user" && item.subjectId).map((item) => item.subjectId!))];
-  const users = userIds.length
-    ? await createServiceClient().from("users").select("id,full_name,display_name,email").in("id", userIds)
-    : { data: [], error: null };
-  if (users.error) return accessControlFailure(users.error);
-  const userById = new Map((users.data ?? []).map((user) => [user.id, user]));
-  return apiOk({
-    ...page,
-    items: page.items.map((item) => {
-      const subject = item.subjectType === "user" ? userById.get(item.subjectId ?? "") : null;
-      return {
-        ...item,
-        subjectName: subject ? getAdminUserLabel({ fullName: subject.full_name, displayName: subject.display_name, email: subject.email }) : null,
-        subjectEmail: subject?.email ?? null,
-      };
-    }),
-    generation: result.state.generation,
-  });
+  try {
+    const result = await listAccessControlAssignments(parsed.data);
+    return apiOk({
+      ...result,
+      items: result.items.map((item) => ({
+        id: stringField(item, "id"),
+        subjectType: stringField(item, "subject_type"),
+        subjectId: stringField(item, "subject_id"),
+        capabilityKey: stringField(item, "capability_key"),
+        effect: stringField(item, "effect"),
+        startsAt: stringField(item, "starts_at"),
+        expiresAt: stringField(item, "expires_at"),
+        reason: stringField(item, "reason"),
+        grantedBy: stringField(item, "granted_by"),
+        revokedBy: stringField(item, "revoked_by"),
+        revokedAt: stringField(item, "revoked_at"),
+        createdAt: stringField(item, "created_at"),
+        status: stringField(item, "status"),
+        subjectName: item.subject_type === "user" ? getAdminUserLabel({
+          fullName: stringField(item, "subject_full_name"),
+          displayName: stringField(item, "subject_display_name"),
+          email: stringField(item, "subject_email"),
+        }) : null,
+        subjectEmail: item.subject_type === "user" ? stringField(item, "subject_email") : null,
+      })),
+    });
+  } catch (error) {
+    return accessControlFailure(error);
+  }
 }
 
 export async function POST(request: Request) {

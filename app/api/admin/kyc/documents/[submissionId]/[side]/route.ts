@@ -1,6 +1,7 @@
 import { requireKycReviewer } from '@/lib/kyc/reviewer-auth';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail } from '@/lib/validation/schemas';
+import { issueKycServiceOperationTicket } from '@/lib/kyc/service-operation-ticket';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -9,7 +10,7 @@ interface Props {
 }
 
 export async function GET(_request: Request, { params }: Props) {
-  const { user, response } = await requireKycReviewer();
+  const { db, response } = await requireKycReviewer();
   if (response) return response;
 
   const { submissionId, side } = await params;
@@ -17,11 +18,20 @@ export async function GET(_request: Request, { params }: Props) {
     return apiFail('NOT_FOUND', 'Document not found', 404);
   }
 
+  const ticket = await issueKycServiceOperationTicket(db, {
+    submissionId,
+    action: 'document.view',
+    side,
+  });
+  if (!ticket) return apiFail('DOCUMENT_UNAVAILABLE', 'Document access could not be authorized', 503);
+
   const service = createServiceClient();
-  const { data: access, error } = await service.rpc('get_kyc_document_view_v2', {
+  const { data: access, error } = await service.rpc('get_kyc_document_view_v3', {
     p_submission_id: submissionId,
     p_side: side,
-    p_actor_id: user.id,
+    p_ticket_id: ticket.ticketId,
+    p_review_version: ticket.reviewVersion,
+    p_evidence_revision: ticket.evidenceRevision,
   });
   if (error) {
     if (error.message.includes('admin_required')) return apiFail('FORBIDDEN', 'Admin role required', 403);

@@ -87,7 +87,7 @@ describe("AssignmentsTab capability eligibility", () => {
           error: null,
         });
       }
-      if (url === "/api/admin/access-control/capabilities?page=1&pageSize=100") {
+      if (url.startsWith("/api/admin/access-control/capabilities?")) {
         return response({
           data: {
             items: [
@@ -135,13 +135,16 @@ describe("AssignmentsTab capability eligibility", () => {
     expect(assignmentCard.getAttribute("class")).toContain("bg-primary/10");
     expect(findOne(assignmentCard, (element) => element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.revoke"))).toBeDefined();
 
-    expect(mocks.fetch).toHaveBeenCalledWith(
-      "/api/admin/access-control/capabilities?page=1&pageSize=100",
-      { cache: "no-store" },
-    );
+    expect(mocks.fetch.mock.calls.some(([url]) => String(url).startsWith("/api/admin/access-control/capabilities?"))).toBe(false);
 
     await click(findOne(container, (element) =>
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.newAssignment")));
+
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 200)); });
+    expect(mocks.fetch).toHaveBeenCalledWith(
+      "/api/admin/access-control/capabilities?page=1&pageSize=100&manuallyAssignable=true",
+      expect.objectContaining({ cache: "no-store" }),
+    );
 
     const selects = findElements(container, (element) => element.tagName === "SELECT");
     const capabilitySelect = findOne(container, (element) =>
@@ -201,8 +204,7 @@ describe("AssignmentsTab capability eligibility", () => {
     expect(JSON.parse(request?.[1]?.body as string)).toMatchObject({ subjectType: "user", subjectId: otherId });
   });
 
-  it("clears stale capability choices when the governed catalogue cannot be refreshed", async () => {
-    let capabilityRequestCount = 0;
+  it("shows a blocking error when the governed catalogue cannot be loaded", async () => {
     mocks.fetch.mockImplementation(async (url: string) => {
       if (url.startsWith("/api/admin/access-control/assignments?")) {
         return response({
@@ -210,23 +212,8 @@ describe("AssignmentsTab capability eligibility", () => {
           error: null,
         });
       }
-      if (url === "/api/admin/access-control/capabilities?page=1&pageSize=100") {
-        capabilityRequestCount += 1;
-        if (capabilityRequestCount > 1) {
-          return response({ data: null, error: { message: "Capability catalogue unavailable" } }, 503);
-        }
-        return response({
-          data: {
-            items: [
-              { key: "recommendation.submit", category: "recommendation", riskLevel: "medium", customerVisible: true, manuallyAssignable: true, enabled: true },
-            ],
-            page: 1,
-            pageSize: 100,
-            total: 1,
-            totalPages: 1,
-          },
-          error: null,
-        });
+      if (url.startsWith("/api/admin/access-control/capabilities?")) {
+        return response({ data: null, error: { message: "Capability catalogue unavailable" } }, 503);
       }
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -239,25 +226,7 @@ describe("AssignmentsTab capability eligibility", () => {
     });
     await click(findOne(container, (element) =>
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.newAssignment")));
-
-    const subjectTypeSelect = findElements(container, (element) =>
-      element.tagName === "SELECT" && element.textContent.includes("accessControl.subjectTypes.role")).at(-1)!;
-    await selectValue(subjectTypeSelect, "role");
-    const subjectInput = findOne(container, (element) =>
-      element.tagName === "INPUT" && element.getAttribute("placeholder") === "accessControl.assignments.subjectPlaceholder");
-    const reasonInput = findOne(container, (element) => element.tagName === "TEXTAREA");
-    await selectValue(subjectInput, "customer");
-    await selectValue(reasonInput, "Temporary customer support exception");
-    await click(findOne(container, (element) =>
-      element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.reviewAssignment")));
-    expect(container.textContent).toContain("confirm-assignment");
-
-    const refreshButton = findOne(container, (element) =>
-      element.tagName === "BUTTON" && element.textContent.trim() === "");
-    await click(refreshButton);
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 200)); });
 
     const capabilitySelect = findOne(container, (element) =>
       element.tagName === "SELECT"
@@ -266,14 +235,13 @@ describe("AssignmentsTab capability eligibility", () => {
     expect(findElements(capabilitySelect, (element) =>
       element.tagName === "OPTION" && element.value === "recommendation.submit")).toHaveLength(0);
     expect(container.textContent).toContain("Capability catalogue unavailable");
-    expect(container.textContent).not.toContain("confirm-assignment");
+    expect(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.reviewAssignment")).disabled).toBe(true);
     expect(mocks.fetch.mock.calls.filter(([url, init]) =>
       url === "/api/admin/access-control/assignments" && init?.method === "POST")).toHaveLength(0);
   });
 
-  it("ignores an older capability response that finishes after a newer failed refresh", async () => {
-    let capabilityRequestCount = 0;
-    let resolveOlderResponse: ((value: Response) => void) | undefined;
+  it("ignores a capability response after the assignment form is closed", async () => {
+    let resolveCatalogue: ((value: Response) => void) | undefined;
     mocks.fetch.mockImplementation(async (url: string) => {
       if (url.startsWith("/api/admin/access-control/assignments?")) {
         return response({
@@ -281,26 +249,8 @@ describe("AssignmentsTab capability eligibility", () => {
           error: null,
         });
       }
-      if (url === "/api/admin/access-control/capabilities?page=1&pageSize=100") {
-        capabilityRequestCount += 1;
-        if (capabilityRequestCount === 1) {
-          return response({
-            data: {
-              items: [
-                { key: "recommendation.submit", category: "recommendation", riskLevel: "medium", customerVisible: true, manuallyAssignable: true, enabled: true },
-              ],
-              page: 1,
-              pageSize: 100,
-              total: 1,
-              totalPages: 1,
-            },
-            error: null,
-          });
-        }
-        if (capabilityRequestCount === 2) {
-          return await new Promise<Response>((resolve) => { resolveOlderResponse = resolve; });
-        }
-        return response({ data: null, error: { message: "Latest catalogue unavailable" } }, 503);
+      if (url.startsWith("/api/admin/access-control/capabilities?")) {
+        return await new Promise<Response>((resolve) => { resolveCatalogue = resolve; });
       }
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -308,27 +258,16 @@ describe("AssignmentsTab capability eligibility", () => {
     await act(async () => {
       root?.render(<AssignmentsTab focusId={null} onViewAudit={vi.fn()} />);
     });
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); });
+    await click(findOne(container, (element) =>
+      element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.newAssignment")));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 200)); });
 
-    const searchInput = findOne(container, (element) =>
-      element.tagName === "INPUT" && element.getAttribute("placeholder") === "accessControl.filters.searchAssignments");
-    await selectValue(searchInput, "first");
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.close")));
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5));
-    });
-    await selectValue(searchInput, "second");
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    });
-
-    await act(async () => {
-      resolveOlderResponse?.(response({
+      resolveCatalogue?.(response({
         data: {
-          items: [
-            { key: "stale.capability", category: "stale", riskLevel: "low", customerVisible: true, manuallyAssignable: true, enabled: true },
-          ],
+          items: [{ key: "stale.capability", category: "stale", riskLevel: "low", customerVisible: true, manuallyAssignable: true, enabled: true }],
           page: 1,
           pageSize: 100,
           total: 1,
@@ -340,13 +279,7 @@ describe("AssignmentsTab capability eligibility", () => {
       await Promise.resolve();
     });
 
-    await click(findOne(container, (element) =>
-      element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.newAssignment")));
-    const capabilitySelect = findOne(container, (element) =>
-      element.tagName === "SELECT"
-      && element.textContent.includes("accessControl.assignments.selectCapability"));
-    expect(capabilitySelect.disabled).toBe(true);
-    expect(capabilitySelect.textContent).not.toContain("stale.capability");
-    expect(container.textContent).toContain("Latest catalogue unavailable");
+    expect(container.textContent).not.toContain("stale.capability");
+    expect(container.textContent).not.toContain("accessControl.assignments.createTitle");
   });
 });

@@ -8,18 +8,29 @@ const pageSource = readFileSync(
 );
 
 describe('support ticket pagination', () => {
-  it('limits the visible queue and exposes previous/next navigation', () => {
+  it('requests a fixed page from the server and exposes previous/next navigation', () => {
     expect(pageSource).toContain('const TICKETS_PER_PAGE = 10;');
-    expect(pageSource).toContain('const visibleTickets = sortedTickets.slice(');
-    expect(pageSource).toContain('<Pagination ariaLabel={t("ui.support.pagination")} currentPage={ticketPage} totalPages={totalTicketPages} totalItems={sortedTickets.length} pageSize={TICKETS_PER_PAGE} onPageChange={setTicketPage}');
+    expect(pageSource).toContain('page: String(ticketPage)');
+    expect(pageSource).toContain('setTotalTickets(result.data.total)');
+    expect(pageSource).toContain('const visibleTickets = tickets ?? [];');
+    expect(pageSource).toContain('<Pagination ariaLabel={t("ui.support.pagination")} currentPage={ticketPage} totalPages={totalTicketPages} totalItems={totalTickets} pageSize={TICKETS_PER_PAGE}');
+    expect(pageSource).toContain('setSelectedIds(new Set())');
   });
 
   it('resets to the first page when queue filters or sorting change', () => {
-    expect(pageSource).toContain('setAssignedToMeFilter(e.target.checked); setTicketPage(1);');
-    expect(pageSource).toContain('setUnreadOnlyFilter(e.target.checked); setTicketPage(1);');
-    expect(pageSource).toContain('setSortKey(e.target.value as SortKey); setTicketPage(1);');
-    expect(pageSource).toContain('setCategoryFilter(value); setTicketPage(1);');
-    expect(pageSource).toContain('setStatusFilter(value); setTicketPage(1);');
+    expect(pageSource).toContain('setAssignedToMeFilter(e.target.checked); setTicketPage(1); setSelectedIds(new Set());');
+    expect(pageSource).toContain('setUnreadOnlyFilter(e.target.checked); setTicketPage(1); setSelectedIds(new Set());');
+    expect(pageSource).toContain('setSortKey(e.target.value as SortKey); setTicketPage(1); setSelectedIds(new Set());');
+    expect(pageSource).toContain('setCategoryFilter(value); setTicketPage(1); setSelectedIds(new Set());');
+    expect(pageSource).toContain('setStatusFilter(value); setTicketPage(1); setSelectedIds(new Set());');
+    expect(pageSource).toContain('return () => controller.abort();');
+    expect(pageSource).toContain('setDebouncedSearch(searchQuery.trim()), 250');
+  });
+
+  it('keeps queue failures retryable instead of showing an empty queue', () => {
+    expect(pageSource).toContain('setQueueError(error instanceof Error');
+    expect(pageSource).toContain('onClick={() => void loadTickets()}');
+    expect(pageSource).toContain('queueError ? null : <EmptyState');
   });
 
   it('keeps the ticket thread and reply controls inside a scrollable phone-height dialog', () => {

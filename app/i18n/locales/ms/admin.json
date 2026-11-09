@@ -106,6 +106,7 @@
       "submit": "Hantar",
       "approve": "Luluskan",
       "reject": "Tolak",
+      "stateDuration": "{{state}} • {{duration}}",
       "pause": "Jeda"
     },
     "categories": {
@@ -174,6 +175,7 @@
       "policies": "Polisi",
       "assignments": "Tugasan",
       "staff-roles": "Peranan Kakitangan",
+      "jit-approvals": "Kelulusan JIT",
       "audit-log": "Log Audit"
     },
     "actions": {
@@ -194,7 +196,25 @@
       "revoke": "Tarik balik",
       "openTarget": "Buka sasaran",
       "hide": "Sembunyikan",
-      "inspect": "Periksa"
+      "inspect": "Periksa",
+      "loadMore": "Muatkan lagi"
+    },
+    "jit": {
+      "title": "Permohonan akses sementara",
+      "description": "Semak permohonan kebenaran sementara daripada kakitangan yang layak.",
+      "decisionReason": "Sebab keputusan",
+      "minutes": "{{count}} minit",
+      "minutes_one": "{{count}} minit",
+      "minutes_other": "{{count}} minit",
+      "stateDuration": "{{state}} • {{duration}}",
+      "permissionLabel": "Semakan KYC",
+      "staffMember": "Kakitangan",
+      "approve": "Luluskan",
+      "reject": "Tolak",
+      "loading": "Memuatkan permohonan…",
+      "empty": "Tiada permohonan untuk disemak.",
+      "updated": "Permohonan dikemas kini.",
+      "error": "Tidak dapat memuatkan atau mengemas kini permohonan. Segarkan semula dan semak status terkini."
     },
     "accessibility": {
       "tabs": "Bahagian kawalan akses",
@@ -328,6 +348,9 @@
       "active": "Peranan aktif",
       "permissions": "Kebenaran mengikut modul",
       "modules": "Modul",
+      "jitPermissions": "Kebenaran sementara untuk peranan ini",
+      "jitPermissionHelp": "Kakitangan yang layak boleh memohon kebenaran ini selama 30 atau 60 minit. Ini tidak memberikan akses kekal.",
+      "jitLabel": "Permohonan sementara: {{permission}}",
       "lockedGroup": "Modul tergabung: {{group}}",
       "reviewSave": "Semak perubahan peranan",
       "rolesTitle": "Peranan kebenaran tersedia",
@@ -1372,7 +1395,7 @@
       },
       "vendors": {
         "cta": "Buka barisan vendor",
-        "detail": "Outlet belum disahkan dalam barisan platform",
+        "detail": "Permohonan vendor menunggu semakan",
         "title": "Kelulusan vendor"
       },
       "withdrawals": {
@@ -1397,7 +1420,8 @@
       "twoApprovers": "Menunggu dua pelulus",
       "withdrawalRequests": "{{count}} permintaan pengeluaran",
       "withdrawalRequests_one": "{{count}} permintaan pengeluaran",
-      "withdrawalRequests_other": "{{count}} permintaan pengeluaran"
+      "withdrawalRequests_other": "{{count}} permintaan pengeluaran",
+      "authorizedQueues": "Barisan yang boleh anda akses"
     },
     "oldestWithdrawal": "Pengeluaran paling lama",
     "openApprovals": "Buka kelulusan",
@@ -1417,7 +1441,9 @@
     "openItems_one": "{{count}} item terbuka",
     "openItems_other": "{{count}} item terbuka",
     "walletPending_one": "{{count}} permintaan memerlukan keputusan, dengan {{amount}} dalam semakan.",
-    "walletPending_other": "{{count}} permintaan memerlukan keputusan, dengan {{amount}} dalam semakan."
+    "walletPending_other": "{{count}} permintaan memerlukan keputusan, dengan {{amount}} dalam semakan.",
+    "queueUnavailable": "Data barisan tidak tersedia buat sementara waktu",
+    "staleData": "Muat semula gagal. Memaparkan hasil terakhir yang berjaya."
   },
   "kyc": {
     "accessibility": {
@@ -1455,6 +1481,16 @@
       "numberMismatch": "Nombor berbeza daripada OCR",
       "ocrUnavailable": "OCR tidak tersedia",
       "ocrUnreadable": "OCR tidak dapat dibaca",
+        "ocrSourceUnavailable": "Sumber foto OCR tiada",
+        "ocrVisibleFieldsIncomplete": "Medan terlihat tidak lengkap",
+        "ocrTranscriptionError": "Ralat transkripsi MRZ",
+        "transcriptionCorrection": "Apakah yang dibetulkan daripada hasil OCR?",
+        "nationality": "Kewarganegaraan",
+        "birthDate": "Tarikh lahir",
+        "expiryDate": "Tarikh luput",
+        "sex": "Jantina",
+        "mrzLine1": "Baris MRZ 1",
+        "mrzLine2": "Baris MRZ 2",
       "openBothDocuments": "Buka imej depan dan belakang sebelum mengesahkan.",
       "secondaryReviewer": "Penyemak kedua bebas",
       "secondaryReviewerRequired": "Pilih penyemak kedua yang layak terlebih dahulu.",
@@ -1559,9 +1595,39 @@
       "check": "Semakan OCR:",
       "documentEnding": "Empat digit terakhir nombor dokumen: {{number}}",
       "expiryDate": "Tarikh luput: {{date}}",
+      "passportCountry": "Negara pengeluar / kewarganegaraan: {{issuer}} / {{nationality}}",
+      "mrzStatus": "MRZ: {{status}} · perbandingan medan: {{comparison}}",
       "extractedName": "Nama diekstrak: {{name}}",
       "mismatch": "Tidak sepadan: {{fields}}",
       "noMismatch": "Tiada ketidakpadanan OCR dikesan",
+      "reviewRequired": "Semakan manual diperlukan",
+      "issueCodes": {
+        "document_number": "Nombor dokumen",
+        "holder_name": "Nama penuh",
+        "birth_date": "Tarikh lahir",
+        "expiry_date": "Tarikh luput",
+        "nationality": "Kewarganegaraan",
+        "issuer_country": "Negara pengeluar",
+        "sex": "Jantina",
+        "missing_document_number": "Tidak dapat dibaca: Nombor dokumen",
+        "missing_holder_name": "Tidak dapat dibaca: Nama penuh",
+        "missing_birth_date": "Tidak dapat dibaca: Tarikh lahir",
+        "missing_expiry_date": "Tidak dapat dibaca: Tarikh luput",
+        "missing_nationality": "Tidak dapat dibaca: Kewarganegaraan",
+        "missing_issuer_country": "Tidak dapat dibaca: Negara pengeluar",
+        "missing_sex": "Tidak dapat dibaca: Jantina",
+        "mrz_invalid": "Pengesahan MRZ gagal",
+        "mrz_unreadable": "MRZ tidak dapat dibaca",
+        "visual_comparison_conflict": "Medan visual bercanggah dengan MRZ",
+        "country_unsupported": "Negara pasport tidak disokong",
+        "visual_comparison_incomplete": "Perbandingan medan visual tidak lengkap",
+        "source_unverified": "Sumber medan tidak tersedia",
+        "expired_document": "Dokumen telah luput",
+        "ocr_source_unavailable": "Sumber OCR tidak tersedia",
+        "expired_or_missing": "Tarikh luput tiada atau dokumen telah luput",
+        "unknown": "Isu pengecaman lain",
+        "confidence_unvalidated": "Pengecaman memerlukan semakan"
+      },
       "status": {
         "matched": "Sepadan",
         "mismatch": "Tidak sepadan",
@@ -2096,6 +2162,7 @@
       "errors": {
         "batchUpdate": "Satu atau lebih tiket tidak dapat dikemas kini.",
         "batchUpdateFailed": "Kemas kini tiket secara pukal gagal.",
+        "loadTickets": "Tiket sokongan tidak dapat dimuatkan.",
         "sendReply": "Tidak dapat menghantar balasan.",
         "sendReplyTryAgain": "Tidak dapat menghantar balasan. Sila cuba lagi.",
         "updateCategory": "Tidak dapat mengemas kini kategori tiket.",
@@ -2134,6 +2201,8 @@
       "statusLabel": "Status",
       "ticketMarked": "Tiket ditandai {{status}}.",
       "title": "Tiket Sokongan",
+      "retry": "Cuba lagi",
+      "unknownUser": "Pengguna tidak diketahui",
       "unanswered": "Belum dijawab",
       "unansweredLower": "belum dijawab",
       "unreadOnly": "Belum dibaca sahaja",
@@ -3606,6 +3675,61 @@
     "next": "Seterusnya",
     "errors": {
       "load": "Tidak dapat memuatkan pesanan. Cuba lagi."
+    },
+    "detail": {
+      "eyebrow": "Operasi pesanan",
+      "title": "Butiran pesanan",
+      "customerType": "Pesanan {{type}}",
+      "customerTypes": {
+        "account": "Akaun",
+        "guest": "Tetamu"
+      },
+      "back": "Kembali ke pesanan",
+      "status": "Keadaan",
+      "total": "Jumlah pesanan",
+      "paymentMethod": "Kaedah pembayaran",
+      "created": "Dicipta",
+      "paid": "Dibayar",
+      "completed": "Selesai",
+      "customerTypeLabel": "Jenis pelanggan",
+      "updated": "Kemas kini terakhir",
+      "items": "Item dan pemenuhan",
+      "noItems": "Tiada item direkodkan.",
+      "payments": "Pembayaran",
+      "processed": "Diproses",
+      "noPayments": "Tiada rekod pembayaran.",
+      "bookings": "Tempahan",
+      "checkedIn": "Daftar masuk",
+      "noBookings": "Tiada tempahan direkodkan.",
+      "passes": "Pas tiket",
+      "checkIns": "Rekod masuk",
+      "refunds": "Bayaran balik",
+      "noRefunds": "Tiada bayaran balik direkodkan.",
+      "moreInTimeline": "Rekod tambahan dipaparkan dalam garis masa di bawah.",
+      "timeline": "Garis masa pesanan",
+      "noTimeline": "Tiada peristiwa garis masa direkodkan.",
+      "loading": "Memuatkan butiran pesanan…",
+      "loadError": "Tidak dapat memuatkan butiran pesanan. Cuba lagi.",
+      "retry": "Cuba lagi",
+      "loadMore": "Muatkan lagi",
+      "eventKinds": {
+        "order": "Pesanan",
+        "fulfilment": "Pemenuhan",
+        "payment": "Pembayaran",
+        "refund": "Bayaran balik",
+        "booking": "Tempahan",
+        "check_in": "Daftar masuk"
+      },
+      "itemContext": "{{quantity}} • {{vendor}} • {{outlet}}",
+      "fulfilmentContext": "{{status}} • {{date}}",
+      "paymentContext": "{{method}} • {{status}}",
+      "processedAt": "Diproses: {{date}}",
+      "checkedInAt": "Daftar masuk: {{date}}",
+      "passCounts": "Pas tiket: {{passes}} · Rekod masuk: {{checkIns}}",
+      "statusAt": "Keadaan: {{status}}",
+      "refundDates": "{{created}} • {{processed}}",
+      "quantity_one": "Sebanyak {{count}} unit",
+      "quantity_other": "{{count}} unit"
     }
   },
   "moderationWords": {

@@ -158,6 +158,56 @@ it('runs the real offline engine through a sealed synthetic corruption study', a
     expect(report.counts.variants).toBe(2);
   });
 }, 60000);
+it('streams passport front-only samples and aggregates MRZ/VIZ outcomes without identifiers', async () => {
+  const root = await realpath(await mkdtemp(path.join(tmpdir(), 'kyc-passport-test-')));
+  try {
+    await chmod(root, 0o700);
+    const image = await sharp({ create: { width: 160, height: 100, channels: 3, background: '#eeeeee' } }).png().toBuffer();
+    await writeFile(path.join(root, 'passport-front.png'), image, { mode: 0o600 });
+    const registry = [
+      studyRow({ source: 'authorized-passport', layout: 'passport-biodata', documentType: 'passport', split: 'development' }),
+      studyRow({ source: 'public-mock', layout: 'passport-biodata', documentType: 'passport', split: 'validation' }),
+    ];
+    const manifest = { schemaVersion: 2, protocolVersion: 'kyc-ocr-study-v2', registry, selection: registry.map(row => row.caseId), scenario: 'reference',
+      cases: registry.map(row => ({ ...row, front: 'passport-front.png', expectedHolderName: 'PASSPORT SAMPLE', expectedDocumentNumber: 'E900000082', profile: null })) };
+    const manifestPath = path.join(root, 'manifest.json');
+    await writeFile(manifestPath, JSON.stringify(manifest), { mode: 0o600 });
+    const samples = await loadAuthorizedSamples({ KYC_NODE_OCR_EVALUATION: '1', KYC_NODE_OCR_SAMPLE_MANIFEST: manifestPath,
+      KYC_NODE_OCR_STUDY_SEAL: sealStudyRegistry(registry) });
+    if (Array.isArray(samples)) throw new Error('expected_v2_stream');
+    expect(samples.summary.images).toBe(2);
+    let calls = 0;
+    const report = await evaluateSamples(samples, async (input: Record<string, unknown>) => {
+      expect(Object.keys(input).sort()).toEqual(['documentType', 'front']);
+      calls += 1;
+      return { ok: true, fields: calls === 1
+        ? { holderName: 'PASSPORT SAMPLE', documentNumber: 'E900000082', mrzStatus: 'valid', visualComparisonStatus: 'incomplete', visualMissingFields: ['surname', 'given_names'] }
+        : { holderName: 'PASSPORT SAMPLE', documentNumber: 'E900000082', mrzStatus: 'invalid', visualComparisonStatus: 'conflict', visualMismatchFields: ['document_number', 'expiry_date'] } };
+    });
+    if (!('fields' in report)) throw new Error('expected_v2_report');
+    expect(report.counts).toMatchObject({ images: 2, eligible: 2, passportEligible: 2 });
+    expect(report.fields).toMatchObject({ holderName: { correct: 2 }, documentNumber: { correct: 2 } });
+    expect(report.passportChecks.mrz).toMatchObject({ denominator: 2, valid: 1, invalid: 1, notRun: 0 });
+    expect(report.passportChecks.visualComparison).toMatchObject({ denominator: 2, incomplete: 1, conflict: 1,
+      missingFields: 2, conflictingFields: 2, notRun: 0 });
+    expect(report.passportChecks.mrz.totalMs).toBeGreaterThanOrEqual(0);
+    expect(report.passportChecks.visualComparison.meanMs).toBeGreaterThanOrEqual(0);
+    expect(JSON.stringify(report)).not.toMatch(/PASSPORT SAMPLE|E900000082|caseId|personGroup|manifest\.json/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+it('rejects a passport manifest that declares a second evidence side', async () => {
+  const root = await realpath(await mkdtemp(path.join(tmpdir(), 'kyc-passport-side-test-')));
+  try {
+    await chmod(root, 0o700);
+    const registry = [studyRow({ source: 'public-mock', layout: 'passport-biodata', documentType: 'passport' })];
+    const manifest = { schemaVersion: 2, protocolVersion: 'kyc-ocr-study-v2', registry, selection: [registry[0].caseId], scenario: 'reference',
+      cases: [{ ...registry[0], front: 'passport-front.png', back: 'passport-back.png', expectedHolderName: 'PASSPORT SAMPLE', expectedDocumentNumber: 'E900000082', profile: null }] };
+    const manifestPath = path.join(root, 'manifest.json');
+    await writeFile(manifestPath, JSON.stringify(manifest), { mode: 0o600 });
+    await expect(loadAuthorizedSamples({ KYC_NODE_OCR_EVALUATION: '1', KYC_NODE_OCR_SAMPLE_MANIFEST: manifestPath,
+      KYC_NODE_OCR_STUDY_SEAL: sealStudyRegistry(registry) })).rejects.toThrow('sample_manifest_invalid');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
 it('does not read any sample without explicit authorization', async () => {
   await expect(loadAuthorizedSamples({ KYC_NODE_OCR_SAMPLE_MANIFEST: '/not-readable' })).rejects.toThrow('sample_authorization_required');
 });
@@ -204,5 +254,5 @@ it.skipIf(process.env.KYC_NODE_OCR_EVALUATION !== '1')('runs separately authoriz
   const samples = await loadAuthorizedSamples(process.env);
   try { console.log(JSON.stringify(await evaluateSamples(samples, (input: Parameters<typeof extractKycFieldsInNode>[0]) => extractKycFieldsInNode(input, 20000)))); }
   catch { throw new Error('authorized_sample_evaluation_failed'); }
-  finally { if (Array.isArray(samples)) for (const sample of samples) { sample.front.bytes.fill(0); sample.back.bytes.fill(0); } }
+  finally { if (Array.isArray(samples)) for (const sample of samples) { sample.front.bytes.fill(0); sample.back?.bytes.fill(0); } }
 }, 420000);
