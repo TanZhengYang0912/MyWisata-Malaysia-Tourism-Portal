@@ -28,6 +28,9 @@ const translations: Record<string, string> = {
   "kyc.ocr.expiryDate": "Expiry date: {{date}}",
   "kyc.ocr.noMismatch": "No OCR mismatch detected",
   "kyc.ocr.reviewRequired": "Manual review required",
+  "kyc.ocr.mismatch": "Mismatch: {{fields}}",
+  "kyc.ocr.issueCodes.ocr_source_unavailable": "OCR source unavailable",
+  "kyc.ocr.issueCodes.unknown": "Other recognition issue",
   "kyc.status.pending": "Pending review",
   "kyc.status.infoRequested": "Info requested",
   "kyc.status.approved": "Approved",
@@ -39,7 +42,7 @@ const translations: Record<string, string> = {
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    i18n: { resolvedLanguage: "en" },
+    i18n: { resolvedLanguage: "en", exists: (key: string) => key in translations },
     t: (key: string, values?: Record<string, string>) => {
       let translated = translations[key] ?? key;
       for (const [name, value] of Object.entries(values ?? {})) {
@@ -191,6 +194,13 @@ describe("KYC review presentation", () => {
       expect(markup).toContain("Manual review required");
       expect(markup).not.toContain("No OCR mismatch detected");
     }
+  });
+
+  it("translates known mismatch codes and uses a localized fallback for unknown codes", async () => {
+    const markup = await renderDetail("pending", true, { ocr: { ...pendingSubmission.ocr!, status: "mismatch",
+      mismatchFields: ["ocr_source_unavailable", "unrecognized_code"] } });
+    expect(markup).toContain("Mismatch: OCR source unavailable, Other recognition issue");
+    expect(markup).not.toContain("unrecognized_code");
   });
 
   it("hides decision actions when the pending submission belongs to another reviewer", async () => {

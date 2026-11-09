@@ -8,13 +8,14 @@ const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
   createToken: vi.fn(),
   listAccessControlState: vi.fn(),
+  getAccessControlGeneration: vi.fn(),
 }));
 
 vi.mock("@/lib/staff-permissions/server", () => ({
   requireStaffRoleManagementSuperAdmin: mocks.requireGovernance,
 }));
 vi.mock("@/lib/supabase/service", () => ({ createServiceClient: mocks.createServiceClient }));
-vi.mock("@/lib/entitlements/admin", () => ({ listAccessControlState: mocks.listAccessControlState }));
+vi.mock("@/lib/entitlements/admin", () => ({ listAccessControlState: mocks.listAccessControlState, getAccessControlGeneration: mocks.getAccessControlGeneration }));
 vi.mock("@/lib/email/sender", () => ({ sendStaffInvitationEmail: mocks.sendEmail }));
 vi.mock("@/lib/staff-invitations/server", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/staff-invitations/server")>();
@@ -75,6 +76,7 @@ describe("staff invitation administration routes", () => {
     mocks.createToken.mockReturnValue(TOKEN);
     mocks.sendEmail.mockResolvedValue({ id: "message-1" });
     mocks.listAccessControlState.mockResolvedValue({ generation: 4 });
+    mocks.getAccessControlGeneration.mockResolvedValue(4);
     mocks.rpc
       .mockResolvedValueOnce({ data: PREPARED, error: null })
       .mockResolvedValueOnce({ data: null, error: null });

@@ -106,7 +106,7 @@
       "submit": "提交",
       "approve": "批准",
       "reject": "拒绝",
-      "stateDuration": "{{state}} · {{duration}}",
+      "stateDuration": "{{state}}｜{{duration}}",
       "pause": "暂停"
     },
     "categories": {
@@ -206,7 +206,7 @@
       "minutes": "{{count}} 分钟",
       "minutes_one": "{{count}} 分钟",
       "minutes_other": "{{count}} 分钟",
-      "stateDuration": "{{state}} · {{duration}}",
+      "stateDuration": "{{state}}｜{{duration}}",
       "permissionLabel": "KYC 审核",
       "staffMember": "员工",
       "approve": "批准",
@@ -1481,6 +1481,16 @@
       "numberMismatch": "号码与 OCR 不一致",
       "ocrUnavailable": "OCR 无法使用",
       "ocrUnreadable": "OCR 无法识别",
+        "ocrSourceUnavailable": "无法取得原始识别照片",
+        "ocrVisibleFieldsIncomplete": "可见字段不完整",
+        "ocrTranscriptionError": "MRZ 转录错误",
+        "transcriptionCorrection": "请说明根据原图更正了 OCR 的哪些内容",
+        "nationality": "国籍",
+        "birthDate": "出生日期",
+        "expiryDate": "有效期",
+        "sex": "性别",
+        "mrzLine1": "MRZ 第一行",
+        "mrzLine2": "MRZ 第二行",
       "openBothDocuments": "请先打开证件正反面图片，再进行确认。",
       "secondaryReviewer": "独立第二审核员",
       "secondaryReviewerRequired": "请先选择一名符合条件的第二审核员。",
@@ -1613,6 +1623,9 @@
         "visual_comparison_incomplete": "可见字段比对不完整",
         "source_unverified": "字段来源未验证",
         "expired_document": "证件已过期",
+        "ocr_source_unavailable": "OCR 来源不可用",
+        "expired_or_missing": "有效期缺失或证件已过期",
+        "unknown": "其他识别问题",
         "confidence_unvalidated": "识别结果需要人工复核"
       },
       "status": {
@@ -3707,14 +3720,14 @@
         "booking": "预约",
         "check_in": "核销"
       },
-      "itemContext": "{{quantity}} · {{vendor}} · {{outlet}}",
-      "fulfilmentContext": "{{status}} · {{date}}",
-      "paymentContext": "{{method}} · {{status}}",
+      "itemContext": "{{quantity}}｜{{vendor}}｜{{outlet}}",
+      "fulfilmentContext": "{{status}}｜{{date}}",
+      "paymentContext": "{{method}}｜{{status}}",
       "processedAt": "处理时间：{{date}}",
       "checkedInAt": "核销时间：{{date}}",
       "passCounts": "门票：{{passes}} · 核销记录：{{checkIns}}",
       "statusAt": "状态：{{status}}",
-      "refundDates": "{{created}} · {{processed}}",
+      "refundDates": "{{created}}｜{{processed}}",
       "quantity_one": "{{count}} 件",
       "quantity_other": "{{count}} 件"
     }

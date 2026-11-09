@@ -79,6 +79,7 @@ async function prepareUpload(request: Request, signal: AbortSignal, ownerId: str
   }
 
   let frontMimeType: string; let backMimeType: string | null = null; let images: Buffer[];
+  let draftOcrSourceRevision: string | null = null; let draftEvidenceRevision: string | null = null;
   if (typeof draftId === 'string') {
     const { data, error } = await service.rpc('get_kyc_draft', { p_owner_user_id: ownerId });
     const draft = Array.isArray(data) ? data[0] : data;
@@ -86,6 +87,8 @@ async function prepareUpload(request: Request, signal: AbortSignal, ownerId: str
       || draft.document_type !== docType || draft.holder_name !== holderName.trim()) {
       return apiFail('DRAFT_CONFLICT', 'Saved KYC draft changed; reload it before submitting', 409);
     }
+    draftOcrSourceRevision = typeof draft.ocr_source_revision === 'string' ? draft.ocr_source_revision : null;
+    draftEvidenceRevision = typeof draft.evidence_revision === 'string' ? draft.evidence_revision : null;
     const paths = await Promise.all(requiredSides.map(async (side) => {
       const { data: path, error: pathError } = await service.rpc('get_kyc_draft_document', {
         p_owner_user_id: ownerId, p_draft_id: draftId, p_side: side,
@@ -119,7 +122,7 @@ async function prepareUpload(request: Request, signal: AbortSignal, ownerId: str
     return apiFail('INVALID_DOCUMENT_EVIDENCE', 'KYC document evidence is invalid', 422);
   }
   return { icNumber, holderName: holderName.trim(), docType, operationId, draftId: typeof draftId === 'string' ? draftId : null,
-    frontMimeType, backMimeType, images };
+    draftOcrSourceRevision, draftEvidenceRevision, frontMimeType, backMimeType, images };
 }
 
 export async function POST(request: Request) {
@@ -131,17 +134,26 @@ export async function POST(request: Request) {
   // must remain after image validation. Its atomic check still fences races.
   const service = createServiceClient();
   const idempotencyKey = request.headers.get('Idempotency-Key');
+  let existingOperation: { state: string; submissionId: string | null } | null = null;
   if (idempotencyKey && /^[0-9a-f-]{36}$/i.test(idempotencyKey)) {
-    const { data: previousOperation } = await authenticated.rpc('get_my_kyc_operation', { p_operation_id: idempotencyKey });
-    if (previousOperation && typeof previousOperation === 'object' && 'state' in previousOperation
-      && previousOperation.state === 'succeeded' && 'submissionId' in previousOperation && typeof previousOperation.submissionId === 'string') {
-      return apiOk({ submissionId: previousOperation.submissionId, status: 'pending', operationId: idempotencyKey, manualReviewRequired: true });
+    try {
+      const { data } = await authenticated.rpc('get_my_kyc_operation', { p_operation_id: idempotencyKey });
+      if (data && typeof data === 'object' && 'state' in data && 'submissionId' in data
+        && typeof data.state === 'string' && (typeof data.submissionId === 'string' || data.submissionId === null)) {
+        existingOperation = { state: data.state, submissionId: data.submissionId };
+      }
+    } catch { /* The active-submission lookup below remains the fail-closed guard. */ }
+    if (existingOperation?.state === 'succeeded' && existingOperation.submissionId) {
+      return apiOk({ submissionId: existingOperation.submissionId, status: 'pending', operationId: idempotencyKey, manualReviewRequired: true });
     }
   }
   const { data: activeCases, error: availabilityError } = await service.from('kyc_submissions')
     .select('id').eq('user_id', user.id).in('status', ['draft', 'pending']).limit(1);
   if (availabilityError || !Array.isArray(activeCases)) return apiFail('KYC_UNAVAILABLE', 'KYC submission is temporarily unavailable', 503);
-  if (activeCases.length) return apiFail('ACTIVE_SUBMISSION_EXISTS', 'You already have an active KYC submission', 409);
+  const activeIsSameOperation = activeCases.length === 1
+    && existingOperation?.state === 'processing'
+    && existingOperation.submissionId === activeCases[0].id;
+  if (activeCases.length && !activeIsSameOperation) return apiFail('ACTIVE_SUBMISSION_EXISTS', 'You already have an active KYC submission', 409);
 
 
   if (!await reserveGuestRateLimit(`kyc-upload:${user.id}`, 3, 600)) {
@@ -165,6 +177,9 @@ export async function POST(request: Request) {
   const frontEvidenceHash = createHash('sha256').update(images[0]).digest('hex');
   const backEvidenceHash = images[1] ? createHash('sha256').update(images[1]).digest('hex') : null;
   const evidenceRevision = createKycEvidenceRevision(frontEvidenceHash, backEvidenceHash);
+  if (draftId && prepared.draftEvidenceRevision !== evidenceRevision) {
+    return apiFail('DRAFT_CONFLICT', 'Saved KYC evidence changed; reload it before submitting', 409);
+  }
   const { data: operation, error: beginError } = await service.rpc('begin_kyc_submission_v2', {
     p_operation_id: operationId,
     p_user_id: user.id,
@@ -229,22 +244,27 @@ export async function POST(request: Request) {
 
     // Finalization atomically enqueues private pre-screening in the database.
     // Only watermarked evidence persists; OCR never delays the upload request.
-    const { error: finalizeError } = await authenticated.rpc('finalize_kyc_submission', {
-      p_submission_id: submissionId,
-      p_front_path: paths.front,
-      p_back_path: paths.back,
-    });
+    const { error: finalizeError } = draftId
+      ? await authenticated.rpc('finalize_kyc_submission_with_ocr_v2', {
+        p_submission_id: submissionId,
+        p_front_path: paths.front,
+        p_back_path: paths.back,
+        p_draft_id: draftId,
+        p_draft_revision: prepared.draftEvidenceRevision,
+        p_source_revision: prepared.draftOcrSourceRevision,
+        p_operation_id: operationId,
+      })
+      : await authenticated.rpc('finalize_kyc_submission', {
+        p_submission_id: submissionId,
+        p_front_path: paths.front,
+        p_back_path: paths.back,
+      });
     if (finalizeError) {
       if (!await cleanup()) return apiFail('CLEANUP_FAILED', 'KYC submission state could not be safely resolved', 500);
       return safeSubmissionFailure(finalizeError);
     }
 
     await service.rpc('complete_kyc_submit_operation', { p_operation_id: operationId, p_submission_id: submissionId, p_owner_user_id: user.id });
-    if (draftId) {
-      await service.rpc('link_kyc_ocr_observation', { p_owner_user_id: user.id, p_draft_id: draftId, p_submission_id: submissionId, p_evidence_revision: evidenceRevision });
-      await service.rpc('mark_kyc_draft_submitted', { p_owner_user_id: user.id, p_draft_id: draftId, p_submission_id: submissionId });
-    }
-
     return apiOk({
       submissionId,
       status: 'pending',

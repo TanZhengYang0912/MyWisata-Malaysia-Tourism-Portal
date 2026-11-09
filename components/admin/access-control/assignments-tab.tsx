@@ -37,8 +37,8 @@ export function AssignmentsTab({ focusId, onViewAudit }: { focusId: string | nul
   const { t } = useTranslation("admin");
   const [result, setResult] = useState<PageResult<AssignmentRecord>>({ items: [], page: 1, pageSize: PAGE_SIZE, total: 0, totalPages: 0 });
   const [capabilities, setCapabilities] = useState<CapabilityRecord[]>([]);
-  const [search, setSearch] = useState(""); const [subjectType, setSubjectType] = useState(""); const [status, setStatus] = useState(""); const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(PAGE_SIZE);
-  const [capabilitySearch, setCapabilitySearch] = useState("");
+  const pageSize = PAGE_SIZE;
+  const [search, setSearch] = useState(""); const [subjectType, setSubjectType] = useState(""); const [status, setStatus] = useState(""); const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [showCreate, setShowCreate] = useState(false); const [form, setForm] = useState(initialForm);
   const [pending, setPending] = useState<PendingMutation | null>(null); const [assignmentConfirmOpen, setAssignmentConfirmOpen] = useState(false); const [saving, setSaving] = useState(false); const [receipt, setReceipt] = useState<MutationReceipt | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserCandidate | null>(null);
@@ -72,14 +72,13 @@ export function AssignmentsTab({ focusId, onViewAudit }: { focusId: string | nul
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       const params = new URLSearchParams({ page: "1", pageSize: "100", manuallyAssignable: "true" });
-      if (capabilitySearch.trim()) params.set("search", capabilitySearch.trim());
       try {
         const response = await fetch(`/api/admin/access-control/capabilities?${params}`, { cache: "no-store", signal: controller.signal });
         const body = await response.json() as ApiEnvelope<PageResult<CapabilityRecord>>;
         if (!response.ok || !body.data) throw new Error(errorMessage(body, t("accessControl.errors.loadCapabilities")));
         let items = body.data.items;
         const selectedKey = form.capabilityKey;
-        if (!capabilitySearch.trim() && selectedKey && !items.some((item) => item.key === selectedKey)) {
+        if (selectedKey && !items.some((item) => item.key === selectedKey)) {
           const selectedParams = new URLSearchParams({ page: "1", pageSize: "1", key: selectedKey });
           const selectedResponse = await fetch(`/api/admin/access-control/capabilities?${selectedParams}`, { cache: "no-store", signal: controller.signal });
           const selectedBody = await selectedResponse.json() as ApiEnvelope<PageResult<CapabilityRecord>>;
@@ -103,7 +102,7 @@ export function AssignmentsTab({ focusId, onViewAudit }: { focusId: string | nul
       }
     }, 180);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [capabilitySearch, form.capabilityKey, showCreate, t]);
+  }, [form.capabilityKey, showCreate, t]);
   useEffect(() => {
     const timeoutId = setTimeout(() => { void load(); }, 0);
     return () => clearTimeout(timeoutId);

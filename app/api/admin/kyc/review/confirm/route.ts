@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { hashICWithHmac } from '@/lib/kyc/hash';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { issueKycServiceOperationTicket } from '@/lib/kyc/service-operation-ticket';
+import { verifyManualPassportFields } from '@/lib/kyc/ocr';
 
 const uuid = z.string().uuid();
 const schema = z.object({
@@ -16,8 +17,16 @@ const schema = z.object({
   identifierKind: z.enum(['my_ic', 'passport']),
   holderName: z.string().trim().min(2).max(100),
   documentNumber: z.string().trim().min(6).max(32),
-  reasonCode: z.enum(['ocr_number_mismatch', 'ocr_name_mismatch', 'ocr_unavailable', 'ocr_unreadable']),
+  reasonCode: z.enum(['ocr_number_mismatch', 'ocr_name_mismatch', 'ocr_unavailable', 'ocr_unreadable', 'ocr_source_unavailable', 'ocr_viz_incomplete', 'ocr_transcription_error']),
   reasonDetail: z.string().trim().max(500).optional(),
+  passport: z.object({
+    mrzLine1: z.string().regex(/^[A-Z0-9<]{44}$/),
+    mrzLine2: z.string().regex(/^[A-Z0-9<]{44}$/),
+    nationality: z.string().regex(/^[A-Za-z]{2}$/),
+    birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    sex: z.enum(['M', 'F', '<']),
+  }).strict().optional(),
 }).strict();
 
 export async function POST(request: Request) {
@@ -25,9 +34,19 @@ export async function POST(request: Request) {
   if (response) return response;
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  const parsed = await parseBody(request, schema);
+  const parsed = await parseBody(request, schema, { maxBytes: 8192 });
   if (!parsed.ok) return parsed.response;
   const value = parsed.data;
+  const passportProof = value.actualDocumentType === 'passport' && value.passport
+    ? verifyManualPassportFields({ ...value.passport, holderName: value.holderName, documentNumber: value.documentNumber, issuerCountry: value.issuerCountry }) : null;
+  if ((value.actualDocumentType === 'passport' && !passportProof?.valid)
+    || (value.actualDocumentType !== 'passport' && value.passport)) {
+    return apiFail('PASSPORT_EVIDENCE_REQUIRED', 'Enter the complete visible passport fields and both MRZ lines exactly as shown', 422);
+  }
+  if (passportProof?.valid && (!['ocr_unavailable', 'ocr_source_unavailable', 'ocr_unreadable', 'ocr_viz_incomplete', 'ocr_transcription_error'].includes(value.reasonCode)
+    || value.reasonCode === 'ocr_transcription_error' && !value.reasonDetail?.trim())) {
+    return apiFail('PASSPORT_REASON_REQUIRED', 'Choose a passport review reason and explain any OCR correction', 422);
+  }
   const ttl = Number(process.env.KYC_REVIEW_CONFIRMATION_TTL_SECONDS);
   if (!Number.isInteger(ttl) || ttl <= 0) return apiFail('KYC_UNAVAILABLE', 'KYC review is temporarily unavailable', 503);
 
@@ -51,6 +70,7 @@ export async function POST(request: Request) {
   if (submissionError || !submission) {
     return apiFail('KYC_CASE_UNAVAILABLE', 'KYC case is temporarily unavailable', 503);
   }
+  if (submission.user_id === user.id) return apiFail('FORBIDDEN', 'You cannot review your own KYC application', 403);
   if (submission.review_version !== value.expectedVersion) return apiFail('CONFLICT', 'Reload this case before confirming evidence', 409);
   if (value.actualDocumentType !== submission.document_type
       || (value.identifierKind === 'my_ic' && !['national_id', 'driving_license'].includes(value.actualDocumentType))
@@ -67,7 +87,8 @@ export async function POST(request: Request) {
   try { fingerprint = await hashICWithHmac(value.documentNumber); }
   catch { return apiFail('SERVER_CONFIGURATION', 'KYC review is temporarily unavailable', 503); }
 
-  const { data: confirmationId, error: stageError } = await service.rpc('stage_kyc_identity_confirmation_with_ticket', {
+  const { data: confirmationId, error: stageError } = await service.rpc(passportProof?.valid
+    ? 'stage_kyc_manual_passport_confirmation_with_ticket' : 'stage_kyc_identity_confirmation_with_ticket', {
     p_ticket_id: ticket.ticketId,
     p_expected_actor_id: user.id,
     p_expected_session_id: sessionId,
@@ -83,10 +104,14 @@ export async function POST(request: Request) {
     p_observation_id: null,
     p_document_access_refs: value.documentAccessRefs,
     p_reason_code: value.reasonCode,
-    p_reason_detail: value.reasonDetail?.trim() || null,
+    p_reason_detail: passportProof?.valid ? null : value.reasonDetail?.trim() || null,
     p_risk_level: 'high',
     p_purpose: value.purpose,
     p_ttl_seconds: ttl,
+    ...(passportProof?.valid ? {
+      p_passport_nationality: passportProof.nationality,
+      p_passport_expiry_date: passportProof.expiryDate,
+    } : {}),
   });
   if (stageError || typeof confirmationId !== 'string') {
     const message = stageError?.message ?? '';

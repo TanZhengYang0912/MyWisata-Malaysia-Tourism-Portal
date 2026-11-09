@@ -92,7 +92,7 @@ describe('POST /api/kyc/upload', () => {
     const submissionId = '33333333-3333-4333-8333-333333333333';
     const operationId = '44444444-4444-4444-8444-444444444444';
     getUser.mockResolvedValue({ data: { user: { id: owner } } });
-    serviceRpc.mockResolvedValueOnce({ data: [{ id: draftId, version: 2, document_type: 'national_id', holder_name: 'Example Holder', evidence_revision: 'a'.repeat(64) }], error: null })
+    serviceRpc.mockResolvedValueOnce({ data: [{ id: draftId, version: 2, document_type: 'national_id', holder_name: 'Example Holder', evidence_revision: 'f'.repeat(64), ocr_source_revision: null }], error: null })
       .mockResolvedValueOnce({ data: `${owner}/drafts/${draftId}/object/front.jpg`, error: null })
       .mockResolvedValueOnce({ data: `${owner}/drafts/${draftId}/object/back.jpg`, error: null })
       .mockResolvedValueOnce({ data: { submissionId, state: 'processing' }, error: null })
@@ -105,6 +105,10 @@ describe('POST /api/kyc/upload', () => {
     expect(download).toHaveBeenCalledTimes(2);
     expect(prepareKycEvidenceImage).not.toHaveBeenCalled();
     expect(upload.mock.calls.every((call) => call[1].equals(Buffer.from('watermarked')))).toBe(true);
+    expect(authenticatedRpc).toHaveBeenCalledWith('finalize_kyc_submission_with_ocr_v2', expect.objectContaining({
+      p_draft_id: draftId, p_draft_revision: 'f'.repeat(64), p_source_revision: null, p_operation_id: operationId,
+    }));
+    expect(serviceRpc).not.toHaveBeenCalledWith('mark_kyc_draft_submitted', expect.anything());
   });
 
   it('submits a Chinese passport with one front page and finalizes without a back path', async () => {
@@ -214,7 +218,7 @@ describe('POST /api/kyc/upload', () => {
     for (const [key,value] of Object.entries({ocrConsent:'true',holderName:'Example Holder',operationId:'44444444-4444-4444-8444-444444444444',docType:'national_id',icNumber:'900101-14-5678'})) body.set(key,value);
     body.set('frontFile',new File(['front'],'front.jpg',{type:'image/jpeg'}));
     body.set('backFile',new File(['back'],'back.jpg',{type:'image/jpeg'}));
-    return new Request('http://localhost/api/kyc/upload',{method:'POST',body});
+    return new Request('http://localhost/api/kyc/upload',{method:'POST',headers:{'Idempotency-Key':'44444444-4444-4444-8444-444444444444'},body});
   }
   it('rejects a known active case before parsing or recoding photos', async () => {
     getUser.mockResolvedValue({data:{user:{id:'11111111-1111-4111-8111-111111111111'}}});
@@ -222,6 +226,18 @@ describe('POST /api/kyc/upload', () => {
     const input=request(); const parse=vi.spyOn(input,'formData');
     expect((await POST(input)).status).toBe(409);
     expect(parse).not.toHaveBeenCalled(); expect(prepareKycEvidenceImage).not.toHaveBeenCalled(); expect(serviceRpc).not.toHaveBeenCalled();
+  });
+  it('lets the exact owner operation reconcile its already-bound active submission', async () => {
+    const owner='11111111-1111-4111-8111-111111111111';
+    const submissionId='33333333-3333-4333-8333-333333333333';
+    const operationId='44444444-4444-4444-8444-444444444444';
+    getUser.mockResolvedValue({data:{user:{id:owner}}});
+    authenticatedRpc.mockResolvedValue({data:{operationId,state:'processing',submissionId,submissionStatus:'pending'},error:null});
+    activeLookup.mockResolvedValue({data:[{id:submissionId}],error:null});
+    serviceRpc.mockResolvedValue({data:{submissionId,state:'processing'},error:null});
+    const response=await POST(request());
+    expect(response.status).toBe(201);
+    expect(serviceRpc).toHaveBeenCalledWith('begin_kyc_submission_v2',expect.objectContaining({p_operation_id:operationId,p_user_id:owner}));
   });
   it('fails closed when the early status lookup is unavailable', async () => {
     getUser.mockResolvedValue({data:{user:{id:'11111111-1111-4111-8111-111111111111'}}});
@@ -240,7 +256,7 @@ describe('POST /api/kyc/upload', () => {
   it('preserves evidence when finalization outcome and abandonment are uncertain', async () => {
     getUser.mockResolvedValue({data:{user:{id:'11111111-1111-4111-8111-111111111111'}}});
     serviceRpc.mockResolvedValue({data:{submissionId:'33333333-3333-4333-8333-333333333333',state:'processing'},error:null});
-    authenticatedRpc.mockRejectedValue(new Error('timeout'));
+    authenticatedRpc.mockResolvedValueOnce({data:null,error:null}).mockRejectedValueOnce(new Error('timeout'));
     vi.mocked(abandonAndRemoveKycEvidence).mockResolvedValue({ok:false,reason:'draft_not_abandoned'});
     const response=await POST(request()); expect(response.status).toBe(500);
     expect(await response.json()).toMatchObject({error:{code:'CLEANUP_FAILED'}});

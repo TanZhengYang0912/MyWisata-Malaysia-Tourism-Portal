@@ -453,8 +453,7 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
       <div className="space-y-5">
         <section className="rounded-2xl border border-border bg-card p-5">
           <h2 className="font-semibold">{t("accessControl.staffRoles.rolesTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("accessControl.staffRoles.rolesHelp")}</p>
-          <div className="mt-3 space-y-3">{roles.map((role) => <article key={role.id} className="rounded-xl border border-border p-3">
+          <div className="mt-3 space-y-3">{roles.map((role) => <article key={role.id} className="min-w-0 rounded-xl border border-border p-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <span className="flex flex-wrap items-center gap-2 font-medium">{role.name}<span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">{t(role.isSystem ? "accessControl.staffRoles.systemPreset" : "accessControl.staffRoles.customRole")}</span></span>
@@ -498,7 +497,6 @@ export function StaffRolesTab({ onMutation = () => undefined }: { onViewAudit?: 
 
         <section className="rounded-2xl border border-border bg-card p-5">
           <div className="flex items-center gap-2"><UserPlus className="h-4 w-4 text-primary" /><h2 className="font-semibold">{t("accessControl.staffRoles.assignmentTitle")}</h2></div>
-          <p className="mt-1 text-sm text-muted-foreground">{t("accessControl.staffRoles.assignmentHelp")}</p>
           <ol className="mt-4 space-y-4">
             <li className="rounded-xl border border-border p-4">
               <label htmlFor="assignment-role" className="text-sm font-semibold">{t("accessControl.staffRoles.stepRole")}</label>

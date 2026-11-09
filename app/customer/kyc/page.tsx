@@ -15,6 +15,7 @@ import { useActionFeedback } from "@/components/providers/action-feedback";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { validateKycFile, KYC_ACCEPTED_TYPES } from "@/backend/domains/identity";
 import { KycPhotoPreview } from "@/components/customer/kyc-photo-preview";
+import { KycDocumentCameraDialog } from "@/components/customer/kyc-document-camera-dialog";
 import { Button } from "@/components/ui/button";
 import type { CustomerKycSubmission } from "@/backend/core/types";
 import { useSearchParams } from "next/navigation";
@@ -71,12 +72,22 @@ export default function KycPage() {
   const [operationChecking, setOperationChecking]  = useState(false);
   const [submitRequestId,   setSubmitRequestId]     = useState<string | null>(null);
   const submitOperationIdRef = useRef<string | null>(null);
+  const evidenceGenerationRef = useRef(0);
+  const nameEditRevisionRef = useRef(0);
+  const numberEditRevisionRef = useRef(0);
+  const previewRequestRef = useRef(false);
+  const recognitionOperationRef = useRef<string | null>(null);
+  const [draftCapabilities, setDraftCapabilities] = useState({ documentCapture: false, qualityMode: "off" as "off" | "advisory", cleanOcr: false, chinesePassportOcr: false });
+  const ocrResultCacheRef = useRef<{ generation: number; preview: { holderName: string | null; documentNumber: string | null; expiryDate: string | null; mrzStatus?: string; visualComparisonStatus?: string; status: string } } | null>(null);
   const [formError,         setFormError]         = useState<string | null>(null);
   const [fileErrors,        setFileErrors]        = useState<{ front: string | null; back: string | null }>({ front: null, back: null });
   const [submitError,       setSubmitError]       = useState<string | null>(null);
   const [frontFile,         setFrontFile]         = useState<File | null>(null);
   const [backFile,          setBackFile]          = useState<File | null>(null);
+  const [frontOriginal,     setFrontOriginal]     = useState(false);
+  const [backOriginal,      setBackOriginal]      = useState(false);
   const [ocrConsent,        setOcrConsent]        = useState(false);
+  const [cameraSide,        setCameraSide]        = useState<"front" | "back" | null>(null);
   const [withdrawing,       setWithdrawing]       = useState(false);
   const [confirmWithdrawal, setConfirmWithdrawal] = useState(false);
   const [statusChecking,    setStatusChecking]    = useState(false);
@@ -112,6 +123,7 @@ export default function KycPage() {
       return () => window.clearTimeout(timer);
     }
     let active = true;
+    const initialEvidenceGeneration = evidenceGenerationRef.current;
     (async () => {
       try {
         const operationKey = `mylawatan:kyc-operation:${currentUser.id}`;
@@ -127,6 +139,13 @@ export default function KycPage() {
         const body = await response.json().catch(() => ({}));
         const draftBody = await draftResponse.json().catch(() => ({}));
         if (!active) return;
+        const capabilities = draftBody.data?.capabilities;
+        if (capabilities && typeof capabilities === "object") setDraftCapabilities({
+          documentCapture: capabilities.documentCapture === true,
+          qualityMode: capabilities.qualityMode === "advisory" ? "advisory" : "off",
+          cleanOcr: capabilities.cleanOcr === true,
+          chinesePassportOcr: capabilities.chinesePassportOcr === true,
+        });
         setActiveSubmission(response.ok ? (body.data?.submission ?? null) : null);
         if (savedOperationId && /^[0-9a-f-]{36}$/i.test(savedOperationId)) {
           const operationResponse = await fetch(`/api/kyc/operation/${savedOperationId}`, { cache: "no-store" });
@@ -137,6 +156,7 @@ export default function KycPage() {
             if (!response.ok || !body.data?.submission) await refreshSubmissionStatus();
           }
         }
+        const restoreGeneration = initialEvidenceGeneration;
         const draft = draftResponse.ok ? draftBody.data?.draft : null;
         if (draft?.id && typeof draft.version === "number") {
           setDraftId(draft.id);
@@ -153,9 +173,9 @@ export default function KycPage() {
             return new File([blob], `${side}.${blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg"}`, { type: blob.type });
           };
           const [front, back] = await Promise.all([restore("front"), draft.hasBack ? restore("back") : Promise.resolve(null)]);
-          if (active) {
-            if (front) setFrontFile(front);
-            if (back) setBackFile(back);
+          if (active && evidenceGenerationRef.current === restoreGeneration) {
+            if (front) { setFrontFile(front); setFrontOriginal(false); }
+            if (back) { setBackFile(back); setBackOriginal(false); }
             setDraftNotice(tCustomer("ui.kyc.draftRestored"));
           }
         }
@@ -167,74 +187,137 @@ export default function KycPage() {
   }, [currentUser?.id, refreshSubmissionStatus, tCustomer]);
 
   function handleFileChange(side: "front" | "back", file: File | null) {
+    evidenceGenerationRef.current += 1;
+    recognitionOperationRef.current = null;
+    if (currentUser) window.sessionStorage.removeItem(`mylawatan:kyc-preview-operation:${currentUser.id}`);
+    ocrResultCacheRef.current = null;
     setOcrFields(null);
     setDraftNotice(null);
-    if (side === "front") { setFrontFile(file); setFrontChanged(Boolean(file)); }
-    else { setBackFile(file); setBackChanged(Boolean(file)); }
+    if (side === "front") { setFrontFile(file); setFrontChanged(Boolean(file)); setFrontOriginal(Boolean(file)); }
+    else { setBackFile(file); setBackChanged(Boolean(file)); setBackOriginal(Boolean(file)); }
     setFileErrors((errors) => ({ ...errors, [side]: localizedKycFileError(file, tCustomer) }));
   }
 
   function handleDocumentTypeChange(documentType: typeof form.docType) {
     if (documentType === form.docType) return;
+    evidenceGenerationRef.current += 1;
+    recognitionOperationRef.current = null;
+    if (currentUser) window.sessionStorage.removeItem(`mylawatan:kyc-preview-operation:${currentUser.id}`);
+    ocrResultCacheRef.current = null;
     setForm({ docType: documentType, icNumber: "" });
     setHolderName("");
     setOcrFields(null);
     setOcrNotice(null);
     setFrontFile(null);
     setBackFile(null);
+    setFrontOriginal(false);
+    setBackOriginal(false);
     setFrontChanged(true);
     setBackChanged(true);
     setFileErrors({ front: null, back: null });
   }
 
   async function previewDocument() {
-    if (!frontFile || (form.docType !== "passport" && !backFile) || previewing || !ocrConsent) return;
+    const snapshot = { frontFile, backFile, documentType: form.docType, generation: evidenceGenerationRef.current,
+      nameRevision: nameEditRevisionRef.current, numberRevision: numberEditRevisionRef.current };
+    if (!snapshot.frontFile || (snapshot.documentType !== "passport" && !snapshot.backFile) || previewRequestRef.current || !ocrConsent) return;
+    if (!draftCapabilities.cleanOcr || snapshot.documentType === "passport" && !draftCapabilities.chinesePassportOcr) return;
+    if (!frontOriginal || snapshot.documentType !== "passport" && !backOriginal) {
+      setOcrNotice(tCustomer("ui.kyc.previewOriginalRequired"));
+      return;
+    }
+    if (ocrResultCacheRef.current?.generation === snapshot.generation) return;
+    previewRequestRef.current = true;
     setPreviewing(true); setFormError(null); setOcrNotice(null);
     try {
-      const saved = await saveDraft();
-      if (!saved) throw new Error(tCustomer("ui.kyc.draftSaveFailed"));
-      const response = await fetch("/api/kyc/preview", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ draftId: saved.id, version: saved.version }) });
+      const operationKey = currentUser ? `mylawatan:kyc-preview-operation:${currentUser.id}` : null;
+      let operationId = recognitionOperationRef.current;
+      if (operationKey) {
+        const pendingId = operationId ?? window.sessionStorage.getItem(operationKey);
+        if (pendingId && /^[0-9a-f-]{36}$/i.test(pendingId)) {
+          const statusResponse = await fetch(`/api/kyc/operation/${pendingId}`, { cache: "no-store" });
+          const statusBody = await statusResponse.json().catch(() => ({}));
+          if (!statusResponse.ok && statusResponse.status !== 404) { setOcrNotice(tCustomer("ui.kyc.previewUnavailable")); return; }
+          const state = statusBody.data?.operation?.state;
+          if (state === "processing") { setOcrNotice(tCustomer("ui.kyc.previewUnavailable")); return; }
+          if (state === "succeeded") { window.sessionStorage.removeItem(operationKey); recognitionOperationRef.current=null; setOcrNotice(tCustomer("ui.kyc.previewManualEntry")); return; }
+          window.sessionStorage.removeItem(operationKey);
+          recognitionOperationRef.current=null;
+          operationId=null;
+        }
+      }
+      if (!operationId) operationId = crypto.randomUUID();
+      recognitionOperationRef.current = operationId;
+      if (operationKey) window.sessionStorage.setItem(operationKey, operationId);
+      const data = new FormData();
+      data.set("intent", "save_and_recognize"); data.set("operationId", operationId); data.set("ocrConsent", "true");
+      data.set("draftId", draftId ?? ""); if (draftVersion !== null) data.set("version", String(draftVersion));
+      data.set("documentType", snapshot.documentType); data.set("holderName", holderName.trim());
+      data.set("frontFile", snapshot.frontFile);
+      if (snapshot.documentType !== "passport" && snapshot.backFile) data.set("backFile", snapshot.backFile);
+      const response = await fetch("/api/kyc/draft", { method: "POST", body: data });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error?.message ?? tCustomer("ui.kyc.previewUnavailable"));
+      if (snapshot.generation !== evidenceGenerationRef.current) return;
+      if (!response.ok) {
+        if (["SOURCE_REQUIRED", "SOURCE_CHANGED"].includes(body.error?.code)) throw new Error(tCustomer("ui.kyc.previewOriginalRequired"));
+        if (["OPERATION_COMPLETED", "OPERATION_RECONCILIATION_REQUIRED"].includes(body.error?.code)) {
+          recognitionOperationRef.current = null;
+          if (operationKey) window.sessionStorage.removeItem(operationKey);
+          throw new Error(tCustomer("ui.kyc.previewManualEntry"));
+        }
+        throw new Error(body.error?.message ?? tCustomer("ui.kyc.previewUnavailable"));
+      }
+      const saved = body.data?.draft;
+      if (!saved?.id || typeof saved.version !== "number") throw new Error(tCustomer("ui.kyc.previewUnavailable"));
+      setDraftId(saved.id); setDraftVersion(saved.version);
+      setDraftBaseline({ documentType: snapshot.documentType, holderName: holderName.trim() });
+      setFrontChanged(false); setBackChanged(false);
       const preview = body.data?.preview;
       if (!preview) throw new Error(tCustomer("ui.kyc.previewUnavailable"));
+      recognitionOperationRef.current = null;
+      if (operationKey) window.sessionStorage.removeItem(operationKey);
+      ocrResultCacheRef.current = { generation: snapshot.generation, preview };
       setOcrFields({ holderName: preview.holderName ?? null, documentNumber: preview.documentNumber ?? null,
         expiryDate: preview.expiryDate ?? null, mrzStatus: preview.mrzStatus, visualComparisonStatus: preview.visualComparisonStatus, status: preview.status });
-      if (preview.holderName) setHolderName(preview.holderName);
-      if (preview.documentNumber) setForm((value) => ({ ...value, icNumber: preview.documentNumber }));
-      if (preview.status !== "extracted" || form.docType === "passport" && preview.visualComparisonStatus !== "consistent") setOcrNotice(tCustomer("ui.kyc.previewManualEntry"));
+      if (preview.holderName && snapshot.nameRevision === nameEditRevisionRef.current) setHolderName(preview.holderName);
+      if (preview.documentNumber && snapshot.numberRevision === numberEditRevisionRef.current) setForm((value) => ({ ...value, icNumber: preview.documentNumber }));
+      if (preview.status !== "extracted" || snapshot.documentType === "passport" && preview.visualComparisonStatus !== "consistent") setOcrNotice(tCustomer("ui.kyc.previewManualEntry"));
     } catch (error) {
       setOcrNotice(error instanceof Error ? error.message : tCustomer("ui.kyc.previewUnavailable"));
-    } finally { setPreviewing(false); }
+    } finally { previewRequestRef.current = false; setPreviewing(false); }
   }
 
   async function saveDraft(): Promise<{ id: string; version: number } | null> {
-    if (!frontFile || (form.docType !== "passport" && !backFile) || savingDraft) return null;
-    if (draftId && draftVersion !== null && draftBaseline) {
+    const snapshot = { generation: evidenceGenerationRef.current, nameRevision: nameEditRevisionRef.current,
+      documentType: form.docType, holderName: holderName.trim(), frontFile, backFile, frontChanged, backChanged,
+      draftId, draftVersion, draftBaseline };
+    if (!snapshot.frontFile || (snapshot.documentType !== "passport" && !snapshot.backFile) || savingDraft) return null;
+    if (snapshot.draftId && snapshot.draftVersion !== null && snapshot.draftBaseline) {
       const comparison = compareKycDraftValues({
-        documentType: form.docType,
-        holderName,
-        frontChanged,
-        backChanged,
-      }, { ...draftBaseline, frontChanged: false, backChanged: false });
-      if (!comparison.changed) return { id: draftId, version: draftVersion };
+        documentType: snapshot.documentType,
+        holderName: snapshot.holderName,
+        frontChanged: snapshot.frontChanged,
+        backChanged: snapshot.backChanged,
+      }, { ...snapshot.draftBaseline, frontChanged: false, backChanged: false });
+      if (!comparison.changed) return { id: snapshot.draftId, version: snapshot.draftVersion };
     }
     setSavingDraft(true); setDraftNotice(null);
     try {
       const data = new FormData();
-      data.append("draftId", draftId ?? ""); if (draftVersion !== null) data.append("version", String(draftVersion));
-      data.append("documentType", form.docType); data.append("holderName", holderName.trim());
-      if (frontChanged) data.append("frontFile", frontFile); else data.append("reuseFront", "true");
-      if (form.docType !== "passport") {
-        if (backChanged && backFile) data.append("backFile", backFile); else data.append("reuseBack", "true");
+      data.append("draftId", snapshot.draftId ?? ""); if (snapshot.draftVersion !== null) data.append("version", String(snapshot.draftVersion));
+      data.append("documentType", snapshot.documentType); data.append("holderName", snapshot.holderName);
+      if (snapshot.frontChanged) data.append("frontFile", snapshot.frontFile); else data.append("reuseFront", "true");
+      if (snapshot.documentType !== "passport") {
+        if (snapshot.backChanged && snapshot.backFile) data.append("backFile", snapshot.backFile); else data.append("reuseBack", "true");
       }
       const response = await fetch("/api/kyc/draft", { method: "POST", body: data });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error?.message ?? tCustomer("ui.kyc.draftSaveFailed"));
-      setDraftId(body.data.draft.id); setDraftVersion(body.data.draft.version); setDraftNotice(tCustomer("ui.kyc.draftSaved"));
-      setDraftBaseline({ documentType: form.docType, holderName: holderName.trim() });
-      setFrontChanged(false); setBackChanged(false);
+      setDraftId(body.data.draft.id); setDraftVersion(body.data.draft.version);
+      if (snapshot.generation !== evidenceGenerationRef.current) return null;
+      setDraftNotice(tCustomer("ui.kyc.draftSaved"));
+      setDraftBaseline({ documentType: snapshot.documentType, holderName: snapshot.holderName });
+      if (snapshot.generation === evidenceGenerationRef.current) { setFrontChanged(false); setBackChanged(false); }
       return { id: body.data.draft.id as string, version: body.data.draft.version as number };
     } catch (error) { setDraftNotice(error instanceof Error ? error.message : tCustomer("ui.kyc.draftSaveFailed")); return null; }
     finally { setSavingDraft(false); }
@@ -301,7 +384,7 @@ export default function KycPage() {
       setBackFile(null);
       setOcrConsent(false);
       setForm({ icNumber: "", docType: "national_id" });
-      setHolderName(""); setOcrFields(null); setDraftId(null); setDraftVersion(null);
+      setHolderName(""); setOcrFields(null); setDraftId(null); setDraftVersion(null); setFrontOriginal(false); setBackOriginal(false);
       showFeedback("success", tCustomer("ui.kyc.submitted"));
     } catch (err) {
       const message = err instanceof Error ? err.message : tCustomer("ui.kyc.submissionFailed");
@@ -469,9 +552,9 @@ export default function KycPage() {
         {submitError && <div className="mt-1"><ApiErrorNotice message={submitError} requestId={submitRequestId ?? undefined} /></div>}
         <Button variant="outline" size="sm" disabled={operationChecking} onClick={() => void refreshOperationStatus()} className="mt-2">{operationChecking ? tCustomer("ui.kyc.checkingStatus") : tCustomer("ui.kyc.checkStatus")}</Button>
         {!form.icNumber && <div className="mt-3 space-y-1"><label htmlFor="kyc-retry-ic-number" className="text-xs font-semibold text-muted-foreground">{tCustomer("ui.kyc.reenterNumberForRetry")}</label>
-          <input id="kyc-retry-ic-number" value={form.icNumber} onChange={(event) => setForm((value) => ({ ...value, icNumber: event.target.value }))}
+          <input id="kyc-retry-ic-number" value={form.icNumber} onChange={(event) => { numberEditRevisionRef.current += 1; setForm((value) => ({ ...value, icNumber: event.target.value })); }}
             className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" /></div>}
-        <Button variant="outline" size="sm" disabled={submitting || !form.icNumber || !frontFile || !backFile} onClick={() => void handleSubmit({ preventDefault() {} } as React.FormEvent)} className="mt-2">
+        <Button variant="outline" size="sm" disabled={submitting || !form.icNumber || !frontFile || (form.docType !== "passport" && !backFile)} onClick={() => void handleSubmit({ preventDefault() {} } as React.FormEvent)} className="mt-2">
           {tCustomer("ui.kyc.retrySameOperation")}
         </Button>
       </div>}
@@ -496,8 +579,8 @@ export default function KycPage() {
           )}
 
           <div className="space-y-1">
-            <label htmlFor="kyc-holder-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer("ui.kyc.holderName")}</label>
-            <input id="kyc-holder-name" value={holderName} onChange={(event) => setHolderName(event.target.value)} maxLength={100}
+            <label htmlFor="kyc-holder-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tCustomer(form.docType === "passport" ? "ui.kyc.passportLatinName" : "ui.kyc.holderName")}</label>
+            <input id="kyc-holder-name" value={holderName} onChange={(event) => { nameEditRevisionRef.current += 1; recognitionOperationRef.current = null; if (currentUser) window.sessionStorage.removeItem(`mylawatan:kyc-preview-operation:${currentUser.id}`); setHolderName(event.target.value); }} maxLength={100}
               className="w-full px-3 py-2.5 text-sm rounded-xl border border-border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30" />
           </div>
 
@@ -508,7 +591,7 @@ export default function KycPage() {
             <input
               id="kyc-ic-number"
               value={form.icNumber}
-              onChange={(e) => { setForm((f) => ({ ...f, icNumber: e.target.value })); setFormError(null); }}
+              onChange={(e) => { numberEditRevisionRef.current += 1; setForm((f) => ({ ...f, icNumber: e.target.value })); setFormError(null); }}
               placeholder={tCustomer(IC_PATTERNS[form.docType]?.hintKey ?? "ui.kyc.idPlaceholder")}
               className="w-full px-3 py-2.5 text-sm rounded-xl border bg-background text-foreground outline-none focus:ring-2 focus:ring-primary/30"
               style={{ borderColor: formError ? "var(--destructive)" : "var(--border)" }}
@@ -538,12 +621,17 @@ export default function KycPage() {
               <label htmlFor={`kyc-${side}-file`} className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{sideLabel}</label>
               <input id={`kyc-${side}-file`} ref={inputRef} type="file" accept={KYC_ACCEPTED_TYPES.join(",")} className="sr-only"
                 onChange={(e) => handleFileChange(side, e.target.files?.[0] ?? null)} />
+              <div className="flex gap-2">
+              {draftCapabilities.documentCapture && <Button type="button" variant="outline" onClick={() => setCameraSide(side)} className="flex-1">
+                {tCustomer("ui.kyc.cameraOpen")}
+              </Button>}
               <button type="button" onClick={() => inputRef.current?.click()}
                 className="w-full flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition-colors"
                 style={{ borderColor: fileError ? "var(--destructive)" : file ? "var(--primary)" : "var(--border)", backgroundColor: file ? "color-mix(in srgb, var(--primary) 6%, transparent)" : "transparent" }}>
                 {file ? <><FileCheck2 size={22} className="text-primary" /><p className="text-sm font-semibold text-primary">{file.name}</p><p className="text-xs text-muted-foreground">{tCustomer("strictMigration.kyc.fileMeta", { size: (file.size / 1024 / 1024).toFixed(2), type: tCustomer("ui.kyc.clickChange") })}</p></>
                   : <><Upload size={20} className="text-muted-foreground" /><p className="text-sm text-muted-foreground">{tCustomer("ui.kyc.clickUpload", { side: sideLabel })}</p><p className="text-xs text-muted-foreground">{tCustomer("ui.kyc.fileHint")}</p></>}
               </button>
+              </div>
               <KycPhotoPreview file={fileError ? null : file} label={sideLabel} />
               {fileError && <p className="text-xs text-destructive">{fileError}</p>}
             </div>;
@@ -555,7 +643,7 @@ export default function KycPage() {
           </label>
 
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" disabled={!frontFile || (form.docType !== "passport" && !backFile) || previewing || !ocrConsent} onClick={() => void previewDocument()}>
+            <Button type="button" variant="outline" disabled={!draftCapabilities.cleanOcr || form.docType === "passport" && !draftCapabilities.chinesePassportOcr || !frontFile || (form.docType !== "passport" && !backFile) || previewing || !ocrConsent} onClick={() => void previewDocument()}>
               {previewing ? tCustomer("ui.kyc.previewing") : tCustomer("ui.kyc.recognizeDocument")}
             </Button>
             <Button type="button" variant="outline" disabled={!frontFile || (form.docType !== "passport" && !backFile) || savingDraft} onClick={() => void saveDraft()}>
@@ -578,6 +666,9 @@ export default function KycPage() {
         </form>
       )}
       </CustomerPageShell>
+      <KycDocumentCameraDialog open={cameraSide !== null} documentType={form.docType} qualityMode={draftCapabilities.qualityMode}
+        onOpenChange={(open) => { if (!open) setCameraSide(null); }}
+        onAccept={(file) => { if (cameraSide) handleFileChange(cameraSide, file); }} />
     </>
   );
 }

@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   requireSuperAdmin: vi.fn(),
   requireStaffGovernance: vi.fn(),
   listState: vi.fn(),
+  getGeneration: vi.fn(),
   rpc: vi.fn(),
   from: vi.fn(),
 }));
@@ -16,6 +17,7 @@ vi.mock("@/lib/staff-permissions/server", () => ({
 }));
 vi.mock("@/lib/entitlements/admin", () => ({
   listAccessControlState: mocks.listState,
+  getAccessControlGeneration: mocks.getGeneration,
 }));
 
 import * as permissionsRoute from "@/app/api/admin/access-control/staff-permissions/route";
@@ -87,6 +89,7 @@ describe("staff role management API", () => {
       capabilities: [], policies: [], policyVersions: [], policyRequirements: [],
       approvals: [], assignments: [], generation: 23,
     });
+    mocks.getGeneration.mockResolvedValue(23);
     mocks.rpc.mockResolvedValue({ data: null, error: null });
     mocks.from.mockImplementation((table: string) => {
       if (table === "audit_logs") return queryBuilder([{ id: AUDIT_ID }]);
@@ -187,11 +190,12 @@ describe("staff role management API", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith("update_staff_role_with_modules", {
+    expect(mocks.rpc).toHaveBeenCalledWith("update_staff_role_with_modules_and_jit", {
       p_role_id: ROLE_ID,
       p_name: updateBody.name,
       p_description: updateBody.description,
       p_module_keys: updateBody.moduleKeys,
+      p_jit_permission_keys: [],
       p_active: true,
       p_expected_updated_at: updateBody.updatedAt,
       p_reason: updateBody.reason,

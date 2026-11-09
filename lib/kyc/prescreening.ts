@@ -1,11 +1,10 @@
 import 'server-only';
 import type { createServiceClient } from '@/lib/supabase/service';
-import { kycOcrRuntimeConfiguration, runKycOcr, type KycOcrResult } from './ocr';
-import { getRequiredKycDocumentSides } from './document-policy';
+import { kycOcrRuntimeConfiguration, type KycOcrResult } from './ocr';
 
 type Service = ReturnType<typeof createServiceClient>;
 type Job = {
-  id: string; submissionId: string; leaseToken: string;
+  id: string; submissionId: string; leaseToken: string; evidenceRevision: string;
   documentType: 'national_id' | 'passport' | 'driving_license';
   expectedDocumentNumberHmac: string | null; expectedHolderName: string | null;
   documents: { side: 'front' | 'back'; path: string; mimeType: string }[];
@@ -71,44 +70,41 @@ export async function processKycPrescreening(service: Service) {
       await Promise.all((data as Job[]).map(async (job) => {
         let result = unavailable('evidence_invalid', false, model);
         try {
-          if (job.documentType === 'passport' && process.env.KYC_CHINESE_PASSPORT_OCR_ENABLED !== 'true') {
-            result = unavailable('configuration', false, model);
-          } else if (job.expectedDocumentNumberHmac && /^[a-f0-9]{64}$/.test(job.expectedDocumentNumberHmac)) {
-          const read = async (side: 'front' | 'back') => {
-            const document = job.documents.find((item) => item.side === side);
-            if (!document || !['image/jpeg', 'image/png', 'image/webp'].includes(document.mimeType)) throw new EvidenceFailure('evidence_invalid', false);
-            const download = await service.storage.from('kyc-documents').download(document.path, {}, { signal: budget.node ? signal(budget.timeoutMs) : AbortSignal.timeout(budget.timeoutMs) })
-              .catch(() => { throw new EvidenceFailure('network', true); });
-            const { data: blob, error: storageError } = download;
-            if (storageError) {
-              const status = 'statusCode' in storageError ? String(storageError.statusCode) : '';
-              throw new EvidenceFailure(status === '404' ? 'evidence_missing' : ['401', '403'].includes(status) ? 'configuration' : 'network', !['401', '403', '404'].includes(status));
+          const { data: observation, error: observationError } = await service.rpc('get_kyc_submission_ocr_observation_v2', {
+            p_submission_id: job.submissionId, p_artifact_revision: job.evidenceRevision,
+          });
+          if (observationError) throw new EvidenceFailure('network', true);
+          if (!observation || typeof observation !== 'object' || observation.artifactRevision !== job.evidenceRevision
+            || typeof observation.sourceRevision !== 'string') {
+            result = { status: 'unreadable', holderName: null, documentNumberHmac: null, documentNumberLast4: null,
+              expiryDate: null, confidence: null, mismatchFields: ['ocr_source_unavailable'], providerModel: model,
+              failureCode: 'evidence_missing', retryable: false };
+          } else {
+            const mismatchFields: string[] = [];
+            if (observation.status !== 'extracted') mismatchFields.push('ocr_source_unavailable');
+            if (!job.expectedDocumentNumberHmac || observation.documentNumberHmac !== job.expectedDocumentNumberHmac) mismatchFields.push('document_number');
+            const normalizeName = (value: unknown) => typeof value === 'string' ? value.normalize('NFKC').replace(/[<,\-]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase() : '';
+            if (!job.expectedHolderName || normalizeName(observation.holderName) !== normalizeName(job.expectedHolderName)) mismatchFields.push('holder_name');
+            if (job.documentType === 'passport') {
+              if (observation.issuerCountry !== 'CN' || observation.nationality !== 'CN') mismatchFields.push('country_unsupported');
+              if (observation.mrzStatus !== 'valid') mismatchFields.push('mrz_invalid');
+              if (observation.visualComparisonStatus !== 'consistent') mismatchFields.push('visual_comparison_incomplete');
+              if (typeof observation.expiryDate !== 'string' || observation.expiryDate <= new Date().toISOString().slice(0, 10)) mismatchFields.push('expired_or_missing');
             }
-            if (!blob || blob.size === 0 || blob.size > 5 * 1024 * 1024) throw new EvidenceFailure('evidence_invalid', false);
-            return { mimeType: document.mimeType, bytes: new Uint8Array(await blob.arrayBuffer()) };
-          };
-            // Await only the document sides required by this document type.
-            const sides = getRequiredKycDocumentSides(job.documentType);
-            const reads = await Promise.allSettled(sides.map(read));
-            const failed = reads.filter((value) => value.status === 'rejected');
-            const permanent = failed.find((value) => value.reason instanceof EvidenceFailure && !value.reason.retryable);
-            if (permanent) throw permanent.reason;
-            const failedRead = reads.find((value) => value.status === 'rejected');
-            if (failedRead?.status === 'rejected') throw failedRead.reason;
-            const front = (reads[0] as PromiseFulfilledResult<Awaited<ReturnType<typeof read>>>).value;
-            const back = reads[1]?.status === 'fulfilled' ? reads[1].value : undefined;
-            if (budget.node && deadline !== null && performance.now() + budget.timeoutMs + 10000 >= deadline) throw new EvidenceFailure('timeout', true);
-            result = await runKycOcr({ documentType: job.documentType,
-              expectedDocumentNumberHmac: job.expectedDocumentNumberHmac, expectedHolderName: job.expectedHolderName,
-              front, ...(back ? { back } : {}), hmacKey: process.env.KYC_IC_HMAC_KEY ?? '' });
-            // Until a confidence cutoff is calibrated and explicitly configured,
-            // consistent OCR remains an uncertain signal for a human to assess.
             const thresholdText = process.env[budget.node ? 'KYC_NODE_OCR_MIN_CONFIDENCE' : 'KYC_PRIVATE_OCR_MIN_CONFIDENCE'];
             const threshold = thresholdText ? Number(thresholdText) : NaN;
-            if (result.status === 'matched' && (!job.expectedHolderName || !Number.isFinite(threshold) || threshold <= 0 || threshold > 1 ||
-                result.confidence === null || result.confidence < threshold)) {
-              result = { ...result, status: 'mismatch', mismatchFields: [...result.mismatchFields, 'confidence_unvalidated'] };
+            if (!Number.isFinite(threshold) || threshold <= 0 || threshold > 1 || typeof observation.confidence !== 'number' || observation.confidence < threshold) {
+              mismatchFields.push('confidence_unvalidated');
             }
+            result = { status: mismatchFields.length ? 'mismatch' : 'matched', holderName: typeof observation.holderName === 'string' ? observation.holderName : null,
+              documentNumberHmac: typeof observation.documentNumberHmac === 'string' ? observation.documentNumberHmac : null,
+              documentNumberLast4: typeof observation.documentNumberLast4 === 'string' ? observation.documentNumberLast4 : null,
+              expiryDate: typeof observation.expiryDate === 'string' ? observation.expiryDate : null,
+              confidence: typeof observation.confidence === 'number' ? observation.confidence : null, mismatchFields,
+              providerModel: typeof observation.engine === 'string' ? observation.engine : model,
+              issuerCountry: typeof observation.issuerCountry === 'string' ? observation.issuerCountry : null,
+              nationality: typeof observation.nationality === 'string' ? observation.nationality : null,
+              mrzStatus: observation.mrzStatus, visualComparisonStatus: observation.visualComparisonStatus };
           }
         } catch (error) {
           result = error instanceof EvidenceFailure ? unavailable(error.failureCode, error.retryable, model) : unavailable(budget.node ? 'invalid_response' : 'network', !budget.node, model);

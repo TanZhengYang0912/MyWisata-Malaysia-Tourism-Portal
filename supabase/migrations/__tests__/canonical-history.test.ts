@@ -17,6 +17,7 @@ const approvedForwardMigrations = [
   "20261104163453_profile_avatar_assets.sql",
   "20261104162914_profile_noop_writes.sql",
   "20261104161846_kyc_draft_image_reuse.sql",
+  "20261109042323_kyc_clean_ocr_and_manual_confirmation.sql",
   "20261104155949_wallet_topup_operations.sql",
   "20261104094540_profile_personal_details_and_saved_travellers.sql",
   "20261102095746_kyc_identity_uniqueness.sql",
@@ -366,11 +367,11 @@ const approvedForwardMigrations = [
   "20261106091900_exclude_non_ticket_products_from_admission_history.sql",
   "20260909182755_remove_kek_lok_si_zero_price_admission.sql",
   "20260910042951_seed_kuala_lumpur_admission_showcase.sql",
-  "20261105094626_admin_campaign_noop_save.sql",
-  "20261105095628_admin_support_ticket_atomic_transition.sql",
+  "20261105200653_admin_dashboard_withdrawal_summary.sql",
   "20261106093323_bound_admin_access_control_reads.sql",
   "20261106093324_staff_jit_role_permissions.sql",
-  "20261106115747_staff_jit_kyc_operation_tickets.sql",
+  "20261106113000_admin_support_queue_pagination.sql",  "20261106115747_staff_jit_kyc_operation_tickets.sql",
+  "20261107171000_chinese_passport_single_page_evidence.sql",
 ];
 
 function migrationFiles() {

@@ -2,7 +2,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServiceClient } from '@/lib/supabase/service';
 
-export type PurgeFailureCode = 'claim_failed' | 'storage_failed' | 'confirmation_failed' | 'invalid_work_item' | 'unexpected_error';
+export type PurgeFailureCode = 'claim_failed' | 'storage_failed' | 'confirmation_failed' | 'invalid_work_item' | 'unexpected_error' | 'operation_cleanup_failed';
 export type PurgeRunResult = { claimed: number; purged: number; failed: number; failureCode: PurgeFailureCode | null };
 
 export async function startKycPurgeRun(db: SupabaseClient): Promise<string> {

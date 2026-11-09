@@ -135,10 +135,7 @@ describe("AssignmentsTab capability eligibility", () => {
     expect(assignmentCard.getAttribute("class")).toContain("bg-primary/10");
     expect(findOne(assignmentCard, (element) => element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.revoke"))).toBeDefined();
 
-    expect(mocks.fetch).toHaveBeenCalledWith(
-      "/api/admin/access-control/capabilities?page=1&pageSize=100",
-      { cache: "no-store" },
-    );
+    expect(mocks.fetch.mock.calls.some(([url]) => String(url).startsWith("/api/admin/access-control/capabilities?"))).toBe(false);
 
     await click(findOne(container, (element) =>
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.newAssignment")));
@@ -207,8 +204,7 @@ describe("AssignmentsTab capability eligibility", () => {
     expect(JSON.parse(request?.[1]?.body as string)).toMatchObject({ subjectType: "user", subjectId: otherId });
   });
 
-  it("clears stale capability choices when the governed catalogue cannot be refreshed", async () => {
-    let capabilityRequestCount = 0;
+  it("shows a blocking error when the governed catalogue cannot be loaded", async () => {
     mocks.fetch.mockImplementation(async (url: string) => {
       if (url.startsWith("/api/admin/access-control/assignments?")) {
         return response({
@@ -217,22 +213,7 @@ describe("AssignmentsTab capability eligibility", () => {
         });
       }
       if (url.startsWith("/api/admin/access-control/capabilities?")) {
-        capabilityRequestCount += 1;
-        if (capabilityRequestCount > 1) {
-          return response({ data: null, error: { message: "Capability catalogue unavailable" } }, 503);
-        }
-        return response({
-          data: {
-            items: [
-              { key: "recommendation.submit", category: "recommendation", riskLevel: "medium", customerVisible: true, manuallyAssignable: true, enabled: true },
-            ],
-            page: 1,
-            pageSize: 100,
-            total: 1,
-            totalPages: 1,
-          },
-          error: null,
-        });
+        return response({ data: null, error: { message: "Capability catalogue unavailable" } }, 503);
       }
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -247,13 +228,6 @@ describe("AssignmentsTab capability eligibility", () => {
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.newAssignment")));
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 200)); });
 
-    const capabilitySearch = findOne(container, (element) =>
-      element.tagName === "INPUT" && element.getAttribute("placeholder") === "accessControl.filters.searchCapabilities");
-    await selectValue(capabilitySearch, "trigger-refresh");
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    });
-
     const capabilitySelect = findOne(container, (element) =>
       element.tagName === "SELECT"
       && element.textContent.includes("accessControl.assignments.selectCapability"));
@@ -266,9 +240,8 @@ describe("AssignmentsTab capability eligibility", () => {
       url === "/api/admin/access-control/assignments" && init?.method === "POST")).toHaveLength(0);
   });
 
-  it("ignores an older capability response that finishes after a newer failed refresh", async () => {
-    let capabilityRequestCount = 0;
-    let resolveOlderResponse: ((value: Response) => void) | undefined;
+  it("ignores a capability response after the assignment form is closed", async () => {
+    let resolveCatalogue: ((value: Response) => void) | undefined;
     mocks.fetch.mockImplementation(async (url: string) => {
       if (url.startsWith("/api/admin/access-control/assignments?")) {
         return response({
@@ -277,25 +250,7 @@ describe("AssignmentsTab capability eligibility", () => {
         });
       }
       if (url.startsWith("/api/admin/access-control/capabilities?")) {
-        capabilityRequestCount += 1;
-        if (capabilityRequestCount === 1) {
-          return response({
-            data: {
-              items: [
-                { key: "recommendation.submit", category: "recommendation", riskLevel: "medium", customerVisible: true, manuallyAssignable: true, enabled: true },
-              ],
-              page: 1,
-              pageSize: 100,
-              total: 1,
-              totalPages: 1,
-            },
-            error: null,
-          });
-        }
-        if (capabilityRequestCount === 2) {
-          return await new Promise<Response>((resolve) => { resolveOlderResponse = resolve; });
-        }
-        return response({ data: null, error: { message: "Latest catalogue unavailable" } }, 503);
+        return await new Promise<Response>((resolve) => { resolveCatalogue = resolve; });
       }
       throw new Error(`Unexpected request: ${url}`);
     });
@@ -308,23 +263,11 @@ describe("AssignmentsTab capability eligibility", () => {
       element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.newAssignment")));
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 200)); });
 
-    const searchInput = findOne(container, (element) =>
-      element.tagName === "INPUT" && element.getAttribute("placeholder") === "accessControl.filters.searchCapabilities");
-    await selectValue(searchInput, "first");
+    await click(findOne(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("accessControl.actions.close")));
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    });
-    await selectValue(searchInput, "second");
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    });
-
-    await act(async () => {
-      resolveOlderResponse?.(response({
+      resolveCatalogue?.(response({
         data: {
-          items: [
-            { key: "stale.capability", category: "stale", riskLevel: "low", customerVisible: true, manuallyAssignable: true, enabled: true },
-          ],
+          items: [{ key: "stale.capability", category: "stale", riskLevel: "low", customerVisible: true, manuallyAssignable: true, enabled: true }],
           page: 1,
           pageSize: 100,
           total: 1,
@@ -336,11 +279,7 @@ describe("AssignmentsTab capability eligibility", () => {
       await Promise.resolve();
     });
 
-    const capabilitySelect = findOne(container, (element) =>
-      element.tagName === "SELECT"
-      && element.textContent.includes("accessControl.assignments.selectCapability"));
-    expect(capabilitySelect.disabled).toBe(true);
-    expect(capabilitySelect.textContent).not.toContain("stale.capability");
-    expect(container.textContent).toContain("Latest catalogue unavailable");
+    expect(container.textContent).not.toContain("stale.capability");
+    expect(container.textContent).not.toContain("accessControl.assignments.createTitle");
   });
 });

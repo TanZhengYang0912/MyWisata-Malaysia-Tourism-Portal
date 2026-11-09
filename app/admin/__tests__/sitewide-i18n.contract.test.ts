@@ -88,6 +88,7 @@ const ADMIN_ROUTE_TRANSLATION_DELEGATES: Record<string, string> = {
   "app/admin/catalogue/hotel-amenities/page.tsx": "app/admin/hotel-amenities/page.tsx",
   "app/admin/kyc/[submissionId]/page.tsx": "components/admin/kyc-review-detail.tsx",
   "app/admin/kyc/mfa/page.tsx": "components/admin/kyc-mfa.tsx",
+  "app/admin/orders/[orderId]/page.tsx": "app/admin/orders/[orderId]/page-client.tsx",
   "app/admin/recommendations/[id]/page.tsx": "components/admin/recommendation-detail-view.tsx",
 };
 
@@ -119,6 +120,7 @@ export const ADMIN_I18N_FILES = [
 /** These shared admin helpers are localized outside the exclusive Task 9 scope. */
 export const PRIOR_TASK_FILES = [
   "components/admin/access-control/staff-employees-panel.tsx",
+  "components/admin/access-control/jit-approvals-tab.tsx",
   "components/admin/access-control/staff-modules-panel.tsx",
   "components/admin/access-control/staff-roles-tab.tsx",
   "components/admin/access-control/types.ts",
@@ -133,6 +135,7 @@ export const PRIOR_TASK_FILES = [
   "components/admin/segmented-filter.tsx",
   "components/admin/sponsored-placements/impact-dialog.tsx",
   "components/admin/staff-conduct-filtering.ts",
+  "components/admin/staff-jit-panel.tsx",
   "components/admin/withdrawal-review-detail.tsx",
   "components/admin/withdrawal-review-queue-row.tsx",
 ] as const;
@@ -206,7 +209,7 @@ function callsBoundTranslator(source: string): boolean {
 
 describe("admin component sitewide i18n contract", () => {
   it("covers every Admin route with its own or delegated translation binding", () => {
-    expect(ADMIN_ROUTE_I18N_FILES).toHaveLength(43);
+    expect(ADMIN_ROUTE_I18N_FILES).toHaveLength(44);
     for (const file of ADMIN_ROUTE_I18N_FILES) {
       const source = read(file);
       if (file === "app/admin/security/page.tsx") {

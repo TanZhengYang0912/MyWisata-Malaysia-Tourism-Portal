@@ -5,10 +5,50 @@ import { extractKycFieldsInNode } from './node-ocr-engine';
 
 import { hashICWithHmac, normalizeIC } from './hash';
 import { hasRequiredKycEvidence } from './document-policy';
-import { extractKycFields, validatePassportLayout, normalizePassportName } from './runtime/ocr-fields.cjs';
+import { extractKycFields, validatePassportLayout, normalizePassportName, parseTd3Mrz } from './runtime/ocr-fields.cjs';
 export { requiresManualKycReview } from './ocr-policy';
 
 export type KycOcrStatus = 'matched' | 'mismatch' | 'unreadable' | 'unavailable';
+
+export type ManualPassportFields = {
+  mrzLine1: string;
+  mrzLine2: string;
+  holderName: string;
+  documentNumber: string;
+  issuerCountry: string;
+  nationality: string;
+  birthDate: string;
+  expiryDate: string;
+  sex: string;
+};
+
+/** Transcription is transient. The caller binds these facts to a current, independently viewed evidence snapshot. */
+export function verifyManualPassportFields(fields: ManualPassportFields, today = new Date().toISOString().slice(0, 10)):
+  | { valid: false }
+  | { valid: true; method: 'manual_td3_v1'; nationality: 'CN'; expiryDate: string; mrzStatus: 'valid'; visualComparisonStatus: 'consistent' } {
+  const invalid = { valid: false } as const;
+  if (![fields.mrzLine1, fields.mrzLine2].every((line) => /^[A-Z0-9<]{44}$/.test(line))) return invalid;
+  const mrz = parseTd3Mrz([{ text: fields.mrzLine1, confidence: null }, { text: fields.mrzLine2, confidence: null }]);
+  if (mrz.status !== 'valid' || mrz.issuerCode !== 'CHN' || mrz.nationalityCode !== 'CHN'
+    || !mrz.documentNumber || !mrz.birthDate || !mrz.expiryDate
+    || !(/^[GE]\d{8}$/.test(mrz.documentNumber) || /^E[A-HJ-NP-Z]\d{7}$/.test(mrz.documentNumber))) return invalid;
+  // The visible four-digit year resolves the MRZ's two-digit year without guessing a century.
+  const expiryDate = fields.expiryDate;
+  const birthDate = fields.birthDate;
+  const isCalendarDate = (value: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const parsed = new Date(`${value}T00:00:00.000Z`);
+    return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+  };
+  if (!isCalendarDate(birthDate) || birthDate > today
+    || birthDate.slice(2).replace(/-/g, '') !== mrz.birthDate
+    || !isCalendarDate(expiryDate) || expiryDate.slice(2).replace(/-/g, '') !== mrz.expiryDate || expiryDate <= today
+    || fields.issuerCountry.toUpperCase() !== 'CN' || fields.nationality.toUpperCase() !== 'CN'
+    || !['M', 'F', '<'].includes(fields.sex) || fields.sex !== mrz.sex
+    || normalizeIC(fields.documentNumber) !== mrz.documentNumber
+    || normalizePassportName(fields.holderName) !== normalizePassportName([mrz.surname, mrz.givenNames].filter(Boolean).join(' '))) return invalid;
+  return { valid: true, method: 'manual_td3_v1', nationality: 'CN', expiryDate, mrzStatus: 'valid', visualComparisonStatus: 'consistent' };
+}
 
 export type KycOcrInput = {
   documentType: 'national_id' | 'passport' | 'driving_license';
@@ -46,6 +86,8 @@ export type KycOcrPreviewResult = {
   holderName: string | null;
   documentNumber: string | null;
   expiryDate: string | null;
+  issuerCountry?: string | null;
+  nationality?: string | null;
   mrzStatus?: 'valid' | 'invalid' | 'unreadable' | 'unsupported';
   visualComparisonStatus?: 'consistent' | 'conflict' | 'incomplete';
   visualMissingFields?: string[];
@@ -208,7 +250,8 @@ export async function extractKycPreviewFields(input: Pick<KycOcrInput, 'document
     const visualComparisonStatus = ['consistent', 'conflict', 'incomplete'].includes(String(fields.visualComparisonStatus))
       ? fields.visualComparisonStatus as KycOcrPreviewResult['visualComparisonStatus'] : undefined;
     return { status: fields.unreadable === true || !documentNumber ? 'unreadable' : 'extracted', holderName, documentNumber,
-      expiryDate: nullableDate(fields.expiryDate), mrzStatus, visualComparisonStatus,
+      expiryDate: nullableDate(fields.expiryDate), issuerCountry: nullableText(fields.issuerCountry, 2)?.toUpperCase() ?? null,
+      nationality: nullableText(fields.nationality, 2)?.toUpperCase() ?? null, mrzStatus, visualComparisonStatus,
       visualMissingFields: Array.isArray(fields.visualMissingFields) ? fields.visualMissingFields.filter((field): field is string => typeof field === 'string' && /^[a-z_]{1,40}$/.test(field)).slice(0, 8) : undefined,
       confidence, providerModel };
   } catch (error) {

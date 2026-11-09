@@ -79,6 +79,8 @@ export function KycReviewDetailContent({
     holderName: submission.legalIdentity.fullName ?? customer.name,
     documentNumber: "",
     reasonCode: "ocr_unavailable",
+    reasonDetail: "",
+    mrzLine1: "", mrzLine2: "", nationality: "CN", birthDate: "", expiryDate: "", sex: "<",
     secondaryReviewerId: "",
   });
   const [primaryConfirmed, setPrimaryConfirmed] = useState(false);
@@ -245,6 +247,13 @@ export function KycReviewDetailContent({
     return () => controller.abort();
   }, [submission.id]);
 
+  function manualPassportPayload() {
+    return manualIdentity.actualDocumentType === "passport" ? { passport: {
+      mrzLine1: manualIdentity.mrzLine1, mrzLine2: manualIdentity.mrzLine2, nationality: manualIdentity.nationality,
+      birthDate: manualIdentity.birthDate, expiryDate: manualIdentity.expiryDate, sex: manualIdentity.sex,
+    } } : {};
+  }
+
   async function submitConfirmedDecision() {
     if (!confirmDecision || (confirmationPurpose === "primary" && !actionable) || confirmationVersion !== detail.assignment.reviewVersion) return;
     if (confirmDecision.action === "approve") {
@@ -269,11 +278,13 @@ export function KycReviewDetailContent({
               holderName: manualIdentity.holderName,
               documentNumber: manualIdentity.documentNumber,
               reasonCode: manualIdentity.reasonCode,
+              ...(manualIdentity.reasonCode === "ocr_transcription_error" ? { reasonDetail: manualIdentity.reasonDetail } : {}),
+              ...manualPassportPayload(),
             }),
           });
           const proofBody = await proofResponse.json().catch(() => ({}));
           if (!proofResponse.ok || proofBody.data?.confirmed !== true) throw new Error(proofBody.error?.message ?? t("kyc.errors.reviewFailed"));
-          setManualIdentity((value) => ({ ...value, documentNumber: "" }));
+          setManualIdentity((value) => ({ ...value, documentNumber: "", mrzLine1: "", mrzLine2: "", birthDate: "" }));
           setConfirmationError(t("kyc.confirm.secondReviewRecorded"));
         } catch (reason) {
           setConfirmationError(reason instanceof Error ? reason.message : t("kyc.errors.reviewFailed"));
@@ -312,13 +323,15 @@ export function KycReviewDetailContent({
               holderName: manualIdentity.holderName,
               documentNumber: manualIdentity.documentNumber,
               reasonCode: manualIdentity.reasonCode,
+              ...(manualIdentity.reasonCode === "ocr_transcription_error" ? { reasonDetail: manualIdentity.reasonDetail } : {}),
+              ...manualPassportPayload(),
             }),
           });
           const proofBody = await proofResponse.json().catch(() => ({}));
           if (!proofResponse.ok || proofBody.data?.confirmed !== true) throw new Error(proofBody.error?.message ?? t("kyc.errors.reviewFailed"));
           setPrimaryConfirmed(true);
           setSecondReviewComplete(false);
-          setManualIdentity((value) => ({ ...value, documentNumber: "" }));
+          setManualIdentity((value) => ({ ...value, documentNumber: "", mrzLine1: "", mrzLine2: "", birthDate: "" }));
         } catch (reason) {
           setConfirmationError(reason instanceof Error ? reason.message : t("kyc.errors.reviewFailed"));
         } finally {
@@ -438,7 +451,10 @@ export function KycReviewDetailContent({
                   {submission.ocr.mismatchFields.length > 0 ? (
                     <p className="mt-1 flex items-start gap-1 text-destructive">
                       <FileWarning size={14} className="mt-0.5 shrink-0" />
-                      {t("kyc.ocr.mismatch", { fields: submission.ocr.mismatchFields.map((field) => t(`kyc.ocr.issueCodes.${field}`, { defaultValue: field.replaceAll("_", " ") })).join(", ") })}
+                      {t("kyc.ocr.mismatch", { fields: submission.ocr.mismatchFields.map((field) => {
+                        const issueKey = `kyc.ocr.issueCodes.${field}`;
+                        return i18n.exists(issueKey, { ns: "admin" }) ? t(issueKey) : t("kyc.ocr.issueCodes.unknown");
+                      }).join(", ") })}
                     </p>
                   ) : submission.ocr.status === "matched" && (submission.docType !== "passport" || submission.ocr.visualComparisonStatus === "consistent") ? (
                     <p className="mt-1 text-primary">{t("kyc.ocr.noMismatch")}</p>
@@ -647,7 +663,7 @@ export function KycReviewDetailContent({
         confirmLabel={confirmLabel}
         confirmVariant={confirmDecision?.action === "reject" ? "destructive" : "default"}
         busy={busy || confirmationBusy}
-        onCancel={() => { setConfirmDecision(null); setConfirmationError(null); setManualIdentity((value) => ({ ...value, documentNumber: "" })); }}
+        onCancel={() => { setConfirmDecision(null); setConfirmationError(null); setManualIdentity((value) => ({ ...value, documentNumber: "", mrzLine1: "", mrzLine2: "", birthDate: "" })); }}
         onConfirm={submitConfirmedDecision}
         content={confirmDecision?.action === "approve" ? <div className="mt-4 space-y-3">
           <p className="text-xs text-muted-foreground">{t(confirmationPurpose === "primary" ? "kyc.confirm.identityEvidenceHint" : "kyc.confirm.independentEvidenceHint")}</p>
@@ -657,6 +673,9 @@ export function KycReviewDetailContent({
                 <option value="national_id">{t("kyc.documents.national_id")}</option><option value="driving_license">{t("kyc.documents.driving_license")}</option><option value="passport">{t("kyc.documents.passport")}</option>
               </select>
             </label>
+            {manualIdentity.reasonCode === "ocr_transcription_error" && <label className="text-xs sm:col-span-2">{t("kyc.confirm.transcriptionCorrection")}
+              <textarea value={manualIdentity.reasonDetail} maxLength={500} onChange={(event) => setManualIdentity((value) => ({ ...value, reasonDetail: event.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm" rows={2} />
+            </label>}
             <label className="text-xs">{t("kyc.confirm.issuerCountry")}
               <input value={manualIdentity.issuerCountry} maxLength={2} onChange={(event) => setManualIdentity((value) => ({ ...value, issuerCountry: event.target.value.toUpperCase() }))} className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm" autoComplete="off" />
             </label>
@@ -672,8 +691,31 @@ export function KycReviewDetailContent({
                 <option value="ocr_name_mismatch">{t("kyc.confirm.nameMismatch")}</option>
                 <option value="ocr_unavailable">{t("kyc.confirm.ocrUnavailable")}</option>
                 <option value="ocr_unreadable">{t("kyc.confirm.ocrUnreadable")}</option>
+                <option value="ocr_source_unavailable">{t("kyc.confirm.ocrSourceUnavailable")}</option>
+                <option value="ocr_viz_incomplete">{t("kyc.confirm.ocrVisibleFieldsIncomplete")}</option>
+                <option value="ocr_transcription_error">{t("kyc.confirm.ocrTranscriptionError")}</option>
               </select>
             </label>
+            {manualIdentity.actualDocumentType === "passport" && <>
+              <label className="text-xs">{t("kyc.confirm.nationality")}
+                <input value={manualIdentity.nationality} maxLength={2} onChange={(event) => setManualIdentity((value) => ({ ...value, nationality: event.target.value.toUpperCase() }))} className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm" />
+              </label>
+              <label className="text-xs">{t("kyc.confirm.birthDate")}
+                <input type="date" value={manualIdentity.birthDate} onChange={(event) => setManualIdentity((value) => ({ ...value, birthDate: event.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm" />
+              </label>
+              <label className="text-xs">{t("kyc.confirm.expiryDate")}
+                <input type="date" value={manualIdentity.expiryDate} onChange={(event) => setManualIdentity((value) => ({ ...value, expiryDate: event.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm" />
+              </label>
+              <label className="text-xs">{t("kyc.confirm.sex")}
+                <select value={manualIdentity.sex} onChange={(event) => setManualIdentity((value) => ({ ...value, sex: event.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm"><option value="M">M</option><option value="F">F</option><option value="<">&lt;</option></select>
+              </label>
+              <label className="text-xs sm:col-span-2">{t("kyc.confirm.mrzLine1")}
+                <input value={manualIdentity.mrzLine1} maxLength={44} onChange={(event) => setManualIdentity((value) => ({ ...value, mrzLine1: event.target.value.toUpperCase() }))} className="mt-1 w-full font-mono rounded-lg border border-border bg-background px-2 py-2 text-sm" autoComplete="off" />
+              </label>
+              <label className="text-xs sm:col-span-2">{t("kyc.confirm.mrzLine2")}
+                <input value={manualIdentity.mrzLine2} maxLength={44} onChange={(event) => setManualIdentity((value) => ({ ...value, mrzLine2: event.target.value.toUpperCase() }))} className="mt-1 w-full font-mono rounded-lg border border-border bg-background px-2 py-2 text-sm" autoComplete="off" />
+              </label>
+            </>}
             {confirmationPurpose === "primary" && !primaryConfirmed && <label className="text-xs sm:col-span-2">{t("kyc.confirm.secondaryReviewer")}
               <select value={manualIdentity.secondaryReviewerId} onChange={(event) => setManualIdentity((value) => ({ ...value, secondaryReviewerId: event.target.value }))} className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm" disabled={counterSignCandidatesLoading || counterSignCandidates.length === 0}>
                 <option value="">{counterSignCandidatesLoading ? t("kyc.confirm.loadingReviewers") : t("kyc.confirm.selectReviewer")}</option>

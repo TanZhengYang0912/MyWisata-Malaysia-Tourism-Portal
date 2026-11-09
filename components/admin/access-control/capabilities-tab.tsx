@@ -28,7 +28,7 @@ export function CapabilitiesTab({ focusId, onViewAudit }: { focusId: string | nu
   const [category, setCategory] = useState("");
   const [enabled, setEnabled] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const pageSize = PAGE_SIZE;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [edit, setEdit] = useState<EditState | null>(null);
