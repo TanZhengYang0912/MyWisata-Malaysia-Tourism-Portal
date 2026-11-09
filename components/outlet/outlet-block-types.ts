@@ -52,6 +52,7 @@ export interface OutletRendererProduct {
   available_stock?: number | null;
   rating?: number;
   reviews?: number;
+  ratingKnown?: boolean;
   featured?: boolean;
   stay?: {
     /** Per-room price for every night of the searched stay. */

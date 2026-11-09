@@ -77,7 +77,7 @@ function CatalogueProductCard({ listing: product, returnTo, source, onSponsoredC
             <ProductSaveButton productId={product.id} productName={product.name} compact />
             {wishlist && <ShareButton compact shareType="product" contentId={product.id} title={product.name} />}
           </>}
-          rating={<PhotoRatingBadge rating={product.rating} reviews={product.reviews} />}
+          rating={product.ratingKnown !== false && <PhotoRatingBadge rating={product.rating} reviews={product.reviews} />}
           meta={[typeLabel, product.vendorName].filter(Boolean).join(" · ")}
           title={text}
           titleControl={control}

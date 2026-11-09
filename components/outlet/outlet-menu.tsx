@@ -14,6 +14,7 @@ export function OutletProductCard({ outlet, product }: { outlet: OutletRendererO
         vendorName: outlet.vendorName ?? undefined, productType: product.product_type ?? null,
         imageUrl: product.cover_url ? productImageUrl(product.cover_url) : null,
         requiresBooking: Boolean(product.requires_booking), rating: product.rating ?? 0, reviews: product.reviews ?? 0,
+        ratingKnown: product.ratingKnown,
         sales: { outletCount: 1, fromPrice: Number(product.base_price) },
         pinnedOutletId: outlet.id,
       }}

@@ -42,4 +42,9 @@ describe("outlet menu product card", () => {
     }
     expect(markup).not.toContain("<button");
   });
+
+  it("hides unknown ratings but keeps a genuine no-review badge", () => {
+    expect(render({ rating: 0, reviews: 0, ratingKnown: false })).not.toContain('data-slot="photo-rating-badge"');
+    expect(render({ rating: 0, reviews: 0, ratingKnown: true })).toContain('data-slot="photo-rating-badge"');
+  });
 });

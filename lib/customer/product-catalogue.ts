@@ -9,6 +9,8 @@ export type ProductCatalogueCardData = {
   vendorName?: string;
   productType: string | null; imageUrl: string | null;
   requiresBooking: boolean; rating: number; reviews: number;
+  /** False when the rating lookup failed, distinct from a successful zero-review result. */
+  ratingKnown?: boolean;
   sales: ProductSalesSummary;
   singleOutlet?: { id: string; city: string | null; state: string | null; operatingHours: OperatingHours | null };
   /** Home/Explore only: a paid placement and/or the merchant's ⭐ pick. Vendor-page cards never carry them. */

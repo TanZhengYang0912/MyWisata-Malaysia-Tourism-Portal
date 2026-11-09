@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import Link from "next/link";
 import { BackLink } from "@/components/shared/back-link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ArrowRight, MapPin, Search, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { productImageUrl } from "@/lib/storage/product-image";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { getPlaceBySlug } from "@/backend/domains/places";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { ProductCard } from "@/components/customer/product-card";
-import type { ProductCatalogueCardData } from "@/lib/customer/product-catalogue";
-import { getScopeRatingSummaries } from "@/backend/domains/vendor-reviews";
+import { getDestinationProductCards } from "@/backend/domains/destination-products";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 
@@ -35,7 +34,7 @@ function stateToSlug(state: string): string {
 
 const PLACE_FIRST_DESTINATION_SLUGS = new Set(["kuala-lumpur", "putrajaya", "labuan"]);
 
-async function getDestinationData(destinationId: string) {
+const getDestinationData = cache(async (destinationId: string) => {
   const stateName = slugToState(destinationId);
   const destination = MALAYSIA_DESTINATIONS.find(
     (d) => stateToSlug(d.state) === destinationId || d.state === stateName
@@ -45,7 +44,7 @@ async function getDestinationData(destinationId: string) {
   const db = await createClient();
 
   // Outlets in this state (via outlet.state field)
-  const [{ data: outletRows }, { data: productRows }] = await Promise.all([
+  const [{ data: outletRows }, products] = await Promise.all([
     db
       .from("outlets")
       .select(
@@ -55,39 +54,11 @@ async function getDestinationData(destinationId: string) {
       .eq("status", "active")
       .eq("review_status", "approved")
       .limit(8),
-    db
-      .from("products")
-      .select(
-        "id,name,description,vendor_id,outlet_id,base_price,cover_url,product_type,requires_booking,outlets(id,city,state),vendors(name)"
-      )
-      .eq("status", "active")
-      .eq("review_status", "approved")
-      // Filter by joining on outlets in this state
-      .limit(80),
+    getDestinationProductCards(destination.state, db, createServiceClient()),
   ]);
 
-  // Client-side filter for products whose outlet is in this state
-  const stateProducts = (productRows ?? []).filter((product) => {
-    const outlet = Array.isArray(product.outlets) ? product.outlets[0] : product.outlets;
-    return outlet?.state === destination.state;
-  }).slice(0, 8);
-  // One batched lookup; products without reviews show no rating.
-  const ratings = await getScopeRatingSummaries("product", stateProducts.map((product) => product.id), createServiceClient()).catch(() => null);
-  const products: ProductCatalogueCardData[] = stateProducts.map((product) => {
-    const outlet = Array.isArray(product.outlets) ? product.outlets[0] : product.outlets;
-    const vendor = Array.isArray(product.vendors) ? product.vendors[0] : product.vendors;
-    const rating = ratings?.get(product.id);
-    return {
-      id: product.id, vendorId: product.vendor_id, name: product.name, description: product.description,
-      vendorName: vendor?.name, productType: product.product_type, imageUrl: productImageUrl(product.cover_url),
-      requiresBooking: Boolean(product.requires_booking), rating: rating?.value ?? 0, reviews: rating?.count ?? 0,
-      sales: { outletCount: 1, fromPrice: Number(product.base_price) },
-      ...(outlet ? { singleOutlet: { id: outlet.id, city: outlet.city, state: outlet.state, operatingHours: null } } : {}),
-    };
-  });
-
   return { destination, outlets: outletRows ?? [], products };
-}
+});
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { destinationId } = await params;

@@ -20,6 +20,7 @@ import { VendorCard } from "@/components/customer/vendor-card";
 import { OutletCard } from "@/components/customer/outlet-card";
 import { PlaceActivityCard } from "@/components/customer/place-activity-card";
 import { toVendorCatalogueCard } from "@/lib/customer/product-catalogue";
+import { SeeMoreLink } from "@/components/customer/see-more-link";
 
 const product: VendorProductCardData = {
   id: "p1", vendorId: "v1", name: "Mossy Forest Guided Walk", description: null, productType: "activity",
@@ -87,6 +88,13 @@ describe("ProductCard on the shared CardFrame", () => {
     expect(markup).toContain("/ ui.activityDetail.priceUnits.perNight");
     expect(markup).toContain("ui.property.roomTypes:3");
   });
+
+  it("hides unavailable ratings without claiming that the product has no reviews", () => {
+    const listing = { ...toVendorCatalogueCard(product), rating: 0, reviews: 0, ratingKnown: false };
+    const markup = renderToStaticMarkup(<ProductCard listing={listing} returnTo="/customer" />);
+    expect(markup).not.toContain("photo-rating-badge");
+    expect(markup).not.toContain("ui.activity.noReviewsYet");
+  });
 });
 
 
@@ -120,6 +128,14 @@ describe("VendorCard and OutletCard", () => {
 });
 
 describe("PlaceActivityCard", () => {
+  it("keeps the approved readable phone typography instead of compact product-card sizing", () => {
+    const markup = renderToStaticMarkup(<PlaceActivityCard imageUrl={null} imageAlt="Trail" imageFallback={null} title="Trail" description="Full description" footer="Free Entry" />);
+    expect(markup).toContain("max-sm:p-4");
+    expect(markup).toContain("max-sm:text-base");
+    expect(markup).toContain("max-sm:text-sm");
+    expect(markup).not.toContain("max-sm:text-[11px]");
+    expect(markup).not.toContain("max-sm:text-[13px]");
+  });
   it("uses the place layout with the full description, and is not a link without an href", () => {
     const markup = renderToStaticMarkup(<PlaceActivityCard imageUrl={null} imageAlt="Trail" imageFallback={null} tag="Free entry" meta="Official visitor information" title="Public Forest Walking Trail" description="A self-guided forest walk." footer="Free entry" />);
     expect(markup).toContain('data-card-frame="place"');
@@ -127,4 +143,10 @@ describe("PlaceActivityCard", () => {
     expect(markup).not.toContain("<a ");
     expect(markup).not.toContain("hover:scale-[1.04]");
   });
+});
+
+it("gives See More the same yellow hover and press feedback as the paging arrows", () => {
+  const markup = renderToStaticMarkup(<SeeMoreLink href="/customer/explore" />);
+  expect(markup).toContain("hover:text-accent");
+  expect(markup).toContain("active:text-accent");
 });

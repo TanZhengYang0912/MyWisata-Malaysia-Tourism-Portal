@@ -79,11 +79,11 @@ export function CardFrame({
         {actions && <div className="absolute right-3 top-3 z-20 flex flex-col gap-2 max-sm:right-2.5">{actions}</div>}
         {rating && <div className="pointer-events-none absolute bottom-3 right-3 z-10">{rating}</div>}
       </div>
-      <div className={`flex min-w-0 flex-1 flex-col px-[15px] pb-[17px] pt-[13px] max-sm:px-2.5 max-sm:pb-3.5 max-sm:pt-[11px] ${place ? "md:p-4" : ""}`}>
+      <div className={`flex min-w-0 flex-1 flex-col px-[15px] pb-[17px] pt-[13px] ${place ? "max-sm:p-4 md:p-4" : "max-sm:px-2.5 max-sm:pb-3.5 max-sm:pt-[11px]"}`}>
         {meta && <p className="mb-1 truncate text-[11px] text-muted-foreground max-sm:text-[10px]">{meta}</p>}
         <div className="flex min-w-0 items-start gap-1">
           <h3
-            className="line-clamp-2 h-[2.7em] min-w-0 flex-1 text-base font-bold leading-[1.35] tracking-[-0.3px] text-foreground max-sm:text-[13px]"
+            className={`line-clamp-2 h-[2.7em] min-w-0 flex-1 text-base font-bold leading-[1.35] tracking-[-0.3px] text-foreground ${place ? "max-sm:text-base" : "max-sm:text-[13px]"}`}
             title={typeof title === "string" ? title : undefined}
           >
             {href ? (
@@ -94,7 +94,7 @@ export function CardFrame({
           </h3>
           {titleControl && <div className="relative z-20 shrink-0">{titleControl}</div>}
         </div>
-        {description && <div className="mt-2 text-xs leading-[1.65] text-muted-foreground max-sm:text-[11px]">{description}</div>}
+        {description && <div className={`mt-2 text-xs leading-[1.65] text-muted-foreground ${place ? "max-sm:text-sm max-sm:leading-[1.7]" : "max-sm:text-[11px]"}`}>{description}</div>}
         {info && <div className="mt-2.5 min-w-0 text-[11px] text-muted-foreground max-sm:text-[10px]">{info}</div>}
         {footer && <div className="mt-auto pt-3">{footer}</div>}
       </div>
