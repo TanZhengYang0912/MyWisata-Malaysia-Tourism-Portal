@@ -286,7 +286,7 @@ describe("ExploreClient URL-backed advanced filters", () => {
     mocks.params = new URLSearchParams("tab=experiences");
     mocks.sortExploreActivities.mockImplementation((_filters, candidates) => [...candidates].reverse());
     await render(root, <ExploreClient initialActivities={activities} />);
-    expect(mocks.sortExploreActivities).toHaveBeenCalledWith({}, activities);
+    expect(mocks.sortExploreActivities).toHaveBeenCalledWith({ sort: "recommended" }, activities);
     const ids = findElements(container, (element) => element.getAttribute("data-testid")?.startsWith("activity-") ?? false).map((element) => element.getAttribute("data-testid"));
     expect(ids[0]).toBe("activity-result-10");
   });

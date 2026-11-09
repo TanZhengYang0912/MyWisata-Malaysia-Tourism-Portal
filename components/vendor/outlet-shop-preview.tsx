@@ -205,7 +205,6 @@ export default function OutletShopPreview({ vendorId, outlet, onEdit }: Props) {
               outlet={outlet}
               products={products}
               mode="public"
-              canUseCustomerActions={false}
             />
           </div>
         </div>

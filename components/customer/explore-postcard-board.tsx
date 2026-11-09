@@ -14,10 +14,11 @@ import { activityToMapPlace } from "@/lib/demo-map/adapt";
 import { DEMO_STATES } from "@/lib/demo-map/data";
 import { MALAYSIA_DESTINATIONS, type MalaysiaDestination } from "@/lib/customer/malaysia-destinations";
 import { buildActivityPath } from "@/lib/customer/navigation-context";
-import { assignPostcardSlots, BOARD, SLOTS, stringPath, toBoardPoint } from "@/lib/customer/postcard-board";
+import { assignPostcardSlots, BOARD, regionTransform, SLOTS, slotPin, stringPath, toBoardPoint } from "@/lib/customer/postcard-board";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 
 const FLIP_AFTER_MS = 350;
+const REGION_TRANSFORMS = { peninsular: regionTransform("peninsular"), borneo: regionTransform("borneo") };
 
 type Postcard = {
   dest: MalaysiaDestination;
@@ -84,7 +85,7 @@ export function ExplorePostcardBoard({
         picks,
         ps: list.find((activity) => activity.sponsorship && !picks.includes(activity)) ?? null,
         seeAllHref: statesWithPlaces.includes(dest.state) ? `/customer/place/${slug}` : `/customer/destination/${encodeURIComponent(slug)}`,
-        anchor: toBoardPoint(point),
+        anchor: toBoardPoint(point, state.region === "Borneo" ? "borneo" : "peninsular"),
         slot: 0,
         rotation: tilt(state.id),
       }];
@@ -189,33 +190,59 @@ export function ExplorePostcardBoard({
   );
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
-      <div className="mb-6">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.explore.statesAndCities")}</p>
-        <h2 className="mt-1 text-2xl font-bold text-foreground">{t("ui.explore.exploreByDestination")}</h2>
-      </div>
+    <section aria-label={t("ui.explore.destinations")} className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
 
       <div ref={boardRef} data-testid="postcard-board" className="relative hidden w-full lg:block" style={{ height: BOARD.height * scale }}>
         <div
           className="absolute left-0 top-0 origin-top-left rounded-[14px] bg-[color:var(--mw-cork)] bg-[image:radial-gradient(circle_at_20%_30%,var(--mw-cork-grain)_0_2px,transparent_3px)] bg-[length:13px_13px] shadow-[inset_0_0_0_14px_var(--mw-cork-frame),0_30px_60px_rgb(0_0_0/0.35)]"
           style={{ width: BOARD.width, height: BOARD.height, transform: `scale(${scale})` }}
         >
-          <div className="absolute" style={{ left: BOARD.map.x, top: BOARD.map.y, width: BOARD.map.w, height: BOARD.map.h }}>
-            <MalaysiaStateOutline highlightedStateId={hot} onHoverState={setHot} onSelectState={open} />
+          <div className="absolute inset-0">
+            <MalaysiaStateOutline
+              highlightedStateId={hot}
+              onHoverState={setHot}
+              onSelectState={open}
+              viewBox={`0 0 ${BOARD.width} ${BOARD.height}`}
+              regionTransforms={REGION_TRANSFORMS}
+            />
           </div>
           <svg aria-hidden="true" className="pointer-events-none absolute inset-0" width={BOARD.width} height={BOARD.height}>
             {postcards.map((card) => {
-              const slot = SLOTS[card.slot], on = hot === card.stateId;
+              const on = hot === card.stateId;
               return (
                 <path
                   key={card.stateId}
-                  d={stringPath({ x: slot.x + BOARD.card.w / 2, y: slot.y + 2 }, card.anchor)}
+                  d={stringPath(slotPin(SLOTS[card.slot]), card.anchor)}
                   className="fill-none stroke-[color:var(--mw-string)] transition-all duration-200"
                   strokeWidth={on ? 3 : 1.6}
                   opacity={on ? 1 : 0.55}
                 />
               );
             })}
+            {/* Wide invisible strokes so hovering a string highlights its state too; not focusable (card and state are). */}
+            {postcards.map((card, index) => (
+              <path
+                key={card.stateId}
+                data-string-hit={card.stateId}
+                d={stringPath(slotPin(SLOTS[card.slot]), card.anchor)}
+                className="cursor-pointer fill-none stroke-transparent"
+                strokeWidth={14}
+                pointerEvents="stroke"
+                onMouseEnter={() => hover(card.stateId, true)}
+                onMouseLeave={() => hover(card.stateId, false)}
+                onClick={() => openAt(index)}
+              />
+            ))}
+            {postcards.map((card) => (
+              <circle
+                key={card.stateId}
+                data-state-dot={card.stateId}
+                cx={card.anchor.x}
+                cy={card.anchor.y}
+                r={hot === card.stateId ? 6 : 4.5}
+                className="fill-[var(--mw-pin)] drop-shadow-[1.5px_2px_1.5px_rgb(0_0_0/0.45)] transition-[r] duration-150"
+              />
+            ))}
           </svg>
           {postcards.map((card, index) => {
             const slot = SLOTS[card.slot], on = hot === card.stateId;

@@ -115,8 +115,8 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   compress: true,
   poweredByHeader: false,
-  // Dev only: lets a phone on the same network (iPhone hotspot or home Wi-Fi) load the dev server by LAN IP.
-  allowedDevOrigins: ['172.20.10.*', '192.168.*.*'],
+  // Dev only: lets a phone load the dev server by LAN IP (iPhone hotspot or home Wi-Fi) or a Cloudflare quick tunnel.
+  allowedDevOrigins: ['172.20.10.*', '192.168.*.*', '*.trycloudflare.com'],
   async headers() {
     const site = publicSiteUrl();
     return [

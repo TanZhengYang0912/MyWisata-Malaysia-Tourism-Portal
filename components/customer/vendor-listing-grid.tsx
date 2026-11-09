@@ -10,7 +10,7 @@ import { getVendorProductTypeLabel, type VendorProductCardData } from "@/lib/cus
 const FIRST_PAGE = 8;
 
 /** The vendor's whole listing, featured first: eight cards, then "Show all"; type chips when there is more than one type. */
-export function VendorListingGrid({ products, returnTo }: { products: VendorProductCardData[]; returnTo: string }) {
+export function VendorListingGrid({ products, vendorName, returnTo }: { products: VendorProductCardData[]; vendorName?: string; returnTo: string }) {
   const { t } = useTranslation("customer");
   const [type, setType] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
@@ -39,7 +39,7 @@ export function VendorListingGrid({ products, returnTo }: { products: VendorProd
         <span className="text-sm font-semibold text-muted-foreground">{t("ui.vendor.showingCount", { shown: shown.length, total: filtered.length })}</span>
       </div>
       <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
-        {shown.map((product) => <ProductCard key={product.id} returnTo={returnTo} listing={toVendorCatalogueCard(product)} source="vendor" />)}
+        {shown.map((product) => <ProductCard key={product.id} returnTo={returnTo} listing={{ ...toVendorCatalogueCard(product), vendorName }} source="vendor" />)}
       </div>
       {shown.length < filtered.length && (
         <div className="mt-6 flex justify-center">

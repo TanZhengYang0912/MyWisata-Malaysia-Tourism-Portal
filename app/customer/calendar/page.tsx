@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Filter, MapPin, ReceiptText, Search, X } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Filter, MapPin, ReceiptText, X } from "lucide-react";
+import { DiscoverySearchField } from "@/components/customer/discovery-filters";
 import { useAuth } from "@/components/providers/auth";
 import { getSettledBookingsForUser } from "@/backend/domains/commerce";
 import { getOutlets } from "@/backend/domains/catalogue";
@@ -229,10 +230,9 @@ export default function CustomerCalendarPage() {
             </div>
             {filtersOpen && <div id="calendar-filters" className="border-t border-border px-4 py-3 sm:px-6">
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-7">
-                <label className="relative col-span-2 min-w-0 lg:col-span-2">
-                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <input value={query} onChange={(event) => { setSelectedDayKey(null); setQuery(event.target.value); }} placeholder={tCustomer("ui.calendar.searchBookings")} aria-label={tCustomer("ui.calendar.searchActivity")} className="h-10 w-full rounded-xl border border-border bg-secondary/50 pl-9 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-[rgba(1,0,102,0.12)]" />
-                </label>
+                <div className="col-span-2 flex min-w-0 lg:col-span-2">
+                  <DiscoverySearchField value={query} onChange={(next) => { setSelectedDayKey(null); setQuery(next); }} placeholder={tCustomer("ui.calendar.searchBookings")} ariaLabel={tCustomer("ui.calendar.searchActivity")} />
+                </div>
                 <select value={scope} onChange={(event) => { setSelectedDayKey(null); setScope(event.target.value as BookingCalendarScope); }} aria-label={tCustomer("ui.calendar.bookingScope")} className="h-10 min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary">
                   <option value="upcoming">{tCustomer("ui.calendar.upcoming")}</option>
                   <option value="past">{tCustomer("ui.calendar.past")}</option>

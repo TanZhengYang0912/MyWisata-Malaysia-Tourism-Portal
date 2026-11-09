@@ -60,13 +60,16 @@ describe("customer discovery filter contract", () => {
     expect(searchSource).toContain("<CustomerDiscoveryFilterPanel");
     expect(searchSource).toContain("operatingDays");
     expect(searchSource).toContain("hoursMode");
-    expect(searchSource).toContain('<DiscoverySearchField value={filters.q} onChange={(q) => updateFilters({ q })} placeholder={t("ui.search.searchVendors")} />');
+    expect(searchSource).toContain("<DiscoveryToolbar");
+    expect(searchSource).toContain('placeholder={t("ui.search.searchVendors")}');
     expect(filterSource).toContain('t("ui.discovery.state")');
   });
 
   it("uses the shared sidebar and the shared pager on Experiences", () => {
     expect(exploreSource).toContain("<DialogContent");
-    expect(exploreSource).toContain("<DialogTrigger asChild>");
+    // The shared toolbar renders the Filters trigger inside the page's own Dialog.
+    expect(exploreSource).toContain("<DiscoveryToolbar");
+    expect(filterSource).toContain("<DialogTrigger asChild>");
     expect(exploreSource).toContain("totalPages={totalExperiencePages}");
     expect(exploreSource).not.toContain("visibleLimit");
     expect(exploreSource).not.toContain("setVisibleLimit");
@@ -102,14 +105,15 @@ describe("customer discovery filter contract", () => {
     expect(searchSource).toContain("<CustomerDiscoveryFilterPanel");
     expect(searchSource).toContain("operatingDays");
     expect(searchSource).toContain("hoursMode");
-    expect(searchSource).toContain('<DiscoverySearchField value={filters.q} onChange={(q) => updateFilters({ q })} placeholder={t("ui.search.searchVendors")} />');
+    expect(searchSource).toContain("<DiscoveryToolbar");
+    expect(searchSource).toContain('placeholder={t("ui.search.searchVendors")}');
     expect(filterSource).toContain('t("ui.discovery.state")');
   });
 
   it("uses an Experiences-only checkbox facet mode and keeps search beside sorting", () => {
     expect(exploreSource).toContain('mode="experiences"');
-    expect(exploreSource).toContain('data-testid="experience-toolbar"');
-    expect(exploreSource).toContain("DiscoverySearchField");
+    expect(exploreSource).toContain('bar: "experience-toolbar"');
+    expect(filterSource).toContain("<DiscoverySearchField value={query} onChange={onQueryChange} placeholder={placeholder} />");
     expect(filterSource).toContain('mode === "experiences"');
     expect(filterSource).toContain("Checkbox");
     expect(exploreSource).toContain('data-testid="experience-active-filters"');

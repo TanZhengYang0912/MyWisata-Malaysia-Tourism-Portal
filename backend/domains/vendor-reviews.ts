@@ -72,25 +72,30 @@ function summarizeRatingRows(rows: MetricRow[]): ReviewRatingSummary {
   return { rating: total ? roundOneDecimal(weightedRating / total) : 0, total, buckets };
 }
 
-/** Vendor-scope ratings for many vendors in one query; vendors without reviews are left out. */
-export async function getVendorRatingSummaries(vendorIds: string[], db: SupabaseClient): Promise<Map<string, { value: number; count: number }>> {
+/** Ratings for many vendors, outlets or products of one scope in one query; ids without reviews are left out. */
+export async function getScopeRatingSummaries(scopeType: "vendor" | "outlet" | "product", ids: string[], db: SupabaseClient): Promise<Map<string, { value: number; count: number }>> {
   const summaries = new Map<string, { value: number; count: number }>();
-  if (vendorIds.length === 0) return summaries;
+  if (ids.length === 0) return summaries;
   const { data, error } = await db
     .from("review_rating_metrics_by_scope")
     .select("scope_id,rating,review_count")
-    .eq("scope_type", "vendor")
-    .in("scope_id", vendorIds);
+    .eq("scope_type", scopeType)
+    .in("scope_id", ids);
   if (error) throw error;
-  const rowsByVendor = new Map<string, MetricRow[]>();
+  const rowsById = new Map<string, MetricRow[]>();
   for (const row of (data ?? []) as unknown as Array<MetricRow & { scope_id: string }>) {
-    rowsByVendor.set(row.scope_id, [...(rowsByVendor.get(row.scope_id) ?? []), row]);
+    rowsById.set(row.scope_id, [...(rowsById.get(row.scope_id) ?? []), row]);
   }
-  for (const [vendorId, rows] of rowsByVendor) {
+  for (const [id, rows] of rowsById) {
     const summary = summarizeRatingRows(rows);
-    if (summary.total > 0) summaries.set(vendorId, { value: summary.rating, count: summary.total });
+    if (summary.total > 0) summaries.set(id, { value: summary.rating, count: summary.total });
   }
   return summaries;
+}
+
+/** Vendor-scope ratings for many vendors in one query; vendors without reviews are left out. */
+export function getVendorRatingSummaries(vendorIds: string[], db: SupabaseClient) {
+  return getScopeRatingSummaries("vendor", vendorIds, db);
 }
 
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {

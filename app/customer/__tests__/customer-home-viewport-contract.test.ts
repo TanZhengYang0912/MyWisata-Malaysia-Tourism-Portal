@@ -110,7 +110,7 @@ describe("customer home first viewport", () => {
     expect(homeSource).toContain("flex: 0 0 calc((100% - ((var(--per-page) - 1) * var(--destination-gap))) / var(--per-page));");
     expect(homeSource).toContain("padding-right: var(--destination-gap)");
     expect(homeSource).toContain("useHomeDestinationPager(");
-    expect(homeSource).toContain('import { ArrowRight, ArrowUpRight, MapPin, Sparkles } from "lucide-react"');
+    expect(homeSource).toContain('import { ArrowUpRight, ChevronLeft, ChevronRight, MapPin, Sparkles } from "lucide-react"');
     expect(homeSource).toContain('aria-label={t("ui.home.viewDestination")}');
     expect(homeSource).not.toContain('{t("ui.home.viewDestination")} <ArrowRight');
     expect(homeSource).toContain("aria-pressed={isSelected}");
@@ -181,8 +181,11 @@ describe("customer home first viewport", () => {
   it("exposes clickable Worm page controls instead of arrow buttons", () => {
     expect(homeSource).toContain("HomeDestinationWormIndicator");
     expect(homeSource).toContain('label={t("ui.home.destinationCarouselControls")}');
-    expect(homeSource).not.toContain("ChevronLeft");
-    expect(homeSource).not.toContain("ChevronRight");
+    // Arrows belong only to the Featured Highlights pager, never to the destination carousel.
+    const destinationSource = homeSource.slice(0, homeSource.indexOf('aria-labelledby="featured-highlights-heading"'));
+    const componentStart = destinationSource.indexOf("export function CustomerHomeClient");
+    expect(destinationSource.slice(componentStart)).not.toContain("ChevronLeft");
+    expect(destinationSource.slice(componentStart)).not.toContain("ChevronRight");
     expect(homeSource).not.toContain("changeDestinationPage(direction:");
     expect(homeSource).not.toContain("HOME_DESTINATIONS.slice(");
   });
@@ -197,7 +200,7 @@ describe("customer home first viewport", () => {
     expect(homeSource).toContain("!isGuest && forYouItems.length > 0");
     expect(homeSource).not.toContain('t("ui.home.popularExperiences")');
     expect(homeSource).not.toContain('t("ui.home.localDelicacies")');
-    expect(homeSource).toContain('t("ui.actions.viewAll")');
+    expect(homeSource).toContain('<SeeMoreLink href="/customer/explore" />');
   });
 
   it("orders For You below Highlights, then Event, Nearby, and Featured Partners", () => {
@@ -214,7 +217,7 @@ describe("customer home first viewport", () => {
     expect(featuredPartnersIndex).toBeGreaterThan(nearbyPartnersIndex);
     expect(homeSource).toContain("eventPartners.slice(0, 4)");
     expect(homeSource).toContain("vendors.slice(0, 4)");
-    expect(homeSource).toContain("highlightItems.map((activity)");
+    expect(homeSource).toContain("visibleHighlights.map((activity)");
     expect(homeSource).toContain("forYouItems.map((activity)");
     expect(homePageSource).toContain("campaign.vendors.map((vendor) => vendor.vendorId)");
     expect(homePageSource).toContain("eventVendorIds");
@@ -230,15 +233,12 @@ describe("customer home first viewport", () => {
     expect(homeSource).not.toContain("detailsRevealStyle");
   });
 
-  it("supports detail reveal on home product and partner cards", () => {
+  it("uses the shared CardFrame, with no drawer, on home product and partner cards", () => {
     expect(homeSource).not.toContain("detailsRevealOnHover");
-    expect(activityCardSource).toContain("<ExpandCard");
-    expect(activityCardSource).toContain("details={detailContent}");
-    expect(readFileSync(resolve(process.cwd(), "components/customer/expand-card.tsx"), "utf8")).toContain("mw-card-body-compact");
-    expect(activityCardSource).not.toContain("detailsRevealOnHover");
+    expect(activityCardSource).toContain("<CardFrame");
+    expect(activityCardSource).not.toContain("ExpandCard");
     expect(activityCardSource).not.toContain("bg-primary/95");
-    expect(vendorCardSource).toContain("<ExpandCard");
-    expect(vendorCardSource).not.toContain("detailsRevealOnHover");
+    expect(vendorCardSource).toContain("<CardFrame");
     expect(vendorCardSource).not.toContain("aria-expanded");
   });
 
@@ -249,8 +249,8 @@ describe("customer home first viewport", () => {
     const highlightsStart = homeSource.indexOf('aria-labelledby="featured-highlights-heading"');
     const highlightsEnd = homeSource.indexOf("</section>", highlightsStart);
     const highlightsSection = homeSource.slice(highlightsStart, highlightsEnd);
-    const featuredVendorStart = homeSource.indexOf("return <VendorCard");
-    const featuredVendorEnd = homeSource.indexOf(" />;", featuredVendorStart);
+    const featuredVendorStart = homeSource.indexOf("vendors.slice(0, 4).map");
+    const featuredVendorEnd = homeSource.indexOf("/>)}", featuredVendorStart);
     const featuredVendorCall = homeSource.slice(featuredVendorStart, featuredVendorEnd);
 
     expect(forYouSection).toContain("forYouItems.map((activity)");
@@ -264,6 +264,17 @@ describe("customer home first viewport", () => {
     expect(homeSource).toContain('id="featured-highlights-heading" className="font-[family-name:var(--font-display)] text-2xl');
     expect(homeSource).toContain('id="for-you-heading" className="flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl');
     expect(homeSource).toContain('text-2xl font-bold font-[family-name:var(--font-display)]');
+  });
+
+  it("pages Featured Highlights 4 at a time and records impressions only for the shown page", () => {
+    expect(homeSource).toContain("pageHomeHighlights(highlightItems, highlightPage)");
+    expect(homeSource).toContain("for (const activity of visibleHighlights)");
+    expect(homeSource).toContain("highlights.pageCount > 1 &&");
+    expect(homeSource).toContain("disabled={atEdge}");
+    expect(homeSource).not.toMatch(/highlights\.page \+ 1\} \//);
+    for (const href of ["/customer/explore", "/customer/for-you", "/customer/vendors"]) {
+      expect(homeSource).toContain(`<SeeMoreLink href="${href}" />`);
+    }
   });
 
   it("keeps generic marketing copy and the event calendar card out of the customer home", () => {
@@ -280,7 +291,7 @@ describe("customer home first viewport", () => {
   it("does not expose vendor business-type translation keys in Featured Partners cards", () => {
     expect(homeSource).not.toContain("ui.vendor.businessTypes");
     expect(homeSource).not.toContain("customer:ui.vendor");
-    expect(homeSource).toContain('t("ui.home.vendorDescription", { location })');
+    expect(homeSource).not.toContain("ui.home.vendorDescription");
   });
 
   it("does not load or render the event calendar dialog from the home route", () => {

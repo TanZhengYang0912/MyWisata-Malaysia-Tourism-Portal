@@ -16,7 +16,7 @@ import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { selectEntityGallery, selectEntityLogo, type EntityMediaRow } from "@/lib/customer/entity-media";
 import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { readRoomDetails } from "@/lib/customer/room-details";
-import { getReviewRatingSummary, getScopedReviewPage } from "@/backend/domains/vendor-reviews";
+import { getReviewRatingSummary, getScopeRatingSummaries, getScopedReviewPage } from "@/backend/domains/vendor-reviews";
 import type { OperatingHours } from "@/backend/core/types";
 
 
@@ -218,6 +218,11 @@ export async function renderPublicOutletPage({ params, searchParams }: PublicOut
     const left = Math.min(...nights.map((s) => (s && s.status === "available" ? Math.max(Number(s.capacity) - Number(s.booked), 0) : 0)));
     return [id, { left, checkInSlotId: nights[0]?.id ?? null, overrides: nights.map((s) => (s?.price_override == null ? null : Number(s.price_override))) }];
   }));
+  // One batched lookup for the menu cards' ratings; products without reviews show none.
+  const productRatings = await getScopeRatingSummaries("product", (products || []).map((product) => product.id), createServiceClient()).catch((error: unknown) => {
+    console.error("Outlet product ratings unavailable", error);
+    return null;
+  });
   const menuProducts = selectFullOutletMenu(
     (products || []).map((product) => {
       const variants = product.product_variants || [];
@@ -249,6 +254,9 @@ export async function renderPublicOutletPage({ params, searchParams }: PublicOut
         variant_label: purchaseVariant?.name ?? null,
         first_available_slot_id: firstSlotByProduct.get(product.id) ?? null,
         available_stock: availableStock,
+        rating: productRatings?.get(product.id)?.value ?? 0,
+        reviews: productRatings?.get(product.id)?.count ?? 0,
+        ratingKnown: productRatings !== null,
       };
     }),
     featuredIds

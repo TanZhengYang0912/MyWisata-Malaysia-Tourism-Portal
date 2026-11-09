@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import Link from "next/link";
 import { BackLink } from "@/components/shared/back-link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ArrowRight, MapPin, Search, ShieldCheck, Star } from "lucide-react";
+import { ArrowLeft, ArrowRight, MapPin, Search, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { productImageUrl } from "@/lib/storage/product-image";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { getPlaceBySlug } from "@/backend/domains/places";
 import { getServerTranslation } from "@/lib/i18n/server";
-import { ReferencePrice } from "@/components/shared/reference-price";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
-import { LocalizedContentHeading } from "@/components/customer/localized-content";
+import { ProductCard } from "@/components/customer/product-card";
+import { getDestinationProductCards } from "@/backend/domains/destination-products";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,7 @@ function stateToSlug(state: string): string {
 
 const PLACE_FIRST_DESTINATION_SLUGS = new Set(["kuala-lumpur", "putrajaya", "labuan"]);
 
-async function getDestinationData(destinationId: string) {
+const getDestinationData = cache(async (destinationId: string) => {
   const stateName = slugToState(destinationId);
   const destination = MALAYSIA_DESTINATIONS.find(
     (d) => stateToSlug(d.state) === destinationId || d.state === stateName
@@ -43,7 +44,7 @@ async function getDestinationData(destinationId: string) {
   const db = await createClient();
 
   // Outlets in this state (via outlet.state field)
-  const [{ data: outletRows }, { data: productRows }] = await Promise.all([
+  const [{ data: outletRows }, products] = await Promise.all([
     db
       .from("outlets")
       .select(
@@ -53,25 +54,11 @@ async function getDestinationData(destinationId: string) {
       .eq("status", "active")
       .eq("review_status", "approved")
       .limit(8),
-    db
-      .from("products")
-      .select(
-        "id,name,base_price,cover_url,product_type,requires_booking,categories(name),outlets(city,state)"
-      )
-      .eq("status", "active")
-      .eq("review_status", "approved")
-      // Filter by joining on outlets in this state
-      .limit(80),
+    getDestinationProductCards(destination.state, db, createServiceClient()),
   ]);
 
-  // Client-side filter for products whose outlet is in this state
-  const stateProducts = (productRows ?? []).filter((product) => {
-    const outlet = Array.isArray(product.outlets) ? product.outlets[0] : product.outlets;
-    return outlet?.state === destination.state;
-  }).slice(0, 8);
-
-  return { destination, outlets: outletRows ?? [], products: stateProducts };
-}
+  return { destination, outlets: outletRows ?? [], products };
+});
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { destinationId } = await params;
@@ -195,38 +182,7 @@ export default async function DestinationPage({ params }: Props) {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">
-              {products.map((product) => {
-                const category = Array.isArray(product.categories) ? product.categories[0] : product.categories;
-                const price = Number(product.base_price);
-                return (
-                  <article key={product.id} className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                    <Link href={`/customer/products/${product.id}`} className="group/product-media block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
-                    <div className="relative aspect-[4/3] overflow-hidden bg-primary/10">
-                      {product.cover_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={productImageUrl(product.cover_url) ?? ""}
-                          alt={product.name}
-                          className="h-full w-full object-cover transition duration-500 group-hover/product-media:scale-105"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center">
-                          <Star size={24} className="text-primary/30" />
-                        </div>
-                      )}
-                      {category?.name && (
-                        <span className="absolute left-2 top-2 rounded-full bg-white/90 dark:bg-card/90 px-2 py-0.5 text-[10px] font-bold text-primary">
-                          {category.name}
-                        </span>
-                      )}
-                    </div></Link>
-                    <div className="flex flex-1 flex-col p-3">
-                      <LocalizedContentHeading entityType="product" entityId={product.id} field="name" sourceText={product.name} href={`/customer/products/${product.id}`} linkClassName="rounded-sm font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40" headingClassName="break-words whitespace-normal text-sm" />
-                      <ReferencePrice amountMYR={price} className="mt-auto pt-2 text-sm font-bold text-primary" />
-                    </div>
-                  </article>
-                );
-              })}
+              {products.map((product) => <ProductCard key={product.id} listing={product} returnTo={`/customer/destination/${destinationId}`} />)}
             </div>
           )}
         </section>

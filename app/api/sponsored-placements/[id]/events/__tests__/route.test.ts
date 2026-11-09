@@ -106,12 +106,13 @@ describe("public sponsored placement event route", () => {
     expect(route).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
   });
 
-  it("conditionally labels cards and every StoryMap result in all customer locales", () => {
+  it("labels every StoryMap result in all customer locales; discovery cards hide the label (plan U13)", () => {
     const root = process.cwd();
     const card = readFileSync(resolve(root, "components/customer/product-card.tsx"), "utf8");
     const map = readFileSync(resolve(root, "components/demo-map/story-map.tsx"), "utf8");
     const labels = readFileSync(resolve(root, "components/customer/photo-rating-badge.tsx"), "utf8");
-    expect(card).toContain("<PhotoCardLabels sponsored={Boolean(activity.sponsorship)} />");
+    expect(card).not.toContain("PhotoCardLabels");
+    expect(card).toContain("onSponsoredClick");
     expect(labels).toContain("{sponsored &&");
     expect(labels).toContain('t("ui.labels.sponsored")');
     expect(card).not.toContain('activity.sponsorship?.label ?? t("ui.labels.sponsored")');

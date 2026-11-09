@@ -351,7 +351,21 @@ describe("Explore facet filters", () => {
     ];
     expect(filterExploreActivities({ sort: 'price_asc' }, items()).map(({ id }) => id)).toEqual(['Bravo', 'Charlie', 'Alpha']);
     expect(filterExploreActivities({ sort: 'rating_desc' }, items()).map(({ id }) => id)).toEqual(['Alpha', 'Charlie', 'Bravo']);
-    expect(filterExploreActivities({ sort: 'recommended' }, items()).map(({ id }) => id)).toEqual(['Alpha', 'Bravo', 'Charlie']);
+    // Recommended (U7): no ⭐ picks here, so rating high → low; Name (A–Z) keeps the name order.
+    expect(filterExploreActivities({ sort: 'recommended' }, items()).map(({ id }) => id)).toEqual(['Alpha', 'Charlie', 'Bravo']);
+    expect(filterExploreActivities({ sort: 'name_asc' }, items()).map(({ id }) => id)).toEqual(['Alpha', 'Bravo', 'Charlie']);
+  });
+
+  it("orders Recommended as ⭐ picks by name, then rating high → low, ties by name", () => {
+    const items = () => [
+      Object.assign(computed({ id: "Zulu", categorySlug: "food" }), { tags: ["featured"], rating: 1 }),
+      Object.assign(computed({ id: "Delta", categorySlug: "food" }), { rating: 4 }),
+      Object.assign(computed({ id: "Alpha", categorySlug: "food" }), { rating: 3 }),
+      Object.assign(computed({ id: "Mike", categorySlug: "food" }), { tags: ["featured"], rating: 2 }),
+      Object.assign(computed({ id: "Bravo", categorySlug: "food" }), { rating: 4 }),
+    ];
+    expect(sortExploreActivities({ sort: "recommended" }, items()).map(({ id }) => id)).toEqual(["Mike", "Zulu", "Bravo", "Delta", "Alpha"]);
+    expect(sortExploreActivities({ sort: "name_asc" }, items()).map(({ id }) => id)).toEqual(["Mike", "Zulu", "Alpha", "Bravo", "Delta"]);
   });
 
   it("puts merchant-featured products first on the default name sort only", () => {
