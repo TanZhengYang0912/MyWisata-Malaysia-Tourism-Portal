@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ComputedActivity, SponsoredPlacement } from "@/backend/core/types";
 import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
-import { rankDiscoveryResults, selectHomeDiscoverySections } from "@/lib/customer/discovery-ranking";
+import { pageHomeHighlights, rankDiscoveryResults, selectHomeDiscoverySections } from "@/lib/customer/discovery-ranking";
 
 function activity(id: string, overrides: Partial<ComputedActivity> = {}): ComputedActivity {
   return {
@@ -81,7 +81,7 @@ describe('home highlights and recommendations', () => {
     const activities = [activity('z', { name: 'Zulu' }), activity('y', { name: 'Yankee' }), activity('x', { name: 'Xray' }), activity('w', { name: 'Whisky' }), activity('a', { name: 'Alpha' })];
     const recommended = [activity('z', { aiTag: 'near you' }), activity('a', { name: 'Alpha', aiTag: 'interests' }), activity('b', { aiTag: 'similar' })];
     const result = selectHomeDiscoverySections(activities, recommended);
-    expect(result.highlightItems.map((item) => item.id)).toEqual(['a', 'w', 'x', 'y']);
+    expect(result.highlightItems.map((item) => item.id)).toEqual(['a', 'w', 'x', 'y', 'z']);
     expect(result.forYouItems.map((item) => [item.id, item.aiTag])).toEqual([['a', 'interests'], ['b', 'similar']]);
   });
   it('counts duplicate accommodation product ids once when grouping a property', () => {
@@ -100,16 +100,16 @@ describe('home highlight tiers', () => {
   it('fills Sponsored, then merchant Featured by name, then everything else by name', () => {
     const activities = [named('p1', 'Alpha'), named('p2', 'Bravo'), named('f1', 'Zulu', ['featured']), named('s1', 'Yankee'), named('s2', 'Xray'), named('f2', 'Mike', ['featured'])];
     const result = selectHomeDiscoverySections(activities, [], [placement('pl1', 's1'), placement('pl2', 's2', { priority: 2 })], now);
-    expect(result.highlightItems.map((item) => item.id)).toEqual(['s1', 's2', 'f2', 'f1']);
-    expect(result.highlightItems.map((item) => item.sponsorship?.placementId ?? null)).toEqual(['pl1', 'pl2', null, null]);
+    expect(result.highlightItems.map((item) => item.id)).toEqual(['s1', 's2', 'f2', 'f1', 'p1', 'p2']);
+    expect(result.highlightItems.map((item) => item.sponsorship?.placementId ?? null)).toEqual(['pl1', 'pl2', null, null, null, null]);
   });
 
-  it('lets Sponsored take every slot and caps it at four', () => {
+  it('lets Sponsored take the whole first page and caps it at four', () => {
     const activities = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => named(id, id.toUpperCase()));
     const placements = ['a', 'b', 'c', 'd', 'e'].map((id, index) => placement(`pl-${id}`, id, { priority: index }));
     const result = selectHomeDiscoverySections(activities, [], placements, now);
-    expect(result.highlightItems.map((item) => item.id)).toEqual(['a', 'b', 'c', 'd']);
-    expect(result.highlightItems.every((item) => item.sponsorship)).toBe(true);
+    expect(result.highlightItems.map((item) => item.id)).toEqual(['a', 'b', 'c', 'd', 'e', 'f']);
+    expect(result.highlightItems.map((item) => Boolean(item.sponsorship))).toEqual([true, true, true, true, false, false]);
   });
 
   it('shows a product that is both Sponsored and Featured once, in its Sponsored slot', () => {
@@ -255,5 +255,33 @@ describe("rankDiscoveryResults", () => {
     });
 
     expect(result).toEqual([{ ...activity("a"), sponsorship: null }]);
+  });
+});
+
+describe('home highlights pager', () => {
+  const ids = (count: number) => Array.from({ length: count }, (_, index) => `i${index}`);
+
+  it('keeps at most 12 highlights and leaves For You filtering on the first 4', () => {
+    const activities = ids(13).map((id) => activity(id, { name: id.padStart(4, '0') }));
+    const result = selectHomeDiscoverySections(activities, activities.slice(0, 6));
+    expect(result.highlightItems).toHaveLength(12);
+    expect(result.forYouItems.map(({ id }) => id)).toEqual(['i4', 'i5']);
+  });
+
+  it.each([
+    [0, 0, [0, 0, 0]],
+    [4, 1, [4, 4, 4]],
+    [5, 2, [4, 1, 1]],
+    [12, 3, [4, 4, 4]],
+  ])('pages %i highlights 4 at a time into %i pages', (count, pageCount, pageSizes) => {
+    const items = ids(count);
+    expect(pageHomeHighlights(items, 0).pageCount).toBe(pageCount);
+    expect([0, 1, 2].map((page) => pageHomeHighlights(items, page).items.length)).toEqual(pageSizes);
+  });
+
+  it('clamps the page at both ends', () => {
+    const items = ids(12);
+    expect(pageHomeHighlights(items, -1)).toMatchObject({ page: 0, items: ['i0', 'i1', 'i2', 'i3'] });
+    expect(pageHomeHighlights(items, 9)).toMatchObject({ page: 2, items: ['i8', 'i9', 'i10', 'i11'] });
   });
 });

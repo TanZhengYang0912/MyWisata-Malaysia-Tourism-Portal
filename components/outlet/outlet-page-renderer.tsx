@@ -36,7 +36,7 @@ function VisitSummary({ outlet, mode = 'public' }: { outlet: OutletPageRendererP
   </section>;
 }
 
-function PublicOutletTemplate({ document, outlet, products = [], reviews = [], reviewRatingBuckets = [], reviewTotal, canUseCustomerActions = true }: Pick<OutletPageRendererProps, 'document' | 'outlet' | 'products' | 'reviews' | 'reviewRatingBuckets' | 'reviewTotal' | 'canUseCustomerActions'>) {
+function PublicOutletTemplate({ document, outlet, products = [], reviews = [], reviewRatingBuckets = [], reviewTotal }: Pick<OutletPageRendererProps, 'document' | 'outlet' | 'products' | 'reviews' | 'reviewRatingBuckets' | 'reviewTotal'>) {
   const { t } = useTranslation('customer');
   const hero = document.hero.imageUrl || document.gallery[0]?.url
     ? { ...document.hero, imageUrl: document.hero.imageUrl || document.gallery[0]?.url }
@@ -60,13 +60,13 @@ function PublicOutletTemplate({ document, outlet, products = [], reviews = [], r
       {publicBlocks.length > 0 && <div className="space-y-6">
         {publicBlocks.map((block) => <OutletBlockRenderer key={block.id} block={block} outlet={outlet} products={products} gallery={document.gallery} featuredIds={document.featuredIds} w={block.w} h={block.h} mode="public" />)}
       </div>}
-      <div className="mt-6"><OutletMenu outlet={outlet} products={products} canUseCustomerActions={canUseCustomerActions} /></div>
+      <div className="mt-6"><OutletMenu outlet={outlet} products={products} /></div>
     </div>
   </div>;
 }
 
-export function OutletPageRenderer({ document, outlet, products = [], reviews = [], reviewRatingBuckets = [], reviewTotal, mode = 'public', canUseCustomerActions = true, selectedBlockId, onSelect }: OutletPageRendererProps) {
-  if (mode === 'public') return <PublicOutletTemplate document={document} outlet={outlet} products={products} reviews={reviews} reviewRatingBuckets={reviewRatingBuckets} reviewTotal={reviewTotal} canUseCustomerActions={canUseCustomerActions} />;
+export function OutletPageRenderer({ document, outlet, products = [], reviews = [], reviewRatingBuckets = [], reviewTotal, mode = 'public', selectedBlockId, onSelect }: OutletPageRendererProps) {
+  if (mode === 'public') return <PublicOutletTemplate document={document} outlet={outlet} products={products} reviews={reviews} reviewRatingBuckets={reviewRatingBuckets} reviewTotal={reviewTotal} />;
 
   return <div style={{ fontFamily: document.fontFamily }}>
     <OutletHeroRenderer hero={document.hero} brandColour={document.brandColour} outlet={outlet} mode={mode} selected={selectedBlockId === document.hero.id} onSelect={onSelect} />

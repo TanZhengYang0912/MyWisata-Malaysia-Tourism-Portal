@@ -13,28 +13,17 @@ describe("nearby outlets section", () => {
     expect(nearbySource).toContain('t("ui.nearbyOutlets.summary", { count: filtered.length, radius');
   });
 
-  it("links every row to the outlet's shop page", () => {
-    expect(nearbySource).toContain("getOutletShopHref");
+  it("shows each nearby outlet on the shared OutletCard, linked to its shop page", () => {
+    expect(nearbySource).toContain("<OutletCard");
     expect(nearbySource).toContain("href={getOutletShopHref(outlet.id)}");
-    expect(nearbySource.match(/t\("ui\.nearbyOutlets\.viewShop", \{ name: outlet\.name \}\)/g)).toHaveLength(2);
+    expect(nearbySource).toContain("imageUrl: outlet.coverUrl || outlet.vendorLogoUrl");
+    expect(nearbySource).toContain("openNow: outlet.currentlyOpen ?? outlet.open");
   });
 
-  it("uses outlet shop photos with a neutral fallback and the shared mature action", () => {
-    expect(nearbySource).toContain("outlet.coverUrl");
-    expect(nearbySource).toContain("<ArrowUpRight");
-    expect(nearbySource).toContain("<Store");
-    expect(nearbySource).not.toContain("outlet.logoUrl");
-    expect(nearbySource).not.toContain("<ArrowRight");
-  });
-
-  it("uses the existing category translation key for a nearby outlet badge", () => {
-    expect(nearbySource).toContain("getOptionalDiscoveryCategoryLabelKey");
-    expect(nearbySource).toContain("t(categoryKey)");
-  });
-
-  it("shows each nearby outlet's operating hours", () => {
-    expect(nearbySource).toContain('t("ui.labels.operatingHours")');
-    expect(nearbySource).toContain("outlet.hours");
+  it("hides the rating when the outlet has no reviews, and shows no hours or distance on the card", () => {
+    expect(nearbySource).toContain("rating: outlet.reviews ? { value: outlet.rating, count: outlet.reviews } : undefined");
+    expect(nearbySource).not.toContain("OperatingHoursSummary");
+    expect(nearbySource).not.toContain("DISTANCE_UNIT_KM");
   });
 
   it("groups type and distance filters and defaults to a local radius", () => {

@@ -2,15 +2,15 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowUpDown, ChevronDown, Compass, Map, MapPin, SlidersHorizontal, X } from "lucide-react";
+import { Compass, Map, MapPin, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import * as catalogueDomain from "@/backend/domains/catalogue";
 import { ActivityCard } from "@/components/customer/activity-card";
 import { toDiscoveryCatalogueCard } from "@/lib/customer/product-catalogue";
-import { CustomerDiscoveryFilterPanel, DiscoverySearchField } from "@/components/customer/discovery-filters";
+import { CustomerDiscoveryFilterPanel, DiscoveryToolbar } from "@/components/customer/discovery-filters";
 import { Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ExplorePostcardBoard } from "@/components/customer/explore-postcard-board";
 import type { ComputedActivity } from "@/backend/core/types";
 import { parseDiscoveryQuery, serializeDiscoveryQuery, type DiscoveryQuery } from "@/lib/customer/discovery-query";
@@ -21,7 +21,7 @@ import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
 import { canonicalCategorySlug, type RealCategorySlug } from "@/lib/customer/discovery-categories";
 
 type ExploreTab = "destinations" | "experiences";
-type ExperienceSort = "recommended" | "price_asc" | "rating_desc";
+type ExperienceSort = "recommended" | "name_asc" | "price_asc" | "rating_desc";
 const EXPERIENCE_PAGE_SIZE = 8;
 
 function buildExploreHref(filters: DiscoveryQuery, tab: ExploreTab, sort: ExperienceSort = "recommended", page = 1) {
@@ -42,7 +42,7 @@ function buildExploreHref(filters: DiscoveryQuery, tab: ExploreTab, sort: Experi
 }
 
 function readExperienceSort(value: string | null): ExperienceSort {
-  return value === "price_asc" || value === "rating_desc" ? value : "recommended";
+  return value === "name_asc" || value === "price_asc" || value === "rating_desc" ? value : "recommended";
 }
 
 function normalizeExperienceFilters(filters: DiscoveryQuery): DiscoveryQuery {
@@ -103,7 +103,7 @@ export function ExploreClient({
   const activeSort = tab === "experiences" ? sort : "recommended";
   const [debouncedQuery, setDebouncedQuery] = useState(filters.q);
   // The cached candidates arrive in popularity order; the default view is ⭐ first, then name.
-  const orderedInitialActivities = useMemo(() => catalogueDomain.sortExploreActivities({}, initialActivities), [initialActivities]);
+  const orderedInitialActivities = useMemo(() => catalogueDomain.sortExploreActivities({ sort: "recommended" }, initialActivities), [initialActivities]);
   const [activities, setActivities] = useState<DiscoveryResult[]>(() => orderedInitialActivities.map((activity) => ({ ...activity, sponsorship: null })));
   const [experienceFiltersOpen, setExperienceFiltersOpen] = useState(false);
   const initialCandidatesExpireAt = useRef<number | null>(null);
@@ -162,7 +162,7 @@ export function ExploreClient({
     hiddenGemOnly: filters.hiddenGemOnly,
     familyFriendlyOnly: filters.familyFriendlyOnly,
     coupleFriendlyOnly: filters.coupleFriendlyOnly,
-    ...(activeSort === "recommended" ? {} : { sort: activeSort }),
+    sort: activeSort,
   }), [
     debouncedQuery,
     filters.state,
@@ -391,40 +391,22 @@ export function ExploreClient({
         <Dialog open={experienceFiltersOpen} onOpenChange={setExperienceFiltersOpen}>
           <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
             <section className="min-w-0">
-              <div data-testid="experience-toolbar" className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-end sm:gap-8">
-                <DiscoverySearchField value={filters.q} onChange={(q) => updateFilters({ q })} />
-                <div className="flex shrink-0 items-end gap-5 sm:gap-8">
-                  <DialogTrigger asChild>
-                    <button
-                      type="button"
-                      data-testid="experience-filter-trigger"
-                      className={`inline-flex min-h-12 items-center gap-2.5 border-b-2 px-1 text-[15px] font-bold text-primary transition-colors focus-visible:border-primary focus-visible:outline-none ${experienceChips.length > 0 ? "border-primary" : "border-primary/15 hover:border-primary/40"}`}
-                    >
-                      <SlidersHorizontal size={18} aria-hidden="true" />
-                      {t("ui.explore.filters")}
-                      {experienceChips.length > 0 && (
-                        <span className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full border-[1.5px] border-primary/30 px-1.5 text-xs font-extrabold text-primary">
-                          {experienceChips.length}
-                        </span>
-                      )}
-                    </button>
-                  </DialogTrigger>
-                  <label className={`relative inline-flex min-h-12 min-w-0 flex-1 items-center gap-2.5 border-b-2 px-1 text-primary transition-colors focus-within:border-primary sm:w-[220px] sm:flex-none ${sort !== "recommended" ? "border-primary" : "border-primary/15 hover:border-primary/40"}`}>
-                    <ArrowUpDown size={18} aria-hidden="true" className="shrink-0" />
-                    <select
-                      aria-label={t("ui.explore.sortBy")}
-                      value={sort}
-                      onChange={(event) => changeExperienceSort(readExperienceSort(event.target.value))}
-                      className="min-w-0 flex-1 cursor-pointer appearance-none bg-transparent pr-6 text-[15px] font-bold text-primary outline-none"
-                    >
-                      <option value="recommended">{t("ui.explore.sortRecommended")}</option>
-                      <option value="price_asc">{t("ui.explore.sortPriceAsc")}</option>
-                      <option value="rating_desc">{t("ui.explore.sortRatingDesc")}</option>
-                    </select>
-                    <ChevronDown size={14} aria-hidden="true" className="pointer-events-none absolute right-1" />
-                  </label>
-                </div>
-              </div>
+              <DiscoveryToolbar
+                className="mb-6"
+                testIds={{ bar: "experience-toolbar", filters: "experience-filter-trigger" }}
+                query={filters.q}
+                onQueryChange={(q) => updateFilters({ q })}
+                filterCount={experienceChips.length}
+                sort={sort}
+                defaultSort="recommended"
+                onSortChange={(value) => changeExperienceSort(readExperienceSort(value))}
+                sortOptions={[
+                  { value: "recommended", label: t("ui.explore.sortRecommended") },
+                  { value: "name_asc", label: t("ui.explore.sortNameAsc") },
+                  { value: "price_asc", label: t("ui.explore.sortPriceAsc") },
+                  { value: "rating_desc", label: t("ui.explore.sortRatingDesc") },
+                ]}
+              />
               {experienceChips.length > 0 && (
                 <div data-testid="experience-active-filters" className="-mt-2 mb-6 flex flex-wrap items-center gap-2.5">
                   {experienceChips.map((chip) => (
@@ -457,7 +439,7 @@ export function ExploreClient({
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
                   {visibleActivities.map((a) => (
                     a.property
-                      ? <ActivityCard key={a.id} activity={a} returnTo={buildExploreHref(filters, tab, activeSort, currentExperiencePage)} hideDiscoveryBadges onSponsoredClick={a.sponsorship ? () => recordSponsoredEvent(a, "click") : undefined} />
+                      ? <ActivityCard key={a.id} activity={a} returnTo={buildExploreHref(filters, tab, activeSort, currentExperiencePage)} onSponsoredClick={a.sponsorship ? () => recordSponsoredEvent(a, "click") : undefined} />
                       : <ActivityCard key={a.id} listing={toDiscoveryCatalogueCard(a)} returnTo={buildExploreHref(filters, tab, activeSort, currentExperiencePage)} onSponsoredClick={a.sponsorship ? () => recordSponsoredEvent(a, "click") : undefined} />
                   ))}
                 </div>

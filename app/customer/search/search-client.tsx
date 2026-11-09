@@ -3,7 +3,7 @@
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowRight, MapPin, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, MapPin } from "lucide-react";
 import type { ComputedActivity, SponsoredPlacement, VendorSummary } from "@/backend/core/types";
 import { Pagination } from "@/components/shared/pagination";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -13,9 +13,8 @@ import { getActivityCommerceMode, getActivityDiscoveryMode } from "@/lib/custome
 import { canonicalCategorySlug, getDiscoverySearchFilter, getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { getPlaceActivityImage } from "@/lib/customer/place-activity";
 import { ReferencePrice } from "@/components/shared/reference-price";
-import { CustomerDiscoveryFilterPanel, DiscoverySearchField } from "@/components/customer/discovery-filters";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { CustomerDiscoveryFilterPanel, DiscoveryToolbar } from "@/components/customer/discovery-filters";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { VendorCard } from "@/components/customer/vendor-card";
 import {
   rankPartnerDirectory,
@@ -248,30 +247,21 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
         </section>
 
         <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-          <div data-testid="partner-filter-bar" className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <DiscoverySearchField value={filters.q} onChange={(q) => updateFilters({ q })} placeholder={t("ui.search.searchVendors")} />
-            <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
-              <DialogTrigger asChild>
-                <Button type="button" variant="outline" size="sm" data-testid="partner-filters-trigger" className="min-h-10 rounded-xl px-4 text-sm">
-                  <SlidersHorizontal aria-hidden="true" />
-                  {t("ui.explore.filters")}
-                </Button>
-              </DialogTrigger>
-              <label data-testid="partner-sort-control" className="flex min-w-0 items-center gap-2 text-xs font-semibold text-muted-foreground">
-                <span className="shrink-0">{t("ui.explore.sortBy")}</span>
-                <select
-                  aria-label={t("ui.explore.sortBy")}
-                  value={partnerSort}
-                  onChange={(event) => { setPartnerSort(event.target.value as PartnerSort); setCurrentPage(1); }}
-                  className="min-h-10 min-w-0 rounded-xl border border-border bg-card px-3 text-sm text-foreground"
-                >
-                  <option value="featured">{t("ui.search.featuredFirst")}</option>
-                  <option value="name">{t("ui.search.nameAscending")}</option>
-                  <option value="outlets">{t("ui.search.mostOutlets")}</option>
-                </select>
-              </label>
-            </div>
-          </div>
+          <DiscoveryToolbar
+            testIds={{ bar: "partner-filter-bar", filters: "partner-filters-trigger", sort: "partner-sort-control" }}
+            query={filters.q}
+            onQueryChange={(q) => updateFilters({ q })}
+            placeholder={t("ui.search.searchVendors")}
+            filtersActive={hasActiveFilters || partnerView !== "all"}
+            sort={partnerSort}
+            defaultSort="featured"
+            onSortChange={(value) => { setPartnerSort(value); setCurrentPage(1); }}
+            sortOptions={[
+              { value: "featured", label: t("ui.search.featuredFirst") },
+              { value: "name", label: t("ui.search.nameAscending") },
+              { value: "outlets", label: t("ui.search.mostOutlets") },
+            ]}
+          />
           {hasActiveFilters && (
             <div data-testid="active-filter-summary" className="mt-3 flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.search.activeFilters")}</span>
@@ -346,7 +336,6 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
                   })()}
                   categories={[...(categoriesByVendor.get(vendor.id) ?? new Set<string>())]}
                   index={index}
-                  isFeatured={featuredVendorIds.has(vendor.id)}
                 />
               ))}
             </div>

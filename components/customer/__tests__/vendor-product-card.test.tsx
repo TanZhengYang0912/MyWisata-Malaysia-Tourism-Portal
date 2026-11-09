@@ -25,7 +25,7 @@ describe("vendor product cards", () => {
   it("keeps a single outlet in the booking link", () => {
     const markup = renderToStaticMarkup(<ActivityCard vendorListing={product} returnTo="/customer/vendor/v1" />);
     expect(markup).toContain("outletId=o1");
-    expect(markup).toContain("ui.actions.bookNow");
+    expect(markup).not.toContain("ui.actions.bookNow");
   });
   it("leaves multiple outlets unselected and displays their count", () => {
     const markup = renderToStaticMarkup(<ActivityCard vendorListing={{ ...product, soldAt: [...product.soldAt, { ...product.soldAt[0], id: "o2" }] }} returnTo="/customer/vendor/v1" />);
@@ -48,14 +48,13 @@ describe("vendor product cards", () => {
     expect(home).toContain('source=home');
     expect(vendor).toContain('source=vendor');
   });
-  it("shows a single outlet's exact price and location count, but never its place, hours or Closed badge", () => {
+  it("shows a single outlet's exact price and place, but never its hours or Closed badge", () => {
     const markup = renderToStaticMarkup(<ActivityCard listing={toVendorCatalogueCard({ ...product, soldAt: [{ ...product.soldAt[0], operatingHours: closedAllWeek }] })} source="home" returnTo="/customer" />);
     expect(markup).toContain("RM12");
     expect(markup).not.toContain("ui.vendor.from");
-    expect(markup).not.toContain("Melaka");
+    expect(markup).toContain("Melaka, Melaka");
     expect(markup).not.toContain("hours-summary");
     expect(markup).not.toContain("ui.labels.closed");
-    expect(markup).toContain("ui.vendor.locationCount:1");
     expect(markup).toContain("outletId=o1");
   });
   it("never presents one branch's place, hours or Closed badge as a multi-outlet product's", () => {
@@ -75,26 +74,16 @@ describe("vendor product cards", () => {
     expect(markup).not.toContain("ui.vendor.locationCount");
     expect(markup).toContain("outletId=o9");
   });
-  it("labels paid and merchant-featured discovery cards, alone or together", () => {
-    const base = toVendorCatalogueCard(product);
-    const render = (flags: { sponsored?: boolean; featured?: boolean }) => renderToStaticMarkup(<ActivityCard listing={{ ...base, ...flags }} returnTo="/customer/explore" />);
-    expect(render({ sponsored: true })).toContain("ui.labels.sponsored");
-    expect(render({ sponsored: true })).not.toContain("ui.labels.featured");
-    expect(render({ featured: true })).toContain("ui.labels.featured");
-    const both = render({ sponsored: true, featured: true });
-    expect(both.indexOf("ui.labels.sponsored")).toBeGreaterThan(-1);
-    expect(both.indexOf("ui.labels.featured")).toBeGreaterThan(both.indexOf("ui.labels.sponsored"));
-  });
   it("keeps vendor-page cards free of Sponsored and Featured labels", () => {
     const markup = renderToStaticMarkup(<ActivityCard vendorListing={product} returnTo="/customer/vendors/v1" />);
     expect(markup).not.toContain("ui.labels.sponsored");
     expect(markup).not.toContain("ui.labels.featured");
   });
-  it("shows open-now counts beside the location count and links to the open outlet", () => {
+  it("shows the full location count and links to the pinned open outlet", () => {
     const listing = { ...toVendorCatalogueCard({ ...product, soldAt: [...product.soldAt, { ...product.soldAt[0], id: "o2" }] }), openNowSummary: { totalOutletCount: 4, openOutletCount: 2 }, pinnedOutletId: "o2" };
     const markup = renderToStaticMarkup(<ActivityCard listing={listing} returnTo="/customer/explore" />);
     expect(markup).toContain("ui.vendor.locationCount:4");
-    expect(markup).toContain("ui.vendor.openNowCount:2");
+    expect(markup).not.toContain("ui.vendor.openNowCount");
     expect(markup).toContain("outletId=o2");
   });
   it("translates known product types through the discovery category labels", () => {

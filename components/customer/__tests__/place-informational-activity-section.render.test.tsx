@@ -1,27 +1,16 @@
 import React, { act } from "react";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { findElements, findOne, installTestDom, TestEvent, type TestDocument, type TestElement } from "@/components/shared/__tests__/render-test-dom";
+import { findElements, installTestDom, type TestDocument, type TestElement } from "@/components/shared/__tests__/render-test-dom";
 import type { PlaceInformationalActivity } from "@/backend/core/types";
 import { PlaceInformationalActivitySection } from "@/components/customer/place-informational-activity-section";
 
-vi.mock("@/components/ui/dialog", () => ({
-  Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) => open ? <div>{children}</div> : null,
-  DialogContent: ({ children }: { children: React.ReactNode }) => <div role="dialog">{children}</div>,
-  DialogDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
-  DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
+vi.mock("@/components/customer/localized-content", () => ({
+  LocalizedContent: ({ entityType, entityId, field, sourceText, children }: { entityType: string; entityId: string; field: string; sourceText: string; children?: (value: { text: string; control: React.ReactNode; pending: boolean }) => React.ReactNode }) => (
+    <span data-entity-type={entityType} data-entity-id={entityId} data-field={field}>{children ? children({ text: sourceText, control: null, pending: false }) : sourceText}</span>
+  ),
 }));
 
-vi.mock("@/components/customer/localized-content", () => ({
-  LocalizedContent: ({ entityType, entityId, field, sourceText }: { entityType: string; entityId: string; field: string; sourceText: string }) => (
-    <span data-entity-type={entityType} data-entity-id={entityId} data-field={field}>{sourceText}</span>
-  ),
-  LocalizedContentHeading: ({ entityType, entityId, field, sourceText }: { entityType: string; entityId: string; field: string; sourceText: string }) => (
-    <span data-entity-type={entityType} data-entity-id={entityId} data-field={field}>{sourceText}</span>
-  ),
-}));
+vi.mock("next/link", () => ({ default: ({ href, children, ...props }: { href: string; children: React.ReactNode }) => <a href={href} {...props}>{children}</a> }));
 
 const activities: PlaceInformationalActivity[] = [
   {
@@ -44,7 +33,7 @@ const activities: PlaceInformationalActivity[] = [
     title: "Explore the heritage building",
     description: "Learn about the market's history.",
     activityType: "informational_paid_activity",
-    priceLabel: "Ticket required",
+    priceLabel: "RM 5 adult",
     sourceTitle: "Tourism Malaysia",
     sourceUrl: "https://example.com/central-market",
     imageSourceUrl: null,
@@ -66,26 +55,14 @@ async function render() {
         title="Things to do here"
         ticketLabel="Ticket required"
         informationLabel="Venue information"
-        venueDetailsLabel="View details"
-        venueDetailsHint="Details open here in MYLawatan"
-        venue={{ name: "Central Market Kuala Lumpur", location: "Kuala Lumpur, Kuala Lumpur", entry: "Free entry", detail: null }}
-        detailsLabels={{
-          venue: "Venue",
-          location: "Location",
-          entry: "Entry",
-          source: "Information source",
-          difficulty: "Difficulty",
-          duration: "Duration",
-          bestTime: "Best time",
-          gettingThere: "Getting there",
-        }}
+        officialInformationLabel="Official Information"
       />,
     );
     await Promise.resolve();
   });
 }
 
-describe("place informational activity details", () => {
+describe("place informational activity cards", () => {
   beforeAll(async () => {
     document = installTestDom();
     ({ createRoot } = await import("react-dom/client"));
@@ -105,58 +82,23 @@ describe("place informational activity details", () => {
     document.body.removeChild(container);
   });
 
-  it("opens the selected activity and the same venue context in an in-system dialog", async () => {
+  it("shows the description on the place card and never looks purchasable", async () => {
     await render();
 
-    expect(container.textContent).not.toContain("See local art and creative studios.");
+    expect(findElements(container, (element) => element.getAttribute("data-card-frame") === "place")).toHaveLength(2);
+    expect(container.textContent).toContain("See local art and creative studios.");
+    expect(container.textContent).toContain("Official Information");
+    expect(container.textContent).toContain("Official Information · RM 5 adult");
+    expect(container.textContent).toContain("Ticket required");
+    expect(findElements(container, (element) => element.tagName === "BUTTON")).toHaveLength(0);
+    expect(findElements(container, (element) => element.tagName === "A")).toHaveLength(0);
+    expect(findElements(container, (element) => element.getAttribute("role") === "dialog")).toHaveLength(0);
+  });
 
-    const detailsButtons = findElements(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("View details"));
-    expect(detailsButtons).toHaveLength(2);
-
-    await act(async () => {
-      detailsButtons[0].dispatchEvent(new TestEvent("click", { bubbles: true }));
-      await Promise.resolve();
-    });
-
-    const dialog = findOne(container, (element) => element.getAttribute("role") === "dialog");
-    expect(dialog.textContent).toContain("Browse Art Lane");
-    expect(dialog.textContent).toContain("See local art and creative studios.");
-    expect(dialog.textContent).toContain("Central Market Kuala Lumpur");
-    expect(dialog.textContent).toContain("Kuala Lumpur, Kuala Lumpur");
-    expect(dialog.textContent).toContain("Free entry");
-    expect(dialog.textContent).toContain("Tourism Malaysia");
-    expect(findElements(dialog, (element) => element.tagName === "A")).toHaveLength(0);
-    expect(findElements(dialog, (element) => element.getAttribute("data-entity-type") === "place_informational_activity").map((element) => [element.getAttribute("data-entity-id"), element.getAttribute("data-field")])).toEqual([
-      ["art-lane", "title"], ["art-lane", "description"],
+  it("translates the title and description of each activity", async () => {
+    await render();
+    expect(findElements(container, (element) => element.getAttribute("data-entity-type") === "place_informational_activity").map((element) => [element.getAttribute("data-entity-id"), element.getAttribute("data-field")])).toEqual([
+      ["art-lane", "title"], ["art-lane", "description"], ["heritage", "title"], ["heritage", "description"],
     ]);
-  });
-
-  it("shows the correct details when a different card is selected", async () => {
-    await render();
-    const detailsButtons = findElements(container, (element) => element.tagName === "BUTTON" && element.textContent.includes("View details"));
-
-    await act(async () => {
-      detailsButtons[1].dispatchEvent(new TestEvent("click", { bubbles: true }));
-      await Promise.resolve();
-    });
-
-    const dialog = findOne(container, (element) => element.getAttribute("role") === "dialog");
-    expect(dialog.textContent).toContain("Explore the heritage building");
-    expect(dialog.textContent).toContain("Ticket required");
-    expect(dialog.textContent).not.toContain("Browse Art Lane");
-  });
-
-  it("provides the same internal-details copy in all supported customer locales", () => {
-    for (const locale of ["en", "ms", "zh-CN"]) {
-      const copy = JSON.parse(readFileSync(
-        resolve(process.cwd(), `app/i18n/locales/${locale}/customer.json`),
-        "utf8",
-      )) as { ui: { placeActivity: Record<string, string> } };
-
-      expect(copy.ui.placeActivity.venueDetails).toBeTruthy();
-      expect(copy.ui.placeActivity.venueDetailsHint).toBeTruthy();
-      expect(copy.ui.placeActivity.venue).toBeTruthy();
-      expect(copy.ui.placeActivity.informationSource).toBeTruthy();
-    }
   });
 });

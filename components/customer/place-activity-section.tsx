@@ -1,12 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ReferencePrice } from "@/components/shared/reference-price";
-import { ArrowUpRight, Compass, Ticket } from "lucide-react";
+import { Compass } from "lucide-react";
 import type { PlaceProduct } from "@/backend/core/types";
 import { PlaceActivityCard } from "@/components/customer/place-activity-card";
+import { ProductSaveButton } from "@/components/customer/product-save-button";
+import { PhotoRatingBadge } from "@/components/customer/photo-rating-badge";
+import { ShareButton } from "@/components/shared/share-button";
+import { canonicalCategorySlug, getDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { buildActivityPath } from "@/lib/customer/navigation-context";
 import {
   filterPlaceActivities,
@@ -20,10 +23,6 @@ const FILTERS: { value: PlaceActivityFilter; key: string }[] = [
   { value: "guide_service", key: "ui.placeActivity.filters.guideService" },
   { value: "addon", key: "ui.placeActivity.filters.addon" },
 ];
-
-function RelationIcon({ relation }: Pick<PlaceProduct, "relation">) {
-  return relation === "guide_service" ? <Compass size={14} aria-hidden="true" /> : <Ticket size={14} aria-hidden="true" />;
-}
 
 export function PlaceActivitySection({ products, returnTo }: { products: PlaceProduct[]; returnTo: string }) {
   const { t } = useTranslation("customer");
@@ -74,8 +73,8 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
           </button>
         </div>
       ) : (
-        <div className="mt-6 grid items-stretch gap-6 lg:gap-8 lg:grid-cols-2">
-          {filtered.map(({ product, vendor, relation }) => {
+        <div className="mt-6 grid items-start gap-6 lg:gap-8 lg:grid-cols-2">
+          {filtered.map(({ product, vendor }) => {
             const activityHref = buildActivityPath(product.id, returnTo);
             return (
               <PlaceActivityCard
@@ -84,13 +83,21 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
                 imageUrl={product.image}
                 imageAlt={product.name}
                 imageFallback={<Compass size={24} className="text-primary/30" />}
-                badge={<><RelationIcon relation={relation} />{t(`ui.place.relations.${relation}`)}</>}
+                actions={<>
+                  <ProductSaveButton productId={product.id} productName={product.name} compact />
+                  <ShareButton compact shareType="product" contentId={product.id} title={product.name} />
+                </>}
+                rating={<PhotoRatingBadge rating={product.rating} reviews={product.reviews} />}
+                meta={[t(getDiscoveryCategoryLabelKey(canonicalCategorySlug(product.categorySlug) ?? "activity")), vendor.name].join(" · ")}
                 title={product.name}
-                titleTranslation={{ entityType: "product", entityId: product.id, field: "name", sourceText: product.name }}
-                supportingText={vendor.name}
-                price={<><span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("ui.vendor.from")}</span>{product.price === 0 ? t("ui.placeActivity.free") : <ReferencePrice amountMYR={product.price} />}</>}
-                footer={t(product.requiresBooking ? "ui.place.reserveSpot" : "ui.place.availablePurchase")}
-                action={<Link href={activityHref} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-2 text-xs font-bold text-white transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">{product.requiresBooking ? t("ui.actions.bookNow") : t("ui.actions.viewDetails")}<ArrowUpRight size={14} aria-hidden="true" /></Link>}
+                description={product.description}
+                translation={{ entityType: "product", entityId: product.id, titleField: "name" }}
+                footer={product.price === 0
+                  ? <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{t("ui.placeActivity.free")}</span>
+                  : <p className="flex items-baseline gap-1 text-[10px] text-muted-foreground">
+                    {(product.offers?.length ?? 0) > 1 && <span>{t("ui.vendor.from")}</span>}
+                    <ReferencePrice amountMYR={product.price} className="font-[family-name:var(--font-mono)] text-[22px] font-extrabold leading-[1.3] tracking-[-1px] text-primary max-sm:text-lg" />
+                  </p>}
               />
             );
           })}

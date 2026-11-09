@@ -1,85 +1,52 @@
-import Link from "next/link";
+"use client";
+
 import type { ReactNode } from "react";
-import { LocalizedContentHeading } from "@/components/customer/localized-content";
-import type { PublicTranslationEntity, PublicTranslationField } from "@/lib/content-translations/contract";
+import { CardFrame } from "@/components/customer/card-frame";
+import { LocalizedContent } from "@/components/customer/localized-content";
+import type { PublicTranslationEntity } from "@/lib/content-translations/contract";
 
 type PlaceActivityCardProps = {
+  /** Only bookable products link; free and official items are not clickable. */
   href?: string;
   imageUrl: string | null;
   imageAlt: string;
   imageFallback: ReactNode;
-  badge: ReactNode;
+  /** A static tag on the photo (e.g. Free Entry) for items with no detail page. */
+  tag?: ReactNode;
+  actions?: ReactNode;
+  rating?: ReactNode;
+  meta?: ReactNode;
   title: string;
-  titleTranslation?: { entityType: PublicTranslationEntity; entityId: string; field: PublicTranslationField; sourceText: string };
-  supportingText?: ReactNode;
-  price: ReactNode;
+  description: string;
+  /** Title and description are translated when the entity supports it. */
+  translation?: { entityType: PublicTranslationEntity; entityId: string; titleField: "name" | "title" };
   footer: ReactNode;
-  action?: ReactNode;
 };
 
-/** Shared visual frame; each consumer retains its own commerce semantics. */
-export function PlaceActivityCard({
-  href,
-  imageUrl,
-  imageAlt,
-  imageFallback,
-  badge,
-  title,
-  titleTranslation,
-  supportingText,
-  price,
-  footer,
-  action,
-}: PlaceActivityCardProps) {
-  const media = (
-    <>
-      {imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt={imageAlt} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover/place-media:scale-105" />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center">{imageFallback}</div>
-      )}
-      <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-card/95 px-2.5 py-1 text-[11px] font-bold text-primary shadow-sm">
-        {badge}
-      </span>
-    </>
+/** The Place page variant of the shared card: photo left (45%, 4:3) from md up, stacked on phones, full description. */
+export function PlaceActivityCard({ translation, title, description, ...props }: PlaceActivityCardProps) {
+  const card = (text: string, control?: ReactNode, body: ReactNode = description) => (
+    <CardFrame
+      layout="place"
+      href={props.href}
+      imageUrl={props.imageUrl}
+      imageAlt={props.imageAlt}
+      fallback={<div className="flex h-full w-full items-center justify-center bg-primary/10">{props.imageFallback}</div>}
+      topLeft={props.tag && <span className="inline-flex items-center gap-1 rounded-full bg-card/95 px-2 py-1 text-[10px] font-bold text-primary">{props.tag}</span>}
+      actions={props.actions}
+      rating={props.rating}
+      meta={props.meta}
+      title={text}
+      titleControl={control}
+      description={body}
+      footer={props.footer}
+    />
   );
 
+  if (!translation) return card(title);
   return (
-    <article className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm sm:flex-row">
-      {href ? (
-        <Link href={href} className="group/place-media relative block aspect-[4/3] shrink-0 overflow-hidden bg-primary/10 sm:aspect-auto sm:w-[35%] lg:w-[40%]">
-          {media}
-        </Link>
-      ) : (
-        <div className="relative block aspect-[4/3] shrink-0 overflow-hidden bg-primary/10 sm:aspect-auto sm:w-[35%] lg:w-[40%]">
-          {media}
-        </div>
-      )}
-
-      <div className="flex flex-1 flex-col p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            {titleTranslation ? (
-              <LocalizedContentHeading
-                {...titleTranslation}
-                href={href}
-                linkClassName="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 hover:text-primary"
-                headingClassName="break-words whitespace-normal text-lg font-bold leading-tight text-foreground"
-              />
-            ) : href ? (
-              <Link href={href} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 hover:text-primary"><h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground">{title}</h3></Link>
-            ) : <h3 className="break-words whitespace-normal text-lg font-bold leading-tight text-foreground">{title}</h3>}
-            {supportingText && <p className="mt-1 break-words whitespace-normal text-xs font-semibold text-primary">{supportingText}</p>}
-          </div>
-          <div className="shrink-0 text-right text-sm font-bold text-foreground">{price}</div>
-        </div>
-
-        <div className="mt-auto flex items-center justify-between gap-4 border-t border-border pt-4">
-          <span className="break-words whitespace-normal text-xs font-semibold text-muted-foreground">{footer}</span>
-          {action}
-        </div>
-      </div>
-    </article>
+    <LocalizedContent entityType={translation.entityType} entityId={translation.entityId} field={translation.titleField} sourceText={title}>
+      {({ text, control }) => card(text, control, <LocalizedContent entityType={translation.entityType} entityId={translation.entityId} field="description" sourceText={description} />)}
+    </LocalizedContent>
   );
 }

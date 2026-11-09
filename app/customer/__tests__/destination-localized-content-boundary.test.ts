@@ -8,9 +8,8 @@ const pageSource = readFileSync(
 );
 
 describe("destination localized content server boundary", () => {
-  it("uses a serializable localized heading adapter for product card titles", () => {
-    expect(pageSource).toContain("<LocalizedContentHeading");
-    expect(pageSource).toContain("from \"@/components/customer/localized-content\"");
+  it("passes only serializable product data to the client ProductCard, which owns the localized title", () => {
+    expect(pageSource).toContain("<ProductCard key={product.id} listing={product}");
     expect(pageSource).not.toContain("{({ text, control }) =>");
   });
 });

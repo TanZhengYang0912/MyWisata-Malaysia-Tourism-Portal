@@ -1,0 +1,123 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import type { MouseEvent, ReactNode } from "react";
+import { MapPin } from "lucide-react";
+
+/**
+ * The look shared by every discovery card (product, vendor, outlet, place activity): photo with
+ * top-right actions and a rating, a meta line, a two-line title and a footer. The whole card links
+ * through the title (a stretched link); the action buttons sit above it, so save and share never
+ * navigate. Desktop hover scales the card to 1.04; there is no drawer.
+ * Wrappers (ProductCard, VendorCard, OutletCard, PlaceActivityCard) own their data, links and actions.
+ */
+export function CardFrame({
+  href,
+  onNavigate,
+  layout = "grid",
+  imageUrl,
+  imageAlt,
+  fallback,
+  topLeft,
+  brandMark,
+  actions,
+  rating,
+  meta,
+  title,
+  titleControl,
+  description,
+  info,
+  footer,
+  className = "",
+  ...dataProps
+}: {
+  /** Left out for items with no detail page (the card is then not a link). */
+  href?: string;
+  onNavigate?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  /** grid: photo on top. place: photo left (45%, 4:3) from md up, stacked below. */
+  layout?: "grid" | "place";
+  imageUrl?: string | null;
+  imageAlt: string;
+  /** Shown when there is no photo or it fails to load. */
+  fallback?: ReactNode;
+  /** A static tag on the photo's top-left corner (e.g. Free Entry, Event partner). */
+  topLeft?: ReactNode;
+  /** A vendor's logo or initials on the photo's bottom-left corner. */
+  brandMark?: ReactNode;
+  actions?: ReactNode;
+  rating?: ReactNode;
+  meta?: ReactNode;
+  /** The title text (plain text keeps the native tooltip). */
+  title: ReactNode;
+  /** Sits beside the title above the card link, e.g. the translation toggle. */
+  titleControl?: ReactNode;
+  description?: ReactNode;
+  info?: ReactNode;
+  footer?: ReactNode;
+  className?: string;
+} & { [key: `data-${string}`]: string | undefined }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const src = imageUrl?.trim();
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setImageFailed(false), [src]);
+  const place = layout === "place";
+
+  return (
+    <article
+      {...dataProps}
+      data-card-frame={layout}
+      className={`group/card relative isolate flex min-w-0 flex-col rounded-2xl border border-border bg-card text-card-foreground transition-transform duration-150 motion-reduce:transition-none has-[[data-card-link]:focus-visible]:outline-[3px] has-[[data-card-link]:focus-visible]:outline-offset-[3px] has-[[data-card-link]:focus-visible]:outline-primary ${href ? "[@media(hover:hover)_and_(pointer:fine)]:hover:z-[5] [@media(hover:hover)_and_(pointer:fine)]:hover:scale-[1.04] motion-reduce:hover:scale-100" : ""} ${place ? "md:grid md:grid-cols-[45%_minmax(0,1fr)] md:items-start" : ""} ${className}`}
+    >
+      <div className={`relative overflow-hidden bg-secondary ${place ? "aspect-[4/3] rounded-t-[15px] md:rounded-l-[15px] md:rounded-tr-none" : "aspect-[1.3] rounded-t-[15px]"}`}>
+        {src && !imageFailed
+          // eslint-disable-next-line @next/next/no-img-element -- catalogue and vendor media come from runtime-configured storage hosts
+          ? <img src={src} alt={imageAlt} loading="lazy" onError={() => setImageFailed(true)} className="h-full w-full object-cover" />
+          : fallback ?? <div role="img" aria-label={imageAlt} className="h-full w-full bg-secondary" />}
+        {topLeft && <div className="pointer-events-none absolute left-3 top-3 z-10">{topLeft}</div>}
+        {brandMark && <div aria-hidden="true" className="pointer-events-none absolute bottom-[11px] left-3 z-10 grid size-[38px] place-items-center overflow-hidden rounded-[10px] border-[3px] border-card bg-primary text-xs font-bold text-primary-foreground">{brandMark}</div>}
+        {actions && <div className="absolute right-3 top-3 z-20 flex flex-col gap-2 max-sm:right-2.5">{actions}</div>}
+        {rating && <div className="pointer-events-none absolute bottom-3 right-3 z-10">{rating}</div>}
+      </div>
+      <div className={`flex min-w-0 flex-1 flex-col px-[15px] pb-[17px] pt-[13px] max-sm:px-2.5 max-sm:pb-3.5 max-sm:pt-[11px] ${place ? "md:p-4" : ""}`}>
+        {meta && <p className="mb-1 truncate text-[11px] text-muted-foreground max-sm:text-[10px]">{meta}</p>}
+        <div className="flex min-w-0 items-start gap-1">
+          <h3
+            className="line-clamp-2 h-[2.7em] min-w-0 flex-1 text-base font-bold leading-[1.35] tracking-[-0.3px] text-foreground max-sm:text-[13px]"
+            title={typeof title === "string" ? title : undefined}
+          >
+            {href ? (
+              <Link href={href} onClick={onNavigate} data-card-link="" className="after:absolute after:inset-0 after:z-[1] after:rounded-2xl after:content-[''] focus-visible:outline-none">
+                {title}
+              </Link>
+            ) : title}
+          </h3>
+          {titleControl && <div className="relative z-20 shrink-0">{titleControl}</div>}
+        </div>
+        {description && <div className="mt-2 text-xs leading-[1.65] text-muted-foreground max-sm:text-[11px]">{description}</div>}
+        {info && <div className="mt-2.5 min-w-0 text-[11px] text-muted-foreground max-sm:text-[10px]">{info}</div>}
+        {footer && <div className="mt-auto pt-3">{footer}</div>}
+      </div>
+    </article>
+  );
+}
+
+/** The pin + text line used for locations ("2 Locations", "George Town, Penang"). */
+export function CardLocation({ children, icon = <MapPin size={13} aria-hidden="true" /> }: { children: ReactNode; icon?: ReactNode }) {
+  return <span className="flex min-w-0 items-center gap-[5px]"><span className="shrink-0">{icon}</span><span className="truncate">{children}</span></span>;
+}
+
+/** Location and Open now / Closed now on one row (vendor and outlet cards); the status is left out when unknown. */
+export function CardLocationStatus({ location, open, openLabel, closedLabel }: { location: ReactNode; open?: boolean; openLabel: string; closedLabel: string }) {
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-2 max-sm:gap-1">
+      <CardLocation>{location}</CardLocation>
+      {open !== undefined && (
+        <span className={`flex shrink-0 items-center gap-[5px] whitespace-nowrap font-semibold max-sm:text-[9px] ${open ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>
+          <span aria-hidden="true" className="size-[5px] rounded-full bg-current" />
+          {open ? openLabel : closedLabel}
+        </span>
+      )}
+    </div>
+  );
+}

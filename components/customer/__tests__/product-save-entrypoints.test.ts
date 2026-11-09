@@ -16,8 +16,11 @@ describe("customer product save entry points", () => {
     expect(button).toContain('appearance="icon"');
   });
 
+  it("offers saving from outlet food and product cards through the shared ProductCard", () => {
+    expect(read("components/outlet/outlet-menu.tsx")).toContain("<ProductCard");
+  });
+
   it.each([
-    ["outlet food and product cards", "components/outlet/outlet-menu.tsx"],
     ["vendor featured product cards", "components/customer/product-card.tsx"],
     ["product detail pages", "app/customer/activity/[id]/activity-detail-client.tsx"],
   ])("offers saving from %s", (_surface, path) => {

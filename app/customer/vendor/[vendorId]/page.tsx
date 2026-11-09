@@ -18,7 +18,7 @@ import { resolveOutletImage, type ManagedPlaceImage } from '@/lib/outlet-images'
 import { productImageUrl } from '@/lib/storage/product-image';
 import { getServerTranslation } from '@/lib/i18n/server';
 import type { OperatingHours } from '@/backend/core/types';
-import { getReviewRatingSummary, getScopedReviewPage } from '@/backend/domains/vendor-reviews';
+import { getReviewRatingSummary, getScopeRatingSummaries, getScopedReviewPage } from '@/backend/domains/vendor-reviews';
 import { VendorReviewsList } from '@/components/customer/vendor-reviews-list';
 import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
 import { MediaGallery } from '@/components/customer/media-gallery';
@@ -179,9 +179,11 @@ async function getVendor(vendorId: string) {
   const featured = selectFeaturedVendorProducts(catalogue, catalogue.length, explicitFeaturedIds);
   const featuredIds = new Set(featured.map((product) => product.id));
 
-  const [reviewPage, reviewSummary] = await Promise.all([
+  const [reviewPage, reviewSummary, outletRatings] = await Promise.all([
     getScopedReviewPage("vendor", vendorId, { page: 1, pageSize: 6 }, db),
     getReviewRatingSummary("vendor", vendorId, createServiceClient()),
+    // One batched lookup for the location cards; outlets without reviews show none.
+    getScopeRatingSummaries("outlet", locations.map((location) => location.id), createServiceClient()).catch(() => null),
   ]);
 
   return {
@@ -190,6 +192,7 @@ async function getVendor(vendorId: string) {
     locations,
     catalogue,
     listing: [...featured, ...catalogue.filter((product) => !featuredIds.has(product.id)).sort((left, right) => left.name.localeCompare(right.name))],
+    outletRatings,
     reviewSummary: { rating: reviewSummary.total ? reviewSummary.rating : null, reviews: reviewSummary.total },
     reviews: reviewPage.items,
     reviewRatingBuckets: reviewSummary.buckets,
@@ -225,7 +228,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
   const [result, publicEvents] = await Promise.all([getVendor((await params).vendorId), getPublicPromotionCampaigns()]);
   if (!result) notFound();
   const { t } = await getServerTranslation('customer');
-  const { vendor, vendorGallery, locations, catalogue, listing, reviewSummary, reviews, reviewRatingBuckets } = result;
+  const { vendor, vendorGallery, locations, catalogue, listing, outletRatings, reviewSummary, reviews, reviewRatingBuckets } = result;
   const locationsById = new Map(locations.map((location) => [location.id, location]));
   const vendorVisual = getVendorVisual({ name: vendor.name, coverUrl: vendor.cover_url, logoUrl: vendor.logo_url });
   const heroImage = vendorVisual.coverUrl;
@@ -245,15 +248,17 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
       return { ...entry, city: outlet?.city ?? null, state: outlet?.state ?? null, operatingHours: product.soldAt.length === 1 ? outlet?.operatingHours ?? null : null };
     }),
   }));
-  const locationRows: VendorLocationRow[] = locations.map((location) => {
-    const locationLabel = [location.city, location.state].filter(Boolean).join(', ') || t('ui.labels.malaysia');
-    return {
-      id: location.id,
-      name: location.name,
-      href: `/customer/outlets/${location.id}`,
-      directionsHref: location.lat !== null && location.lng !== null ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([location.name, locationLabel].join(', '))}`,
-    };
-  });
+  const locationRows: VendorLocationRow[] = locations.map((location) => ({
+    id: location.id,
+    name: location.name,
+    vendorName: vendor.name,
+    city: location.city,
+    state: location.state,
+    imageUrl: location.coverUrl ?? vendorVisual.coverUrl,
+    rating: outletRatings ? outletRatings.get(location.id) ?? null : undefined,
+    operatingHours: location.operatingHours,
+    href: `/customer/outlets/${location.id}`,
+  }));
   const sectionNavItems = [
     showEventItems && { id: 'event-items', label: t('ui.vendor.eventItems.title') },
     !isEventVendor && { id: 'experiences', label: t('ui.vendor.featuredExperiences') },
@@ -350,7 +355,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.featuredExperiences')}</p>
           <h2 id="experiences-heading" className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t('ui.vendor.memorableDay')}</h2>
           {listingCards.length ? (
-            <VendorListingGrid products={listingCards} returnTo={`/customer/vendors/${vendor.id}`} />
+            <VendorListingGrid products={listingCards} vendorName={vendor.name} returnTo={`/customer/vendors/${vendor.id}`} />
           ) : (
             <div className="mt-6 rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">{t('ui.vendor.noExperiences')}</div>
           )}

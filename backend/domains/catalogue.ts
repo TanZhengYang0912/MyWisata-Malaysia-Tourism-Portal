@@ -1051,7 +1051,7 @@ export interface SearchFilters {
   timeTo?: string | null;
   overnight?: boolean;
   near?: { lat: number; lng: number };
-  sort?: "recommended" | "price_asc" | "rating_desc" | "distance_asc";
+  sort?: "recommended" | "name_asc" | "price_asc" | "rating_desc" | "distance_asc";
 }
 
 export function filterComputedActivities(filters: SearchFilters, activities: ComputedActivity[]): ComputedActivity[] {
@@ -1215,9 +1215,15 @@ function matchesExploreActivity(
   return true;
 }
 
-/** Explicit sorts reorder in place; the default name order puts merchant ⭐ picks first and returns a new array. */
+/** Explicit sorts reorder in place; "recommended" and the name order put merchant ⭐ picks first and return a new array. */
 export function sortExploreActivities(filters: SearchFilters, activities: ComputedActivity[]): ComputedActivity[] {
   switch (filters.sort) {
+    case "recommended": {
+      // ⭐ picks by name, then the rest by rating (high first); the stable sort keeps name order for ties.
+      const featured = orderProductCatalogue(activities.filter(isMerchantFeatured));
+      const featuredIds = new Set(featured.map(({ id }) => id));
+      return [...featured, ...orderProductCatalogue(activities.filter(({ id }) => !featuredIds.has(id))).sort((a, b) => b.rating - a.rating)];
+    }
     case "price_asc":
       activities.sort((a, b) => a.price - b.price);
       break;

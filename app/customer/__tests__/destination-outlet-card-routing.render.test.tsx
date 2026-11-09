@@ -21,6 +21,8 @@ vi.mock("@/lib/supabase/server", () => ({
   })),
 }));
 vi.mock("@/backend/domains/places", () => ({ getPlaceBySlug: vi.fn(async () => null) }));
+vi.mock("@/lib/supabase/service", () => ({ createServiceClient: vi.fn(() => ({})) }));
+vi.mock("@/backend/domains/vendor-reviews", () => ({ getScopeRatingSummaries: vi.fn(async () => new Map()) }));
 vi.mock("@/lib/i18n/server", () => ({ getServerTranslation: vi.fn(async () => ({ t: (key: string) => key })) }));
 
 import DestinationPage from "@/app/customer/destination/[destinationId]/page";

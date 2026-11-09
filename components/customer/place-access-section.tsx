@@ -6,11 +6,10 @@ type PlaceAccessSectionProps = {
   accesses: PlaceAccess[];
   title: string;
   freeLabel: string;
-  freeToExplore: string;
 };
 
 /** Server-rendered so verified public access adds no client-side catalogue work. */
-export function PlaceAccessSection({ accesses, title, freeLabel, freeToExplore }: PlaceAccessSectionProps) {
+export function PlaceAccessSection({ accesses, title, freeLabel }: PlaceAccessSectionProps) {
   if (accesses.length === 0) return null;
 
   return (
@@ -22,18 +21,18 @@ export function PlaceAccessSection({ accesses, title, freeLabel, freeToExplore }
         </h2>
       </div>
 
-      <div className="mt-6 grid items-stretch gap-6 lg:gap-8 lg:grid-cols-2">
+      <div className="mt-6 grid items-start gap-6 lg:gap-8 lg:grid-cols-2">
         {accesses.map((access) => (
           <PlaceActivityCard
             key={access.id}
             imageUrl={access.imageUrl}
             imageAlt={access.title}
             imageFallback={<Compass size={24} className="text-primary/30" />}
-            badge={<><Compass size={14} aria-hidden="true" />{freeLabel}</>}
+            tag={freeLabel}
+            meta={access.sourceTitle}
             title={access.title}
-            supportingText={access.sourceTitle}
-            price={<span className="text-xs font-bold text-emerald-700 dark:text-emerald-200">{freeLabel}</span>}
-            footer={freeToExplore}
+            description={access.description}
+            footer={<span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{freeLabel}</span>}
           />
         ))}
       </div>

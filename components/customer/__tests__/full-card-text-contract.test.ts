@@ -15,7 +15,6 @@ const contentCardFiles = [
   "components/customer/saved-destination-card.tsx",
   "components/customer/nearby-outlets.tsx",
   "components/customer/sponsored-partner-rail.tsx",
-  "components/guest/guest-catalogue.tsx",
   "components/outlet/outlet-menu.tsx",
   "components/outlet/outlet-block-renderer.tsx",
   "components/outlet/outlet-page-renderer.tsx",
@@ -55,17 +54,6 @@ describe("full user-facing card content contract", () => {
     expect(metaRules).not.toContain("text-overflow: ellipsis;");
   });
 
-  it("shows an expand card's name on one line when closed and on two lines when open", () => {
-    const styles = read("app/globals.css");
-    const closed = styles.match(/\.mw-card-expand-card \.mw-card-title\s*\{([^}]*)\}/)?.[1] ?? "";
-    const open = styles.match(/\.mw-card-expand-card\[data-open="true"\] \.mw-card-title\s*\{([^}]*)\}/)?.[1] ?? "";
-
-    expect(closed).toContain("text-overflow: ellipsis;");
-    expect(closed).toContain("white-space: nowrap;");
-    expect(closed).toContain("min-height: 0;");
-    expect(open).toContain("-webkit-line-clamp: 2;");
-  });
-
   it("does not clamp or ellipsize text in data-bearing cards and summaries", () => {
     for (const file of contentCardFiles) {
       const source = read(file);
@@ -75,15 +63,6 @@ describe("full user-facing card content contract", () => {
       expect(cardSource, file).not.toMatch(/line-clamp-[1-6]/);
       expect(cardSource, file).not.toMatch(/\btruncate\b/);
     }
-  });
-
-  it("keeps guest product cards focused on names, places, and prices", () => {
-    const guestCatalogue = read("components/guest/guest-catalogue.tsx");
-
-    expect(guestCatalogue).not.toContain("activity.description");
-    expect(guestCatalogue).toContain('field="name"');
-    expect(guestCatalogue).toContain("ReferencePrice");
-    expect(guestCatalogue).toContain("activity.outlet.city");
   });
 
   it("wraps full item names in chat context cards while preserving message previews", () => {

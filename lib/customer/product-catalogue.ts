@@ -5,6 +5,8 @@ export type ProductCatalogueOrderItem = { id: string; name: string };
 export type ProductSalesSummary = { outletCount: number; fromPrice: number };
 export type ProductCatalogueCardData = {
   id: string; vendorId: string; name: string; description: string | null;
+  /** Shown on the card's meta line ("Food · Vendor"); left out when unknown. */
+  vendorName?: string;
   productType: string | null; imageUrl: string | null;
   requiresBooking: boolean; rating: number; reviews: number;
   sales: ProductSalesSummary;
@@ -45,7 +47,7 @@ export function toVendorCatalogueCard(product: VendorProductCardData): ProductCa
 export function toDiscoveryCatalogueCard(product: ComputedActivity & { sponsorship?: { placementId: string } | null }, { labels = true }: { labels?: boolean } = {}): ProductCatalogueCardData {
   const sales = product.salesSummary ?? { outletCount: 1, fromPrice: product.price };
   const card: ProductCatalogueCardData = {
-    id: product.id, vendorId: product.vendorId ?? product.outlet.vendorId, name: product.name,
+    id: product.id, vendorId: product.vendorId ?? product.outlet.vendorId, name: product.name, vendorName: product.outlet.vendorName,
     description: product.description, productType: product.categorySlug ?? null, imageUrl: product.image,
     requiresBooking: product.requiresBooking, rating: product.rating, reviews: product.reviews, sales,
     sponsored: labels && Boolean(product.sponsorship), featured: labels && isMerchantFeatured(product),

@@ -74,7 +74,6 @@ export interface OutletPageRendererProps {
   reviewRatingBuckets?: ReviewRatingBucket[];
   reviewTotal?: number;
   mode?: 'editor' | 'public';
-  canUseCustomerActions?: boolean;
   selectedBlockId?: string | null;
   onSelect?: (blockId: string) => void;
 }

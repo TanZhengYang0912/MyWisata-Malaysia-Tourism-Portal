@@ -33,7 +33,8 @@ describe("calendar-first My Activity flow", () => {
 
   it("keeps expanded filters compact on phones and on one desktop row", () => {
     expect(calendarSource).toContain('className="grid grid-cols-2 gap-2 lg:grid-cols-7"');
-    expect(calendarSource).toContain('className="relative col-span-2 min-w-0 lg:col-span-2"');
+    expect(calendarSource).toContain('className="col-span-2 flex min-w-0 lg:col-span-2"');
+    expect(calendarSource).toContain("<DiscoverySearchField");
     expect(calendarSource).toContain('className="col-span-2 min-w-0 lg:col-span-1 h-10 rounded-xl');
     expect(calendarSource).toContain('className="col-span-2 grid grid-cols-2 gap-2 lg:col-span-2"');
   });

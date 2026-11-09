@@ -1,11 +1,12 @@
 "use client";
 
-import { ChevronDown, Clock3, Search as SearchIcon, SlidersHorizontal } from "lucide-react";
-import { useState } from "react";
+import { ArrowUpDown, ChevronDown, Clock3, Search as SearchIcon, SlidersHorizontal } from "lucide-react";
+import { useState, type ComponentProps } from "react";
 import { useTranslation } from "react-i18next";
 import { CATEGORIES, STATES_MY } from "@/backend/domains/catalogue";
 import { CategoryIcon } from "@/components/customer/category-icon";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DialogTrigger } from "@/components/ui/dialog";
 import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
 import { PRICE_MAX, type DiscoveryQuery } from "@/lib/customer/discovery-query";
 
@@ -22,9 +23,10 @@ interface DiscoverySearchFieldProps {
   onChange: (value: string) => void;
   placeholder?: string;
   ariaLabel?: string;
+  autoFocus?: boolean;
 }
 
-export function DiscoverySearchField({ value, onChange, placeholder, ariaLabel }: DiscoverySearchFieldProps) {
+export function DiscoverySearchField({ value, onChange, placeholder, ariaLabel, autoFocus }: DiscoverySearchFieldProps) {
   const { t } = useTranslation("customer");
   const searchLabel = ariaLabel ?? t("ui.discovery.searchLabel");
   return (
@@ -34,11 +36,93 @@ export function DiscoverySearchField({ value, onChange, placeholder, ariaLabel }
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        autoFocus={autoFocus}
         placeholder={placeholder ?? t("ui.discovery.searchPlaceholder")}
         aria-label={searchLabel}
         className="min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
       />
     </label>
+  );
+}
+
+const editorialLine = (active: boolean) => (active ? "border-primary" : "border-primary/15 hover:border-primary/40");
+
+/** Editorial Filters trigger beside DiscoverySearchField. Count = applied filters. */
+function DiscoveryFilterButton({ count = 0, active = count > 0, className = "", ...props }: ComponentProps<"button"> & { count?: number; active?: boolean }) {
+  const { t } = useTranslation("customer");
+  return (
+    <button
+      type="button"
+      {...props}
+      className={`inline-flex min-h-12 items-center gap-2.5 border-b-2 px-1 text-[15px] font-bold text-primary transition-colors focus-visible:border-primary focus-visible:outline-none ${editorialLine(active)} ${className}`}
+    >
+      <SlidersHorizontal size={18} aria-hidden="true" />
+      {t("ui.explore.filters")}
+      {count > 0 && (
+        <span className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full border-[1.5px] border-primary/30 px-1.5 text-xs font-extrabold text-primary">
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
+/** Editorial sort select beside DiscoverySearchField; the line turns solid when the value is not the default. */
+function DiscoverySortSelect<T extends string>({
+  value,
+  defaultValue,
+  options,
+  onChange,
+  className = "",
+  ...props
+}: Omit<ComponentProps<"label">, "onChange"> & { value: T; defaultValue: T; options: { value: T; label: string }[]; onChange: (value: T) => void }) {
+  const { t } = useTranslation("customer");
+  return (
+    <label {...props} className={`relative inline-flex min-h-12 min-w-0 flex-1 items-center gap-2.5 border-b-2 px-1 text-primary transition-colors focus-within:border-primary sm:w-[220px] sm:flex-none ${editorialLine(value !== defaultValue)} ${className}`}>
+      <ArrowUpDown size={18} aria-hidden="true" className="shrink-0" />
+      <select
+        aria-label={t("ui.explore.sortBy")}
+        value={value}
+        onChange={(event) => onChange(event.target.value as T)}
+        className="min-w-0 flex-1 cursor-pointer appearance-none bg-transparent pr-6 text-[15px] font-bold text-primary outline-none"
+      >
+        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select>
+      <ChevronDown size={14} aria-hidden="true" className="pointer-events-none absolute right-1" />
+    </label>
+  );
+}
+
+/**
+ * The discovery toolbar (Explore, Vendors): search, Filters and Sort in one editorial row. A UI shell only —
+ * the page passes its own sort options and owns the filter drawer; render it inside that drawer's <Dialog>.
+ */
+export function DiscoveryToolbar<T extends string>({
+  query, onQueryChange, placeholder, filterCount = 0, filtersActive, sort, defaultSort, sortOptions, onSortChange, testIds = {}, className = "",
+}: {
+  query: string;
+  onQueryChange: (query: string) => void;
+  /** Defaults to the shared "Type any keyword…" hint. */
+  placeholder?: string;
+  filterCount?: number;
+  filtersActive?: boolean;
+  sort: T;
+  defaultSort: T;
+  sortOptions: { value: T; label: string }[];
+  onSortChange: (sort: T) => void;
+  testIds?: { bar?: string; filters?: string; sort?: string };
+  className?: string;
+}) {
+  return (
+    <div data-testid={testIds.bar} className={`flex flex-col gap-1 sm:flex-row sm:items-end sm:gap-8 ${className}`}>
+      <DiscoverySearchField value={query} onChange={onQueryChange} placeholder={placeholder} />
+      <div className="flex shrink-0 items-end gap-5 sm:gap-8">
+        <DialogTrigger asChild>
+          <DiscoveryFilterButton data-testid={testIds.filters} count={filterCount} active={filtersActive ?? filterCount > 0} />
+        </DialogTrigger>
+        <DiscoverySortSelect data-testid={testIds.sort} value={sort} defaultValue={defaultSort} options={sortOptions} onChange={onSortChange} />
+      </div>
+    </div>
   );
 }
 
