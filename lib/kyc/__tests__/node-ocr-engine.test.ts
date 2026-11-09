@@ -28,6 +28,54 @@ it('rejects local reentry while the first child is owned', async () => {
     .toMatchObject({ failureCode: 'service_unavailable' });
   await first;
 });
+it('logs only process status when the OCR child is terminated before replying', async () => {
+  const root = await mkdtemp(resolve(tmpdir(), 'kyc-child-exit-'));
+  const runtime = resolve(root, 'lib/kyc/runtime');
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    await mkdir(runtime, { recursive: true });
+    await writeFile(resolve(runtime, 'tesseract-process.cjs'),
+      "process.once('message', () => process.kill(process.pid, 'SIGTERM'));");
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(root);
+    let pending: ReturnType<typeof extractKycFieldsInNode>;
+    try {
+      pending = extractKycFieldsInNode({ documentType: 'national_id', front: image, back: image }, 2000);
+    } finally { cwd.mockRestore(); }
+
+    expect(await pending).toEqual({ ok: false, failureCode: 'service_unavailable', retryable: true });
+    expect(warning.mock.calls).toEqual([['kyc_node_ocr_failed', {
+      failureCode: 'service_unavailable', received: false, exitCode: null, signal: 'SIGTERM',
+      launchError: undefined, sendFailed: false,
+    }]]);
+  } finally {
+    warning.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 5000);
+it('logs the allowlisted OCR stage returned by the child without error text', async () => {
+  const root = await mkdtemp(resolve(tmpdir(), 'kyc-child-stage-'));
+  const runtime = resolve(root, 'lib/kyc/runtime');
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    await mkdir(runtime, { recursive: true });
+    await writeFile(resolve(runtime, 'tesseract-process.cjs'),
+      "process.once('message', () => process.send({ok:false,failureCode:'service_unavailable',retryable:true,failureStage:'recognition_front'}, () => process.exit(0)));");
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(root);
+    let pending: ReturnType<typeof extractKycFieldsInNode>;
+    try {
+      pending = extractKycFieldsInNode({ documentType: 'national_id', front: image, back: image }, 2000);
+    } finally { cwd.mockRestore(); }
+
+    expect(await pending).toEqual({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'recognition_front' });
+    expect(warning.mock.calls).toEqual([['kyc_node_ocr_failed', {
+      failureCode: 'service_unavailable', failureStage: 'recognition_front', received: true,
+      exitCode: 0, signal: null, launchError: undefined, sendFailed: false,
+    }]]);
+  } finally {
+    warning.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 5000);
 it('child exits when the parent IPC connection disappears', async () => {
   const child = fork(resolve('lib/kyc/runtime/tesseract-process.cjs'), [], { env: { NODE_ENV: 'production' }, execArgv: [], stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
   const closed = once(child, 'exit');
@@ -72,7 +120,7 @@ it('fails closed for a missing packaged model without downloading a replacement'
     child = fork(resolve(root, 'tesseract-process.cjs'), [], { env: { NODE_ENV: 'production' }, execArgv: [], serialization: 'advanced', stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
     const response = once(child, 'message'), closed = once(child, 'close');
     child.send({ documentType: 'national_id', front: { mimeType: 'image/png', bytes }, back: { mimeType: 'image/png', bytes }, timeoutMs: 2000 });
-    expect((await response)[0]).toEqual({ ok: false, failureCode: 'configuration', retryable: false });
+    expect((await response)[0]).toEqual({ ok: false, failureCode: 'configuration', retryable: false, failureStage: 'model_manifest' });
     await closed;
   } finally { if (child?.exitCode === null) child.kill('SIGKILL'); await rm(root, { recursive: true, force: true }); }
 }, 5000);
