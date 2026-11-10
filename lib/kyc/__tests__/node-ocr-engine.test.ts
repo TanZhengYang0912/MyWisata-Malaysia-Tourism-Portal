@@ -7,7 +7,8 @@ import { mkdtemp, mkdir, copyFile, symlink, writeFile, readFile, rm } from 'node
 import { tmpdir } from 'node:os';
 import sharp from 'sharp';
 import { extractKycFieldsInNode, parseNodeKycOcrOutcome } from '../node-ocr-engine';
-import { classifyTesseractFailure, createTesseractInitializationReporter, initializationStageForTesseractStatus } from '../runtime/tesseract-diagnostics.cjs';
+import { bridgeTesseractWorkerEvents, classifyTesseractFailure, createTesseractInitializationReporter, initializationStageForTesseractStatus } from '../runtime/tesseract-diagnostics.cjs';
+import { EventEmitter } from 'node:events';
 
 const image = { mimeType: 'image/png', bytes: new Uint8Array([1, 2]) };
 afterEach(() => vi.unstubAllEnvs());
@@ -46,6 +47,34 @@ it('reports an error callback only when no Tesseract initialization phase was ob
   const reporter = createTesseractInitializationReporter((stage) => phases.push(stage));
   reporter.begin();
   reporter.onError({ message: 'private filesystem error' });
+  expect(phases).toEqual(['worker_error_callback']);
+});
+it('bridges Node worker error and abnormal exit events into Tesseract initialization failure handling', () => {
+  const phases: string[] = [];
+  const worker = new EventEmitter() as EventEmitter & { onerror?: (error: Error) => void };
+  const onerror = vi.fn();
+  bridgeTesseractWorkerEvents(worker, (stage) => phases.push(stage));
+  worker.onerror = onerror;
+
+  worker.emit('error', new Error('private worker startup details'));
+  worker.emit('exit', 1);
+
+  expect(onerror).toHaveBeenCalledTimes(1);
+  expect(onerror.mock.calls[0]?.[0]).toBeInstanceOf(Error);
+  expect(phases).toEqual(['worker_error_callback']);
+  expect(JSON.stringify(phases)).not.toMatch(/private|startup details/);
+});
+it('converts a nonzero Node worker exit without an error event into a bounded failure callback', () => {
+  const phases: string[] = [];
+  const worker = new EventEmitter() as EventEmitter & { onerror?: (error: Error) => void };
+  const onerror = vi.fn();
+  bridgeTesseractWorkerEvents(worker, (stage) => phases.push(stage));
+  worker.onerror = onerror;
+
+  worker.emit('exit', 1);
+
+  expect(onerror).toHaveBeenCalledTimes(1);
+  expect(onerror.mock.calls[0]?.[0]).toMatchObject({ message: 'worker_thread_exit' });
   expect(phases).toEqual(['worker_error_callback']);
 });
 it('rejects malformed evidence without reflecting bytes or environment', async () => {
