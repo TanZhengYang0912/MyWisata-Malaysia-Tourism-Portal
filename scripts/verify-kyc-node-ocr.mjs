@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { isDeepStrictEqual } from 'node:util';
 const failureCodes = new Set(['configuration', 'service_unavailable', 'timeout', 'invalid_response', 'evidence_invalid']);
 const failureStages = new Set(['message_validation', 'runtime_load', 'image_decode', 'model_manifest', 'worker_initialize',
-  'recognition_front', 'recognition_back', 'passport_recovery', 'unexpected_child_error']);
+  'recognition_front', 'recognition_back', 'passport_recovery', 'unexpected_child_error', 'child_bootstrap', 'child_no_response']);
 export async function verifySyntheticOcr(options, request = fetch) {
   const origin = new URL(options.origin);
   const local = origin.protocol === 'http:' && ['127.0.0.1', '[::1]'].includes(origin.hostname);
