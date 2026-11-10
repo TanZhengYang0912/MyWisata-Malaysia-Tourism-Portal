@@ -61,7 +61,11 @@ describe("place page layout and copy", () => {
   });
 
   it("uses customer-facing access copy, omits empty operator metadata, and keeps a compact hero", () => {
-    expect(pageSource).toContain('t("ui.place.noGate")');
+    // Entry wording matches the place cards: not specified / free / reference price.
+    expect(pageSource).toContain('t("ui.place.entryNotSpecified")');
+    expect(pageSource).toContain('<ReferencePrice amountMYR={place.entryFee} /> {t("ui.place.referenceEntry")}');
+    expect(pageSource).not.toContain('t("ui.place.noGate")');
+    expect(pageSource).not.toContain('t("ui.place.entryFee"');
     expect(pageSource).toContain("{operator &&");
     expect(pageSource).not.toContain('t("ui.place.noOperator")');
     expect(pageSource).toContain("absolute inset-0 h-full w-full object-cover");

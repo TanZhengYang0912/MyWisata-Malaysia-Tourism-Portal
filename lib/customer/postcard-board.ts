@@ -132,7 +132,59 @@ export function assignPostcardSlots(anchors: { id: string; x: number; y: number 
   return result;
 }
 
+const pathOf = (from: Point, control: Point, to: Point) => `M${from.x},${from.y} Q${control.x},${control.y} ${to.x},${to.y}`;
+const sag = (from: Point, to: Point): Point => ({ x: (from.x + to.x) / 2, y: Math.max(from.y, to.y) + 12 });
+
 /** A string from a postcard's pin to its state, sagging 12px below the lower end. */
 export function stringPath(from: Point, to: Point): string {
-  return `M${from.x},${from.y} Q${(from.x + to.x) / 2},${Math.max(from.y, to.y) + 12} ${to.x},${to.y}`;
+  return pathOf(from, sag(from, to), to);
+}
+
+/** The sag, then bows to either side of the chord, gentlest first. */
+function bends(from: Point, to: Point): Point[] {
+  const dx = to.x - from.x, dy = to.y - from.y, length = Math.hypot(dx, dy) || 1;
+  const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+  return [sag(from, to), ...[0.2, 0.3, 0.4].flatMap((depth) => [1, -1].map((side) => ({
+    x: mid.x - side * (dy / length) * depth * length,
+    y: mid.y + side * (dx / length) * depth * length,
+  })))];
+}
+
+const curvePoints = (from: Point, control: Point, to: Point) => Array.from({ length: 33 }, (_, k) => {
+  const t = k / 32, u = 1 - t;
+  return { x: u * u * from.x + 2 * u * t * control.x + t * t * to.x, y: u * u * from.y + 2 * u * t * control.y + t * t * to.y };
+});
+
+const curvesCross = (a: Point[], b: Point[]) => a.slice(1).some((p2, i) => b.slice(1).some((p4, j) => crosses(a[i], p2, b[j], p4)));
+
+/**
+ * Board strings: each sags like stringPath; a string that crosses another is bowed to one side of its chord
+ * instead, taking the gentlest bow that crosses less and, among those, runs under the fewest other postcards.
+ * `cards[i]` is string i's own postcard (board units); pass none to ignore postcards.
+ */
+export function stringPaths(strings: { from: Point; to: Point }[], cards: { x: number; y: number; w: number; h: number }[] = []): string[] {
+  const options = strings.map(({ from, to }) => bends(from, to));
+  const choice = strings.map(() => 0);
+  const curves = strings.map(({ from, to }, i) => curvePoints(from, options[i][0], to));
+  const crossCount = (i: number, curve: Point[]) => curves.filter((other, j) => j !== i && curvesCross(curve, other)).length;
+  const underCards = (i: number, curve: Point[]) => curve.slice(4, -2)
+    .filter((p) => cards.some((c, k) => k !== i && p.x > c.x && p.x < c.x + c.w && p.y > c.y && p.y < c.y + c.h)).length;
+  // ponytail: greedy, a few passes; enough for 16 strings, swap for a search if a board ever needs one.
+  for (let pass = 0, changed = true; changed && pass < 4; pass++) {
+    changed = false;
+    strings.forEach(({ from, to }, i) => {
+      const now = crossCount(i, curves[i]);
+      if (now === 0) return;
+      let best: { k: number; n: number; u: number; curve: Point[] } | null = null;
+      for (let k = 1; k < options[i].length; k++) {
+        const curve = curvePoints(from, options[i][k], to);
+        const n = crossCount(i, curve);
+        if (n >= now) continue;
+        const u = underCards(i, curve);
+        if (!best || n < best.n || (n === best.n && u < best.u)) best = { k, n, u, curve };
+      }
+      if (best) { choice[i] = best.k; curves[i] = best.curve; changed = true; }
+    });
+  }
+  return strings.map(({ from, to }, i) => pathOf(from, options[i][choice[i]], to));
 }

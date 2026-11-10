@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assignPostcardSlots, getPostcardBoardLayout, SLOTS, slotPin, stringPath, toBoardPoint, regionTransform } from "@/lib/customer/postcard-board";
+import { assignPostcardSlots, getPostcardBoardLayout, SLOTS, slotPin, stringPath, stringPaths, toBoardPoint, regionTransform } from "@/lib/customer/postcard-board";
 import { stateAnchor } from "@/components/demo-map/malaysia-state-map";
 import { DEMO_STATES } from "@/lib/demo-map/data";
 
@@ -118,20 +118,29 @@ describe("the real Malaysia board", () => {
     expect(row((slot) => slot.y === 560)).toEqual(["kuala-lumpur", "putrajaya", "melaka", "negeri-sembilan", "johor", "pahang"]);
   });
 
-  // The approved card order is kept on resize, so stretching the rows makes two straight strings cross.
-  // Known and reported; any other crossing is a regression.
-  const KNOWN_RESIZE_CROSSINGS = new Set(["negeri-sembilan × johor", "perlis × kedah"]);
+  // Drawn strings as the board renders them: sampled quadratic curves.
+  const curve = (d: string) => {
+    const [x0, y0, cx, cy, x1, y1] = d.match(/-?[\d.]+/g)!.map(Number);
+    return Array.from({ length: 41 }, (_, k) => { const t = k / 40, u = 1 - t; return { x: u * u * x0 + 2 * u * t * cx + t * t * x1, y: u * u * y0 + 2 * u * t * cy + t * t * y1 }; });
+  };
+  const d = (a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number }) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+  const curvesCross = (a: { x: number; y: number }[], b: { x: number; y: number }[]) => a.slice(1).some((p2, i) => b.slice(1).some((p4, j) => {
+    const p1 = a[i], p3 = b[j];
+    return d(p1, p2, p3) * d(p1, p2, p4) < 0 && d(p3, p4, p1) * d(p3, p4, p2) < 0;
+  }));
 
-  it.each([[976, 620], [1232, 620], [1232, 760], [1600, 620]])("keeps the resized %ix%i board free of new crossing strings and Perlis clear of the Kedah card", (width, height) => {
+  // The approved card order is kept on resize; strings that would cross bow the other way instead.
+  it.each([[976, 620], [1232, 620], [1232, 760], [1600, 620]])("draws the resized %ix%i board with no crossing strings and Perlis clear of the Kedah card", (width, height) => {
     const layout = getPostcardBoardLayout(width, height)!;
-    const d = (a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number }) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
     const moved = DEMO_STATES.map((state) => ({ id: state.id, ...toBoardPoint(stateAnchor(state.id)!, state.region === "Borneo" ? "borneo" : "peninsular", layout) }));
-    const segments = moved.map((anchor) => [slotPin(layout.slots[result[anchor.id]], layout.card), anchor] as const);
-    for (let i = 0; i < segments.length; i++) for (let j = i + 1; j < segments.length; j++) {
-      const [p1, p2] = segments[i], [p3, p4] = segments[j];
-      const pair = `${moved[i].id} × ${moved[j].id}`;
-      if (KNOWN_RESIZE_CROSSINGS.has(pair)) continue;
-      expect(d(p1, p2, p3) * d(p1, p2, p4) < 0 && d(p3, p4, p1) * d(p3, p4, p2) < 0, pair).toBe(false);
+    const slots = moved.map((anchor) => layout.slots[result[anchor.id]]);
+    const paths = stringPaths(
+      moved.map((anchor, i) => ({ from: slotPin(slots[i], layout.card), to: anchor })),
+      slots.map((slot) => ({ ...slot, w: layout.card.w, h: layout.card.h })),
+    );
+    const curves = paths.map(curve);
+    for (let i = 0; i < curves.length; i++) for (let j = i + 1; j < curves.length; j++) {
+      expect(curvesCross(curves[i], curves[j]), `${moved[i].id} × ${moved[j].id}`).toBe(false);
     }
     const anchorOf = (id: string) => moved.find((anchor) => anchor.id === id)!;
     const cardOf = (id: string) => layout.slots[result[id]];
@@ -140,8 +149,18 @@ describe("the real Malaysia board", () => {
     expect(anchorOf("johor").y).toBeLessThan(cardOf("johor").y);
   });
 
+  it("leaves strings that cross nothing sagging as before and bows only the ones that would cross", () => {
+    const layout = getPostcardBoardLayout(1232, 620)!;
+    const moved = DEMO_STATES.map((state) => ({ id: state.id, ...toBoardPoint(stateAnchor(state.id)!, state.region === "Borneo" ? "borneo" : "peninsular", layout) }));
+    const strings = moved.map((anchor) => ({ from: slotPin(layout.slots[result[anchor.id]], layout.card), to: anchor }));
+    const paths = stringPaths(strings);
+    const bowed = moved.filter((_, i) => paths[i] !== stringPath(strings[i].from, strings[i].to)).map((anchor) => anchor.id);
+    expect(bowed.length).toBeGreaterThan(0);
+    expect(bowed.length).toBeLessThanOrEqual(3);
+    expect(stringPaths([{ from: { x: 0, y: 0 }, to: { x: 100, y: 100 } }])).toEqual([stringPath({ x: 0, y: 0 }, { x: 100, y: 100 })]);
+  });
+
   it("crosses no two straight strings", () => {
-    const d = (a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number }) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
     const segments = anchors.map((anchor) => [slotPin(SLOTS[result[anchor.id]]), anchor] as const);
     for (let i = 0; i < segments.length; i++) for (let j = i + 1; j < segments.length; j++) {
       const [p1, p2] = segments[i], [p3, p4] = segments[j];

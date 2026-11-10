@@ -119,7 +119,7 @@ describe("customer home Discover Malaysia hero", () => {
     expect(markup).not.toContain("melaka-a-famosa.webp");
   });
 
-  it("shows the full destination photo on mobile and keeps the desktop cover", () => {
+  it("covers the same 16:9 hero picture on every screen", () => {
     const markup = renderToStaticMarkup(
       <CustomerHomeClient highlightItems={[]} forYouItems={[]} vendors={[]} campaign={null} />,
     );
@@ -131,8 +131,8 @@ describe("customer home Discover Malaysia hero", () => {
 
     expect(heroImages).toHaveLength(1);
     expect(heroImages[0]).toContain("klcc-home-hero-match.webp");
-    expect(heroImages[0]).toContain("object-contain");
-    expect(heroImages[0]).toContain("md:object-cover");
+    expect(heroImages[0]).toContain("object-cover");
+    expect(heroImages[0]).not.toContain("object-contain");
     expect(heroImages[0]).toContain('sizes="100vw"');
     expect(heroMarkup).not.toContain("atlas-hero-placeholder");
   });

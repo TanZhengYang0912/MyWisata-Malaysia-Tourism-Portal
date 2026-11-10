@@ -86,8 +86,19 @@ describe("Home destination selection", () => {
     const enter = await fire(stateCard("Johor"), "keydown", { key: "Enter" });
     expect(enter.defaultPrevented).toBe(true);
     expect(push).toHaveBeenCalledExactlyOnceWith(destinationHref("Johor"));
-    await fire(stateCard("Johor"), "keydown", { key: " " });
+    const space = await fire(stateCard("Johor"), "keydown", { key: " " });
     expect(push).toHaveBeenCalledTimes(1);
+    // Space is left to the browser, which turns it into a click on the button: that click selects.
+    expect(space.defaultPrevented).toBe(false);
+    await fire(stateCard("Johor"), "click");
+    expect(title()).toBe("Johor");
+    expect(push).toHaveBeenCalledTimes(1);
+  });
+
+  it("navigates once while Enter is held down", async () => {
+    await fire(stateCard("Melaka"), "keydown", { key: "Enter" });
+    for (let i = 0; i < 3; i++) await fire(stateCard("Melaka"), "keydown", { key: "Enter", repeat: true });
+    expect(push).toHaveBeenCalledExactlyOnceWith(destinationHref("Melaka"));
   });
 
   it("saves without selecting or navigating", async () => {

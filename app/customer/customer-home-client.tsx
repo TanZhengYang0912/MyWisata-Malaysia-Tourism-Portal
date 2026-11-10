@@ -228,7 +228,9 @@ export function CustomerHomeClient({
 
   return (
     <div className={`${titleFontClassName} bg-background min-h-screen text-foreground pb-20`}>
-      <section className="atlas-hero-section relative isolate min-h-[calc(100svh-var(--customer-header-h,6.3125rem))] overflow-hidden bg-[#061326] text-white xl:min-h-[calc(100svh-var(--customer-header-h,4.3125rem))]">
+      <section className="atlas-hero-section @container relative isolate bg-background text-white">
+        {/* Title and photo are one 16:9 picture sized in cqw, so every screen shows the same picture, only smaller. */}
+        <div className="relative aspect-video overflow-hidden bg-[#061326]">
         <div className="absolute inset-0 z-0 overflow-hidden bg-[#061326]">
           {outgoingHeroDestination && (
             <Image
@@ -240,7 +242,7 @@ export function CustomerHomeClient({
               loading="eager"
               quality={90}
               sizes="100vw"
-              className={`atlas-hero-photo atlas-hero-photo--outgoing object-contain md:object-cover ${outgoingHeroDestination.state === "Kuala Lumpur" ? "object-[60%_48%] md:object-center" : "object-[56%_48%]"}`}
+              className={`atlas-hero-photo atlas-hero-photo--outgoing object-cover ${outgoingHeroDestination.state === "Kuala Lumpur" ? "object-[60%_48%] md:object-center" : "object-[56%_48%]"}`}
             />
           )}
           <Image
@@ -253,14 +255,13 @@ export function CustomerHomeClient({
             sizes="100vw"
             onLoad={() => handleHeroPhotoLoaded(activeDestination.state)}
             onTransitionEnd={(event) => completeHeroPhotoTransition(event, activeDestination.state)}
-            className={`atlas-hero-photo object-contain md:object-cover ${outgoingHeroDestination ? `atlas-hero-photo--incoming${incomingHeroVisible ? " atlas-hero-photo--incoming-visible" : ""}` : ""} ${activeDestination.state === "Kuala Lumpur" ? "object-[60%_48%] md:object-center" : "object-[56%_48%]"}`}
+            className={`atlas-hero-photo object-cover ${outgoingHeroDestination ? `atlas-hero-photo--incoming${incomingHeroVisible ? " atlas-hero-photo--incoming-visible" : ""}` : ""} ${activeDestination.state === "Kuala Lumpur" ? "object-[60%_48%] md:object-center" : "object-[56%_48%]"}`}
           />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(4,15,36,0.27)_0%,rgba(4,15,36,0.16)_27%,rgba(4,15,36,0.04)_64%,rgba(4,15,36,0.01)_100%),linear-gradient(0deg,rgba(4,17,39,0.36)_0%,rgba(4,17,39,0.16)_22%,rgba(4,17,39,0.02)_59%),linear-gradient(180deg,rgba(4,17,39,0.05)_0%,rgba(4,17,39,0)_52%)]" />
         </div>
 
-        <div className="relative z-10 mx-auto flex min-h-[calc(100svh-var(--customer-header-h,6.3125rem))] w-full max-w-[1420px] flex-col px-5 pb-8 pt-[12svh] sm:px-9 xl:min-h-[calc(100svh-var(--customer-header-h,4.3125rem))] lg:px-0 lg:pb-9 lg:pt-[14.5svh]">
-          <header className="atlas-enter atlas-delay-1 mb-auto pl-0 sm:pl-4 lg:pl-[3.4%]">
-            <h1 className="atlas-discover-title max-w-[760px] font-[family-name:var(--font-discover-title)] text-[clamp(4.2rem,min(9vw,14svh),9.2rem)] font-normal leading-[1.05] tracking-[-0.025em]">
+          <header className="atlas-enter atlas-delay-1 absolute left-[6cqw] top-[7.5cqw] z-10">
+            <h1 className="atlas-discover-title max-w-[88cqw] font-[family-name:var(--font-discover-title)] text-[8.6cqw] font-normal leading-[1.05] tracking-[-0.025em]">
               <span className="atlas-discover-title__ending">{activeDestination.state}</span>
             </h1>
             {/* Screen readers and touch turn activation into a plain click, so double-click alone would strand them; this link is their way in, visible only on keyboard focus. */}
@@ -272,7 +273,7 @@ export function CustomerHomeClient({
               {t("ui.home.viewDestination")}
             </Link>
             <svg
-              className="atlas-title-accent ml-[63%] mt-4 block w-[clamp(100px,32vw,220px)] text-[#f4b900] md:ml-32 md:mt-9 md:w-[clamp(132px,16vw,250px)]"
+              className="atlas-title-accent ml-[8cqw] mt-[1.6cqw] block w-[16cqw] text-[#f4b900]"
               viewBox="0 0 228 24"
               aria-hidden="true"
               focusable="false"
@@ -288,9 +289,11 @@ export function CustomerHomeClient({
               />
             </svg>
           </header>
+        </div>
 
-          <nav aria-label={t("ui.home.destinationCarousel")} className="atlas-destination-rail atlas-enter atlas-delay-2 mt-10 w-full">
-            <div ref={destinationPagerRef} className="atlas-destination-pager pb-3">
+        {/* Below 1024px the cards would crowd the photo, so they take their own row under it. */}
+        <nav aria-label={t("ui.home.destinationCarousel")} className="atlas-destination-rail atlas-enter atlas-delay-2 relative z-10 px-5 pt-4 sm:px-9 lg:absolute lg:inset-x-[4.5cqw] lg:bottom-[1.6cqw] lg:p-0">
+            <div ref={destinationPagerRef} className="atlas-destination-pager pb-6">
               {HOME_DESTINATIONS.map((destination) => {
                 const isSelected = destination.state === activeState;
                 const isSaved = savedStates.has(destination.state);
@@ -304,16 +307,17 @@ export function CustomerHomeClient({
                       onKeyDown={(event) => {
                         if (event.key === "Enter") {
                           event.preventDefault();
-                          navigateToDestination(destination.state);
+                          // Holding Enter repeats keydown; only the first press navigates.
+                          if (!event.repeat) navigateToDestination(destination.state);
                         }
                       }}
                       aria-pressed={isSelected}
                       title={t("ui.home.destinationDoubleClick", { state: destination.state })}
-                      className={`group relative block h-[clamp(108px,22svh,220px)] w-full overflow-hidden rounded-[14px] border text-left transition duration-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/40 ${isSelected ? "border-2 border-[#f4bd00]" : "border-white/70 hover:border-white"}`}
+                      className={`group relative block aspect-square w-full overflow-hidden rounded-[14px] border text-left transition duration-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/40 sm:aspect-[4/3] lg:aspect-auto lg:h-[13cqw] ${isSelected ? "border-2 border-[#f4bd00]" : "border-border shadow-[0_4px_14px_rgb(27_35_51/0.12)] lg:border-white/70 lg:shadow-none lg:hover:border-white"}`}
                     >
                       <Image src={destination.image} alt="" fill sizes={HOME_DESTINATION_IMAGE_SIZES} className="object-cover" />
                       <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
-                      <span className="absolute inset-x-3 bottom-2 truncate font-[family-name:var(--font-display)] text-[15px] font-semibold leading-tight text-white sm:inset-x-4 sm:bottom-3 sm:text-xl lg:text-[25px]">{destination.state}</span>
+                      <span className="absolute inset-x-3 bottom-2 truncate font-[family-name:var(--font-display)] text-[15px] font-semibold leading-tight text-white sm:inset-x-4 sm:bottom-3 sm:text-lg lg:text-[1.75cqw]">{destination.state}</span>
                     </button>
                     <SaveToggleButton
                       appearance="icon"
@@ -331,8 +335,8 @@ export function CustomerHomeClient({
                 );
               })}
             </div>
-            <div className="mt-2 flex items-center gap-3">
-              <div className="lg:hidden">
+            <div className="flex items-center gap-3">
+              <div className="lg:hidden [&_button]:bg-foreground/20">
                 <HomeDestinationWormIndicator
                   count={destinationPager.pageCount}
                   progress={destinationPager.progress}
@@ -354,17 +358,16 @@ export function CustomerHomeClient({
                   onSelect={destinationPager.goToPage}
                 />
               </div>
-              <div className="ml-auto flex items-center max-lg:pr-16">
-                <Button variant="ghost" size="icon" aria-label={t("ui.map.previous")} disabled={destinationPager.page <= 0} onClick={() => destinationPager.goToPage(destinationPager.page - 1)} className="text-white hover:bg-transparent hover:text-accent active:bg-transparent active:text-accent active:scale-[.94] disabled:text-white/30 disabled:opacity-100 dark:hover:bg-transparent">
+              <div className="ml-auto flex items-center">
+                <Button variant="ghost" size="icon" aria-label={t("ui.map.previous")} disabled={destinationPager.page <= 0} onClick={() => destinationPager.goToPage(destinationPager.page - 1)} className="text-foreground hover:bg-transparent hover:text-accent active:bg-transparent active:text-accent active:scale-[.94] disabled:text-foreground/30 disabled:opacity-100 dark:hover:bg-transparent lg:text-white lg:disabled:text-white/30">
                   <ChevronLeft size={20} aria-hidden="true" />
                 </Button>
-                <Button variant="ghost" size="icon" aria-label={t("ui.map.next")} disabled={destinationPager.page >= destinationPager.pageCount - 1} onClick={() => destinationPager.goToPage(destinationPager.page + 1)} className="text-white hover:bg-transparent hover:text-accent active:bg-transparent active:text-accent active:scale-[.94] disabled:text-white/30 disabled:opacity-100 dark:hover:bg-transparent">
+                <Button variant="ghost" size="icon" aria-label={t("ui.map.next")} disabled={destinationPager.page >= destinationPager.pageCount - 1} onClick={() => destinationPager.goToPage(destinationPager.page + 1)} className="text-foreground hover:bg-transparent hover:text-accent active:bg-transparent active:text-accent active:scale-[.94] disabled:text-foreground/30 disabled:opacity-100 dark:hover:bg-transparent lg:text-white lg:disabled:text-white/30">
                   <ChevronRight size={20} aria-hidden="true" />
                 </Button>
               </div>
             </div>
-          </nav>
-        </div>
+        </nav>
       </section>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -525,7 +528,7 @@ export function CustomerHomeClient({
           stroke-dashoffset: 1;
           animation: atlas-accent-draw 800ms var(--atlas-ease-out) 460ms both;
         }
-        /* Four destinations per page from 1024px, two below. */
+        /* Four destinations per page from 1024px, three on tablets, two on phones. */
         .atlas-destination-pager {
           --per-page: 2;
           --destination-gap: 0.75rem;
@@ -553,10 +556,17 @@ export function CustomerHomeClient({
           .atlas-destination-card:hover { scale: 1.04; z-index: 2; }
         }
 
-        @media (max-width: 1023.98px) {
+        @media (max-width: 639.98px) {
           .atlas-destination-card:nth-child(2n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
           .atlas-destination-card:nth-child(2n + 1) { transform-origin: top left; }
           .atlas-destination-card:nth-child(2n) { transform-origin: top right; }
+        }
+
+        @media (min-width: 640px) and (max-width: 1023.98px) {
+          .atlas-destination-pager { --per-page: 3; }
+          .atlas-destination-card:nth-child(3n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
+          .atlas-destination-card:nth-child(3n + 1) { transform-origin: top left; }
+          .atlas-destination-card:nth-child(3n) { transform-origin: top right; }
         }
 
         @media (min-width: 1024px) {
@@ -574,9 +584,7 @@ export function CustomerHomeClient({
 
         .atlas-discover-title__lead,
         .atlas-discover-title__ending {
-          width: fit-content;
           padding: 0 .12em .22em 0;
-          margin-bottom: -.22em;
           background-image: linear-gradient(108deg, #fff8e9 0%, #fff1d2 28%, var(--malaysia-yellow) 78%, #f4b900 100%);
           background-clip: text;
           -webkit-background-clip: text;
@@ -588,7 +596,6 @@ export function CustomerHomeClient({
           font-style: normal;
           font-weight: 600;
           letter-spacing: -0.055em;
-          font-size: clamp(4.2rem, 9vw, 9.2rem);
         }
 
 

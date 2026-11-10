@@ -30,7 +30,7 @@ import type { Place } from "@/backend/core/types";
 import { getPlaceHeroImage } from "@/lib/customer/place-hero-image";
 import { getMalaysiaStateTranslationKey } from "@/lib/i18n/malaysia-states";
 import { getServerTranslation } from "@/lib/i18n/server";
-import { formatMYRNumber } from "@/lib/i18n/format";
+import { ReferencePrice } from "@/components/shared/reference-price";
 import { BRAND_NAME, MYR_CODE } from "@/lib/i18n/invariant-tokens";
 
 export const dynamic = "force-dynamic";
@@ -86,11 +86,12 @@ export default async function PlacePage({ params }: Props) {
   ]);
 
   const operator = place.managedByVendorId ? vendors.find((v) => v.id === place.managedByVendorId) : undefined;
+  // Same wording as the place cards (components/customer/place-card.tsx entryLabel).
   const entry = place.entryFee === null
-    ? { text: t("ui.place.noGate"), tone: "bg-muted text-muted-foreground" }
+    ? { text: t("ui.place.entryNotSpecified"), tone: "bg-muted text-muted-foreground" }
     : place.entryFee === 0
       ? { text: t("ui.place.freeEntry"), tone: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" }
-      : { text: t("ui.place.entryFee", { price: formatMYRNumber(place.entryFee) }), tone: "bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200" };
+      : { text: <><ReferencePrice amountMYR={place.entryFee} /> {t("ui.place.referenceEntry")}</>, tone: "bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200" };
 
   // Load all visible POI product counts together instead of rescanning the
   // entire catalogue once per PlaceCard.

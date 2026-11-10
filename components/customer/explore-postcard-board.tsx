@@ -14,7 +14,7 @@ import { activityToMapPlace } from "@/lib/demo-map/adapt";
 import { DEMO_STATES } from "@/lib/demo-map/data";
 import { MALAYSIA_DESTINATIONS, type MalaysiaDestination } from "@/lib/customer/malaysia-destinations";
 import { buildActivityPath } from "@/lib/customer/navigation-context";
-import { assignPostcardSlots, type BoardRegion, getPostcardBoardLayout, regionTransform, slotPin, stringPath, toBoardPoint } from "@/lib/customer/postcard-board";
+import { assignPostcardSlots, type BoardRegion, getPostcardBoardLayout, regionTransform, slotPin, stringPaths, toBoardPoint } from "@/lib/customer/postcard-board";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 
 const FLIP_AFTER_MS = 350;
@@ -119,6 +119,12 @@ export function ExplorePostcardBoard({
   const placed = useMemo(() => (layout
     ? postcards.map((card) => ({ card, slot: layout.slots[card.slot], anchor: toBoardPoint(card.mapPoint, card.region, layout) }))
     : []), [layout, postcards]);
+  const strings = useMemo(() => (layout
+    ? stringPaths(
+      placed.map(({ slot, anchor }) => ({ from: slotPin(slot, layout.card), to: anchor })),
+      placed.map(({ slot }) => ({ ...slot, w: layout.card.w, h: layout.card.h })),
+    )
+    : []), [layout, placed]);
   const regionTransforms = useMemo(() => (layout
     ? { peninsular: regionTransform("peninsular", layout), borneo: regionTransform("borneo", layout) }
     : null), [layout]);
@@ -232,12 +238,12 @@ export function ExplorePostcardBoard({
               />
             </div>
             <svg aria-hidden="true" className="pointer-events-none absolute inset-0" width={layout.width} height={layout.height}>
-              {placed.map(({ card, slot, anchor }) => {
+              {placed.map(({ card }, index) => {
                 const on = hot === card.stateId;
                 return (
                   <path
                     key={card.stateId}
-                    d={stringPath(slotPin(slot, layout.card), anchor)}
+                    d={strings[index]}
                     className="fill-none stroke-[color:var(--mw-string)] transition-all duration-200"
                     strokeWidth={on ? 3 : 1.6}
                     opacity={on ? 1 : 0.55}
@@ -245,11 +251,11 @@ export function ExplorePostcardBoard({
                 );
               })}
               {/* Wide invisible strokes so hovering a string highlights its state too; not focusable (card and state are). */}
-              {placed.map(({ card, slot, anchor }, index) => (
+              {placed.map(({ card }, index) => (
                 <path
                   key={card.stateId}
                   data-string-hit={card.stateId}
-                  d={stringPath(slotPin(slot, layout.card), anchor)}
+                  d={strings[index]}
                   className="cursor-pointer fill-none stroke-transparent"
                   strokeWidth={14}
                   pointerEvents="stroke"
