@@ -8,12 +8,12 @@ import type { ExtractedKycFields } from './runtime/ocr-fields.cjs';
 export type ModelManifest = { engine: string; version: string; coreVersion: string; models: { code: string; version: string; sha256: string }[] };
 export type NodeOcrMetrics = { initializationMs: number; recognitionPasses?: number; childRssBytes: number; cpu: { user: number; system: number }; manifest: ModelManifest };
 export type NodeOcrFailureStage = 'message_validation' | 'runtime_load' | 'image_decode' | 'model_manifest' | 'worker_initialize' |
-  'recognition_front' | 'recognition_back' | 'passport_recovery' | 'unexpected_child_error';
+  'recognition_front' | 'recognition_back' | 'passport_recovery' | 'unexpected_child_error' | 'child_bootstrap' | 'child_no_response';
 export type NodeKycOcrOutcome = { ok: true; fields: ExtractedKycFields; metrics: NodeOcrMetrics } |
   { ok: false; failureCode: 'configuration' | 'service_unavailable' | 'timeout' | 'invalid_response' | 'evidence_invalid'; retryable: boolean; failureStage?: NodeOcrFailureStage };
 let busy = false;
 const failureStages = new Set<NodeOcrFailureStage>(['message_validation', 'runtime_load', 'image_decode', 'model_manifest', 'worker_initialize',
-  'recognition_front', 'recognition_back', 'passport_recovery', 'unexpected_child_error']);
+  'recognition_front', 'recognition_back', 'passport_recovery', 'unexpected_child_error', 'child_bootstrap', 'child_no_response']);
 const failure = (failureCode: Extract<NodeKycOcrOutcome, { ok: false }>['failureCode'], retryable = false, failureStage?: NodeOcrFailureStage): NodeKycOcrOutcome => ({
   ok: false, failureCode, retryable, ...(failureStage ? { failureStage } : {}),
 });
@@ -81,9 +81,9 @@ export async function extractKycFieldsInNode(input: Pick<KycOcrInput, 'documentT
     accessSync(runtime);
     return await new Promise<NodeKycOcrOutcome>((resolve) => {
       const child = fork(runtime, [], { execPath: process.execPath, execArgv: [], env: { NODE_ENV: 'production' }, serialization: 'advanced', stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
-      let outcome: NodeKycOcrOutcome = failure('service_unavailable', true), received = false, timedOut = false;
+      let outcome: NodeKycOcrOutcome = failure('service_unavailable', true), received = false, childStartedAck = false, timedOut = false;
       let spawned = false, launchError: string | undefined;
-      let sendFailed = false;
+      let sendFailed = false, sendStatus: 'pending' | 'sent' | 'failed' = 'pending';
       let killTimer: ReturnType<typeof setTimeout> | undefined;
       const stop = () => {
         child.kill('SIGTERM');
@@ -91,10 +91,17 @@ export async function extractKycFieldsInNode(input: Pick<KycOcrInput, 'documentT
       };
       const timer = setTimeout(() => { timedOut = true; stop(); }, timeoutMs);
       child.once('spawn', () => { spawned = true; });
-      child.on('message', (message: unknown) => { if (!received) { received = true; outcome = parseNodeKycOcrOutcome(message); } });
+      child.on('message', (message: unknown) => {
+        if (message && typeof message === 'object' && !Array.isArray(message)
+          && Object.keys(message).length === 1 && (message as { kind?: unknown }).kind === 'started') {
+          childStartedAck = true;
+          return;
+        }
+        if (!received) { received = true; outcome = parseNodeKycOcrOutcome(message); }
+      });
       child.on('error', (error) => {
         const code = (error as NodeJS.ErrnoException).code;
-        if (code === 'ERR_IPC_CHANNEL_CLOSED') sendFailed = true;
+        if (code === 'ERR_IPC_CHANNEL_CLOSED') { sendFailed = true; sendStatus = 'failed'; }
         else launchError = code && launchErrorCodes.has(code) ? code : 'other';
         stop();
       });
@@ -103,20 +110,23 @@ export async function extractKycFieldsInNode(input: Pick<KycOcrInput, 'documentT
         let result = outcome;
         if (timedOut) result = failure('timeout', true);
         else if (launchError && !spawned) result = failure('configuration');
-        else if (code !== 0 || !received) result = failure('service_unavailable', true);
+        else if (!received || (code !== 0 && outcome.ok)) result = failure('service_unavailable', true,
+          childStartedAck ? 'child_no_response' : 'child_bootstrap');
         if (!result.ok && result.failureCode !== 'evidence_invalid') {
           // Log process status only. Child output and error messages can contain private data.
           console.warn('kyc_node_ocr_failed', { failureCode: result.failureCode,
-            ...(result.failureStage ? { failureStage: result.failureStage } : {}), received, exitCode: code, signal, launchError, sendFailed });
+            ...(result.failureStage ? { failureStage: result.failureStage } : {}), received, spawned, childStartedAck, sendStatus,
+            exitCode: code, signal, launchError, sendFailed });
         }
         resolve(result);
       });
       child.send({ documentType: input.documentType, front: input.front, back: input.back, timeoutMs }, (error) => {
-        if (error) { sendFailed = true; stop(); }
+        if (error) { sendFailed = true; sendStatus = 'failed'; stop(); }
+        else sendStatus = 'sent';
       });
     });
   } catch {
-    console.warn('kyc_node_ocr_failed', { failureCode: 'configuration', stage: 'runtime_setup' });
+    console.warn('kyc_node_ocr_failed', { failureCode: 'configuration', failureStage: 'runtime_setup' });
     return failure('configuration');
   }
   finally { busy = false; }

@@ -6,10 +6,10 @@ it('rejects arbitrary targets and never runs without explicit opt-in', async () 
   await expect(verifySyntheticOcr({ origin: 'https://mylawatan.my', runSynthetic: false, manifest: {}, secret: 'secret' }, fetch)).rejects.toThrow();
   expect(fetch).not.toHaveBeenCalled();
 });
-it('stops on the first failed probe instead of continuing three attempts', async () => {
-  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: false, failureCode: 'service_unavailable', failureStage: 'worker_initialize' }), { status: 503 }));
+it('accepts the fixed child-no-response stage and stops on the first failure', async () => {
+  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: false, failureCode: 'service_unavailable', failureStage: 'child_no_response' }), { status: 503 }));
   await expect(verifySyntheticOcr({ origin: 'http://127.0.0.1:3000', runSynthetic: true, manifest: {}, secret: 'secret' }, fetch))
-    .resolves.toEqual({ ok: false, failureCode: 'service_unavailable', failureStage: 'worker_initialize' });
+    .resolves.toEqual({ ok: false, failureCode: 'service_unavailable', failureStage: 'child_no_response' });
   expect(fetch).toHaveBeenCalledTimes(1);
 });
 it('rejects unallowlisted failure details from a probe response', async () => {
