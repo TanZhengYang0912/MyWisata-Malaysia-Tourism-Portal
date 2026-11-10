@@ -10,12 +10,14 @@ export type NodeOcrMetrics = { initializationMs: number; recognitionPasses?: num
 export type NodeOcrFailureStage = 'message_validation' | 'runtime_load' | 'image_decode' | 'model_manifest' | 'worker_initialize' |
   'worker_core_load' | 'worker_wasm_initialize' | 'worker_language_load' | 'worker_api_initialize' | 'worker_set_parameters' | 'worker_error_callback' |
   'recognition_front' | 'recognition_back' | 'passport_recovery' | 'unexpected_child_error' | 'child_bootstrap' | 'child_no_response';
+export type NodeOcrFailureReason = 'module_not_found' | 'invalid_worker_path' | 'tesseract_rejected' | 'unknown';
 export type NodeKycOcrOutcome = { ok: true; fields: ExtractedKycFields; metrics: NodeOcrMetrics } |
-  { ok: false; failureCode: 'configuration' | 'service_unavailable' | 'timeout' | 'invalid_response' | 'evidence_invalid'; retryable: boolean; failureStage?: NodeOcrFailureStage };
+  { ok: false; failureCode: 'configuration' | 'service_unavailable' | 'timeout' | 'invalid_response' | 'evidence_invalid'; retryable: boolean; failureStage?: NodeOcrFailureStage; failureReason?: NodeOcrFailureReason };
 let busy = false;
 const failureStages = new Set<NodeOcrFailureStage>(['message_validation', 'runtime_load', 'image_decode', 'model_manifest', 'worker_initialize',
   'worker_core_load', 'worker_wasm_initialize', 'worker_language_load', 'worker_api_initialize', 'worker_set_parameters', 'worker_error_callback',
   'recognition_front', 'recognition_back', 'passport_recovery', 'unexpected_child_error', 'child_bootstrap', 'child_no_response']);
+const failureReasons = new Set<NodeOcrFailureReason>(['module_not_found', 'invalid_worker_path', 'tesseract_rejected', 'unknown']);
 function parseChildPhase(value: unknown): NodeOcrFailureStage | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
   const message = value as Record<string, unknown>;
@@ -23,8 +25,9 @@ function parseChildPhase(value: unknown): NodeOcrFailureStage | undefined {
     || !failureStages.has(message.stage as NodeOcrFailureStage)) return undefined;
   return message.stage as NodeOcrFailureStage;
 }
-const failure = (failureCode: Extract<NodeKycOcrOutcome, { ok: false }>['failureCode'], retryable = false, failureStage?: NodeOcrFailureStage): NodeKycOcrOutcome => ({
-  ok: false, failureCode, retryable, ...(failureStage ? { failureStage } : {}),
+const failure = (failureCode: Extract<NodeKycOcrOutcome, { ok: false }>['failureCode'], retryable = false, failureStage?: NodeOcrFailureStage,
+  failureReason?: NodeOcrFailureReason): NodeKycOcrOutcome => ({
+  ok: false, failureCode, retryable, ...(failureStage ? { failureStage } : {}), ...(failureReason ? { failureReason } : {}),
 });
 const launchErrorCodes = new Set(['EACCES', 'EAGAIN', 'ENOENT', 'ENOMEM', 'EPERM', 'ERR_IPC_CHANNEL_CLOSED']);
 
@@ -34,8 +37,9 @@ export function parseNodeKycOcrOutcome(value: unknown): NodeKycOcrOutcome {
   const data = value as Record<string, unknown>;
   if (data.ok === false && ['configuration', 'service_unavailable', 'timeout', 'invalid_response', 'evidence_invalid'].includes(String(data.failureCode)) && typeof data.retryable === 'boolean') {
     if (data.failureStage !== undefined && (typeof data.failureStage !== 'string' || !failureStages.has(data.failureStage as NodeOcrFailureStage))) return failure('invalid_response');
+    if (data.failureReason !== undefined && (typeof data.failureReason !== 'string' || !failureReasons.has(data.failureReason as NodeOcrFailureReason))) return failure('invalid_response');
     return failure(data.failureCode as Extract<NodeKycOcrOutcome, { ok: false }>['failureCode'], data.retryable,
-      data.failureStage as NodeOcrFailureStage | undefined);
+      data.failureStage as NodeOcrFailureStage | undefined, data.failureReason as NodeOcrFailureReason | undefined);
   }
   if (data.ok !== true || !data.fields || typeof data.fields !== 'object') return failure('invalid_response');
   const fields = data.fields as Record<string, unknown>;
@@ -130,6 +134,7 @@ export async function extractKycFieldsInNode(input: Pick<KycOcrInput, 'documentT
           // Log process status only. Child output and error messages can contain private data.
           console.warn('kyc_node_ocr_failed', { failureCode: result.failureCode,
             ...(result.failureStage ? { failureStage: result.failureStage } : {}), received, spawned, childStartedAck, sendStatus,
+            ...('failureReason' in result && result.failureReason ? { failureReason: result.failureReason } : {}),
             exitCode: code, signal, launchError, sendFailed });
         }
         resolve(result);

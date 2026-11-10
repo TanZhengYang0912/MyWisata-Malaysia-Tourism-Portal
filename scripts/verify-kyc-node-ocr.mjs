@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { isDeepStrictEqual } from 'node:util';
 const failureCodes = new Set(['configuration', 'service_unavailable', 'timeout', 'invalid_response', 'evidence_invalid']);
+const failureReasons = new Set(['module_not_found', 'invalid_worker_path', 'tesseract_rejected', 'unknown']);
 const failureStages = new Set(['message_validation', 'runtime_load', 'image_decode', 'model_manifest', 'worker_initialize',
   'worker_core_load', 'worker_wasm_initialize', 'worker_language_load', 'worker_api_initialize', 'worker_set_parameters', 'worker_error_callback',
   'recognition_front', 'recognition_back', 'passport_recovery', 'unexpected_child_error', 'child_bootstrap', 'child_no_response']);
@@ -20,8 +21,10 @@ export async function verifySyntheticOcr(options, request = fetch) {
     const result = JSON.parse(raw);
     if (!response.ok) {
       if (response.status === 503 && result?.ok === false && failureCodes.has(result.failureCode)
-        && (result.failureStage === undefined || failureStages.has(result.failureStage))) {
-        return { ok: false, failureCode: result.failureCode, ...(result.failureStage ? { failureStage: result.failureStage } : {}) };
+        && (result.failureStage === undefined || failureStages.has(result.failureStage))
+        && (result.failureReason === undefined || failureReasons.has(result.failureReason))) {
+        return { ok: false, failureCode: result.failureCode, ...(result.failureStage ? { failureStage: result.failureStage } : {}),
+          ...(result.failureReason ? { failureReason: result.failureReason } : {}) };
       }
       throw new Error('probe_failed');
     }

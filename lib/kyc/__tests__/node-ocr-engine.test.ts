@@ -7,7 +7,7 @@ import { mkdtemp, mkdir, copyFile, symlink, writeFile, readFile, rm } from 'node
 import { tmpdir } from 'node:os';
 import sharp from 'sharp';
 import { extractKycFieldsInNode, parseNodeKycOcrOutcome } from '../node-ocr-engine';
-import { createTesseractInitializationReporter, initializationStageForTesseractStatus } from '../runtime/tesseract-diagnostics.cjs';
+import { classifyTesseractFailure, createTesseractInitializationReporter, initializationStageForTesseractStatus } from '../runtime/tesseract-diagnostics.cjs';
 
 const image = { mimeType: 'image/png', bytes: new Uint8Array([1, 2]) };
 afterEach(() => vi.unstubAllEnvs());
@@ -18,6 +18,12 @@ it('maps only known Tesseract initialization statuses to fixed safe phases', () 
   expect(initializationStageForTesseractStatus('initializing api')).toBe('worker_api_initialize');
   expect(initializationStageForTesseractStatus('/private/path/private-document-name')).toBeUndefined();
   expect(initializationStageForTesseractStatus({ status: 'loading language traineddata', error: 'private OCR text' })).toBeUndefined();
+});
+it('maps Tesseract errors to fixed safe failure reasons without exposing their text', () => {
+  expect(classifyTesseractFailure(new Error("Cannot find module '/private/app/tesseract-worker.js'"))).toBe('module_not_found');
+  expect(classifyTesseractFailure('ERR_WORKER_PATH: /private/worker.js')).toBe('invalid_worker_path');
+  expect(classifyTesseractFailure('initialization failed: /private/model path')).toBe('tesseract_rejected');
+  expect(classifyTesseractFailure(new Error('private raw exception'))).toBe('unknown');
 });
 it('preserves the last specific initialization phase and ignores private callback data', () => {
   const phases: string[] = [];
@@ -224,10 +230,10 @@ it('returns the current safe stage when the OCR child has an unhandled rejection
     try { pending = extractKycFieldsInNode({ documentType: 'national_id', front: image, back: image }, 2000); }
     finally { cwd.mockRestore(); }
 
-    expect(await pending).toEqual({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'worker_initialize' });
+    expect(await pending).toEqual({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'worker_initialize', failureReason: 'unknown' });
     expect(JSON.stringify(warning.mock.calls)).not.toContain('private raw error');
     expect(warning.mock.calls[0]?.[0]).toBe('kyc_node_ocr_failed');
-    expect(warning.mock.calls[0]?.[1]).toMatchObject({ failureCode: 'service_unavailable', failureStage: 'worker_initialize', received: true,
+    expect(warning.mock.calls[0]?.[1]).toMatchObject({ failureCode: 'service_unavailable', failureStage: 'worker_initialize', failureReason: 'unknown', received: true,
       spawned: true, childStartedAck: true, sendStatus: 'sent', exitCode: 0, signal: null });
   } finally {
     warning.mockRestore();
@@ -253,7 +259,7 @@ it('does not send a success result after reporting a fatal child error', async (
     await once(child, 'close');
 
     expect(messages).toEqual([{ kind: 'started' }, { kind: 'phase', stage: 'message_validation' },
-      { kind: 'phase', stage: 'worker_initialize' }, { ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'worker_initialize' }]);
+      { kind: 'phase', stage: 'worker_initialize' }, { ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'worker_initialize', failureReason: 'unknown' }]);
   } finally {
     if (child?.exitCode === null) child.kill('SIGKILL');
     await rm(root, { recursive: true, force: true });

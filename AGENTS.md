@@ -251,7 +251,10 @@ If unable, explain why.
 ## Commit Message
 
 After implementing a plan or any code change, end the final chat reply with a
-commit message the user can copy (the user commits; never run git commit):
+commit message the user can copy. Do not run `git commit` unless the user has
+explicitly authorized committing in the current task or an active prior
+instruction. When authorized, verify the staged diff and commit only files
+belonging to the requested task. Push or merge only when explicitly authorized:
 
 ```text
 <Summary: one line, English, imperative, max 70 characters>

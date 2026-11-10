@@ -12,12 +12,13 @@ beforeEach(() => {
 });
 
 it('returns only allowlisted OCR failure details for the protected synthetic probe', async () => {
-  mocks.extract.mockResolvedValue({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'worker_initialize' });
+  mocks.extract.mockResolvedValue({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'worker_initialize', failureReason: 'module_not_found' });
 
   await expect(runKycSyntheticProbe()).resolves.toEqual({
     ok: false,
     failureCode: 'service_unavailable',
     failureStage: 'worker_initialize',
+    failureReason: 'module_not_found',
   });
 });
 

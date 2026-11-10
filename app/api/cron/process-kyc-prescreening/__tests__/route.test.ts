@@ -40,10 +40,10 @@ it('rejects synthetic probe while formal processing is enabled, before DB access
 });
 it('returns only safe OCR failure stage details from synthetic probe without touching business data', async () => {
  vi.stubEnv('KYC_NODE_OCR_PROBE_ENABLED','true'); vi.stubEnv('KYC_PRESCREENING_ENABLED','false');
- mocks.probe.mockResolvedValue({ok:false,failureCode:'service_unavailable',failureStage:'worker_initialize'});
+ mocks.probe.mockResolvedValue({ok:false,failureCode:'service_unavailable',failureStage:'worker_initialize',failureReason:'module_not_found'});
  const response=await POST(new Request('http://localhost',{method:'POST',headers:{authorization:'Bearer test-secret'},body:JSON.stringify({mode:'synthetic-check'})}));
  expect(response.status).toBe(503);
- expect(await response.json()).toEqual({ok:false,failureCode:'service_unavailable',failureStage:'worker_initialize'});
+ expect(await response.json()).toEqual({ok:false,failureCode:'service_unavailable',failureStage:'worker_initialize',failureReason:'module_not_found'});
  expect(mocks.create).not.toHaveBeenCalled(); expect(mocks.run).not.toHaveBeenCalled();
 });
 it('rejects unknown mode and excessive streamed JSON before service creation', async () => {
