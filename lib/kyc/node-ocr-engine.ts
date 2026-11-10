@@ -104,12 +104,16 @@ export async function extractKycFieldsInNode(input: Pick<KycOcrInput, 'documentT
       let spawned = false, launchError: string | undefined;
       let sendFailed = false, sendStatus: 'pending' | 'sent' | 'failed' = 'pending';
       let childIpcDisconnected = false;
+      let parentStopReason: 'parent_timeout' | 'child_process_error' | 'ipc_send_error' | undefined;
+      let parentKillRequested = false;
       let killTimer: ReturnType<typeof setTimeout> | undefined;
-      const stop = () => {
+      const stop = (reason: NonNullable<typeof parentStopReason>) => {
+        parentStopReason ??= reason;
+        parentKillRequested = true;
         child.kill('SIGTERM');
         killTimer ??= setTimeout(() => child.kill('SIGKILL'), 2000);
       };
-      const timer = setTimeout(() => { timedOut = true; stop(); }, timeoutMs);
+      const timer = setTimeout(() => { timedOut = true; stop('parent_timeout'); }, timeoutMs);
       child.once('spawn', () => { spawned = true; });
       child.on('message', (message: unknown) => {
         if (message && typeof message === 'object' && !Array.isArray(message)
@@ -127,7 +131,7 @@ export async function extractKycFieldsInNode(input: Pick<KycOcrInput, 'documentT
         const code = (error as NodeJS.ErrnoException).code;
         if (code === 'ERR_IPC_CHANNEL_CLOSED') { sendFailed = true; sendStatus = 'failed'; }
         else launchError = code && launchErrorCodes.has(code) ? code : 'other';
-        stop();
+        stop(code === 'ERR_IPC_CHANNEL_CLOSED' ? 'ipc_send_error' : 'child_process_error');
       });
       child.on('disconnect', () => { childIpcDisconnected = true; });
       child.on('close', (code, signal) => {
@@ -142,12 +146,12 @@ export async function extractKycFieldsInNode(input: Pick<KycOcrInput, 'documentT
           console.warn('kyc_node_ocr_failed', { failureCode: result.failureCode,
             ...(result.failureStage ? { failureStage: result.failureStage } : {}), received, spawned, childStartedAck, sendStatus,
             ...('failureReason' in result && result.failureReason ? { failureReason: result.failureReason } : {}),
-            exitCode: code, signal, launchError, sendFailed, childIpcDisconnected, parentTimedOut: timedOut, durationMs: Math.round(performance.now() - startedAt) });
+            exitCode: code, signal, launchError, sendFailed, childIpcDisconnected, parentStopReason, parentKillRequested, parentTimedOut: timedOut, durationMs: Math.round(performance.now() - startedAt) });
         }
         resolve(result);
       });
       child.send({ documentType: input.documentType, front: input.front, back: input.back, timeoutMs }, (error) => {
-        if (error) { sendFailed = true; sendStatus = 'failed'; stop(); }
+        if (error) { sendFailed = true; sendStatus = 'failed'; stop('ipc_send_error'); }
         else sendStatus = 'sent';
       });
     });
