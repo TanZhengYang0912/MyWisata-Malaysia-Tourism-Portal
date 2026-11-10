@@ -184,9 +184,10 @@ it('ignores unknown child phase messages without reflecting their contents', asy
     await rm(root, { recursive: true, force: true });
   }
 }, 5000);
-it('keeps parent timeout precedence after receiving a child phase', async () => {
+it('records the parent timeout as the SIGTERM source', async () => {
   const root = await mkdtemp(resolve(tmpdir(), 'kyc-child-phase-timeout-'));
   const runtime = resolve(root, 'lib/kyc/runtime');
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
   try {
     await mkdir(runtime, { recursive: true });
     await writeFile(resolve(runtime, 'tesseract-process.cjs'),
@@ -197,7 +198,8 @@ it('keeps parent timeout precedence after receiving a child phase', async () => 
     finally { cwd.mockRestore(); }
 
     expect(await pending).toMatchObject({ ok: false, failureCode: 'timeout', retryable: true });
-  } finally { await rm(root, { recursive: true, force: true }); }
+    expect(warning.mock.calls[0]?.[1]).toMatchObject({ parentStopReason: 'parent_timeout', parentTimedOut: true });
+  } finally { warning.mockRestore(); await rm(root, { recursive: true, force: true }); }
 }, 5000);
 it('logs the allowlisted OCR stage returned by the child without error text', async () => {
   const root = await mkdtemp(resolve(tmpdir(), 'kyc-child-stage-'));
