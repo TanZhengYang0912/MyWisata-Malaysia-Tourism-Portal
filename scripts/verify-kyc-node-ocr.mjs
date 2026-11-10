@@ -4,10 +4,11 @@ import { pathToFileURL } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { isDeepStrictEqual } from 'node:util';
 const failureCodes = new Set(['configuration', 'service_unavailable', 'timeout', 'invalid_response', 'evidence_invalid']);
-const failureReasons = new Set(['module_not_found', 'invalid_worker_path', 'tesseract_rejected', 'unknown']);
+const failureReasons = new Set(['module_not_found', 'invalid_worker_path', 'tesseract_rejected', 'unknown', 'watchdog_timeout', 'signal_termination']);
 const failureStages = new Set(['message_validation', 'runtime_load', 'image_decode', 'model_manifest', 'worker_initialize',
   'worker_core_load', 'worker_wasm_initialize', 'worker_language_load', 'worker_api_initialize', 'worker_set_parameters', 'worker_error_callback',
-  'recognition_front', 'recognition_back', 'passport_recovery', 'unexpected_child_error', 'child_bootstrap', 'child_no_response']);
+  'recognition_front', 'recognition_back', 'passport_recovery', 'unexpected_child_error', 'child_bootstrap', 'child_no_response',
+  'child_terminated', 'child_ipc_disconnected']);
 export async function verifySyntheticOcr(options, request = fetch) {
   const origin = new URL(options.origin);
   const local = origin.protocol === 'http:' && ['127.0.0.1', '[::1]'].includes(origin.hostname);

@@ -311,6 +311,17 @@ it('bounds child lifetime if fatal IPC delivery never calls back', async () => {
     expect(await pending).toEqual({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'worker_initialize' });
   } finally { await rm(root, { recursive: true, force: true }); }
 }, 5000);
+it('reports a safe termination reason when the real child receives SIGTERM', async () => {
+  const child = fork(resolve('lib/kyc/runtime/tesseract-process.cjs'), [], { env: { NODE_ENV: 'production' }, execArgv: [], stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+  const messages: unknown[] = [];
+  child.on('message', (message: unknown) => messages.push(message));
+  const closed = once(child, 'close');
+  await once(child, 'spawn');
+  await sleep(100);
+  child.kill('SIGTERM');
+  await closed;
+  expect(messages).toContainEqual({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'child_terminated', failureReason: 'signal_termination' });
+}, 5000);
 it('child exits when the parent IPC connection disappears', async () => {
   const child = fork(resolve('lib/kyc/runtime/tesseract-process.cjs'), [], { env: { NODE_ENV: 'production' }, execArgv: [], stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
   const closed = once(child, 'exit');
