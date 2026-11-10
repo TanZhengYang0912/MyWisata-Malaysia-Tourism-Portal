@@ -32,7 +32,7 @@ import {
 } from "@/app/customer/customer-home-client";
 
 describe("customer home Discover Malaysia hero", () => {
-  it("renders the localized hero title with its dedicated editorial display face", () => {
+  it("renders the active state as the editorial display title", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     const markup = renderToStaticMarkup(
       <CustomerHomeClient highlightItems={[]} forYouItems={[]} vendors={[]} campaign={null} />,
@@ -42,8 +42,7 @@ describe("customer home Discover Malaysia hero", () => {
 
     expect(title).toContain("atlas-discover-title");
     expect(title).toContain("font-[family-name:var(--font-discover-title)]");
-    expect(title).toMatch(/<span class="[^"]*atlas-discover-title__lead[^"]*">Discover <\/span>/);
-    expect(title).toMatch(/<span class="[^"]*atlas-discover-title__ending[^"]*">Malaysia<\/span>/);
+    expect(title).toContain(">Kuala Lumpur</span>");
   });
 
   it("renders the image-led title and removes typed search and shortcut content", () => {
@@ -62,7 +61,9 @@ describe("customer home Discover Malaysia hero", () => {
     consoleError.mockRestore();
 
     expect(unexpectedRenderErrors).toEqual([]);
-    expect(markup).toMatch(/Discover <\/span><span class="atlas-discover-title__ending[^\"]*">Malaysia/);
+    expect(markup).toMatch(/<span class="atlas-discover-title__ending[^\"]*">Kuala Lumpur/);
+    expect(markup).not.toContain("Discover Malaysia");
+    expect(markup).not.toContain("ui.home.exploreDestinations");
     expect(markup).not.toContain("ui.home.searchAria");
     expect(markup).not.toContain("ui.home.startExploring");
     expect(markup).not.toContain("ui.home.quickSearches");
@@ -78,11 +79,10 @@ describe("customer home Discover Malaysia hero", () => {
     );
 
     expect(destinationCarousel).not.toMatch(/>01<\/span> <span[^>]*>\/<\/span> 04/);
-    expect(destinationCarousel).not.toContain('aria-label="ui.map.previous"');
-    expect(destinationCarousel).not.toContain('aria-label="ui.map.next"');
+    expect(destinationCarousel).toContain('aria-label="ui.map.previous"');
+    expect(destinationCarousel).toContain('aria-label="ui.map.next"');
     expect(destinationCarousel).toContain('aria-label="ui.home.destinationCarouselControls"');
-    expect(destinationCarousel).toContain('aria-label="ui.home.viewDestination"');
-    expect(destinationCarousel).not.toContain(">ui.home.viewDestination</a>");
+    expect(destinationCarousel).not.toContain('aria-label="ui.home.viewDestination"');
     expect(destinationCarousel.match(/<button[^>]*aria-pressed="(?:true|false)"[^>]*class="group relative block/g)).toHaveLength(MALAYSIA_DESTINATIONS.length);
     expect(destinationPositions.every((position) => position >= 0)).toBe(true);
     expect(destinationPositions).toEqual([...destinationPositions].sort((left, right) => left - right));
@@ -154,7 +154,7 @@ describe("customer home Discover Malaysia hero", () => {
       <CustomerHomeClient highlightItems={[]} forYouItems={[]} vendors={[]} campaign={null} />,
     );
     const destinationImages = Array.from(
-      markup.matchAll(/<img\b(?=[^>]*group-hover:scale-\[1\.045\])[^>]*>/g),
+      markup.matchAll(/<button[^>]*aria-pressed="(?:true|false)"[^>]*><img\b[^>]*>/g),
       ([image]) => image,
     );
 

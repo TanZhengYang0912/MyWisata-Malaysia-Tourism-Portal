@@ -17,15 +17,17 @@ type PlaceActivityCardProps = {
   rating?: ReactNode;
   meta?: ReactNode;
   title: string;
-  description: string;
-  /** Title and description are translated when the entity supports it. */
-  translation?: { entityType: PublicTranslationEntity; entityId: string; titleField: "name" | "title" };
+  /** Left out (with no translation request) when blank. */
+  description?: string;
+  /** Title and description are translated when the entity supports it; descriptionField names the real source field. */
+  translation?: { entityType: PublicTranslationEntity; entityId: string; titleField: "name" | "title"; descriptionField?: "description" | "tagline" | "intro" };
   footer: ReactNode;
 };
 
-/** The Place page variant of the shared card: photo left (45%, 4:3) from md up, stacked on phones, full description. */
+/** The Place-context card (a POI or a linked activity): photo left (45%, 4:3) from md up, stacked on phones, full description. */
 export function PlaceActivityCard({ translation, title, description, ...props }: PlaceActivityCardProps) {
-  const card = (text: string, control?: ReactNode, body: ReactNode = description) => (
+  const sourceDescription = description?.trim() ? description : undefined;
+  const card = (text: string, control?: ReactNode, body: ReactNode = sourceDescription) => (
     <CardFrame
       layout="place"
       href={props.href}
@@ -46,7 +48,7 @@ export function PlaceActivityCard({ translation, title, description, ...props }:
   if (!translation) return card(title);
   return (
     <LocalizedContent entityType={translation.entityType} entityId={translation.entityId} field={translation.titleField} sourceText={title}>
-      {({ text, control }) => card(text, control, <LocalizedContent entityType={translation.entityType} entityId={translation.entityId} field="description" sourceText={description} />)}
+      {({ text, control }) => card(text, control, sourceDescription && <LocalizedContent entityType={translation.entityType} entityId={translation.entityId} field={translation.descriptionField ?? "description"} sourceText={sourceDescription} />)}
     </LocalizedContent>
   );
 }

@@ -331,15 +331,15 @@ export function ExploreClient({
   };
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-background">
+    <div className={`min-h-screen overflow-x-clip bg-background${tab === "destinations" ? " lg:h-[calc(100svh-var(--customer-header-h,4.3125rem)-2rem)] lg:min-h-0 lg:flex lg:flex-col [@media(min-width:1024px)_and_(max-height:599.98px)]:h-auto" : ""}`}>
       {dataUnavailable && (
-        <p role="status" className="mx-auto max-w-7xl px-4 py-3 text-sm text-muted-foreground sm:px-6">
+        <p role="status" className="mx-auto w-full max-w-7xl shrink-0 px-4 py-3 text-sm text-muted-foreground sm:px-6">
           {t("ui.states.loadingError")}
         </p>
       )}
       {/* Header */}
-      <section className="border-b border-border bg-background">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
+      <section className="shrink-0 border-b border-border bg-background">
+        <div className={`mx-auto max-w-7xl px-4 sm:px-6${tab === "destinations" ? " py-4 sm:py-5" : " py-8 sm:py-10"}`}>
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.explore.eyebrow")}</p>

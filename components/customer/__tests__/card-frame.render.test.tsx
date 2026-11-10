@@ -143,6 +143,12 @@ describe("PlaceActivityCard", () => {
     expect(markup).not.toContain("<a ");
     expect(markup).not.toContain("hover:scale-[1.04]");
   });
+  it("leaves the description out entirely when there is none, even with translation", () => {
+    for (const description of [undefined, "", "   "]) {
+      const markup = renderToStaticMarkup(<PlaceActivityCard href="/customer/place/a" imageUrl={null} imageAlt="A" imageFallback={null} title="A Famosa" description={description} translation={{ entityType: "place", entityId: "p", titleField: "name", descriptionField: "intro" }} footer="Free Entry" />);
+      expect(markup).not.toContain("leading-[1.65]");
+    }
+  });
 });
 
 it("gives See More the same yellow hover and press feedback as the paging arrows", () => {

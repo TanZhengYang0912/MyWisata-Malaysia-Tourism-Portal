@@ -18,11 +18,27 @@ vi.mock("@/components/ui/dialog", () => ({
 // The real outline needs SVG path rendering; keep its contract (select by state id) with a stand-in.
 vi.mock("@/components/demo-map/malaysia-state-map", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/components/demo-map/malaysia-state-map")>()),
-  MalaysiaStateOutline: ({ onSelectState }: { onSelectState: (id: string) => void }) => <button type="button" data-testid="map-sabah" onClick={() => onSelectState("sabah")} />,
+  MalaysiaStateOutline: (props: { onSelectState: (id: string) => void; viewBox: string; regionTransforms: Record<string, string> }) => {
+    outlineProps = props;
+    return <button type="button" data-testid="map-sabah" onClick={() => props.onSelectState("sabah")} />;
+  },
 }));
+
+let outlineProps: { viewBox: string; regionTransforms: Record<string, string> } | null = null;
+// One fake ResizeObserver per board; tests size the viewport and fire it like the browser would.
+const observers: { callback: () => void; disconnected: boolean }[] = [];
+class FakeResizeObserver {
+  record: { callback: () => void; disconnected: boolean };
+  constructor(callback: () => void) { this.record = { callback, disconnected: false }; observers.push(this.record); }
+  observe() {}
+  unobserve() {}
+  disconnect() { this.record.disconnected = true; }
+}
+(globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = FakeResizeObserver;
 
 import { ExplorePostcardBoard } from "@/components/customer/explore-postcard-board";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
+import { getPostcardBoardLayout, regionTransform } from "@/lib/customer/postcard-board";
 
 const activity = (id: string, state: string, extra: Record<string, unknown> = {}) => ({
   id, name: `Name ${id}`, price: 10, categorySlug: "activity", image: `/${id}.jpg`, sponsorship: null,
@@ -49,6 +65,15 @@ const dialog = () => findElements(container, (element) => element.getAttribute("
 const openButton = (within: TestElement, state: string) =>
   findOne(within, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-label") === `ui.explore.postcard.open|${JSON.stringify({ state })}`);
 const links = (within: TestElement) => findElements(within, (element) => element.tagName === "A");
+/** Gives the board viewport a size and lets the observer's coalesced frame run. */
+async function resizeBoard(width: number, height: number) {
+  Object.defineProperty(board(), "clientWidth", { configurable: true, value: width });
+  Object.defineProperty(board(), "clientHeight", { configurable: true, value: height });
+  await act(async () => {
+    for (const observer of observers) if (!observer.disconnected) observer.callback();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  });
+}
 
 describe("ExplorePostcardBoard", () => {
   beforeAll(async () => {
@@ -65,6 +90,7 @@ describe("ExplorePostcardBoard", () => {
     await act(async () => {
       root.render(<ExplorePostcardBoard activities={activities} statesWithPlaces={["Sabah"]} returnTo="/customer/explore" onSponsoredClick={onSponsoredClick} />);
     });
+    await resizeBoard(1232, 620);
   });
   afterEach(() => {
     act(() => root.unmount());
@@ -116,6 +142,41 @@ describe("ExplorePostcardBoard", () => {
     const hrefs = links(dialog()).map((link) => link.getAttribute("href"));
     expect(hrefs).toEqual(["/customer/destination/negeri-sembilan"]);
     expect(dialog().textContent).not.toContain("ui.explore.postcard.ps");
+  });
+
+  it("draws every layer from one measured layout: strings end on their dots, shapes share the offset", async () => {
+    const layout = getPostcardBoardLayout(1232, 620)!;
+    expect(outlineProps?.viewBox).toBe(`0 0 ${layout.width} 680`);
+    expect(outlineProps?.regionTransforms).toEqual({ peninsular: regionTransform("peninsular", layout), borneo: regionTransform("borneo", layout) });
+    const strings = findElements(board(), (element) => element.tagName.toLowerCase() === "path" && element.getAttribute("data-string-hit") === null);
+    const hits = findElements(board(), (element) => element.getAttribute("data-string-hit") !== null);
+    expect(strings.map((path) => path.getAttribute("d"))).toEqual(hits.map((path) => path.getAttribute("d")));
+    for (const hit of hits) {
+      const dot = findOne(board(), (element) => element.getAttribute("data-state-dot") === hit.getAttribute("data-string-hit"));
+      expect(hit.getAttribute("d")!.endsWith(` ${dot.getAttribute("cx")},${dot.getAttribute("cy")}`)).toBe(true);
+    }
+    const postcard = openButton(board(), "Perlis");
+    const style = postcard.style as unknown as Record<string, string>;
+    expect(style.width).toBe(`${layout.card.w}px`);
+    expect(style.height).toBe(`${layout.card.h}px`);
+  });
+
+  it("draws nothing while the board has no size and lays out again when it gets one", async () => {
+    await resizeBoard(0, 0);
+    expect(findElements(board(), (element) => element.getAttribute("data-state-dot") !== null)).toHaveLength(0);
+    expect(findElements(board(), (element) => element.tagName === "BUTTON" || element.tagName.toLowerCase() === "path")).toHaveLength(0);
+    await resizeBoard(976, 620);
+    const layout = getPostcardBoardLayout(976, 620)!;
+    expect(outlineProps?.viewBox).toBe(`0 0 ${layout.width} 680`);
+    expect(findElements(board(), (element) => element.getAttribute("data-state-dot") !== null)).toHaveLength(16);
+  });
+
+  it("disconnects its observer on unmount", () => {
+    const live = observers.filter((observer) => !observer.disconnected);
+    expect(live).toHaveLength(1);
+    act(() => root.unmount());
+    expect(live[0].disconnected).toBe(true);
+    root = createRoot(container as unknown as Element);
   });
 
   it("opens from the map and steps to the next postcard", async () => {

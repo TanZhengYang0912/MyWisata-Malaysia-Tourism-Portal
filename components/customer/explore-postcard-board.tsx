@@ -14,11 +14,10 @@ import { activityToMapPlace } from "@/lib/demo-map/adapt";
 import { DEMO_STATES } from "@/lib/demo-map/data";
 import { MALAYSIA_DESTINATIONS, type MalaysiaDestination } from "@/lib/customer/malaysia-destinations";
 import { buildActivityPath } from "@/lib/customer/navigation-context";
-import { assignPostcardSlots, BOARD, regionTransform, SLOTS, slotPin, stringPath, toBoardPoint } from "@/lib/customer/postcard-board";
+import { assignPostcardSlots, type BoardRegion, getPostcardBoardLayout, regionTransform, slotPin, stringPath, toBoardPoint } from "@/lib/customer/postcard-board";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 
 const FLIP_AFTER_MS = 350;
-const REGION_TRANSFORMS = { peninsular: regionTransform("peninsular"), borneo: regionTransform("borneo") };
 
 type Postcard = {
   dest: MalaysiaDestination;
@@ -27,7 +26,8 @@ type Postcard = {
   picks: DiscoveryResult[];
   ps: DiscoveryResult | null;
   seeAllHref: string;
-  anchor: { x: number; y: number };
+  mapPoint: { x: number; y: number };
+  region: BoardRegion;
   slot: number;
   rotation: number;
 };
@@ -62,7 +62,7 @@ export function ExplorePostcardBoard({
   const [hot, setHot] = useState<string | null>(null);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [flipped, setFlipped] = useState(false);
-  const [scale, setScale] = useState(1);
+  const [size, setSize] = useState({ width: 0, height: 0 });
   const boardRef = useRef<HTMLDivElement>(null);
 
   const postcards = useMemo<Postcard[]>(() => {
@@ -75,6 +75,7 @@ export function ExplorePostcardBoard({
       const state = DEMO_STATES.find((item) => item.name === dest.state);
       const point = state && stateAnchor(state.id);
       if (!state || !point) return [];
+      const region: BoardRegion = state.region === "Borneo" ? "borneo" : "peninsular";
       const list = byState.get(state.id) ?? [];
       const picks = list.slice(0, 3);
       const slug = dest.state.toLowerCase().replace(/\s+/g, "-");
@@ -85,23 +86,42 @@ export function ExplorePostcardBoard({
         picks,
         ps: list.find((activity) => activity.sponsorship && !picks.includes(activity)) ?? null,
         seeAllHref: statesWithPlaces.includes(dest.state) ? `/customer/place/${slug}` : `/customer/destination/${encodeURIComponent(slug)}`,
-        anchor: toBoardPoint(point, state.region === "Borneo" ? "borneo" : "peninsular"),
+        mapPoint: point,
+        region,
         slot: 0,
         rotation: tilt(state.id),
       }];
     });
-    const slots = assignPostcardSlots(cards.map((card) => ({ id: card.stateId, ...card.anchor })));
+    // Slots are assigned on the fixed base board, so the card order never changes with the viewport.
+    const slots = assignPostcardSlots(cards.map((card) => ({ id: card.stateId, ...toBoardPoint(card.mapPoint, card.region) })));
     return cards.map((card) => ({ ...card, slot: slots[card.stateId] })).sort((a, b) => a.slot - b.slot);
   }, [activities, statesWithPlaces]);
 
-  // The board is drawn at 1100px and scaled down to the container width.
+  // The parent gives the viewport its width and height; the board is laid out to fill it (one measure per frame).
   useEffect(() => {
     const el = boardRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => setScale(Math.min(1, (el.clientWidth || BOARD.width) / BOARD.width)));
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const width = el.clientWidth, height = el.clientHeight;
+      setSize((previous) => (previous.width === width && previous.height === height ? previous : { width, height }));
+    };
+    const observer = new ResizeObserver(() => { if (!frame) frame = requestAnimationFrame(measure); });
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, []);
+
+  const layout = useMemo(() => getPostcardBoardLayout(size.width, size.height), [size]);
+  const placed = useMemo(() => (layout
+    ? postcards.map((card) => ({ card, slot: layout.slots[card.slot], anchor: toBoardPoint(card.mapPoint, card.region, layout) }))
+    : []), [layout, postcards]);
+  const regionTransforms = useMemo(() => (layout
+    ? { peninsular: regionTransform("peninsular", layout), borneo: regionTransform("borneo", layout) }
+    : null), [layout]);
 
   const flipTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(flipTimer.current), []);
@@ -190,82 +210,88 @@ export function ExplorePostcardBoard({
   );
 
   return (
-    <section aria-label={t("ui.explore.destinations")} className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+    <section aria-label={t("ui.explore.destinations")} className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:py-4">
 
-      <div ref={boardRef} data-testid="postcard-board" className="relative hidden w-full lg:block" style={{ height: BOARD.height * scale }}>
-        <div
-          className="absolute left-0 top-0 origin-top-left rounded-[14px] bg-[color:var(--mw-cork)] bg-[image:radial-gradient(circle_at_20%_30%,var(--mw-cork-grain)_0_2px,transparent_3px)] bg-[length:13px_13px] shadow-[inset_0_0_0_14px_var(--mw-cork-frame),0_30px_60px_rgb(0_0_0/0.35)]"
-          style={{ width: BOARD.width, height: BOARD.height, transform: `scale(${scale})` }}
-        >
-          <div className="absolute inset-0">
-            <MalaysiaStateOutline
-              highlightedStateId={hot}
-              onHoverState={setHot}
-              onSelectState={open}
-              viewBox={`0 0 ${BOARD.width} ${BOARD.height}`}
-              regionTransforms={REGION_TRANSFORMS}
-            />
-          </div>
-          <svg aria-hidden="true" className="pointer-events-none absolute inset-0" width={BOARD.width} height={BOARD.height}>
-            {postcards.map((card) => {
-              const on = hot === card.stateId;
-              return (
+      <div
+        ref={boardRef}
+        data-testid="postcard-board"
+        className="relative hidden w-full rounded-[14px] bg-[color:var(--mw-cork)] bg-[image:radial-gradient(circle_at_20%_30%,var(--mw-cork-grain)_0_2px,transparent_3px)] bg-[length:13px_13px] shadow-[inset_0_0_0_14px_var(--mw-cork-frame),0_30px_60px_rgb(0_0_0/0.35)] lg:block lg:max-h-[620px] lg:min-h-0 lg:flex-1 [@media(min-width:1024px)_and_(max-height:599.98px)]:h-[max(260px,calc(100svh-var(--customer-header-h,4.3125rem)-4rem))] [@media(min-width:1024px)_and_(max-height:599.98px)]:flex-none"
+      >
+        {layout && regionTransforms && (
+          <div
+            className="absolute left-[14px] top-[14px] origin-top-left"
+            style={{ width: layout.width, height: layout.height, transform: `scale(${layout.scale})` }}
+          >
+            <div className="absolute inset-0">
+              <MalaysiaStateOutline
+                highlightedStateId={hot}
+                onHoverState={setHot}
+                onSelectState={open}
+                viewBox={`0 0 ${layout.width} ${layout.height}`}
+                regionTransforms={regionTransforms}
+              />
+            </div>
+            <svg aria-hidden="true" className="pointer-events-none absolute inset-0" width={layout.width} height={layout.height}>
+              {placed.map(({ card, slot, anchor }) => {
+                const on = hot === card.stateId;
+                return (
+                  <path
+                    key={card.stateId}
+                    d={stringPath(slotPin(slot, layout.card), anchor)}
+                    className="fill-none stroke-[color:var(--mw-string)] transition-all duration-200"
+                    strokeWidth={on ? 3 : 1.6}
+                    opacity={on ? 1 : 0.55}
+                  />
+                );
+              })}
+              {/* Wide invisible strokes so hovering a string highlights its state too; not focusable (card and state are). */}
+              {placed.map(({ card, slot, anchor }, index) => (
                 <path
                   key={card.stateId}
-                  d={stringPath(slotPin(SLOTS[card.slot]), card.anchor)}
-                  className="fill-none stroke-[color:var(--mw-string)] transition-all duration-200"
-                  strokeWidth={on ? 3 : 1.6}
-                  opacity={on ? 1 : 0.55}
+                  data-string-hit={card.stateId}
+                  d={stringPath(slotPin(slot, layout.card), anchor)}
+                  className="cursor-pointer fill-none stroke-transparent"
+                  strokeWidth={14}
+                  pointerEvents="stroke"
+                  onMouseEnter={() => hover(card.stateId, true)}
+                  onMouseLeave={() => hover(card.stateId, false)}
+                  onClick={() => openAt(index)}
                 />
+              ))}
+              {placed.map(({ card, anchor }) => (
+                <circle
+                  key={card.stateId}
+                  data-state-dot={card.stateId}
+                  cx={anchor.x}
+                  cy={anchor.y}
+                  r={hot === card.stateId ? 6 : 4.5}
+                  className="fill-[var(--mw-pin)] drop-shadow-[1.5px_2px_1.5px_rgb(0_0_0/0.45)] transition-[r] duration-150"
+                />
+              ))}
+            </svg>
+            {placed.map(({ card, slot }, index) => {
+              const on = hot === card.stateId;
+              return (
+                <Button
+                  key={card.stateId}
+                  type="button"
+                  variant="ghost"
+                  aria-label={t("ui.explore.postcard.open", { state: card.dest.state })}
+                  onClick={() => openAt(index)}
+                  onMouseEnter={() => hover(card.stateId, true)}
+                  onMouseLeave={() => hover(card.stateId, false)}
+                  onFocus={() => hover(card.stateId, true)}
+                  onBlur={() => hover(card.stateId, false)}
+                  className={`absolute h-auto rounded-none p-0 transition-transform duration-200 hover:bg-transparent motion-reduce:transition-none ${on ? "z-10" : ""}`}
+                  style={{ left: slot.x, top: slot.y, width: layout.card.w, height: layout.card.h, transform: on ? "rotate(0deg) scale(1.12)" : `rotate(${card.rotation}deg)` }}
+                >
+                  {front(card)}
+                  <span aria-hidden="true" className="absolute left-1/2 top-[-7px] size-4 -translate-x-1/2 rounded-full bg-[color:var(--mw-pin)] bg-[image:radial-gradient(circle_at_35%_30%,rgb(255_255_255/0.55),transparent_55%)] shadow-[2px_3px_3px_rgb(0_0_0/0.4)]" />
+                </Button>
               );
             })}
-            {/* Wide invisible strokes so hovering a string highlights its state too; not focusable (card and state are). */}
-            {postcards.map((card, index) => (
-              <path
-                key={card.stateId}
-                data-string-hit={card.stateId}
-                d={stringPath(slotPin(SLOTS[card.slot]), card.anchor)}
-                className="cursor-pointer fill-none stroke-transparent"
-                strokeWidth={14}
-                pointerEvents="stroke"
-                onMouseEnter={() => hover(card.stateId, true)}
-                onMouseLeave={() => hover(card.stateId, false)}
-                onClick={() => openAt(index)}
-              />
-            ))}
-            {postcards.map((card) => (
-              <circle
-                key={card.stateId}
-                data-state-dot={card.stateId}
-                cx={card.anchor.x}
-                cy={card.anchor.y}
-                r={hot === card.stateId ? 6 : 4.5}
-                className="fill-[var(--mw-pin)] drop-shadow-[1.5px_2px_1.5px_rgb(0_0_0/0.45)] transition-[r] duration-150"
-              />
-            ))}
-          </svg>
-          {postcards.map((card, index) => {
-            const slot = SLOTS[card.slot], on = hot === card.stateId;
-            return (
-              <Button
-                key={card.stateId}
-                type="button"
-                variant="ghost"
-                aria-label={t("ui.explore.postcard.open", { state: card.dest.state })}
-                onClick={() => openAt(index)}
-                onMouseEnter={() => hover(card.stateId, true)}
-                onMouseLeave={() => hover(card.stateId, false)}
-                onFocus={() => hover(card.stateId, true)}
-                onBlur={() => hover(card.stateId, false)}
-                className={`absolute h-auto rounded-none p-0 transition-transform duration-200 hover:bg-transparent motion-reduce:transition-none ${on ? "z-10" : ""}`}
-                style={{ left: slot.x, top: slot.y, width: BOARD.card.w, height: BOARD.card.h, transform: on ? "rotate(0deg) scale(1.12)" : `rotate(${card.rotation}deg)` }}
-              >
-                {front(card)}
-                <span aria-hidden="true" className="absolute left-1/2 top-[-7px] size-4 -translate-x-1/2 rounded-full bg-[color:var(--mw-pin)] bg-[image:radial-gradient(circle_at_35%_30%,rgb(255_255_255/0.55),transparent_55%)] shadow-[2px_3px_3px_rgb(0_0_0/0.4)]" />
-              </Button>
-            );
-          })}
-        </div>
+          </div>
+        )}
       </div>
 
       <div data-testid="postcard-grid" className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:hidden">

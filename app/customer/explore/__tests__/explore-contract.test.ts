@@ -14,8 +14,16 @@ const storyMapSource = read("components/demo-map/story-map.tsx");
 describe("customer discovery filter contract", () => {
   it("clips only sideways so an opened card drawer in the last row is not cut off above the footer", () => {
     // overflow-x: hidden turns overflow-y into auto, which clips anything below the wrapper.
-    expect(exploreSource).toContain('<div className="min-h-screen overflow-x-clip bg-background">');
+    expect(exploreSource).toContain("min-h-screen overflow-x-clip bg-background");
     expect(exploreSource).not.toContain("min-h-screen overflow-x-hidden");
+  });
+
+  it("fits the Destinations board in one desktop screen below the header and breadcrumb, Experiences unchanged", () => {
+    expect(exploreSource).toContain("lg:h-[calc(100svh-var(--customer-header-h,4.3125rem)-2rem)] lg:min-h-0 lg:flex lg:flex-col");
+    // Very short desktop screens scroll instead of squeezing the map.
+    expect(exploreSource).toContain("[@media(min-width:1024px)_and_(max-height:599.98px)]:h-auto");
+    expect(exploreSource).toMatch(/tab === "destinations" \? " py-4 sm:py-5" : " py-8 sm:py-10"/);
+    expect(exploreSource).toContain('<section className="shrink-0 border-b border-border bg-background">');
   });
 
   it("omits helper copy and promotional description from the Explore header", () => {

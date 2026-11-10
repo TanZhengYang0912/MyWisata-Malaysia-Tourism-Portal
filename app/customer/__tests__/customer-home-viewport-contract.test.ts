@@ -21,13 +21,13 @@ const vendorCardSource = readFileSync(
 const nextConfigSource = readFileSync(resolve(process.cwd(), "next.config.ts"), "utf8");
 
 describe("customer home first viewport", () => {
-  it("uses a full-bleed photo hero and the existing localized Discover Malaysia title", () => {
+  it("uses a full-bleed photo hero and active destination title", () => {
     // The hero is one screen below the header's real height (published by useCustomerHeaderLayout), not a guess.
     expect(homeSource).toContain("min-h-[calc(100svh-var(--customer-header-h,");
     expect(homeSource).not.toContain("100svh-96px");
     expect(homeSource).not.toContain("100svh-64px");
     expect(homeSource).toContain("text-[clamp(4.2rem,min(9vw,14svh),9.2rem)]");
-    expect(homeSource).toContain('t("ui.guest.discoverMalaysia")');
+    expect(homeSource).toContain("{activeDestination.state}");
     expect(homeSource).toContain("atlas-hero-photo");
     expect(homeSource).toContain("object-cover");
     expect(homeSource).toContain('"Kuala Lumpur": "/customer/klcc-home-hero-match.webp"');
@@ -69,8 +69,9 @@ describe("customer home first viewport", () => {
     expect(sharedTitleStyle).not.toContain("var(--malaysia-red)");
     expect(homeSource).toContain(".atlas-discover-title__lead,");
     expect(homeSource).toContain(".atlas-discover-title__ending {");
-    expect(homeSource).toContain("color: #fff6df;");
-    expect(homeSource).toContain("-webkit-text-fill-color: #fff6df;");
+    expect(sharedTitleStyle).toContain("padding: 0 .12em .22em 0;");
+    expect(sharedTitleStyle).toContain("margin-bottom: -.22em;");
+    expect(homeSource).not.toContain("background-image: none;");
     expect(homeSource).toContain("text-shadow: 0 3px 18px");
     expect(homeSource).toMatch(/<svg\s+className="atlas-title-accent/);
     expect(homeSource).toMatch(/<path\s+className="atlas-title-accent__stroke"/);
@@ -90,18 +91,22 @@ describe("customer home first viewport", () => {
     expect(pagerRule).not.toMatch(/touch-action/);
     expect(homeSource).not.toContain("onClickCapture={destinationPager.suppressClickAfterTouch}");
     expect(homeSource).toContain("scroll-snap-align: none");
-    // Cards per page follow the rail's own width (about 220px minimum per card), not fixed breakpoints.
-    expect(homeSource).toContain("container: destination-rail / inline-size;");
-    expect(homeSource).toContain("@container destination-rail (width < 692px)");
-    expect(homeSource).toContain("@container destination-rail (692px <= width < 928px)");
-    expect(homeSource).toContain("@container destination-rail (928px <= width < 1164px)");
-    expect(homeSource).toContain("@container destination-rail (width >= 1164px)");
-    for (const perPage of [2, 3, 4, 5]) {
+    // Four destinations per page from 1024px, two below; no 3 or 5 tiers.
+    expect(homeSource).toContain("@media (min-width: 1024px)");
+    expect(homeSource).toContain("@media (max-width: 1023.98px)");
+    expect(homeSource).not.toContain("@container destination-rail (");
+    for (const perPage of [2, 4]) {
       expect(homeSource).toContain(`--per-page: ${perPage}`);
       expect(homeSource).toContain(`nth-child(${perPage}n + 1)`);
     }
-    expect(homeSource).not.toMatch(/@media \(min-width: 1024px\) \{\s*\.atlas-destination-pager/);
     expect(homeSource).toContain("scroll-snap-stop: always");
+    // Desktop hover grows the whole destination card (photo, name and save) to 1.04, from its outer edge so the
+    // scrolling rail never clips it; the photo itself no longer zooms on its own.
+    expect(homeSource).toMatch(/@media \(hover: hover\) and \(pointer: fine\) \{\s*\.atlas-destination-card:hover \{ scale: 1\.04; z-index: 2; \}/);
+    expect(homeSource).toContain(".atlas-destination-card:nth-child(4n + 1) { transform-origin: top left; }");
+    expect(homeSource).toContain(".atlas-destination-card:nth-child(4n) { transform-origin: top right; }");
+    expect(homeSource).toContain(".atlas-destination-card:hover { scale: none; }");
+    expect(homeSource).not.toContain("group-hover:scale-[1.045]");
     // Card height comes from the screen height so the hero fits one screen at any width.
     expect(homeSource).toContain("h-[clamp(108px,22svh,220px)]");
     expect(homeSource).not.toContain("h-[108px]");
@@ -110,8 +115,9 @@ describe("customer home first viewport", () => {
     expect(homeSource).toContain("flex: 0 0 calc((100% - ((var(--per-page) - 1) * var(--destination-gap))) / var(--per-page));");
     expect(homeSource).toContain("padding-right: var(--destination-gap)");
     expect(homeSource).toContain("useHomeDestinationPager(");
-    expect(homeSource).toContain('import { ArrowUpRight, ChevronLeft, ChevronRight, MapPin, Sparkles } from "lucide-react"');
-    expect(homeSource).toContain('aria-label={t("ui.home.viewDestination")}');
+    expect(homeSource).toContain('import { ChevronLeft, ChevronRight, MapPin, Sparkles } from "lucide-react"');
+    expect(homeSource).toContain('aria-label={t("ui.map.previous")}');
+    expect(homeSource).toContain('aria-label={t("ui.map.next")}');
     expect(homeSource).not.toContain('{t("ui.home.viewDestination")} <ArrowRight');
     expect(homeSource).toContain("aria-pressed={isSelected}");
     expect(homeSource).toContain("selectDestination(destination.state)");
@@ -178,14 +184,19 @@ describe("customer home first viewport", () => {
     expect(nextConfigSource).toContain("qualities: [75, 90]");
   });
 
-  it("exposes clickable Worm page controls instead of arrow buttons", () => {
+  it("exposes pager arrows alongside clickable Worm page controls", () => {
     expect(homeSource).toContain("HomeDestinationWormIndicator");
     expect(homeSource).toContain('label={t("ui.home.destinationCarouselControls")}');
-    // Arrows belong only to the Featured Highlights pager, never to the destination carousel.
-    const destinationSource = homeSource.slice(0, homeSource.indexOf('aria-labelledby="featured-highlights-heading"'));
-    const componentStart = destinationSource.indexOf("export function CustomerHomeClient");
-    expect(destinationSource.slice(componentStart)).not.toContain("ChevronLeft");
-    expect(destinationSource.slice(componentStart)).not.toContain("ChevronRight");
+    expect(homeSource).toContain('aria-label={t("ui.map.previous")}');
+    expect(homeSource).toContain('aria-label={t("ui.map.next")}');
+    // Arrows sit on the worm's row, right-aligned: transparent, accent on hover/press, dimmed white when disabled.
+    const railSource = homeSource.slice(homeSource.indexOf("atlas-destination-pager pb-3"), homeSource.indexOf("</nav>"));
+    expect(railSource.indexOf("HomeDestinationWormIndicator")).toBeLessThan(railSource.indexOf('aria-label={t("ui.map.previous")}'));
+    // Below lg the arrows stay clear of the floating chat button (fixed bottom-4 right-4).
+    expect(homeSource).toContain('<div className="ml-auto flex items-center max-lg:pr-16">');
+    for (const token of ["hover:bg-transparent", "hover:text-accent", "active:bg-transparent", "active:text-accent", "active:scale-[.94]", "disabled:text-white/30", "disabled:opacity-100", "dark:hover:bg-transparent"]) {
+      expect(homeSource).toContain(token);
+    }
     expect(homeSource).not.toContain("changeDestinationPage(direction:");
     expect(homeSource).not.toContain("HOME_DESTINATIONS.slice(");
   });
@@ -283,7 +294,7 @@ describe("customer home first viewport", () => {
     expect(homeSource).not.toContain("eventCalendarKicker");
     expect(homeSource).not.toContain("eventCalendarPromptDescription");
     expect(homeSource).not.toContain("wanderWays");
-    expect(homeSource).toContain('t("ui.guest.discoverMalaysia")');
+    expect(homeSource).toContain("{activeDestination.state}");
     expect(homeSource).not.toContain('t("ui.home.eventCalendar")');
     expect(homeSource).not.toContain('t("ui.home.viewEventCalendar")');
   });

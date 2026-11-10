@@ -5,6 +5,37 @@ type Point = { x: number; y: number };
 
 export const BOARD = { width: 1100, height: 680, card: { w: 150, h: 100 } } as const;
 
+export type BoardLayout = {
+  width: number;
+  height: number;
+  scale: number;
+  card: { w: number; h: number };
+  slots: readonly Point[];
+  mapOffsetX: number;
+  westDrop: number;
+};
+
+export function getPostcardBoardLayout(containerWidth: number, availableHeight: number): BoardLayout | null {
+  if (!Number.isFinite(containerWidth) || !Number.isFinite(availableHeight) || containerWidth <= 28 || availableHeight <= 28) return null;
+  const scale = Math.min((containerWidth - 28) / BOARD.width, (availableHeight - 28) / BOARD.height);
+  const width = (containerWidth - 28) / scale;
+  const cardWidth = Math.min(205, (width - 60 - 5 * 18) / 6);
+  const cardHeight = cardWidth * 2 / 3;
+  const gap = (680 - 60 - 4 * cardHeight) / 3;
+  const topY = 30;
+  const bottomY = 680 - 30 - cardHeight;
+  const topBottomX = Array.from({ length: 6 }, (_, i) => 30 + i * (width - 60 - cardWidth) / 5);
+  const slots = [
+    ...topBottomX.map((x) => ({ x, y: topY })),
+    ...topBottomX.map((x) => ({ x, y: bottomY })),
+    { x: 30, y: 30 + cardHeight + gap },
+    { x: 30, y: 30 + cardHeight + gap * 2 + cardHeight },
+    { x: width - 30 - cardWidth, y: 30 + cardHeight + gap },
+    { x: width - 30 - cardWidth, y: 30 + cardHeight + gap * 2 + cardHeight },
+  ];
+  return { width, height: 680, scale, card: { w: cardWidth, h: cardHeight }, slots, mapOffsetX: (width - BOARD.width) / 2, westDrop: 18 };
+}
+
 const COLUMNS = [30, 205, 380, 555, 730, 905];
 /** Top-left corners of the 16 postcard slots: 6 along the top, 6 along the bottom, 2 down each side. */
 export const SLOTS: readonly Point[] = [
@@ -25,19 +56,19 @@ export const REGION_PLACEMENT: Record<BoardRegion, { x: number; y: number; scale
 };
 
 /** A map-unit point (state map projection) on the board. */
-export function toBoardPoint(point: Point, region: BoardRegion): Point {
+export function toBoardPoint(point: Point, region: BoardRegion, layout?: BoardLayout): Point {
   const { x, y, scale, origin } = REGION_PLACEMENT[region];
-  return { x: x + (point.x - origin.x) * scale, y: y + (point.y - origin.y) * scale };
+  return { x: x + (point.x - origin.x) * scale + (layout?.mapOffsetX ?? 0), y: y + (point.y - origin.y) * scale + (region === "peninsular" ? layout?.westDrop ?? 0 : 0) };
 }
 
 /** The same placement as an SVG transform for the region's shapes. */
-export function regionTransform(region: BoardRegion): string {
+export function regionTransform(region: BoardRegion, layout?: BoardLayout): string {
   const { x, y, scale, origin } = REGION_PLACEMENT[region];
-  return `translate(${x} ${y}) scale(${scale}) translate(${-origin.x} ${-origin.y})`;
+  return `translate(${x + (layout?.mapOffsetX ?? 0)} ${y + (region === "peninsular" ? layout?.westDrop ?? 0 : 0)}) scale(${scale}) translate(${-origin.x} ${-origin.y})`;
 }
 
 /** Where a string leaves a postcard: the pin at the top centre of its slot. */
-export const slotPin = (slot: Point): Point => ({ x: slot.x + BOARD.card.w / 2, y: slot.y + 2 });
+export const slotPin = (slot: Point, card: { w: number; h: number } = BOARD.card): Point => ({ x: slot.x + card.w / 2, y: slot.y + 2 });
 
 function crosses(p1: Point, p2: Point, p3: Point, p4: Point) {
   const d = (a: Point, b: Point, c: Point) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
@@ -60,7 +91,7 @@ export function assignPostcardSlots(anchors: { id: string; x: number; y: number 
   const cached = assignmentCache.get(key);
   if (cached) return cached;
 
-  const pins = SLOTS.map(slotPin);
+  const pins = SLOTS.map((slot) => slotPin(slot));
   const cost = (a: number, slot: number) => (pins[slot].x - anchors[a].x) ** 2 + (pins[slot].y - anchors[a].y) ** 2;
   const swapPays = (assign: number[], i: number, j: number) =>
     cost(i, assign[j]) + cost(j, assign[i]) < cost(i, assign[i]) + cost(j, assign[j]) - 1e-9;

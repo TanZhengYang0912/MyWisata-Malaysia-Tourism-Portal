@@ -189,7 +189,7 @@ export default async function PlacePage({ params }: Props) {
       {place.level === "region" && children.length > 0 && (
         <section className="mt-8">
           <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">{t("ui.place.placesToVisit", { count: children.length })}</h2>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
             {children.map((child) => (
               <PlaceCard key={child.id} place={child} productCount={productCounts.get(child.id) ?? 0} />
             ))}

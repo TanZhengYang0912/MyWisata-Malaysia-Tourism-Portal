@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, ChevronLeft, ChevronRight, MapPin, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ComputedActivity, DiscoveryPropertySummary, DiscoveryResult } from "@/backend/core/types";
 import { ActivityCard } from "@/components/customer/activity-card";
@@ -24,6 +24,7 @@ import { useHomeDestinationPager } from "@/components/customer/use-home-destinat
 import { Button } from "@/components/ui/button";
 import { SeeMoreLink } from "@/components/customer/see-more-link";
 import { pageHomeHighlights } from "@/lib/customer/discovery-ranking";
+import { useRouter } from "next/navigation";
 
 const HERO_CROSSFADE_DURATION_MS = 240;
 // Match the card widths from the responsive rail, including its outer and trailing padding.
@@ -85,6 +86,7 @@ export function CustomerHomeClient({
   titleFontClassName?: string;
 }) {
   const { t } = useTranslation("customer");
+  const router = useRouter();
   const { currentUser } = useAuth();
   const gate = useCustomerCapabilityGate();
   const { savedStates, toggleSaved } = useSavedDestinations();
@@ -112,11 +114,6 @@ export function CustomerHomeClient({
       recordSponsoredEvent(activity, "impression");
     }
   }, [visibleHighlights, recordSponsoredEvent]);
-  const discoverTitleWords = t("ui.guest.discoverMalaysia").trim().split(/\s+/);
-  const discoverTitleLead = discoverTitleWords.length > 1
-    ? discoverTitleWords.slice(0, -1).join(" ")
-    : "";
-  const discoverTitleEnding = discoverTitleWords[discoverTitleWords.length - 1] ?? "";
   const [activeState, setActiveState] = useState(() => HOME_DESTINATIONS[0].state);
   const [outgoingHeroState, setOutgoingHeroState] = useState<string | null>(null);
   const [incomingHeroVisible, setIncomingHeroVisible] = useState(false);
@@ -176,6 +173,10 @@ export function CustomerHomeClient({
     setOutgoingHeroState(visibleHeroState);
     setIncomingHeroVisible(false);
     setActiveState(destinationState);
+  }
+
+  function navigateToDestination(destinationState: string) {
+    router.push(destinationHref(destinationState));
   }
 
   useEffect(() => () => clearHeroCrossfadeTimeout(), []);
@@ -260,11 +261,16 @@ export function CustomerHomeClient({
         <div className="relative z-10 mx-auto flex min-h-[calc(100svh-var(--customer-header-h,6.3125rem))] w-full max-w-[1420px] flex-col px-5 pb-8 pt-[12svh] sm:px-9 xl:min-h-[calc(100svh-var(--customer-header-h,4.3125rem))] lg:px-0 lg:pb-9 lg:pt-[14.5svh]">
           <header className="atlas-enter atlas-delay-1 mb-auto pl-0 sm:pl-4 lg:pl-[3.4%]">
             <h1 className="atlas-discover-title max-w-[760px] font-[family-name:var(--font-discover-title)] text-[clamp(4.2rem,min(9vw,14svh),9.2rem)] font-normal leading-[1.05] tracking-[-0.025em]">
-              {discoverTitleLead && (
-                <span className="atlas-discover-title__lead block md:inline">{discoverTitleLead} </span>
-              )}
-              <span className="atlas-discover-title__ending block md:inline">{discoverTitleEnding}</span>
+              <span className="atlas-discover-title__ending">{activeDestination.state}</span>
             </h1>
+            {/* Screen readers and touch turn activation into a plain click, so double-click alone would strand them; this link is their way in, visible only on keyboard focus. */}
+            <Link
+              href={destinationHref(activeDestination.state)}
+              data-destination-entry=""
+              className="sr-only focus-visible:not-sr-only focus-visible:mt-3 focus-visible:inline-block focus-visible:rounded-full focus-visible:bg-white focus-visible:px-4 focus-visible:py-2 focus-visible:text-sm focus-visible:font-bold focus-visible:text-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/40"
+            >
+              {t("ui.home.viewDestination")}
+            </Link>
             <svg
               className="atlas-title-accent ml-[63%] mt-4 block w-[clamp(100px,32vw,220px)] text-[#f4b900] md:ml-32 md:mt-9 md:w-[clamp(132px,16vw,250px)]"
               viewBox="0 0 228 24"
@@ -284,20 +290,6 @@ export function CustomerHomeClient({
           </header>
 
           <nav aria-label={t("ui.home.destinationCarousel")} className="atlas-destination-rail atlas-enter atlas-delay-2 mt-10 w-full">
-            <div className="mb-3 flex items-center gap-3 sm:mb-1">
-              <div className="flex items-center gap-3">
-                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f4bd00] sm:text-xs">{t("ui.home.exploreDestinations")}</h2>
-                <Button asChild variant="outline" size="icon" className="rounded-full border-white/35 bg-white/10 text-white hover:bg-white/20 hover:text-white">
-                  <Link
-                    href={destinationHref(activeDestination.state)}
-                    aria-label={t("ui.home.viewDestination")}
-                    title={t("ui.home.viewDestination")}
-                  >
-                    <ArrowUpRight size={16} aria-hidden="true" />
-                  </Link>
-                </Button>
-              </div>
-            </div>
             <div ref={destinationPagerRef} className="atlas-destination-pager pb-3">
               {HOME_DESTINATIONS.map((destination) => {
                 const isSelected = destination.state === activeState;
@@ -308,10 +300,18 @@ export function CustomerHomeClient({
                     <button
                       type="button"
                       onClick={() => selectDestination(destination.state)}
+                      onDoubleClick={() => navigateToDestination(destination.state)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          navigateToDestination(destination.state);
+                        }
+                      }}
                       aria-pressed={isSelected}
+                      title={t("ui.home.destinationDoubleClick", { state: destination.state })}
                       className={`group relative block h-[clamp(108px,22svh,220px)] w-full overflow-hidden rounded-[14px] border text-left transition duration-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/40 ${isSelected ? "border-2 border-[#f4bd00]" : "border-white/70 hover:border-white"}`}
                     >
-                      <Image src={destination.image} alt="" fill sizes={HOME_DESTINATION_IMAGE_SIZES} className="object-cover transition duration-700 group-hover:scale-[1.045]" />
+                      <Image src={destination.image} alt="" fill sizes={HOME_DESTINATION_IMAGE_SIZES} className="object-cover" />
                       <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
                       <span className="absolute inset-x-3 bottom-2 truncate font-[family-name:var(--font-display)] text-[15px] font-semibold leading-tight text-white sm:inset-x-4 sm:bottom-3 sm:text-xl lg:text-[25px]">{destination.state}</span>
                     </button>
@@ -331,27 +331,37 @@ export function CustomerHomeClient({
                 );
               })}
             </div>
-            <div className="mt-2 lg:hidden">
-              <HomeDestinationWormIndicator
-                count={destinationPager.pageCount}
-                progress={destinationPager.progress}
-                current={destinationPager.page}
-                sizes={{ dot: 11, pill: 36, gap: 8 }}
-                label={t("ui.home.destinationCarouselControls")}
-                pageLabel={(page, count) => t("ui.home.destinationPage", { page, total: count })}
-                onSelect={destinationPager.goToPage}
-              />
-            </div>
-            <div className="mt-2 hidden lg:block">
-              <HomeDestinationWormIndicator
-                count={destinationPager.pageCount}
-                progress={destinationPager.progress}
-                current={destinationPager.page}
-                sizes={{ dot: 14, pill: 50, gap: 10 }}
-                label={t("ui.home.destinationCarouselControls")}
-                pageLabel={(page, count) => t("ui.home.destinationPage", { page, total: count })}
-                onSelect={destinationPager.goToPage}
-              />
+            <div className="mt-2 flex items-center gap-3">
+              <div className="lg:hidden">
+                <HomeDestinationWormIndicator
+                  count={destinationPager.pageCount}
+                  progress={destinationPager.progress}
+                  current={destinationPager.page}
+                  sizes={{ dot: 11, pill: 36, gap: 8 }}
+                  label={t("ui.home.destinationCarouselControls")}
+                  pageLabel={(page, count) => t("ui.home.destinationPage", { page, total: count })}
+                  onSelect={destinationPager.goToPage}
+                />
+              </div>
+              <div className="hidden lg:block">
+                <HomeDestinationWormIndicator
+                  count={destinationPager.pageCount}
+                  progress={destinationPager.progress}
+                  current={destinationPager.page}
+                  sizes={{ dot: 14, pill: 50, gap: 10 }}
+                  label={t("ui.home.destinationCarouselControls")}
+                  pageLabel={(page, count) => t("ui.home.destinationPage", { page, total: count })}
+                  onSelect={destinationPager.goToPage}
+                />
+              </div>
+              <div className="ml-auto flex items-center max-lg:pr-16">
+                <Button variant="ghost" size="icon" aria-label={t("ui.map.previous")} disabled={destinationPager.page <= 0} onClick={() => destinationPager.goToPage(destinationPager.page - 1)} className="text-white hover:bg-transparent hover:text-accent active:bg-transparent active:text-accent active:scale-[.94] disabled:text-white/30 disabled:opacity-100 dark:hover:bg-transparent">
+                  <ChevronLeft size={20} aria-hidden="true" />
+                </Button>
+                <Button variant="ghost" size="icon" aria-label={t("ui.map.next")} disabled={destinationPager.page >= destinationPager.pageCount - 1} onClick={() => destinationPager.goToPage(destinationPager.page + 1)} className="text-white hover:bg-transparent hover:text-accent active:bg-transparent active:text-accent active:scale-[.94] disabled:text-white/30 disabled:opacity-100 dark:hover:bg-transparent">
+                  <ChevronRight size={20} aria-hidden="true" />
+                </Button>
+              </div>
             </div>
           </nav>
         </div>
@@ -515,9 +525,7 @@ export function CustomerHomeClient({
           stroke-dashoffset: 1;
           animation: atlas-accent-draw 800ms var(--atlas-ease-out) 460ms both;
         }
-        /* Cards per page follow the rail's own width: about 220px minimum per card, 2 to 5 per page. */
-        .atlas-destination-rail { container: destination-rail / inline-size; }
-
+        /* Four destinations per page from 1024px, two below. */
         .atlas-destination-pager {
           --per-page: 2;
           --destination-gap: 0.75rem;
@@ -536,25 +544,26 @@ export function CustomerHomeClient({
           flex: 0 0 calc((100% - ((var(--per-page) - 1) * var(--destination-gap))) / var(--per-page));
           scroll-snap-align: none;
           animation: atlas-enter 480ms var(--atlas-ease-out) both;
+          /* scale, not transform: the entry animation keeps its transform after it ends. */
+          transform-origin: top center;
+          transition: scale 180ms var(--atlas-ease-out);
         }
 
-        @container destination-rail (width < 692px) {
+        @media (hover: hover) and (pointer: fine) {
+          .atlas-destination-card:hover { scale: 1.04; z-index: 2; }
+        }
+
+        @media (max-width: 1023.98px) {
           .atlas-destination-card:nth-child(2n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
+          .atlas-destination-card:nth-child(2n + 1) { transform-origin: top left; }
+          .atlas-destination-card:nth-child(2n) { transform-origin: top right; }
         }
 
-        @container destination-rail (692px <= width < 928px) {
-          .atlas-destination-pager { --per-page: 3; }
-          .atlas-destination-card:nth-child(3n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
-        }
-
-        @container destination-rail (928px <= width < 1164px) {
+        @media (min-width: 1024px) {
           .atlas-destination-pager { --per-page: 4; --destination-gap: 1rem; }
           .atlas-destination-card:nth-child(4n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
-        }
-
-        @container destination-rail (width >= 1164px) {
-          .atlas-destination-pager { --per-page: 5; --destination-gap: 1rem; }
-          .atlas-destination-card:nth-child(5n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
+          .atlas-destination-card:nth-child(4n + 1) { transform-origin: top left; }
+          .atlas-destination-card:nth-child(4n) { transform-origin: top right; }
         }
 
         .atlas-discover-title {
@@ -566,6 +575,8 @@ export function CustomerHomeClient({
         .atlas-discover-title__lead,
         .atlas-discover-title__ending {
           width: fit-content;
+          padding: 0 .12em .22em 0;
+          margin-bottom: -.22em;
           background-image: linear-gradient(108deg, #fff8e9 0%, #fff1d2 28%, var(--malaysia-yellow) 78%, #f4b900 100%);
           background-clip: text;
           -webkit-background-clip: text;
@@ -580,12 +591,6 @@ export function CustomerHomeClient({
           font-size: clamp(4.2rem, 9vw, 9.2rem);
         }
 
-        :global(html:lang(zh-CN)) .atlas-discover-title__lead,
-        :global(html:lang(zh-CN)) .atlas-discover-title__ending {
-          background-image: none;
-          color: #fff6df;
-          -webkit-text-fill-color: #fff6df;
-        }
 
         @keyframes atlas-enter {
           from { opacity: 0; transform: translateY(14px); }
@@ -613,6 +618,8 @@ export function CustomerHomeClient({
           :global(.atlas-hero-photo) {
             animation: none;
           }
+
+          .atlas-destination-card:hover { scale: none; }
 
           :global(.atlas-hero-photo--incoming) {
             transition-duration: 120ms;
