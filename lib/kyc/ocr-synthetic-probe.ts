@@ -13,7 +13,8 @@ export async function runKycSyntheticProbe() {
     await sharp(fixtureSvg(side, 'SYNTHETIC PERSON', '990101-14-0001')).png().toBuffer(), 'image/png')).stored) });
   const result = await extractKycFieldsInNode({ documentType: 'national_id', front: await image('front'), back: await image('back') }, configuration.timeoutMs);
   if (!result.ok) return { ok: false, failureCode: result.failureCode,
-    ...(result.failureStage ? { failureStage: result.failureStage } : {}) } satisfies Pick<Extract<NodeKycOcrOutcome, { ok: false }>, 'ok' | 'failureCode' | 'failureStage'>;
+    ...(result.failureStage ? { failureStage: result.failureStage } : {}),
+    ...(result.failureReason ? { failureReason: result.failureReason } : {}) } satisfies Pick<Extract<NodeKycOcrOutcome, { ok: false }>, 'ok' | 'failureCode' | 'failureStage' | 'failureReason'>;
   const fieldsRead = result.fields.documentNumber === '990101140001' && result.fields.holderName === 'SYNTHETIC PERSON';
   return { ok: fieldsRead, fieldsRead, node: process.version, manifest: result.metrics.manifest,
     initializationMs: result.metrics.initializationMs, totalMs: performance.now() - begin,

@@ -7,13 +7,18 @@ it('rejects arbitrary targets and never runs without explicit opt-in', async () 
   expect(fetch).not.toHaveBeenCalled();
 });
 it('accepts a fixed Tesseract initialization phase and stops on the first failure', async () => {
-  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: false, failureCode: 'service_unavailable', failureStage: 'worker_language_load' }), { status: 503 }));
+  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: false, failureCode: 'service_unavailable', failureStage: 'worker_initialize', failureReason: 'module_not_found' }), { status: 503 }));
   await expect(verifySyntheticOcr({ origin: 'http://127.0.0.1:3000', runSynthetic: true, manifest: {}, secret: 'secret' }, fetch))
-    .resolves.toEqual({ ok: false, failureCode: 'service_unavailable', failureStage: 'worker_language_load' });
+    .resolves.toEqual({ ok: false, failureCode: 'service_unavailable', failureStage: 'worker_initialize', failureReason: 'module_not_found' });
   expect(fetch).toHaveBeenCalledTimes(1);
 });
 it('rejects unallowlisted failure details from a probe response', async () => {
   const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: false, failureCode: 'service_unavailable', failureStage: '/private/path' }), { status: 503 }));
+  await expect(verifySyntheticOcr({ origin: 'http://127.0.0.1:3000', runSynthetic: true, manifest: {}, secret: 'secret' }, fetch)).rejects.toThrow();
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+it('rejects an unallowlisted worker failure reason', async () => {
+  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: false, failureCode: 'service_unavailable', failureReason: '/private/path' }), { status: 503 }));
   await expect(verifySyntheticOcr({ origin: 'http://127.0.0.1:3000', runSynthetic: true, manifest: {}, secret: 'secret' }, fetch)).rejects.toThrow();
   expect(fetch).toHaveBeenCalledTimes(1);
 });
