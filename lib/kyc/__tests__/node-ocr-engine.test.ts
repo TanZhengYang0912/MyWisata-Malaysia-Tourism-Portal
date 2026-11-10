@@ -7,9 +7,41 @@ import { mkdtemp, mkdir, copyFile, symlink, writeFile, readFile, rm } from 'node
 import { tmpdir } from 'node:os';
 import sharp from 'sharp';
 import { extractKycFieldsInNode, parseNodeKycOcrOutcome } from '../node-ocr-engine';
+import { createTesseractInitializationReporter, initializationStageForTesseractStatus } from '../runtime/tesseract-diagnostics.cjs';
 
 const image = { mimeType: 'image/png', bytes: new Uint8Array([1, 2]) };
 afterEach(() => vi.unstubAllEnvs());
+it('maps only known Tesseract initialization statuses to fixed safe phases', () => {
+  expect(initializationStageForTesseractStatus('loading tesseract core')).toBe('worker_core_load');
+  expect(initializationStageForTesseractStatus('initializing tesseract')).toBe('worker_wasm_initialize');
+  expect(initializationStageForTesseractStatus('loading language traineddata')).toBe('worker_language_load');
+  expect(initializationStageForTesseractStatus('initializing api')).toBe('worker_api_initialize');
+  expect(initializationStageForTesseractStatus('/private/path/private-document-name')).toBeUndefined();
+  expect(initializationStageForTesseractStatus({ status: 'loading language traineddata', error: 'private OCR text' })).toBeUndefined();
+});
+it('preserves the last specific initialization phase and ignores private callback data', () => {
+  const phases: string[] = [];
+  const reporter = createTesseractInitializationReporter((stage) => phases.push(stage));
+  const privateEvent = { status: 'loading language traineddata', progress: 0.5, path: '/private/model/path', text: 'private OCR text' };
+  reporter.onProgress(privateEvent);
+  reporter.begin();
+  reporter.onProgress(privateEvent);
+  reporter.onProgress(privateEvent);
+  reporter.onError({ message: 'private filesystem error' });
+  reporter.finish();
+  reporter.onProgress({ status: 'initializing api', text: 'private OCR text' });
+  reporter.onError({ message: 'private filesystem error' });
+
+  expect(phases).toEqual(['worker_language_load']);
+  expect(JSON.stringify(phases)).not.toMatch(/private|path|0\.5/);
+});
+it('reports an error callback only when no Tesseract initialization phase was observed', () => {
+  const phases: string[] = [];
+  const reporter = createTesseractInitializationReporter((stage) => phases.push(stage));
+  reporter.begin();
+  reporter.onError({ message: 'private filesystem error' });
+  expect(phases).toEqual(['worker_error_callback']);
+});
 it('rejects malformed evidence without reflecting bytes or environment', async () => {
   vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'sentinel-never-in-child');
   const result = await extractKycFieldsInNode({ documentType: 'national_id', front: image, back: image }, 2000);
@@ -82,14 +114,14 @@ it('preserves the last allowlisted child phase when the process exits before OCR
   try {
     await mkdir(runtime, { recursive: true });
     await writeFile(resolve(runtime, 'tesseract-process.cjs'),
-      "process.once('message', () => process.send({kind:'started'}, () => process.send({kind:'phase',stage:'worker_initialize'}, () => process.exit(1))));");
+      "process.once('message', () => process.send({kind:'started'}, () => process.send({kind:'phase',stage:'worker_language_load'}, () => process.exit(1))));");
     const cwd = vi.spyOn(process, 'cwd').mockReturnValue(root);
     let pending: ReturnType<typeof extractKycFieldsInNode>;
     try { pending = extractKycFieldsInNode({ documentType: 'national_id', front: image, back: image }, 2000); }
     finally { cwd.mockRestore(); }
 
-    expect(await pending).toEqual({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'worker_initialize' });
-    expect(warning.mock.calls[0]?.[1]).toMatchObject({ failureStage: 'worker_initialize', received: false,
+    expect(await pending).toEqual({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'worker_language_load' });
+    expect(warning.mock.calls[0]?.[1]).toMatchObject({ failureStage: 'worker_language_load', received: false,
       spawned: true, childStartedAck: true, exitCode: 1, signal: null });
   } finally {
     warning.mockRestore();

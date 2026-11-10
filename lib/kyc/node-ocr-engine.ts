@@ -8,11 +8,13 @@ import type { ExtractedKycFields } from './runtime/ocr-fields.cjs';
 export type ModelManifest = { engine: string; version: string; coreVersion: string; models: { code: string; version: string; sha256: string }[] };
 export type NodeOcrMetrics = { initializationMs: number; recognitionPasses?: number; childRssBytes: number; cpu: { user: number; system: number }; manifest: ModelManifest };
 export type NodeOcrFailureStage = 'message_validation' | 'runtime_load' | 'image_decode' | 'model_manifest' | 'worker_initialize' |
+  'worker_core_load' | 'worker_wasm_initialize' | 'worker_language_load' | 'worker_api_initialize' | 'worker_set_parameters' | 'worker_error_callback' |
   'recognition_front' | 'recognition_back' | 'passport_recovery' | 'unexpected_child_error' | 'child_bootstrap' | 'child_no_response';
 export type NodeKycOcrOutcome = { ok: true; fields: ExtractedKycFields; metrics: NodeOcrMetrics } |
   { ok: false; failureCode: 'configuration' | 'service_unavailable' | 'timeout' | 'invalid_response' | 'evidence_invalid'; retryable: boolean; failureStage?: NodeOcrFailureStage };
 let busy = false;
 const failureStages = new Set<NodeOcrFailureStage>(['message_validation', 'runtime_load', 'image_decode', 'model_manifest', 'worker_initialize',
+  'worker_core_load', 'worker_wasm_initialize', 'worker_language_load', 'worker_api_initialize', 'worker_set_parameters', 'worker_error_callback',
   'recognition_front', 'recognition_back', 'passport_recovery', 'unexpected_child_error', 'child_bootstrap', 'child_no_response']);
 function parseChildPhase(value: unknown): NodeOcrFailureStage | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
