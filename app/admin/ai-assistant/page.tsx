@@ -25,10 +25,14 @@ import { useTranslation } from "react-i18next";
 import { adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { AdminAiMessage } from "@/components/admin/admin-ai-message";
+import { AdminAiActionCard } from "@/components/admin/admin-ai-action-card";
+import type { ProposedAction } from "@/lib/admin-ai/actions";
 
 interface ChatMessage {
   role: "user" | "bot";
   text: string;
+  /** Confirm cards proposed with this reply; not restored with history. */
+  actions?: ProposedAction[];
 }
 
 const SESSION_STORAGE_KEY = "mw_admin_ai_session";
@@ -101,7 +105,7 @@ function AskPanel() {
         body: JSON.stringify({ sessionKey: sessionKey ?? undefined, question }),
       });
       const body = (await res.json()) as {
-        data: { sessionKey: string; answer: string } | null;
+        data: { sessionKey: string; answer: string; actions?: ProposedAction[] } | null;
         error: { message: string } | null;
       };
       if (!res.ok || !body.data) {
@@ -112,7 +116,7 @@ function AskPanel() {
         setSessionKey(body.data.sessionKey);
         window.localStorage.setItem(SESSION_STORAGE_KEY, body.data.sessionKey);
       }
-      setMessages((m) => [...m, { role: "bot", text: body.data!.answer }]);
+      setMessages((m) => [...m, { role: "bot", text: body.data!.answer, actions: body.data!.actions }]);
     } catch {
       setMessages((m) => [...m, { role: "bot", text: t("aiAssistant.errors.unavailable") }]);
     } finally {
@@ -163,7 +167,10 @@ function AskPanel() {
               </p>
             )}
             {messages.map((m, i) => (
-              <AdminAiMessage key={i} role={m.role} text={m.text} />
+              <div key={i} className="space-y-2">
+                <AdminAiMessage role={m.role} text={m.text} />
+                {m.actions?.map((action) => <AdminAiActionCard key={action.id} action={action} />)}
+              </div>
             ))}
           </div>
         </div>

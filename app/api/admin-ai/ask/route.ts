@@ -12,7 +12,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail, parseBody } from '@/lib/validation/schemas';
 import { adminAiAskSchema } from '@/lib/validation/admin-ai-schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
-import { answerAdminQuestion } from '@/lib/admin-ai/orchestrate';
+import { answerAdminQuestion, type AdminHistoryMessage } from '@/lib/admin-ai/orchestrate';
 import { cleanUserContent } from '@/lib/moderation/clean';
 import { logModerationFlag } from '@/lib/moderation/flags';
 import { logAdminConductFlagIfNeeded } from '@/lib/moderation/admin-conduct';
@@ -36,11 +36,11 @@ export async function POST(request: Request) {
 
   const service = createServiceClient();
 
-  let session: { id: string; session_key: string } | null = null;
+  let session: { id: string; session_key: string; user_id?: string | null } | null = null;
   if (sessionKey) {
     const { data } = await service
       .from('chatbot_sessions')
-      .select('id, session_key')
+      .select('id, session_key, user_id')
       .eq('session_key', sessionKey)
       .eq('channel', 'admin')
       .maybeSingle();
@@ -54,6 +54,19 @@ export async function POST(request: Request) {
       .single();
     if (createErr) return apiFail('DB_ERROR', createErr.message, 500);
     session = created;
+  }
+
+  // The agent sees the last few turns of this admin's own session, so it can
+  // ask a clarifying question and understand the reply. Bounded read.
+  let history: AdminHistoryMessage[] = [];
+  if (session.user_id === user.id) {
+    const { data: recent } = await service
+      .from('chatbot_messages')
+      .select('role, body')
+      .eq('session_id', session.id)
+      .order('created_at', { ascending: false })
+      .limit(6);
+    history = (recent ?? []).reverse().map((m) => ({ role: m.role === 'bot' ? 'bot' : 'user', text: m.body }));
   }
 
   // CLAUDE-MODERATION.md Part 3: same single entry point as the customer
@@ -100,7 +113,7 @@ export async function POST(request: Request) {
   // this doesn't weaken what actually leaves the server.
   let result: Awaited<ReturnType<typeof answerAdminQuestion>>;
   try {
-    result = await answerAdminQuestion(service, question);
+    result = await answerAdminQuestion(service, question, history);
   } catch (error) {
     console.error('[admin-ai] ask failed', error instanceof Error ? error.message : error);
     // Log the user's message even on failure — the admin still typed it —
@@ -118,5 +131,5 @@ export async function POST(request: Request) {
     .insert({ session_id: session.id, role: 'bot', body: result.answer, kb_matched: result.queryUsed !== null });
   if (botMsgErr) return apiFail('DB_ERROR', botMsgErr.message, 500);
 
-  return apiOk({ sessionKey: session.session_key, answer: result.answer });
+  return apiOk({ sessionKey: session.session_key, answer: result.answer, actions: result.actions ?? [] });
 }

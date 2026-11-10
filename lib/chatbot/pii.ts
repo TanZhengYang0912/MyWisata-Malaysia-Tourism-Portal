@@ -105,10 +105,16 @@ const STAFF_TOPIC_WORDS = /\b(?:kyc|know your customer|identity document)\b/gi;
  * card, address) still block the text. Never use this for customer input.
  */
 export function prepareStaffQuestionText(text: string): ExternalTextResult {
-  const withoutTopics = text.replace(STAFF_TOPIC_WORDS, ' ');
-  if (PRIVATE_CONTEXT.test(withoutTopics) || PRIVATE_CONTEXT_CJK.test(text) || hasStructuredPersonalData(text)) return { allowed: false };
-  return rejectAnyPII(text);
+  // Record ids (tickets, cases) are not personal data, but their digit groups
+  // can look like a phone number, so the staff check ignores them.
+  const checked = text.replace(RECORD_ID, ' ');
+  const withoutTopics = checked.replace(STAFF_TOPIC_WORDS, ' ');
+  if (PRIVATE_CONTEXT.test(withoutTopics) || PRIVATE_CONTEXT_CJK.test(checked) || hasStructuredPersonalData(checked)) return { allowed: false };
+  // Nothing was found, so the original text (ids included) is what is sent.
+  return rejectAnyPII(checked).allowed ? { allowed: true, clean: text, found: false } : { allowed: false };
 }
+
+const RECORD_ID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
 
 /**
  * Prepare platform-written help-article text (chatbot KB). Skips the

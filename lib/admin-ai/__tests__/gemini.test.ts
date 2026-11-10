@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { callGemini } from '@/lib/admin-ai/gemini';
+import { callGemini, callGeminiAgent } from '@/lib/admin-ai/gemini';
 
 describe('callGemini multimodal payload', () => {
   afterEach(() => {
@@ -44,6 +44,28 @@ describe('callGemini text source', () => {
     await expect(callGemini('system', 'How many KYC submissions are pending?', { textSource: 'staff' })).resolves.toBe('ok');
     await expect(callGemini('system', 'How many KYC submissions are pending?')).rejects.toThrow('sensitive_data_detected');
     await expect(callGemini('system', 'KYC for 990101-14-5678 please', { textSource: 'staff' })).rejects.toThrow('sensitive_data_detected');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('callGeminiAgent', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete process.env.LLM_API_KEY;
+  });
+
+  it('checks tool results as well as questions, and echoes the model turn back unchanged', async () => {
+    process.env.LLM_API_KEY = 'test-key';
+    const modelParts = [{ functionCall: { name: 'run_query', args: { query: 'kyc_pending_count' } }, thoughtSignature: 'sig' }];
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ candidates: [{ content: { role: 'model', parts: modelParts } }] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const turn = await callGeminiAgent('system', [{ role: 'user', parts: [{ text: 'How many KYC submissions are pending?' }] }], []);
+    expect(turn.calls).toEqual([modelParts[0].functionCall]);
+    expect(turn.content.parts).toEqual(modelParts);
+
+    const leakingResult = { role: 'user' as const, parts: [{ functionResponse: { name: 'run_query', response: { phone: '012-3456789' } } }] };
+    await expect(callGeminiAgent('system', [leakingResult], [])).rejects.toThrow('sensitive_data_detected');
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
