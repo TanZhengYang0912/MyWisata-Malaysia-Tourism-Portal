@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync('supabase/migrations/20261111163000_support_attachment_lifecycle.sql', 'utf8');
 const recoveryMigration = readFileSync('supabase/migrations/20261111165000_support_attachment_retry_recovery.sql', 'utf8');
+const reconciliationMigration = readFileSync('supabase/migrations/20261111212000_support_attachment_upload_reconciliation.sql', 'utf8');
 
 describe('support attachment lifecycle boundary', () => {
   it('registers upload ownership, content, state, and lease before external storage work', () => {
@@ -43,5 +44,18 @@ describe('support attachment lifecycle boundary', () => {
     expect(recoveryMigration).toContain("FOREIGN KEY (ticket_id) REFERENCES public.support_tickets(id) ON DELETE RESTRICT");
     expect(recoveryMigration).toContain("upload.state = 'reserved' AND upload.external_started_at IS NULL");
     expect(recoveryMigration).toContain("v_upload.state <> 'deleted'");
+  });
+
+  it('reconciles stale uploads by registered content before making them bindable', () => {
+    expect(reconciliationMigration).toContain("upload.state = 'uploading'");
+    expect(reconciliationMigration).toContain("upload.lease_expires_at IS NULL OR upload.lease_expires_at <= now()");
+    expect(reconciliationMigration).toContain("upload.external_started_at < now() - interval '24 hours'");
+    expect(reconciliationMigration).toContain('upload.server_sha256');
+    expect(reconciliationMigration).toContain('upload.size_bytes');
+    expect(reconciliationMigration).toContain('FOR UPDATE SKIP LOCKED');
+    expect(reconciliationMigration).toContain('LIMIT 50');
+    expect(reconciliationMigration).toContain("SET state = 'uploaded'");
+    expect(reconciliationMigration).toContain("RETURN jsonb_build_object('state', 'unknown')");
+    expect(reconciliationMigration).not.toContain("SET state = 'deleted'");
   });
 });
