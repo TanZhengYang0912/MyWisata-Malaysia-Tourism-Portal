@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createHash } from 'node:crypto';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), answer: vi.fn(), clean: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), answer: vi.fn(), clean: vi.fn(), reserveQuota: vi.fn() }));
 function query(result: unknown) {
   const terminal = Promise.resolve(result);
   const builder: Record<string, ReturnType<typeof vi.fn>> = {};
@@ -15,6 +16,7 @@ vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: m
 vi.mock('@/lib/chatbot/answer', () => ({ answerQuestion: mocks.answer }));
 vi.mock('@/lib/moderation/clean', () => ({ cleanUserContent: mocks.clean }));
 vi.mock('@/lib/moderation/flags', () => ({ logModerationFlag: vi.fn() }));
+vi.mock('@/lib/rate-limit/ai', () => ({ reserveAiQuota: mocks.reserveQuota }));
 
 import { POST } from '../route';
 
@@ -22,15 +24,26 @@ describe('POST /api/chatbot/ask session ownership', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'attacker' } } });
-    mocks.from.mockImplementation(() => query({
-      data: { id: 'session-1', session_key: 'victim-session', user_id: 'victim' }, error: null,
-    }));
+    let messageQuery = 0;
+    mocks.reserveQuota.mockResolvedValue(false);
+    mocks.from.mockImplementation((table: string) => {
+      if (table === 'chatbot_sessions') return query({
+        data: { id: 'session-1', session_key: 'victim-session', user_id: 'victim' }, error: null,
+      });
+      messageQuery += 1;
+      const result = messageQuery === 1
+        ? { data: null, error: null }
+        : messageQuery === 2
+          ? { data: { id: 'user-message-1' }, error: null }
+          : { data: { id: 'bot-message-1' }, error: null };
+      return query(result);
+    });
   });
 
   it('does not append a conversation to another account session', async () => {
     const response = await POST(new Request('http://localhost/api/chatbot/ask', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ sessionKey: 'victim-session', question: 'Where is my booking?' }),
+      body: JSON.stringify({ sessionKey: 'victim-session', operationId: crypto.randomUUID(), question: 'Where is my booking?' }),
     }));
 
     expect(response.status).toBe(403);
@@ -51,11 +64,45 @@ describe('POST /api/chatbot/ask session ownership', () => {
 
     const response = await POST(new Request('http://localhost/api/chatbot/ask', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ sessionKey: 'victim-session', question: 'Call me at 012-3456789' }),
+      body: JSON.stringify({ sessionKey: 'victim-session', operationId: crypto.randomUUID(), question: 'Call me at 012-3456789' }),
     }));
     const body = await response.json();
 
     expect(mocks.answer).toHaveBeenCalledWith('Call me at [PHONE]', false);
     expect(body.data.privacyBlocked).toBe(true);
+  });
+
+  it('returns the stored answer for a repeated operation without calling the model again', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'victim' } } });
+    mocks.clean.mockResolvedValue({
+      display: 'Where is my booking?', original: 'Where is my booking?',
+      hadProfanity: false, hadSlur: false, hadPII: false, severity: 'low',
+    });
+    const operationId = crypto.randomUUID();
+    const sessionId = 'session-1';
+    const payloadHash = createHash('sha256')
+      .update(JSON.stringify({ sessionId, userId: 'victim', question: 'Where is my booking?' }))
+      .digest('hex');
+    let messageQuery = 0;
+    mocks.from.mockImplementation((table: string) => {
+      if (table === 'chatbot_sessions') return query({
+        data: { id: sessionId, session_key: 'victim-session', user_id: 'victim' }, error: null,
+      });
+      messageQuery += 1;
+      return query(messageQuery === 1
+        ? { data: { id: 'user-message-1', operation_payload_hash: payloadHash }, error: null }
+        : { data: { id: 'bot-message-1', body: 'Your booking is confirmed.', kb_matched: true, answer_language: 'en', privacy_blocked: false }, error: null });
+    });
+
+    const response = await POST(new Request('http://localhost/api/chatbot/ask', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionKey: 'victim-session', operationId, question: 'Where is my booking?' }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.answer).toBe('Your booking is confirmed.');
+    expect(mocks.answer).not.toHaveBeenCalled();
+    expect(mocks.reserveQuota).not.toHaveBeenCalled();
   });
 });

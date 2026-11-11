@@ -7,6 +7,7 @@
 // (007_public_read_policies.sql), so writes need the service-role client,
 // same pattern as orders/order_items (CLAUDE.md Section 2/Section 6).
 
+import { createHash } from 'node:crypto';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
@@ -20,7 +21,7 @@ import { prepareExternalText } from '@/lib/chatbot/pii';
 export async function POST(request: Request) {
   const parsed = await parseBody(request, chatbotAskSchema);
   if (!parsed.ok) return parsed.response;
-  const { sessionKey, question } = parsed.data;
+  const { sessionKey, operationId, question } = parsed.data;
 
   const authClient = await createClient();
   const { data: { user } } = await authClient.auth.getUser();
@@ -46,8 +47,20 @@ export async function POST(request: Request) {
       .insert({ user_id: user?.id ?? null, session_key: sessionKey ?? crypto.randomUUID() })
       .select('id, session_key, user_id')
       .single();
-    if (createErr) return apiFail('DB_ERROR', createErr.message, 500);
-    session = created;
+    if (createErr?.code === '23505' && sessionKey) {
+      const { data: existing, error: lookupErr } = await service
+        .from('chatbot_sessions')
+        .select('id, session_key, user_id')
+        .eq('session_key', sessionKey)
+        .maybeSingle();
+      if (lookupErr || !existing || existing.user_id !== (user?.id ?? null)) {
+        return apiFail('DB_ERROR', 'Unable to establish the chat session.', 503);
+      }
+      session = existing;
+    } else if (createErr) {
+      return apiFail('DB_ERROR', 'Unable to establish the chat session.', 503);
+    }
+    else session = created;
   }
 
   // CLAUDE-MODERATION.md Part 3: cleanUserContent() is the one entry point —
@@ -59,16 +72,51 @@ export async function POST(request: Request) {
   // storage + off external APIs"). The user's own message now displays
   // masked, same as everyone else's view of it.
   const cleaned = await cleanUserContent(question, service);
-  const privacyBlocked = !prepareExternalText(question).allowed;
-  const useAi = !privacyBlocked && await reserveAiQuota(request, 'chatbot', user?.id ?? null);
-  const result = await answerQuestion(cleaned.display, useAi);
+  const operationPayloadHash = createHash('sha256')
+    .update(JSON.stringify({ sessionId: session.id, userId: user?.id ?? null, question: cleaned.display }))
+    .digest('hex');
+
+  const findExistingAnswer = async () => {
+    const { data: existingUser, error: existingUserErr } = await service
+      .from('chatbot_messages')
+      .select('id, operation_payload_hash')
+      .eq('session_id', session.id)
+      .eq('role', 'user')
+      .eq('operation_id', operationId)
+      .maybeSingle();
+    if (existingUserErr) return { response: apiFail('DB_ERROR', 'Unable to check the previous request.', 503) };
+    if (!existingUser) return { response: null };
+    if (existingUser.operation_payload_hash !== operationPayloadHash) {
+      return { response: apiFail('OPERATION_CONFLICT', 'This request key was already used for a different question.', 409) };
+    }
+    const { data: existingBot, error: existingBotErr } = await service
+      .from('chatbot_messages')
+      .select('id, body, kb_matched, answer_language, privacy_blocked')
+      .eq('reply_to_message_id', existingUser.id)
+      .eq('role', 'bot')
+      .maybeSingle();
+    if (existingBotErr) return { response: apiFail('DB_ERROR', 'Unable to check the previous answer.', 503) };
+    if (!existingBot) return { response: apiFail('OPERATION_UNKNOWN', 'The previous answer is still being confirmed. Check chat history before sending again.', 409) };
+    return { response: apiOk({ sessionKey: session.session_key, answer: existingBot.body, botAnswered: existingBot.kb_matched, messageId: existingBot.id, userMessageId: existingUser.id, language: existingBot.answer_language, privacyBlocked: existingBot.privacy_blocked }) };
+  };
+
+  const prior = await findExistingAnswer();
+  if (prior.response) return prior.response;
 
   const { data: userMsg, error: userMsgErr } = await service
     .from('chatbot_messages')
-    .insert({ session_id: session.id, role: 'user', body: cleaned.display, pii_detected: cleaned.hadPII })
+    .insert({ session_id: session.id, role: 'user', body: cleaned.display, pii_detected: cleaned.hadPII, operation_id: operationId, operation_payload_hash: operationPayloadHash })
     .select('id')
     .single();
-  if (userMsgErr) return apiFail('DB_ERROR', userMsgErr.message, 500);
+  if (userMsgErr?.code === '23505') {
+    const raced = await findExistingAnswer();
+    return raced.response ?? apiFail('OPERATION_UNKNOWN', 'The previous answer is still being confirmed. Check chat history before sending again.', 409);
+  }
+  if (userMsgErr) return apiFail('DB_ERROR', 'Unable to save the question.', 503);
+
+  const privacyBlocked = !prepareExternalText(question).allowed;
+  const useAi = !privacyBlocked && await reserveAiQuota(request, 'chatbot', user?.id ?? null);
+  const result = await answerQuestion(cleaned.display, useAi);
 
   // Slurs are a safety issue, not just civility — surfaced to admin even
   // though the message itself was masked and allowed through. Never blocks
@@ -85,10 +133,10 @@ export async function POST(request: Request) {
 
   const { data: botMsg, error: botMsgErr } = await service
     .from('chatbot_messages')
-    .insert({ session_id: session.id, role: 'bot', body: result.answer, kb_matched: result.kbMatched, reply_to_message_id: userMsg.id })
+    .insert({ session_id: session.id, role: 'bot', body: result.answer, kb_matched: result.kbMatched, reply_to_message_id: userMsg.id, answer_language: result.language, privacy_blocked: privacyBlocked })
     .select('id')
     .single();
-  if (botMsgErr) return apiFail('DB_ERROR', botMsgErr.message, 500);
+  if (botMsgErr) return apiFail('OPERATION_UNKNOWN', 'Your question was saved, but the answer could not be confirmed. Check chat history before sending again.', 503);
 
   // Provenance — which KB docs (and their similarity, for RAG mode) backed
   // this answer. See CLAUDE-PHASE2.md Feature A: "show which KB docs it

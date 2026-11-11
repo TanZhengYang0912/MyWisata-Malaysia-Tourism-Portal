@@ -125,6 +125,32 @@ export function chatbotSessionStorageKey(userId: string | null): string {
   return `mw_chatbot_session:${userId ?? "guest"}`;
 }
 
+function chatbotAskOperationStorageKey(sessionKey: string): string {
+  return `mw_chatbot_ask_operation:${sessionKey}`;
+}
+
+function readPendingAskOperation(sessionKey: string): string | null {
+  try {
+    const operationId = window.localStorage.getItem(chatbotAskOperationStorageKey(sessionKey));
+    return operationId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(operationId)
+      ? operationId
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function storePendingAskOperation(sessionKey: string, operationId: string | null): boolean {
+  try {
+    const key = chatbotAskOperationStorageKey(sessionKey);
+    if (operationId) window.localStorage.setItem(key, operationId);
+    else window.localStorage.removeItem(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function chatbotPendingOperationsStorageKey(userId: string): string {
   return `mw_chatbot_support_operations:${userId}`;
 }
@@ -200,6 +226,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   });
   const faqRequestRef = useRef<Promise<void> | null>(null);
   const sendLockRef = useRef(false);
+  const pendingAskRef = useRef<{ identity: string | null; question: string; sessionKey: string; operationId: string; localMessageId: string } | null>(null);
   const ticketOperationLockRef = useRef(false);
   const ticketOperationIdentityRef = useRef<string | null>(identityKey);
   const [sending, setSending] = useState(false);
@@ -254,6 +281,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     if (authLoading) return;
     identityRef.current = identityKey;
     sendLockRef.current = false;
+    pendingAskRef.current = null;
     ticketOperationLockRef.current = false;
     ticketOperationIdentityRef.current = identityKey;
     const ownerId = identityKey;
@@ -416,11 +444,14 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     sendLockRef.current = true;
     const requestIdentity = identityRef.current;
     setSending(true);
-    const localMessageId = crypto.randomUUID();
-    setMessages((m) => [...m, { role: "user", text: question, localId: localMessageId }]);
+    const statusIntent = resolveCustomerSupportIntent(question);
+    const retryingAsk = !statusIntent && pendingAskRef.current?.identity === requestIdentity && pendingAskRef.current.question === question
+      ? pendingAskRef.current
+      : null;
+    const localMessageId = retryingAsk?.localMessageId ?? crypto.randomUUID();
+    if (!retryingAsk) setMessages((m) => [...m, { role: "user", text: question, localId: localMessageId }]);
 
     try {
-      const statusIntent = resolveCustomerSupportIntent(question);
       if (statusIntent) {
         const response = await fetch("/api/support/status", {
           method: "POST",
@@ -458,27 +489,67 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         return;
       }
 
-      const res = await fetch("/api/chatbot/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionKey: sessionKey ?? undefined, question }),
-      });
-      const body = (await res.json()) as {
-        data: { sessionKey: string; answer: string; botAnswered: boolean; messageId: string; userMessageId: string; language: ChatLanguage; privacyBlocked: boolean } | null;
-        error: { message: string } | null;
-      };
-      if (identityRef.current !== requestIdentity) return;
-      if (!res.ok || !body.data) {
+      let targetSessionKey = sessionKey;
+      if (!targetSessionKey) {
+        targetSessionKey = crypto.randomUUID();
+        try {
+          window.localStorage.setItem(chatbotSessionStorageKey(requestIdentity), targetSessionKey);
+        } catch {
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
+          return;
+        }
+        setSessionKey(targetSessionKey);
+      }
+      let pendingAsk = retryingAsk;
+      if (!pendingAsk || pendingAsk.identity !== requestIdentity || pendingAsk.question !== question || pendingAsk.sessionKey !== targetSessionKey) {
+        pendingAsk = {
+          identity: requestIdentity,
+          question,
+          sessionKey: targetSessionKey,
+          operationId: readPendingAskOperation(targetSessionKey) ?? crypto.randomUUID(),
+          localMessageId,
+        };
+      }
+      if (!storePendingAskOperation(targetSessionKey, pendingAsk.operationId)) {
         setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
         return;
       }
+      pendingAskRef.current = pendingAsk;
+      const res = await fetch("/api/chatbot/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionKey: targetSessionKey, operationId: pendingAsk.operationId, question }),
+      });
+      const body = (await res.json()) as {
+        data: { sessionKey: string; answer: string; botAnswered: boolean; messageId: string; userMessageId: string; language: ChatLanguage; privacyBlocked: boolean } | null;
+        error: { code?: string; message: string } | null;
+      };
+      if (identityRef.current !== requestIdentity) return;
+      if (!res.ok || !body.data) {
+        if (body.error?.code === "OPERATION_UNKNOWN") {
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.askResultUnknown") }]);
+        } else if (body.error?.code === "OPERATION_CONFLICT") {
+          storePendingAskOperation(targetSessionKey, null);
+          pendingAskRef.current = null;
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.askOperationConflict") }]);
+        } else {
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
+        }
+        return;
+      }
+      pendingAskRef.current = null;
+      storePendingAskOperation(targetSessionKey, null);
       const { answer, botAnswered, messageId, userMessageId, language, privacyBlocked } = body.data;
       if (explicitQuestion === undefined) setInput((current) => current === question ? "" : current);
       let effectiveSessionKey = sessionKey;
       if (body.data.sessionKey && body.data.sessionKey !== sessionKey) {
         effectiveSessionKey = body.data.sessionKey;
         setSessionKey(body.data.sessionKey);
-        window.localStorage.setItem(chatbotSessionStorageKey(requestIdentity), body.data.sessionKey);
+        try {
+          window.localStorage.setItem(chatbotSessionStorageKey(requestIdentity), body.data.sessionKey);
+        } catch {
+          // The key was saved before the request; the server response remains usable.
+        }
       }
 
       setMessages((m) => [...m.map((message) => message.localId === localMessageId ? { ...message, localId: undefined, persistedId: userMessageId } : message), createBotMessage({ text: answer, messageId, language, privacyBlocked, botAnswered }, question)]);

@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 export const chatbotAskSchema = z.object({
   sessionKey: z.string().min(1).max(64).optional(),
+  operationId: z.string().uuid(),
   question: z.string().trim().min(1).max(500),
 }).strict();
 

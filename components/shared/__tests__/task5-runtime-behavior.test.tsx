@@ -66,6 +66,7 @@ const translations: Record<string, string> = {
   "common:chatbot.closeChat": "Close translated chat",
   "common:chatbot.emptyPrompt": "Ask a translated question",
   "common:chatbot.inputPlaceholder": "Translated question",
+  "common:chatbot.askResultUnknown": "Translated outcome not ready",
   "common:chatbot.myTickets": "Translated my tickets",
   "common:chatbot.no": "No translated",
   "common:chatbot.send": "Send translated message",
@@ -342,14 +343,15 @@ describe("Task 5 shared runtime behavior", () => {
     mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
     const question = "Why is my wallet withdrawal still pending?";
     const answer = "API answer [zh]: withdrawals can take two business days.";
-    let askPayload: { question?: string } | undefined;
+    const askPayloads: { question?: string; operationId?: string; sessionKey?: string }[] = [];
     let ticketPayload: { operationId?: string; handoffToken?: string; subject?: string; body?: string } | undefined;
     mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
       if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
       if (url === "/api/chat/mutes") return response({ data: [] });
       if (url === "/api/chatbot/ask") {
-        askPayload = JSON.parse(String(init?.body)) as { question?: string };
+        askPayloads.push(JSON.parse(String(init?.body)) as { question?: string; operationId?: string; sessionKey?: string });
+        if (askPayloads.length === 1) return response({ data: null, error: { code: "OPERATION_UNKNOWN", message: "Check history." } }, false);
         return response({
           data: { sessionKey: "chat-session-1", answer, botAnswered: false, messageId: "message-zh-1", userMessageId: "question-zh-1", language: "zh" },
           error: null,
@@ -379,8 +381,18 @@ describe("Task 5 shared runtime behavior", () => {
     const send = findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message");
     expect(send.disabled).toBe(false);
     await click(send);
+    expect(container.textContent).toContain("Translated outcome not ready");
+    expect(document.defaultView?.localStorage.getItem(`mw_chatbot_ask_operation:${askPayloads[0].sessionKey}`)).toBe(askPayloads[0].operationId);
+    await click(send);
 
-    expect(askPayload).toEqual({ question });
+    expect(askPayloads).toHaveLength(2);
+    expect(askPayloads[0]).toEqual(expect.objectContaining({ question }));
+    expect(askPayloads[0].operationId).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(askPayloads[0].sessionKey).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(askPayloads[1].operationId).toBe(askPayloads[0].operationId);
+    expect(askPayloads[1].sessionKey).toBe(askPayloads[0].sessionKey);
+    expect(document.defaultView?.localStorage.getItem(`mw_chatbot_ask_operation:${askPayloads[0].sessionKey}`)).toBeNull();
+    expect(container.textContent?.match(/Why is my wallet withdrawal still pending\?/g)).toHaveLength(1);
     expect(container.textContent).toContain(answer);
     expect(container.textContent).toContain("Translated support title");
     expect(container.textContent).not.toContain("Translated answer");
