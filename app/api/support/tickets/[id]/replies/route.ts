@@ -27,6 +27,7 @@ import { notifyTicketReply } from '@/lib/support/notify';
 import { cleanUserContent } from '@/lib/moderation/clean';
 import { logModerationFlag } from '@/lib/moderation/flags';
 import { logAdminConductFlagIfNeeded } from '@/lib/moderation/admin-conduct';
+import { createHash } from 'node:crypto';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -42,7 +43,8 @@ export async function POST(request: Request, { params }: Props) {
 
   const parsed = await parseBody(request, createTicketReplySchema);
   if (!parsed.ok) return parsed.response;
-  const { body } = parsed.data;
+  const { body, operationId } = parsed.data;
+  if (!operationId) return apiFail('UPDATE_REQUIRED', 'Refresh the ticket page before sending a reply.', 409);
 
   const service = createServiceClient();
   const { data: ticket } = await service
@@ -57,23 +59,59 @@ export async function POST(request: Request, { params }: Props) {
   if (!isAdmin && !isOwner) return apiFail('FORBIDDEN', 'Not your ticket', 403);
   const senderRole: 'customer' | 'admin' = isAdmin ? 'admin' : 'customer';
 
+  // CLAUDE-MODERATION.md: masked, never blocked — applies identically to
+  // both sides. A masked staff slur is still logged as a moderation flag
+  // (worth an HR/conduct look), not just a customer one.
+  const cleaned = await cleanUserContent(body, service);
+  const operationPayloadHash = createHash('sha256').update(JSON.stringify({
+    ticketId: id,
+    senderId: user.id,
+    senderRole,
+    body: cleaned.display,
+  })).digest('hex');
+
+  const findExistingReply = () => service.from('support_ticket_replies')
+    .select('id,ticket_id,sender_id,sender_role,body,created_at,operation_payload_hash')
+    .eq('ticket_id', id)
+    .eq('sender_id', user.id)
+    .eq('operation_id', operationId)
+    .maybeSingle();
+  const { data: existing, error: lookupError } = await findExistingReply();
+  if (lookupError) return apiFail('READ_UNAVAILABLE', 'Unable to check the reply result.', 503);
+  if (existing) {
+    if (existing.operation_payload_hash !== operationPayloadHash) {
+      return apiFail('OPERATION_CONFLICT', 'This reply key was already used for different text.', 409);
+    }
+    return apiOk({
+      id: existing.id,
+      senderId: existing.sender_id,
+      senderRole: existing.sender_role,
+      body: existing.body,
+      createdAt: existing.created_at,
+      newStatus: ticket.status,
+    });
+  }
+
   // Server-side enforcement — a disabled button on the client is not
   // security (CLAUDE-FIXES-2.md's own words). Admins are exempt.
   if (senderRole === 'customer' && LOCKED_STATUSES.has(ticket.status)) {
     return apiFail('TICKET_LOCKED', 'This ticket is resolved. Reopen it to reply.', 403);
   }
 
-  // CLAUDE-MODERATION.md: masked, never blocked — applies identically to
-  // both sides. A masked staff slur is still logged as a moderation flag
-  // (worth an HR/conduct look), not just a customer one.
-  const cleaned = await cleanUserContent(body, service);
-
   const { data: reply, error: replyErr } = await service
     .from('support_ticket_replies')
-    .insert({ ticket_id: id, sender_id: user.id, sender_role: senderRole, body: cleaned.display })
-    .select('id, sender_id, sender_role, body, created_at')
+    .insert({ ticket_id: id, sender_id: user.id, sender_role: senderRole, body: cleaned.display, operation_id: operationId, operation_payload_hash: operationPayloadHash })
+    .select('id, sender_id, sender_role, body, created_at, operation_payload_hash')
     .single();
-  if (replyErr) return apiFail('DB_ERROR', replyErr.message, 500);
+  if (replyErr?.code === '23505') {
+    const { data: raced, error: raceError } = await findExistingReply();
+    if (raceError) return apiFail('READ_UNAVAILABLE', 'Unable to check the reply result.', 503);
+    if (raced?.operation_payload_hash === operationPayloadHash) {
+      return apiOk({ id: raced.id, senderId: raced.sender_id, senderRole: raced.sender_role, body: raced.body, createdAt: raced.created_at, newStatus: ticket.status });
+    }
+    if (raced) return apiFail('OPERATION_CONFLICT', 'This reply key was already used for different text.', 409);
+  }
+  if (replyErr) return apiFail('DB_ERROR', 'Unable to send this reply.', 500);
 
   if (cleaned.hadSlur) {
     await logModerationFlag(service, {

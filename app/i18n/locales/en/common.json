@@ -374,11 +374,18 @@
       "loading": "Loading questions…",
       "error": "Couldn't load common questions.",
       "empty": "No common questions yet.",
-      "pickCategory": "Pick a topic"
+      "pickCategory": "Pick a topic",
+      "retry": "Retry"
     },
     "voice": {
       "start": "Speak your message",
-      "stop": "Stop listening"
+      "stop": "Stop listening",
+      "errors": {
+        "permission-denied": "Allow microphone access to use voice input. You can type your message instead.",
+        "no-speech": "No speech was detected. Try again or type your message.",
+        "network": "Voice input lost its connection. Check your network and try again.",
+        "unknown": "Voice input is unavailable. You can type your message instead."
+      }
     },
     "list": {
       "supportLabel": "MYLawatan Support",
@@ -386,7 +393,19 @@
     },
     "expandChat": "Expand to full screen",
     "collapseChat": "Exit full screen",
-    "resizeSidebar": "Resize the conversation list"
+    "resizeSidebar": "Resize the conversation list",
+    "supportErrors": {
+      "signIn": "Sign in, then return to this draft.",
+      "checkFields": "Check the highlighted fields and try again.",
+      "closed": "This ticket is closed. Reopen it before replying.",
+      "checking": "The result is not confirmed yet. Check the ticket status before retrying.",
+      "readUnavailable": "Could not load this information. Try again.",
+      "fileTooLarge": "Choose a file smaller than 10 MB.",
+      "fileType": "Choose a JPEG, PNG, WEBP, or PDF file.",
+      "paymentUncertain": "Payment status is not confirmed. Check your order or contact support; do not pay again yet.",
+      "rateLimited": "This action is temporarily limited. Wait a moment or contact support.",
+      "unavailable": "Something went wrong. Your text is still here. Try again or contact support."
+    }
   },
   "account": {
     "menu": "Account menu",

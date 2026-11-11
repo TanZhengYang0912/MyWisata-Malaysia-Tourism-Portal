@@ -80,6 +80,7 @@ export type UpdateKbDocumentInput = z.infer<typeof updateKbDocumentSchema>;
 
 export const createTicketReplySchema = z.object({
   body: z.string().trim().min(1).max(2000),
+  operationId: z.string().uuid().optional(),
 }).strict();
 
 export type CreateTicketReplyInput = z.infer<typeof createTicketReplySchema>;

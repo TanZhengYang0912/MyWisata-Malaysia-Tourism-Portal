@@ -374,11 +374,18 @@
       "loading": "Memuatkan soalan…",
       "error": "Tidak dapat memuatkan soalan lazim.",
       "empty": "Tiada soalan lazim buat masa ini.",
-      "pickCategory": "Pilih topik"
+      "pickCategory": "Pilih topik",
+      "retry": "Cuba lagi"
     },
     "voice": {
       "start": "Sebut mesej anda",
-      "stop": "Berhenti mendengar"
+      "stop": "Berhenti mendengar",
+      "errors": {
+        "permission-denied": "Benarkan akses mikrofon untuk menggunakan input suara. Anda boleh menaip mesej sebagai ganti.",
+        "no-speech": "Tiada suara dikesan. Cuba lagi atau taip mesej anda.",
+        "network": "Input suara terputus daripada rangkaian. Semak rangkaian dan cuba lagi.",
+        "unknown": "Input suara tidak tersedia. Anda boleh menaip mesej sebagai ganti."
+      }
     },
     "list": {
       "supportLabel": "Sokongan MYLawatan",
@@ -386,7 +393,19 @@
     },
     "expandChat": "Kembangkan ke skrin penuh",
     "collapseChat": "Keluar skrin penuh",
-    "resizeSidebar": "Ubah saiz senarai perbualan"
+    "resizeSidebar": "Ubah saiz senarai perbualan",
+    "supportErrors": {
+      "signIn": "Log masuk, kemudian kembali kepada draf ini.",
+      "checkFields": "Semak medan yang ditandakan dan cuba lagi.",
+      "closed": "Tiket ini ditutup. Buka semula sebelum membalas.",
+      "checking": "Keputusan belum disahkan. Semak status tiket sebelum mencuba lagi.",
+      "readUnavailable": "Maklumat ini tidak dapat dimuatkan. Cuba lagi.",
+      "fileTooLarge": "Pilih fail yang lebih kecil daripada 10 MB.",
+      "fileType": "Pilih fail JPEG, PNG, WEBP atau PDF.",
+      "paymentUncertain": "Status bayaran belum disahkan. Semak pesanan atau hubungi sokongan; jangan bayar lagi dahulu.",
+      "rateLimited": "Tindakan ini dihadkan buat sementara. Tunggu sebentar atau hubungi sokongan.",
+      "unavailable": "Ralat berlaku. Teks anda masih disimpan di sini. Cuba lagi atau hubungi sokongan."
+    }
   },
   "account": {
     "menu": "Menu akaun",

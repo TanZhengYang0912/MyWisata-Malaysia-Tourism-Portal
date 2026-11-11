@@ -374,11 +374,18 @@
       "loading": "正在加载问题…",
       "error": "无法加载常见问题。",
       "empty": "暂无常见问题。",
-      "pickCategory": "选择主题"
+      "pickCategory": "选择主题",
+      "retry": "重试"
     },
     "voice": {
       "start": "语音输入消息",
-      "stop": "停止聆听"
+      "stop": "停止聆听",
+      "errors": {
+        "permission-denied": "请允许使用麦克风。也可以改为输入消息。",
+        "no-speech": "没有检测到语音，请重试或输入消息。",
+        "network": "语音输入连接中断，请检查网络后重试。",
+        "unknown": "语音输入暂不可用，也可以直接输入消息。"
+      }
     },
     "list": {
       "supportLabel": "MYLawatan 客服",
@@ -386,7 +393,19 @@
     },
     "expandChat": "展开为全屏",
     "collapseChat": "退出全屏",
-    "resizeSidebar": "调整对话列表大小"
+    "resizeSidebar": "调整对话列表大小",
+    "supportErrors": {
+      "signIn": "登录后返回此草稿继续操作。",
+      "checkFields": "检查标出的内容并重试。",
+      "closed": "此工单已关闭，请重新打开后再回复。",
+      "checking": "操作结果尚未确认。请先查询工单状态，再决定是否重试。",
+      "readUnavailable": "暂时无法读取信息，请重试。",
+      "fileTooLarge": "请选择小于 10 MB 的文件。",
+      "fileType": "请选择 JPEG、PNG、WEBP 或 PDF 文件。",
+      "paymentUncertain": "付款状态尚未确认。请先查询订单或联系客服，暂时不要重复付款。",
+      "rateLimited": "此操作暂时受限，请稍后重试或联系人工客服。",
+      "unavailable": "操作失败，但输入内容仍保留。请重试或联系人工客服。"
+    }
   },
   "account": {
     "menu": "账户菜单",

@@ -26,12 +26,13 @@ const { POST } = await import('../route');
 
 const TICKET_ID = '11111111-1111-4111-8111-111111111111';
 const TICKET_OWNER_ID = 'customer-1';
+const OPERATION_ID = '7b456ed4-615e-4210-a704-840abc4c1790';
 
 function request(body: string) {
   return new Request(`http://localhost/api/support/tickets/${TICKET_ID}/replies`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({ body, operationId: OPERATION_ID }),
   });
 }
 
@@ -40,6 +41,7 @@ function callRoute(body: string) {
 }
 
 function mockClient(ticket: { status?: string; assigned_to?: string | null } = {}) {
+  let existingReply: Record<string, unknown> | null = null;
   const ticketRow = { id: TICKET_ID, subject: 'Help', user_id: TICKET_OWNER_ID, assigned_to: null, status: 'open', ...ticket };
   createServiceClient.mockReturnValue({
     from: (table: string) => {
@@ -48,6 +50,18 @@ function mockClient(ticket: { status?: string; assigned_to?: string | null } = {
           select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: ticketRow, error: null }) }) }),
           update: () => ({ eq: () => Promise.resolve({ error: null }) }),
         };
+      }
+      if (table === 'support_ticket_replies') {
+        const builder: Record<string, (...args: unknown[]) => unknown> = {};
+        builder.select = () => builder;
+        builder.eq = () => builder;
+        builder.maybeSingle = () => Promise.resolve({ data: existingReply, error: null });
+        builder.insert = (input: unknown) => {
+          const values = input as Record<string, unknown>;
+          const row = { ...values, id: 'reply-1', created_at: '2026-08-09T00:00:00.000Z' };
+          return { select: () => ({ single: async () => { existingReply = row; return { data: row, error: null }; } }) };
+        };
+        return builder;
       }
       if (table === 'moderation_custom_words') {
         return { select: () => ({ eq: () => Promise.resolve({ data: [] }) }) };
@@ -102,6 +116,25 @@ describe('POST /api/support/tickets/[id]/replies — admin conduct flagging', ()
 
     expect(response.status).toBe(201);
     expect(logAdminConductFlagIfNeeded).not.toHaveBeenCalled();
+  });
+
+  it('returns the existing reply for a repeated operation without notifying twice', async () => {
+    isSuperAdmin.mockResolvedValue(true);
+    mockClient();
+
+    expect((await callRoute('Same text')).status).toBe(201);
+    expect((await callRoute('Same text')).status).toBe(200);
+    expect(notifyTicketReply).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects changed reply text under a previously used operation key', async () => {
+    isSuperAdmin.mockResolvedValue(true);
+    mockClient();
+
+    expect((await callRoute('Original text')).status).toBe(201);
+    const response = await callRoute('Changed text');
+    expect(response.status).toBe(409);
+    expect(notifyTicketReply).toHaveBeenCalledTimes(1);
   });
 
   it('calls the flagger with a clean cleaned() result for an ordinary admin reply', async () => {

@@ -52,7 +52,7 @@ vi.mock("@/lib/supabase/client", () => ({
 
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
 import { AdminSegmentedFilter } from "@/components/admin/segmented-filter";
-import { ChatbotWidget, createBotMessage, resolveTicketSubject } from "@/components/shared/chatbot-widget";
+import { ChatbotWidget, chatbotSessionStorageKey, createBotMessage, resolveTicketSubject } from "@/components/shared/chatbot-widget";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { NotificationCenter } from "@/components/shared/notification-center";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -318,6 +318,24 @@ describe("Task 5 shared runtime behavior", () => {
     expect(resolveTicketSubject(message.question, "Translated support request")).toBe("Need help with my wallet");
     expect(resolveTicketSubject(undefined, "Translated support request")).toBe("Translated support request");
     expect(resolveTicketSubject("x".repeat(500), "Support request")).toBe("x".repeat(255));
+  });
+
+  it("keeps chatbot session storage isolated by account", () => {
+    expect(chatbotSessionStorageKey("customer-a")).not.toBe(chatbotSessionStorageKey("customer-b"));
+    expect(chatbotSessionStorageKey(null)).toBe("mw_chatbot_session:guest");
+  });
+
+  it("offers a working retry after the FAQ request fails", async () => {
+    mocks.fetch.mockResolvedValueOnce(response({ data: null, error: { code: "READ_UNAVAILABLE" } }, false));
+    mocks.fetch.mockResolvedValueOnce(response({ data: { categories: [] }, error: null }));
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "chatbot.faq.toggle"));
+    expect(container.textContent).toContain("chatbot.faq.error");
+    await click(findButton("chatbot.faq.retry"));
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    expect(container.textContent).toContain("chatbot.faq.empty");
   });
 
   it("drives the real chatbot send and ticket handlers without translating API answers or ticket subjects", async () => {

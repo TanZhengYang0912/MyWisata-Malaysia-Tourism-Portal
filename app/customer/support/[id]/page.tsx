@@ -48,6 +48,7 @@ export default function CustomerTicketDetailPage() {
   const { showFeedback } = useActionFeedback();
   const [ticket, setTicket] = useState<TicketDetail | null | undefined>(undefined);
   const [reply, setReply] = useState("");
+  const [replyOperationId, setReplyOperationId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [reopening, setReopening] = useState(false);
   const [muting, setMuting] = useState(false);
@@ -73,9 +74,14 @@ export default function CustomerTicketDetailPage() {
     (async () => {
       const loadedTicket = await loadTicket();
       if (!loadedTicket) return;
-      // Marks read on actually opening the thread, not just when a list
-      // row renders. A failed detail load must not mark unseen replies read.
-      await fetch(`/api/support/tickets/${id}/read`, { method: "PATCH" });
+      const lastDisplayedReply = [...loadedTicket.replies].reverse().find((reply) => reply.sender_role === "admin");
+      if (lastDisplayedReply) {
+        await fetch(`/api/support/tickets/${id}/read`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lastDisplayedReplyId: lastDisplayedReply.id }),
+        });
+      }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -84,15 +90,18 @@ export default function CustomerTicketDetailPage() {
     if (pendingFile) return sendAttachment();
     const text = reply.trim();
     if (!text || sending) return;
+    const operationId = replyOperationId ?? crypto.randomUUID();
+    setReplyOperationId(operationId);
     setSending(true);
     try {
       const res = await fetch(`/api/support/tickets/${id}/replies`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: text }),
+        body: JSON.stringify({ body: text, operationId }),
       });
       if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? tCustomer("ui.support.replyError")); return; }
       setReply("");
+      setReplyOperationId(null);
       showFeedback("success", tCustomer("ui.support.replySent"));
       await loadTicket();
     } catch {
@@ -250,7 +259,10 @@ export default function CustomerTicketDetailPage() {
             </button>
             <input
               value={reply}
-              onChange={(e) => setReply(e.target.value)}
+              onChange={(e) => {
+                setReply(e.target.value);
+                setReplyOperationId(e.target.value.trim() ? crypto.randomUUID() : null);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") sendReply();
               }}

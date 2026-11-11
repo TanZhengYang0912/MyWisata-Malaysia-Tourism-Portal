@@ -37,22 +37,16 @@ import type { FaqCategory } from "@/app/api/chatbot/faq/route";
 import type { ChatLanguage } from "@/lib/chatbot/language";
 import { useAuth } from "@/components/providers/auth";
 import { useSupportChat } from "@/components/providers/support-chat";
-import { useSpeechInput, resolveRecognitionLang, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
+import { useSpeechInput, resolveRecognitionLang } from "@/hooks/use-speech-input";
 import { ChatWidgetInbox } from "@/components/shared/chat-widget/chat-widget-inbox";
 import { ChatWidgetVendorThread } from "@/components/shared/chat-widget/chat-widget-vendor-thread";
 import { resolveCustomerSupportIntent } from "@/lib/chatbot/customer-intent";
 import type { CustomerStatusItem } from "@/lib/chatbot/customer-tools";
+import { supportError } from "@/lib/support/errors";
 
 // CLAUDE-VOICE-INPUT.md Part 2. Friendly copy per error kind — never a raw
 // error/exception reaching this UI (the hook itself already guarantees
 // that; this is just the last-mile string).
-const SPEECH_ERROR_TEXT: Record<SpeechInputErrorKind, string> = {
-  "permission-denied": "Microphone access needed",
-  "no-speech": "Didn't catch that — try again",
-  network: "Voice input needs a connection",
-  unknown: "Voice input isn't available right now",
-};
-
 // Display labels for the KB's own `category` values (the live set today:
 // account, affiliate, booking, general, payment, rewards, vendor, wallet).
 // Admins can add new categories from the KB editor at any time, so an
@@ -95,6 +89,7 @@ interface ChatMessage {
   feedbackStage?: FeedbackStage;
   ticketId?: string;
   ticketError?: string;
+  ticketErrorCode?: string;
   statusItems?: CustomerStatusItem[];
   statusActionHref?: string;
   statusActionLabel?: string;
@@ -128,7 +123,9 @@ export function resolveTicketSubject(question: string | undefined, fallback: str
   return (question?.trim() || fallback).slice(0, 255);
 }
 
-const SESSION_STORAGE_KEY = "mw_chatbot_session";
+export function chatbotSessionStorageKey(userId: string | null): string {
+  return `mw_chatbot_session:${userId ?? "guest"}`;
+}
 
 async function postFeedback(payload: Record<string, unknown>) {
   try {
@@ -148,18 +145,30 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   // activity page "Message vendor" buttons — can open this same widget
   // instance instead of building a second chat surface.
   const { open, setOpen, selected, selectChat, unreadChatCount } = useSupportChat();
-  const { currentUser } = useAuth();
+  const { currentUser, loading: authLoading } = useAuth();
   const { t } = useTranslation("common");
   const { t: tCustomer } = useTranslation("customer");
-  // Lazy initializer, not an effect: reading localStorage here is
-  // synchronous and doesn't need a render cycle. Guarded for SSR, where
-  // `window` doesn't exist — sessionKey is never rendered into JSX, so a
-  // server/client value mismatch here can't cause a hydration warning.
-  const [sessionKey, setSessionKey] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : window.localStorage.getItem(SESSION_STORAGE_KEY),
-  );
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
+  const identityKey = currentUser?.id ?? null;
+  const identityRef = useRef<string | null>(identityKey);
+  const [storedSession, setStoredSession] = useState<{ ownerId: string | null; value: string | null }>({ ownerId: identityKey, value: null });
+  const sessionKey = storedSession.ownerId === identityKey ? storedSession.value : null;
+  const setSessionKey = (value: string | null) => setStoredSession({ ownerId: identityRef.current, value });
+  const [messageState, setMessageState] = useState<{ ownerId: string | null; value: ChatMessage[] }>({ ownerId: identityKey, value: [] });
+  const messages = useMemo(() => messageState.ownerId === identityKey ? messageState.value : [], [identityKey, messageState]);
+  const setMessages = (update: ChatMessage[] | ((current: ChatMessage[]) => ChatMessage[])) => setMessageState((previous) => {
+    const current = previous.ownerId === identityRef.current ? previous.value : [];
+    return { ownerId: identityRef.current, value: typeof update === "function" ? update(current) : update };
+  });
+  const [inputState, setInputState] = useState<{ ownerId: string | null; value: string }>({ ownerId: identityKey, value: "" });
+  const input = inputState.ownerId === identityKey ? inputState.value : "";
+  const setInput = (update: string | ((current: string) => string)) => setInputState((previous) => {
+    const current = previous.ownerId === identityRef.current ? previous.value : "";
+    return { ownerId: identityRef.current, value: typeof update === "function" ? update(current) : update };
+  });
+  const faqRequestRef = useRef<Promise<void> | null>(null);
+  const sendLockRef = useRef(false);
+  const ticketOperationLockRef = useRef(false);
+  const ticketOperationIdentityRef = useRef<string | null>(identityKey);
   const [sending, setSending] = useState(false);
   const [creatingTicketFor, setCreatingTicketFor] = useState<string | null>(null);
   // Full-screen toggle for the merged widget — resets to the normal
@@ -208,13 +217,37 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   const [faqOpen, setFaqOpen] = useState(false);
   const [faqCategory, setFaqCategory] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (authLoading) return;
+    identityRef.current = identityKey;
+    sendLockRef.current = false;
+    ticketOperationLockRef.current = false;
+    ticketOperationIdentityRef.current = identityKey;
+    const ownerId = identityKey;
+    queueMicrotask(() => {
+      if (identityRef.current !== ownerId) return;
+      setStoredSession({ ownerId, value: window.localStorage.getItem(chatbotSessionStorageKey(ownerId)) });
+      setSending(false);
+      setCreatingTicketFor(null);
+    });
+  }, [authLoading, identityKey]);
+
   async function loadFaq() {
+    if (faqRequestRef.current) return faqRequestRef.current;
+    const request = (async () => {
+      try {
+        const res = await fetch("/api/chatbot/faq");
+        const body = (await res.json()) as { data: { categories: FaqCategory[] } | null };
+        setFaq(res.ok && body.data ? body.data.categories : null);
+      } catch {
+        setFaq(null);
+      }
+    })();
+    faqRequestRef.current = request;
     try {
-      const res = await fetch("/api/chatbot/faq");
-      const body = (await res.json()) as { data: { categories: FaqCategory[] } | null };
-      setFaq(res.ok && body.data ? body.data.categories : null);
-    } catch {
-      setFaq(null);
+      await request;
+    } finally {
+      faqRequestRef.current = null;
     }
   }
 
@@ -262,7 +295,9 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
    */
   async function sendMessage(explicitQuestion?: string) {
     const question = (explicitQuestion ?? input).trim();
-    if (!question || sending) return;
+    if (!question || sending || sendLockRef.current) return;
+    sendLockRef.current = true;
+    const requestIdentity = identityRef.current;
     setSending(true);
     setMessages((m) => [...m, { role: "user", text: question }]);
 
@@ -277,6 +312,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         const result = await response.json().catch(() => ({})) as {
           data?: { state?: string; items?: CustomerStatusItem[] };
         };
+        if (identityRef.current !== requestIdentity) return;
         const signInRequired = response.status === 401;
         const needsHumanHelp = signInRequired || !response.ok || result.data?.state === "unavailable";
         const message = signInRequired
@@ -313,6 +349,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         data: { sessionKey: string; answer: string; botAnswered: boolean; messageId: string; language: ChatLanguage; privacyBlocked: boolean } | null;
         error: { message: string } | null;
       };
+      if (identityRef.current !== requestIdentity) return;
       if (!res.ok || !body.data) {
         setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
         return;
@@ -323,7 +360,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       if (body.data.sessionKey && body.data.sessionKey !== sessionKey) {
         effectiveSessionKey = body.data.sessionKey;
         setSessionKey(body.data.sessionKey);
-        window.localStorage.setItem(SESSION_STORAGE_KEY, body.data.sessionKey);
+        window.localStorage.setItem(chatbotSessionStorageKey(requestIdentity), body.data.sessionKey);
       }
 
       setMessages((m) => [...m, createBotMessage({ text: answer, messageId, language, privacyBlocked, botAnswered }, question)]);
@@ -338,9 +375,12 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         postFeedback({ sessionKey: effectiveSessionKey ?? undefined, messageId, question, botAnswered: false, helpful: null });
       }
     } catch {
-      setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
+      if (identityRef.current === requestIdentity) setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
     } finally {
-      setSending(false);
+      if (identityRef.current === requestIdentity) {
+        sendLockRef.current = false;
+        setSending(false);
+      }
     }
   }
 
@@ -357,7 +397,10 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
 
   async function createTicket(index: number) {
     const msg = messages[index];
-    if (!msg.question || creatingTicketFor) return;
+    if (!msg.question || creatingTicketFor || ticketOperationLockRef.current) return;
+    const requestIdentity = identityRef.current;
+    ticketOperationLockRef.current = true;
+    ticketOperationIdentityRef.current = requestIdentity;
     const operationId = crypto.randomUUID();
     setCreatingTicketFor(msg.messageId ?? operationId);
     try {
@@ -370,6 +413,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         }),
       });
       const result = await response.json().catch(() => ({})) as { data?: { subject: string; summary: string } };
+      if (identityRef.current !== requestIdentity) return;
       if (!response.ok || !result.data) {
         setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError") } : m)));
         return;
@@ -385,21 +429,29 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         ticketError: undefined,
       } : m)));
     } catch {
-      setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError") } : m)));
+      if (identityRef.current === requestIdentity) {
+        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError") } : m)));
+      }
     } finally {
-      setCreatingTicketFor(null);
+      if (ticketOperationIdentityRef.current === requestIdentity) {
+        ticketOperationLockRef.current = false;
+        setCreatingTicketFor(null);
+      }
     }
   }
 
   async function confirmTicket(index: number) {
     const msg = messages[index];
-    if (!msg.handoffOperationId || creatingTicketFor) return;
+    if (!msg.handoffOperationId || creatingTicketFor || ticketOperationLockRef.current) return;
+    const requestIdentity = identityRef.current;
     const subject = msg.handoffSubject?.trim() ?? "";
     const summary = msg.handoffSummary?.trim() ?? "";
     if (!subject || subject.length > 255 || !summary || summary.length > 2000) {
       setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.handoff.invalid") } : m)));
       return;
     }
+    ticketOperationLockRef.current = true;
+    ticketOperationIdentityRef.current = requestIdentity;
     setCreatingTicketFor(msg.messageId ?? msg.handoffOperationId);
     setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: undefined, ticketNeedsSignIn: false } : m)));
 
@@ -411,6 +463,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
           body: JSON.stringify({ subject, summary }),
         });
         const previewResult = await previewResponse.json().catch(() => ({})) as { data?: { subject: string; summary: string } };
+        if (identityRef.current !== requestIdentity) return;
         if (!previewResponse.ok || !previewResult.data) throw new Error("preview_unavailable");
         if (previewResult.data.subject !== subject || previewResult.data.summary !== summary) {
           setMessages((prev) => prev.map((m, i) => (i === index ? {
@@ -429,7 +482,8 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ operationId: msg.handoffOperationId, subject, body: summary }),
       });
-      const result = (await res.json()) as { data: { id: string; category: string } | null };
+      const result = (await res.json().catch(() => ({}))) as { data?: { id: string; category: string } | null; error?: { code?: string } | null };
+      if (identityRef.current !== requestIdentity) return;
       const ticketErrorText = t("chatbot.ticketError");
       if (res.ok && result.data) {
         setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: "ticket_created", ticketId: result.data!.id, ticketOperationUnknown: false, ticketOperationNotFound: false } : m)));
@@ -438,29 +492,37 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         setMessages((prev) => prev.map((m, i) => (i === index ? {
           ...m,
           ticketError: ticketErrorText,
+          ticketErrorCode: result.error?.code,
           ticketNeedsSignIn: res.status === 401,
           ticketOperationUnknown: res.status >= 500 || res.status === 409,
         } : m)));
       }
     } catch {
-      setMessages((prev) => prev.map((m, i) => (i === index ? {
+      if (identityRef.current === requestIdentity) setMessages((prev) => prev.map((m, i) => (i === index ? {
         ...m,
         ticketError: t("chatbot.ticketError"),
         ticketNeedsSignIn: false,
         ticketOperationUnknown: true,
       } : m)));
     } finally {
-      setCreatingTicketFor(null);
+      if (ticketOperationIdentityRef.current === requestIdentity) {
+        ticketOperationLockRef.current = false;
+        setCreatingTicketFor(null);
+      }
     }
   }
 
   async function checkTicketOperation(index: number) {
     const msg = messages[index];
-    if (!msg.handoffOperationId || creatingTicketFor) return;
+    if (!msg.handoffOperationId || creatingTicketFor || ticketOperationLockRef.current) return;
+    const requestIdentity = identityRef.current;
+    ticketOperationLockRef.current = true;
+    ticketOperationIdentityRef.current = requestIdentity;
     setCreatingTicketFor(msg.messageId ?? msg.handoffOperationId);
     try {
       const response = await fetch(`/api/support/operations/${msg.handoffOperationId}`);
       const result = await response.json().catch(() => ({})) as { data?: { state?: string; ticketId?: string } };
+      if (identityRef.current !== requestIdentity) return;
       if (!response.ok || !result.data) {
         setMessages((current) => current.map((item, itemIndex) => itemIndex === index
           ? { ...item, ticketError: t("chatbot.statusQuery.unavailable") }
@@ -478,11 +540,16 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         ? { ...item, ticketOperationUnknown: false, ticketOperationNotFound: true, ticketError: t("chatbot.handoff.notCreated") }
         : item));
     } catch {
-      setMessages((current) => current.map((item, itemIndex) => itemIndex === index
-        ? { ...item, ticketError: t("chatbot.statusQuery.unavailable") }
-        : item));
+      if (identityRef.current === requestIdentity) {
+        setMessages((current) => current.map((item, itemIndex) => itemIndex === index
+          ? { ...item, ticketError: t("chatbot.statusQuery.unavailable") }
+          : item));
+      }
     } finally {
-      setCreatingTicketFor(null);
+      if (ticketOperationIdentityRef.current === requestIdentity) {
+        ticketOperationLockRef.current = false;
+        setCreatingTicketFor(null);
+      }
     }
   }
 
@@ -623,7 +690,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                                   {t("chatbot.no")}
                                 </Button>
                               </div>
-                              {m.ticketError && <p className="text-[0.6875rem] text-destructive mt-1">{m.ticketError}</p>}
+                              {m.ticketError && <p role="alert" className="text-[0.6875rem] text-destructive mt-1">{m.ticketErrorCode ? t(`chatbot.supportErrors.${supportError(m.ticketErrorCode).key}`) : m.ticketError}</p>}
                             </div>
                           )}
                           {m.feedbackStage === "handoff_preview" && (
@@ -649,7 +716,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                                   className="mt-1 w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm font-normal"
                                 />
                               </label>
-                              {m.ticketError && <p role="alert" className="text-xs text-destructive">{m.ticketError}</p>}
+                              {m.ticketError && <p role="alert" className="text-xs text-destructive">{m.ticketErrorCode ? t(`chatbot.supportErrors.${supportError(m.ticketErrorCode).key}`) : m.ticketError}</p>}
                               {m.ticketNeedsSignIn && (
                                 <Link href="/login?next=%2Fcustomer%2Fsupport" target="_blank" rel="noreferrer" className="text-xs text-primary underline">
                                   {t("chatbot.handoff.signIn")}
@@ -691,7 +758,10 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                       <p className="text-xs text-muted-foreground">{t("chatbot.faq.loading")}</p>
                     )}
                     {faq === null && (
-                      <p className="text-xs text-destructive">{t("chatbot.faq.error")}</p>
+                      <div role="status" className="flex items-center justify-between gap-2 text-xs text-destructive">
+                        <span>{t("chatbot.faq.error")}</span>
+                        <button type="button" className="underline" onClick={() => void loadFaq()}>{t("chatbot.faq.retry")}</button>
+                      </div>
                     )}
                     {faq && faq.length === 0 && (
                       <p className="text-xs text-muted-foreground">{t("chatbot.faq.empty")}</p>
@@ -747,13 +817,16 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                   </div>
                 )}
 
-                {speech.error && <p className="px-3 pt-1.5 text-[0.6875rem] text-destructive border-t border-border">{SPEECH_ERROR_TEXT[speech.error]}</p>}
+                {speech.error && <p role="status" className="px-3 pt-1.5 text-[0.6875rem] text-destructive border-t border-border">{t(`chatbot.voice.errors.${speech.error}`)}</p>}
                 <div className={`flex items-center gap-2 px-3 py-3 ${speech.error ? "" : "border-t border-border"}`}>
                   <input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") sendMessage();
+                      if (e.key === "Enter" && !e.nativeEvent.isComposing && !e.shiftKey) {
+                        e.preventDefault();
+                        void sendMessage();
+                      }
                     }}
                     placeholder={t("chatbot.inputPlaceholder")}
                     className="flex-1 min-w-0 h-9 rounded-full border border-border px-3 text-sm bg-background text-foreground"

@@ -112,6 +112,7 @@ function AdminSupportContent() {
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
   const [detail, setDetail] = useState<TicketDetail | null>(null);
   const [reply, setReply] = useState("");
+  const [replyOperationId, setReplyOperationId] = useState<string | null>(null);
   const speech = useSpeechInput({ lang: resolveRecognitionLangFromLocale(i18n.resolvedLanguage), onTranscriptChange: setReply });
   const [sending, setSending] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -196,9 +197,15 @@ function AdminSupportContent() {
     (async () => {
       const loadedDetail = await loadDetail(openTicketId);
       if (!loadedDetail) return;
-      // Marks read on actually opening the dialog (CLAUDE-FIXES-2.md item 1).
-      await fetch(`/api/support/tickets/${openTicketId}/read`, { method: "PATCH" });
-      setTickets((prev) => prev?.map((t) => (t.id === openTicketId ? { ...t, unread: false } : t)) ?? null);
+      const lastDisplayedReply = [...loadedDetail.replies].reverse().find((reply) => reply.sender_role === "customer");
+      if (lastDisplayedReply) {
+        const readResponse = await fetch(`/api/support/tickets/${openTicketId}/read`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lastDisplayedReplyId: lastDisplayedReply.id }),
+        });
+        if (readResponse.ok) setTickets((prev) => prev?.map((t) => (t.id === openTicketId ? { ...t, unread: false } : t)) ?? null);
+      }
     })();
   }, [openTicketId]);
 
@@ -276,15 +283,18 @@ function AdminSupportContent() {
     if (pendingFile) return sendAttachment();
     const text = reply.trim();
     if (!text || sending || !openTicketId) return;
+    const operationId = replyOperationId ?? crypto.randomUUID();
+    setReplyOperationId(operationId);
     setSending(true);
     try {
       const res = await fetch(`/api/support/tickets/${openTicketId}/replies`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: text }),
+        body: JSON.stringify({ body: text, operationId }),
       });
       if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? t("ui.support.errors.sendReply")); return; }
       setReply("");
+      setReplyOperationId(null);
       showFeedback("success", t("ui.support.replySent"));
       await loadDetail(openTicketId);
       await loadTickets();
@@ -527,6 +537,7 @@ function AdminSupportContent() {
             setOpenTicketId(null);
             setDetail(null);
             setReply("");
+            setReplyOperationId(null);
             setPendingFile(null);
           }
         }}
@@ -589,7 +600,10 @@ function AdminSupportContent() {
                   </button>
                   <input
                     value={reply}
-                    onChange={(e) => setReply(e.target.value)}
+                    onChange={(e) => {
+                      setReply(e.target.value);
+                      setReplyOperationId(e.target.value.trim() ? crypto.randomUUID() : null);
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") sendReply();
                     }}

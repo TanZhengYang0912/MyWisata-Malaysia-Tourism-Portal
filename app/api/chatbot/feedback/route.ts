@@ -67,7 +67,7 @@ export async function POST(request: Request) {
 
   const { data: existing, error: existingError } = await service
     .from('chatbot_feedback')
-    .select('id,session_id,user_id,opened_ticket')
+    .select('id,session_id,user_id,helpful,opened_ticket')
     .eq('message_id', messageId)
     .maybeSingle();
   if (existingError) return apiFail('DB_ERROR', 'Unable to load chat feedback.', 503);
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       return apiFail('FORBIDDEN', 'This chat feedback does not belong to the current session.', 403);
     }
     const patch: Record<string, unknown> = {};
-    if (helpful !== undefined) patch.helpful = helpful;
+    if (helpful !== undefined && helpful !== existing.helpful) patch.helpful = helpful;
     if (openedTicket === true && existing.opened_ticket !== true) patch.opened_ticket = true;
     if (Object.keys(patch).length === 0) return apiOk({ id: existing.id });
     const { data: updated, error } = await service.from('chatbot_feedback')
@@ -109,7 +109,23 @@ export async function POST(request: Request) {
     })
     .select('id')
     .single();
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error?.code === '23505') {
+    const { data: raced, error: raceLookupError } = await service.from('chatbot_feedback')
+      .select('id,session_id,user_id,helpful,opened_ticket')
+      .eq('message_id', messageId)
+      .maybeSingle();
+    if (raceLookupError) return apiFail('READ_UNAVAILABLE', 'Unable to check the feedback result.', 503);
+    if (raced && raced.session_id === message.session_id && raced.user_id === relatedSession.user_id) {
+      const patch: Record<string, unknown> = {};
+      if (helpful !== undefined && helpful !== raced.helpful) patch.helpful = helpful;
+      if (openedTicket === true && raced.opened_ticket !== true) patch.opened_ticket = true;
+      if (Object.keys(patch).length === 0) return apiOk({ id: raced.id });
+      const { error: updateError } = await service.from('chatbot_feedback').update(patch).eq('id', raced.id).eq('session_id', message.session_id);
+      if (updateError) return apiFail('DB_ERROR', 'Unable to save feedback. Try again.', 500);
+      return apiOk({ id: raced.id });
+    }
+  }
+  if (error) return apiFail('DB_ERROR', 'Unable to save feedback. Try again.', 500);
 
   return apiOk({ id: created.id }, { status: 201 });
 }
