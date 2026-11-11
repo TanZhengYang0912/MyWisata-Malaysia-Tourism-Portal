@@ -34,6 +34,10 @@ DECLARE
   v_reply public.support_ticket_replies%ROWTYPE;
   v_created boolean := false;
 BEGIN
+  IF coalesce(auth.role(), '') <> 'service_role' THEN
+    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'support_ticket_service_role_required';
+  END IF;
+
   IF p_ticket_id IS NULL OR p_actor_id IS NULL OR p_operation_id IS NULL
      OR p_sender_role NOT IN ('customer', 'admin')
      OR p_body IS NULL OR length(btrim(p_body)) = 0

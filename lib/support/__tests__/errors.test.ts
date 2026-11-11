@@ -4,6 +4,7 @@ import { supportError, supportTicketLoadFailure } from '../errors';
 describe('supportError', () => {
   it('maps uncertain writes to checking the operation', () => {
     expect(supportError('OPERATION_UNKNOWN').action).toBe('check_operation');
+    expect(supportError('WRITE_UNAVAILABLE')).toEqual({ key: 'checking', action: 'check_operation' });
   });
 
   it('does not echo unknown internal codes', () => {

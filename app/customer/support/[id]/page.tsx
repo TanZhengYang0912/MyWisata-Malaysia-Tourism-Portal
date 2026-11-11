@@ -120,7 +120,7 @@ export default function CustomerTicketDetailPage() {
       showFeedback("success", tCustomer("ui.support.replySent"));
       await loadTicket();
     } catch {
-      showFeedback("error", tCustomer("ui.support.replyRetry"));
+      showFeedback("error", tCommon("chatbot.supportErrors.checking"));
     } finally {
       setSending(false);
     }
@@ -157,7 +157,7 @@ export default function CustomerTicketDetailPage() {
       showFeedback("success", tCustomer("ui.support.replySent"));
       await loadTicket();
     } catch {
-      showFeedback("error", tCustomer("ui.support.attachmentError"));
+      showFeedback("error", tCommon("chatbot.supportErrors.checking"));
     } finally {
       setUploading(false);
     }
@@ -195,7 +195,7 @@ export default function CustomerTicketDetailPage() {
       showFeedback("success", tCustomer("ui.support.ticketReopened"));
       await loadTicket();
     } catch {
-      showFeedback("error", tCustomer("ui.support.reopenRetry"));
+      showFeedback("error", tCommon("chatbot.supportErrors.checking"));
     } finally {
       setReopening(false);
     }

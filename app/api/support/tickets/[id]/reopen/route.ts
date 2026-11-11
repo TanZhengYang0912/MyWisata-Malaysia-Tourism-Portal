@@ -1,18 +1,16 @@
-// P4 — Member 4: ticket reopen (CLAUDE-FIXES-2.md item 5)
-// POST /api/support/tickets/[id]/reopen — customer-only (must own the
-// ticket). A no-op 200 (not an error) if the ticket isn't actually
-// resolved/closed — avoids a confusing failure on a stray double-click.
-
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
-import { notifyTicketReopened } from '@/lib/support/notify';
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
-const LOCKED_STATUSES = new Set(['resolved', 'closed']);
+const PUBLIC_REOPEN_ERRORS: Record<string, { code: string; message: string; status: number }> = {
+  support_ticket_not_found: { code: 'NOT_FOUND', message: 'Ticket not found.', status: 404 },
+  support_ticket_forbidden: { code: 'FORBIDDEN', message: 'You cannot reopen this ticket.', status: 403 },
+  support_ticket_invalid_reopen: { code: 'INVALID_INPUT', message: 'This ticket could not be reopened.', status: 422 },
+};
 
 export async function POST(_request: Request, { params }: Props) {
   const { id } = await params;
@@ -20,43 +18,24 @@ export async function POST(_request: Request, { params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  const service = createServiceClient();
-  const { data: ticket, error: ticketError } = await service
-    .from('support_tickets')
-    .select('id, subject, user_id, assigned_to, status')
-    .eq('id', id)
-    .maybeSingle();
-  if (ticketError) return apiFail('READ_UNAVAILABLE', 'Unable to load this ticket. Please try again.', 503);
-  if (!ticket) return apiFail('NOT_FOUND', 'Ticket not found', 404);
-  if (ticket.user_id !== user.id) return apiFail('FORBIDDEN', 'Not your ticket', 403);
+  const { data, error } = await createServiceClient().rpc('reopen_support_ticket', {
+    p_ticket_id: id,
+    p_actor_id: user.id,
+  });
 
-  if (!LOCKED_STATUSES.has(ticket.status)) {
-    return apiOk({ id: ticket.id, status: ticket.status });
+  if (error) {
+    const knownError = PUBLIC_REOPEN_ERRORS[error.message];
+    if (knownError) return apiFail(knownError.code, knownError.message, knownError.status);
+    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the ticket status. Check the ticket before trying again.', 503);
   }
 
-  const { data, error } = await service
-    .from('support_tickets')
-    .update({ status: 'in_progress', reopened_at: new Date().toISOString(), resolved_at: null })
-    .eq('id', id)
-    .in('status', [...LOCKED_STATUSES])
-    .select('id, status')
-    .maybeSingle();
-  if (error) return apiFail('WRITE_UNAVAILABLE', 'Unable to reopen this ticket. Please try again.', 503);
-
-  if (!data) {
-    // Another request may have reopened the ticket while this request waited
-    // on the row lock. Reconcile the current state and avoid a second notice.
-    const { data: current, error: currentError } = await service
-      .from('support_tickets')
-      .select('id, status')
-      .eq('id', id)
-      .maybeSingle();
-    if (currentError) return apiFail('READ_UNAVAILABLE', 'Unable to check this ticket. Please try again.', 503);
-    if (!current) return apiFail('NOT_FOUND', 'Ticket not found', 404);
-    return apiOk(current);
+  if (typeof data !== 'object' || data === null) {
+    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the ticket status. Check the ticket before trying again.', 503);
+  }
+  const result = data as Record<string, unknown>;
+  if (result.id !== id || typeof result.status !== 'string' || typeof result.changed !== 'boolean') {
+    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the ticket status. Check the ticket before trying again.', 503);
   }
 
-  await notifyTicketReopened(service, ticket);
-
-  return apiOk(data);
+  return apiOk({ id, status: result.status, changed: result.changed });
 }

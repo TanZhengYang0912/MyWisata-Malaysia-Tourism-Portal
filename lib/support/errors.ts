@@ -15,7 +15,7 @@ const SUPPORT_ERRORS: Record<string, { key: string; action: SupportErrorAction }
   PREVIEW_UNAVAILABLE: { key: 'handoffChanged', action: 'review_handoff' },
   OPERATION_UNKNOWN: { key: 'checking', action: 'check_operation' },
   READ_UNAVAILABLE: { key: 'readUnavailable', action: 'retry_read' },
-  WRITE_UNAVAILABLE: { key: 'unavailable', action: 'check_operation' },
+  WRITE_UNAVAILABLE: { key: 'checking', action: 'check_operation' },
   FILE_TOO_LARGE: { key: 'fileTooLarge', action: 'choose_file' },
   INVALID_FILE_TYPE: { key: 'fileType', action: 'choose_file' },
   INVALID_FILE_CONTENT: { key: 'fileContent', action: 'choose_file' },

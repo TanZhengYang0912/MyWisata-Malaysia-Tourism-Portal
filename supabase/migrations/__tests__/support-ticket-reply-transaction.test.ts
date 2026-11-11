@@ -23,6 +23,7 @@ describe('atomic support ticket reply transaction', () => {
 
   it('exposes the transaction only to the service role', () => {
     expect(migration).toContain('SECURITY INVOKER');
+    expect(migration).toContain("coalesce(auth.role(), '') <> 'service_role'");
     expect(migration).toContain('FROM PUBLIC, anon, authenticated');
     expect(migration).toContain('TO service_role');
   });

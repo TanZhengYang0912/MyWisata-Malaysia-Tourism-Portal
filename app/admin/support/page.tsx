@@ -118,6 +118,7 @@ function AdminSupportContent() {
   const speech = useSpeechInput({ lang: resolveRecognitionLangFromLocale(i18n.resolvedLanguage), onTranscriptChange: setReply });
   const [sending, setSending] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [attachmentOperationId, setAttachmentOperationId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -305,7 +306,7 @@ function AdminSupportContent() {
       await loadDetail(openTicketId);
       await loadTickets();
     } catch {
-      showFeedback("error", t("ui.support.errors.sendReplyTryAgain"));
+      showFeedback("error", tCommon("chatbot.supportErrors.checking"));
     } finally {
       setSending(false);
     }
@@ -316,6 +317,7 @@ function AdminSupportContent() {
     event.target.value = "";
     if (!file || uploading) return;
     setPendingFile(file);
+    setAttachmentOperationId(crypto.randomUUID());
   }
 
   async function sendAttachment() {
@@ -324,6 +326,9 @@ function AdminSupportContent() {
     try {
       const formData = new FormData();
       formData.append("file", pendingFile);
+      const operationId = attachmentOperationId ?? crypto.randomUUID();
+      setAttachmentOperationId(operationId);
+      formData.append("operationId", operationId);
       if (reply.trim()) formData.append("caption", reply.trim());
       const res = await fetch(`/api/support/tickets/${openTicketId}/attachments`, { method: "POST", body: formData });
       if (!res.ok) {
@@ -333,11 +338,12 @@ function AdminSupportContent() {
       }
       setReply("");
       setPendingFile(null);
+      setAttachmentOperationId(null);
       showFeedback("success", t("ui.support.replySent"));
       await loadDetail(openTicketId);
       await loadTickets();
     } catch {
-      showFeedback("error", t("ui.support.errors.sendReplyTryAgain"));
+      showFeedback("error", tCommon("chatbot.supportErrors.checking"));
     } finally {
       setUploading(false);
     }
@@ -549,6 +555,7 @@ function AdminSupportContent() {
             setReply("");
             setReplyOperationId(null);
             setPendingFile(null);
+            setAttachmentOperationId(null);
           }
         }}
       >
@@ -592,7 +599,7 @@ function AdminSupportContent() {
                   <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-secondary/60 px-3 py-2 text-xs">
                     <FileText size={16} className="shrink-0 text-primary" />
                     <span className="min-w-0 flex-1 truncate text-foreground">{pendingFile.name}</span>
-                    <button type="button" onClick={() => setPendingFile(null)} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={t("ui.support.removeAttachment")}>
+                    <button type="button" onClick={() => { setPendingFile(null); setAttachmentOperationId(null); }} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={t("ui.support.removeAttachment")}>
                       <X size={13} />
                     </button>
                   </div>
