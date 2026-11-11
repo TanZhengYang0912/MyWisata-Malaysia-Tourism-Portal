@@ -17,6 +17,8 @@ import { cleanUserContent } from '@/lib/moderation/clean';
 import { logModerationFlag } from '@/lib/moderation/flags';
 import { logAdminConductFlagIfNeeded } from '@/lib/moderation/admin-conduct';
 import { validateChatAttachment, buildTicketAttachmentPath } from '@/lib/support/attachment';
+import { createHash } from 'node:crypto';
+import { z } from 'zod';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -31,11 +33,12 @@ export async function POST(request: Request, { params }: Props) {
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
   const service = createServiceClient();
-  const { data: ticket } = await service
+  const { data: ticket, error: ticketError } = await service
     .from('support_tickets')
     .select('id, subject, user_id, assigned_to, status')
     .eq('id', id)
     .maybeSingle();
+  if (ticketError) return apiFail('READ_UNAVAILABLE', 'Unable to load this support request.', 503);
   if (!ticket) return apiFail('NOT_FOUND', 'Ticket not found', 404);
 
   const isAdmin = await isSuperAdmin(supabase, user.id);
@@ -43,16 +46,16 @@ export async function POST(request: Request, { params }: Props) {
   if (!isAdmin && !isOwner) return apiFail('FORBIDDEN', 'Not your ticket', 403);
   const senderRole: 'customer' | 'admin' = isAdmin ? 'admin' : 'customer';
 
-  if (senderRole === 'customer' && LOCKED_STATUSES.has(ticket.status)) {
-    return apiFail('TICKET_LOCKED', 'This ticket is resolved. Reopen it to reply.', 403);
-  }
-
   let formData: FormData;
   try { formData = await request.formData(); }
   catch { return apiFail('INVALID_FORM', 'Could not parse form data', 400); }
 
   const file = formData.get('file');
   if (!(file instanceof File)) return apiFail('MISSING_FILE', 'file is required', 422);
+  const operationId = formData.get('operationId');
+  if (typeof operationId !== 'string' || !z.string().uuid().safeParse(operationId).success) {
+    return apiFail('UPDATE_REQUIRED', 'Refresh the ticket page before sending an attachment.', 409);
+  }
 
   const validated = await validateChatAttachment(file);
   if (!validated.ok) {
@@ -66,6 +69,42 @@ export async function POST(request: Request, { params }: Props) {
   const rawCaption = captionField?.trim() ?? '';
   if (rawCaption.length > 2000) return apiFail('INVALID_CAPTION', 'Caption is too long.', 422);
   const cleaned = await cleanUserContent(rawCaption, service);
+  const fileHash = createHash('sha256').update(Buffer.from(validated.buffer)).digest('hex');
+  const operationPayloadHash = createHash('sha256').update(JSON.stringify({
+    ticketId: id,
+    senderId: user.id,
+    senderRole,
+    body: cleaned.display,
+    fileHash,
+    mimeType: file.type,
+    size: file.size,
+  })).digest('hex');
+
+  const findExistingAttachmentReply = () => service.from('support_ticket_replies')
+    .select('id, ticket_id, sender_id, sender_role, body, created_at, operation_payload_hash')
+    .eq('ticket_id', id)
+    .eq('sender_id', user.id)
+    .eq('operation_id', operationId)
+    .maybeSingle();
+  const { data: existingReply, error: lookupError } = await findExistingAttachmentReply();
+  if (lookupError) return apiFail('READ_UNAVAILABLE', 'Unable to check the attachment result.', 503);
+  if (existingReply) {
+    if (existingReply.operation_payload_hash !== operationPayloadHash) {
+      return apiFail('OPERATION_CONFLICT', 'This attachment key was already used for different content.', 409);
+    }
+    return apiOk({
+      id: existingReply.id,
+      senderId: existingReply.sender_id,
+      senderRole: existingReply.sender_role,
+      body: existingReply.body,
+      createdAt: existingReply.created_at,
+      newStatus: ticket.status,
+    });
+  }
+
+  if (senderRole === 'customer' && LOCKED_STATUSES.has(ticket.status)) {
+    return apiFail('TICKET_LOCKED', 'This ticket is resolved. Reopen it to reply.', 403);
+  }
 
   const path = buildTicketAttachmentPath(id, crypto.randomUUID(), file.type);
   const upload = await service.storage.from('ticket-attachments').upload(path, validated.buffer, { contentType: file.type, upsert: false });
@@ -73,12 +112,27 @@ export async function POST(request: Request, { params }: Props) {
 
   const { data: reply, error: replyErr } = await service
     .from('support_ticket_replies')
-    .insert({ ticket_id: id, sender_id: user.id, sender_role: senderRole, body: cleaned.display, attachment_url: path })
-    .select('id, sender_id, sender_role, body, attachment_url, created_at')
+    .insert({ ticket_id: id, sender_id: user.id, sender_role: senderRole, body: cleaned.display, attachment_url: path, operation_id: operationId, operation_payload_hash: operationPayloadHash })
+    .select('id, sender_id, sender_role, body, created_at, operation_payload_hash')
     .single();
   if (replyErr) {
     await service.storage.from('ticket-attachments').remove([path]);
-    return apiFail('DB_ERROR', replyErr.message, 500);
+    if (replyErr.code === '23505') {
+      const { data: racedReply, error: raceError } = await findExistingAttachmentReply();
+      if (raceError) return apiFail('READ_UNAVAILABLE', 'Unable to check the attachment result.', 503);
+      if (racedReply?.operation_payload_hash === operationPayloadHash) {
+        return apiOk({
+          id: racedReply.id,
+          senderId: racedReply.sender_id,
+          senderRole: racedReply.sender_role,
+          body: racedReply.body,
+          createdAt: racedReply.created_at,
+          newStatus: ticket.status,
+        });
+      }
+      if (racedReply) return apiFail('OPERATION_CONFLICT', 'This attachment key was already used for different content.', 409);
+    }
+    return apiFail('WRITE_UNAVAILABLE', 'The attachment could not be added. Keep the file selected and try again.', 503);
   }
 
   if (cleaned.hadSlur) {

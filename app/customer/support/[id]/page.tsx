@@ -51,6 +51,7 @@ export default function CustomerTicketDetailPage() {
   const [ticket, setTicket] = useState<TicketDetail | null | undefined>(undefined);
   const [reply, setReply] = useState("");
   const [replyOperationId, setReplyOperationId] = useState<string | null>(null);
+  const [attachmentOperationId, setAttachmentOperationId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [reopening, setReopening] = useState(false);
   const [muting, setMuting] = useState(false);
@@ -122,6 +123,7 @@ export default function CustomerTicketDetailPage() {
     event.target.value = "";
     if (!file || uploading) return;
     setPendingFile(file);
+    setAttachmentOperationId(crypto.randomUUID());
   }
 
   async function sendAttachment() {
@@ -130,6 +132,9 @@ export default function CustomerTicketDetailPage() {
     try {
       const formData = new FormData();
       formData.append("file", pendingFile);
+      const operationId = attachmentOperationId ?? crypto.randomUUID();
+      setAttachmentOperationId(operationId);
+      formData.append("operationId", operationId);
       if (reply.trim()) formData.append("caption", reply.trim());
       const res = await fetch(`/api/support/tickets/${id}/attachments`, { method: "POST", body: formData });
       if (!res.ok) {
@@ -138,7 +143,9 @@ export default function CustomerTicketDetailPage() {
         return;
       }
       setReply("");
+      setReplyOperationId(null);
       setPendingFile(null);
+      setAttachmentOperationId(null);
       showFeedback("success", tCustomer("ui.support.replySent"));
       await loadTicket();
     } catch {
@@ -251,7 +258,7 @@ export default function CustomerTicketDetailPage() {
             <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-secondary/60 px-3 py-2 text-xs">
               <FileText size={18} className="shrink-0 text-primary" />
               <span className="min-w-0 flex-1 break-words whitespace-normal text-foreground">{pendingFile.name}</span>
-              <button type="button" onClick={() => setPendingFile(null)} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={tCustomer("ui.support.removeAttachment")}>
+              <button type="button" onClick={() => { setPendingFile(null); setAttachmentOperationId(null); }} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={tCustomer("ui.support.removeAttachment")}>
                 <X size={14} />
               </button>
             </div>
@@ -272,6 +279,7 @@ export default function CustomerTicketDetailPage() {
               onChange={(e) => {
                 setReply(e.target.value);
                 setReplyOperationId(e.target.value.trim() ? crypto.randomUUID() : null);
+                if (pendingFile) setAttachmentOperationId(crypto.randomUUID());
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.nativeEvent.isComposing) {
