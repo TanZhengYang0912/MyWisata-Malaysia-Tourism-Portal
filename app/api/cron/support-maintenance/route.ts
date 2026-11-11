@@ -12,11 +12,16 @@ export async function GET(request: Request) {
   try {
     const reconciliation = await reconcileSupportAttachments();
     const result = await cleanupSupportAttachments();
-    const { data: expiredHandoffTokens, error: handoffCleanupError } = await createServiceClient().rpc('cleanup_support_handoff_tokens');
+    const service = createServiceClient();
+    const { data: expiredHandoffTokens, error: handoffCleanupError } = await service.rpc('cleanup_support_handoff_tokens');
     if (handoffCleanupError || typeof expiredHandoffTokens !== 'number') {
       return Response.json({ error: 'support_maintenance_unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
-    return Response.json({ ...result, reconciliation, expiredHandoffTokens }, { headers: { 'Cache-Control': 'no-store' } });
+    const { data: expiredKbDraftResults, error: kbDraftCleanupError } = await service.rpc('cleanup_support_kb_draft_results', { p_limit: 50 });
+    if (kbDraftCleanupError || typeof expiredKbDraftResults !== 'number') {
+      return Response.json({ error: 'support_maintenance_unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+    }
+    return Response.json({ ...result, reconciliation, expiredHandoffTokens, expiredKbDraftResults }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return Response.json({ error: 'support_maintenance_unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }

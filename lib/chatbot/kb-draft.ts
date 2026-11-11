@@ -60,7 +60,11 @@ export interface KbDraft {
  * response) so the caller can show "couldn't draft one" instead of a 500 —
  * this is a nice-to-have admin tool, not a money or accuracy path.
  */
-export async function draftKbEntry(question: string, existingWeakAnswer: string | null): Promise<KbDraft | null> {
+export async function draftKbEntry(
+  question: string,
+  existingWeakAnswer: string | null,
+  beforeExternalCall?: () => Promise<void>,
+): Promise<KbDraft | null> {
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) return null;
 
@@ -78,6 +82,7 @@ export async function draftKbEntry(question: string, existingWeakAnswer: string 
   const timeout = setTimeout(() => controller.abort(), DRAFT_TIMEOUT_MS);
 
   try {
+    await beforeExternalCall?.();
     const res = await fetch(DRAFT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
@@ -123,6 +128,7 @@ function parseDraft(text: string, requireReviewPlaceholder: boolean): KbDraft | 
   const bodyRaw = keywordsStart > bodyStart ? text.slice(bodyStart, keywordsStart) : text.slice(bodyStart);
   const body = bodyRaw.replace(/^BODY:\s*/, '').trim();
   if (!body) return null;
+  if (title.length > 255 || body.length > 2000) return null;
   if (requireReviewPlaceholder && !body.includes('[ADMIN: confirm')) return null;
 
   const keywords =
@@ -135,6 +141,9 @@ function parseDraft(text: string, requireReviewPlaceholder: boolean): KbDraft | 
           .split(',')
           .map((k) => k.trim().toLowerCase())
           .filter(Boolean);
+
+  if (keywords.length > 8 || keywords.some((keyword) => keyword.length > 64)) return null;
+  if (!prepareExternalText(`TITLE: ${title}\nBODY: ${body}\nKEYWORDS: ${keywords.join(', ')}`).allowed) return null;
 
   return { title, body, keywords };
 }

@@ -231,6 +231,7 @@ export class TestElement extends TestNode {
 
   focus() {}
   click() { this.dispatchEvent(new TestEvent("click", { bubbles: true })); }
+  scrollIntoView() {}
   scrollTo() {}
   getBoundingClientRect(): DOMRect {
     return { x: 0, y: 0, width: 0, height: 0, top: 0, right: 0, bottom: 0, left: 0, toJSON: () => ({}) };
@@ -245,6 +246,13 @@ class TestWindow {
     setItem: (key: string, value: string) => { this.localStorageValues.set(key, String(value)); },
     removeItem: (key: string) => { this.localStorageValues.delete(key); },
     clear: () => { this.localStorageValues.clear(); },
+  };
+  private readonly sessionStorageValues = new Map<string, string>();
+  readonly sessionStorage = {
+    getItem: (key: string) => this.sessionStorageValues.get(key) ?? null,
+    setItem: (key: string, value: string) => { this.sessionStorageValues.set(key, String(value)); },
+    removeItem: (key: string) => { this.sessionStorageValues.delete(key); },
+    clear: () => { this.sessionStorageValues.clear(); },
   };
 
   constructor(readonly document: TestDocument) {}

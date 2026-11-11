@@ -34,6 +34,7 @@ const approvedForwardMigrations = [
   "20261111211000_chatbot_common_question_metrics.sql",
   "20261111212000_support_attachment_upload_reconciliation.sql",
   "20261111220000_support_operation_ledger.sql",
+  "20261111223000_support_kb_draft_results.sql",
   "20261106014314_chat_thread_summaries.sql",
   "20261107120518_repair_tng_ewallet_destination_label.sql",
   "20261107124912_vendor_outlet_listing_summary.sql",

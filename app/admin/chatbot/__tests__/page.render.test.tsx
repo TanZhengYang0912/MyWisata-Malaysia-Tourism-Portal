@@ -28,10 +28,14 @@ beforeEach(() => {
     if (input.startsWith('/api/admin/chatbot/stats')) {
       if (mocks.statsFail) return Response.json({ data: null }, { status: 503 });
       return Response.json({ data: {
-        totalQuestions: 2, answeredCount: 1, answerRate: 0.5, topCommon: [], topUnanswered: [],
+        totalQuestions: 2, answeredCount: 1, answerRate: 0.5,
+        topCommon: [{ question: 'How do refunds work?', count: 2, lastAskedAt: '2026-11-10T00:00:00Z' }], topUnanswered: [],
         notHelpfulAnswered: [], escalationRate: 0.5, topEscalated: [], pairedUnansweredCount: 2,
         legacyUnpairedCount: 0, range: { from: '2026-11-01T00:00:00Z', to: '2026-11-11T00:00:00Z' },
       } });
+    }
+    if (input.startsWith('/api/admin/chatbot/kb/draft')) {
+      return Response.json({ data: { title: 'Refunds', body: '[ADMIN: confirm policy]', keywords: ['refund'], category: 'payment' } });
     }
     if (input.startsWith('/api/admin/chatbot/kb')) {
       if (mocks.docsFail) return Response.json({ data: null }, { status: 503 });
@@ -80,5 +84,17 @@ describe('admin chatbot independent loading recovery', () => {
     await clickButton('chatbot.errors.retry');
     expect(container.textContent).not.toContain('chatbot.errors.loadDocsTitle');
     expect(container.textContent).toContain('chatbot.metrics.questions:2');
+  });
+
+  it('uses a fresh operation ID for the next draft after a confirmed success', async () => {
+    await render();
+
+    await clickButton('chatbot.actions.aiDraft');
+    await clickButton('chatbot.actions.aiDraft');
+
+    const draftRequests = fetchMock.mock.calls.filter(([url]) => String(url).startsWith('/api/admin/chatbot/kb/draft'));
+    expect(draftRequests).toHaveLength(2);
+    const operationIds = draftRequests.map(([, init]) => JSON.parse(String(init?.body)).operationId);
+    expect(operationIds[0]).not.toBe(operationIds[1]);
   });
 });

@@ -77,6 +77,7 @@ const kbDocumentFields = z.object({
 
 export const draftKbEntrySchema = z.object({
   question: z.string().trim().min(1).max(500),
+  operationId: z.string().uuid(),
 }).strict();
 
 export type DraftKbEntryInput = z.infer<typeof draftKbEntrySchema>;

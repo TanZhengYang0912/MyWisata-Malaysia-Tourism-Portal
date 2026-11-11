@@ -24,7 +24,9 @@ describe('GET /api/cron/support-maintenance', () => {
       rescheduled: 0,
       reconciliation: { claimed: 0, recovered: 0, unknown: 0 },
       expiredHandoffTokens: 4,
+      expiredKbDraftResults: 4,
     });
     expect(mocks.rpc).toHaveBeenCalledWith('cleanup_support_handoff_tokens');
+    expect(mocks.rpc).toHaveBeenCalledWith('cleanup_support_kb_draft_results', { p_limit: 50 });
   });
 });

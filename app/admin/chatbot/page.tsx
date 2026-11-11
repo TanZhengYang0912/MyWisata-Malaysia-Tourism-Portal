@@ -78,6 +78,19 @@ interface KbFormState {
 // "general" — always a valid member of TICKET_CATEGORIES — so a brand new
 // doc never starts on a blank category the dropdown itself doesn't offer.
 const EMPTY_FORM: KbFormState = { title: "", body: "", keywords: "", category: "general", sourceRefs: "", expectedContentVersion: 0, revisionId: null, reviewConfirmed: false };
+const KB_DRAFT_OPERATION_STORAGE_KEY = "mylawatan-admin-kb-draft-operation-v1";
+
+function readKbDraftOperationId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = window.sessionStorage.getItem(KB_DRAFT_OPERATION_STORAGE_KEY);
+    return stored && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(stored)
+      ? stored
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function AdminChatbotPage() {
   const { showFeedback } = useActionFeedback();
@@ -95,6 +108,7 @@ export default function AdminChatbotPage() {
   const [editingId, setEditingId] = useState<string | "new" | null>(null);
   const [form, setForm] = useState<KbFormState>(EMPTY_FORM);
   const [draftOperationId, setDraftOperationId] = useState(() => crypto.randomUUID());
+  const [kbDraftOperationId, setKbDraftOperationId] = useState(readKbDraftOperationId);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [draftPersisted, setDraftPersisted] = useState(false);
@@ -107,6 +121,18 @@ export default function AdminChatbotPage() {
   const [draftingQuestion, setDraftingQuestion] = useState<string | null>(null);
   const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
   const [batchBusy, setBatchBusy] = useState(false);
+
+  function rotateKbDraftOperationId(): string | null {
+    try {
+      const next = crypto.randomUUID();
+      window.sessionStorage.setItem(KB_DRAFT_OPERATION_STORAGE_KEY, next);
+      setKbDraftOperationId(next);
+      return next;
+    } catch {
+      setKbDraftOperationId(null);
+      return null;
+    }
+  }
 
   const loadStats = useCallback(async () => {
     try {
@@ -185,6 +211,7 @@ export default function AdminChatbotPage() {
   function startNew() {
     setForm(EMPTY_FORM);
     setDraftOperationId(crypto.randomUUID());
+    rotateKbDraftOperationId();
     setFormError(null);
     setDraftPersisted(false);
     setFormChanged(false);
@@ -199,6 +226,7 @@ export default function AdminChatbotPage() {
   function addToKb(question: string) {
     setForm({ ...EMPTY_FORM, title: question });
     setDraftOperationId(crypto.randomUUID());
+    rotateKbDraftOperationId();
     setFormError(null);
     setDraftPersisted(false);
     setFormChanged(false);
@@ -215,23 +243,45 @@ export default function AdminChatbotPage() {
   // it — a manual title-only start is still one click away if preferred.
   async function draftAnswer(question: string) {
     if (draftingQuestion) return;
+    let operationId = kbDraftOperationId;
+    if (!operationId) operationId = rotateKbDraftOperationId();
+    if (!operationId) {
+      showFeedback("error", t("chatbot.errors.draftStorageUnavailable"));
+      return;
+    }
     setDraftingQuestion(question);
     try {
       const res = await fetch("/api/admin/chatbot/kb/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question, operationId }),
       });
       const body = (await res.json()) as {
         data: { title: string; body: string; keywords: string[]; category: string } | null;
         error: { code?: string; message: string } | null;
       };
       if (!res.ok || !body.data) {
-        showFeedback("error", body.error?.code === "PERSONAL_DATA_WITHHELD"
+        if (body.error?.code === "OPERATION_CONFLICT" || body.error?.code === "RATE_LIMITED" || body.error?.code === "DRAFT_UNAVAILABLE" || body.error?.code === "DRAFT_RESULT_EXPIRED") {
+          rotateKbDraftOperationId();
+        }
+        const message = body.error?.code === "PERSONAL_DATA_WITHHELD"
           ? t("chatbot.errors.privacyBlocked")
-          : body.error?.message ?? t("chatbot.errors.draft"));
+          : body.error?.code === "DRAFT_RESULT_EXPIRED"
+            ? t("chatbot.errors.draftResultExpired")
+          : body.error?.code === "OPERATION_UNKNOWN"
+            ? t("chatbot.errors.draftOutcomeUnknown")
+            : body.error?.code === "OPERATION_CONFLICT"
+              ? t("chatbot.errors.draftOperationConflict")
+              : body.error?.code === "RATE_LIMITED"
+                ? t("chatbot.errors.draftRateLimited")
+                : t("chatbot.errors.draft");
+        showFeedback("error", message);
         return;
       }
+      // Keep the current key until a confirmed response is consumed so an
+      // uncertain network result can be reconciled. A successful draft starts
+      // a fresh user intent for the next question.
+      rotateKbDraftOperationId();
       // category is classifyTicket(question) from the route — a pre-fill,
       // not a decision; the dropdown below lets the admin override it
       // before saving, same as it already does for a manual/"Add to KB" doc.
