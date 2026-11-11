@@ -14,6 +14,7 @@ import { TICKET_CATEGORIES } from "@/lib/chatbot/classify";
 import { useTranslation } from "react-i18next";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { adminFilterControlClassName } from "@/components/admin/filter-bar";
+import { Pagination } from "@/components/shared/pagination";
 
 interface TopQuestion { question: string; count: number; lastAskedAt: string }
 
@@ -43,6 +44,14 @@ interface KbDoc {
   createdAt: string;
 }
 
+interface KbDocumentPage {
+  documents: KbDoc[];
+  page: number;
+  pageSize: 10;
+  total: number;
+  totalPages: number;
+}
+
 interface KbFormState {
   title: string;
   body: string;
@@ -61,6 +70,9 @@ export default function AdminChatbotPage() {
   const [stats, setStats] = useState<ChatbotStats | null | undefined>(undefined);
   const [statsDays, setStatsDays] = useState<7 | 30 | 90>(30);
   const [docs, setDocs] = useState<KbDoc[] | null | undefined>(undefined);
+  const [docsPage, setDocsPage] = useState(1);
+  const [docsTotal, setDocsTotal] = useState(0);
+  const [docsTotalPages, setDocsTotalPages] = useState(1);
   const [reindexing, setReindexing] = useState(false);
   const [reindexResult, setReindexResult] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | "new" | null>(null);
@@ -87,13 +99,20 @@ export default function AdminChatbotPage() {
 
   const loadDocs = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/chatbot/kb");
-      const body = (await res.json()) as { data: KbDoc[] | null };
-      setDocs(res.ok && body.data ? body.data : null);
+      const res = await fetch(`/api/admin/chatbot/kb?page=${docsPage}`, { cache: "no-store" });
+      const body = (await res.json()) as { data: KbDocumentPage | null };
+      if (!res.ok || !body.data) {
+        setDocs(null);
+        return;
+      }
+      setDocs(body.data.documents);
+      setDocsTotal(body.data.total);
+      setDocsTotalPages(body.data.totalPages);
+      if (body.data.page !== docsPage) setDocsPage(body.data.page);
     } catch {
       setDocs(null);
     }
-  }, []);
+  }, [docsPage]);
 
   useEffect(() => {
     // Range changes trigger an async report fetch; the state updates happen only when it resolves.
@@ -244,6 +263,10 @@ export default function AdminChatbotPage() {
       }
       setEditingId(null);
       showFeedback("success", editingId === "new" ? t("chatbot.success.created") : t("chatbot.success.updated"));
+      if (editingId === "new" && docsPage !== 1) {
+        setDocsPage(1);
+        return;
+      }
       await loadDocs();
     } catch {
       setFormError(t("chatbot.errors.save"));
@@ -287,7 +310,7 @@ export default function AdminChatbotPage() {
     }
   }
 
-  const sortedDocs = docs ? [...docs].sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.title.localeCompare(b.title)) : [];
+  const sortedDocs = docs ?? [];
 
   if (stats === undefined || docs === undefined) {
     return <AdminPageShell><AdminPageHeader title={t("chatbot.title")} /><p className="text-sm text-muted-foreground">{t("chatbot.loading")}</p></AdminPageShell>;
@@ -523,6 +546,17 @@ export default function AdminChatbotPage() {
           </div>
         )}
       </div>
+      <Pagination
+        ariaLabel={t("chatbot.knowledgeBase")}
+        currentPage={docsPage}
+        totalPages={docsTotalPages}
+        totalItems={docsTotal}
+        pageSize={10}
+        onPageChange={(nextPage) => {
+          setSelectedDocIds(new Set());
+          setDocsPage(nextPage);
+        }}
+      />
     </AdminPageShell>
   );
 }

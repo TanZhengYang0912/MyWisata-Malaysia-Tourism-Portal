@@ -9,7 +9,7 @@ import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { createKbDocumentSchema } from '@/lib/validation/chatbot-schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
@@ -17,15 +17,31 @@ export async function GET() {
     return apiFail('FORBIDDEN', 'Only Super Admin can view the knowledge base', 403);
   }
 
+  const rawPage = new URL(request.url).searchParams.get('page') ?? '1';
+  if (!/^\d+$/.test(rawPage) || Number(rawPage) < 1 || Number(rawPage) > 1_000_000) {
+    return apiFail('INVALID_INPUT', 'Page must be a positive integer.', 400);
+  }
+  const pageSize = 10;
+  let page = Number(rawPage);
   const service = createServiceClient();
-  const { data, error } = await service
+  const fetchPage = () => service
     .from('chatbot_kb_documents')
-    .select('id, title, body, keywords, category, is_active, embedded_at, updated_at, created_at')
-    .order('created_at', { ascending: false });
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+    .select('id, title, body, keywords, category, is_active, embedded_at, updated_at, created_at', { count: 'exact' })
+    .order('is_active', { ascending: false })
+    .order('title', { ascending: true });
+  const initialResult = await fetchPage().range((page - 1) * pageSize, page * pageSize - 1);
+  let { data, error } = initialResult;
+  if (error) return apiFail('READ_UNAVAILABLE', 'Unable to load the knowledge-base entries.', 503);
+  const total = initialResult.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  if (page > totalPages) {
+    page = totalPages;
+    ({ data, error } = await fetchPage().range((page - 1) * pageSize, page * pageSize - 1));
+    if (error) return apiFail('READ_UNAVAILABLE', 'Unable to load the knowledge-base entries.', 503);
+  }
 
-  return apiOk(
-    (data ?? []).map((d) => ({
+  const response = apiOk({
+    documents: (data ?? []).map((d) => ({
       id: d.id,
       title: d.title,
       body: d.body,
@@ -37,7 +53,13 @@ export async function GET() {
       updatedAt: d.updated_at,
       createdAt: d.created_at,
     })),
-  );
+    page,
+    pageSize,
+    total,
+    totalPages,
+  });
+  response.headers.set('Cache-Control', 'private, no-store');
+  return response;
 }
 
 export async function POST(request: Request) {
