@@ -344,6 +344,10 @@
       "draftSaved": "Draft saved",
       "draftSaveFailed": "Could not save this draft. Your text is still here; try again."
     },
+    "history": {
+      "loadEarlier": "Load earlier messages",
+      "unavailable": "Could not restore your saved conversation."
+    },
     "statusQuery": {
       "signIn": "Sign in to check your account records.",
       "found": "Here are the latest records from your account.",

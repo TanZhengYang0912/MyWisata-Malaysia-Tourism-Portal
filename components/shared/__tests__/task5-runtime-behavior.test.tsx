@@ -339,19 +339,26 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("drives the real chatbot send and ticket handlers without translating API answers or ticket subjects", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
     const question = "Why is my wallet withdrawal still pending?";
     const answer = "API answer [zh]: withdrawals can take two business days.";
     let askPayload: { question?: string } | undefined;
     let ticketPayload: { operationId?: string; handoffToken?: string; subject?: string; body?: string } | undefined;
     mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
       if (url === "/api/chatbot/ask") {
         askPayload = JSON.parse(String(init?.body)) as { question?: string };
         return response({
-          data: { sessionKey: "chat-session-1", answer, botAnswered: false, messageId: "message-zh-1", language: "zh" },
+          data: { sessionKey: "chat-session-1", answer, botAnswered: false, messageId: "message-zh-1", userMessageId: "question-zh-1", language: "zh" },
           error: null,
         });
       }
       if (url === "/api/chatbot/feedback") return response({ data: null, error: null });
+      if (String(url).startsWith("/api/support/drafts?") && init?.method !== "DELETE") return response({ data: { subject: "", body: "", version: 0 } });
+      if (String(url).startsWith("/api/support/drafts?") && init?.method === "DELETE") return response({ data: { cleared: true } });
+      if (url === "/api/support/drafts" && init?.method === "PUT") return response({ data: { version: 1, changed: true } });
       if (url === "/api/support/handoff/preview") return response({ data: { subject: question, summary: question, handoffToken: "signed-preview-token" }, error: null });
       if (url === "/api/support/tickets") {
         ticketPayload = JSON.parse(String(init?.body)) as { operationId?: string; subject?: string; body?: string };
@@ -366,7 +373,7 @@ describe("Task 5 shared runtime behavior", () => {
     // the pinned Support row before the AI-chat pane (and its composer) exists.
     await click(findButton("Translated support label"));
 
-    const input = findOne(container, (element) => element.tagName === "INPUT");
+    const input = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
     expect(input.getAttribute("placeholder")).toBe("Translated question");
     setInputValue(input, question);
     const send = findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message");
@@ -382,8 +389,14 @@ describe("Task 5 shared runtime behavior", () => {
     await click(findButton("Yes translated"));
     expect(ticketPayload).toBeUndefined();
     await click(findButton("Create translated ticket"));
+    const consent = findOne(container, (element) => element.tagName === "INPUT" && element.type === "checkbox");
+    (consent as unknown as { checked: boolean }).checked = true;
+    await click(consent);
+    expect(findButton("Create translated ticket").disabled).toBe(false);
+    await click(findButton("Create translated ticket"));
     expect(ticketPayload).toEqual(expect.objectContaining({ subject: question, body: question, handoffToken: "signed-preview-token" }));
     expect(ticketPayload?.operationId).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(document.defaultView?.localStorage.getItem("mw_chatbot_support_operations:customer-1")).not.toContain(question);
   });
 
   it("opens a vendor thread from the merged widget's left pane", async () => {

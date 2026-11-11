@@ -65,6 +65,8 @@ function faqCategoryLabel(category: string, translate: (key: string) => string):
 interface ChatMessage {
   role: "user" | "bot";
   text: string;
+  persistedId?: string;
+  localId?: string;
   /** Bot messages only — ties this reply to its chatbot_feedback row. */
   messageId?: string;
   /** Bot messages only — the user's question this reply answers, used as the ticket subject/body if one gets opened. */
@@ -93,6 +95,11 @@ interface ChatMessage {
   ticketNeedsSignIn?: boolean;
 }
 
+interface ChatHistoryCursor {
+  createdAt: string;
+  id: string;
+}
+
 type ChatbotAnswerData = Pick<ChatMessage, "text" | "messageId" | "language" | "privacyBlocked"> & {
   botAnswered: boolean;
 };
@@ -101,6 +108,7 @@ export function createBotMessage(data: ChatbotAnswerData, question: string): Cha
   return {
     role: "bot",
     text: data.text,
+    persistedId: data.messageId,
     messageId: data.messageId,
     question,
     language: data.language,
@@ -115,6 +123,34 @@ export function resolveTicketSubject(question: string | undefined, fallback: str
 
 export function chatbotSessionStorageKey(userId: string | null): string {
   return `mw_chatbot_session:${userId ?? "guest"}`;
+}
+
+function chatbotPendingOperationsStorageKey(userId: string): string {
+  return `mw_chatbot_support_operations:${userId}`;
+}
+
+function readPendingSupportOperation(userId: string | null, messageId: string | undefined): string | null {
+  if (!userId || !messageId) return null;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(chatbotPendingOperationsStorageKey(userId)) ?? "{}") as Record<string, unknown>;
+    const operationId = parsed[messageId];
+    return typeof operationId === "string" && /^[0-9a-f-]{36}$/i.test(operationId) ? operationId : null;
+  } catch {
+    return null;
+  }
+}
+
+function storePendingSupportOperation(userId: string, messageId: string, operationId: string | null) {
+  try {
+    const key = chatbotPendingOperationsStorageKey(userId);
+    const current = JSON.parse(window.localStorage.getItem(key) ?? "{}") as Record<string, unknown>;
+    if (operationId) current[messageId] = operationId;
+    else delete current[messageId];
+    const bounded = Object.fromEntries(Object.entries(current).slice(-20));
+    window.localStorage.setItem(key, JSON.stringify(bounded));
+  } catch {
+    // The request still uses the server operation key; storage failure only limits refresh recovery.
+  }
 }
 
 async function postFeedback(payload: Record<string, unknown>) {
@@ -149,6 +185,13 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     const current = previous.ownerId === identityRef.current ? previous.value : [];
     return { ownerId: identityRef.current, value: typeof update === "function" ? update(current) : update };
   });
+  const [historyCursor, setHistoryCursor] = useState<ChatHistoryCursor | null>(null);
+  const [historyError, setHistoryError] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const historyLoadedRef = useRef<string | null>(null);
+  const historyAbortRef = useRef<AbortController | null>(null);
+  const historyInFlightRef = useRef(false);
+  const historyRefreshAtRef = useRef(0);
   const [inputState, setInputState] = useState<{ ownerId: string | null; value: string }>({ ownerId: identityKey, value: "" });
   const input = inputState.ownerId === identityKey ? inputState.value : "";
   const setInput = (update: string | ((current: string) => string)) => setInputState((previous) => {
@@ -222,6 +265,90 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     });
   }, [authLoading, identityKey]);
 
+  async function loadChatHistory(targetSessionKey: string, cursor?: ChatHistoryCursor) {
+    if (historyInFlightRef.current) return;
+    historyInFlightRef.current = true;
+    setHistoryLoading(true);
+    const requestIdentity = identityRef.current;
+    historyAbortRef.current?.abort();
+    const controller = new AbortController();
+    historyAbortRef.current = controller;
+    try {
+      const response = await fetch("/api/chatbot/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionKey: targetSessionKey, beforeCreatedAt: cursor?.createdAt, beforeId: cursor?.id }),
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      const result = await response.json().catch(() => ({})) as {
+        data?: {
+          messages: Array<{ id: string; role: "user" | "bot"; text: string; question?: string; feedbackStage?: FeedbackStage }>;
+          nextCursor: ChatHistoryCursor | null;
+        };
+      };
+      if (!response.ok || !result.data || identityRef.current !== requestIdentity || sessionKey !== targetSessionKey) {
+        if (!controller.signal.aborted && identityRef.current === requestIdentity) setHistoryError(true);
+        return;
+      }
+      const restored = result.data.messages.map((item): ChatMessage => ({
+        role: item.role,
+        text: item.text,
+        persistedId: item.id,
+        messageId: item.role === "bot" ? item.id : undefined,
+        question: item.question,
+        feedbackStage: item.feedbackStage,
+        handoffOperationId: item.role === "bot" ? readPendingSupportOperation(identityKey, item.id) ?? undefined : undefined,
+        ticketOperationUnknown: item.role === "bot" ? Boolean(readPendingSupportOperation(identityKey, item.id)) : false,
+      }));
+      if (cursor) {
+        setMessages((current) => {
+          const existingIds = new Set(current.map((item) => item.persistedId).filter((id): id is string => Boolean(id)));
+          return [...restored.filter((item) => !item.persistedId || !existingIds.has(item.persistedId)), ...current];
+        });
+      } else {
+        setMessages((current) => {
+          if (!current.length) return restored;
+          const restoredById = new Map(restored.filter((item) => item.persistedId).map((item) => [item.persistedId, item]));
+          const existingIds = new Set(current.map((item) => item.persistedId).filter((id): id is string => Boolean(id)));
+          const reconciled = current.map((item) => item.persistedId ? restoredById.get(item.persistedId) ?? item : item);
+          return [...reconciled, ...restored.filter((item) => item.persistedId && !existingIds.has(item.persistedId))];
+        });
+      }
+      setHistoryCursor(result.data.nextCursor);
+      setHistoryError(false);
+      historyLoadedRef.current = `${requestIdentity ?? "guest"}:${targetSessionKey}`;
+    } catch {
+      if (!controller.signal.aborted && identityRef.current === requestIdentity) setHistoryError(true);
+    } finally {
+      if (historyAbortRef.current === controller) historyAbortRef.current = null;
+      historyInFlightRef.current = false;
+      setHistoryLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (authLoading || !identityKey || !sessionKey || messages.length > 0) return;
+    const historyKey = `${identityKey ?? "guest"}:${sessionKey}`;
+    if (historyLoadedRef.current === historyKey) return;
+    void loadChatHistory(sessionKey);
+    return () => historyAbortRef.current?.abort();
+  // A session is restored once after its owner-scoped key is loaded. The history function uses the current identity ref.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, identityKey, sessionKey]);
+
+  useEffect(() => {
+    if (!open || selected?.kind !== "support" || !currentUser || !sessionKey) return;
+    const refreshOnReturn = () => {
+      if (document.visibilityState !== "visible" || Date.now() - historyRefreshAtRef.current < 5000) return;
+      historyRefreshAtRef.current = Date.now();
+      void loadChatHistory(sessionKey);
+    };
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    return () => document.removeEventListener("visibilitychange", refreshOnReturn);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, open, selected?.kind, sessionKey]);
+
   async function loadFaq() {
     if (faqRequestRef.current) return faqRequestRef.current;
     const request = (async () => {
@@ -289,7 +416,8 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     sendLockRef.current = true;
     const requestIdentity = identityRef.current;
     setSending(true);
-    setMessages((m) => [...m, { role: "user", text: question }]);
+    const localMessageId = crypto.randomUUID();
+    setMessages((m) => [...m, { role: "user", text: question, localId: localMessageId }]);
 
     try {
       const statusIntent = resolveCustomerSupportIntent(question);
@@ -336,7 +464,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         body: JSON.stringify({ sessionKey: sessionKey ?? undefined, question }),
       });
       const body = (await res.json()) as {
-        data: { sessionKey: string; answer: string; botAnswered: boolean; messageId: string; language: ChatLanguage; privacyBlocked: boolean } | null;
+        data: { sessionKey: string; answer: string; botAnswered: boolean; messageId: string; userMessageId: string; language: ChatLanguage; privacyBlocked: boolean } | null;
         error: { message: string } | null;
       };
       if (identityRef.current !== requestIdentity) return;
@@ -344,7 +472,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
         return;
       }
-      const { answer, botAnswered, messageId, language, privacyBlocked } = body.data;
+      const { answer, botAnswered, messageId, userMessageId, language, privacyBlocked } = body.data;
       if (explicitQuestion === undefined) setInput((current) => current === question ? "" : current);
       let effectiveSessionKey = sessionKey;
       if (body.data.sessionKey && body.data.sessionKey !== sessionKey) {
@@ -353,7 +481,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         window.localStorage.setItem(chatbotSessionStorageKey(requestIdentity), body.data.sessionKey);
       }
 
-      setMessages((m) => [...m, createBotMessage({ text: answer, messageId, language, privacyBlocked, botAnswered }, question)]);
+      setMessages((m) => [...m.map((message) => message.localId === localMessageId ? { ...message, localId: undefined, persistedId: userMessageId } : message), createBotMessage({ text: answer, messageId, language, privacyBlocked, botAnswered }, question)]);
 
       // Flow 2: the bot already knows it didn't help — there's no yes/no
       // helpfulness question to ask, so this is recorded automatically
@@ -391,7 +519,9 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     const requestIdentity = identityRef.current;
     ticketOperationLockRef.current = true;
     ticketOperationIdentityRef.current = requestIdentity;
-    const operationId = crypto.randomUUID();
+    const pendingOperationId = readPendingSupportOperation(currentUser?.id ?? null, msg.messageId);
+    const operationId = pendingOperationId ?? crypto.randomUUID();
+    const hasPendingOperation = Boolean(pendingOperationId);
     const draftTarget = msg.messageId ?? operationId;
     setCreatingTicketFor(msg.messageId ?? operationId);
     try {
@@ -434,6 +564,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         handoffOperationId: operationId,
         handoffDraftVersion: draftVersion,
         handoffDraftSaved: draftVersion > 0,
+        ticketOperationUnknown: hasPendingOperation,
         ticketError: undefined,
       } : m)));
     } catch {
@@ -448,9 +579,9 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     }
   }
 
-  async function saveHandoffDraft(index: number) {
+  async function saveHandoffDraft(index: number): Promise<boolean> {
     const msg = messages[index];
-    if (!msg.handoffOperationId || !msg.messageId || !currentUser) return;
+    if (!msg.handoffOperationId || !msg.messageId || !currentUser) return false;
     const requestIdentity = identityRef.current;
     const response = await fetch("/api/support/drafts", {
       method: "PUT",
@@ -463,17 +594,18 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         expectedVersion: msg.handoffDraftVersion ?? 0,
       }),
     }).catch(() => null);
-    if (identityRef.current !== requestIdentity) return;
+    if (identityRef.current !== requestIdentity) return false;
     const result = await response?.json().catch(() => ({})) as { data?: { version?: number; changed?: boolean } } | undefined;
     if (!response?.ok || typeof result?.data?.version !== "number") {
       setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
         ? { ...item, handoffDraftSaved: false, ticketError: t("chatbot.handoff.draftSaveFailed") }
         : item));
-      return;
+      return false;
     }
     setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
       ? { ...item, handoffDraftVersion: result.data!.version, handoffDraftSaved: true, ticketError: undefined }
       : item));
+    return true;
   }
 
   async function confirmTicket(index: number) {
@@ -492,6 +624,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: undefined, ticketNeedsSignIn: false } : m)));
 
     try {
+      if (!(await saveHandoffDraft(index))) return;
       const previewResponse = await fetch("/api/support/handoff/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -514,6 +647,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         } : m)));
         return;
       }
+      if (currentUser && msg.messageId) storePendingSupportOperation(currentUser.id, msg.messageId, msg.handoffOperationId);
       const res = await fetch("/api/support/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -570,6 +704,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         return;
       }
       if (result.data.state === "completed" && result.data.ticketId) {
+        if (currentUser && msg.messageId) storePendingSupportOperation(currentUser.id, msg.messageId, null);
         setMessages((current) => current.map((item, itemIndex) => itemIndex === index
           ? { ...item, feedbackStage: "ticket_created", ticketId: result.data!.ticketId, ticketOperationUnknown: false, ticketOperationNotFound: false, ticketError: undefined }
           : item));
@@ -645,6 +780,17 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                 </button>
 
                 <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+                  {historyCursor && sessionKey && (
+                    <Button type="button" size="sm" variant="ghost" className="mx-auto flex h-7 text-xs" onClick={() => void loadChatHistory(sessionKey, historyCursor)} disabled={historyLoading}>
+                      {t("chatbot.history.loadEarlier")}
+                    </Button>
+                  )}
+                  {historyError && (
+                    <div role="alert" className="flex items-center justify-center gap-2 text-xs text-destructive">
+                      <span>{t("chatbot.history.unavailable")}</span>
+                      {sessionKey && <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => void loadChatHistory(sessionKey)} disabled={historyLoading}>{t("chatbot.faq.retry")}</Button>}
+                    </div>
+                  )}
                   {messages.length === 0 && (
                     <div className="mt-8 flex flex-col items-center gap-2.5">
                       <p className="text-xs text-muted-foreground text-center">
@@ -789,7 +935,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                               <p className="text-xs text-muted-foreground">
                                 {t("strictMigration.chatbotTicketCreated", { id: m.ticketId?.slice(0, 8).toUpperCase() })}
                               </p>
-                              <Link href={`/customer/support/${m.ticketId}`} className="text-xs text-primary underline">
+                              <Link href={m.ticketId ? `/customer/support/${m.ticketId}` : "/customer/support"} className="text-xs text-primary underline">
                                 {t("chatbot.viewMyTickets")}
                               </Link>
                             </div>

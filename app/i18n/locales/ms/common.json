@@ -344,6 +344,10 @@
       "draftSaved": "Draf disimpan",
       "draftSaveFailed": "Draf tidak dapat disimpan. Teks masih ada; cuba lagi."
     },
+    "history": {
+      "loadEarlier": "Muatkan mesej terdahulu",
+      "unavailable": "Perbualan yang disimpan tidak dapat dipulihkan."
+    },
     "statusQuery": {
       "signIn": "Log masuk untuk menyemak rekod akaun anda.",
       "found": "Ini rekod terkini daripada akaun anda.",

@@ -108,5 +108,5 @@ export async function POST(request: Request) {
   // lets the widget attach feedback/ticket state to this specific reply.
   // CLAUDE-P4-EXTRAS.md Extra 1: language lets the widget localize that
   // feedback-flow chrome (see lib/chatbot/strings.ts) to match this reply.
-  return apiOk({ sessionKey: session.session_key, answer: result.answer, botAnswered: result.kbMatched, messageId: botMsg.id, language: result.language, privacyBlocked });
+  return apiOk({ sessionKey: session.session_key, answer: result.answer, botAnswered: result.kbMatched, messageId: botMsg.id, userMessageId: userMsg.id, language: result.language, privacyBlocked });
 }

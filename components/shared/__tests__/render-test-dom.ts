@@ -239,9 +239,12 @@ export class TestElement extends TestNode {
 
 class TestWindow {
   readonly HTMLIFrameElement = TestElement;
+  private readonly localStorageValues = new Map<string, string>();
   readonly localStorage = {
-    getItem: () => null,
-    setItem: () => {},
+    getItem: (key: string) => this.localStorageValues.get(key) ?? null,
+    setItem: (key: string, value: string) => { this.localStorageValues.set(key, String(value)); },
+    removeItem: (key: string) => { this.localStorageValues.delete(key); },
+    clear: () => { this.localStorageValues.clear(); },
   };
 
   constructor(readonly document: TestDocument) {}
