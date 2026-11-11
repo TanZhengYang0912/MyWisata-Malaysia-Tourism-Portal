@@ -94,7 +94,7 @@ export async function draftKbEntry(question: string, existingWeakAnswer: string 
     const text = body.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!text) return null;
 
-    return parseDraft(text);
+    return parseDraft(text, existingWeakAnswer === null);
   } catch {
     return null;
   } finally {
@@ -113,7 +113,7 @@ export async function draftKbEntry(question: string, existingWeakAnswer: string 
  * fill in themselves — losing keyword suggestions isn't worth discarding an
  * otherwise-good title+body.
  */
-function parseDraft(text: string): KbDraft | null {
+function parseDraft(text: string, requireReviewPlaceholder: boolean): KbDraft | null {
   const titleMatch = /^TITLE:\s*(.+)$/m.exec(text);
   const title = titleMatch?.[1]?.trim();
   const bodyStart = text.search(/^BODY:/m);
@@ -123,6 +123,7 @@ function parseDraft(text: string): KbDraft | null {
   const bodyRaw = keywordsStart > bodyStart ? text.slice(bodyStart, keywordsStart) : text.slice(bodyStart);
   const body = bodyRaw.replace(/^BODY:\s*/, '').trim();
   if (!body) return null;
+  if (requireReviewPlaceholder && !body.includes('[ADMIN: confirm')) return null;
 
   const keywords =
     keywordsStart === -1
