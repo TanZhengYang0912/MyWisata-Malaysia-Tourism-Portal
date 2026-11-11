@@ -29,3 +29,7 @@ const SUPPORT_ERRORS: Record<string, { key: string; action: SupportErrorAction }
 export function supportError(code: string): { key: string; action: SupportErrorAction } {
   return SUPPORT_ERRORS[code] ?? { key: 'unavailable', action: 'contact_support' };
 }
+
+export function supportTicketLoadFailure(code: string | undefined): 'not_found' | 'retry' {
+  return code === 'NOT_FOUND' || code === 'FORBIDDEN' ? 'not_found' : 'retry';
+}

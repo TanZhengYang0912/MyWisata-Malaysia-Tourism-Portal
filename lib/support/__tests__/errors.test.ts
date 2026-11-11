@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { supportError } from '../errors';
+import { supportError, supportTicketLoadFailure } from '../errors';
 
 describe('supportError', () => {
   it('maps uncertain writes to checking the operation', () => {
@@ -16,5 +16,12 @@ describe('supportError', () => {
     expect(supportError('INVALID_FILE_CONTENT').action).toBe('choose_file');
     expect(supportError('INVALID_CAPTION').action).toBe('edit_input');
     expect(supportError('RATE_LIMITED').action).toBe('wait');
+  });
+
+  it('offers a retry for temporary reads and treats only confirmed access failures as unavailable', () => {
+    expect(supportTicketLoadFailure('READ_UNAVAILABLE')).toBe('retry');
+    expect(supportTicketLoadFailure(undefined)).toBe('retry');
+    expect(supportTicketLoadFailure('NOT_FOUND')).toBe('not_found');
+    expect(supportTicketLoadFailure('FORBIDDEN')).toBe('not_found');
   });
 });

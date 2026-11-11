@@ -15,7 +15,7 @@ import { ReportChatButton } from "@/components/shared/report-chat-button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { useTranslation } from "react-i18next";
 import { useSpeechInput, resolveRecognitionLangFromLocale, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
-import { supportError } from "@/lib/support/errors";
+import { supportError, supportTicketLoadFailure } from "@/lib/support/errors";
 
 // CLAUDE-VOICE-INPUT.md, mounted on support tickets. Same friendly copy as
 // the chatbot widget's and chat-thread-panel's mic buttons — keys, not
@@ -49,6 +49,7 @@ export default function CustomerTicketDetailPage() {
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
   const [ticket, setTicket] = useState<TicketDetail | null | undefined>(undefined);
+  const [ticketLoadError, setTicketLoadError] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [replyOperationId, setReplyOperationId] = useState<string | null>(null);
   const [attachmentOperationId, setAttachmentOperationId] = useState<string | null>(null);
@@ -63,12 +64,19 @@ export default function CustomerTicketDetailPage() {
   async function loadTicket(): Promise<TicketDetail | null> {
     try {
       const res = await fetch(`/api/support/tickets/${id}`);
-      const body = (await res.json()) as { data: TicketDetail | null };
-      const data = res.ok && body.data ? body.data : null;
-      setTicket(data);
-      return data;
+      const body = (await res.json().catch(() => ({}))) as { data?: TicketDetail | null; error?: { code?: string } };
+      if (!res.ok || !body.data) {
+        const errorCode = body.error?.code ?? (res.ok ? "NOT_FOUND" : undefined);
+        setTicketLoadError(errorCode ?? "READ_UNAVAILABLE");
+        setTicket((current) => current === undefined ? null : current);
+        return null;
+      }
+      setTicketLoadError(null);
+      setTicket(body.data);
+      return body.data;
     } catch {
-      setTicket(null);
+      setTicketLoadError("READ_UNAVAILABLE");
+      setTicket((current) => current === undefined ? null : current);
       return null;
     }
   }
@@ -197,7 +205,14 @@ export default function CustomerTicketDetailPage() {
     return <div role="status" aria-live="polite" className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-sm text-muted-foreground">{tCustomer("ui.states.loading")}</div>;
   }
   if (ticket === null) {
-    return <EmptyState title={tCustomer("ui.support.ticketLoadError")} description={tCustomer("ui.support.ticketNotFound")} />;
+    const canRetry = supportTicketLoadFailure(ticketLoadError ?? undefined) === "retry";
+    return (
+      <EmptyState
+        title={tCustomer("ui.support.ticketLoadError")}
+        description={canRetry ? tCommon(`chatbot.supportErrors.${supportError(ticketLoadError ?? "READ_UNAVAILABLE").key}`) : tCustomer("ui.support.ticketNotFound")}
+        action={canRetry ? <Button type="button" variant="outline" onClick={() => void loadTicket()}>{tCustomer("ui.support.retry")}</Button> : undefined}
+      />
+    );
   }
 
   return (
@@ -205,6 +220,13 @@ export default function CustomerTicketDetailPage() {
       <Link href="/customer/support" className="text-xs text-muted-foreground flex items-center gap-1 mb-4 hover:opacity-70">
         <ArrowLeft size={13} aria-hidden="true" /> {tCustomer("ui.support.myTickets")}
       </Link>
+
+      {ticketLoadError && (
+        <div role="alert" className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <span>{tCommon(`chatbot.supportErrors.${supportError(ticketLoadError).key}`)}</span>
+          <Button type="button" size="sm" variant="outline" onClick={() => void loadTicket()}>{tCustomer("ui.support.retry")}</Button>
+        </div>
+      )}
 
       <div className="flex items-start justify-between gap-3 mb-1">
         <div className="flex flex-wrap items-center gap-2">

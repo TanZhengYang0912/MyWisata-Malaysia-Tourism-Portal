@@ -633,6 +633,7 @@
       "reopenRetry": "Tiket tidak dapat dibuka semula. Sila cuba lagi.",
       "ticketLoadError": "Tiket ini tidak dapat dimuatkan",
       "ticketNotFound": "Tiket mungkin tidak wujud atau bukan milik anda.",
+      "retry": "Cuba lagi",
       "opened": "dibuka",
       "reopening": "Membuka semula…",
       "reopen": "Buka semula tiket",

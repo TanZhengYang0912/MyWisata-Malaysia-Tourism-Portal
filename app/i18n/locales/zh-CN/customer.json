@@ -633,6 +633,7 @@
       "reopenRetry": "无法重新开启工单，请重试。",
       "ticketLoadError": "无法加载此工单",
       "ticketNotFound": "该工单可能不存在，或不属于你。",
+      "retry": "重试",
       "opened": "创建于",
       "reopening": "正在重新开启…",
       "reopen": "重新开启工单",

@@ -628,6 +628,7 @@
       "reopenRetry": "Could not reopen ticket. Please try again.",
       "ticketLoadError": "Couldn't load this ticket",
       "ticketNotFound": "It may not exist, or it is not yours.",
+      "retry": "Retry",
       "opened": "opened",
       "reopening": "Reopening…",
       "reopen": "Reopen ticket",
