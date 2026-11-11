@@ -27,6 +27,7 @@ import { useTranslation } from "react-i18next";
 import { useSpeechInput, resolveRecognitionLangFromLocale, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
 import { TICKET_CATEGORIES } from "@/lib/chatbot/classify";
 import { teamForCategory } from "@/lib/support/team-routing";
+import { supportError } from "@/lib/support/errors";
 
 // CLAUDE-VOICE-INPUT.md, mounted on the admin ticket reply composer too.
 const SPEECH_ERROR_TEXT: Record<SpeechInputErrorKind, string> = {
@@ -95,6 +96,7 @@ function AdminSupportContent() {
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
   const { t, i18n } = useTranslation("admin");
+  const { t: tCommon } = useTranslation("common");
   const [tickets, setTickets] = useState<AdminTicket[] | null>(null);
   const [stats, setStats] = useState<QueueStats | null>(null);
   const [totalTickets, setTotalTickets] = useState(0);
@@ -292,7 +294,11 @@ function AdminSupportContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: text, operationId }),
       });
-      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? t("ui.support.errors.sendReply")); return; }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: { code?: string } };
+        showFeedback("error", body.error?.code ? tCommon(`chatbot.supportErrors.${supportError(body.error.code).key}`) : t("ui.support.errors.sendReply"));
+        return;
+      }
       setReply("");
       setReplyOperationId(null);
       showFeedback("success", t("ui.support.replySent"));
@@ -320,7 +326,11 @@ function AdminSupportContent() {
       formData.append("file", pendingFile);
       if (reply.trim()) formData.append("caption", reply.trim());
       const res = await fetch(`/api/support/tickets/${openTicketId}/attachments`, { method: "POST", body: formData });
-      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? t("ui.support.errors.sendReply")); return; }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: { code?: string } };
+        showFeedback("error", body.error?.code ? tCommon(`chatbot.supportErrors.${supportError(body.error.code).key}`) : t("ui.support.errors.sendReply"));
+        return;
+      }
       setReply("");
       setPendingFile(null);
       showFeedback("success", t("ui.support.replySent"));

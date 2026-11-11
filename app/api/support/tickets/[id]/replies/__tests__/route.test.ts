@@ -1,15 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// CLAUDE-ADMIN-CONDUCT.md added one new conditional call to this
-// pre-existing route (app/api/support/tickets/[id]/replies/route.ts).
-// This file only covers that new behavior — the route had no prior test
-// coverage to preserve, so the customer-reply / locked-ticket / assignment
-// branches are exercised only incidentally, not exhaustively.
-
 const getUser = vi.fn();
 const isSuperAdmin = vi.fn();
 const createServiceClient = vi.fn();
-const notifyTicketReply = vi.fn();
+const commitSupportTicketReply = vi.fn();
 const logModerationFlag = vi.fn();
 const logAdminConductFlagIfNeeded = vi.fn();
 
@@ -18,7 +12,6 @@ vi.mock('@/lib/supabase/server', () => ({
 }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient }));
 vi.mock('@/lib/affiliate/admin-guard', () => ({ isSuperAdmin }));
-vi.mock('@/lib/support/notify', () => ({ notifyTicketReply }));
 vi.mock('@/lib/moderation/flags', () => ({ logModerationFlag }));
 vi.mock('@/lib/moderation/admin-conduct', () => ({ logAdminConductFlagIfNeeded }));
 
@@ -27,6 +20,7 @@ const { POST } = await import('../route');
 const TICKET_ID = '11111111-1111-4111-8111-111111111111';
 const TICKET_OWNER_ID = 'customer-1';
 const OPERATION_ID = '7b456ed4-615e-4210-a704-840abc4c1790';
+const CREATED_AT = '2026-08-09T00:00:00.000Z';
 
 function request(body: string) {
   return new Request(`http://localhost/api/support/tickets/${TICKET_ID}/replies`, {
@@ -40,60 +34,46 @@ function callRoute(body: string) {
   return POST(request(body), { params: Promise.resolve({ id: TICKET_ID }) });
 }
 
-function mockClient(ticket: { status?: string; assigned_to?: string | null } = {}) {
-  let existingReply: Record<string, unknown> | null = null;
-  const ticketRow = { id: TICKET_ID, subject: 'Help', user_id: TICKET_OWNER_ID, assigned_to: null, status: 'open', ...ticket };
+function replyResult(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'reply-1',
+    sender_id: 'caller-1',
+    sender_role: 'admin',
+    body: 'masked body',
+    created_at: CREATED_AT,
+    new_status: 'in_progress',
+    created: true,
+    ticket_user_id: TICKET_OWNER_ID,
+    ...overrides,
+  };
+}
+
+function mockClient() {
   createServiceClient.mockReturnValue({
+    rpc: commitSupportTicketReply,
     from: (table: string) => {
-      if (table === 'support_tickets') {
-        return {
-          select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: ticketRow, error: null }) }) }),
-          update: () => ({ eq: () => Promise.resolve({ error: null }) }),
-        };
-      }
-      if (table === 'support_ticket_replies') {
-        const builder: Record<string, (...args: unknown[]) => unknown> = {};
-        builder.select = () => builder;
-        builder.eq = () => builder;
-        builder.maybeSingle = () => Promise.resolve({ data: existingReply, error: null });
-        builder.insert = (input: unknown) => {
-          const values = input as Record<string, unknown>;
-          const row = { ...values, id: 'reply-1', created_at: '2026-08-09T00:00:00.000Z' };
-          return { select: () => ({ single: async () => { existingReply = row; return { data: row, error: null }; } }) };
-        };
-        return builder;
-      }
       if (table === 'moderation_custom_words') {
         return { select: () => ({ eq: () => Promise.resolve({ data: [] }) }) };
       }
-      return {
-        insert: () => ({
-          select: () => ({
-            single: () => Promise.resolve({
-              data: { id: 'reply-1', sender_id: 'caller-1', sender_role: 'admin', body: 'masked body', created_at: '2026-08-09T00:00:00.000Z' },
-              error: null,
-            }),
-          }),
-        }),
-      };
+      throw new Error(`Unexpected database read: ${table}`);
     },
   });
 }
 
-describe('POST /api/support/tickets/[id]/replies — admin conduct flagging', () => {
+describe('POST /api/support/tickets/[id]/replies', () => {
   beforeEach(() => {
     getUser.mockReset();
     isSuperAdmin.mockReset();
     createServiceClient.mockReset();
-    notifyTicketReply.mockReset().mockResolvedValue(undefined);
+    commitSupportTicketReply.mockReset().mockResolvedValue({ data: replyResult(), error: null });
     logModerationFlag.mockReset().mockResolvedValue(undefined);
     logAdminConductFlagIfNeeded.mockReset().mockResolvedValue(undefined);
     getUser.mockResolvedValue({ data: { user: { id: 'caller-1' } } });
+    mockClient();
   });
 
-  it('flags an admin reply containing profanity, targeting the ticket owner', async () => {
+  it('flags a newly committed admin reply and passes the ticket owner', async () => {
     isSuperAdmin.mockResolvedValue(true);
-    mockClient();
 
     const response = await callRoute('this fucking service is broken');
 
@@ -107,10 +87,13 @@ describe('POST /api/support/tickets/[id]/replies — admin conduct flagging', ()
     }));
   });
 
-  it('does not flag a customer reply, even with profanity', async () => {
+  it('does not run admin conduct review for a customer reply', async () => {
     isSuperAdmin.mockResolvedValue(false);
-    getUser.mockResolvedValue({ data: { user: { id: TICKET_OWNER_ID } } }); // the caller IS the ticket owner
-    mockClient();
+    getUser.mockResolvedValue({ data: { user: { id: TICKET_OWNER_ID } } });
+    commitSupportTicketReply.mockResolvedValue({
+      data: replyResult({ sender_id: TICKET_OWNER_ID, sender_role: 'customer', new_status: 'open' }),
+      error: null,
+    });
 
     const response = await callRoute('this fucking service is broken');
 
@@ -118,37 +101,57 @@ describe('POST /api/support/tickets/[id]/replies — admin conduct flagging', ()
     expect(logAdminConductFlagIfNeeded).not.toHaveBeenCalled();
   });
 
-  it('returns the existing reply for a repeated operation without notifying twice', async () => {
+  it('returns the committed reply on a retry without repeating moderation side effects', async () => {
     isSuperAdmin.mockResolvedValue(true);
-    mockClient();
+    commitSupportTicketReply
+      .mockResolvedValueOnce({ data: replyResult(), error: null })
+      .mockResolvedValueOnce({ data: replyResult({ created: false }), error: null });
 
     expect((await callRoute('Same text')).status).toBe(201);
     expect((await callRoute('Same text')).status).toBe(200);
-    expect(notifyTicketReply).toHaveBeenCalledTimes(1);
+    expect(commitSupportTicketReply).toHaveBeenCalledTimes(2);
+    expect(logAdminConductFlagIfNeeded).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects changed reply text under a previously used operation key', async () => {
+  it('maps a changed payload under the same operation key to a conflict', async () => {
     isSuperAdmin.mockResolvedValue(true);
-    mockClient();
+    commitSupportTicketReply.mockResolvedValue({
+      data: null,
+      error: { message: 'support_ticket_operation_conflict' },
+    });
 
-    expect((await callRoute('Original text')).status).toBe(201);
     const response = await callRoute('Changed text');
+
     expect(response.status).toBe(409);
-    expect(notifyTicketReply).toHaveBeenCalledTimes(1);
+    expect(await response.json()).toMatchObject({ error: { code: 'OPERATION_CONFLICT' } });
   });
 
-  it('calls the flagger with a clean cleaned() result for an ordinary admin reply', async () => {
-    // The route only gates on senderRole==='admin' — the no-op-when-clean
-    // decision lives inside logAdminConductFlagIfNeeded itself (see
-    // lib/moderation/__tests__/admin-conduct.test.ts), not at the call site.
-    isSuperAdmin.mockResolvedValue(true);
-    mockClient();
+  it('maps a locked-ticket result from the atomic transaction', async () => {
+    isSuperAdmin.mockResolvedValue(false);
+    getUser.mockResolvedValue({ data: { user: { id: TICKET_OWNER_ID } } });
+    commitSupportTicketReply.mockResolvedValue({ data: null, error: { message: 'support_ticket_locked' } });
 
-    const response = await callRoute('Thanks for reaching out, let me check on that.');
+    const response = await callRoute('A reply after resolution');
 
-    expect(response.status).toBe(201);
-    expect(logAdminConductFlagIfNeeded).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
-      cleaned: expect.objectContaining({ hadProfanity: false, hadSlur: false }),
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ error: { code: 'TICKET_LOCKED' } });
+    expect(commitSupportTicketReply).toHaveBeenCalledWith('commit_support_ticket_reply', expect.objectContaining({
+      p_ticket_id: TICKET_ID,
+      p_actor_id: TICKET_OWNER_ID,
+      p_sender_role: 'customer',
     }));
+  });
+
+  it('tells users to check the ticket when the transaction result is unknown', async () => {
+    isSuperAdmin.mockResolvedValue(false);
+    getUser.mockResolvedValue({ data: { user: { id: TICKET_OWNER_ID } } });
+    commitSupportTicketReply.mockResolvedValue({ data: null, error: { message: 'connection reset' } });
+
+    const response = await callRoute('Reply body');
+
+    expect(response.status).toBe(503);
+    const payload = await response.json();
+    expect(payload).toMatchObject({ error: { code: 'WRITE_UNAVAILABLE' } });
+    expect(payload.error.message).not.toContain('connection reset');
   });
 });
