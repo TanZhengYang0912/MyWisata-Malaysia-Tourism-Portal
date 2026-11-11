@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
@@ -6,6 +7,7 @@ import { embedText } from '@/lib/chatbot/embed';
 import { reserveAiQuota } from '@/lib/rate-limit/ai';
 
 const REINDEX_BATCH_SIZE = 10;
+const reindexSchema = z.object({ documentId: z.string().uuid().optional() }).strict();
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -18,10 +20,20 @@ export async function POST(request: Request) {
     return apiFail('NOT_CONFIGURED', 'Knowledge-base indexing is temporarily unavailable. Please try again later.', 503);
   }
 
+  let documentId: string | null = null;
+  if (request.headers.get('content-type')?.includes('application/json')) {
+    const rawBody = await request.json().catch(() => null);
+    if (rawBody === null) return apiFail('INVALID_INPUT', 'Choose a valid knowledge-base entry to retry.', 400);
+    const parsedBody = reindexSchema.safeParse(rawBody);
+    if (!parsedBody.success) return apiFail('INVALID_INPUT', 'Choose a valid knowledge-base entry to retry.', 400);
+    documentId = parsedBody.data.documentId ?? null;
+  }
+
   const service = createServiceClient();
   const { data: claimed, error: claimError } = await service.rpc('claim_chatbot_kb_reindex', {
     p_limit: REINDEX_BATCH_SIZE,
     p_lease_seconds: 300,
+    p_document_id: documentId,
   });
   if (claimError) return apiFail('READ_UNAVAILABLE', 'Knowledge-base entries could not be claimed. Please try again later.', 503);
 

@@ -42,6 +42,17 @@ interface KbDoc {
   embeddedAt: string | null;
   updatedAt: string;
   createdAt: string;
+  contentVersion: number;
+  sourceRefs: string[];
+  pendingRevision: {
+    id: string;
+    title: string;
+    body: string;
+    keywords: string[];
+    category: string | null;
+    sourceRefs: string[];
+    baseContentVersion: number;
+  } | null;
 }
 
 interface KbDocumentPage {
@@ -57,12 +68,15 @@ interface KbFormState {
   body: string;
   keywords: string; // comma-separated in the form, split on save
   category: string; // one of TICKET_CATEGORIES going forward — see the category <select> below
-  isActive: boolean;
+  sourceRefs: string;
+  expectedContentVersion: number;
+  revisionId: string | null;
+  reviewConfirmed: boolean;
 }
 
 // "general" — always a valid member of TICKET_CATEGORIES — so a brand new
 // doc never starts on a blank category the dropdown itself doesn't offer.
-const EMPTY_FORM: KbFormState = { title: "", body: "", keywords: "", category: "general", isActive: true };
+const EMPTY_FORM: KbFormState = { title: "", body: "", keywords: "", category: "general", sourceRefs: "", expectedContentVersion: 0, revisionId: null, reviewConfirmed: false };
 
 export default function AdminChatbotPage() {
   const { showFeedback } = useActionFeedback();
@@ -77,7 +91,11 @@ export default function AdminChatbotPage() {
   const [reindexResult, setReindexResult] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | "new" | null>(null);
   const [form, setForm] = useState<KbFormState>(EMPTY_FORM);
+  const [draftOperationId, setDraftOperationId] = useState(() => crypto.randomUUID());
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [draftPersisted, setDraftPersisted] = useState(false);
+  const [formChanged, setFormChanged] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const kbFormRef = useRef<HTMLDivElement>(null);
   // CLAUDE-P4-EXTRAS-2.md Extra 5 — which gap question is currently being
@@ -125,12 +143,15 @@ export default function AdminChatbotPage() {
     void loadDocs();
   }, [loadDocs]);
 
-  async function runReindex() {
+  async function runReindex(documentId?: string) {
     if (reindexing) return;
     setReindexing(true);
     setReindexResult(null);
     try {
-      const res = await fetch("/api/admin/chatbot/reindex", { method: "POST" });
+      const res = await fetch("/api/admin/chatbot/reindex", {
+        method: "POST",
+        ...(documentId ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ documentId }) } : {}),
+      });
       const body = (await res.json()) as {
         data: { scanned: number; reindexed: number; skipped: number; errors: unknown[] } | null;
         error: { message: string } | null;
@@ -150,7 +171,10 @@ export default function AdminChatbotPage() {
 
   function startNew() {
     setForm(EMPTY_FORM);
+    setDraftOperationId(crypto.randomUUID());
     setFormError(null);
+    setDraftPersisted(false);
+    setFormChanged(false);
     setEditingId("new");
   }
 
@@ -161,7 +185,10 @@ export default function AdminChatbotPage() {
   // answer to write, not something to guess for them.
   function addToKb(question: string) {
     setForm({ ...EMPTY_FORM, title: question });
+    setDraftOperationId(crypto.randomUUID());
     setFormError(null);
+    setDraftPersisted(false);
+    setFormChanged(false);
     setEditingId("new");
   }
 
@@ -205,7 +232,10 @@ export default function AdminChatbotPage() {
         keywords: body.data.keywords.join(", "),
         category: body.data.category,
       });
+      setDraftOperationId(crypto.randomUUID());
       setFormError(null);
+      setDraftPersisted(false);
+      setFormChanged(false);
       setEditingId("new");
     } catch {
       showFeedback("error", t("chatbot.errors.draft"));
@@ -222,20 +252,26 @@ export default function AdminChatbotPage() {
   }, [editingId]);
 
   function startEdit(doc: KbDoc) {
+    const revision = doc.pendingRevision;
     setForm({
-      title: doc.title,
-      body: doc.body,
-      keywords: doc.keywords.join(", "),
+      title: revision?.title ?? doc.title,
+      body: revision?.body ?? doc.body,
+      keywords: (revision?.keywords ?? doc.keywords).join(", "),
       // Preserves a legacy category (e.g. "rewards"/"wallet"/"account" — real
       // values on the pre-existing seeded docs, predating this dropdown and
       // outside TICKET_CATEGORIES) exactly as stored; only a genuinely null
       // category falls back to "general". The <select> below adds this as
       // an extra option when it isn't one of the fixed six, so opening this
       // form can never silently reclassify a doc just by loading it.
-      category: doc.category ?? "general",
-      isActive: doc.isActive,
+      category: (revision?.category ?? doc.category) ?? "general",
+      sourceRefs: (revision?.sourceRefs ?? doc.sourceRefs ?? []).join("\n"),
+      expectedContentVersion: doc.contentVersion,
+      revisionId: revision?.id ?? null,
+      reviewConfirmed: false,
     });
     setFormError(null);
+    setDraftPersisted(Boolean(revision));
+    setFormChanged(false);
     setEditingId(doc.id);
   }
 
@@ -248,21 +284,38 @@ export default function AdminChatbotPage() {
       body: form.body.trim(),
       keywords: form.keywords.split(",").map((k) => k.trim()).filter(Boolean),
       category: form.category.trim() || null,
-      isActive: form.isActive,
+      sourceRefs: form.sourceRefs.split("\n").map((source) => source.trim()).filter(Boolean),
+      expectedContentVersion: form.expectedContentVersion,
+      operationId: draftOperationId,
     };
+    const { operationId: _operationId, ...updatePayload } = payload;
     try {
       const res = await fetch(editingId === "new" ? "/api/admin/chatbot/kb" : `/api/admin/chatbot/kb/${editingId}`, {
         method: editingId === "new" ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(editingId === "new" ? payload : updatePayload),
       });
-      const body = (await res.json()) as { error: { message: string } | null };
+      const body = (await res.json()) as { data?: { documentId?: string; revisionId?: string; contentVersion?: number; changed?: boolean }; error: { message: string } | null };
       if (!res.ok) {
         setFormError(body.error?.message ?? t("chatbot.errors.save"));
         return;
       }
-      setEditingId(null);
-      showFeedback("success", editingId === "new" ? t("chatbot.success.created") : t("chatbot.success.updated"));
+      if (body.data?.changed === false && !body.data.revisionId) {
+        setEditingId(null);
+        showFeedback("success", t("chatbot.success.noChanges"));
+        await loadDocs();
+        return;
+      }
+      const documentId = body.data?.documentId ?? editingId;
+      if (typeof documentId !== "string" || typeof body.data?.revisionId !== "string" || typeof body.data.contentVersion !== "number") {
+        setFormError(t("chatbot.errors.save"));
+        return;
+      }
+      setEditingId(documentId);
+      setForm((current) => ({ ...current, revisionId: body.data!.revisionId!, expectedContentVersion: body.data!.contentVersion!, reviewConfirmed: false }));
+      setDraftPersisted(true);
+      setFormChanged(false);
+      showFeedback("success", t("chatbot.success.draftSaved"));
       if (editingId === "new" && docsPage !== 1) {
         setDocsPage(1);
         return;
@@ -276,7 +329,36 @@ export default function AdminChatbotPage() {
     }
   }
 
+  async function publishDraft() {
+    if (publishing || saving || !draftPersisted || formChanged || !form.revisionId || !form.reviewConfirmed) return;
+    setPublishing(true);
+    setFormError(null);
+    try {
+      const response = await fetch(`/api/admin/chatbot/kb/${editingId}/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ revisionId: form.revisionId, expectedContentVersion: form.expectedContentVersion, confirmed: true }),
+      });
+      const result = await response.json().catch(() => ({})) as { error?: { message?: string } };
+      if (!response.ok) {
+        setFormError(result.error?.message ?? t("chatbot.errors.publish"));
+        return;
+      }
+      setEditingId(null);
+      showFeedback("success", t("chatbot.success.published"));
+      await loadDocs();
+    } catch {
+      setFormError(t("chatbot.errors.publishRetry"));
+    } finally {
+      setPublishing(false);
+    }
+  }
+
   async function toggleActive(doc: KbDoc) {
+    if (!doc.isActive) {
+      startEdit(doc);
+      return;
+    }
     try {
       const response = await fetch(`/api/admin/chatbot/kb/${doc.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive: !doc.isActive }) });
       if (!response.ok) { const body = await response.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? t("chatbot.errors.status")); return; }
@@ -285,16 +367,16 @@ export default function AdminChatbotPage() {
     } catch { showFeedback("error", t("chatbot.errors.statusRetry")); }
   }
 
-  async function applyBatch(action: "activate" | "deactivate") {
+  async function applyBatch() {
     if (batchBusy) return;
-    const selected = sortedDocs.filter((doc) => selectedDocIds.has(doc.id) && (action === "activate" ? !doc.isActive : doc.isActive));
+    const selected = sortedDocs.filter((doc) => selectedDocIds.has(doc.id) && doc.isActive);
     if (!selected.length || selected.length !== selectedDocIds.size) {
       showFeedback("error", t("chatbot.errors.sameStatus"));
       return;
     }
     setBatchBusy(true);
     try {
-      const responses = await Promise.all(selected.map((doc) => fetch(`/api/admin/chatbot/kb/${doc.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive: action === "activate" }) })));
+      const responses = await Promise.all(selected.map((doc) => fetch(`/api/admin/chatbot/kb/${doc.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isActive: false }) })));
       const failed = responses.find((response) => !response.ok);
       if (failed) {
         const body = await failed.json().catch(() => ({}));
@@ -330,7 +412,7 @@ export default function AdminChatbotPage() {
         eyebrow={<span className="flex items-center gap-2"><Bot size={14} /> {t("chatbot.title")}</span>}
         title={t("chatbot.title")}
         actions={<div className="text-right">
-          <Button size="sm" variant="outline" onClick={runReindex} disabled={reindexing}>
+          <Button size="sm" variant="outline" onClick={() => void runReindex()} disabled={reindexing}>
             <RefreshCw size={13} className={reindexing ? "animate-spin" : ""} /> {reindexing ? t("chatbot.reindexing") : t("chatbot.reindex")}
           </Button>
           {reindexResult && <p className="text-[0.6875rem] text-muted-foreground mt-1 max-w-[240px]">{reindexResult}</p>}
@@ -459,13 +541,13 @@ export default function AdminChatbotPage() {
           <p className="text-xs font-bold uppercase tracking-wider text-primary">{editingId === "new" ? t("chatbot.form.newTitle") : t("chatbot.form.editTitle")}</p>
           <input
             value={form.title}
-            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+            onChange={(e) => { setForm((f) => ({ ...f, title: e.target.value, reviewConfirmed: false })); setFormChanged(true); setDraftPersisted(false); }}
             placeholder={t("chatbot.form.title")}
             className={`${adminFilterControlClassName} w-full`}
           />
           <textarea
             value={form.body}
-            onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
+            onChange={(e) => { setForm((f) => ({ ...f, body: e.target.value, reviewConfirmed: false })); setFormChanged(true); setDraftPersisted(false); }}
             placeholder={t("chatbot.form.body")}
             rows={4}
             className={`${adminFilterControlClassName} min-h-24 w-full py-2`}
@@ -473,7 +555,7 @@ export default function AdminChatbotPage() {
           <div className="flex gap-2 flex-wrap">
             <input
               value={form.keywords}
-              onChange={(e) => setForm((f) => ({ ...f, keywords: e.target.value }))}
+              onChange={(e) => { setForm((f) => ({ ...f, keywords: e.target.value, reviewConfirmed: false })); setFormChanged(true); setDraftPersisted(false); }}
               placeholder={t("chatbot.form.keywords")}
               className={`${adminFilterControlClassName} min-w-[200px] flex-1`}
             />
@@ -488,7 +570,7 @@ export default function AdminChatbotPage() {
                 opening the form can't silently reclassify it. */}
             <select
               value={form.category}
-              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+              onChange={(e) => { setForm((f) => ({ ...f, category: e.target.value, reviewConfirmed: false })); setFormChanged(true); setDraftPersisted(false); }}
               className={`${adminFilterControlClassName} w-40`}
             >
               {[
@@ -500,16 +582,28 @@ export default function AdminChatbotPage() {
                 </option>
               ))}
             </select>
-            <label className="flex items-center gap-1.5 text-sm text-foreground">
-              <input type="checkbox" checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} />
-              {t("chatbot.form.active")}
-            </label>
           </div>
+          <textarea
+            value={form.sourceRefs}
+            onChange={(e) => { setForm((f) => ({ ...f, sourceRefs: e.target.value, reviewConfirmed: false })); setFormChanged(true); setDraftPersisted(false); }}
+            placeholder={t("chatbot.form.sources")}
+            rows={2}
+            className={`${adminFilterControlClassName} min-h-16 w-full py-2`}
+            aria-label={t("chatbot.form.sources")}
+          />
+          <p className="text-xs text-muted-foreground">{t("chatbot.form.sourcesHint")}</p>
+          {draftPersisted && !formChanged && <label className="flex items-start gap-2 text-sm text-foreground">
+            <input type="checkbox" checked={form.reviewConfirmed} onChange={(e) => setForm((f) => ({ ...f, reviewConfirmed: e.target.checked }))} />
+            <span>{t("chatbot.form.reviewConfirmation")}</span>
+          </label>}
           {formError && <p className="text-[0.6875rem] text-destructive">{formError}</p>}
           <div className="flex gap-2">
             <Button size="sm" onClick={saveDoc} disabled={saving || !form.title.trim() || !form.body.trim()}>
-              {saving ? t("chatbot.saving") : t("common.actions.save")}
+              {saving ? t("chatbot.saving") : t("chatbot.actions.saveDraft")}
             </Button>
+            {draftPersisted && !formChanged && <Button size="sm" onClick={publishDraft} disabled={saving || publishing || !form.reviewConfirmed || form.sourceRefs.split("\n").every((source) => !source.trim())}>
+              {publishing ? t("chatbot.publishing") : t("chatbot.actions.publish")}
+            </Button>}
             <Button size="sm" variant="outline" onClick={() => setEditingId(null)} disabled={saving}>
               {t("common.actions.cancel")}
             </Button>
@@ -518,29 +612,32 @@ export default function AdminChatbotPage() {
       )}
 
       <div className="overflow-hidden rounded-2xl border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
-        <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-xs"><input type="checkbox" aria-label={t("chatbot.accessibility.selectAll")} checked={sortedDocs.length > 0 && sortedDocs.every((doc) => selectedDocIds.has(doc.id))} onChange={(event) => setSelectedDocIds(event.target.checked ? new Set(sortedDocs.map((doc) => doc.id)) : new Set())} /><span className="text-muted-foreground">{t("chatbot.selectAll")}</span></div>
-        <AdminBatchActionBar selectedCount={sortedDocs.filter((doc) => selectedDocIds.has(doc.id)).length} onClear={() => setSelectedDocIds(new Set())} onApply={(action) => void applyBatch(action as "activate" | "deactivate")} actions={[{ value: "activate", label: t("batchActions.activate") }, { value: "deactivate", label: t("batchActions.deactivate") }]} busy={batchBusy} />
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-xs"><input type="checkbox" aria-label={t("chatbot.accessibility.selectAll")} checked={sortedDocs.some((doc) => doc.isActive) && sortedDocs.filter((doc) => doc.isActive).every((doc) => selectedDocIds.has(doc.id))} onChange={(event) => setSelectedDocIds(event.target.checked ? new Set(sortedDocs.filter((doc) => doc.isActive).map((doc) => doc.id)) : new Set())} /><span className="text-muted-foreground">{t("chatbot.selectAll")}</span></div>
+        <AdminBatchActionBar selectedCount={sortedDocs.filter((doc) => selectedDocIds.has(doc.id) && doc.isActive).length} onClear={() => setSelectedDocIds(new Set())} onApply={() => void applyBatch()} actions={[{ value: "deactivate", label: t("batchActions.deactivate") }]} busy={batchBusy} />
         {sortedDocs.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-muted-foreground">{t("chatbot.emptyDocuments")}</p>
         ) : (
           <div className="divide-y divide-border">
             {sortedDocs.map((d) => (
               <div key={d.id} className="flex min-w-0 flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center">
-                <input type="checkbox" aria-label={t("chatbot.accessibility.selectDocument", { title: d.title })} checked={selectedDocIds.has(d.id)} onChange={(event) => setSelectedDocIds((previous) => { const next = new Set(previous); if (event.target.checked) next.add(d.id); else next.delete(d.id); return next; })} />
+                <input type="checkbox" aria-label={t("chatbot.accessibility.selectDocument", { title: d.title })} checked={selectedDocIds.has(d.id)} disabled={!d.isActive} onChange={(event) => setSelectedDocIds((previous) => { const next = new Set(previous); if (event.target.checked) next.add(d.id); else next.delete(d.id); return next; })} />
                 <div className="min-w-0 flex-1">
                   <p className="break-words text-sm font-semibold text-foreground">
-                    {d.title} {!d.isActive && <span className="text-muted-foreground font-normal">({t("chatbot.inactive")})</span>}
+                    {d.title} {!d.isActive && <span className="text-muted-foreground font-normal">({t("chatbot.inactive")})</span>} {d.pendingRevision && <span className="text-amber-700 dark:text-amber-300 font-normal">· {t("chatbot.pendingReview")}</span>}
                   </p>
                   <p className="break-words text-xs text-muted-foreground">
                     {d.category ? t(`chatbot.categories.${d.category}`) : t("chatbot.uncategorized")} · {d.hasEmbedding ? t("chatbot.embedded") : t("chatbot.notEmbedded")}
                   </p>
                 </div>
                 <Button size="sm" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={() => startEdit(d)}>
-                  {t("chatbot.actions.edit")}
+                  {d.pendingRevision ? t("chatbot.actions.reviewDraft") : t("chatbot.actions.edit")}
                 </Button>
                 <Button size="sm" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={() => toggleActive(d)}>
-                  {d.isActive ? t("batchActions.deactivate") : t("batchActions.activate")}
+                  {d.isActive ? t("batchActions.deactivate") : d.pendingRevision ? t("chatbot.actions.reviewDraft") : t("chatbot.actions.edit")}
                 </Button>
+                {d.isActive && !d.hasEmbedding && <Button size="sm" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={() => void runReindex(d.id)} disabled={reindexing}>
+                  {t("chatbot.actions.reindexEntry")}
+                </Button>}
               </div>
             ))}
           </div>

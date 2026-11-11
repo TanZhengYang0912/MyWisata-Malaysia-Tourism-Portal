@@ -6,10 +6,10 @@ vi.mock('@/lib/supabase/server', () => ({ createClient: mocks.createClient }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: mocks.createServiceClient }));
 vi.mock('@/lib/affiliate/admin-guard', () => ({ isSuperAdmin: mocks.isSuperAdmin }));
 
-import { GET } from '../route';
+import { GET, POST } from '../route';
 
 function document(id: string) {
-  return { id, title: `Guide ${id}`, body: 'Body', keywords: [], category: 'general', is_active: true, embedded_at: null, updated_at: '2026-11-11T00:00:00.000Z', created_at: '2026-11-10T00:00:00.000Z' };
+  return { id, title: `Guide ${id}`, body: 'Body', keywords: [], category: 'general', is_active: true, embedded_at: null, updated_at: '2026-11-11T00:00:00.000Z', created_at: '2026-11-10T00:00:00.000Z', content_version: 1 };
 }
 
 function configurePages(pages: Array<{ data: ReturnType<typeof document>[]; count: number | null; error: unknown }>) {
@@ -20,7 +20,15 @@ function configurePages(pages: Array<{ data: ReturnType<typeof document>[]; coun
   query.select = () => query;
   query.order = (...args: unknown[]) => { order(...args); return query; };
   query.range = range;
-  mocks.createServiceClient.mockReturnValue({ from: vi.fn(() => query) });
+  const revisionsQuery: Record<string, (...args: unknown[]) => unknown> = {};
+  revisionsQuery.select = () => revisionsQuery;
+  revisionsQuery.in = () => revisionsQuery;
+  revisionsQuery.eq = () => revisionsQuery;
+  revisionsQuery.then = (...args: unknown[]) => {
+    const resolve = args[0] as ((value: unknown) => unknown) | undefined;
+    return Promise.resolve({ data: [], error: null }).then(resolve);
+  };
+  mocks.createServiceClient.mockReturnValue({ from: vi.fn((table: string) => table === 'chatbot_kb_revisions' ? revisionsQuery : query) });
   return { range, order };
 }
 
@@ -67,5 +75,21 @@ describe('GET /api/admin/chatbot/kb pagination', () => {
     expect(mocks.isSuperAdmin).toHaveBeenCalledWith(expect.anything(), 'admin-1');
     expect(response.status).toBe(503);
     expect(JSON.stringify(body)).not.toContain('password');
+  });
+
+  it('creates a private review draft with a stable operation id', async () => {
+    const operationId = '8ba6dd1a-255d-44dc-a416-aef13264efca';
+    const rpc = vi.fn().mockResolvedValue({ data: { documentId: 'doc-1', revisionId: 'revision-1', changed: true, contentVersion: 0 }, error: null });
+    mocks.createServiceClient.mockReturnValue({ rpc });
+    const response = await POST(new Request('http://localhost/api/admin/chatbot/kb', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title: 'Refund status', body: 'Check your account page.', keywords: ['refund'], category: 'payment', sourceRefs: [], operationId }),
+    }));
+    expect(response.status).toBe(200);
+    expect(rpc).toHaveBeenCalledWith('save_chatbot_kb_revision', expect.objectContaining({
+      p_document_id: null,
+      p_author_id: 'admin-1',
+      p_operation_id: operationId,
+    }));
   });
 });

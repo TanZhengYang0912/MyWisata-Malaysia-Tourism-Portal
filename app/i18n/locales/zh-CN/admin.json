@@ -1148,7 +1148,11 @@
       "addToKb": "添加到知识库",
       "aiDraft": "AI：起草知识库答案",
       "edit": "编辑",
-      "newDoc": "新建文档"
+      "newDoc": "新建文档",
+      "saveDraft": "保存草稿",
+      "reviewDraft": "审核草稿",
+      "publish": "发布",
+      "reindexEntry": "重试索引"
     },
     "categories": {
       "account": "账户",
@@ -1175,6 +1179,8 @@
       "sameStatus": "执行此操作前，请选择当前状态相同的文件。",
       "save": "保存失败。",
       "saveRetry": "知识库文件无法保存。请重试。",
+      "publish": "无法发布此条目。",
+      "publishRetry": "条目可能已经发布。请先刷新知识库确认状态，再决定是否重试。",
       "status": "无法更新文件状态。",
       "statusRetry": "无法更新文件状态。请重试。"
     },
@@ -1184,7 +1190,10 @@
       "editTitle": "编辑知识库文件",
       "keywords": "关键词，使用英文逗号分隔（用于关键词后备机制）",
       "newTitle": "新建知识库文件",
-      "title": "标题"
+      "title": "标题",
+      "sources": "来源参考，每行一条",
+      "sourcesHint": "填写能佐证这些事实的政策页面或内部记录。审核并发布前，草稿不会上线。",
+      "reviewConfirmation": "我已核对答复和来源，内容符合当前平台政策。"
     },
     "inactive": "未启用",
     "knowledgeBase": "知识库",
@@ -1212,6 +1221,8 @@
     "reindexErrors": "，{{count}} 个错误",
     "reindexResult": "已扫描 {{scanned}} 项，已嵌入 {{embedded}} 项，已跳过 {{skipped}} 项{{errors}}",
     "reindexing": "正在重新索引…",
+    "publishing": "发布中…",
+    "pendingReview": "草稿待审核",
     "saving": "保存中…",
     "selectAll": "全选文件",
     "success": {
@@ -1220,6 +1231,9 @@
       "created": "知识库文件已创建。",
       "deactivated": "知识库文件已停用。",
       "updated": "知识库文件已更新。",
+      "draftSaved": "草稿已保存。审核前，当前已发布的答复会继续使用。",
+      "published": "知识库文件已发布。",
+      "noChanges": "没有需要保存的更改。",
       "batchStatus_one": "{{count}} 个知识库文件已更新。",
       "batchStatus_other": "{{count}} 个知识库文件已更新。"
     },

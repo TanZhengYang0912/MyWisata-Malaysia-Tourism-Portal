@@ -41,7 +41,7 @@ describe('POST /api/admin/chatbot/reindex', () => {
     const response = await POST(new Request('https://example.test/api/admin/chatbot/reindex'));
     const body = await response.json();
 
-    expect(mocks.rpc).toHaveBeenNthCalledWith(1, 'claim_chatbot_kb_reindex', { p_limit: 10, p_lease_seconds: 300 });
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, 'claim_chatbot_kb_reindex', { p_limit: 10, p_lease_seconds: 300, p_document_id: null });
     expect(mocks.reserveAiQuota).toHaveBeenCalledWith(expect.any(Request), 'kb_embedding', 'admin-1');
     expect(mocks.embedText).toHaveBeenCalledWith('Title\nBody', 'kb');
     expect(mocks.rpc).toHaveBeenNthCalledWith(2, 'finish_chatbot_kb_reindex', {
@@ -49,6 +49,17 @@ describe('POST /api/admin/chatbot/reindex', () => {
     });
     expect(body.data).toMatchObject({ scanned: 1, reindexed: 1, batchSize: 10 });
     expect(response.status).toBe(200);
+  });
+
+  it('can retry one selected knowledge-base entry through the same bounded lease path', async () => {
+    const documentId = '26dc9860-69b7-4cd3-a7f5-dccf5b9f86a1';
+    const response = await POST(new Request('https://example.test/api/admin/chatbot/reindex', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ documentId }),
+    }));
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, 'claim_chatbot_kb_reindex', {
+      p_limit: 10, p_lease_seconds: 300, p_document_id: documentId,
+    });
   });
 
   it('releases the claim when quota is exhausted without calling the embedding provider', async () => {

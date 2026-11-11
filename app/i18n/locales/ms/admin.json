@@ -1148,7 +1148,11 @@
       "addToKb": "Tambah ke KB",
       "aiDraft": "AI: rangka jawapan KB",
       "edit": "Sunting",
-      "newDoc": "Dokumen baharu"
+      "newDoc": "Dokumen baharu",
+      "saveDraft": "Simpan draf",
+      "reviewDraft": "Semak draf",
+      "publish": "Terbitkan",
+      "reindexEntry": "Cuba indeks semula"
     },
     "categories": {
       "account": "Akaun",
@@ -1175,6 +1179,8 @@
       "sameStatus": "Pilih dokumen dengan status semasa yang sama sebelum menggunakan tindakan ini.",
       "save": "Gagal menyimpan.",
       "saveRetry": "Dokumen pangkalan pengetahuan tidak dapat disimpan. Sila cuba lagi.",
+      "publish": "Tidak dapat menerbitkan entri ini.",
+      "publishRetry": "Entri mungkin telah diterbitkan. Muat semula pangkalan pengetahuan untuk menyemak sebelum mencuba lagi.",
       "status": "Tidak dapat mengemas kini status dokumen.",
       "statusRetry": "Tidak dapat mengemas kini status dokumen. Sila cuba lagi."
     },
@@ -1184,7 +1190,10 @@
       "editTitle": "Sunting dokumen KB",
       "keywords": "Kata kunci, dipisahkan dengan koma (digunakan oleh sandaran kata kunci)",
       "newTitle": "Dokumen KB baharu",
-      "title": "Tajuk"
+      "title": "Tajuk",
+      "sources": "Rujukan sumber, satu setiap baris",
+      "sourcesHint": "Tambah halaman dasar atau rekod dalaman yang mengesahkan fakta ini. Draf kekal di luar talian sehingga disemak dan diterbitkan.",
+      "reviewConfirmation": "Saya telah menyemak jawapan dan sumber. Kedua-duanya sepadan dengan dasar platform semasa."
     },
     "inactive": "tidak aktif",
     "knowledgeBase": "Pangkalan pengetahuan",
@@ -1212,6 +1221,8 @@
     "reindexErrors": ", {{count}} ralat",
     "reindexResult": "Diimbas {{scanned}}, dibenamkan {{embedded}}, dilangkau {{skipped}}{{errors}}",
     "reindexing": "Mengindeks semula…",
+    "publishing": "Menerbitkan…",
+    "pendingReview": "Draf menunggu semakan",
     "saving": "Menyimpan…",
     "selectAll": "Pilih semua dokumen",
     "success": {
@@ -1220,6 +1231,9 @@
       "created": "Dokumen pangkalan pengetahuan dicipta.",
       "deactivated": "Dokumen pangkalan pengetahuan dinyahaktifkan.",
       "updated": "Dokumen pangkalan pengetahuan dikemas kini.",
+      "draftSaved": "Draf disimpan. Jawapan terbitan semasa kekal dalam talian sehingga disemak.",
+      "published": "Dokumen pengetahuan diterbitkan.",
+      "noChanges": "Tiada perubahan untuk disimpan.",
       "batchStatus_one": "{{count}} dokumen pengetahuan dikemas kini.",
       "batchStatus_other": "{{count}} dokumen pengetahuan dikemas kini."
     },
