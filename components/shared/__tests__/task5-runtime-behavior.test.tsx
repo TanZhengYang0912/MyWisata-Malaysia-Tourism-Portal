@@ -486,11 +486,15 @@ describe("Task 5 shared runtime behavior", () => {
   it("offers a new chat for an expired guest session and keeps the new session clear until its first ask", async () => {
     const oldSessionKey = "199f9fac-8427-45c9-8096-0ece82d6cb54";
     document.defaultView?.localStorage.setItem(chatbotSessionStorageKey(null), oldSessionKey);
+    let historyRequests = 0;
     mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
       if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
       if (url === "/api/chat/mutes") return response({ data: [] });
-      if (url === "/api/chatbot/history") return response({ data: null, error: { code: "NOT_FOUND" } }, false);
+      if (url === "/api/chatbot/history") {
+        historyRequests += 1;
+        return response({ data: null, error: { code: "NOT_FOUND" } }, false);
+      }
       if (url === "/api/chatbot/session/guest-token") return response({ data: { sessionKey: "new-guest-session" } });
       if (url === "/api/chatbot/ask") {
         const { sessionKey } = JSON.parse(String(init?.body ?? "{}")) as { sessionKey: string };
@@ -509,10 +513,16 @@ describe("Task 5 shared runtime behavior", () => {
     expect(container.textContent).toContain("Guest session unavailable translated");
     expect(container.textContent).toContain("Start new chat translated");
     await click(findButton("Start new chat translated"));
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    await act(async () => {
+      document.dispatchEvent(new TestEvent("visibilitychange"));
+      await Promise.resolve();
+    });
 
     const nextSessionKey = document.defaultView?.localStorage.getItem(chatbotSessionStorageKey(null));
     expect(nextSessionKey).toMatch(/^[0-9a-f-]{36}$/i);
     expect(nextSessionKey).not.toBe(oldSessionKey);
+    expect(historyRequests).toBe(1);
     expect(container.textContent).not.toContain("Guest session unavailable translated");
 
     const input = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");

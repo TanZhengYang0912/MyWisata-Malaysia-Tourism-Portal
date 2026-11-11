@@ -465,7 +465,8 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     const reopened = !supportPaneWasOpenRef.current;
     supportPaneWasOpenRef.current = true;
     const historyKey = `${identityKey ?? "guest"}:${sessionKey ?? ""}`;
-    if (reopened && sessionKey && historyLoadedRef.current === historyKey && Date.now() - historyRefreshAtRef.current >= 5000) {
+    if (reopened && sessionKey && (identityKey !== null || freshGuestSessionRef.current !== sessionKey)
+        && historyLoadedRef.current === historyKey && Date.now() - historyRefreshAtRef.current >= 5000) {
       historyRefreshAtRef.current = Date.now();
       void loadChatHistory(sessionKey);
     }
@@ -476,7 +477,8 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   useEffect(() => {
     if (!open || selected?.kind !== "support" || !sessionKey) return;
     const refreshOnReturn = () => {
-      if (document.visibilityState !== "visible" || Date.now() - historyRefreshAtRef.current < 5000) return;
+      if (document.visibilityState !== "visible" || (!identityKey && freshGuestSessionRef.current === sessionKey)
+          || Date.now() - historyRefreshAtRef.current < 5000) return;
       historyRefreshAtRef.current = Date.now();
       void loadChatHistory(sessionKey);
     };
