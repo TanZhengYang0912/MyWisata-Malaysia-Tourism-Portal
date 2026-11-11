@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { supportError } from "@/lib/support/errors";
 import { Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/providers/auth";
 
 interface TicketSummary {
   id: string;
@@ -40,8 +41,33 @@ const STATUS_STYLE: Record<string, string> = {
   closed: "bg-muted text-muted-foreground",
 };
 
+function readTicketOperation(storageKey: string): string | null {
+  try {
+    return window.localStorage.getItem(storageKey);
+  } catch {
+    return null;
+  }
+}
+
+function saveTicketOperation(storageKey: string, operationId: string) {
+  try {
+    window.localStorage.setItem(storageKey, operationId);
+  } catch {
+    // Keep the current page recoverable even when browser storage is unavailable.
+  }
+}
+
+function clearTicketOperation(storageKey: string) {
+  try {
+    window.localStorage.removeItem(storageKey);
+  } catch {
+    // Removing a browser recovery hint must not block server-confirmed navigation.
+  }
+}
+
 export default function CustomerSupportPage() {
   const router = useRouter();
+  const { currentUser } = useAuth();
   const { t: tCustomer, i18n } = useTranslation("customer");
   const { t: tCommon } = useTranslation("common");
   const [tickets, setTickets] = useState<TicketSummary[] | null | undefined>(undefined);
@@ -55,12 +81,18 @@ export default function CustomerSupportPage() {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [operationId, setOperationId] = useState(() => crypto.randomUUID());
+  const [hasPendingTicketOperation, setHasPendingTicketOperation] = useState(false);
+  const [ticketOperationUnknown, setTicketOperationUnknown] = useState(false);
+  const [ticketOperationNotFound, setTicketOperationNotFound] = useState(false);
+  const [checkingTicketOperation, setCheckingTicketOperation] = useState(false);
+  const [ticketOperationCheckFailed, setTicketOperationCheckFailed] = useState(false);
   const [formError, setFormError] = useState("");
   const [draftVersion, setDraftVersion] = useState(0);
   const [draftSaved, setDraftSaved] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftLoadFailed, setDraftLoadFailed] = useState(false);
   const draftInputTouched = useRef(false);
+  const supportScope = useRef<string | null>(null);
 
   const loadTickets = useCallback(async (signal?: AbortSignal) => {
     setLoadingTickets(true);
@@ -90,28 +122,102 @@ export default function CustomerSupportPage() {
     return () => controller.abort();
   }, [loadTickets]);
 
-  const loadWithdrawalDraft = useCallback(async () => {
+  async function checkTicketOperation(targetOperationId: string) {
+    const targetScope = `${currentUser?.id ?? ""}:${withdrawalId ?? ""}`;
+    setCheckingTicketOperation(true);
+    setTicketOperationCheckFailed(false);
+    try {
+      const response = await fetch(`/api/support/operations/${targetOperationId}`, { cache: "no-store" });
+      const result = await response.json().catch(() => ({})) as { data?: { state?: string; ticketId?: string } };
+      if (supportScope.current !== targetScope) return;
+      if (!response.ok || !result.data) throw new Error("support_operation_check_failed");
+      if (result.data.state === "completed" && result.data.ticketId) {
+        if (currentUser?.id && withdrawalId) clearTicketOperation(`mw_support_ticket_operation:${currentUser.id}:${withdrawalId}`);
+        setHasPendingTicketOperation(false);
+        setTicketOperationUnknown(false);
+        setTicketOperationNotFound(false);
+        router.push(`/customer/support/${result.data.ticketId}`);
+        return;
+      }
+      if (result.data.state === "not_found") {
+        setTicketOperationUnknown(false);
+        setTicketOperationNotFound(true);
+        return;
+      }
+      throw new Error("support_operation_state_unavailable");
+    } catch {
+      if (supportScope.current !== targetScope) return;
+      setTicketOperationUnknown(true);
+      setTicketOperationCheckFailed(true);
+    } finally {
+      if (supportScope.current === targetScope) setCheckingTicketOperation(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!currentUser?.id || !withdrawalId) return;
+    const nextScope = `${currentUser.id}:${withdrawalId}`;
+    if (supportScope.current && supportScope.current !== nextScope) {
+      draftInputTouched.current = false;
+      setSubject(tCustomer("ui.support.withdrawalSubject"));
+      setBody("");
+      setOperationId(crypto.randomUUID());
+      setHasPendingTicketOperation(false);
+      setTicketOperationUnknown(false);
+      setTicketOperationNotFound(false);
+      setTicketOperationCheckFailed(false);
+      setFormError("");
+      setDraftVersion(0);
+      setDraftSaved(false);
+    }
+    supportScope.current = nextScope;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id, withdrawalId]);
+
+  useEffect(() => {
+    if (!currentUser?.id || !withdrawalId) return;
+    const storageKey = `mw_support_ticket_operation:${currentUser.id}:${withdrawalId}`;
+    const savedOperationId = readTicketOperation(storageKey);
+    if (!savedOperationId) return;
+    if (!/^[0-9a-f-]{36}$/i.test(savedOperationId)) {
+      clearTicketOperation(storageKey);
+      return;
+    }
+    // Only the operation reference is stored; the ticket text remains out of browser storage.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOperationId(savedOperationId);
+    setHasPendingTicketOperation(true);
+    setTicketOperationUnknown(true);
+    void checkTicketOperation(savedOperationId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id, withdrawalId]);
+
+  const loadWithdrawalDraft = useCallback(async (signal?: AbortSignal) => {
     if (!withdrawalId) return;
+    const targetScope = `${currentUser?.id ?? ""}:${withdrawalId}`;
     setDraftLoadFailed(false);
     try {
-      const response = await fetch(`/api/support/drafts?surface=ticket_create&target=${encodeURIComponent(withdrawalId)}`, { cache: "no-store" });
+      const response = await fetch(`/api/support/drafts?surface=ticket_create&target=${encodeURIComponent(withdrawalId)}`, { cache: "no-store", signal });
       const result = await response.json().catch(() => ({})) as { data?: { subject?: string; body?: string; version?: number } };
       if (!response.ok || !result.data) throw new Error("support_draft_load_failed");
+      if (signal?.aborted || supportScope.current !== targetScope) return;
       if (draftInputTouched.current) return;
       setSubject(result.data.subject ?? "");
       setBody(result.data.body ?? "");
       setDraftVersion(result.data.version ?? 0);
       setDraftSaved(Boolean(result.data.version));
     } catch {
-      setDraftLoadFailed(true);
+      if (!signal?.aborted && supportScope.current === targetScope) setDraftLoadFailed(true);
     }
-  }, [withdrawalId]);
+  }, [currentUser?.id, withdrawalId]);
 
   useEffect(() => {
+    const controller = new AbortController();
     // This effect starts an external read; state updates happen only after its response.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadWithdrawalDraft();
-  }, [loadWithdrawalDraft]);
+    void loadWithdrawalDraft(controller.signal);
+    return () => controller.abort();
+  }, [currentUser?.id, loadWithdrawalDraft]);
 
   async function saveWithdrawalDraft() {
     if (!withdrawalId || savingDraft || !body.trim()) return;
@@ -139,22 +245,39 @@ export default function CustomerSupportPage() {
 
   async function submitWithdrawalTicket(event: FormEvent) {
     event.preventDefault();
-    if (!withdrawalId || body.trim().length < 1) return;
+    if (!withdrawalId || body.trim().length < 1 || ticketOperationUnknown || checkingTicketOperation) return;
+    const activeOperationId = operationId;
+    if (currentUser?.id) {
+      saveTicketOperation(`mw_support_ticket_operation:${currentUser.id}:${withdrawalId}`, activeOperationId);
+      setHasPendingTicketOperation(true);
+    }
     setSending(true); setFormError("");
     try {
       const response = await fetch("/api/support/tickets", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ withdrawalId, operationId, subject, body }),
+        body: JSON.stringify({ withdrawalId, operationId: activeOperationId, subject, body }),
       });
-      const result = await response.json() as { data?: { id: string }; error?: { code?: string } };
+      const result = await response.json().catch(() => ({})) as { data?: { id: string }; error?: { code?: string } };
       if (!response.ok || !result.data) {
+        if (response.status >= 500 || response.status === 409) {
+          setTicketOperationUnknown(true);
+          setTicketOperationNotFound(false);
+          setFormError(tCommon("chatbot.supportErrors.checking"));
+          return;
+        }
+        if (currentUser?.id) clearTicketOperation(`mw_support_ticket_operation:${currentUser.id}:${withdrawalId}`);
+        setHasPendingTicketOperation(false);
         setFormError(result.error?.code ? tCommon(`chatbot.supportErrors.${supportError(result.error.code).key}`) : tCustomer("ui.support.createError"));
         return;
       }
+      if (currentUser?.id) clearTicketOperation(`mw_support_ticket_operation:${currentUser.id}:${withdrawalId}`);
+      setHasPendingTicketOperation(false);
       void fetch(`/api/support/drafts?surface=ticket_create&target=${encodeURIComponent(withdrawalId)}`, { method: "DELETE" }).catch(() => undefined);
       router.push(`/customer/support/${result.data.id}`);
     } catch {
-      setFormError(tCommon("chatbot.supportErrors.unavailable"));
+      setTicketOperationUnknown(true);
+      setTicketOperationNotFound(false);
+      setFormError(tCommon("chatbot.supportErrors.checking"));
     } finally { setSending(false); }
   }
 
@@ -185,14 +308,19 @@ export default function CustomerSupportPage() {
       {withdrawalId && <form onSubmit={submitWithdrawalTicket} className="mb-6 rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-5 space-y-3">
         <p className="font-semibold text-foreground">{tCustomer("ui.support.contact")}</p>
         <p className="text-sm text-muted-foreground">{tCustomer("ui.support.reference")} {withdrawalId}</p>
-        <input value={subject} onChange={(event) => { draftInputTouched.current = true; setSubject(event.target.value); setOperationId(crypto.randomUUID()); setDraftSaved(false); }} maxLength={255} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" aria-label={tCustomer("ui.support.subject")} />
-        <textarea value={body} onChange={(event) => { draftInputTouched.current = true; setBody(event.target.value); setOperationId(crypto.randomUUID()); setDraftSaved(false); }} required maxLength={2000} placeholder={tCustomer("ui.support.explain")} className="min-h-28 w-full rounded-xl border border-border bg-background p-3 text-sm" aria-label={tCustomer("ui.support.message")} />
+        <input value={subject} onChange={(event) => { draftInputTouched.current = true; setSubject(event.target.value); if (!hasPendingTicketOperation) setOperationId(crypto.randomUUID()); setTicketOperationNotFound(false); setDraftSaved(false); }} maxLength={255} disabled={ticketOperationUnknown || sending} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm disabled:opacity-60" aria-label={tCustomer("ui.support.subject")} />
+        <textarea value={body} onChange={(event) => { draftInputTouched.current = true; setBody(event.target.value); if (!hasPendingTicketOperation) setOperationId(crypto.randomUUID()); setTicketOperationNotFound(false); setDraftSaved(false); }} required maxLength={2000} placeholder={tCustomer("ui.support.explain")} disabled={ticketOperationUnknown || sending} className="min-h-28 w-full rounded-xl border border-border bg-background p-3 text-sm disabled:opacity-60" aria-label={tCustomer("ui.support.message")} />
         {formError && <p role="alert" aria-live="assertive" className="text-sm text-red-600 dark:text-red-300">{formError}</p>}
+        {ticketOperationUnknown && <div role="alert" className="flex items-center justify-between gap-3 text-sm text-red-600 dark:text-red-300">
+          <span>{ticketOperationCheckFailed ? tCommon("chatbot.supportErrors.unavailable") : tCommon("chatbot.supportErrors.checking")}</span>
+          <Button type="button" size="sm" variant="outline" onClick={() => void checkTicketOperation(operationId)} disabled={checkingTicketOperation}>{checkingTicketOperation ? tCommon("states.loadingEllipsis") : tCommon("chatbot.handoff.check")}</Button>
+        </div>}
+        {ticketOperationNotFound && <p role="status" className="text-sm text-muted-foreground">{tCommon("chatbot.handoff.notCreated")}</p>}
         {draftLoadFailed && <p role="alert" className="text-sm text-red-600 dark:text-red-300">{tCommon("chatbot.handoff.draftLoadFailed")} <button type="button" className="underline" onClick={() => void loadWithdrawalDraft()}>{tCommon("chatbot.handoff.retryDraftLoad")}</button></p>}
         <div className="flex items-center gap-2">
           {draftSaved && <span className="mr-auto text-xs text-muted-foreground">{tCommon("chatbot.handoff.draftSaved")}</span>}
-          <Button type="button" variant="outline" onClick={() => void saveWithdrawalDraft()} disabled={savingDraft || !body.trim()}>{savingDraft ? tCommon("states.loadingEllipsis") : tCommon("chatbot.handoff.saveDraft")}</Button>
-          <button type="submit" disabled={sending || !body.trim()} aria-busy={sending} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{sending ? tCustomer("ui.states.sending") : tCustomer("ui.support.sendInformation")}</button>
+          <Button type="button" variant="outline" onClick={() => void saveWithdrawalDraft()} disabled={savingDraft || ticketOperationUnknown || !body.trim()}>{savingDraft ? tCommon("states.loadingEllipsis") : tCommon("chatbot.handoff.saveDraft")}</Button>
+          <button type="submit" disabled={sending || checkingTicketOperation || ticketOperationUnknown || !body.trim()} aria-busy={sending} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{sending ? tCustomer("ui.states.sending") : ticketOperationNotFound ? tCommon("chatbot.handoff.retrySame") : tCustomer("ui.support.sendInformation")}</button>
         </div>
       </form>}
 

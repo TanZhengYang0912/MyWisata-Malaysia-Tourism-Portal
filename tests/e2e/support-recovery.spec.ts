@@ -1,0 +1,132 @@
+import { expect, test } from '@playwright/test';
+import { localEnv } from './helpers/demo';
+
+test.use({ trace: 'off', video: 'off' });
+
+test('mocked customer draft recovery survives a failed read, retry, and page refresh', async ({ page, context }) => {
+  const supabaseUrl = localEnv('NEXT_PUBLIC_SUPABASE_URL');
+  const anonKey = localEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  test.skip(!supabaseUrl || !anonKey, 'Local browser environment needs the public Supabase client settings.');
+
+  const user = {
+    id: 'e2e-support-customer-1',
+    email: 'support-recovery@example.test',
+    app_metadata: { provider: 'email', providers: ['email'] },
+    user_metadata: {},
+    aud: 'authenticated',
+    created_at: '2026-01-01T00:00:00.000Z',
+  };
+  const session = {
+    access_token: 'support-recovery-test-token',
+    refresh_token: 'support-recovery-test-refresh',
+    token_type: 'bearer',
+    expires_in: 3600,
+    expires_at: Math.floor(Date.now() / 1000) + 3600,
+    user,
+  };
+  const projectRef = new URL(supabaseUrl!).hostname.split('.')[0];
+  await context.addCookies([{
+    name: `sb-${projectRef}-auth-token`,
+    value: `base64-${Buffer.from(JSON.stringify(session)).toString('base64url')}`,
+    domain: 'localhost',
+    path: '/',
+    httpOnly: false,
+    sameSite: 'Lax',
+  }]);
+
+  await context.route('**/auth/v1/user', (route) => route.fulfill({ status: 200, json: user }));
+  await context.route('**/api/auth/me', (route) => route.fulfill({ status: 200, json: { user: {
+    id: user.id,
+    email: user.email,
+    fullName: 'Support recovery test',
+    avatarUrl: null,
+    tier: 'email_unverified',
+    roles: ['customer'],
+    activeVendorId: null,
+    activeVendorName: null,
+    activeOutletIds: [],
+    activeOutletName: null,
+    city: null,
+    country: null,
+    preferredLocale: null,
+    phone: null,
+    status: 'active',
+    capabilities: {},
+    verificationFacts: null,
+    entitlementGeneration: 1,
+    staffRoleNames: [],
+    staffPermissionKeys: [],
+    staffModules: [],
+    staffVerified: false,
+    staffPasskeyRequired: false,
+    staffMfaRequired: false,
+    staffPermissionExpiresAt: null,
+  } } }));
+  await context.route('**/api/support/tickets?page=1', (route) => route.fulfill({ status: 200, json: { data: {
+    tickets: [], page: 1, pageSize: 10, total: 0, totalPages: 1,
+  }, error: null } }));
+
+  const withdrawalId = '4a448d6e-4198-4df0-95ba-9017d3ed5464';
+  const createdTicketId = '57bffad3-3652-4aa0-8998-74008f85b04a';
+  let ticketCreateCount = 0;
+  await context.route('**/api/support/tickets', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.continue();
+      return;
+    }
+    ticketCreateCount += 1;
+    await route.fulfill({ status: 503, json: { data: null, error: { code: 'WRITE_UNAVAILABLE' } } });
+  });
+  await context.route('**/api/support/operations/**', (route) => route.fulfill({ status: 200, json: {
+    data: { state: 'completed', ticketId: createdTicketId }, error: null,
+  } }));
+
+  let failNextDraftRead = true;
+  let savedDraft: { subject: string; body: string; version: number } | null = null;
+  await context.route('**/api/support/drafts**', async (route) => {
+    const request = route.request();
+    if (request.method() === 'GET') {
+      if (failNextDraftRead) {
+        failNextDraftRead = false;
+        await route.fulfill({ status: 503, json: { data: null, error: { code: 'READ_UNAVAILABLE' } } });
+        return;
+      }
+      await route.fulfill({ status: 200, json: { data: savedDraft ?? { subject: '', body: '', version: 0 }, error: null } });
+      return;
+    }
+    if (request.method() === 'PUT') {
+      const input = request.postDataJSON() as { subject: string; body: string };
+      savedDraft = { subject: input.subject, body: input.body, version: 1 };
+      await route.fulfill({ status: 200, json: { data: { version: 1, changed: true }, error: null } });
+      return;
+    }
+    if (request.method() === 'DELETE') {
+      savedDraft = null;
+      await route.fulfill({ status: 200, json: { data: { cleared: true }, error: null } });
+      return;
+    }
+    await route.fulfill({ status: 405, json: { data: null, error: { code: 'METHOD_NOT_ALLOWED' } } });
+  });
+
+  await page.goto(`/customer/support?withdrawal=${withdrawalId}`);
+  const subject = page.getByRole('textbox', { name: /subject/i });
+  const message = page.getByRole('textbox', { name: /message/i });
+  await expect(subject).toBeVisible();
+  await expect(page.locator('p[role="alert"]').filter({ hasText: 'Could not load the saved draft' })).toBeVisible();
+  await page.getByRole('button', { name: 'Retry loading draft' }).click();
+
+  await subject.fill('Withdrawal status follow-up');
+  await message.fill('Please check the status shown on my account.');
+  await page.getByRole('button', { name: 'Save draft' }).click();
+  await expect(page.getByText('Draft saved', { exact: true })).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole('textbox', { name: /subject/i })).toHaveValue('Withdrawal status follow-up');
+  await expect(page.getByRole('textbox', { name: /message/i })).toHaveValue('Please check the status shown on my account.');
+
+  await page.getByRole('button', { name: 'Send information' }).click();
+  await expect(page.getByRole('button', { name: 'Check ticket status' })).toBeVisible();
+  await page.reload();
+  await expect(page).toHaveURL(new RegExp(`/customer/support/${createdTicketId}$`));
+  expect(ticketCreateCount).toBe(1);
+});
