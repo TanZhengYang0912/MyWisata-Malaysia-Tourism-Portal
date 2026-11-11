@@ -1,30 +1,30 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type BrowserContext } from '@playwright/test';
 import { localEnv } from './helpers/demo';
 
 test.use({ trace: 'off', video: 'off' });
 
-test('mocked customer draft recovery survives a failed read, retry, and page refresh', async ({ page, context }) => {
+const customerUser = {
+  id: 'e2e-support-customer-1',
+  email: 'support-recovery@example.test',
+  app_metadata: { provider: 'email', providers: ['email'] },
+  user_metadata: {},
+  aud: 'authenticated',
+  created_at: '2026-01-01T00:00:00.000Z',
+};
+
+async function mockCustomerSession(context: BrowserContext) {
   const supabaseUrl = localEnv('NEXT_PUBLIC_SUPABASE_URL');
   const anonKey = localEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
-  test.skip(!supabaseUrl || !anonKey, 'Local browser environment needs the public Supabase client settings.');
-
-  const user = {
-    id: 'e2e-support-customer-1',
-    email: 'support-recovery@example.test',
-    app_metadata: { provider: 'email', providers: ['email'] },
-    user_metadata: {},
-    aud: 'authenticated',
-    created_at: '2026-01-01T00:00:00.000Z',
-  };
+  if (!supabaseUrl || !anonKey) return false;
   const session = {
     access_token: 'support-recovery-test-token',
     refresh_token: 'support-recovery-test-refresh',
     token_type: 'bearer',
     expires_in: 3600,
     expires_at: Math.floor(Date.now() / 1000) + 3600,
-    user,
+    user: customerUser,
   };
-  const projectRef = new URL(supabaseUrl!).hostname.split('.')[0];
+  const projectRef = new URL(supabaseUrl).hostname.split('.')[0];
   await context.addCookies([{
     name: `sb-${projectRef}-auth-token`,
     value: `base64-${Buffer.from(JSON.stringify(session)).toString('base64url')}`,
@@ -33,11 +33,10 @@ test('mocked customer draft recovery survives a failed read, retry, and page ref
     httpOnly: false,
     sameSite: 'Lax',
   }]);
-
-  await context.route('**/auth/v1/user', (route) => route.fulfill({ status: 200, json: user }));
+  await context.route('**/auth/v1/user', (route) => route.fulfill({ status: 200, json: customerUser }));
   await context.route('**/api/auth/me', (route) => route.fulfill({ status: 200, json: { user: {
-    id: user.id,
-    email: user.email,
+    id: customerUser.id,
+    email: customerUser.email,
     fullName: 'Support recovery test',
     avatarUrl: null,
     tier: 'email_unverified',
@@ -65,6 +64,11 @@ test('mocked customer draft recovery survives a failed read, retry, and page ref
   await context.route('**/api/support/tickets?page=1', (route) => route.fulfill({ status: 200, json: { data: {
     tickets: [], page: 1, pageSize: 10, total: 0, totalPages: 1,
   }, error: null } }));
+  return true;
+}
+
+test('mocked customer draft recovery survives a failed read, retry, and page refresh', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
 
   const withdrawalId = '4a448d6e-4198-4df0-95ba-9017d3ed5464';
   const createdTicketId = '57bffad3-3652-4aa0-8998-74008f85b04a';
@@ -129,4 +133,90 @@ test('mocked customer draft recovery survives a failed read, retry, and page ref
   await page.reload();
   await expect(page).toHaveURL(new RegExp(`/customer/support/${createdTicketId}$`));
   expect(ticketCreateCount).toBe(1);
+});
+
+test('mocked deterministic withdrawal-state rejection points to the current withdrawal status', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const withdrawalId = 'cb0ce13a-f82d-4384-949f-0a2e7d56e4ce';
+  let operationChecks = 0;
+  await context.route('**/api/support/drafts**', (route) => route.fulfill({ status: 200, json: {
+    data: { subject: '', body: '', version: 0 }, error: null,
+  } }));
+  await context.route('**/api/support/tickets', (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    return route.fulfill({ status: 409, json: {
+      data: null, error: { code: 'INVALID_STATE', message: 'Only a held withdrawal can be linked.' },
+    } });
+  });
+  await context.route('**/api/support/operations/**', (route) => {
+    operationChecks += 1;
+    return route.fulfill({ status: 200, json: { data: { state: 'not_found' }, error: null } });
+  });
+
+  await page.goto(`/customer/support?withdrawal=${withdrawalId}`);
+  await page.getByRole('textbox', { name: /message/i }).fill('Please check this withdrawal.');
+  await page.getByRole('button', { name: 'Send information' }).click();
+  await expect(page.locator('p[role="alert"]').filter({ hasText: 'This withdrawal is no longer on hold' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open withdrawal status' })).toHaveAttribute('href', `/customer/wallet/withdrawals/${withdrawalId}`);
+  await expect(page.getByRole('button', { name: 'Check ticket status' })).toHaveCount(0);
+  expect(operationChecks).toBe(0);
+});
+
+test('mocked blocked browser storage prevents an unrecoverable ticket submission', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  let ticketCreateCount = 0;
+  await page.addInitScript(() => {
+    const originalSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key.startsWith('mw_support_ticket_operation:')) throw new DOMException('blocked', 'QuotaExceededError');
+      return originalSetItem.call(this, key, value);
+    };
+  });
+  await context.route('**/api/support/drafts**', (route) => route.fulfill({ status: 200, json: {
+    data: { subject: '', body: '', version: 0 }, error: null,
+  } }));
+  await context.route('**/api/support/tickets', (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    ticketCreateCount += 1;
+    return route.fulfill({ status: 201, json: { data: { id: '57bffad3-3652-4aa0-8998-74008f85b04a' }, error: null } });
+  });
+
+  await page.goto('/customer/support?withdrawal=cb0ce13a-f82d-4384-949f-0a2e7d56e4ce');
+  await page.getByRole('textbox', { name: /message/i }).fill('Please check this withdrawal.');
+  await page.getByRole('button', { name: 'Send information' }).click();
+  await expect(page.locator('p[role="alert"]').filter({ hasText: 'Your browser blocked the request reference' })).toBeVisible();
+  expect(ticketCreateCount).toBe(0);
+});
+
+test('mocked corrupt operation reference is cleared before a new safe submission', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const withdrawalId = 'cb0ce13a-f82d-4384-949f-0a2e7d56e4ce';
+  const ticketId = '57bffad3-3652-4aa0-8998-74008f85b04a';
+  let submittedOperationId = '';
+  let operationChecks = 0;
+  await page.addInitScript(({ ownerId, targetWithdrawalId }) => {
+    localStorage.setItem(`mw_support_ticket_operation:${ownerId}:${targetWithdrawalId}`, 'a'.repeat(36));
+  }, { ownerId: customerUser.id, targetWithdrawalId: withdrawalId });
+  await context.route('**/api/support/drafts**', (route) => route.fulfill({ status: 200, json: {
+    data: { subject: '', body: '', version: 0 }, error: null,
+  } }));
+  await context.route('**/api/support/operations/**', (route) => {
+    operationChecks += 1;
+    return route.fulfill({ status: 400, json: { data: null, error: { code: 'BAD_REQUEST' } } });
+  });
+  await context.route('**/api/support/tickets', (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    submittedOperationId = String(route.request().postDataJSON().operationId ?? '');
+    return route.fulfill({ status: 201, json: { data: { id: ticketId }, error: null } });
+  });
+
+  await page.goto(`/customer/support?withdrawal=${withdrawalId}`);
+  await page.getByRole('textbox', { name: /message/i }).waitFor();
+  await expect.poll(() => page.evaluate(({ ownerId, targetWithdrawalId }) =>
+    localStorage.getItem(`mw_support_ticket_operation:${ownerId}:${targetWithdrawalId}`),
+  { ownerId: customerUser.id, targetWithdrawalId: withdrawalId })).toBeNull();
+  await expect.poll(() => operationChecks).toBe(0);
+  await page.getByRole('textbox', { name: /message/i }).fill('Please check this withdrawal.');
+  await page.getByRole('button', { name: 'Send information' }).click();
+  await expect.poll(() => submittedOperationId).toMatch(/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i);
 });

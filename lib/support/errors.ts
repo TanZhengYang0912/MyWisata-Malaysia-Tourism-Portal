@@ -34,3 +34,9 @@ export function supportError(code: string): { key: string; action: SupportErrorA
 export function supportTicketLoadFailure(code: string | undefined): 'not_found' | 'retry' {
   return code === 'NOT_FOUND' || code === 'FORBIDDEN' ? 'not_found' : 'retry';
 }
+
+export function supportTicketCreateFailure(status: number, code: string | undefined): 'unknown' | 'withdrawal_no_longer_on_hold' | 'known' {
+  if (code === 'INVALID_STATE') return 'withdrawal_no_longer_on_hold';
+  if (status >= 500 || code === 'OPERATION_CONFLICT') return 'unknown';
+  return 'known';
+}

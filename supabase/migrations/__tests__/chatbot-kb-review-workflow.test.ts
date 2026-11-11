@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(join(process.cwd(), 'supabase/migrations/20261111190000_chatbot_kb_review_workflow.sql'), 'utf8');
+const securityMigration = readFileSync(join(process.cwd(), 'supabase/migrations/20261111085703_support_kb_rls_and_reviewer_authorization.sql'), 'utf8');
 
 describe('chatbot KB review workflow migration', () => {
   it('keeps drafts private and permits only one open revision per document', () => {
@@ -33,5 +34,19 @@ describe('chatbot KB review workflow migration', () => {
     expect(migration).toMatch(/CREATE OR REPLACE FUNCTION public\.claim_chatbot_kb_reindex\([\s\S]*p_document_id uuid\s*\)/);
     expect(migration).toMatch(/p_document_id IS NULL OR d\.id = p_document_id/);
     expect(migration).toMatch(/FOR UPDATE SKIP LOCKED[\s\S]+LIMIT p_limit/);
+  });
+
+  it('records only database-verified Super Admin authors and reviewers', () => {
+    expect(migration).toMatch(/p_author_id IS NULL OR NOT coalesce\(app_private\.is_super_admin\(p_author_id\), false\)/);
+    expect(migration).toMatch(/p_reviewer_id IS NULL OR NOT coalesce\(app_private\.is_super_admin\(p_reviewer_id\), false\)/);
+  });
+
+  it('keeps direct KB access read-only and limited to active documents', () => {
+    expect(securityMigration).toMatch(/ALTER TABLE public\.chatbot_kb_documents ENABLE ROW LEVEL SECURITY/);
+    expect(securityMigration).toMatch(/DROP POLICY IF EXISTS "demo_allow_all" ON public\.chatbot_kb_documents/);
+    expect(securityMigration).toMatch(/FOR SELECT[\s\S]+TO anon, authenticated[\s\S]+USING \(is_active IS TRUE\)/);
+    expect(securityMigration).toMatch(/REVOKE ALL ON TABLE public\.chatbot_kb_documents FROM anon, authenticated/);
+    expect(securityMigration).toMatch(/GRANT SELECT ON TABLE public\.chatbot_kb_documents TO anon, authenticated/);
+    expect(securityMigration).toMatch(/GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public\.chatbot_kb_documents TO service_role/);
   });
 });

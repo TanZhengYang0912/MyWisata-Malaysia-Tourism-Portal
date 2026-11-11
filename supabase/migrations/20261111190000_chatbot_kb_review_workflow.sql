@@ -91,7 +91,10 @@ DECLARE
   v_hash text;
 BEGIN
   IF auth.role() <> 'service_role' THEN RAISE EXCEPTION 'service_role_required'; END IF;
-  IF p_author_id IS NULL OR p_title IS NULL OR btrim(p_title) = '' OR p_body IS NULL OR btrim(p_body) = ''
+  IF p_author_id IS NULL OR NOT coalesce(app_private.is_super_admin(p_author_id), false) THEN
+    RAISE EXCEPTION 'chatbot_kb_author_super_admin_required';
+  END IF;
+  IF p_title IS NULL OR btrim(p_title) = '' OR p_body IS NULL OR btrim(p_body) = ''
      OR p_expected_content_version IS NULL OR p_expected_content_version < 0
      OR p_source_refs IS NULL OR jsonb_typeof(p_source_refs) <> 'array' THEN
     RAISE EXCEPTION 'chatbot_kb_revision_invalid';
@@ -171,7 +174,10 @@ DECLARE
   v_content_changed boolean;
 BEGIN
   IF auth.role() <> 'service_role' THEN RAISE EXCEPTION 'service_role_required'; END IF;
-  IF p_reviewer_id IS NULL OR p_confirmed IS DISTINCT FROM true THEN RAISE EXCEPTION 'chatbot_kb_review_required'; END IF;
+  IF p_reviewer_id IS NULL OR NOT coalesce(app_private.is_super_admin(p_reviewer_id), false) THEN
+    RAISE EXCEPTION 'chatbot_kb_reviewer_super_admin_required';
+  END IF;
+  IF p_confirmed IS DISTINCT FROM true THEN RAISE EXCEPTION 'chatbot_kb_review_required'; END IF;
   SELECT document_id INTO v_document_id FROM public.chatbot_kb_revisions WHERE id = p_revision_id;
   IF NOT FOUND OR v_document_id <> p_document_id THEN RAISE EXCEPTION 'chatbot_kb_revision_not_found'; END IF;
   SELECT * INTO v_document FROM public.chatbot_kb_documents WHERE id = v_document_id FOR UPDATE;

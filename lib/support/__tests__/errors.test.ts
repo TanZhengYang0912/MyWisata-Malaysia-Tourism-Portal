@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { supportError, supportTicketLoadFailure } from '../errors';
+import { supportError, supportTicketCreateFailure, supportTicketLoadFailure } from '../errors';
 
 describe('supportError', () => {
   it('maps uncertain writes to checking the operation', () => {
@@ -24,5 +24,17 @@ describe('supportError', () => {
     expect(supportTicketLoadFailure(undefined)).toBe('retry');
     expect(supportTicketLoadFailure('NOT_FOUND')).toBe('not_found');
     expect(supportTicketLoadFailure('FORBIDDEN')).toBe('not_found');
+  });
+});
+
+describe('supportTicketCreateFailure', () => {
+  it('keeps uncertain writes behind result checking', () => {
+    expect(supportTicketCreateFailure(503, 'WRITE_UNAVAILABLE')).toBe('unknown');
+    expect(supportTicketCreateFailure(409, 'OPERATION_CONFLICT')).toBe('unknown');
+  });
+
+  it('surfaces a confirmed withdrawal state change as a recoverable business outcome', () => {
+    expect(supportTicketCreateFailure(409, 'INVALID_STATE')).toBe('withdrawal_no_longer_on_hold');
+    expect(supportTicketCreateFailure(422, 'VALIDATION_FAILED')).toBe('known');
   });
 });
