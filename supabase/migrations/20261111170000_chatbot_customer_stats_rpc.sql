@@ -1,6 +1,31 @@
 -- Aggregate customer chatbot metrics in Postgres. New turns use the explicit
 -- reply_to_message_id relation; legacy unpaired bot replies remain counted
 -- separately instead of guessing a question by timestamp.
+ALTER TABLE public.chatbot_sessions
+  ADD COLUMN IF NOT EXISTS channel varchar(10) NOT NULL DEFAULT 'customer'
+    CHECK (channel IN ('customer', 'admin'));
+
+ALTER TABLE public.chatbot_messages
+  ADD COLUMN IF NOT EXISTS pii_detected boolean NOT NULL DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS public.chatbot_feedback (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid REFERENCES public.chatbot_sessions(id) ON DELETE CASCADE,
+  message_id uuid UNIQUE REFERENCES public.chatbot_messages(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES public.users(id),
+  question text,
+  bot_answered boolean NOT NULL,
+  helpful boolean,
+  opened_ticket boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.chatbot_feedback ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.chatbot_feedback FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.chatbot_feedback TO service_role;
+
+CREATE INDEX IF NOT EXISTS chatbot_feedback_session_id_idx
+  ON public.chatbot_feedback (session_id);
+
 CREATE OR REPLACE FUNCTION public.get_customer_chatbot_stats(
   p_from timestamptz,
   p_to timestamptz
