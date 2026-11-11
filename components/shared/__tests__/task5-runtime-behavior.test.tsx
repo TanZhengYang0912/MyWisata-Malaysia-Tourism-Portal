@@ -74,6 +74,7 @@ const translations: Record<string, string> = {
   "common:chatbot.guestSessionUnavailable": "Guest session unavailable translated",
   "common:chatbot.newConversation": "Start new chat translated",
   "common:chatbot.history.unavailable": "History unavailable translated",
+  "common:chatbot.faq.retry": "Retry translated",
   "common:chatbot.myTickets": "Translated my tickets",
   "common:chatbot.no": "No translated",
   "common:chatbot.send": "Send translated message",
@@ -341,7 +342,7 @@ describe("Task 5 shared runtime behavior", () => {
     await click(findButton("Translated support label"));
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "chatbot.faq.toggle"));
     expect(container.textContent).toContain("chatbot.faq.error");
-    await click(findButton("chatbot.faq.retry"));
+    await click(findButton("Retry translated"));
     expect(mocks.fetch).toHaveBeenCalledTimes(2);
     expect(container.textContent).toContain("chatbot.faq.empty");
   });
@@ -482,14 +483,22 @@ describe("Task 5 shared runtime behavior", () => {
     expect(historyRequests).toBe(2);
   });
 
-  it("offers a new chat when a guest credential is lost without overwriting the prior session key", async () => {
+  it("offers a new chat for an expired guest session and keeps the new session clear until its first ask", async () => {
     const oldSessionKey = "199f9fac-8427-45c9-8096-0ece82d6cb54";
     document.defaultView?.localStorage.setItem(chatbotSessionStorageKey(null), oldSessionKey);
-    mocks.fetch.mockImplementation(async (url: string) => {
+    mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
       if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
       if (url === "/api/chat/mutes") return response({ data: [] });
-      if (url === "/api/chatbot/history") return response({ data: null, error: { code: "UNAUTHORIZED" } }, false);
+      if (url === "/api/chatbot/history") return response({ data: null, error: { code: "NOT_FOUND" } }, false);
+      if (url === "/api/chatbot/session/guest-token") return response({ data: { sessionKey: "new-guest-session" } });
+      if (url === "/api/chatbot/ask") {
+        const { sessionKey } = JSON.parse(String(init?.body ?? "{}")) as { sessionKey: string };
+        return response({ data: {
+          sessionKey, answer: "New conversation started.", botAnswered: true,
+          messageId: "new-bot-message", userMessageId: "new-user-message", language: "en", privacyBlocked: false,
+        }, error: null });
+      }
       throw new Error(`Unexpected chatbot request: ${url}`);
     });
 
@@ -504,6 +513,58 @@ describe("Task 5 shared runtime behavior", () => {
     const nextSessionKey = document.defaultView?.localStorage.getItem(chatbotSessionStorageKey(null));
     expect(nextSessionKey).toMatch(/^[0-9a-f-]{36}$/i);
     expect(nextSessionKey).not.toBe(oldSessionKey);
+    expect(container.textContent).not.toContain("Guest session unavailable translated");
+
+    const input = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
+    setInputValue(input, "I need help");
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+    expect(container.textContent).toContain("New conversation started.");
+    expect(container.textContent).not.toContain("Start new chat translated");
+  });
+
+  it("offers a new guest chat when the server explicitly requires a guest session during send", async () => {
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/session/guest-token") return response({ data: null, error: { code: "GUEST_SESSION_REQUIRED" } }, false);
+      throw new Error(`Unexpected chatbot request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    setInputValue(findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question"), "I need help");
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+
+    expect(container.textContent).toContain("Guest session unavailable translated");
+    expect(container.textContent).toContain("Start new chat translated");
+  });
+
+  it("keeps retry available for a temporary guest history read failure", async () => {
+    document.defaultView?.localStorage.setItem(chatbotSessionStorageKey(null), "199f9fac-8427-45c9-8096-0ece82d6cb54");
+    let historyRequests = 0;
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") {
+        historyRequests += 1;
+        return response({ data: null, error: { code: "READ_UNAVAILABLE" } }, false);
+      }
+      throw new Error(`Unexpected chatbot request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+
+    expect(container.textContent).toContain("History unavailable translated");
+    expect(container.textContent).toContain("Retry translated");
+    expect(container.textContent).not.toContain("Start new chat translated");
+    await click(findButton("Retry translated"));
+    expect(historyRequests).toBe(2);
   });
 
   it("asks before claiming a guest chat and restores the transcript after confirmation", async () => {

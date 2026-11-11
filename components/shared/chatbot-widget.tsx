@@ -219,6 +219,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   const [historyError, setHistoryError] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const historyLoadedRef = useRef<string | null>(null);
+  const freshGuestSessionRef = useRef<string | null>(null);
   const historyAbortRef = useRef<AbortController | null>(null);
   const historyRequestKeyRef = useRef<string | null>(null);
   const historyRefreshAtRef = useRef(0);
@@ -366,6 +367,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     setMessages([]);
     setInput('');
     setStoredSession({ ownerId: identityRef.current, value: nextSessionKey });
+    freshGuestSessionRef.current = nextSessionKey;
     setGuestRecoverySessionKey(null);
     guestCookieReadyRef.current = false;
   }
@@ -388,13 +390,16 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         signal: controller.signal,
       });
       const result = await response.json().catch(() => ({})) as {
+        error?: { code?: string } | null;
         data?: {
           messages: Array<{ id: string; role: "user" | "bot"; text: string; question?: string; feedbackStage?: FeedbackStage }>;
           nextCursor: ChatHistoryCursor | null;
         };
       };
       if (!response.ok || !result.data || identityRef.current !== requestIdentity || sessionKey !== targetSessionKey) {
-        if (!response.ok && identityRef.current === requestIdentity && sessionKey === targetSessionKey && requestIdentity === null) {
+        if (!response.ok && identityRef.current === requestIdentity && sessionKey === targetSessionKey && requestIdentity === null
+            && (response.status === 404 || result.error?.code === 'NOT_FOUND'
+              || result.error?.code === 'UNAUTHORIZED' || result.error?.code === 'GUEST_SESSION_REQUIRED')) {
           setGuestRecoverySessionKey(targetSessionKey);
         }
         if (!controller.signal.aborted && identityRef.current === requestIdentity) setHistoryError(true);
@@ -442,6 +447,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   useEffect(() => {
     if (authLoading || !open || selected?.kind !== "support" || !sessionKey) return;
     const historyKey = `${identityKey ?? "guest"}:${sessionKey}`;
+    if (!identityKey && freshGuestSessionRef.current === sessionKey) return;
     if (historyLoadedRef.current === historyKey) return;
     void loadChatHistory(sessionKey);
   // History is loaded only when the support surface is visible; the function validates the current identity.
@@ -594,6 +600,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       let targetSessionKey = sessionKey;
       if (!targetSessionKey) {
         targetSessionKey = crypto.randomUUID();
+        if (!requestIdentity) freshGuestSessionRef.current = targetSessionKey;
         try {
           window.localStorage.setItem(chatbotSessionStorageKey(requestIdentity), targetSessionKey);
         } catch {
@@ -627,6 +634,8 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         if (identityRef.current !== requestIdentity) return;
         if (!cookieResponse.ok) {
           if (cookieResult.error?.code === 'GUEST_SESSION_REQUIRED') {
+            setHistoryError(true);
+            setGuestRecoverySessionKey(targetSessionKey);
             setMessages((m) => [...m, { role: 'bot', text: t('chatbot.guestSessionUnavailable') }]);
           } else {
             setMessages((m) => [...m, { role: 'bot', text: t('chatbot.somethingWrong') }]);
@@ -666,6 +675,10 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
           setMessages((m) => [...m, { role: "bot", text: t("chatbot.askOperationConflict") }]);
         } else if (body.error?.code === "GUEST_SESSION_REQUIRED") {
           guestCookieReadyRef.current = false;
+          if (!requestIdentity) {
+            setHistoryError(true);
+            setGuestRecoverySessionKey(targetSessionKey);
+          }
           setMessages((m) => [...m, { role: "bot", text: t("chatbot.guestCookieUnavailable") }]);
         } else {
           setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
@@ -674,6 +687,12 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       }
       pendingAskRef.current = null;
       storePendingAskOperation(targetSessionKey, null);
+      if (!requestIdentity && freshGuestSessionRef.current === targetSessionKey) {
+        freshGuestSessionRef.current = null;
+        historyLoadedRef.current = `guest:${targetSessionKey}`;
+      }
+      setHistoryError(false);
+      setGuestRecoverySessionKey(null);
       const { answer, botAnswered, messageId, userMessageId, language, privacyBlocked } = body.data;
       if (explicitQuestion === undefined) setInput((current) => current === question ? "" : current);
       let effectiveSessionKey = sessionKey;
