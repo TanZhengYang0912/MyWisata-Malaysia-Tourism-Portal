@@ -17,7 +17,7 @@ export type CustomerStatusResult =
   | { state: 'unavailable'; items: [] };
 
 const REFUND_STATUSES = new Set(['pending', 'approved', 'processed', 'rejected', 'failed']);
-const ORDER_STATUSES = new Set(['DRAFT', 'PENDING_PAYMENT', 'PAID', 'COMPLETED', 'CANCELLED', 'REFUNDED']);
+const ORDER_STATUSES = new Set(['draft', 'pending_payment', 'paid', 'completed', 'cancelled', 'refunded']);
 const BOOKING_STATUSES = new Set(['confirmed', 'cancelled', 'completed', 'checked_in']);
 const TICKET_STATUSES = new Set(['open', 'in_progress', 'resolved', 'closed']);
 
@@ -35,7 +35,7 @@ export async function queryCustomerSupportStatus(
     if (error) return { state: 'unavailable', items: [] };
     const items = (data ?? []).map((row) => ({
       id: row.id,
-      status: ORDER_STATUSES.has(row.status) ? row.status : 'unknown',
+      status: ORDER_STATUSES.has(row.status.toLowerCase()) ? row.status.toLowerCase() : 'unknown',
       label: `#${row.id.slice(0, 8).toUpperCase()}`,
       href: `/customer/orders/${row.id}`,
       createdAt: row.created_at,

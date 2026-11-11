@@ -15,7 +15,7 @@ function query(result: unknown) {
 
 describe('queryCustomerSupportStatus', () => {
   it('queries only the signed-in owner records with a database limit', async () => {
-    const orders = query({ data: [{ id: 'order-id-1', status: 'PAID', created_at: '2026-11-01' }], error: null });
+    const orders = query({ data: [{ id: 'order-id-1', status: 'paid', created_at: '2026-11-01' }], error: null });
     const from = vi.fn(() => orders);
 
     const result = await queryCustomerSupportStatus({ from } as never, 'signed-in-user', 'orders');
@@ -23,7 +23,25 @@ describe('queryCustomerSupportStatus', () => {
     expect(from).toHaveBeenCalledWith('orders');
     expect(orders.eq).toHaveBeenCalledWith('user_id', 'signed-in-user');
     expect(orders.limit).toHaveBeenCalledWith(5);
-    expect(result).toEqual({ state: 'available', items: [expect.objectContaining({ status: 'PAID', href: '/customer/orders/order-id-1' })] });
+    expect(result).toEqual({ state: 'available', items: [expect.objectContaining({ status: 'paid', href: '/customer/orders/order-id-1' })] });
+  });
+
+  it('recognizes the lower-case order statuses stored in FYP', async () => {
+    const orders = query({ data: [
+      { id: 'order-paid', status: 'paid', created_at: '2026-11-01' },
+      { id: 'order-completed', status: 'completed', created_at: '2026-11-02' },
+      { id: 'order-cancelled', status: 'cancelled', created_at: '2026-11-03' },
+      { id: 'order-refunded', status: 'refunded', created_at: '2026-11-04' },
+    ], error: null });
+
+    const result = await queryCustomerSupportStatus({ from: () => orders } as never, 'signed-in-user', 'orders');
+
+    expect(result).toEqual({ state: 'available', items: [
+      expect.objectContaining({ status: 'paid', href: '/customer/orders/order-paid' }),
+      expect.objectContaining({ status: 'completed', href: '/customer/orders/order-completed' }),
+      expect.objectContaining({ status: 'cancelled', href: '/customer/orders/order-cancelled' }),
+      expect.objectContaining({ status: 'refunded', href: '/customer/orders/order-refunded' }),
+    ] });
   });
 
   it('keeps a failed lookup distinct from an empty account', async () => {
