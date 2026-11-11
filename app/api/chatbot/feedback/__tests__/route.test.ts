@@ -103,6 +103,32 @@ describe('POST /api/chatbot/feedback ownership', () => {
     expect(mocks.tables.chatbot_feedback.update).toHaveBeenCalledWith({ helpful: false });
   });
 
+  it('does not expose database details when a feedback update fails', async () => {
+    const builder = feedbackQuery({ data: {
+      id: '33333333-3333-4333-8333-333333333333',
+      session_id: botMessage.session_id,
+      user_id: 'user-1',
+      helpful: null,
+      opened_ticket: false,
+    }, error: null }, { data: null, error: null });
+    builder.maybeSingle
+      .mockResolvedValueOnce({ data: {
+        id: '33333333-3333-4333-8333-333333333333',
+        session_id: botMessage.session_id,
+        user_id: 'user-1',
+        helpful: null,
+        opened_ticket: false,
+      }, error: null })
+      .mockResolvedValueOnce({ data: null, error: { message: 'permission denied: internal policy detail' } });
+    mocks.tables.chatbot_feedback = builder;
+
+    const response = await POST(request({ helpful: false }));
+    const payload = await response.json();
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('WRITE_UNAVAILABLE');
+    expect(JSON.stringify(payload)).not.toContain('internal policy detail');
+  });
+
   it('writes feedback with the persisted session owner rather than trusting the request', async () => {
     const botQuery = query({ data: null, error: null });
     botQuery.maybeSingle

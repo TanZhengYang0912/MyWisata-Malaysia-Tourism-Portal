@@ -96,7 +96,7 @@ export async function POST(request: Request) {
       .eq('session_id', message.session_id)
       .select('id')
       .maybeSingle();
-    if (error) return apiFail('DB_ERROR', error.message, 500);
+    if (error) return apiFail('WRITE_UNAVAILABLE', 'Unable to save feedback. Try again.', 503);
     if (!updated) return apiFail('CONFLICT', 'Chat feedback changed. Refresh and try again.', 409);
     return apiOk({ id: existing.id });
   }
