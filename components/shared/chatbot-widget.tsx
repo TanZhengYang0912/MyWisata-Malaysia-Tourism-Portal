@@ -205,6 +205,9 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   const [storedSession, setStoredSession] = useState<{ ownerId: string | null; value: string | null }>({ ownerId: identityKey, value: null });
   const sessionKey = storedSession.ownerId === identityKey ? storedSession.value : null;
   const setSessionKey = (value: string | null) => setStoredSession({ ownerId: identityRef.current, value });
+  const [guestClaimCandidate, setGuestClaimCandidate] = useState<{ ownerId: string; sessionKey: string } | null>(null);
+  const [guestClaiming, setGuestClaiming] = useState(false);
+  const [guestClaimError, setGuestClaimError] = useState<string | null>(null);
   const [messageState, setMessageState] = useState<{ ownerId: string | null; value: ChatMessage[] }>({ ownerId: identityKey, value: [] });
   const messages = useMemo(() => messageState.ownerId === identityKey ? messageState.value : [], [identityKey, messageState]);
   const setMessages = (update: ChatMessage[] | ((current: ChatMessage[]) => ChatMessage[])) => setMessageState((previous) => {
@@ -288,11 +291,61 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     const ownerId = identityKey;
     queueMicrotask(() => {
       if (identityRef.current !== ownerId) return;
-      setStoredSession({ ownerId, value: window.localStorage.getItem(chatbotSessionStorageKey(ownerId)) });
+      try {
+        const ownedSessionKey = window.localStorage.getItem(chatbotSessionStorageKey(ownerId));
+        setStoredSession({ ownerId, value: ownedSessionKey });
+        if (ownerId && !ownedSessionKey) {
+          const guestKey = window.localStorage.getItem(chatbotSessionStorageKey(null));
+          setGuestClaimCandidate(guestKey ? { ownerId, sessionKey: guestKey } : null);
+        } else {
+          setGuestClaimCandidate(null);
+        }
+      } catch {
+        setStoredSession({ ownerId, value: null });
+        setGuestClaimCandidate(null);
+      }
       setSending(false);
       setCreatingTicketFor(null);
+      setGuestClaiming(false);
+      setGuestClaimError(null);
     });
   }, [authLoading, identityKey]);
+
+  async function claimGuestConversation() {
+    const candidate = guestClaimCandidate;
+    if (!candidate || candidate.ownerId !== identityRef.current || guestClaiming) return;
+    setGuestClaiming(true);
+    setGuestClaimError(null);
+    try {
+      const response = await fetch('/api/chatbot/session/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionKey: candidate.sessionKey }),
+      });
+      const result = await response.json().catch(() => ({})) as { data?: { sessionKey?: string }; error?: { code?: string } };
+      if (identityRef.current !== candidate.ownerId) return;
+      if (!response.ok || result.data?.sessionKey !== candidate.sessionKey) {
+        setGuestClaimError(result.error?.code ? supportError(result.error.code).key : 'unavailable');
+        return;
+      }
+      try {
+        window.localStorage.setItem(chatbotSessionStorageKey(candidate.ownerId), candidate.sessionKey);
+        window.localStorage.removeItem(chatbotSessionStorageKey(null));
+      } catch {
+        // Keep the guest key if possible; the authenticated session can still continue in memory.
+      }
+      historyLoadedRef.current = null;
+      setHistoryCursor(null);
+      setHistoryError(false);
+      setMessageState({ ownerId: candidate.ownerId, value: [] });
+      setStoredSession({ ownerId: candidate.ownerId, value: candidate.sessionKey });
+      setGuestClaimCandidate(null);
+    } catch {
+      if (identityRef.current === candidate.ownerId) setGuestClaimError('unavailable');
+    } finally {
+      if (identityRef.current === candidate.ownerId) setGuestClaiming(false);
+    }
+  }
 
   async function loadChatHistory(targetSessionKey: string, cursor?: ChatHistoryCursor) {
     const requestIdentity = identityRef.current;
@@ -462,7 +515,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
    */
   async function sendMessage(explicitQuestion?: string) {
     const question = (explicitQuestion ?? input).trim();
-    if (!question || sending || sendLockRef.current) return;
+    if (!question || sending || sendLockRef.current || guestClaimCandidate?.ownerId === identityRef.current) return;
     sendLockRef.current = true;
     const requestIdentity = identityRef.current;
     setSending(true);
@@ -884,6 +937,23 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                   <ChevronLeft size={14} /> {t("actions.back")}
                 </button>
 
+                {guestClaimCandidate?.ownerId === identityKey && (
+                  <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-3 py-2">
+                    <span className="flex-1 text-xs text-foreground">{t("chatbot.guestClaim.prompt")}</span>
+                    <Button type="button" size="sm" className="h-7 px-2.5 text-xs" onClick={() => void claimGuestConversation()} disabled={guestClaiming}>
+                      {guestClaiming ? t("chatbot.guestClaim.working") : t("chatbot.guestClaim.continue")}
+                    </Button>
+                    <button type="button" className="text-xs text-muted-foreground underline" onClick={() => { setGuestClaimCandidate(null); setGuestClaimError(null); }}>
+                      {t("chatbot.guestClaim.notNow")}
+                    </button>
+                  </div>
+                )}
+                {guestClaimError && guestClaimCandidate?.ownerId === identityKey && (
+                  <p role="alert" className="border-b border-border px-3 py-1.5 text-xs text-destructive">
+                    {t(`chatbot.supportErrors.${guestClaimError}`)}
+                  </p>
+                )}
+
                 <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
                   {historyCursor && sessionKey && (
                     <Button type="button" size="sm" variant="ghost" className="mx-auto flex h-7 text-xs" onClick={() => void loadChatHistory(sessionKey, historyCursor)} disabled={historyLoading}>
@@ -1102,7 +1172,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                             <button
                               key={q.id}
                               type="button"
-                              disabled={sending}
+                              disabled={sending || guestClaimCandidate?.ownerId === identityKey}
                               onClick={() => {
                                 setFaqOpen(false);
                                 setFaqCategory(null);
@@ -1133,11 +1203,12 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                     placeholder={t("chatbot.inputPlaceholder")}
                     maxLength={500}
                     className="flex-1 min-w-0 h-9 rounded-full border border-border px-3 text-sm bg-background text-foreground"
-                    disabled={sending}
+                    disabled={sending || guestClaimCandidate?.ownerId === identityKey}
                   />
                   <button
                     type="button"
                     onClick={toggleFaq}
+                    disabled={guestClaimCandidate?.ownerId === identityKey}
                     aria-label={t("chatbot.faq.toggle")}
                     aria-expanded={faqOpen}
                     title={t("chatbot.faq.toggle")}
@@ -1153,7 +1224,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                     <button
                       type="button"
                       onClick={() => (speech.isListening ? speech.stop() : speech.start())}
-                      disabled={sending}
+                      disabled={sending || guestClaimCandidate?.ownerId === identityKey}
                       aria-label={speech.isListening ? t("chatbot.voice.stop") : t("chatbot.voice.start")}
                       title={speech.isListening ? t("chatbot.voice.stop") : t("chatbot.voice.start")}
                       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
@@ -1165,7 +1236,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                       {speech.isListening ? <MicOff size={15} /> : <Mic size={15} />}
                     </button>
                   )}
-                  <Button size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={() => sendMessage()} aria-label={t("chatbot.send")} disabled={sending || !input.trim()}>
+                  <Button size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={() => sendMessage()} aria-label={t("chatbot.send")} disabled={sending || guestClaimCandidate?.ownerId === identityKey || !input.trim()}>
                     <Send size={14} aria-hidden="true" />
                   </Button>
                 </div>

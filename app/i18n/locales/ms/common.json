@@ -328,6 +328,12 @@
     "somethingWrong": "Maaf, sesuatu tidak kena. Sila cuba lagi.",
     "askResultUnknown": "Soalan anda telah disimpan, tetapi jawapannya belum dapat disahkan. Semak sejarah chat sebelum menghantarnya sekali lagi.",
     "askOperationConflict": "Soalan ini tidak sepadan dengan permintaan terdahulu yang belum selesai. Hantar sekali lagi untuk memulakan permintaan baharu.",
+    "guestClaim": {
+      "prompt": "Teruskan chat sokongan sebagai tetamu dengan akaun ini?",
+      "continue": "Teruskan chat",
+      "working": "Menghubungkan…",
+      "notNow": "Bukan sekarang"
+    },
     "privacyBlocked": "Mesej penuh anda tidak dihantar kepada AI kerana mungkin mengandungi nombor telefon, e-mel, nombor pengenalan, butiran bank atau alamat peribadi. Buang butiran tersebut dan hantar semula, atau teruskan menggunakan FAQ tempatan tanpa AI.",
     "supportRequest": "Permintaan sokongan",
     "handoff": {

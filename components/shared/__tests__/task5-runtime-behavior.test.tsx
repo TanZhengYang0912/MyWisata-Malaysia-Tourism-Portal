@@ -67,6 +67,10 @@ const translations: Record<string, string> = {
   "common:chatbot.emptyPrompt": "Ask a translated question",
   "common:chatbot.inputPlaceholder": "Translated question",
   "common:chatbot.askResultUnknown": "Translated outcome not ready",
+  "common:chatbot.guestClaim.prompt": "Continue guest conversation translated",
+  "common:chatbot.guestClaim.continue": "Continue guest chat translated",
+  "common:chatbot.guestClaim.working": "Linking guest chat translated",
+  "common:chatbot.guestClaim.notNow": "Not now translated",
   "common:chatbot.myTickets": "Translated my tickets",
   "common:chatbot.no": "No translated",
   "common:chatbot.send": "Send translated message",
@@ -473,6 +477,45 @@ describe("Task 5 shared runtime behavior", () => {
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "Close translated chat"));
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
     expect(historyRequests).toBe(2);
+  });
+
+  it("asks before claiming a guest chat and restores the transcript after confirmation", async () => {
+    const sessionKey = "2145f461-610e-419a-9fad-c41c59d06df6";
+    document.defaultView?.localStorage.setItem(chatbotSessionStorageKey(null), sessionKey);
+    document.defaultView?.localStorage.removeItem(chatbotSessionStorageKey("customer-1"));
+    mocks.useAuth.mockReturnValue({ currentUser: null });
+    const userQuestion = { id: "guest-user-message", role: "user" as const, text: "I need help with my reservation." };
+    const botAnswer = { id: "guest-bot-message", role: "bot" as const, text: "I can help with that.", question: userQuestion.text, feedbackStage: "awaiting_helpful" as const };
+    let historyRequests = 0;
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") {
+        historyRequests += 1;
+        return response({ data: { messages: [userQuestion, botAnswer], nextCursor: null } });
+      }
+      if (url === "/api/chatbot/session/claim") return response({ data: { sessionKey, alreadyOwned: false }, error: null });
+      throw new Error(`Unexpected chatbot request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    expect(container.textContent).toContain(userQuestion.text);
+    expect(historyRequests).toBe(1);
+
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    expect(container.textContent).toContain("Continue guest conversation translated");
+    expect(container.textContent).not.toContain(botAnswer.text);
+    await click(findButton("Continue guest chat translated"));
+
+    expect(historyRequests).toBe(2);
+    expect(container.textContent).toContain(botAnswer.text);
+    expect(container.textContent).not.toContain("Continue guest conversation translated");
+    expect(document.defaultView?.localStorage.getItem(chatbotSessionStorageKey("customer-1"))).toBe(sessionKey);
+    expect(document.defaultView?.localStorage.getItem(chatbotSessionStorageKey(null))).toBeNull();
   });
 
   it("opens a vendor thread from the merged widget's left pane", async () => {

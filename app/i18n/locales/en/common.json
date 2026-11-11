@@ -328,6 +328,12 @@
     "somethingWrong": "Sorry, something went wrong. Please try again.",
     "askResultUnknown": "Your question was saved, but the answer is not confirmed yet. Check chat history before sending it again.",
     "askOperationConflict": "This does not match the earlier pending question. Send it again to start a new request.",
+    "guestClaim": {
+      "prompt": "Continue your guest support chat on this account?",
+      "continue": "Continue chat",
+      "working": "Linking…",
+      "notNow": "Not now"
+    },
     "privacyBlocked": "Your full message was kept from the AI because it may contain a phone number, email, ID, bank detail, or private address. Remove those details and send it again. You can also keep using the local FAQ without AI.",
     "supportRequest": "Support request",
     "handoff": {
