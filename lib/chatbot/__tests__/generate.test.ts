@@ -28,6 +28,27 @@ describe('generateAnswer external privacy boundary', () => {
     ])).rejects.toThrow('sensitive_data_detected');
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('records the external-call boundary immediately before Gemini and does not fetch if recording fails', async () => {
+    process.env.LLM_API_KEY = 'test-key';
+    const events: string[] = [];
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      events.push('fetch');
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'NO_ANSWER' }] } }] }), { status: 200 });
+    });
+    const beforeExternalCall = vi.fn(async () => { events.push('record'); });
+
+    await generateAnswer('How do I visit George Town?', [{ title: 'Travel', body: 'Visit George Town.' }], 1, beforeExternalCall);
+
+    expect(events).toEqual(['record', 'fetch']);
+    expect(beforeExternalCall).toHaveBeenCalledTimes(1);
+
+    fetchMock.mockClear();
+    await expect(generateAnswer('How do I visit George Town?', [{ title: 'Travel', body: 'Visit George Town.' }], 1, async () => {
+      throw new Error('lease lost');
+    })).rejects.toThrow('lease lost');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 describe('generateAnswer multi-question prompt', () => {

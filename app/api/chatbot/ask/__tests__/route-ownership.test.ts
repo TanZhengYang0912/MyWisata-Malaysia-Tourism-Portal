@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), answer: vi.fn(), clean: vi.fn(), reserveQuota: vi.fn(), guestCredential: vi.fn(), tokenHash: vi.fn(), bindGuest: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), rpc: vi.fn(), answer: vi.fn(), clean: vi.fn(), reserveQuota: vi.fn(), guestCredential: vi.fn(), tokenHash: vi.fn(), bindGuest: vi.fn() }));
 function query(result: unknown) {
   const terminal = Promise.resolve(result);
   const builder: Record<string, ReturnType<typeof vi.fn>> = {};
@@ -12,7 +12,7 @@ function query(result: unknown) {
   return builder;
 }
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser } })) }));
-vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: mocks.from }) }));
+vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: mocks.from, rpc: mocks.rpc }) }));
 vi.mock('@/lib/chatbot/answer', () => ({ answerQuestion: mocks.answer }));
 vi.mock('@/lib/moderation/clean', () => ({ cleanUserContent: mocks.clean }));
 vi.mock('@/lib/moderation/flags', () => ({ logModerationFlag: vi.fn() }));
@@ -34,6 +34,14 @@ describe('POST /api/chatbot/ask session ownership', () => {
     mocks.guestCredential.mockReturnValue('a'.repeat(43));
     mocks.tokenHash.mockReturnValue('b'.repeat(64));
     mocks.bindGuest.mockResolvedValue(true);
+    mocks.rpc.mockImplementation((name: string) => {
+      if (name === 'reserve_support_operation') return Promise.resolve({
+        data: { state: 'running', shouldExecute: true, leaseToken: 'lease-token' }, error: null,
+      });
+      if (name === 'mark_support_operation_external_started') return Promise.resolve({ data: true, error: null });
+      if (name === 'complete_chatbot_ask_operation') return Promise.resolve({ data: 'bot-message-1', error: null });
+      return Promise.resolve({ data: true, error: null });
+    });
     mocks.from.mockImplementation((table: string) => {
       if (table === 'chatbot_sessions') return query({
         data: { id: 'session-1', session_key: 'victim-session', user_id: 'victim' }, error: null,
@@ -78,6 +86,11 @@ describe('POST /api/chatbot/ask session ownership', () => {
 
     expect(mocks.answer).toHaveBeenCalledWith('Call me at [PHONE]', false);
     expect(body.data.privacyBlocked).toBe(true);
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation', expect.objectContaining({
+      p_operation_id: expect.any(String),
+      p_actor_key: 'user:victim',
+      p_user_message_id: 'user-message-1',
+    }));
   });
 
   it('returns the stored answer for a repeated operation without calling the model again', async () => {
@@ -112,5 +125,102 @@ describe('POST /api/chatbot/ask session ownership', () => {
     expect(body.data.answer).toBe('Your booking is confirmed.');
     expect(mocks.answer).not.toHaveBeenCalled();
     expect(mocks.reserveQuota).not.toHaveBeenCalled();
+  });
+
+  it('does not call the answer pipeline when another request holds the operation lease', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'victim' } } });
+    mocks.rpc.mockResolvedValueOnce({ data: { state: 'running', shouldExecute: false }, error: null });
+
+    const response = await POST(new Request('http://localhost/api/chatbot/ask', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionKey: 'victim-session', operationId: crypto.randomUUID(), question: 'Where is my booking?' }),
+    }));
+
+    expect(response.status).toBe(409);
+    expect(mocks.answer).not.toHaveBeenCalled();
+    expect(mocks.reserveQuota).not.toHaveBeenCalled();
+  });
+
+  it('reuses the saved user turn when an unstarted lease is recovered', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'victim' } } });
+    mocks.clean.mockResolvedValue({
+      display: 'Where is my booking?', original: 'Where is my booking?',
+      hadProfanity: false, hadSlur: false, hadPII: false, severity: 'low',
+    });
+    mocks.answer.mockResolvedValue({
+      answer: 'Check your booking page.', kbMatched: true, canEscalate: false,
+      usedKb: [], mode: 'keyword', piiDetected: false, language: 'en',
+    });
+    mocks.rpc.mockImplementation((name: string) => name === 'reserve_support_operation'
+      ? Promise.resolve({ data: { state: 'running', shouldExecute: true, leaseToken: 'recovered-lease', created: false }, error: null })
+      : name === 'complete_chatbot_ask_operation'
+        ? Promise.resolve({ data: 'bot-message-1', error: null })
+        : Promise.resolve({ data: true, error: null }));
+    let messageQuery = 0;
+    mocks.from.mockImplementation((table: string) => {
+      if (table === 'chatbot_sessions') return query({
+        data: { id: 'session-1', session_key: 'victim-session', user_id: 'victim' }, error: null,
+      });
+      messageQuery += 1;
+      return query(messageQuery === 1
+        ? { data: { id: 'saved-user-message', operation_payload_hash: createHash('sha256').update(JSON.stringify({ sessionId: 'session-1', userId: 'victim', question: 'Where is my booking?' })).digest('hex') }, error: null }
+        : { data: null, error: null });
+    });
+
+    const operationId = crypto.randomUUID();
+    const response = await POST(new Request('http://localhost/api/chatbot/ask', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionKey: 'victim-session', operationId, question: 'Where is my booking?' }),
+    }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation', expect.objectContaining({
+      p_user_message_id: 'saved-user-message',
+    }));
+  });
+
+  it('reuses a competing saved user turn after an expired lease races on insert', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'victim' } } });
+    mocks.clean.mockResolvedValue({
+      display: 'Where is my booking?', original: 'Where is my booking?',
+      hadProfanity: false, hadSlur: false, hadPII: false, severity: 'low',
+    });
+    mocks.answer.mockResolvedValue({
+      answer: 'Check your booking page.', kbMatched: true, canEscalate: false,
+      usedKb: [], mode: 'keyword', piiDetected: false, language: 'en',
+    });
+    mocks.rpc.mockImplementation((name: string) => name === 'reserve_support_operation'
+      ? Promise.resolve({ data: { state: 'running', shouldExecute: true, leaseToken: 'recovered-lease', created: false }, error: null })
+      : name === 'complete_chatbot_ask_operation'
+        ? Promise.resolve({ data: 'bot-message-1', error: null })
+        : Promise.resolve({ data: true, error: null }));
+    const payloadHash = createHash('sha256').update(JSON.stringify({
+      sessionId: 'session-1', userId: 'victim', question: 'Where is my booking?',
+    })).digest('hex');
+    let messageQuery = 0;
+    mocks.from.mockImplementation((table: string) => {
+      if (table === 'chatbot_sessions') return query({
+        data: { id: 'session-1', session_key: 'victim-session', user_id: 'victim' }, error: null,
+      });
+      messageQuery += 1;
+      const results = [
+        { data: null, error: null },
+        { data: null, error: { code: '23505' } },
+        { data: { id: 'competing-user-message', operation_payload_hash: payloadHash }, error: null },
+        { data: null, error: null },
+      ];
+      return query(results[messageQuery - 1] ?? { data: null, error: null });
+    });
+
+    const response = await POST(new Request('http://localhost/api/chatbot/ask', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionKey: 'victim-session', operationId: crypto.randomUUID(), question: 'Where is my booking?' }),
+    }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation', expect.objectContaining({
+      p_user_message_id: 'competing-user-message',
+    }));
+    expect(mocks.rpc).not.toHaveBeenCalledWith('mark_support_operation_unknown', expect.anything());
   });
 });

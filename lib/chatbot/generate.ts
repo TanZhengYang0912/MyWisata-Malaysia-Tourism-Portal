@@ -99,7 +99,12 @@ interface GeminiGenerateResponse {
  * the keyword matcher — never let this reach the user as an error.
  */
 /** `questionCount` > 1 doubles the output budget so every question gets its answer. */
-export async function generateAnswer(question: string, docs: GenerateDoc[], questionCount = 1): Promise<string | null> {
+export async function generateAnswer(
+  question: string,
+  docs: GenerateDoc[],
+  questionCount = 1,
+  beforeExternalCall?: () => Promise<void>,
+): Promise<string | null> {
   // The user's question gets the full check; the help articles get the KB
   // check (lib/chatbot/pii.ts prepareKbText), which ignores phrases like
   // "KYC" that only mean something in a user's own message. A doc that fails
@@ -120,6 +125,7 @@ export async function generateAnswer(question: string, docs: GenerateDoc[], ques
   const timeout = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
 
   try {
+    await beforeExternalCall?.();
     const res = await fetch(GENERATE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },

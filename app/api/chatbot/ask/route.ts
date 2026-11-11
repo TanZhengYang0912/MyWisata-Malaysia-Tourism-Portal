@@ -87,6 +87,7 @@ export async function POST(request: Request) {
   const operationPayloadHash = createHash('sha256')
     .update(JSON.stringify({ sessionId: session.id, userId: user?.id ?? null, question: cleaned.display }))
     .digest('hex');
+  const actorKey = user ? `user:${user.id}` : `guest:${guestTokenHash}`;
 
   const findExistingAnswer = async () => {
     const { data: existingUser, error: existingUserErr } = await service
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
       .eq('operation_id', operationId)
       .maybeSingle();
     if (existingUserErr) return { response: apiFail('DB_ERROR', 'Unable to check the previous request.', 503) };
-    if (!existingUser) return { response: null };
+    if (!existingUser) return { response: null, userMessageId: null as string | null };
     if (existingUser.operation_payload_hash !== operationPayloadHash) {
       return { response: apiFail('OPERATION_CONFLICT', 'This request key was already used for a different question.', 409) };
     }
@@ -108,27 +109,92 @@ export async function POST(request: Request) {
       .eq('role', 'bot')
       .maybeSingle();
     if (existingBotErr) return { response: apiFail('DB_ERROR', 'Unable to check the previous answer.', 503) };
-    if (!existingBot) return { response: apiFail('OPERATION_UNKNOWN', 'The previous answer is still being confirmed. Check chat history before sending again.', 409) };
-    return { response: apiOk({ sessionKey: session.session_key, answer: existingBot.body, botAnswered: existingBot.kb_matched, messageId: existingBot.id, userMessageId: existingUser.id, language: existingBot.answer_language, privacyBlocked: existingBot.privacy_blocked }) };
+    if (!existingBot) return { response: null, userMessageId: existingUser.id as string };
+    await service.rpc('reconcile_chatbot_ask_operation', {
+      p_operation_id: operationId,
+      p_actor_key: actorKey,
+      p_session_id: session.id,
+      p_user_message_id: existingUser.id,
+      p_bot_message_id: existingBot.id,
+    });
+    return { response: apiOk({ sessionKey: session.session_key, answer: existingBot.body, botAnswered: existingBot.kb_matched, messageId: existingBot.id, userMessageId: existingUser.id, language: existingBot.answer_language, privacyBlocked: existingBot.privacy_blocked }), userMessageId: existingUser.id as string };
   };
+
+  const { data: reservation, error: reservationError } = await service.rpc('reserve_support_operation', {
+    p_operation_id: operationId,
+    p_actor_key: actorKey,
+    p_owner_user_id: user?.id ?? null,
+    p_session_id: session.id,
+    p_kind: 'ask',
+    p_payload_hash: operationPayloadHash,
+  });
+  if (reservationError) {
+    return reservationError.code === '23505'
+      ? apiFail('OPERATION_CONFLICT', 'This request key was already used for a different question.', 409)
+      : apiFail('DB_ERROR', 'Unable to check the previous request.', 503);
+  }
+  const operation = reservation as { state?: string; shouldExecute?: boolean; leaseToken?: string; resultId?: string | null; created?: boolean } | null;
+  if (!operation || operation.state !== 'running' || operation.shouldExecute !== true || !operation.leaseToken) {
+    if (operation?.state === 'completed' || operation?.state === 'unknown') {
+      const completed = await findExistingAnswer();
+      if (completed.response) return completed.response;
+    }
+    return apiFail('OPERATION_UNKNOWN', 'This request is already being checked or its result is not confirmed. Check chat history before sending again.', 409);
+  }
 
   const prior = await findExistingAnswer();
   if (prior.response) return prior.response;
-
-  const { data: userMsg, error: userMsgErr } = await service
-    .from('chatbot_messages')
-    .insert({ session_id: session.id, role: 'user', body: cleaned.display, pii_detected: cleaned.hadPII, operation_id: operationId, operation_payload_hash: operationPayloadHash })
-    .select('id')
-    .single();
-  if (userMsgErr?.code === '23505') {
-    const raced = await findExistingAnswer();
-    return raced.response ?? apiFail('OPERATION_UNKNOWN', 'The previous answer is still being confirmed. Check chat history before sending again.', 409);
+  if (prior.userMessageId && operation.created) {
+    await service.rpc('mark_support_operation_unknown', {
+      p_operation_id: operationId,
+      p_actor_key: actorKey,
+      p_lease_token: operation.leaseToken,
+      p_safe_code: 'LEGACY_OPERATION_UNCERTAIN',
+    });
+    return apiFail('OPERATION_UNKNOWN', 'This question was already submitted before its result could be checked. Check chat history before sending it again.', 409);
   }
-  if (userMsgErr) return apiFail('DB_ERROR', 'Unable to save the question.', 503);
+
+  let userMessageId = prior.userMessageId;
+  if (!userMessageId) {
+    const { data: userMsg, error: userMsgErr } = await service
+      .from('chatbot_messages')
+      .insert({ session_id: session.id, role: 'user', body: cleaned.display, pii_detected: cleaned.hadPII, operation_id: operationId, operation_payload_hash: operationPayloadHash })
+      .select('id')
+      .single();
+    if (userMsgErr?.code === '23505') {
+      const raced = await findExistingAnswer();
+      if (raced.response) return raced.response;
+      if (raced.userMessageId && !operation.created) {
+        userMessageId = raced.userMessageId;
+      } else {
+        await service.rpc('mark_support_operation_unknown', {
+          p_operation_id: operationId,
+          p_actor_key: actorKey,
+          p_lease_token: operation.leaseToken,
+          p_safe_code: 'LEGACY_OPERATION_UNCERTAIN',
+        });
+        return apiFail('OPERATION_UNKNOWN', 'The previous answer is still being confirmed. Check chat history before sending again.', 409);
+      }
+    } else {
+      if (userMsgErr) return apiFail('DB_ERROR', 'Unable to save the question.', 503);
+      userMessageId = userMsg.id;
+    }
+  }
+  if (!userMessageId) return apiFail('OPERATION_UNKNOWN', 'The previous question could not be confirmed. Check chat history before sending again.', 409);
 
   const privacyBlocked = !prepareExternalText(question).allowed;
   const useAi = !privacyBlocked && await reserveAiQuota(request, 'chatbot', user?.id ?? null);
-  const result = await answerQuestion(cleaned.display, useAi);
+  const beforeExternalCall = useAi ? async () => {
+    const { data: externalStarted, error: externalStartError } = await service.rpc('mark_support_operation_external_started', {
+      p_operation_id: operationId,
+      p_actor_key: actorKey,
+      p_lease_token: operation.leaseToken,
+    });
+    if (externalStartError || externalStarted !== true) throw new Error('support_operation_lease_lost');
+  } : undefined;
+  const result = useAi
+    ? await answerQuestion(cleaned.display, true, beforeExternalCall)
+    : await answerQuestion(cleaned.display, false);
 
   // Slurs are a safety issue, not just civility — surfaced to admin even
   // though the message itself was masked and allowed through. Never blocks
@@ -137,18 +203,24 @@ export async function POST(request: Request) {
   if (cleaned.hadSlur) {
     await logModerationFlag(service, {
       sourceType: 'chatbot_message',
-      sourceId: userMsg.id,
+      sourceId: userMessageId,
       userId: user?.id ?? null,
       originalExcerpt: cleaned.original,
     });
   }
 
-  const { data: botMsg, error: botMsgErr } = await service
-    .from('chatbot_messages')
-    .insert({ session_id: session.id, role: 'bot', body: result.answer, kb_matched: result.kbMatched, reply_to_message_id: userMsg.id, answer_language: result.language, privacy_blocked: privacyBlocked })
-    .select('id')
-    .single();
-  if (botMsgErr) return apiFail('OPERATION_UNKNOWN', 'Your question was saved, but the answer could not be confirmed. Check chat history before sending again.', 503);
+  const { data: botMessageId, error: botMsgErr } = await service.rpc('complete_chatbot_ask_operation', {
+    p_operation_id: operationId,
+    p_actor_key: actorKey,
+    p_lease_token: operation.leaseToken,
+    p_session_id: session.id,
+    p_user_message_id: userMessageId,
+    p_answer: result.answer,
+    p_kb_matched: result.kbMatched,
+    p_answer_language: result.language,
+    p_privacy_blocked: privacyBlocked,
+  });
+  if (botMsgErr || typeof botMessageId !== 'string') return apiFail('OPERATION_UNKNOWN', 'Your question was saved, but the answer could not be confirmed. Check chat history before sending again.', 503);
 
   // Provenance — which KB docs (and their similarity, for RAG mode) backed
   // this answer. See CLAUDE-PHASE2.md Feature A: "show which KB docs it
@@ -156,7 +228,7 @@ export async function POST(request: Request) {
   // fail the whole request, the user already has their answer.
   if (result.usedKb.length > 0) {
     const { error: refErr } = await service.from('chatbot_message_kb_refs').insert(
-      result.usedKb.map((k) => ({ message_id: botMsg.id, document_id: k.id, score: k.similarity })),
+      result.usedKb.map((k) => ({ message_id: botMessageId, document_id: k.id, score: k.similarity })),
     );
     if (refErr) console.error('[chatbot] failed to log kb refs', refErr.message);
   }
@@ -168,5 +240,5 @@ export async function POST(request: Request) {
   // lets the widget attach feedback/ticket state to this specific reply.
   // CLAUDE-P4-EXTRAS.md Extra 1: language lets the widget localize that
   // feedback-flow chrome (see lib/chatbot/strings.ts) to match this reply.
-  return apiOk({ sessionKey: session.session_key, answer: result.answer, botAnswered: result.kbMatched, messageId: botMsg.id, userMessageId: userMsg.id, language: result.language, privacyBlocked });
+  return apiOk({ sessionKey: session.session_key, answer: result.answer, botAnswered: result.kbMatched, messageId: botMessageId, userMessageId: userMessageId, language: result.language, privacyBlocked });
 }

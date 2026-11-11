@@ -127,7 +127,11 @@ async function answerWithKeywordFallback(
 }
 
 /** `useAi: false` (caller over its AI quota) answers from the keyword matcher instead of the LLM. */
-export async function answerQuestion(question: string, useAi = true): Promise<AnswerResult> {
+export async function answerQuestion(
+  question: string,
+  useAi = true,
+  beforeExternalCall?: () => Promise<void>,
+): Promise<AnswerResult> {
   // Computed once from the raw question, independent of which mode ends up
   // answering it — a keyword-mode or intent-gated reply can still follow a
   // message that contained PII. The actual redaction enforcement lives in
@@ -174,7 +178,9 @@ export async function answerQuestion(question: string, useAi = true): Promise<An
       }
 
       const usedKb: UsedKbRef[] = retrieved.map((r) => ({ id: r.id, similarity: r.similarity }));
-      const llmAnswer = await generateAnswer(question, retrieved, questions.length);
+      const llmAnswer = beforeExternalCall
+        ? await generateAnswer(question, retrieved, questions.length, beforeExternalCall)
+        : await generateAnswer(question, retrieved, questions.length);
 
       if (llmAnswer === null) {
         // NO_ANSWER — still record which docs were retrieved/considered,
