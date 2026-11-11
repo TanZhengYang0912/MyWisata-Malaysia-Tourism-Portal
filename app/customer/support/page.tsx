@@ -4,7 +4,7 @@
 // missing customer-facing half of the ticket system (admin could already
 // see tickets; customers had no way to see a reply).
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MessageSquare } from "lucide-react";
@@ -12,6 +12,8 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { useTranslation } from "react-i18next";
 import { supportError } from "@/lib/support/errors";
+import { Pagination } from "@/components/shared/pagination";
+import { Button } from "@/components/ui/button";
 
 interface TicketSummary {
   id: string;
@@ -21,6 +23,14 @@ interface TicketSummary {
   createdAt: string;
   lastActivityAt: string;
   unread: boolean;
+}
+
+interface TicketPageData {
+  tickets: TicketSummary[];
+  page: number;
+  pageSize: 10;
+  total: number;
+  totalPages: number;
 }
 
 const STATUS_STYLE: Record<string, string> = {
@@ -35,6 +45,11 @@ export default function CustomerSupportPage() {
   const { t: tCustomer, i18n } = useTranslation("customer");
   const { t: tCommon } = useTranslation("common");
   const [tickets, setTickets] = useState<TicketSummary[] | null | undefined>(undefined);
+  const [page, setPage] = useState(1);
+  const [ticketCount, setTicketCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loadingTickets, setLoadingTickets] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [withdrawalId, setWithdrawalId] = useState<string | null>(null);
   const [subject, setSubject] = useState(() => tCustomer("ui.support.withdrawalSubject"));
   const [body, setBody] = useState("");
@@ -42,19 +57,33 @@ export default function CustomerSupportPage() {
   const [operationId, setOperationId] = useState(() => crypto.randomUUID());
   const [formError, setFormError] = useState("");
 
+  const loadTickets = useCallback(async (signal?: AbortSignal) => {
+    setLoadingTickets(true);
+    try {
+      const res = await fetch(`/api/support/tickets?page=${page}`, { cache: "no-store", signal });
+      const body = (await res.json().catch(() => ({}))) as { data?: TicketPageData | null };
+      if (!res.ok || !body.data) throw new Error("support_list_unavailable");
+      setTickets(body.data.tickets);
+      setTicketCount(body.data.total);
+      setTotalPages(body.data.totalPages);
+      setLoadError(false);
+      if (body.data.page !== page) setPage(body.data.page);
+    } catch {
+      if (signal?.aborted) return;
+      setTickets((current) => current === undefined ? null : current);
+      setLoadError(true);
+    } finally {
+      if (!signal?.aborted) setLoadingTickets(false);
+    }
+  }, [page]);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setWithdrawalId(new URLSearchParams(window.location.search).get("withdrawal"));
-    (async () => {
-      try {
-        const res = await fetch("/api/support/tickets");
-        const body = (await res.json()) as { data: TicketSummary[] | null };
-        setTickets(res.ok && body.data ? body.data : null);
-      } catch {
-        setTickets(null);
-      }
-    })();
-  }, []);
+    const controller = new AbortController();
+    void loadTickets(controller.signal);
+    return () => controller.abort();
+  }, [loadTickets]);
 
   async function submitWithdrawalTicket(event: FormEvent) {
     event.preventDefault();
@@ -81,7 +110,11 @@ export default function CustomerSupportPage() {
   }
   if (tickets === null) {
     return (
-      <CustomerPageShell><EmptyState title={tCustomer("ui.support.loadError")} description={tCustomer("ui.states.loadingError")} /></CustomerPageShell>
+      <CustomerPageShell><EmptyState
+        title={tCustomer("ui.support.loadError")}
+        description={tCustomer("ui.states.loadingError")}
+        action={<Button type="button" variant="outline" onClick={() => void loadTickets()}>{tCommon("chatbot.faq.retry")}</Button>}
+      /></CustomerPageShell>
     );
   }
 
@@ -136,6 +169,24 @@ export default function CustomerSupportPage() {
           </div>
         </div>
       )}
+      {loadingTickets && tickets.length > 0 && (
+        <p role="status" aria-live="polite" className="mt-3 text-sm text-muted-foreground">{tCommon("states.loadingEllipsis")}</p>
+      )}
+      {loadError && tickets.length > 0 && (
+        <div role="alert" className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <span>{tCustomer("ui.support.loadError")}</span>
+          <Button type="button" size="sm" variant="outline" onClick={() => void loadTickets()} disabled={loadingTickets}>{tCommon("chatbot.faq.retry")}</Button>
+        </div>
+      )}
+      <Pagination
+        ariaLabel={tCommon("pagination.navLabel")}
+        currentPage={page}
+        totalPages={totalPages}
+        totalItems={ticketCount}
+        pageSize={10}
+        onPageChange={setPage}
+        disabled={loadingTickets}
+      />
       </CustomerPageShell>
     </>
   );

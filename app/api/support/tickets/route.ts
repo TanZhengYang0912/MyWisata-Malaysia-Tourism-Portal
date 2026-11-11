@@ -25,17 +25,35 @@ import { reserveAiQuota } from '@/lib/rate-limit/ai';
 import { prepareExternalText } from '@/lib/chatbot/pii';
 import { verifyHandoffToken } from '@/lib/support/handoff-token';
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  const { data, error } = await supabase
+  const rawPage = new URL(request.url).searchParams.get('page') ?? '1';
+  if (!/^\d+$/.test(rawPage) || Number(rawPage) < 1 || Number(rawPage) > 1_000_000) {
+    return apiFail('INVALID_INPUT', 'Page must be a positive integer.', 400);
+  }
+  const requestedPage = Number(rawPage);
+  const pageSize = 10;
+  const selectFields = 'id, subject, category, status, withdrawal_id, created_at, last_reply_at, customer_last_read_at';
+  const fetchPage = () => supabase
     .from('support_tickets')
-    .select('id, subject, category, status, withdrawal_id, created_at, last_reply_at, customer_last_read_at')
+    .select(selectFields, { count: 'exact' })
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  let page = requestedPage;
+  const initialResult = await fetchPage().range((page - 1) * pageSize, page * pageSize - 1);
+  let { data, error } = initialResult;
+  if (error) return apiFail('READ_UNAVAILABLE', 'Unable to load your support requests.', 503);
+
+  const total = initialResult.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  if (page > totalPages) {
+    page = totalPages;
+    ({ data, error } = await fetchPage().range((page - 1) * pageSize, page * pageSize - 1));
+    if (error) return apiFail('READ_UNAVAILABLE', 'Unable to load your support requests.', 503);
+  }
 
   const rows = data ?? [];
   // support_ticket_replies' own RLS (own-ticket-or-admin) already scopes
@@ -43,8 +61,8 @@ export async function GET() {
   // MY tickets, so no service-role client needed.
   const latestAdminReplies = await getLatestReplyTimestamps(supabase, rows.map((t) => t.id), 'admin');
 
-  return apiOk(
-    rows.map((t) => ({
+  const response = apiOk({
+    tickets: rows.map((t) => ({
       id: t.id,
       subject: t.subject,
       category: t.category,
@@ -54,7 +72,13 @@ export async function GET() {
       lastActivityAt: t.last_reply_at ?? t.created_at,
       unread: isUnread(t.customer_last_read_at, latestAdminReplies.get(t.id)),
     })),
-  );
+    page,
+    pageSize,
+    total,
+    totalPages,
+  });
+  response.headers.set('Cache-Control', 'private, no-store');
+  return response;
 }
 
 export async function POST(request: Request) {
