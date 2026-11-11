@@ -83,8 +83,10 @@ export default function AdminChatbotPage() {
   const { showFeedback } = useActionFeedback();
   const { t, i18n } = useTranslation("admin");
   const [stats, setStats] = useState<ChatbotStats | null | undefined>(undefined);
+  const [statsError, setStatsError] = useState(false);
   const [statsDays, setStatsDays] = useState<7 | 30 | 90>(30);
   const [docs, setDocs] = useState<KbDoc[] | null | undefined>(undefined);
+  const [docsError, setDocsError] = useState(false);
   const [docsPage, setDocsPage] = useState(1);
   const [docsTotal, setDocsTotal] = useState(0);
   const [docsTotalPages, setDocsTotalPages] = useState(1);
@@ -110,9 +112,16 @@ export default function AdminChatbotPage() {
     try {
       const res = await fetch(`/api/admin/chatbot/stats?days=${statsDays}`);
       const body = (await res.json()) as { data: ChatbotStats | null };
-      setStats(res.ok && body.data ? body.data : null);
+      if (res.ok && body.data) {
+        setStats(body.data);
+        setStatsError(false);
+      } else {
+        setStats((current) => current ?? null);
+        setStatsError(true);
+      }
     } catch {
-      setStats(null);
+      setStats((current) => current ?? null);
+      setStatsError(true);
     }
   }, [statsDays]);
 
@@ -122,14 +131,17 @@ export default function AdminChatbotPage() {
       const body = (await res.json()) as { data: KbDocumentPage | null };
       if (!res.ok || !body.data) {
         setDocs(null);
+        setDocsError(true);
         return;
       }
       setDocs(body.data.documents);
+      setDocsError(false);
       setDocsTotal(body.data.total);
       setDocsTotalPages(body.data.totalPages);
       if (body.data.page !== docsPage) setDocsPage(body.data.page);
     } catch {
       setDocs(null);
+      setDocsError(true);
     }
   }, [docsPage]);
 
@@ -395,18 +407,6 @@ export default function AdminChatbotPage() {
 
   const sortedDocs = docs ?? [];
 
-  if (stats === undefined || docs === undefined) {
-    return <AdminPageShell><AdminPageHeader title={t("chatbot.title")} /><p className="text-sm text-muted-foreground">{t("chatbot.loading")}</p></AdminPageShell>;
-  }
-  if (stats === null || docs === null) {
-    return (
-      <AdminPageShell><AdminPageHeader title={t("chatbot.title")} /><EmptyState
-        title={t("chatbot.errors.loadTitle")}
-        description={t("chatbot.errors.loadDescription")}
-      /></AdminPageShell>
-    );
-  }
-
   return (
     <AdminPageShell>
       <AdminPageHeader
@@ -420,6 +420,17 @@ export default function AdminChatbotPage() {
         </div>}
       />
 
+      {statsError && stats && <div role="alert" className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
+        <span>{t("chatbot.errors.loadStatsRefresh")}</span>
+        <Button size="sm" variant="outline" onClick={() => void loadStats()}>{t("chatbot.errors.retry")}</Button>
+      </div>}
+      {stats === undefined && <p className="mb-3 text-sm text-muted-foreground">{t("chatbot.loading")}</p>}
+      {stats === null && <EmptyState
+        title={t("chatbot.errors.loadTitle")}
+        description={t("chatbot.errors.loadDescription")}
+        action={<Button size="sm" variant="outline" onClick={() => void loadStats()}>{t("chatbot.errors.retry")}</Button>}
+      />}
+      {stats && <>
       <div className="mb-3 flex items-center justify-end gap-2">
         <label htmlFor="chatbot-stats-range" className="text-xs text-muted-foreground">{t("chatbot.metrics.range")}</label>
         <select id="chatbot-stats-range" className={adminFilterControlClassName} value={statsDays} onChange={(event) => setStatsDays(Number(event.target.value) as 7 | 30 | 90)}>
@@ -569,6 +580,7 @@ export default function AdminChatbotPage() {
           </div>
         )}
       </div>
+      </>}
 
       <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
         <p className="text-xs font-bold uppercase tracking-wider text-primary">{t("chatbot.knowledgeBase")}</p>
@@ -652,6 +664,13 @@ export default function AdminChatbotPage() {
         </div>
       )}
 
+      {docsError && <EmptyState
+        title={t("chatbot.errors.loadDocsTitle")}
+        description={t("chatbot.errors.loadDescription")}
+        action={<Button size="sm" variant="outline" onClick={() => void loadDocs()}>{t("chatbot.errors.retry")}</Button>}
+      />}
+      {docs === undefined && <p className="text-sm text-muted-foreground">{t("chatbot.loading")}</p>}
+      {docs !== null && docs !== undefined && <>
       <div className="overflow-hidden rounded-2xl border border-border bg-card" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-xs"><input type="checkbox" aria-label={t("chatbot.accessibility.selectAll")} checked={sortedDocs.some((doc) => doc.isActive) && sortedDocs.filter((doc) => doc.isActive).every((doc) => selectedDocIds.has(doc.id))} onChange={(event) => setSelectedDocIds(event.target.checked ? new Set(sortedDocs.filter((doc) => doc.isActive).map((doc) => doc.id)) : new Set())} /><span className="text-muted-foreground">{t("chatbot.selectAll")}</span></div>
         <AdminBatchActionBar selectedCount={sortedDocs.filter((doc) => selectedDocIds.has(doc.id) && doc.isActive).length} onClear={() => setSelectedDocIds(new Set())} onApply={() => void applyBatch()} actions={[{ value: "deactivate", label: t("batchActions.deactivate") }]} busy={batchBusy} />
@@ -695,6 +714,7 @@ export default function AdminChatbotPage() {
           setDocsPage(nextPage);
         }}
       />
+      </>}
     </AdminPageShell>
   );
 }
