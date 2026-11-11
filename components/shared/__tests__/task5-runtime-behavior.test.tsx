@@ -411,6 +411,70 @@ describe("Task 5 shared runtime behavior", () => {
     expect(document.defaultView?.localStorage.getItem("mw_chatbot_support_operations:customer-1")).not.toContain(question);
   });
 
+  it("recovers a refreshed ask when its stored operation belongs to a different question", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    const sessionKey = "70c130d1-9db6-4f98-8cc7-7bbf8c51f989";
+    const staleOperationId = "af331f47-46b1-4db7-9318-bfc4cc4c86d0";
+    const question = "How do I update my profile?";
+    const askPayloads: { operationId?: string; question?: string }[] = [];
+    document.defaultView?.localStorage.setItem(chatbotSessionStorageKey("customer-1"), sessionKey);
+    document.defaultView?.localStorage.setItem(`mw_chatbot_ask_operation:${sessionKey}`, staleOperationId);
+    mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/ask") {
+        askPayloads.push(JSON.parse(String(init?.body)) as { operationId?: string; question?: string });
+        if (askPayloads.length === 1) return response({ data: null, error: { code: "OPERATION_CONFLICT", message: "Stale key." } }, false);
+        return response({
+          data: { sessionKey, answer: "Open Profile settings.", botAnswered: true, messageId: "bot-recovered-1", userMessageId: "user-recovered-1", language: "en", privacyBlocked: false },
+          error: null,
+        });
+      }
+      throw new Error(`Unexpected chatbot request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    const input = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
+    setInputValue(input, question);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+
+    expect(askPayloads).toHaveLength(2);
+    expect(askPayloads[0]).toEqual({ sessionKey, operationId: staleOperationId, question });
+    expect(askPayloads[1].question).toBe(question);
+    expect(askPayloads[1].operationId).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(askPayloads[1].operationId).not.toBe(staleOperationId);
+    expect(container.textContent).toContain("Open Profile settings.");
+    expect(document.defaultView?.localStorage.getItem(`mw_chatbot_ask_operation:${sessionKey}`)).toBeNull();
+  });
+
+  it("refreshes bounded support history when the chat is reopened", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: null });
+    document.defaultView?.localStorage.setItem(chatbotSessionStorageKey(null), "199f9fac-8427-45c9-8096-0ece82d6cb54");
+    let historyRequests = 0;
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") {
+        historyRequests += 1;
+        return response({ data: { messages: [], nextCursor: null } });
+      }
+      throw new Error(`Unexpected chatbot request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    expect(historyRequests).toBe(1);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Close translated chat"));
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    expect(historyRequests).toBe(2);
+  });
+
   it("opens a vendor thread from the merged widget's left pane", async () => {
     mocks.useAuth.mockReturnValue({ currentUser: { id: "cust-1" } });
     const apiThread = {

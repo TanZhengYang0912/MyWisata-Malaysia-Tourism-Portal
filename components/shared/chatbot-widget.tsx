@@ -216,8 +216,9 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   const [historyLoading, setHistoryLoading] = useState(false);
   const historyLoadedRef = useRef<string | null>(null);
   const historyAbortRef = useRef<AbortController | null>(null);
-  const historyInFlightRef = useRef(false);
+  const historyRequestKeyRef = useRef<string | null>(null);
   const historyRefreshAtRef = useRef(0);
+  const supportPaneWasOpenRef = useRef(false);
   const [inputState, setInputState] = useState<{ ownerId: string | null; value: string }>({ ownerId: identityKey, value: "" });
   const input = inputState.ownerId === identityKey ? inputState.value : "";
   const setInput = (update: string | ((current: string) => string)) => setInputState((previous) => {
@@ -294,11 +295,12 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   }, [authLoading, identityKey]);
 
   async function loadChatHistory(targetSessionKey: string, cursor?: ChatHistoryCursor) {
-    if (historyInFlightRef.current) return;
-    historyInFlightRef.current = true;
-    setHistoryLoading(true);
     const requestIdentity = identityRef.current;
+    const requestKey = `${requestIdentity ?? "guest"}:${targetSessionKey}:${cursor?.createdAt ?? ""}:${cursor?.id ?? ""}`;
+    if (historyRequestKeyRef.current === requestKey) return;
     historyAbortRef.current?.abort();
+    historyRequestKeyRef.current = requestKey;
+    setHistoryLoading(true);
     const controller = new AbortController();
     historyAbortRef.current = controller;
     try {
@@ -349,24 +351,44 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     } catch {
       if (!controller.signal.aborted && identityRef.current === requestIdentity) setHistoryError(true);
     } finally {
-      if (historyAbortRef.current === controller) historyAbortRef.current = null;
-      historyInFlightRef.current = false;
-      setHistoryLoading(false);
+      if (historyAbortRef.current === controller) {
+        historyAbortRef.current = null;
+        historyRequestKeyRef.current = null;
+        setHistoryLoading(false);
+      }
     }
   }
 
   useEffect(() => {
-    if (authLoading || !identityKey || !sessionKey || messages.length > 0) return;
+    if (authLoading || !open || selected?.kind !== "support" || !sessionKey) return;
     const historyKey = `${identityKey ?? "guest"}:${sessionKey}`;
     if (historyLoadedRef.current === historyKey) return;
     void loadChatHistory(sessionKey);
-    return () => historyAbortRef.current?.abort();
-  // A session is restored once after its owner-scoped key is loaded. The history function uses the current identity ref.
+  // History is loaded only when the support surface is visible; the function validates the current identity.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, identityKey, sessionKey]);
+  }, [authLoading, identityKey, open, selected?.kind, sessionKey]);
+
+  useEffect(() => () => historyAbortRef.current?.abort(), [identityKey, sessionKey]);
 
   useEffect(() => {
-    if (!open || selected?.kind !== "support" || !currentUser || !sessionKey) return;
+    const isSupportPaneOpen = open && selected?.kind === "support";
+    if (!isSupportPaneOpen) {
+      supportPaneWasOpenRef.current = false;
+      return;
+    }
+    const reopened = !supportPaneWasOpenRef.current;
+    supportPaneWasOpenRef.current = true;
+    const historyKey = `${identityKey ?? "guest"}:${sessionKey ?? ""}`;
+    if (reopened && sessionKey && historyLoadedRef.current === historyKey && Date.now() - historyRefreshAtRef.current >= 5000) {
+      historyRefreshAtRef.current = Date.now();
+      void loadChatHistory(sessionKey);
+    }
+  // Reconcile the bounded first history page when the support pane is reopened.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identityKey, open, selected?.kind, sessionKey]);
+
+  useEffect(() => {
+    if (!open || selected?.kind !== "support" || !sessionKey) return;
     const refreshOnReturn = () => {
       if (document.visibilityState !== "visible" || Date.now() - historyRefreshAtRef.current < 5000) return;
       historyRefreshAtRef.current = Date.now();
@@ -515,15 +537,27 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         return;
       }
       pendingAskRef.current = pendingAsk;
-      const res = await fetch("/api/chatbot/ask", {
+      const createAskRequest = (operationId: string) => fetch("/api/chatbot/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionKey: targetSessionKey, operationId: pendingAsk.operationId, question }),
+        body: JSON.stringify({ sessionKey: targetSessionKey, operationId, question }),
       });
-      const body = (await res.json()) as {
+      let res = await createAskRequest(pendingAsk.operationId);
+      let body = (await res.json()) as {
         data: { sessionKey: string; answer: string; botAnswered: boolean; messageId: string; userMessageId: string; language: ChatLanguage; privacyBlocked: boolean } | null;
         error: { code?: string; message: string } | null;
       };
+      if (!res.ok && body.error?.code === "OPERATION_CONFLICT") {
+        // A persisted operation ID may outlive the question it originally guarded.
+        // The server rejected this payload before any model call, so retry once with a fresh ID.
+        const renewedOperationId = crypto.randomUUID();
+        if (storePendingAskOperation(targetSessionKey, renewedOperationId)) {
+          pendingAsk = { ...pendingAsk, operationId: renewedOperationId };
+          pendingAskRef.current = pendingAsk;
+          res = await createAskRequest(renewedOperationId);
+          body = (await res.json()) as typeof body;
+        }
+      }
       if (identityRef.current !== requestIdentity) return;
       if (!res.ok || !body.data) {
         if (body.error?.code === "OPERATION_UNKNOWN") {

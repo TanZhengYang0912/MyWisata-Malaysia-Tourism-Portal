@@ -8,6 +8,7 @@ import { POST } from '../route';
 
 function makeBuilder(result: unknown, resolveAt: 'in' | 'limit' | 'maybeSingle' = 'limit') {
   const builder: Record<string, (...args: unknown[]) => unknown> = {};
+  builder.is = vi.fn(() => builder);
   builder.select = () => builder;
   builder.eq = () => builder;
   builder.in = () => resolveAt === 'in' ? Promise.resolve(result) : builder;
@@ -52,6 +53,32 @@ describe('POST /api/chatbot/history', () => {
   });
 
   it('does not query message rows when the session is not owned', async () => {
+    const session = makeBuilder({ data: null, error: null }, 'maybeSingle');
+    const from = vi.fn(() => session);
+    mocks.createServiceClient.mockReturnValue({ from });
+
+    const response = await POST(makeRequest());
+
+    expect(response.status).toBe(404);
+    expect(from).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores a guest conversation only through its unowned customer session key', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null } });
+    const session = makeBuilder({ data: { id: 'guest-session-row' }, error: null }, 'maybeSingle');
+    const messages = makeBuilder({ data: [], error: null });
+    mocks.createServiceClient.mockReturnValue({ from: (table: string) => table === 'chatbot_sessions' ? session : messages });
+
+    const response = await POST(makeRequest());
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(session.is).toHaveBeenCalledWith('user_id', null);
+    expect(payload.data.messages).toEqual([]);
+  });
+
+  it('does not let an anonymous caller restore a signed-in session', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null } });
     const session = makeBuilder({ data: null, error: null }, 'maybeSingle');
     const from = vi.fn(() => session);
     mocks.createServiceClient.mockReturnValue({ from });

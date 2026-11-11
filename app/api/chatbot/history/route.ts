@@ -12,17 +12,16 @@ const querySchema = z.object({
 export async function POST(request: Request) {
   const auth = await createClient();
   const { data: { user } } = await auth.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in to restore this conversation.', 401);
   const parsed = await parseBody(request, querySchema);
   if (!parsed.ok) return parsed.response;
 
   const service = createServiceClient();
-  const { data: session, error: sessionError } = await service.from('chatbot_sessions')
+  let sessionQuery = service.from('chatbot_sessions')
     .select('id')
     .eq('session_key', parsed.data.sessionKey)
-    .eq('user_id', user.id)
-    .eq('channel', 'customer')
-    .maybeSingle();
+    .eq('channel', 'customer');
+  sessionQuery = user ? sessionQuery.eq('user_id', user.id) : sessionQuery.is('user_id', null);
+  const { data: session, error: sessionError } = await sessionQuery.maybeSingle();
   if (sessionError) return apiFail('READ_UNAVAILABLE', 'Unable to restore this conversation.', 503);
   if (!session) return apiFail('NOT_FOUND', 'This conversation is no longer available.', 404);
 
