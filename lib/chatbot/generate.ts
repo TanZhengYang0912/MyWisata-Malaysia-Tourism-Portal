@@ -19,6 +19,27 @@ export interface GenerateDoc {
   body: string;
 }
 
+const POLICY_SENSITIVE_TERMS = /\b(payment|paid|pay|refund|refunded|withdraw|withdrawal|wallet|commission|kyc|identity verification|bank account|pembayaran|bayaran|dibayar|bayar|bayaran balik|pemulangan wang|pengeluaran|dompet|komisen|pengesahan identiti|akaun bank)\b/i;
+const POLICY_SENSITIVE_CJK_TERMS = ['付款', '支付', '退款', '提现', '钱包', '佣金', '身份验证', '银行账户'];
+
+function isPolicySensitiveQuestion(question: string): boolean {
+  return POLICY_SENSITIVE_TERMS.test(question) || POLICY_SENSITIVE_CJK_TERMS.some((term) => question.includes(term));
+}
+
+function normalizeEvidenceText(value: string): string {
+  return value.normalize('NFKC').toLocaleLowerCase().replace(/[\p{P}\p{S}\s]+/gu, ' ').trim();
+}
+
+function hasVerifiableSensitiveAnswer(question: string, answer: string, docs: GenerateDoc[]): boolean {
+  if (!isPolicySensitiveQuestion(question)) return true;
+  const normalizedAnswer = normalizeEvidenceText(answer);
+  if (!normalizedAnswer) return false;
+
+  // Do not rely on the model's instruction to quote sensitive policy. The
+  // displayed answer must be a literal excerpt from one reviewed KB entry.
+  return docs.some((doc) => normalizeEvidenceText(`${doc.title} ${doc.body}`).includes(normalizedAnswer));
+}
+
 const GENERATE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 const GENERATE_TIMEOUT_MS = 15_000;
 
@@ -119,7 +140,8 @@ export async function generateAnswer(question: string, docs: GenerateDoc[], ques
     const text = body.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!text) throw new Error('Gemini generateContent returned no text');
 
-    return text === 'NO_ANSWER' ? null : text;
+    if (text === 'NO_ANSWER') return null;
+    return hasVerifiableSensitiveAnswer(question, text, safeDocs) ? text : null;
   } finally {
     clearTimeout(timeout);
   }
