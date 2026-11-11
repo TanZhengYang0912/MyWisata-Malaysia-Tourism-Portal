@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), rpc: vi.fn(), sameOrigin: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), rpc: vi.fn(), sameOrigin: vi.fn(), guestCredential: vi.fn(), tokenHash: vi.fn(), clearCookie: vi.fn() }));
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser } })) }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ rpc: mocks.rpc }) }));
 vi.mock('@/lib/checkout/guest-session', () => ({ isSameOriginMutation: mocks.sameOrigin }));
+vi.mock('@/lib/chatbot/guest-session', () => ({
+  readChatbotGuestCredential: mocks.guestCredential,
+  hashChatbotGuestCredential: mocks.tokenHash,
+  clearChatbotGuestCookie: mocks.clearCookie,
+}));
 
 import { POST } from '../route';
 
@@ -20,6 +25,8 @@ describe('POST /api/chatbot/session/claim', () => {
     vi.clearAllMocks();
     mocks.sameOrigin.mockReturnValue(true);
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'account-1' } } });
+    mocks.guestCredential.mockReturnValue('a'.repeat(43));
+    mocks.tokenHash.mockReturnValue('b'.repeat(64));
     mocks.rpc.mockResolvedValue({ data: { session_key: 'guest-session-key', already_owned: false }, error: null });
   });
 
@@ -29,10 +36,11 @@ describe('POST /api/chatbot/session/claim', () => {
 
     expect(response.status).toBe(200);
     expect(mocks.rpc).toHaveBeenCalledWith('claim_chatbot_guest_session', {
-      p_session_key: 'guest-session-key', p_user_id: 'account-1',
+      p_session_key: 'guest-session-key', p_user_id: 'account-1', p_guest_token_hash: 'b'.repeat(64),
     });
     expect(payload.data.sessionKey).toBe('guest-session-key');
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+    expect(mocks.clearCookie).toHaveBeenCalled();
   });
 
   it('rejects a request that does not match the app origin', async () => {

@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), createServiceClient: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), createServiceClient: vi.fn(), guestCredential: vi.fn(), tokenHash: vi.fn(), bindGuest: vi.fn() }));
 vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { getUser: mocks.getUser } }) }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: mocks.createServiceClient }));
+vi.mock('@/lib/chatbot/guest-session', () => ({
+  readChatbotGuestCredential: mocks.guestCredential,
+  hashChatbotGuestCredential: mocks.tokenHash,
+  bindChatbotGuestSessionToken: mocks.bindGuest,
+}));
 
 import { POST } from '../route';
 
@@ -31,6 +36,9 @@ describe('POST /api/chatbot/history', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'owner-1' } } });
+    mocks.guestCredential.mockReturnValue('a'.repeat(43));
+    mocks.tokenHash.mockReturnValue('b'.repeat(64));
+    mocks.bindGuest.mockResolvedValue(true);
   });
 
   it('returns only the owned customer session and bounded message batch', async () => {
@@ -65,7 +73,7 @@ describe('POST /api/chatbot/history', () => {
 
   it('restores a guest conversation only through its unowned customer session key', async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null } });
-    const session = makeBuilder({ data: { id: 'guest-session-row' }, error: null }, 'maybeSingle');
+    const session = makeBuilder({ data: { id: 'guest-session-row', guest_token_hash: 'b'.repeat(64) }, error: null }, 'maybeSingle');
     const messages = makeBuilder({ data: [], error: null });
     mocks.createServiceClient.mockReturnValue({ from: (table: string) => table === 'chatbot_sessions' ? session : messages });
 

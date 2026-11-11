@@ -1,8 +1,10 @@
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { isSameOriginMutation } from '@/lib/checkout/guest-session';
-import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
+import { apiFail, parseBody } from '@/lib/validation/schemas';
+import { clearChatbotGuestCookie, hashChatbotGuestCredential, readChatbotGuestCredential } from '@/lib/chatbot/guest-session';
 
 const claimSchema = z.object({ sessionKey: z.string().min(1).max(64) }).strict();
 
@@ -11,6 +13,8 @@ export async function POST(request: Request) {
   const auth = await createClient();
   const { data: { user } } = await auth.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in to continue this conversation.', 401);
+  const guestCredential = readChatbotGuestCredential(request);
+  if (!guestCredential) return apiFail('GUEST_SESSION_REQUIRED', 'This guest conversation is no longer available. Start a new chat.', 401);
 
   const parsed = await parseBody(request, claimSchema);
   if (!parsed.ok) return parsed.response;
@@ -19,6 +23,7 @@ export async function POST(request: Request) {
     const { data, error } = await createServiceClient().rpc('claim_chatbot_guest_session', {
       p_session_key: parsed.data.sessionKey,
       p_user_id: user.id,
+      p_guest_token_hash: hashChatbotGuestCredential(guestCredential),
     });
     if (error) {
       const knownErrors: Record<string, { code: string; message: string; status: number }> = {
@@ -33,8 +38,9 @@ export async function POST(request: Request) {
     if (typeof data !== 'object' || data === null || data.session_key !== parsed.data.sessionKey || typeof data.already_owned !== 'boolean') {
       return apiFail('WRITE_UNAVAILABLE', 'We could not confirm this conversation link. Check the chat before trying again.', 503);
     }
-    const response = apiOk({ sessionKey: parsed.data.sessionKey, alreadyOwned: data.already_owned });
+    const response = NextResponse.json({ data: { sessionKey: parsed.data.sessionKey, alreadyOwned: data.already_owned }, error: null });
     response.headers.set('Cache-Control', 'private, no-store');
+    clearChatbotGuestCookie(response);
     return response;
   } catch {
     return apiFail('WRITE_UNAVAILABLE', 'We could not confirm this conversation link. Check the chat before trying again.', 503);

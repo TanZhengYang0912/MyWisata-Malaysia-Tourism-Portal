@@ -328,6 +328,8 @@
     "somethingWrong": "Sorry, something went wrong. Please try again.",
     "askResultUnknown": "Your question was saved, but the answer is not confirmed yet. Check chat history before sending it again.",
     "askOperationConflict": "This does not match the earlier pending question. Send it again to start a new request.",
+    "guestCookieUnavailable": "Guest chat needs cookies. Enable cookies or sign in, then send again.",
+    "guestSessionUnavailable": "This guest chat cannot be restored in this browser. Start a new chat or sign in.",
     "guestClaim": {
       "prompt": "Continue your guest support chat on this account?",
       "continue": "Continue chat",

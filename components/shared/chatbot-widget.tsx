@@ -230,6 +230,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   });
   const faqRequestRef = useRef<Promise<void> | null>(null);
   const sendLockRef = useRef(false);
+  const guestCookieReadyRef = useRef(false);
   const pendingAskRef = useRef<{ identity: string | null; question: string; sessionKey: string; operationId: string; localMessageId: string } | null>(null);
   const ticketOperationLockRef = useRef(false);
   const ticketOperationIdentityRef = useRef<string | null>(identityKey);
@@ -285,6 +286,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     if (authLoading) return;
     identityRef.current = identityKey;
     sendLockRef.current = false;
+    guestCookieReadyRef.current = false;
     pendingAskRef.current = null;
     ticketOperationLockRef.current = false;
     ticketOperationIdentityRef.current = identityKey;
@@ -590,6 +592,24 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         return;
       }
       pendingAskRef.current = pendingAsk;
+      if (!requestIdentity && !guestCookieReadyRef.current) {
+        const cookieResponse = await fetch('/api/chatbot/session/guest-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionKey: targetSessionKey }),
+        });
+        const cookieResult = await cookieResponse.json().catch(() => ({})) as { error?: { code?: string } };
+        if (identityRef.current !== requestIdentity) return;
+        if (!cookieResponse.ok) {
+          if (cookieResult.error?.code === 'GUEST_SESSION_REQUIRED') {
+            setMessages((m) => [...m, { role: 'bot', text: t('chatbot.guestSessionUnavailable') }]);
+          } else {
+            setMessages((m) => [...m, { role: 'bot', text: t('chatbot.somethingWrong') }]);
+          }
+          return;
+        }
+        guestCookieReadyRef.current = true;
+      }
       const createAskRequest = (operationId: string) => fetch("/api/chatbot/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -619,6 +639,9 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
           storePendingAskOperation(targetSessionKey, null);
           pendingAskRef.current = null;
           setMessages((m) => [...m, { role: "bot", text: t("chatbot.askOperationConflict") }]);
+        } else if (body.error?.code === "GUEST_SESSION_REQUIRED") {
+          guestCookieReadyRef.current = false;
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.guestCookieUnavailable") }]);
         } else {
           setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
         }

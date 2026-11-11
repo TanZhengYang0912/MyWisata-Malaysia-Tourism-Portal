@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), tables: {} as Record<string, Record<string, ReturnType<typeof vi.fn>>> }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), tables: {} as Record<string, Record<string, ReturnType<typeof vi.fn>>>, guestCredential: vi.fn(), tokenHash: vi.fn(), bindGuest: vi.fn() }));
 
 function query(result: unknown) {
   const terminal = Promise.resolve(result);
@@ -23,6 +23,11 @@ function feedbackQuery(existing: unknown, created: unknown) {
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser } })) }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn(() => ({ from: mocks.from })) }));
+vi.mock('@/lib/chatbot/guest-session', () => ({
+  readChatbotGuestCredential: mocks.guestCredential,
+  hashChatbotGuestCredential: mocks.tokenHash,
+  bindChatbotGuestSessionToken: mocks.bindGuest,
+}));
 
 import { POST } from '../route';
 
@@ -45,6 +50,9 @@ describe('POST /api/chatbot/feedback ownership', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
+    mocks.guestCredential.mockReturnValue('a'.repeat(43));
+    mocks.tokenHash.mockReturnValue('b'.repeat(64));
+    mocks.bindGuest.mockResolvedValue(true);
     mocks.tables = {
       chatbot_messages: query({ data: botMessage, error: null }),
       chatbot_feedback: feedbackQuery({ data: null, error: null }, { data: { id: '44444444-4444-4444-8444-444444444444' }, error: null }),

@@ -328,6 +328,8 @@
     "somethingWrong": "Maaf, sesuatu tidak kena. Sila cuba lagi.",
     "askResultUnknown": "Soalan anda telah disimpan, tetapi jawapannya belum dapat disahkan. Semak sejarah chat sebelum menghantarnya sekali lagi.",
     "askOperationConflict": "Soalan ini tidak sepadan dengan permintaan terdahulu yang belum selesai. Hantar sekali lagi untuk memulakan permintaan baharu.",
+    "guestCookieUnavailable": "Chat tetamu memerlukan kuki. Aktifkan kuki atau log masuk, kemudian hantar semula.",
+    "guestSessionUnavailable": "Chat tetamu ini tidak dapat dipulihkan dalam pelayar ini. Mulakan chat baharu atau log masuk.",
     "guestClaim": {
       "prompt": "Teruskan chat sokongan sebagai tetamu dengan akaun ini?",
       "continue": "Teruskan chat",

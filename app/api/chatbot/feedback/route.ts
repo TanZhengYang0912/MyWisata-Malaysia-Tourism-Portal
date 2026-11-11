@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { chatbotFeedbackSchema } from '@/lib/validation/chatbot-schemas';
+import { bindChatbotGuestSessionToken, hashChatbotGuestCredential, readChatbotGuestCredential } from '@/lib/chatbot/guest-session';
 
 export async function POST(request: Request) {
   const parsed = await parseBody(request, chatbotFeedbackSchema);
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
 
   const { data: message, error: messageError } = await service
     .from('chatbot_messages')
-    .select('id,role,session_id,reply_to_message_id,chatbot_sessions(id,session_key,user_id)')
+    .select('id,role,session_id,reply_to_message_id,chatbot_sessions(id,session_key,user_id,guest_token_hash)')
     .eq('id', messageId)
     .maybeSingle();
   if (messageError) return apiFail('DB_ERROR', 'Unable to verify this chat message.', 503);
@@ -47,6 +48,14 @@ export async function POST(request: Request) {
     || (relatedSession.user_id === null ? Boolean(user) : relatedSession.user_id !== user?.id)
   ) {
     return apiFail('FORBIDDEN', 'This chat session does not belong to you.', 403);
+  }
+  if (relatedSession.user_id === null) {
+    const guestCredential = readChatbotGuestCredential(request);
+    const guestTokenHash = guestCredential ? hashChatbotGuestCredential(guestCredential) : null;
+    if (!guestTokenHash || (relatedSession.guest_token_hash !== guestTokenHash
+        && !(relatedSession.guest_token_hash === null && await bindChatbotGuestSessionToken(sessionKey, guestTokenHash)))) {
+      return apiFail('FORBIDDEN', 'This chat session does not belong to you.', 403);
+    }
   }
 
   // Feedback analytics use the exact sanitized message linked by /ask.

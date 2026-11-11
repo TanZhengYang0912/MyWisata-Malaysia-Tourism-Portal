@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), answer: vi.fn(), clean: vi.fn(), reserveQuota: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), answer: vi.fn(), clean: vi.fn(), reserveQuota: vi.fn(), guestCredential: vi.fn(), tokenHash: vi.fn(), bindGuest: vi.fn() }));
 function query(result: unknown) {
   const terminal = Promise.resolve(result);
   const builder: Record<string, ReturnType<typeof vi.fn>> = {};
@@ -17,6 +17,11 @@ vi.mock('@/lib/chatbot/answer', () => ({ answerQuestion: mocks.answer }));
 vi.mock('@/lib/moderation/clean', () => ({ cleanUserContent: mocks.clean }));
 vi.mock('@/lib/moderation/flags', () => ({ logModerationFlag: vi.fn() }));
 vi.mock('@/lib/rate-limit/ai', () => ({ reserveAiQuota: mocks.reserveQuota }));
+vi.mock('@/lib/chatbot/guest-session', () => ({
+  readChatbotGuestCredential: mocks.guestCredential,
+  hashChatbotGuestCredential: mocks.tokenHash,
+  bindChatbotGuestSessionToken: mocks.bindGuest,
+}));
 
 import { POST } from '../route';
 
@@ -26,6 +31,9 @@ describe('POST /api/chatbot/ask session ownership', () => {
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'attacker' } } });
     let messageQuery = 0;
     mocks.reserveQuota.mockResolvedValue(false);
+    mocks.guestCredential.mockReturnValue('a'.repeat(43));
+    mocks.tokenHash.mockReturnValue('b'.repeat(64));
+    mocks.bindGuest.mockResolvedValue(true);
     mocks.from.mockImplementation((table: string) => {
       if (table === 'chatbot_sessions') return query({
         data: { id: 'session-1', session_key: 'victim-session', user_id: 'victim' }, error: null,

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
+import { bindChatbotGuestSessionToken, hashChatbotGuestCredential, readChatbotGuestCredential } from '@/lib/chatbot/guest-session';
 
 const querySchema = z.object({
   sessionKey: z.string().min(1).max(64),
@@ -12,18 +13,24 @@ const querySchema = z.object({
 export async function POST(request: Request) {
   const auth = await createClient();
   const { data: { user } } = await auth.auth.getUser();
+  const guestCredential = user ? null : readChatbotGuestCredential(request);
+  if (!user && !guestCredential) return apiFail('UNAUTHORIZED', 'This guest conversation is no longer available.', 401);
+  const guestTokenHash = guestCredential ? hashChatbotGuestCredential(guestCredential) : null;
   const parsed = await parseBody(request, querySchema);
   if (!parsed.ok) return parsed.response;
 
   const service = createServiceClient();
   let sessionQuery = service.from('chatbot_sessions')
-    .select('id')
+    .select('id, guest_token_hash')
     .eq('session_key', parsed.data.sessionKey)
     .eq('channel', 'customer');
   sessionQuery = user ? sessionQuery.eq('user_id', user.id) : sessionQuery.is('user_id', null);
   const { data: session, error: sessionError } = await sessionQuery.maybeSingle();
   if (sessionError) return apiFail('READ_UNAVAILABLE', 'Unable to restore this conversation.', 503);
-  if (!session) return apiFail('NOT_FOUND', 'This conversation is no longer available.', 404);
+  if (!session || (!user && session.guest_token_hash !== guestTokenHash
+      && !(session.guest_token_hash === null && guestTokenHash && await bindChatbotGuestSessionToken(parsed.data.sessionKey, guestTokenHash)))) {
+    return apiFail('NOT_FOUND', 'This conversation is no longer available.', 404);
+  }
 
   let query = service.from('chatbot_messages')
     .select('id, role, body, kb_matched, reply_to_message_id, created_at')
