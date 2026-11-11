@@ -77,22 +77,14 @@ export async function queryCustomerSupportStatus(
     return items.length ? { state: 'available', items } : { state: 'no_records', items: [] };
   }
 
-  const { data: orders, error: ordersError } = await db.from('orders')
-    .select('id')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(10);
-  if (ordersError) return { state: 'unavailable', items: [] };
-  if (!orders?.length) return { state: 'no_records', items: [] };
-  // Refunds lack a customer SELECT policy. The order IDs above were obtained
-  // through the caller's RLS-scoped query and explicitly filtered by owner.
-  const { data: refunds, error: refundsError } = await createServiceClient().from('refunds')
-    .select('id,order_id,status,created_at')
-    .in('order_id', orders.map((order) => order.id))
-    .order('created_at', { ascending: false })
-    .limit(5);
+  // Refund rows do not expose a customer read policy or an API relationship
+  // to orders. The service-only function joins ownership in SQL and returns
+  // only the latest five matching rows, without reading/slicing all orders.
+  const { data: refunds, error: refundsError } = await createServiceClient()
+    .rpc('list_support_customer_refunds', { p_owner_user_id: userId });
   if (refundsError) return { state: 'unavailable', items: [] };
-  const items = (refunds ?? []).map((refund) => ({
+  const refundRows = (refunds ?? []) as Array<{ id: string; order_id: string; status: string; created_at: string }>;
+  const items = refundRows.map((refund) => ({
     id: refund.id,
     status: REFUND_STATUSES.has(refund.status) ? refund.status : 'unknown',
     label: `#${refund.order_id.slice(0, 8).toUpperCase()}`,

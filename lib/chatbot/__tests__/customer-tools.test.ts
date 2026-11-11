@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { queryCustomerSupportStatus } from '../customer-tools';
 
+const supportRefundsRpc = vi.fn();
+vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ rpc: supportRefundsRpc }) }));
+
 function query(result: unknown) {
   const builder: Record<string, unknown> = {};
   for (const method of ['select', 'eq', 'order', 'limit', 'in']) {
@@ -31,5 +34,19 @@ describe('queryCustomerSupportStatus', () => {
       .resolves.toEqual({ state: 'unavailable', items: [] });
     await expect(queryCustomerSupportStatus({ from: () => emptyQuery } as never, 'owner', 'tickets'))
       .resolves.toEqual({ state: 'no_records', items: [] });
+  });
+
+  it('lists the latest refunds across all owned orders through a bounded owner-scoped query', async () => {
+    supportRefundsRpc.mockResolvedValue({
+      data: [{ id: 'refund-id', order_id: 'older-order-id', status: 'pending', created_at: '2026-11-01' }],
+      error: null,
+    });
+
+    const result = await queryCustomerSupportStatus({ from: vi.fn() } as never, 'signed-in-user', 'refunds');
+
+    expect(supportRefundsRpc).toHaveBeenCalledWith('list_support_customer_refunds', { p_owner_user_id: 'signed-in-user' });
+    expect(result).toEqual({ state: 'available', items: [expect.objectContaining({
+      id: 'refund-id', status: 'pending', href: '/customer/orders/older-order-id',
+    })] });
   });
 });
