@@ -16,7 +16,7 @@ import { notifyTicketReply } from '@/lib/support/notify';
 import { cleanUserContent } from '@/lib/moderation/clean';
 import { logModerationFlag } from '@/lib/moderation/flags';
 import { logAdminConductFlagIfNeeded } from '@/lib/moderation/admin-conduct';
-import { validateChatAttachment, buildTicketAttachmentPath } from '@/lib/support/attachment';
+import { readTicketAttachmentForm, validateChatAttachment, buildTicketAttachmentPath } from '@/lib/support/attachment';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
@@ -46,9 +46,13 @@ export async function POST(request: Request, { params }: Props) {
   if (!isAdmin && !isOwner) return apiFail('FORBIDDEN', 'Not your ticket', 403);
   const senderRole: 'customer' | 'admin' = isAdmin ? 'admin' : 'customer';
 
-  let formData: FormData;
-  try { formData = await request.formData(); }
-  catch { return apiFail('INVALID_FORM', 'Could not parse form data', 400); }
+  const formResult = await readTicketAttachmentForm(request);
+  if (!formResult.ok) {
+    return formResult.reason === 'too_large'
+      ? apiFail('FILE_TOO_LARGE', 'Attachment request is too large.', 413)
+      : apiFail('INVALID_FORM', 'Could not parse form data.', 400);
+  }
+  const { data: formData } = formResult;
 
   const file = formData.get('file');
   if (!(file instanceof File)) return apiFail('MISSING_FILE', 'file is required', 422);

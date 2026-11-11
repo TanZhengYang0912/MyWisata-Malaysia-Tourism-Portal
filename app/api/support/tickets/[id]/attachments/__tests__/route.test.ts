@@ -12,6 +12,7 @@ vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { g
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: mocks.createServiceClient }));
 vi.mock('@/lib/affiliate/admin-guard', () => ({ isSuperAdmin: mocks.isSuperAdmin }));
 vi.mock('@/lib/support/attachment', () => ({
+  readTicketAttachmentForm: async (request: Request) => ({ ok: true, data: await request.formData() }),
   validateChatAttachment: mocks.validateChatAttachment,
   buildTicketAttachmentPath: (ticketId: string, token: string, mime: string) => `${ticketId}/${token}.${mime === 'image/png' ? 'png' : 'bin'}`,
 }));
