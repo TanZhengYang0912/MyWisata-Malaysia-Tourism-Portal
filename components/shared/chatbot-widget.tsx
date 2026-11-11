@@ -86,6 +86,7 @@ interface ChatMessage {
   handoffSummary?: string;
   handoffPreviewSubject?: string;
   handoffPreviewSummary?: string;
+  handoffSourceMessage?: string | null;
   handoffOperationId?: string;
   handoffDraftVersion?: number;
   handoffDraftSaved?: boolean;
@@ -765,29 +766,15 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
           draftVersion = draftResult.data.version;
         }
       }
-      const response = await fetch("/api/support/handoff/preview", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subject,
-          summary,
-          sessionKey: sessionKey ?? undefined,
-          messageId: msg.messageId,
-        }),
-      });
-      const result = await response.json().catch(() => ({})) as { data?: { subject: string; summary: string; sourceMessageId?: string | null }; error?: { code?: string } };
       if (identityRef.current !== requestIdentity) return;
-      if (!response.ok || !result.data) {
-        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError"), ticketErrorCode: result.error?.code, ticketNeedsSignIn: response.status === 401 } : m)));
-        return;
-      }
       setMessages((prev) => prev.map((m, i) => (i === index ? {
         ...m,
         feedbackStage: "handoff_preview",
-        handoffSubject: result.data!.subject,
-        handoffSummary: result.data!.summary,
-        handoffPreviewSubject: result.data!.subject,
-        handoffPreviewSummary: result.data!.summary,
+        handoffSubject: subject,
+        handoffSummary: summary,
+        handoffPreviewSubject: subject,
+        handoffPreviewSummary: summary,
+        handoffSourceMessage: msg.question ?? null,
         handoffOperationId: operationId,
         handoffDraftVersion: draftVersion,
         handoffDraftSaved: draftVersion > 0,
@@ -838,6 +825,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   async function confirmTicket(index: number) {
     const msg = messages[index];
     if (!msg.handoffOperationId || creatingTicketFor || ticketOperationLockRef.current) return;
+    if (!msg.handoffConsented) return;
     const requestIdentity = identityRef.current;
     const subject = msg.handoffSubject?.trim() ?? "";
     const summary = msg.handoffSummary?.trim() ?? "";
@@ -857,19 +845,22 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subject, summary, sessionKey: sessionKey ?? undefined, messageId: msg.messageId }),
       }).catch(() => null);
-      const previewResult = await previewResponse?.json().catch(() => ({})) as { data?: { subject: string; summary: string; handoffToken: string; sourceMessageId?: string | null }; error?: { code?: string } } | undefined;
+      const previewResult = await previewResponse?.json().catch(() => ({})) as { data?: { subject: string; summary: string; handoffToken: string; sourceMessageId?: string | null; sourceMessage?: string | null }; error?: { code?: string } } | undefined;
       if (identityRef.current !== requestIdentity) return;
       if (!previewResponse?.ok || !previewResult?.data) {
         setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError"), ticketErrorCode: previewResult?.error?.code ?? "PREVIEW_UNAVAILABLE", ticketNeedsSignIn: previewResponse?.status === 401 } : m)));
         return;
       }
-      if (previewResult.data.subject !== subject || previewResult.data.summary !== summary) {
+      if (previewResult.data.subject !== subject || previewResult.data.summary !== summary
+        || (previewResult.data.sourceMessageId && previewResult.data.sourceMessage !== msg.handoffSourceMessage)) {
         setMessages((prev) => prev.map((m, i) => (i === index ? {
           ...m,
           handoffSubject: previewResult.data!.subject,
           handoffSummary: previewResult.data!.summary,
+          handoffSourceMessage: previewResult.data!.sourceMessage ?? null,
           handoffPreviewSubject: previewResult.data!.subject,
           handoffPreviewSummary: previewResult.data!.summary,
+          handoffConsented: false,
           ticketError: t("chatbot.handoff.cleanedReview"),
         } : m)));
         return;
@@ -878,7 +869,14 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       const res = await fetch("/api/support/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ operationId: msg.handoffOperationId, handoffToken: previewResult.data.handoffToken, subject, body: summary }),
+        body: JSON.stringify({
+          operationId: msg.handoffOperationId,
+          handoffToken: previewResult.data.handoffToken,
+          consent: true,
+          subject,
+          body: summary,
+          ...(previewResult.data.sourceMessageId ? { sourceMessageId: previewResult.data.sourceMessageId } : {}),
+        }),
       });
       const result = (await res.json().catch(() => ({}))) as { data?: { id: string; category: string } | null; error?: { code?: string } | null };
       if (identityRef.current !== requestIdentity) return;
@@ -1141,6 +1139,12 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                                   className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm font-normal"
                                 />
                               </label>
+                              {m.handoffSourceMessage && (
+                                <div className="rounded-md bg-muted/50 p-2 text-xs">
+                                  <span className="font-medium">{t("chatbot.handoff.selectedQuestion")}</span>
+                                  <p className="mt-1 whitespace-pre-wrap">{m.handoffSourceMessage}</p>
+                                </div>
+                              )}
                               <label className="block text-xs font-medium">
                                 {t("chatbot.handoff.summary")}
                                 <textarea

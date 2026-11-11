@@ -343,6 +343,7 @@
       "subject": "工单标题",
       "summary": "请告诉客服团队需要了解什么",
       "consent": "我同意将上方标题和内容分享给客服。",
+      "selectedQuestion": "一并分享的问题",
       "confirm": "创建工单",
       "cancel": "取消",
       "invalid": "请填写标题和消息，并遵守字数限制。",

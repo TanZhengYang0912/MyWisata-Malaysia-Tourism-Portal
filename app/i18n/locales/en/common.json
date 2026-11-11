@@ -343,6 +343,7 @@
       "subject": "Ticket title",
       "summary": "What should the support team know?",
       "consent": "I agree to share the title and message above with Support.",
+      "selectedQuestion": "Question shared",
       "confirm": "Create ticket",
       "cancel": "Cancel",
       "invalid": "Add a title and message within the character limits.",

@@ -68,7 +68,7 @@ describe('POST /api/support/handoff/preview', () => {
     };
     const messageResults = [
       { id: '33333333-3333-4333-8333-333333333333', reply_to_message_id: '44444444-4444-4444-8444-444444444444' },
-      { id: '44444444-4444-4444-8444-444444444444' },
+      { id: '44444444-4444-4444-8444-444444444444', body: 'My original question' },
     ];
     const messagesQuery = {
       select: vi.fn(() => messagesQuery),
@@ -83,9 +83,14 @@ describe('POST /api/support/handoff/preview', () => {
     }));
     const payload = await response.json();
     expect(response.status).toBe(200);
-    expect(payload.data.sourceMessageId).toBe('33333333-3333-4333-8333-333333333333');
+    expect(payload.data.sourceMessageId).toBe('44444444-4444-4444-8444-444444444444');
     expect(payload.data.handoffToken).toBe('opaque-token');
-    expect(mocks.createToken).toHaveBeenCalledWith('owner-1', 'Help', 'My question', '33333333-3333-4333-8333-333333333333');
+    expect(mocks.createToken).toHaveBeenCalledWith('owner-1', 'Help', 'My question', {
+      sessionId: 'session-1',
+      botMessageId: '33333333-3333-4333-8333-333333333333',
+      userMessageId: '44444444-4444-4444-8444-444444444444',
+      userMessageBody: 'My original question',
+    });
     expect(messagesQuery.maybeSingle).toHaveBeenCalledTimes(2);
   });
 });

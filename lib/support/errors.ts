@@ -12,6 +12,7 @@ const SUPPORT_ERRORS: Record<string, { key: string; action: SupportErrorAction }
   OPERATION_CONFLICT: { key: 'conflict', action: 'edit_input' },
   TICKET_LOCKED: { key: 'closed', action: 'reopen_ticket' },
   HANDOFF_REVIEW_REQUIRED: { key: 'handoffChanged', action: 'review_handoff' },
+  HANDOFF_CONSENT_REQUIRED: { key: 'handoffChanged', action: 'review_handoff' },
   PREVIEW_UNAVAILABLE: { key: 'handoffChanged', action: 'review_handoff' },
   OPERATION_UNKNOWN: { key: 'checking', action: 'check_operation' },
   READ_UNAVAILABLE: { key: 'readUnavailable', action: 'retry_read' },

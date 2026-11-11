@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { cleanUserContent } from '@/lib/moderation/clean';
 import { createClient } from '@/lib/supabase/server';
-import { createHandoffToken } from '@/lib/support/handoff-token';
+import { createHandoffToken, type HandoffSource } from '@/lib/support/handoff-token';
 
 const schema = z.object({
   subject: z.string().trim().min(1).max(255),
@@ -20,6 +20,7 @@ export async function POST(request: Request) {
     const { data: { user } } = await auth.auth.getUser();
     if (!user) return apiFail('UNAUTHORIZED', 'Sign in to prepare a support ticket.', 401);
     const service = createServiceClient();
+    let source: HandoffSource = { sessionId: null, botMessageId: null, userMessageId: null, userMessageBody: null };
     if (parsed.data.messageId && !parsed.data.sessionKey) {
       return apiFail('HANDOFF_REVIEW_REQUIRED', 'Review the ticket details again before submitting.', 409);
     }
@@ -42,20 +43,32 @@ export async function POST(request: Request) {
       if (!botMessage?.reply_to_message_id) return apiFail('HANDOFF_REVIEW_REQUIRED', 'Review the ticket details again before submitting.', 409);
       const { data: userMessage, error: userMessageError } = await service
         .from('chatbot_messages')
-        .select('id')
+        .select('id, body')
         .eq('id', botMessage.reply_to_message_id)
         .eq('session_id', session.id)
         .eq('role', 'user')
         .maybeSingle();
       if (userMessageError) return apiFail('READ_UNAVAILABLE', 'Unable to verify the selected conversation.', 503);
       if (!userMessage) return apiFail('HANDOFF_REVIEW_REQUIRED', 'Review the ticket details again before submitting.', 409);
+      source = {
+        sessionId: session.id,
+        botMessageId: botMessage.id,
+        userMessageId: userMessage.id,
+        userMessageBody: userMessage.body,
+      };
     }
     const [subject, summary] = await Promise.all([
       cleanUserContent(parsed.data.subject, service),
       cleanUserContent(parsed.data.summary, service),
     ]);
-    const handoffToken = await createHandoffToken(user.id, subject.display, summary.display, parsed.data.messageId);
-    const response = apiOk({ subject: subject.display, summary: summary.display, handoffToken, sourceMessageId: parsed.data.messageId ?? null });
+    const handoffToken = await createHandoffToken(user.id, subject.display, summary.display, source);
+    const response = apiOk({
+      subject: subject.display,
+      summary: summary.display,
+      handoffToken,
+      sourceMessageId: source.userMessageId,
+      sourceMessage: source.userMessageBody,
+    });
     response.headers.set('Cache-Control', 'private, no-store');
     return response;
   } catch {

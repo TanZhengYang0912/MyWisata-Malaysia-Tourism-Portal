@@ -343,6 +343,7 @@
       "subject": "Tajuk tiket",
       "summary": "Apakah yang perlu diketahui oleh pasukan sokongan?",
       "consent": "Saya bersetuju berkongsi tajuk dan mesej di atas dengan Sokongan.",
+      "selectedQuestion": "Soalan yang dikongsi",
       "confirm": "Cipta tiket",
       "cancel": "Batal",
       "invalid": "Masukkan tajuk dan mesej dalam had aksara.",

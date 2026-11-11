@@ -34,6 +34,8 @@ export const supportTicketSchema = z.object({
   sessionKey: z.string().min(1).max(64).optional(),
   operationId: z.string().uuid().optional(),
   handoffToken: z.string().min(1).max(4096).optional(),
+  consent: z.boolean().optional(),
+  sourceMessageId: z.string().uuid().optional(),
   withdrawalId: z.string().uuid().optional(),
   subject: z.string().trim().min(1).max(255),
   body: z.string().trim().min(1).max(2000),

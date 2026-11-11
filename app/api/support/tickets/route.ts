@@ -23,7 +23,7 @@ import { logModerationFlag } from '@/lib/moderation/flags';
 import { createServiceClient } from '@/lib/supabase/service';
 import { reserveAiQuota } from '@/lib/rate-limit/ai';
 import { prepareExternalText } from '@/lib/chatbot/pii';
-import { verifyHandoffToken } from '@/lib/support/handoff-token';
+import { createTicketFromHandoff } from '@/lib/support/handoff-token';
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -89,7 +89,8 @@ export async function POST(request: Request) {
 
   const parsed = await parseBody(request, supportTicketSchema);
   if (!parsed.ok) return parsed.response;
-  const { sessionKey, withdrawalId, subject, body, operationId, handoffToken } = parsed.data;
+  const { sessionKey, withdrawalId, subject, body, operationId, handoffToken, consent } = parsed.data;
+  const sourceMessageId = parsed.data.sourceMessageId;
   if (sessionKey) {
     // Legacy requests may still carry a session key, but no Support endpoint
     // should read its transcript or attach the live session to a new ticket.
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
       .select('id, user_id, status')
       .eq('id', withdrawalId)
       .maybeSingle();
-    if (withdrawalError) return apiFail('DB_ERROR', withdrawalError.message, 500);
+    if (withdrawalError) return apiFail('READ_UNAVAILABLE', 'Unable to verify this withdrawal right now.', 503);
     if (!withdrawal || withdrawal.user_id !== user.id) return apiFail('FORBIDDEN', 'This withdrawal is not yours', 403);
     if (withdrawal.status !== 'hold') return apiFail('INVALID_STATE', 'Only a held withdrawal can be linked to this support ticket', 409);
   }
@@ -118,11 +119,9 @@ export async function POST(request: Request) {
   const cleanedBody = await cleanUserContent(body, moderationService);
 
   if (!withdrawalId) {
+    if (consent !== true) return apiFail('HANDOFF_CONSENT_REQUIRED', 'Confirm that you want to share this reviewed ticket with Support.', 422);
     if (!operationId || !handoffToken) {
       return apiFail('UPDATE_REQUIRED', 'Refresh Support and review the ticket details before submitting.', 409);
-    }
-    if (!(await verifyHandoffToken(handoffToken, ownerUserId, cleanedSubject.display, cleanedBody.display))) {
-      return apiFail('HANDOFF_REVIEW_REQUIRED', 'Review the ticket details again before submitting.', 409);
     }
   }
 
@@ -142,7 +141,7 @@ export async function POST(request: Request) {
     return query.maybeSingle();
   }
 
-  if (operationId) {
+  if (operationId && withdrawalId) {
     const { data: existing, error: lookupError } = await findOperationResult();
     if (lookupError) return apiFail('READ_UNAVAILABLE', 'Unable to check the ticket submission result.', 503);
     if (existing) {
@@ -157,59 +156,84 @@ export async function POST(request: Request) {
   // optional enrichment after the ticket exists, so a timeout or lost HTTP
   // response cannot cause the same user intent to invoke Gemini twice.
   const keywordClassification = await classifyTicketSmart(cleanedSubject.display, cleanedBody.display, false);
-
-  const { data, error } = await moderationService
-    .from('support_tickets')
-    .insert({
-      user_id: ownerUserId,
-      // The ticket contains only its explicitly confirmed body. Keep no live
-      // chat-session link that could expose later or unrelated conversation.
-      session_id: null,
-      withdrawal_id: withdrawalId ?? null,
+  const allowedCategories = new Set(['booking', 'payment', 'vendor', 'withdrawal', 'affiliate', 'general']);
+  const safeCategory = allowedCategories.has(keywordClassification.category) ? keywordClassification.category : 'general';
+  let createdTicket: { id: string; category: string; created: boolean };
+  if (!withdrawalId) {
+    const result = await createTicketFromHandoff({
+      ownerId: ownerUserId,
+      operationId: operationId!,
+      operationPayloadHash,
+      token: handoffToken!,
       subject: cleanedSubject.display,
-      body: cleanedBody.display,
-      category: keywordClassification.category,
-      classification_method: 'keyword',
-      status: 'open',
-      operation_id: operationId ?? null,
-      operation_payload_hash: operationId ? operationPayloadHash : null,
-    })
-    .select('id,category')
-    .single();
-
-  if (error) {
-    if (operationId && error.code === '23505') {
-      const { data: existing } = await findOperationResult();
-      if (existing?.operation_payload_hash === operationPayloadHash) {
-        return apiOk({ id: existing.id, category: existing.category }, { status: 200 });
+      summary: cleanedBody.display,
+      sourceMessageId: sourceMessageId ?? null,
+      category: safeCategory,
+    });
+    if (result.error || !result.data) {
+      if (result.error === 'support_ticket_operation_conflict') {
+        return apiFail('OPERATION_CONFLICT', 'This submission key was already used for different ticket details.', 409);
       }
-      if (existing) return apiFail('OPERATION_CONFLICT', 'This submission key was already used for different ticket details.', 409);
+      if (result.error === 'support_handoff_invalid' || result.error === 'support_handoff_expired' || result.error === 'support_handoff_consumed') {
+        return apiFail('HANDOFF_REVIEW_REQUIRED', 'Review and confirm the ticket details again before submitting.', 409);
+      }
+      return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the ticket submission. Check your support requests before trying again.', 503);
     }
-    return apiFail('DB_ERROR', error.message, 500);
+    createdTicket = result.data;
+  } else {
+    const { data, error } = await moderationService
+      .from('support_tickets')
+      .insert({
+        user_id: ownerUserId,
+        session_id: null,
+        withdrawal_id: withdrawalId,
+        subject: cleanedSubject.display,
+        body: cleanedBody.display,
+        category: safeCategory,
+        classification_method: 'keyword',
+        status: 'open',
+        operation_id: operationId ?? null,
+        operation_payload_hash: operationId ? operationPayloadHash : null,
+      })
+      .select('id,category')
+      .single();
+
+    if (error) {
+      if (operationId && error.code === '23505') {
+        const { data: existing } = await findOperationResult();
+        if (existing?.operation_payload_hash === operationPayloadHash) {
+          return apiOk({ id: existing.id, category: existing.category }, { status: 200 });
+        }
+        if (existing) return apiFail('OPERATION_CONFLICT', 'This submission key was already used for different ticket details.', 409);
+      }
+      return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the ticket submission. Check your support requests before trying again.', 503);
+    }
+    createdTicket = { ...data, created: true };
   }
 
-  let category = data.category;
-  const allowAiClassification = prepareExternalText(`${cleanedSubject.display}\n${cleanedBody.display}`).allowed
-    && await reserveAiQuota(request, 'ticket_classification', user?.id ?? null).catch(() => false);
+  let category = createdTicket.category;
+  const allowAiClassification = createdTicket.created
+    && prepareExternalText(`${cleanedSubject.display}\n${cleanedBody.display}`).allowed
+    && await reserveAiQuota(request, 'ticket_classification', user.id).catch(() => false);
   if (allowAiClassification) {
     const aiClassification = await classifyTicketSmart(cleanedSubject.display, cleanedBody.display, true);
     if (aiClassification.method === 'ai') {
       const { error: classificationUpdateError } = await moderationService
         .from('support_tickets')
         .update({ category: aiClassification.category, classification_method: 'ai' })
-        .eq('id', data.id);
+        .eq('id', createdTicket.id);
       if (!classificationUpdateError) category = aiClassification.category;
     }
   }
 
-  if (cleanedSubject.hadSlur || cleanedBody.hadSlur) {
+  if (createdTicket.created && (cleanedSubject.hadSlur || cleanedBody.hadSlur)) {
     await logModerationFlag(moderationService, {
       sourceType: 'ticket',
-      sourceId: data.id,
+      sourceId: createdTicket.id,
       userId: user?.id ?? null,
       originalExcerpt: cleanedSubject.hadSlur ? cleanedSubject.original : cleanedBody.original,
     });
   }
 
-  return apiOk({ id: data.id, category }, { status: 201 });
+  return apiOk({ id: createdTicket.id, category }, { status: createdTicket.created ? 201 : 200 });
 }

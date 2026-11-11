@@ -220,3 +220,42 @@ test('mocked corrupt operation reference is cleared before a new safe submission
   await page.getByRole('button', { name: 'Send information' }).click();
   await expect.poll(() => submittedOperationId).toMatch(/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i);
 });
+
+test('mocked ticket history loads earlier replies in a bounded page and keeps the visible thread', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const ticketId = '91f243cf-f7a9-4c60-8eb3-1b102fb9a942';
+  const cursor = { createdAt: '2026-04-01T00:29:00.000Z', id: '00000000-0000-4000-8000-000000000029' };
+  let historyRequestUrl = '';
+  const replies = Array.from({ length: 30 }, (_, index) => ({
+    id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+    is_mine: index % 2 === 0,
+    sender_role: index % 2 === 0 ? 'customer' : 'admin',
+    body: `Recent reply ${index + 1}`,
+    created_at: new Date(Date.UTC(2026, 2, index + 1)).toISOString(),
+    attachment_type: null,
+  }));
+  replies[29].sender_role = 'admin';
+  await context.route(`**/api/support/tickets/${ticketId}`, (route) => route.fulfill({ status: 200, json: { data: {
+    id: ticketId, viewerIsOwner: true, subject: 'History test', body: 'Original request', category: 'general', status: 'open',
+    createdAt: '2026-02-01T00:00:00.000Z', resolvedAt: null, muted: false, replies, repliesCursor: cursor,
+  }, error: null } }));
+  await context.route(`**/api/support/tickets/${ticketId}/read`, (route) => route.fulfill({ status: 200, json: { data: { changed: false }, error: null } }));
+  await context.route('**/api/support/drafts?surface=ticket_reply**', (route) => route.fulfill({ status: 200, json: {
+    data: { body: '', version: 0 }, error: null,
+  } }));
+  await context.route(`**/api/support/tickets/${ticketId}/replies?*`, async (route) => {
+    historyRequestUrl = route.request().url();
+    await route.fulfill({ status: 200, json: { data: {
+      replies: [{ id: '00000000-0000-4000-8000-000000000000', is_mine: false, sender_role: 'admin', body: 'Earlier reply restored', created_at: '2026-03-01T00:00:00.000Z', attachment_type: null }],
+      nextCursor: null,
+    }, error: null } });
+  });
+
+  await page.goto(`/customer/support/${ticketId}`);
+  await expect(page.getByText('Recent reply 30')).toBeVisible();
+  await page.getByRole('button', { name: 'Load earlier messages' }).click();
+  await expect(page.getByText('Earlier reply restored')).toBeVisible();
+  await expect(page.getByText('Recent reply 30')).toBeVisible();
+  expect(new URL(historyRequestUrl).searchParams.get('beforeCreatedAt')).toBe(cursor.createdAt);
+  expect(new URL(historyRequestUrl).searchParams.get('beforeId')).toBe(cursor.id);
+});

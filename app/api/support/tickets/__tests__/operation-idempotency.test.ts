@@ -1,24 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), classify: vi.fn() }));
-
-function query(result: unknown) {
-  const terminal = Promise.resolve(result);
-  const builder: Record<string, ReturnType<typeof vi.fn>> = {};
-  for (const method of ['select', 'eq', 'insert']) builder[method] = vi.fn(() => builder);
-  builder.maybeSingle = vi.fn(() => terminal);
-  builder.single = vi.fn(() => terminal);
-  builder.then = terminal.then.bind(terminal) as ReturnType<typeof vi.fn>;
-  return builder;
-}
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), rpc: vi.fn(), classify: vi.fn(), createTicketFromHandoff: vi.fn() }));
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser } })) }));
-vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: mocks.from }) }));
+vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: mocks.from, rpc: mocks.rpc }) }));
 vi.mock('@/lib/moderation/clean', () => ({ cleanUserContent: vi.fn(async (text: string) => ({ display: text, original: text, hadSlur: false, hadPII: false })) }));
 vi.mock('@/lib/moderation/flags', () => ({ logModerationFlag: vi.fn() }));
 vi.mock('@/lib/chatbot/classify-ai', () => ({ classifyTicketSmart: mocks.classify }));
 vi.mock('@/lib/rate-limit/ai', () => ({ reserveAiQuota: vi.fn(async () => false) }));
-vi.mock('@/lib/support/handoff-token', () => ({ verifyHandoffToken: vi.fn(async () => true) }));
+vi.mock('@/lib/support/handoff-token', () => ({ createTicketFromHandoff: mocks.createTicketFromHandoff }));
 vi.mock('@/lib/support/unread', () => ({ getLatestReplyTimestamps: vi.fn(), isUnread: vi.fn() }));
 
 import { POST } from '../route';
@@ -29,7 +19,7 @@ function request(body: Record<string, unknown>) {
   return new Request('http://localhost/api/support/tickets', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ operationId, handoffToken: 'test-handoff-token', subject: 'Help with my order', body: 'Please check my order', ...body }),
+    body: JSON.stringify({ operationId, handoffToken: 'test-handoff-token', consent: true, subject: 'Help with my order', body: 'Please check my order', ...body }),
   });
 }
 
@@ -37,47 +27,39 @@ describe('POST /api/support/tickets operation idempotency', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'owner-1' } }, error: null });
+    mocks.classify.mockResolvedValue({ category: 'general', method: 'keyword' });
+    mocks.createTicketFromHandoff.mockResolvedValue({ data: { id: 'ticket-existing', category: 'booking', created: false }, error: null });
   });
 
-  it('returns the existing ticket for a repeated operation with the same payload', async () => {
-    const existing = query({ data: {
-      id: 'ticket-1',
-      category: 'booking',
-      operation_payload_hash: '0c06c67db384d55511d1a718bce7d13157fb25daa46cdd44ff766c51bdb34546',
-    }, error: null });
-    mocks.from.mockReturnValue(existing);
-
+  it('returns the existing ticket for a repeated operation and lets the atomic RPC consume the same preview', async () => {
     const response = await POST(request({}));
 
     expect(response.status).toBe(200);
-    expect(mocks.classify).not.toHaveBeenCalled();
-    expect(existing.insert).not.toHaveBeenCalled();
+    expect(mocks.createTicketFromHandoff).toHaveBeenCalledWith(expect.objectContaining({ ownerId: 'owner-1', token: 'test-handoff-token' }));
   });
 
-  it('hashes normalized submission content using Web Crypto', async () => {
-    const builder = query({ data: { id: 'ticket-new', category: 'general' }, error: null });
-    const resultLookup = query({ data: null, error: null });
-    mocks.from.mockReturnValueOnce(resultLookup).mockReturnValueOnce(builder);
-    mocks.classify.mockResolvedValue({ category: 'general', method: 'keyword' });
+  it('requires explicit confirmation and passes normalized content and its operation hash to the transaction', async () => {
+    const missingConsent = await POST(request({ consent: false }));
+    expect(missingConsent.status).toBe(422);
+    expect(mocks.createTicketFromHandoff).not.toHaveBeenCalled();
+
+    mocks.createTicketFromHandoff.mockResolvedValue({ data: { id: 'ticket-new', category: 'general', created: true }, error: null });
     const response = await POST(request({ operationId: 'd3277304-74a2-4fc8-9ba7-301fce273dd7' }));
     expect(response.status).toBe(201);
-    expect(builder.insert).toHaveBeenCalledTimes(1);
-    const insert = builder.insert.mock.calls[0]?.[0] as { operation_payload_hash: string };
-    expect(insert.operation_payload_hash).toBe('0c06c67db384d55511d1a718bce7d13157fb25daa46cdd44ff766c51bdb34546');
+    expect(mocks.createTicketFromHandoff).toHaveBeenCalledWith(expect.objectContaining({
+      ownerId: 'owner-1',
+      subject: 'Help with my order',
+      summary: 'Please check my order',
+      operationPayloadHash: '0c06c67db384d55511d1a718bce7d13157fb25daa46cdd44ff766c51bdb34546',
+    }));
   });
 
   it('rejects reuse of an operation key for different ticket details', async () => {
-    const existing = query({ data: {
-      id: 'ticket-1',
-      category: 'booking',
-      operation_payload_hash: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-    }, error: null });
-    mocks.from.mockReturnValue(existing);
+    mocks.createTicketFromHandoff.mockResolvedValue({ data: null, error: 'support_ticket_operation_conflict' });
 
     const response = await POST(request({ body: 'Different content' }));
 
     expect(response.status).toBe(409);
-    expect(mocks.classify).not.toHaveBeenCalled();
-    expect(existing.insert).not.toHaveBeenCalled();
+    expect(mocks.createTicketFromHandoff).toHaveBeenCalledTimes(1);
   });
 });

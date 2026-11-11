@@ -350,9 +350,11 @@ describe("Task 5 shared runtime behavior", () => {
   it("drives the real chatbot send and ticket handlers without translating API answers or ticket subjects", async () => {
     mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
     const question = "Why is my wallet withdrawal still pending?";
+    const reviewedSubject = "Please check withdrawal status";
     const answer = "API answer [zh]: withdrawals can take two business days.";
     const askPayloads: { question?: string; operationId?: string; sessionKey?: string }[] = [];
     let ticketPayload: { operationId?: string; handoffToken?: string; subject?: string; body?: string } | undefined;
+    let handoffPreviewCalls = 0;
     mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
       if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
@@ -369,7 +371,14 @@ describe("Task 5 shared runtime behavior", () => {
       if (String(url).startsWith("/api/support/drafts?") && init?.method !== "DELETE") return response({ data: { subject: "", body: "", version: 0 } });
       if (String(url).startsWith("/api/support/drafts?") && init?.method === "DELETE") return response({ data: { cleared: true } });
       if (url === "/api/support/drafts" && init?.method === "PUT") return response({ data: { version: 1, changed: true } });
-      if (url === "/api/support/handoff/preview") return response({ data: { subject: question, summary: question, handoffToken: "signed-preview-token" }, error: null });
+      if (url === "/api/support/handoff/preview") {
+        handoffPreviewCalls += 1;
+        return response({ data: {
+          subject: handoffPreviewCalls === 1 ? reviewedSubject : reviewedSubject,
+          summary: question,
+          handoffToken: "signed-preview-token",
+        }, error: null });
+      }
       if (url === "/api/support/tickets") {
         ticketPayload = JSON.parse(String(init?.body)) as { operationId?: string; subject?: string; body?: string };
         return response({ data: { id: "ticket-zh-1", category: "support" }, error: null });
@@ -414,7 +423,14 @@ describe("Task 5 shared runtime behavior", () => {
     await click(consent);
     expect(findButton("Create translated ticket").disabled).toBe(false);
     await click(findButton("Create translated ticket"));
-    expect(ticketPayload).toEqual(expect.objectContaining({ subject: question, body: question, handoffToken: "signed-preview-token" }));
+    expect(ticketPayload).toBeUndefined();
+    expect(findButton("Create translated ticket").disabled).toBe(true);
+    expect(container.textContent).toContain("chatbot.handoff.cleanedReview");
+    (consent as unknown as { checked: boolean }).checked = true;
+    await click(consent);
+    await click(findButton("Create translated ticket"));
+    expect(ticketPayload).toEqual(expect.objectContaining({ subject: reviewedSubject, body: question, handoffToken: "signed-preview-token" }));
+    expect(handoffPreviewCalls).toBe(2);
     expect(ticketPayload?.operationId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(document.defaultView?.localStorage.getItem("mw_chatbot_support_operations:customer-1")).not.toContain(question);
   });

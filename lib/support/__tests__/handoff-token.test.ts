@@ -1,42 +1,63 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ insert: vi.fn(), select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn() }));
-vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: () => ({ insert: mocks.insert, select: mocks.select, eq: mocks.eq, maybeSingle: mocks.maybeSingle }) }) }));
+const mocks = vi.hoisted(() => ({ insert: vi.fn(), rpc: vi.fn() }));
+vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: () => ({ insert: mocks.insert }), rpc: mocks.rpc }) }));
 
-import { createHandoffToken, verifyHandoffToken } from '../handoff-token';
+import { createHandoffToken, createTicketFromHandoff, handoffContentHash } from '../handoff-token';
 
 describe('handoff preview token', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.insert.mockResolvedValue({ error: null });
-    mocks.select.mockReturnThis();
-    mocks.eq.mockReturnThis();
-    mocks.maybeSingle.mockResolvedValue({
-      data: { owner_id: 'owner-1', content_hash: 'b'.repeat(64), expires_at: new Date(Date.now() + 60_000).toISOString() },
-      error: null,
-    });
+    mocks.rpc.mockResolvedValue({ data: [{ ticket_id: 'ticket-1', category: 'general', created: true }], error: null });
   });
 
-  it('stores only hashes and returns an opaque random token', async () => {
-    const token = await createHandoffToken('owner-1', 'Booking issue', 'My booking is missing', '33333333-3333-4333-8333-333333333333');
+  it('stores hashes and verified source ids and returns an opaque random token', async () => {
+    const token = await createHandoffToken('owner-1', 'Booking issue', 'My booking is missing', {
+      sessionId: '11111111-1111-4111-8111-111111111111',
+      botMessageId: '33333333-3333-4333-8333-333333333333',
+      userMessageId: '44444444-4444-4444-8444-444444444444',
+      userMessageBody: 'A sanitized question',
+    });
     const record = mocks.insert.mock.calls[0][0] as Record<string, unknown>;
 
     expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(token).not.toContain('Booking issue');
     expect(JSON.stringify(record)).not.toContain('My booking is missing');
-    expect(JSON.stringify(record)).not.toContain('33333333-3333-4333-8333-333333333333');
+    expect(record.source_bot_message_id).toBe('33333333-3333-4333-8333-333333333333');
+    expect(record.source_user_message_id).toBe('44444444-4444-4444-8444-444444444444');
+    expect(record.source_message_hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(record).not.toHaveProperty('source_message_body');
     expect(record.token_hash).not.toBe(token);
     expect(record.content_hash).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it('verifies owner and reviewed content without exposing preview fields in the token', async () => {
-    const token = await createHandoffToken('owner-1', 'Booking issue', 'My booking is missing');
-    const record = mocks.insert.mock.calls[0][0] as { content_hash: string };
-    mocks.maybeSingle.mockResolvedValue({ data: { owner_id: 'owner-1', content_hash: record.content_hash, expires_at: new Date(Date.now() + 60_000).toISOString() }, error: null });
+  it('binds the submitted owner, token and reviewed content in the atomic consume call', async () => {
+    const token = 'A'.repeat(43);
+    await expect(createTicketFromHandoff({
+      ownerId: '11111111-1111-4111-8111-111111111111',
+      operationId: '22222222-2222-4222-8222-222222222222',
+      operationPayloadHash: 'c'.repeat(64),
+      token,
+      subject: 'Booking issue',
+      summary: 'My booking is missing',
+      sourceMessageId: '44444444-4444-4444-8444-444444444444',
+      category: 'booking',
+    })).resolves.toEqual({ data: { id: 'ticket-1', category: 'general', created: true }, error: null });
+    expect(mocks.rpc).toHaveBeenCalledWith('create_support_ticket_from_handoff', expect.objectContaining({
+      p_owner_id: '11111111-1111-4111-8111-111111111111',
+      p_content_hash: handoffContentHash('Booking issue', 'My booking is missing', '44444444-4444-4444-8444-444444444444'),
+      p_source_message_id: '44444444-4444-4444-8444-444444444444',
+      p_subject: 'Booking issue',
+      p_body: 'My booking is missing',
+    }));
+  });
 
-    await expect(verifyHandoffToken(token, 'owner-1', 'Booking issue', 'My booking is missing')).resolves.toBe(true);
-    await expect(verifyHandoffToken(token, 'owner-2', 'Booking issue', 'My booking is missing')).resolves.toBe(false);
-    await expect(verifyHandoffToken(token, 'owner-1', 'Changed title', 'My booking is missing')).resolves.toBe(false);
-    await expect(verifyHandoffToken(`${token}x`, 'owner-1', 'Booking issue', 'My booking is missing')).resolves.toBe(false);
+  it('rejects malformed handoff tokens before database access', async () => {
+    await expect(createTicketFromHandoff({
+      ownerId: 'owner-1', operationId: 'operation-1', operationPayloadHash: 'c'.repeat(64),
+      token: 'bad', subject: 'Help', summary: 'Question', category: 'general',
+    })).resolves.toEqual({ data: null, error: 'support_handoff_invalid' });
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });
