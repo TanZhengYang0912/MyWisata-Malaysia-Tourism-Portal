@@ -14,10 +14,26 @@ export async function POST(request: Request) {
   const { data: { user } } = await auth.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in to continue this conversation.', 401);
   const guestCredential = readChatbotGuestCredential(request);
-  if (!guestCredential) return apiFail('GUEST_SESSION_REQUIRED', 'This guest conversation is no longer available. Start a new chat.', 401);
-
   const parsed = await parseBody(request, claimSchema);
   if (!parsed.ok) return parsed.response;
+
+  if (!guestCredential) {
+    try {
+      const { data, error } = await createServiceClient().rpc('claim_chatbot_guest_session', {
+        p_session_key: parsed.data.sessionKey,
+        p_user_id: user.id,
+        p_guest_token_hash: null,
+      });
+      if (!error && typeof data === 'object' && data !== null && data.session_key === parsed.data.sessionKey && data.already_owned === true) {
+        const response = NextResponse.json({ data: { sessionKey: parsed.data.sessionKey, alreadyOwned: true }, error: null });
+        response.headers.set('Cache-Control', 'private, no-store');
+        return response;
+      }
+    } catch {
+      // Keep the same public recovery response for unconfirmed claims.
+    }
+    return apiFail('GUEST_SESSION_REQUIRED', 'This guest conversation is no longer available. Start a new chat.', 401);
+  }
 
   try {
     const { data, error } = await createServiceClient().rpc('claim_chatbot_guest_session', {

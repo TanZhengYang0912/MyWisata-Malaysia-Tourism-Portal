@@ -14,9 +14,6 @@ export async function POST(request: Request) {
   if (!parsed.ok) return parsed.response;
   const auth = await createClient();
   const { data: { user } } = await auth.auth.getUser();
-  const response = NextResponse.json({ data: { ready: true, guest: !user }, error: null });
-  response.headers.set('Cache-Control', 'private, no-store');
-  response.headers.set('Referrer-Policy', 'no-referrer');
   if (!user && !readChatbotGuestCredential(request)) {
     const credential = newChatbotGuestCredential();
     if (parsed.data.sessionKey) {
@@ -26,16 +23,21 @@ export async function POST(request: Request) {
         .maybeSingle();
       if (error) return apiFail('READ_UNAVAILABLE', 'Unable to restore this conversation. Try again.', 503);
       if (session && (session.user_id !== null || session.channel !== 'customer')) {
-        return apiFail('GUEST_SESSION_REQUIRED', 'This guest conversation cannot be restored in this browser. Start a new chat or sign in.', 409);
+          return apiFail('GUEST_SESSION_REQUIRED', 'This guest conversation cannot be restored in this browser. Start a new chat or sign in.', 409);
       }
-      if (session?.guest_token_hash) {
-        return apiFail('GUEST_SESSION_REQUIRED', 'This guest conversation cannot be restored in this browser. Start a new chat or sign in.', 409);
-      }
+      if (session?.guest_token_hash) return apiFail('GUEST_SESSION_REQUIRED', 'This guest conversation cannot be restored in this browser. Start a new chat or sign in.', 409);
       if (session && !await bindChatbotGuestSessionToken(parsed.data.sessionKey, hashChatbotGuestCredential(credential))) {
         return apiFail('READ_UNAVAILABLE', 'Unable to restore this conversation. Try again.', 503);
       }
     }
+    const response = NextResponse.json({ data: { ready: true, guest: true }, error: null });
     setChatbotGuestCookie(response, credential);
+    response.headers.set('Cache-Control', 'private, no-store');
+    response.headers.set('Referrer-Policy', 'no-referrer');
+    return response;
   }
+  const response = NextResponse.json({ data: { ready: true, guest: !user }, error: null });
+  response.headers.set('Cache-Control', 'private, no-store');
+  response.headers.set('Referrer-Policy', 'no-referrer');
   return response;
 }

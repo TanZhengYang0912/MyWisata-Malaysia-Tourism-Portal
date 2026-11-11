@@ -330,6 +330,7 @@
     "askOperationConflict": "This does not match the earlier pending question. Send it again to start a new request.",
     "guestCookieUnavailable": "Guest chat needs cookies. Enable cookies or sign in, then send again.",
     "guestSessionUnavailable": "This guest chat cannot be restored in this browser. Start a new chat or sign in.",
+    "newConversation": "Start new chat",
     "guestClaim": {
       "prompt": "Continue your guest support chat on this account?",
       "continue": "Continue chat",

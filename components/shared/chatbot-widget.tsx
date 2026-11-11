@@ -208,6 +208,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   const [guestClaimCandidate, setGuestClaimCandidate] = useState<{ ownerId: string; sessionKey: string } | null>(null);
   const [guestClaiming, setGuestClaiming] = useState(false);
   const [guestClaimError, setGuestClaimError] = useState<string | null>(null);
+  const [guestRecoverySessionKey, setGuestRecoverySessionKey] = useState<string | null>(null);
   const [messageState, setMessageState] = useState<{ ownerId: string | null; value: ChatMessage[] }>({ ownerId: identityKey, value: [] });
   const messages = useMemo(() => messageState.ownerId === identityKey ? messageState.value : [], [identityKey, messageState]);
   const setMessages = (update: ChatMessage[] | ((current: ChatMessage[]) => ChatMessage[])) => setMessageState((previous) => {
@@ -349,6 +350,26 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     }
   }
 
+  function startNewGuestConversation() {
+    if (!guestRecoverySessionKey || guestRecoverySessionKey !== sessionKey) return;
+    const nextSessionKey = crypto.randomUUID();
+    try {
+      window.localStorage.setItem(chatbotSessionStorageKey(identityRef.current), nextSessionKey);
+    } catch {
+      setMessages((current) => [...current, { role: 'bot', text: t('chatbot.somethingWrong') }]);
+      return;
+    }
+    historyAbortRef.current?.abort();
+    historyLoadedRef.current = null;
+    setHistoryCursor(null);
+    setHistoryError(false);
+    setMessages([]);
+    setInput('');
+    setStoredSession({ ownerId: identityRef.current, value: nextSessionKey });
+    setGuestRecoverySessionKey(null);
+    guestCookieReadyRef.current = false;
+  }
+
   async function loadChatHistory(targetSessionKey: string, cursor?: ChatHistoryCursor) {
     const requestIdentity = identityRef.current;
     const requestKey = `${requestIdentity ?? "guest"}:${targetSessionKey}:${cursor?.createdAt ?? ""}:${cursor?.id ?? ""}`;
@@ -373,6 +394,9 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         };
       };
       if (!response.ok || !result.data || identityRef.current !== requestIdentity || sessionKey !== targetSessionKey) {
+        if (!response.ok && identityRef.current === requestIdentity && sessionKey === targetSessionKey && requestIdentity === null) {
+          setGuestRecoverySessionKey(targetSessionKey);
+        }
         if (!controller.signal.aborted && identityRef.current === requestIdentity) setHistoryError(true);
         return;
       }
@@ -402,6 +426,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       }
       setHistoryCursor(result.data.nextCursor);
       setHistoryError(false);
+      setGuestRecoverySessionKey(null);
       historyLoadedRef.current = `${requestIdentity ?? "guest"}:${targetSessionKey}`;
     } catch {
       if (!controller.signal.aborted && identityRef.current === requestIdentity) setHistoryError(true);
@@ -984,9 +1009,10 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                     </Button>
                   )}
                   {historyError && (
-                    <div role="alert" className="flex items-center justify-center gap-2 text-xs text-destructive">
-                      <span>{t("chatbot.history.unavailable")}</span>
-                      {sessionKey && <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => void loadChatHistory(sessionKey)} disabled={historyLoading}>{t("chatbot.faq.retry")}</Button>}
+                    <div role="alert" className="flex flex-wrap items-center justify-center gap-2 text-xs text-destructive">
+                      <span>{guestRecoverySessionKey === sessionKey ? t("chatbot.guestSessionUnavailable") : t("chatbot.history.unavailable")}</span>
+                      {sessionKey && guestRecoverySessionKey !== sessionKey && <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => void loadChatHistory(sessionKey)} disabled={historyLoading}>{t("chatbot.faq.retry")}</Button>}
+                      {guestRecoverySessionKey === sessionKey && <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={startNewGuestConversation}>{t("chatbot.newConversation")}</Button>}
                     </div>
                   )}
                   {messages.length === 0 && (

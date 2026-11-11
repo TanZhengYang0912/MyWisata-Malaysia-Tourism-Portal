@@ -68,7 +68,7 @@ BEGIN
     RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'chatbot_guest_claim_service_role_required';
   END IF;
   IF p_session_key IS NULL OR length(p_session_key) < 1 OR length(p_session_key) > 64
-     OR p_user_id IS NULL OR p_guest_token_hash IS NULL OR p_guest_token_hash !~ '^[0-9a-f]{64}$' THEN
+     OR p_user_id IS NULL OR (p_guest_token_hash IS NOT NULL AND p_guest_token_hash !~ '^[0-9a-f]{64}$') THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'chatbot_guest_claim_invalid';
   END IF;
 
@@ -80,7 +80,13 @@ BEGIN
     RAISE EXCEPTION USING ERRCODE = 'P0002', MESSAGE = 'chatbot_guest_session_not_found';
   END IF;
   IF v_session.user_id = p_user_id THEN
+    IF v_session.guest_token_hash IS NOT NULL AND (p_guest_token_hash IS NULL OR v_session.guest_token_hash <> p_guest_token_hash) THEN
+      RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'chatbot_guest_session_conflict';
+    END IF;
     RETURN jsonb_build_object('session_key', v_session.session_key, 'already_owned', true);
+  END IF;
+  IF p_guest_token_hash IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'chatbot_guest_session_conflict';
   END IF;
   IF v_session.user_id IS NOT NULL THEN
     RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'chatbot_guest_session_conflict';
