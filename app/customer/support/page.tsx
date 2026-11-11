@@ -4,7 +4,7 @@
 // missing customer-facing half of the ticket system (admin could already
 // see tickets; customers had no way to see a reply).
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MessageSquare } from "lucide-react";
@@ -56,6 +56,11 @@ export default function CustomerSupportPage() {
   const [sending, setSending] = useState(false);
   const [operationId, setOperationId] = useState(() => crypto.randomUUID());
   const [formError, setFormError] = useState("");
+  const [draftVersion, setDraftVersion] = useState(0);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [draftLoadFailed, setDraftLoadFailed] = useState(false);
+  const draftInputTouched = useRef(false);
 
   const loadTickets = useCallback(async (signal?: AbortSignal) => {
     setLoadingTickets(true);
@@ -85,6 +90,53 @@ export default function CustomerSupportPage() {
     return () => controller.abort();
   }, [loadTickets]);
 
+  const loadWithdrawalDraft = useCallback(async () => {
+    if (!withdrawalId) return;
+    setDraftLoadFailed(false);
+    try {
+      const response = await fetch(`/api/support/drafts?surface=ticket_create&target=${encodeURIComponent(withdrawalId)}`, { cache: "no-store" });
+      const result = await response.json().catch(() => ({})) as { data?: { subject?: string; body?: string; version?: number } };
+      if (!response.ok || !result.data) throw new Error("support_draft_load_failed");
+      if (draftInputTouched.current) return;
+      setSubject(result.data.subject ?? "");
+      setBody(result.data.body ?? "");
+      setDraftVersion(result.data.version ?? 0);
+      setDraftSaved(Boolean(result.data.version));
+    } catch {
+      setDraftLoadFailed(true);
+    }
+  }, [withdrawalId]);
+
+  useEffect(() => {
+    // This effect starts an external read; state updates happen only after its response.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadWithdrawalDraft();
+  }, [loadWithdrawalDraft]);
+
+  async function saveWithdrawalDraft() {
+    if (!withdrawalId || savingDraft || !body.trim()) return;
+    setSavingDraft(true);
+    try {
+      const response = await fetch("/api/support/drafts", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ surface: "ticket_create", target: withdrawalId, subject, body, expectedVersion: draftVersion }),
+      });
+      const result = await response.json().catch(() => ({})) as { data?: { version?: number } };
+      if (!response.ok || typeof result.data?.version !== "number") {
+        setFormError(tCommon("chatbot.handoff.draftSaveFailed"));
+        return;
+      }
+      setDraftVersion(result.data.version);
+      setDraftSaved(true);
+      setFormError("");
+    } catch {
+      setFormError(tCommon("chatbot.handoff.draftSaveFailed"));
+    } finally {
+      setSavingDraft(false);
+    }
+  }
+
   async function submitWithdrawalTicket(event: FormEvent) {
     event.preventDefault();
     if (!withdrawalId || body.trim().length < 1) return;
@@ -99,6 +151,7 @@ export default function CustomerSupportPage() {
         setFormError(result.error?.code ? tCommon(`chatbot.supportErrors.${supportError(result.error.code).key}`) : tCustomer("ui.support.createError"));
         return;
       }
+      void fetch(`/api/support/drafts?surface=ticket_create&target=${encodeURIComponent(withdrawalId)}`, { method: "DELETE" }).catch(() => undefined);
       router.push(`/customer/support/${result.data.id}`);
     } catch {
       setFormError(tCommon("chatbot.supportErrors.unavailable"));
@@ -132,10 +185,15 @@ export default function CustomerSupportPage() {
       {withdrawalId && <form onSubmit={submitWithdrawalTicket} className="mb-6 rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-5 space-y-3">
         <p className="font-semibold text-foreground">{tCustomer("ui.support.contact")}</p>
         <p className="text-sm text-muted-foreground">{tCustomer("ui.support.reference")} {withdrawalId}</p>
-        <input value={subject} onChange={(event) => { setSubject(event.target.value); setOperationId(crypto.randomUUID()); }} maxLength={255} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" aria-label={tCustomer("ui.support.subject")} />
-        <textarea value={body} onChange={(event) => { setBody(event.target.value); setOperationId(crypto.randomUUID()); }} required maxLength={2000} placeholder={tCustomer("ui.support.explain")} className="min-h-28 w-full rounded-xl border border-border bg-background p-3 text-sm" aria-label={tCustomer("ui.support.message")} />
+        <input value={subject} onChange={(event) => { draftInputTouched.current = true; setSubject(event.target.value); setOperationId(crypto.randomUUID()); setDraftSaved(false); }} maxLength={255} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" aria-label={tCustomer("ui.support.subject")} />
+        <textarea value={body} onChange={(event) => { draftInputTouched.current = true; setBody(event.target.value); setOperationId(crypto.randomUUID()); setDraftSaved(false); }} required maxLength={2000} placeholder={tCustomer("ui.support.explain")} className="min-h-28 w-full rounded-xl border border-border bg-background p-3 text-sm" aria-label={tCustomer("ui.support.message")} />
         {formError && <p role="alert" aria-live="assertive" className="text-sm text-red-600 dark:text-red-300">{formError}</p>}
-        <button type="submit" disabled={sending || !body.trim()} aria-busy={sending} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{sending ? tCustomer("ui.states.sending") : tCustomer("ui.support.sendInformation")}</button>
+        {draftLoadFailed && <p role="alert" className="text-sm text-red-600 dark:text-red-300">{tCommon("chatbot.handoff.draftLoadFailed")} <button type="button" className="underline" onClick={() => void loadWithdrawalDraft()}>{tCommon("chatbot.handoff.retryDraftLoad")}</button></p>}
+        <div className="flex items-center gap-2">
+          {draftSaved && <span className="mr-auto text-xs text-muted-foreground">{tCommon("chatbot.handoff.draftSaved")}</span>}
+          <Button type="button" variant="outline" onClick={() => void saveWithdrawalDraft()} disabled={savingDraft || !body.trim()}>{savingDraft ? tCommon("states.loadingEllipsis") : tCommon("chatbot.handoff.saveDraft")}</Button>
+          <button type="submit" disabled={sending || !body.trim()} aria-busy={sending} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{sending ? tCustomer("ui.states.sending") : tCustomer("ui.support.sendInformation")}</button>
+        </div>
       </form>}
 
       {tickets.length === 0 ? (

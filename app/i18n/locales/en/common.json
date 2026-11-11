@@ -342,7 +342,9 @@
       "signIn": "Sign in to create the ticket",
       "saveDraft": "Save draft",
       "draftSaved": "Draft saved",
-      "draftSaveFailed": "Could not save this draft. Your text is still here; try again."
+      "draftSaveFailed": "Could not save this draft. Your text is still here; try again.",
+      "draftLoadFailed": "Could not load the saved draft. Retry loading before you save changes.",
+      "retryDraftLoad": "Retry loading draft"
     },
     "history": {
       "loadEarlier": "Load earlier messages",

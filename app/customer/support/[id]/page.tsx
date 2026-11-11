@@ -51,6 +51,11 @@ export default function CustomerTicketDetailPage() {
   const [ticket, setTicket] = useState<TicketDetail | null | undefined>(undefined);
   const [ticketLoadError, setTicketLoadError] = useState<string | null>(null);
   const [reply, setReply] = useState("");
+  const [replyDraftVersion, setReplyDraftVersion] = useState(0);
+  const [replyDraftSaved, setReplyDraftSaved] = useState(false);
+  const [savingReplyDraft, setSavingReplyDraft] = useState(false);
+  const [replyDraftLoadFailed, setReplyDraftLoadFailed] = useState(false);
+  const replyDraftInputTouched = useRef(false);
   const [replyOperationId, setReplyOperationId] = useState<string | null>(null);
   const [attachmentOperationId, setAttachmentOperationId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -97,6 +102,58 @@ export default function CustomerTicketDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  const loadReplyDraft = async (signal?: AbortSignal) => {
+    if (!currentUser || !ticket?.viewerIsOwner) return;
+    setReplyDraftLoadFailed(false);
+    try {
+      const response = await fetch(`/api/support/drafts?surface=ticket_reply&target=${encodeURIComponent(id)}`, { cache: "no-store", signal });
+      const result = await response.json().catch(() => ({})) as { data?: { body?: string; version?: number } };
+      if (!response.ok || !result.data) throw new Error("support_draft_load_failed");
+      if (signal?.aborted) return;
+      if (replyDraftInputTouched.current) return;
+      setReply(result.data.body ?? "");
+      setReplyDraftVersion(result.data.version ?? 0);
+      setReplyDraftSaved(Boolean(result.data.version));
+    } catch {
+      if (!signal?.aborted) setReplyDraftLoadFailed(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!currentUser || !ticket?.viewerIsOwner) return;
+    const controller = new AbortController();
+    // This effect starts an external read; state updates happen only after its response.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadReplyDraft(controller.signal);
+    return () => controller.abort();
+  // The draft target is the ticket and current account; the load is retried only by the explicit button.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id, id, ticket?.viewerIsOwner]);
+
+  async function saveReplyDraft() {
+    if (!ticket?.viewerIsOwner || savingReplyDraft || !reply.trim()) return;
+    setSavingReplyDraft(true);
+    try {
+      const response = await fetch("/api/support/drafts", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ surface: "ticket_reply", target: id, subject: "", body: reply, expectedVersion: replyDraftVersion }),
+      });
+      const result = await response.json().catch(() => ({})) as { data?: { version?: number } };
+      if (!response.ok || typeof result.data?.version !== "number") {
+        showFeedback("error", tCommon("chatbot.handoff.draftSaveFailed"));
+        return;
+      }
+      setReplyDraftVersion(result.data.version);
+      setReplyDraftSaved(true);
+      showFeedback("success", tCommon("chatbot.handoff.draftSaved"));
+    } catch {
+      showFeedback("error", tCommon("chatbot.handoff.draftSaveFailed"));
+    } finally {
+      setSavingReplyDraft(false);
+    }
+  }
+
   async function sendReply() {
     if (pendingFile) return sendAttachment();
     const text = reply.trim();
@@ -116,7 +173,9 @@ export default function CustomerTicketDetailPage() {
         return;
       }
       setReply("");
+      setReplyDraftSaved(false);
       setReplyOperationId(null);
+      void fetch(`/api/support/drafts?surface=ticket_reply&target=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => undefined);
       showFeedback("success", tCustomer("ui.support.replySent"));
       await loadTicket();
     } catch {
@@ -152,10 +211,12 @@ export default function CustomerTicketDetailPage() {
         return;
       }
       setReply("");
+      setReplyDraftSaved(false);
       setReplyOperationId(null);
       setPendingFile(null);
       setAttachmentOperationId(null);
       showFeedback("success", tCustomer("ui.support.replySent"));
+      void fetch(`/api/support/drafts?surface=ticket_reply&target=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => undefined);
       await loadTicket();
     } catch {
       showFeedback("error", tCommon("chatbot.supportErrors.checking"));
@@ -284,6 +345,7 @@ export default function CustomerTicketDetailPage() {
       ) : (
         <div>
           {speech.error && <p className="mb-1.5 text-xs text-destructive">{tCustomer(SPEECH_ERROR_KEY[speech.error])}</p>}
+          {replyDraftLoadFailed && <p role="alert" className="mb-2 text-sm text-red-600 dark:text-red-300">{tCommon("chatbot.handoff.draftLoadFailed")} <button type="button" className="underline" onClick={() => void loadReplyDraft()}>{tCommon("chatbot.handoff.retryDraftLoad")}</button></p>}
           {pendingFile && (
             <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-secondary/60 px-3 py-2 text-xs">
               <FileText size={18} className="shrink-0 text-primary" />
@@ -307,7 +369,10 @@ export default function CustomerTicketDetailPage() {
             <input
               value={reply}
               onChange={(e) => {
+                replyDraftInputTouched.current = true;
                 setReply(e.target.value);
+                setReplyDraftSaved(false);
+                setReplyDraftLoadFailed(false);
                 setReplyOperationId(e.target.value.trim() ? crypto.randomUUID() : null);
                 if (pendingFile) setAttachmentOperationId(crypto.randomUUID());
               }}
@@ -342,6 +407,10 @@ export default function CustomerTicketDetailPage() {
             <Button size="icon" className="h-10 w-10 rounded-full shrink-0" onClick={sendReply} disabled={sending || uploading || (!reply.trim() && !pendingFile)}>
               <Send size={14} aria-hidden="true" />
             </Button>
+          </div>
+          <div className="mt-2 flex min-h-7 items-center justify-end gap-2">
+            {replyDraftSaved && <span className="mr-auto text-xs text-muted-foreground">{tCommon("chatbot.handoff.draftSaved")}</span>}
+            <Button type="button" size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => void saveReplyDraft()} disabled={savingReplyDraft || !reply.trim()}>{tCommon("chatbot.handoff.saveDraft")}</Button>
           </div>
         </div>
       )}

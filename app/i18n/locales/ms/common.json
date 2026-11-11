@@ -342,7 +342,9 @@
       "signIn": "Log masuk untuk mencipta tiket",
       "saveDraft": "Simpan draf",
       "draftSaved": "Draf disimpan",
-      "draftSaveFailed": "Draf tidak dapat disimpan. Teks masih ada; cuba lagi."
+      "draftSaveFailed": "Draf tidak dapat disimpan. Teks masih ada; cuba lagi.",
+      "draftLoadFailed": "Draf tersimpan tidak dapat dimuatkan. Cuba muatkan semula sebelum menyimpan perubahan.",
+      "retryDraftLoad": "Cuba muatkan semula draf"
     },
     "history": {
       "loadEarlier": "Muatkan mesej terdahulu",
