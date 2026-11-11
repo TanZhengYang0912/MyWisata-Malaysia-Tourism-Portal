@@ -331,6 +331,7 @@
     "handoff": {
       "subject": "Ticket title",
       "summary": "What should the support team know?",
+      "consent": "I agree to share the title and message above with Support.",
       "confirm": "Create ticket",
       "cancel": "Cancel",
       "invalid": "Add a title and message within the character limits.",
@@ -338,7 +339,10 @@
       "check": "Check ticket status",
       "retrySame": "Retry this submission",
       "notCreated": "No ticket is recorded yet. You can safely retry this same submission.",
-      "signIn": "Sign in to create the ticket"
+      "signIn": "Sign in to create the ticket",
+      "saveDraft": "Save draft",
+      "draftSaved": "Draft saved",
+      "draftSaveFailed": "Could not save this draft. Your text is still here; try again."
     },
     "statusQuery": {
       "signIn": "Sign in to check your account records.",

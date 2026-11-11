@@ -4,6 +4,7 @@ type HandoffPayload = {
   ownerId: string;
   subject: string;
   summary: string;
+  sourceMessageId?: string;
   expiresAt: number;
 };
 
@@ -25,8 +26,8 @@ async function signingKey(): Promise<CryptoKey> {
   return crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
 }
 
-export async function createHandoffToken(ownerId: string, subject: string, summary: string): Promise<string> {
-  const payload: HandoffPayload = { ownerId, subject, summary, expiresAt: Date.now() + TOKEN_TTL_MS };
+export async function createHandoffToken(ownerId: string, subject: string, summary: string, sourceMessageId?: string): Promise<string> {
+  const payload: HandoffPayload = { ownerId, subject, summary, sourceMessageId, expiresAt: Date.now() + TOKEN_TTL_MS };
   const encoded = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
   const signature = new Uint8Array(await crypto.subtle.sign('HMAC', await signingKey(), new TextEncoder().encode(encoded)));
   return `${encoded}.${base64UrlEncode(signature)}`;

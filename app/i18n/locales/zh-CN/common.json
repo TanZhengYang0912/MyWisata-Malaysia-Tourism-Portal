@@ -331,6 +331,7 @@
     "handoff": {
       "subject": "工单标题",
       "summary": "请告诉客服团队需要了解什么",
+      "consent": "我同意将上方标题和内容分享给客服。",
       "confirm": "创建工单",
       "cancel": "取消",
       "invalid": "请填写标题和消息，并遵守字数限制。",
@@ -338,7 +339,10 @@
       "check": "查询工单状态",
       "retrySame": "安全重试这次提交",
       "notCreated": "目前没有查到工单。可以安全地重试同一条提交。",
-      "signIn": "登录后创建工单"
+      "signIn": "登录后创建工单",
+      "saveDraft": "保存草稿",
+      "draftSaved": "草稿已保存",
+      "draftSaveFailed": "草稿未能保存，当前文字仍保留；请重试。"
     },
     "statusQuery": {
       "signIn": "登录后即可查询您账户中的记录。",

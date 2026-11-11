@@ -85,6 +85,9 @@ interface ChatMessage {
   handoffPreviewSubject?: string;
   handoffPreviewSummary?: string;
   handoffOperationId?: string;
+  handoffDraftVersion?: number;
+  handoffDraftSaved?: boolean;
+  handoffConsented?: boolean;
   ticketOperationUnknown?: boolean;
   ticketOperationNotFound?: boolean;
   ticketNeedsSignIn?: boolean;
@@ -389,17 +392,33 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     ticketOperationLockRef.current = true;
     ticketOperationIdentityRef.current = requestIdentity;
     const operationId = crypto.randomUUID();
+    const draftTarget = msg.messageId ?? operationId;
     setCreatingTicketFor(msg.messageId ?? operationId);
     try {
+      let subject = resolveTicketSubject(msg.question, t("chatbot.supportRequest"));
+      let summary = msg.question;
+      let draftVersion = 0;
+      const draftResponse = await fetch(`/api/support/drafts?surface=handoff&target=${encodeURIComponent(draftTarget)}`, { cache: "no-store" }).catch(() => null);
+      if (identityRef.current !== requestIdentity) return;
+      if (draftResponse?.ok) {
+        const draftResult = await draftResponse.json().catch(() => ({})) as { data?: { subject?: string; body?: string; version?: number } };
+        if (draftResult.data && typeof draftResult.data.version === "number" && draftResult.data.version > 0) {
+          subject = draftResult.data.subject ?? subject;
+          summary = draftResult.data.body ?? summary;
+          draftVersion = draftResult.data.version;
+        }
+      }
       const response = await fetch("/api/support/handoff/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          subject: resolveTicketSubject(msg.question, t("chatbot.supportRequest")),
-          summary: msg.question ?? "",
+          subject,
+          summary,
+          sessionKey: sessionKey ?? undefined,
+          messageId: msg.messageId,
         }),
       });
-      const result = await response.json().catch(() => ({})) as { data?: { subject: string; summary: string }; error?: { code?: string } };
+      const result = await response.json().catch(() => ({})) as { data?: { subject: string; summary: string; sourceMessageId?: string | null }; error?: { code?: string } };
       if (identityRef.current !== requestIdentity) return;
       if (!response.ok || !result.data) {
         setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError"), ticketErrorCode: result.error?.code, ticketNeedsSignIn: response.status === 401 } : m)));
@@ -413,6 +432,8 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         handoffPreviewSubject: result.data!.subject,
         handoffPreviewSummary: result.data!.summary,
         handoffOperationId: operationId,
+        handoffDraftVersion: draftVersion,
+        handoffDraftSaved: draftVersion > 0,
         ticketError: undefined,
       } : m)));
     } catch {
@@ -425,6 +446,34 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         setCreatingTicketFor(null);
       }
     }
+  }
+
+  async function saveHandoffDraft(index: number) {
+    const msg = messages[index];
+    if (!msg.handoffOperationId || !msg.messageId || !currentUser) return;
+    const requestIdentity = identityRef.current;
+    const response = await fetch("/api/support/drafts", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        surface: "handoff",
+        target: msg.messageId,
+        subject: msg.handoffSubject ?? "",
+        body: msg.handoffSummary ?? "",
+        expectedVersion: msg.handoffDraftVersion ?? 0,
+      }),
+    }).catch(() => null);
+    if (identityRef.current !== requestIdentity) return;
+    const result = await response?.json().catch(() => ({})) as { data?: { version?: number; changed?: boolean } } | undefined;
+    if (!response?.ok || typeof result?.data?.version !== "number") {
+      setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
+        ? { ...item, handoffDraftSaved: false, ticketError: t("chatbot.handoff.draftSaveFailed") }
+        : item));
+      return;
+    }
+    setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
+      ? { ...item, handoffDraftVersion: result.data!.version, handoffDraftSaved: true, ticketError: undefined }
+      : item));
   }
 
   async function confirmTicket(index: number) {
@@ -446,12 +495,12 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       const previewResponse = await fetch("/api/support/handoff/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, summary }),
-      });
-      const previewResult = await previewResponse.json().catch(() => ({})) as { data?: { subject: string; summary: string; handoffToken: string }; error?: { code?: string } };
+        body: JSON.stringify({ subject, summary, sessionKey: sessionKey ?? undefined, messageId: msg.messageId }),
+      }).catch(() => null);
+      const previewResult = await previewResponse?.json().catch(() => ({})) as { data?: { subject: string; summary: string; handoffToken: string; sourceMessageId?: string | null }; error?: { code?: string } } | undefined;
       if (identityRef.current !== requestIdentity) return;
-      if (!previewResponse.ok || !previewResult.data) {
-        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError"), ticketErrorCode: previewResult.error?.code, ticketNeedsSignIn: previewResponse.status === 401 } : m)));
+      if (!previewResponse?.ok || !previewResult?.data) {
+        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError"), ticketErrorCode: previewResult?.error?.code ?? "PREVIEW_UNAVAILABLE", ticketNeedsSignIn: previewResponse?.status === 401 } : m)));
         return;
       }
       if (previewResult.data.subject !== subject || previewResult.data.summary !== summary) {
@@ -475,6 +524,9 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       const ticketErrorText = t("chatbot.ticketError");
       if (res.ok && result.data) {
         setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: "ticket_created", ticketId: result.data!.id, ticketOperationUnknown: false, ticketOperationNotFound: false } : m)));
+        if (msg.messageId && currentUser) {
+          void fetch(`/api/support/drafts?surface=handoff&target=${encodeURIComponent(msg.messageId)}`, { method: "DELETE" });
+        }
         if (msg.messageId && sessionKey) postFeedback({ sessionKey, messageId: msg.messageId, openedTicket: true });
       } else {
         setMessages((prev) => prev.map((m, i) => (i === index ? {
@@ -694,7 +746,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                                   value={m.handoffSubject ?? ""}
                                   maxLength={255}
                                   disabled={m.ticketOperationUnknown || m.ticketOperationNotFound}
-                                  onChange={(event) => setMessages((prev) => prev.map((item, index) => index === i ? { ...item, handoffSubject: event.target.value, handoffOperationId: crypto.randomUUID(), ticketError: undefined } : item))}
+                                  onChange={(event) => setMessages((prev) => prev.map((item, index) => index === i ? { ...item, handoffSubject: event.target.value, handoffOperationId: crypto.randomUUID(), handoffDraftSaved: false, handoffConsented: false, ticketError: undefined } : item))}
                                   className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm font-normal"
                                 />
                               </label>
@@ -705,7 +757,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                                   maxLength={2000}
                                   rows={3}
                                   disabled={m.ticketOperationUnknown || m.ticketOperationNotFound}
-                                  onChange={(event) => setMessages((prev) => prev.map((item, index) => index === i ? { ...item, handoffSummary: event.target.value, handoffOperationId: crypto.randomUUID(), ticketError: undefined } : item))}
+                                  onChange={(event) => setMessages((prev) => prev.map((item, index) => index === i ? { ...item, handoffSummary: event.target.value, handoffOperationId: crypto.randomUUID(), handoffDraftSaved: false, handoffConsented: false, ticketError: undefined } : item))}
                                   className="mt-1 w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm font-normal"
                                 />
                               </label>
@@ -715,11 +767,17 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                                   {t("chatbot.handoff.signIn")}
                                 </Link>
                               )}
-                              <div className="flex justify-end gap-2">
+                              <label className="flex items-start gap-2 text-xs text-muted-foreground">
+                                <input type="checkbox" checked={m.handoffConsented ?? false} onChange={(event) => setMessages((prev) => prev.map((item, index) => index === i ? { ...item, handoffConsented: event.target.checked } : item))} className="mt-0.5 accent-primary" />
+                                <span>{t("chatbot.handoff.consent")}</span>
+                              </label>
+                              <div className="flex items-center justify-end gap-2">
+                                {m.handoffDraftSaved && <span className="mr-auto text-xs text-muted-foreground">{t("chatbot.handoff.draftSaved")}</span>}
+                                {currentUser && <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => void saveHandoffDraft(i)} disabled={!m.handoffSubject?.trim() || !m.handoffSummary?.trim()}>{t("chatbot.handoff.saveDraft")}</Button>}
                                 <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => setMessages((prev) => prev.map((item, index) => index === i ? { ...item, feedbackStage: "ticket_declined", ticketError: undefined } : item))} disabled={creatingTicketFor === (m.messageId ?? m.handoffOperationId) || m.ticketOperationUnknown || m.ticketOperationNotFound}>
                                   {t("chatbot.handoff.cancel")}
                                 </Button>
-                                <Button size="sm" className="h-7 px-2.5 text-xs" onClick={() => m.ticketOperationUnknown ? void checkTicketOperation(i) : void confirmTicket(i)} disabled={creatingTicketFor === (m.messageId ?? m.handoffOperationId) || !m.handoffSubject?.trim() || !m.handoffSummary?.trim()}>
+                                <Button size="sm" className="h-7 px-2.5 text-xs" onClick={() => m.ticketOperationUnknown ? void checkTicketOperation(i) : void confirmTicket(i)} disabled={creatingTicketFor === (m.messageId ?? m.handoffOperationId) || !m.handoffSubject?.trim() || !m.handoffSummary?.trim() || (!m.ticketOperationUnknown && !m.handoffConsented)}>
                                   {creatingTicketFor === (m.messageId ?? m.handoffOperationId) ? t("chatbot.creatingTicket") : m.ticketOperationUnknown ? t("chatbot.handoff.check") : m.ticketOperationNotFound ? t("chatbot.handoff.retrySame") : t("chatbot.handoff.confirm")}
                                 </Button>
                               </div>

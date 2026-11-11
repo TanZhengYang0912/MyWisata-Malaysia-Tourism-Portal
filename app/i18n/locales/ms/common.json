@@ -331,6 +331,7 @@
     "handoff": {
       "subject": "Tajuk tiket",
       "summary": "Apakah yang perlu diketahui oleh pasukan sokongan?",
+      "consent": "Saya bersetuju berkongsi tajuk dan mesej di atas dengan Sokongan.",
       "confirm": "Cipta tiket",
       "cancel": "Batal",
       "invalid": "Masukkan tajuk dan mesej dalam had aksara.",
@@ -338,7 +339,10 @@
       "check": "Semak status tiket",
       "retrySame": "Cuba semula penghantaran ini",
       "notCreated": "Tiket belum direkodkan. Anda boleh menghantar semula permintaan yang sama dengan selamat.",
-      "signIn": "Log masuk untuk mencipta tiket"
+      "signIn": "Log masuk untuk mencipta tiket",
+      "saveDraft": "Simpan draf",
+      "draftSaved": "Draf disimpan",
+      "draftSaveFailed": "Draf tidak dapat disimpan. Teks masih ada; cuba lagi."
     },
     "statusQuery": {
       "signIn": "Log masuk untuk menyemak rekod akaun anda.",

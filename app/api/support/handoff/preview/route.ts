@@ -8,6 +8,8 @@ import { createHandoffToken } from '@/lib/support/handoff-token';
 const schema = z.object({
   subject: z.string().trim().min(1).max(255),
   summary: z.string().trim().min(1).max(2000),
+  sessionKey: z.string().min(1).max(64).optional(),
+  messageId: z.string().uuid().optional(),
 }).strict();
 
 export async function POST(request: Request) {
@@ -18,12 +20,42 @@ export async function POST(request: Request) {
     const { data: { user } } = await auth.auth.getUser();
     if (!user) return apiFail('UNAUTHORIZED', 'Sign in to prepare a support ticket.', 401);
     const service = createServiceClient();
+    if (parsed.data.messageId && !parsed.data.sessionKey) {
+      return apiFail('HANDOFF_REVIEW_REQUIRED', 'Review the ticket details again before submitting.', 409);
+    }
+    if (parsed.data.messageId && parsed.data.sessionKey) {
+      const { data: session, error: sessionError } = await service
+        .from('chatbot_sessions')
+        .select('id, user_id')
+        .eq('session_key', parsed.data.sessionKey)
+        .maybeSingle();
+      if (sessionError) return apiFail('READ_UNAVAILABLE', 'Unable to verify the selected conversation.', 503);
+      if (!session || session.user_id !== user.id) return apiFail('FORBIDDEN', 'This conversation is not available to this account.', 403);
+      const { data: botMessage, error: botMessageError } = await service
+        .from('chatbot_messages')
+        .select('id, reply_to_message_id')
+        .eq('id', parsed.data.messageId)
+        .eq('session_id', session.id)
+        .eq('role', 'bot')
+        .maybeSingle();
+      if (botMessageError) return apiFail('READ_UNAVAILABLE', 'Unable to verify the selected conversation.', 503);
+      if (!botMessage?.reply_to_message_id) return apiFail('HANDOFF_REVIEW_REQUIRED', 'Review the ticket details again before submitting.', 409);
+      const { data: userMessage, error: userMessageError } = await service
+        .from('chatbot_messages')
+        .select('id')
+        .eq('id', botMessage.reply_to_message_id)
+        .eq('session_id', session.id)
+        .eq('role', 'user')
+        .maybeSingle();
+      if (userMessageError) return apiFail('READ_UNAVAILABLE', 'Unable to verify the selected conversation.', 503);
+      if (!userMessage) return apiFail('HANDOFF_REVIEW_REQUIRED', 'Review the ticket details again before submitting.', 409);
+    }
     const [subject, summary] = await Promise.all([
       cleanUserContent(parsed.data.subject, service),
       cleanUserContent(parsed.data.summary, service),
     ]);
-    const handoffToken = await createHandoffToken(user.id, subject.display, summary.display);
-    const response = apiOk({ subject: subject.display, summary: summary.display, handoffToken });
+    const handoffToken = await createHandoffToken(user.id, subject.display, summary.display, parsed.data.messageId);
+    const response = apiOk({ subject: subject.display, summary: summary.display, handoffToken, sourceMessageId: parsed.data.messageId ?? null });
     response.headers.set('Cache-Control', 'private, no-store');
     return response;
   } catch {
