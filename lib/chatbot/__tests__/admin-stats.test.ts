@@ -2,46 +2,35 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getChatbotAdminStats } from '../admin-stats';
 
-function makeService(messages: unknown[], feedback: unknown[]) {
-  const messagesQuery = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-  };
-  // Two chained .order() calls in the real query — the second must resolve.
-  messagesQuery.order = vi.fn()
-    .mockReturnValueOnce(messagesQuery)
-    .mockResolvedValueOnce({ data: messages, error: null });
-  const feedbackQuery = { select: vi.fn().mockResolvedValue({ data: feedback, error: null }) };
-  const service = {
-    from: vi.fn((table: string) => (table === 'chatbot_messages' ? messagesQuery : feedbackQuery)),
-  } as unknown as SupabaseClient;
-  return service;
+function makeService(result: unknown, error: unknown = null) {
+  const rpc = vi.fn().mockResolvedValue({ data: result, error });
+  return { service: { rpc } as unknown as SupabaseClient, rpc };
 }
 
 describe('getChatbotAdminStats', () => {
-  it('ranks the questions that most often ended in a support ticket, distinct from unanswered/not-helpful', async () => {
-    const feedback = [
-      { question: 'How do I get a refund?', bot_answered: true, helpful: false, opened_ticket: true, created_at: '2026-09-01T00:00:00Z' },
-      { question: 'How do I get a refund?', bot_answered: true, helpful: false, opened_ticket: true, created_at: '2026-09-02T00:00:00Z' },
-      { question: 'Why was my withdrawal delayed?', bot_answered: false, helpful: null, opened_ticket: true, created_at: '2026-09-03T00:00:00Z' },
-      // Failed but never escalated — must not appear in topEscalated.
-      { question: 'What is the weather like?', bot_answered: false, helpful: null, opened_ticket: false, created_at: '2026-09-04T00:00:00Z' },
-    ];
-    const service = makeService([], feedback);
+  it('uses a bounded database aggregation and preserves paired versus legacy coverage', async () => {
+    const stats = {
+      totalQuestions: 12,
+      answeredCount: 8,
+      answerRate: 0.8,
+      topUnanswered: [{ question: 'Refund update?', count: 2, lastAskedAt: '2026-09-02T00:00:00Z' }],
+      notHelpfulAnswered: [],
+      escalationRate: 0.25,
+      topEscalated: [],
+      pairedUnansweredCount: 2,
+      legacyUnpairedCount: 4,
+      range: { from: '2026-09-01T00:00:00.000Z', to: '2026-10-01T00:00:00.000Z' },
+    };
+    const { service, rpc } = makeService(stats);
+    const from = new Date('2026-09-01T00:00:00.000Z');
+    const to = new Date('2026-10-01T00:00:00.000Z');
 
-    const stats = await getChatbotAdminStats(service);
-
-    expect(stats.topEscalated.map((q) => q.question)).toEqual(['How do I get a refund?', 'Why was my withdrawal delayed?']);
-    expect(stats.topEscalated[0].count).toBe(2);
-    expect(stats.topEscalated.some((q) => q.question === 'What is the weather like?')).toBe(false);
+    await expect(getChatbotAdminStats(service, { from, to })).resolves.toEqual(stats);
+    expect(rpc).toHaveBeenCalledWith('get_customer_chatbot_stats', { p_from: from.toISOString(), p_to: to.toISOString() });
   });
 
-  it('returns an empty topEscalated when nothing was ever escalated', async () => {
-    const service = makeService([], [
-      { question: 'How do bookings work?', bot_answered: true, helpful: true, opened_ticket: false, created_at: '2026-09-01T00:00:00Z' },
-    ]);
-    const stats = await getChatbotAdminStats(service);
-    expect(stats.topEscalated).toEqual([]);
+  it('throws on an unavailable aggregate instead of reporting zero', async () => {
+    const { service } = makeService(null, { message: 'db unavailable' });
+    await expect(getChatbotAdminStats(service)).rejects.toThrow('Customer chatbot stats are unavailable');
   });
 });

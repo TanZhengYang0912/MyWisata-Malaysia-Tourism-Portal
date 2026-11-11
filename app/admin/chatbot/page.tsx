@@ -4,7 +4,7 @@
 // "Also on /admin/chatbot: total questions, answer rate, top unanswered
 // questions, a KB editor (add/edit/deactivate a doc -> auto re-embed on save)."
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, MessageSquareText, Plus, RefreshCw, Sparkles, TrendingUp, WandSparkles } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,9 @@ interface ChatbotStats {
   notHelpfulAnswered: TopQuestion[];
   escalationRate: number;
   topEscalated: TopQuestion[];
+  pairedUnansweredCount: number;
+  legacyUnpairedCount: number;
+  range: { from: string; to: string };
 }
 
 interface KbDoc {
@@ -56,6 +59,7 @@ export default function AdminChatbotPage() {
   const { showFeedback } = useActionFeedback();
   const { t } = useTranslation("admin");
   const [stats, setStats] = useState<ChatbotStats | null | undefined>(undefined);
+  const [statsDays, setStatsDays] = useState<7 | 30 | 90>(30);
   const [docs, setDocs] = useState<KbDoc[] | null | undefined>(undefined);
   const [reindexing, setReindexing] = useState(false);
   const [reindexResult, setReindexResult] = useState<string | null>(null);
@@ -71,17 +75,17 @@ export default function AdminChatbotPage() {
   const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
   const [batchBusy, setBatchBusy] = useState(false);
 
-  async function loadStats() {
+  const loadStats = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/chatbot/stats");
+      const res = await fetch(`/api/admin/chatbot/stats?days=${statsDays}`);
       const body = (await res.json()) as { data: ChatbotStats | null };
       setStats(res.ok && body.data ? body.data : null);
     } catch {
       setStats(null);
     }
-  }
+  }, [statsDays]);
 
-  async function loadDocs() {
+  const loadDocs = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/chatbot/kb");
       const body = (await res.json()) as { data: KbDoc[] | null };
@@ -89,13 +93,18 @@ export default function AdminChatbotPage() {
     } catch {
       setDocs(null);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    (async () => {
-      await Promise.all([loadStats(), loadDocs()]);
-    })();
-  }, []);
+    // Range changes trigger an async report fetch; the state updates happen only when it resolves.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadStats();
+  }, [loadStats]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadDocs();
+  }, [loadDocs]);
 
   async function runReindex() {
     if (reindexing) return;
@@ -305,7 +314,14 @@ export default function AdminChatbotPage() {
         </div>}
       />
 
+      <div className="mb-3 flex items-center justify-end gap-2">
+        <label htmlFor="chatbot-stats-range" className="text-xs text-muted-foreground">{t("chatbot.metrics.range")}</label>
+        <select id="chatbot-stats-range" className={adminFilterControlClassName} value={statsDays} onChange={(event) => setStatsDays(Number(event.target.value) as 7 | 30 | 90)}>
+          {[7, 30, 90].map((days) => <option key={days} value={days}>{t(`chatbot.metrics.days.${days}`)}</option>)}
+        </select>
+      </div>
       <AdminMetricGrid items={[{ label: t("chatbot.metrics.questions"), value: stats.totalQuestions }, { label: t("chatbot.metrics.answerRate"), value: `${(stats.answerRate * 100).toFixed(0)}%` }, { label: t("chatbot.metrics.escalationRate"), value: `${(stats.escalationRate * 100).toFixed(0)}%`, detail: t("chatbot.metrics.escalationNote") }]} />
+      <p className="mt-2 text-right text-xs text-muted-foreground">{t("chatbot.metrics.turnCoverage", { paired: stats.pairedUnansweredCount, legacy: stats.legacyUnpairedCount })}</p>
 
       <div className="rounded-2xl border border-border bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">

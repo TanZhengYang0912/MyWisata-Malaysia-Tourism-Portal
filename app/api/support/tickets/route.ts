@@ -23,6 +23,7 @@ import { logModerationFlag } from '@/lib/moderation/flags';
 import { createServiceClient } from '@/lib/supabase/service';
 import { reserveAiQuota } from '@/lib/rate-limit/ai';
 import { prepareExternalText } from '@/lib/chatbot/pii';
+import { verifyHandoffToken } from '@/lib/support/handoff-token';
 
 export async function GET() {
   const supabase = await createClient();
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
 
   const parsed = await parseBody(request, supportTicketSchema);
   if (!parsed.ok) return parsed.response;
-  const { sessionKey, withdrawalId, subject, body, operationId } = parsed.data;
+  const { sessionKey, withdrawalId, subject, body, operationId, handoffToken } = parsed.data;
   if (sessionKey) {
     // Legacy requests may still carry a session key, but no Support endpoint
     // should read its transcript or attach the live session to a new ticket.
@@ -91,6 +92,15 @@ export async function POST(request: Request) {
   const moderationService = createServiceClient();
   const cleanedSubject = await cleanUserContent(subject, moderationService);
   const cleanedBody = await cleanUserContent(body, moderationService);
+
+  if (!withdrawalId) {
+    if (!operationId || !handoffToken) {
+      return apiFail('UPDATE_REQUIRED', 'Refresh Support and review the ticket details before submitting.', 409);
+    }
+    if (!(await verifyHandoffToken(handoffToken, ownerUserId, cleanedSubject.display, cleanedBody.display))) {
+      return apiFail('HANDOFF_REVIEW_REQUIRED', 'Review the ticket details again before submitting.', 409);
+    }
+  }
 
   const operationPayloadHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify({
     userId: ownerUserId,

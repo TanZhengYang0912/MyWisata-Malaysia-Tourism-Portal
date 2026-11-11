@@ -342,7 +342,7 @@ describe("Task 5 shared runtime behavior", () => {
     const question = "Why is my wallet withdrawal still pending?";
     const answer = "API answer [zh]: withdrawals can take two business days.";
     let askPayload: { question?: string } | undefined;
-    let ticketPayload: { operationId?: string; subject?: string; body?: string } | undefined;
+    let ticketPayload: { operationId?: string; handoffToken?: string; subject?: string; body?: string } | undefined;
     mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === "/api/chatbot/ask") {
         askPayload = JSON.parse(String(init?.body)) as { question?: string };
@@ -352,7 +352,7 @@ describe("Task 5 shared runtime behavior", () => {
         });
       }
       if (url === "/api/chatbot/feedback") return response({ data: null, error: null });
-      if (url === "/api/support/handoff/preview") return response({ data: { subject: question, summary: question }, error: null });
+      if (url === "/api/support/handoff/preview") return response({ data: { subject: question, summary: question, handoffToken: "signed-preview-token" }, error: null });
       if (url === "/api/support/tickets") {
         ticketPayload = JSON.parse(String(init?.body)) as { operationId?: string; subject?: string; body?: string };
         return response({ data: { id: "ticket-zh-1", category: "support" }, error: null });
@@ -382,7 +382,7 @@ describe("Task 5 shared runtime behavior", () => {
     await click(findButton("Yes translated"));
     expect(ticketPayload).toBeUndefined();
     await click(findButton("Create translated ticket"));
-    expect(ticketPayload).toEqual(expect.objectContaining({ subject: question, body: question }));
+    expect(ticketPayload).toEqual(expect.objectContaining({ subject: question, body: question, handoffToken: "signed-preview-token" }));
     expect(ticketPayload?.operationId).toMatch(/^[0-9a-f-]{36}$/i);
   });
 

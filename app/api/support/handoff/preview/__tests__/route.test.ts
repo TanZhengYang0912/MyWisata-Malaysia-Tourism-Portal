@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ clean: vi.fn() }));
+const mocks = vi.hoisted(() => ({ clean: vi.fn(), getUser: vi.fn() }));
+vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser } })) }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn(() => ({})) }));
 vi.mock('@/lib/moderation/clean', () => ({ cleanUserContent: mocks.clean }));
 
@@ -17,6 +18,8 @@ function request(subject: unknown, summary: unknown) {
 describe('POST /api/support/handoff/preview', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-handoff-secret');
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'owner-1' } }, error: null });
     mocks.clean.mockImplementation(async (text: string) => ({ display: text.replace('012-3456789', '[PHONE]') }));
   });
 
@@ -25,7 +28,7 @@ describe('POST /api/support/handoff/preview', () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      data: { subject: 'Help [PHONE]', summary: 'My booking is missing. Call [PHONE]' },
+      data: { subject: 'Help [PHONE]', summary: 'My booking is missing. Call [PHONE]', handoffToken: expect.any(String) },
     });
     expect(mocks.clean).toHaveBeenCalledTimes(2);
   });

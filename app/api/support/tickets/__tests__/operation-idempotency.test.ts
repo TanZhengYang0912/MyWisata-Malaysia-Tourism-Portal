@@ -18,6 +18,7 @@ vi.mock('@/lib/moderation/clean', () => ({ cleanUserContent: vi.fn(async (text: 
 vi.mock('@/lib/moderation/flags', () => ({ logModerationFlag: vi.fn() }));
 vi.mock('@/lib/chatbot/classify-ai', () => ({ classifyTicketSmart: mocks.classify }));
 vi.mock('@/lib/rate-limit/ai', () => ({ reserveAiQuota: vi.fn(async () => false) }));
+vi.mock('@/lib/support/handoff-token', () => ({ verifyHandoffToken: vi.fn(async () => true) }));
 vi.mock('@/lib/support/unread', () => ({ getLatestReplyTimestamps: vi.fn(), isUnread: vi.fn() }));
 
 import { POST } from '../route';
@@ -28,7 +29,7 @@ function request(body: Record<string, unknown>) {
   return new Request('http://localhost/api/support/tickets', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ operationId, subject: 'Help with my order', body: 'Please check my order', ...body }),
+    body: JSON.stringify({ operationId, handoffToken: 'test-handoff-token', subject: 'Help with my order', body: 'Please check my order', ...body }),
   });
 }
 

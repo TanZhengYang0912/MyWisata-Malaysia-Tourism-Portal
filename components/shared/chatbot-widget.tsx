@@ -412,10 +412,10 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
           summary: msg.question ?? "",
         }),
       });
-      const result = await response.json().catch(() => ({})) as { data?: { subject: string; summary: string } };
+      const result = await response.json().catch(() => ({})) as { data?: { subject: string; summary: string }; error?: { code?: string } };
       if (identityRef.current !== requestIdentity) return;
       if (!response.ok || !result.data) {
-        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError") } : m)));
+        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError"), ticketErrorCode: result.error?.code, ticketNeedsSignIn: response.status === 401 } : m)));
         return;
       }
       setMessages((prev) => prev.map((m, i) => (i === index ? {
@@ -456,31 +456,32 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: undefined, ticketNeedsSignIn: false } : m)));
 
     try {
-      if (subject !== msg.handoffPreviewSubject || summary !== msg.handoffPreviewSummary) {
-        const previewResponse = await fetch("/api/support/handoff/preview", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subject, summary }),
-        });
-        const previewResult = await previewResponse.json().catch(() => ({})) as { data?: { subject: string; summary: string } };
-        if (identityRef.current !== requestIdentity) return;
-        if (!previewResponse.ok || !previewResult.data) throw new Error("preview_unavailable");
-        if (previewResult.data.subject !== subject || previewResult.data.summary !== summary) {
-          setMessages((prev) => prev.map((m, i) => (i === index ? {
-            ...m,
-            handoffSubject: previewResult.data!.subject,
-            handoffSummary: previewResult.data!.summary,
-            handoffPreviewSubject: previewResult.data!.subject,
-            handoffPreviewSummary: previewResult.data!.summary,
-            ticketError: t("chatbot.handoff.cleanedReview"),
-          } : m)));
-          return;
-        }
+      const previewResponse = await fetch("/api/support/handoff/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject, summary }),
+      });
+      const previewResult = await previewResponse.json().catch(() => ({})) as { data?: { subject: string; summary: string; handoffToken: string }; error?: { code?: string } };
+      if (identityRef.current !== requestIdentity) return;
+      if (!previewResponse.ok || !previewResult.data) {
+        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError"), ticketErrorCode: previewResult.error?.code, ticketNeedsSignIn: previewResponse.status === 401 } : m)));
+        return;
+      }
+      if (previewResult.data.subject !== subject || previewResult.data.summary !== summary) {
+        setMessages((prev) => prev.map((m, i) => (i === index ? {
+          ...m,
+          handoffSubject: previewResult.data!.subject,
+          handoffSummary: previewResult.data!.summary,
+          handoffPreviewSubject: previewResult.data!.subject,
+          handoffPreviewSummary: previewResult.data!.summary,
+          ticketError: t("chatbot.handoff.cleanedReview"),
+        } : m)));
+        return;
       }
       const res = await fetch("/api/support/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ operationId: msg.handoffOperationId, subject, body: summary }),
+        body: JSON.stringify({ operationId: msg.handoffOperationId, handoffToken: previewResult.data.handoffToken, subject, body: summary }),
       });
       const result = (await res.json().catch(() => ({}))) as { data?: { id: string; category: string } | null; error?: { code?: string } | null };
       if (identityRef.current !== requestIdentity) return;
@@ -494,7 +495,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
           ticketError: ticketErrorText,
           ticketErrorCode: result.error?.code,
           ticketNeedsSignIn: res.status === 401,
-          ticketOperationUnknown: res.status >= 500 || res.status === 409,
+          ticketOperationUnknown: res.status >= 500,
         } : m)));
       }
     } catch {
@@ -691,6 +692,11 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                                 </Button>
                               </div>
                               {m.ticketError && <p role="alert" className="text-[0.6875rem] text-destructive mt-1">{m.ticketErrorCode ? t(`chatbot.supportErrors.${supportError(m.ticketErrorCode).key}`) : m.ticketError}</p>}
+                              {m.ticketNeedsSignIn && (
+                                <Link href="/login?next=%2Fcustomer%2Fsupport" target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-primary underline">
+                                  {t("chatbot.handoff.signIn")}
+                                </Link>
+                              )}
                             </div>
                           )}
                           {m.feedbackStage === "handoff_preview" && (
