@@ -1,46 +1,34 @@
-const TOKEN_TTL_MS = 15 * 60 * 1000;
+import 'server-only';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createServiceClient } from '@/lib/supabase/service';
 
-type HandoffPayload = {
-  ownerId: string;
-  subject: string;
-  summary: string;
-  sourceMessageId?: string;
-  expiresAt: number;
-};
+const TOKEN_TTL_SECONDS = 15 * 60;
 
-function base64UrlEncode(bytes: Uint8Array): string {
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
 }
 
-function base64UrlDecode(value: string): ArrayBuffer {
-  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-  const binary = atob(normalized + '='.repeat((4 - normalized.length % 4) % 4));
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0)).buffer;
-}
-
-async function signingKey(): Promise<CryptoKey> {
-  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!secret) throw new Error('Support handoff signing is not configured');
-  return crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
-}
-
-export async function createHandoffToken(ownerId: string, subject: string, summary: string, sourceMessageId?: string): Promise<string> {
-  const payload: HandoffPayload = { ownerId, subject, summary, sourceMessageId, expiresAt: Date.now() + TOKEN_TTL_MS };
-  const encoded = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
-  const signature = new Uint8Array(await crypto.subtle.sign('HMAC', await signingKey(), new TextEncoder().encode(encoded)));
-  return `${encoded}.${base64UrlEncode(signature)}`;
+export async function createHandoffToken(ownerId: string, subject: string, summary: string, _sourceMessageId?: string): Promise<string> {
+  const token = randomBytes(32).toString('base64url');
+  const contentHash = hashToken(JSON.stringify({ subject, summary }));
+  const { error } = await createServiceClient().from('support_handoff_tokens').insert({
+    token_hash: hashToken(token),
+    owner_id: ownerId,
+    content_hash: contentHash,
+    expires_at: new Date(Date.now() + TOKEN_TTL_SECONDS * 1000).toISOString(),
+  });
+  if (error) throw new Error('support_handoff_token_unavailable');
+  return token;
 }
 
 export async function verifyHandoffToken(token: string, ownerId: string, subject: string, summary: string): Promise<boolean> {
-  const [encoded, signature, extra] = token.split('.');
-  if (!encoded || !signature || extra) return false;
-  try {
-    const payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(encoded))) as HandoffPayload;
-    if (payload.ownerId !== ownerId || payload.subject !== subject || payload.summary !== summary || payload.expiresAt < Date.now()) return false;
-    return crypto.subtle.verify('HMAC', await signingKey(), base64UrlDecode(signature), new TextEncoder().encode(encoded));
-  } catch {
-    return false;
-  }
+  if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return false;
+  const { data, error } = await createServiceClient().from('support_handoff_tokens')
+    .select('owner_id, content_hash, expires_at')
+    .eq('token_hash', hashToken(token))
+    .maybeSingle();
+  if (error || !data || data.owner_id !== ownerId || new Date(data.expires_at).getTime() < Date.now()) return false;
+  const expected = Buffer.from(data.content_hash, 'hex');
+  const actual = Buffer.from(hashToken(JSON.stringify({ subject, summary })), 'hex');
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
 }

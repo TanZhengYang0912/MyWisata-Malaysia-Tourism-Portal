@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ clean: vi.fn(), getUser: vi.fn(), createServiceClient: vi.fn() }));
+const mocks = vi.hoisted(() => ({ clean: vi.fn(), getUser: vi.fn(), createServiceClient: vi.fn(), createToken: vi.fn() }));
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser } })) }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: mocks.createServiceClient }));
 vi.mock('@/lib/moderation/clean', () => ({ cleanUserContent: mocks.clean }));
+vi.mock('@/lib/support/handoff-token', () => ({ createHandoffToken: mocks.createToken }));
 
 import { POST } from '../route';
 
@@ -22,6 +23,7 @@ describe('POST /api/support/handoff/preview', () => {
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'owner-1' } }, error: null });
     mocks.clean.mockImplementation(async (text: string) => ({ display: text.replace('012-3456789', '[PHONE]') }));
     mocks.createServiceClient.mockReturnValue({});
+    mocks.createToken.mockResolvedValue('opaque-token');
   });
 
   it('returns the exact cleaned title and summary without creating a ticket', async () => {
@@ -80,11 +82,10 @@ describe('POST /api/support/handoff/preview', () => {
       messageId: '33333333-3333-4333-8333-333333333333',
     }));
     const payload = await response.json();
-    const tokenPayload = JSON.parse(atob(payload.data.handoffToken.split('.')[0].replace(/-/g, '+').replace(/_/g, '/')));
-
     expect(response.status).toBe(200);
     expect(payload.data.sourceMessageId).toBe('33333333-3333-4333-8333-333333333333');
-    expect(tokenPayload.sourceMessageId).toBe('33333333-3333-4333-8333-333333333333');
+    expect(payload.data.handoffToken).toBe('opaque-token');
+    expect(mocks.createToken).toHaveBeenCalledWith('owner-1', 'Help', 'My question', '33333333-3333-4333-8333-333333333333');
     expect(messagesQuery.maybeSingle).toHaveBeenCalledTimes(2);
   });
 });

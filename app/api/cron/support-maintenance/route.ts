@@ -1,4 +1,5 @@
 import { cleanupSupportAttachments } from '@/lib/support/attachment-cleanup';
+import { createServiceClient } from '@/lib/supabase/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +11,11 @@ export async function GET(request: Request) {
 
   try {
     const result = await cleanupSupportAttachments();
-    return Response.json(result, { headers: { 'Cache-Control': 'no-store' } });
+    const { data: expiredHandoffTokens, error: handoffCleanupError } = await createServiceClient().rpc('cleanup_support_handoff_tokens');
+    if (handoffCleanupError || typeof expiredHandoffTokens !== 'number') {
+      return Response.json({ error: 'support_maintenance_unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+    }
+    return Response.json({ ...result, expiredHandoffTokens }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return Response.json({ error: 'support_maintenance_unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }
