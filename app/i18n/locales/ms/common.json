@@ -375,7 +375,8 @@
       "error": "Tidak dapat memuatkan soalan lazim.",
       "empty": "Tiada soalan lazim buat masa ini.",
       "pickCategory": "Pilih topik",
-      "retry": "Cuba lagi"
+      "retry": "Cuba lagi",
+      "categories": { "account": "Akaun", "affiliate": "Afiliasi", "booking": "Tempahan", "general": "Umum", "payment": "Bayaran", "rewards": "Ganjaran", "vendor": "Vendor", "wallet": "Dompet" }
     },
     "voice": {
       "start": "Sebut mesej anda",
@@ -397,11 +398,18 @@
     "supportErrors": {
       "signIn": "Log masuk, kemudian kembali kepada draf ini.",
       "checkFields": "Semak medan yang ditandakan dan cuba lagi.",
+      "notFound": "Tiket ini tidak lagi tersedia. Kembali ke permintaan sokongan anda.",
+      "notAvailable": "Item ini tidak boleh dibuka daripada akaun ini. Kembali ke permintaan sokongan anda.",
+      "conflict": "Item ini telah berubah. Muat semula sebelum meneruskan.",
+      "handoffChanged": "Butiran serahan telah berubah. Semak dan sahkan semula.",
       "closed": "Tiket ini ditutup. Buka semula sebelum membalas.",
       "checking": "Keputusan belum disahkan. Semak status tiket sebelum mencuba lagi.",
       "readUnavailable": "Maklumat ini tidak dapat dimuatkan. Cuba lagi.",
       "fileTooLarge": "Pilih fail yang lebih kecil daripada 10 MB.",
       "fileType": "Pilih fail JPEG, PNG, WEBP atau PDF.",
+      "fileContent": "Fail ini tidak dapat disahkan. Pilih fail lain.",
+      "chooseFile": "Pilih fail untuk dilampirkan.",
+      "uploadFailed": "Fail tidak dilampirkan. Semak sambungan dan cuba lagi.",
       "paymentUncertain": "Status bayaran belum disahkan. Semak pesanan atau hubungi sokongan; jangan bayar lagi dahulu.",
       "rateLimited": "Tindakan ini dihadkan buat sementara. Tunggu sebentar atau hubungi sokongan.",
       "unavailable": "Ralat berlaku. Teks anda masih disimpan di sini. Cuba lagi atau hubungi sokongan."

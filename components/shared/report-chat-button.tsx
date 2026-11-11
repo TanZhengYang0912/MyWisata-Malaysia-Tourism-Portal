@@ -16,6 +16,7 @@ import { Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { useTranslation } from "react-i18next";
+import { supportError } from "@/lib/support/errors";
 
 interface ReportChatButtonProps {
   chatType: "user_vendor" | "user_admin" | "vendor_admin";
@@ -41,8 +42,8 @@ export function ReportChatButton({ chatType, threadId, className }: ReportChatBu
         body: JSON.stringify({ chatType, threadId, reason: reason.trim() || undefined }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        showFeedback("error", body?.error?.message ?? t("conductReport.submitFailed"));
+        const body = await res.json().catch(() => ({})) as { error?: { code?: string } };
+        showFeedback("error", body.error?.code ? t(`chatbot.supportErrors.${supportError(body.error.code).key}`) : t("conductReport.submitFailed"));
         return;
       }
       setReported(true);

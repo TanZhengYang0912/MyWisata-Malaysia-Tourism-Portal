@@ -64,6 +64,7 @@ export async function POST(request: Request, { params }: Props) {
     return apiFail('INVALID_CAPTION', 'Caption must be text.', 422);
   }
   const rawCaption = captionField?.trim() ?? '';
+  if (rawCaption.length > 2000) return apiFail('INVALID_CAPTION', 'Caption is too long.', 422);
   const cleaned = await cleanUserContent(rawCaption, service);
 
   const path = buildTicketAttachmentPath(id, crypto.randomUUID(), file.type);

@@ -47,26 +47,6 @@ import { supportError } from "@/lib/support/errors";
 // CLAUDE-VOICE-INPUT.md Part 2. Friendly copy per error kind — never a raw
 // error/exception reaching this UI (the hook itself already guarantees
 // that; this is just the last-mile string).
-// Display labels for the KB's own `category` values (the live set today:
-// account, affiliate, booking, general, payment, rewards, vendor, wallet).
-// Admins can add new categories from the KB editor at any time, so an
-// unmapped value falls back to its own capitalised name rather than
-// disappearing from the FAQ browser.
-const FAQ_CATEGORY_LABEL: Record<string, string> = {
-  account: "Account",
-  affiliate: "Affiliate",
-  booking: "Booking",
-  general: "General",
-  payment: "Payment",
-  rewards: "Rewards",
-  vendor: "Vendor",
-  wallet: "Wallet",
-};
-
-function faqCategoryLabel(category: string): string {
-  return FAQ_CATEGORY_LABEL[category] ?? category.charAt(0).toUpperCase() + category.slice(1);
-}
-
 type FeedbackStage =
   | "awaiting_helpful" // Flow 1: bot answered, ask "was this helpful?"
   | "helpful_done" // collapsed after Yes
@@ -74,6 +54,13 @@ type FeedbackStage =
   | "handoff_preview" // User reviews and edits the exact ticket content before sharing
   | "ticket_created" // collapsed after the ticket offer's Yes succeeds
   | "ticket_declined"; // collapsed after the ticket offer's No
+
+const LOCALIZED_FAQ_CATEGORIES = new Set(["account", "affiliate", "booking", "general", "payment", "rewards", "vendor", "wallet"]);
+
+function faqCategoryLabel(category: string, translate: (key: string) => string): string {
+  if (LOCALIZED_FAQ_CATEGORIES.has(category)) return translate(`chatbot.faq.categories.${category}`);
+  return category.charAt(0).toUpperCase() + category.slice(1);
+}
 
 interface ChatMessage {
   role: "user" | "bot";
@@ -785,7 +772,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                               onClick={() => setFaqCategory(c.category)}
                               className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-secondary"
                             >
-                              {faqCategoryLabel(c.category)}
+                              {faqCategoryLabel(c.category, t)}
                               <span className="ml-1 text-muted-foreground">{c.questions.length}</span>
                             </button>
                           ))}
@@ -799,7 +786,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                           onClick={() => setFaqCategory(null)}
                           className="mb-2 flex items-center gap-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
                         >
-                          <ChevronLeft size={12} /> {faqCategoryLabel(faqCategory)}
+                          <ChevronLeft size={12} /> {faqCategoryLabel(faqCategory, t)}
                         </button>
                         <div className="flex flex-col gap-1">
                           {(faq.find((c) => c.category === faqCategory)?.questions ?? []).map((q) => (
@@ -835,6 +822,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                       }
                     }}
                     placeholder={t("chatbot.inputPlaceholder")}
+                    maxLength={500}
                     className="flex-1 min-w-0 h-9 rounded-full border border-border px-3 text-sm bg-background text-foreground"
                     disabled={sending}
                   />

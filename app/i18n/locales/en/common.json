@@ -375,7 +375,8 @@
       "error": "Couldn't load common questions.",
       "empty": "No common questions yet.",
       "pickCategory": "Pick a topic",
-      "retry": "Retry"
+      "retry": "Retry",
+      "categories": { "account": "Account", "affiliate": "Affiliate", "booking": "Booking", "general": "General", "payment": "Payment", "rewards": "Rewards", "vendor": "Vendor", "wallet": "Wallet" }
     },
     "voice": {
       "start": "Speak your message",
@@ -397,11 +398,18 @@
     "supportErrors": {
       "signIn": "Sign in, then return to this draft.",
       "checkFields": "Check the highlighted fields and try again.",
+      "notFound": "This ticket is no longer available. Return to your support requests.",
+      "notAvailable": "This item cannot be opened from this account. Return to your support requests.",
+      "conflict": "This item changed. Reload it before continuing.",
+      "handoffChanged": "The handoff details changed. Review them and confirm again.",
       "closed": "This ticket is closed. Reopen it before replying.",
       "checking": "The result is not confirmed yet. Check the ticket status before retrying.",
       "readUnavailable": "Could not load this information. Try again.",
       "fileTooLarge": "Choose a file smaller than 10 MB.",
       "fileType": "Choose a JPEG, PNG, WEBP, or PDF file.",
+      "fileContent": "This file could not be checked. Choose a different file.",
+      "chooseFile": "Choose a file to attach.",
+      "uploadFailed": "The file was not attached. Check your connection and try again.",
       "paymentUncertain": "Payment status is not confirmed. Check your order or contact support; do not pay again yet.",
       "rateLimited": "This action is temporarily limited. Wait a moment or contact support.",
       "unavailable": "Something went wrong. Your text is still here. Try again or contact support."

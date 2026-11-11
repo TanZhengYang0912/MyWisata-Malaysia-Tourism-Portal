@@ -11,6 +11,7 @@ import { MessageSquare } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { useTranslation } from "react-i18next";
+import { supportError } from "@/lib/support/errors";
 
 interface TicketSummary {
   id: string;
@@ -32,6 +33,7 @@ const STATUS_STYLE: Record<string, string> = {
 export default function CustomerSupportPage() {
   const router = useRouter();
   const { t: tCustomer, i18n } = useTranslation("customer");
+  const { t: tCommon } = useTranslation("common");
   const [tickets, setTickets] = useState<TicketSummary[] | null | undefined>(undefined);
   const [withdrawalId, setWithdrawalId] = useState<string | null>(null);
   const [subject, setSubject] = useState(() => tCustomer("ui.support.withdrawalSubject"));
@@ -63,11 +65,14 @@ export default function CustomerSupportPage() {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ withdrawalId, operationId, subject, body }),
       });
-      const result = await response.json() as { data?: { id: string }; error?: { message?: string } };
-      if (!response.ok || !result.data) throw new Error(result.error?.message ?? tCustomer("ui.support.createError"));
+      const result = await response.json() as { data?: { id: string }; error?: { code?: string } };
+      if (!response.ok || !result.data) {
+        setFormError(result.error?.code ? tCommon(`chatbot.supportErrors.${supportError(result.error.code).key}`) : tCustomer("ui.support.createError"));
+        return;
+      }
       router.push(`/customer/support/${result.data.id}`);
-    } catch (error) {
-      setFormError(error instanceof Error ? error.message : tCustomer("ui.support.createError"));
+    } catch {
+      setFormError(tCommon("chatbot.supportErrors.unavailable"));
     } finally { setSending(false); }
   }
 

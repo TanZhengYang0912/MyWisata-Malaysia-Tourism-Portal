@@ -15,6 +15,7 @@ import { ReportChatButton } from "@/components/shared/report-chat-button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { useTranslation } from "react-i18next";
 import { useSpeechInput, resolveRecognitionLangFromLocale, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
+import { supportError } from "@/lib/support/errors";
 
 // CLAUDE-VOICE-INPUT.md, mounted on support tickets. Same friendly copy as
 // the chatbot widget's and chat-thread-panel's mic buttons — keys, not
@@ -43,6 +44,7 @@ const LOCKED_STATUSES = new Set(["resolved", "closed"]);
 
 export default function CustomerTicketDetailPage() {
   const { t: tCustomer, i18n } = useTranslation("customer");
+  const { t: tCommon } = useTranslation("common");
   const { id } = useParams<{ id: string }>();
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
@@ -99,7 +101,11 @@ export default function CustomerTicketDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: text, operationId }),
       });
-      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? tCustomer("ui.support.replyError")); return; }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: { code?: string } };
+        showFeedback("error", body.error?.code ? tCommon(`chatbot.supportErrors.${supportError(body.error.code).key}`) : tCustomer("ui.support.replyError"));
+        return;
+      }
       setReply("");
       setReplyOperationId(null);
       showFeedback("success", tCustomer("ui.support.replySent"));
@@ -126,7 +132,11 @@ export default function CustomerTicketDetailPage() {
       formData.append("file", pendingFile);
       if (reply.trim()) formData.append("caption", reply.trim());
       const res = await fetch(`/api/support/tickets/${id}/attachments`, { method: "POST", body: formData });
-      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? tCustomer("ui.support.attachmentError")); return; }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: { code?: string } };
+        showFeedback("error", body.error?.code ? tCommon(`chatbot.supportErrors.${supportError(body.error.code).key}`) : tCustomer("ui.support.attachmentError"));
+        return;
+      }
       setReply("");
       setPendingFile(null);
       showFeedback("success", tCustomer("ui.support.replySent"));
@@ -264,10 +274,14 @@ export default function CustomerTicketDetailPage() {
                 setReplyOperationId(e.target.value.trim() ? crypto.randomUUID() : null);
               }}
               onKeyDown={(e) => {
-                if (e.key === "Enter") sendReply();
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  sendReply();
+                }
               }}
               aria-label={tCustomer("ui.support.reply")}
               placeholder={pendingFile ? tCustomer("ui.support.addCaption") : tCustomer("ui.support.reply")}
+              maxLength={2000}
               className="flex-1 min-w-0 h-10 rounded-full border border-border px-4 text-sm bg-background text-foreground"
               disabled={sending || uploading}
             />

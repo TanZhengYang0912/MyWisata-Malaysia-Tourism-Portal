@@ -375,7 +375,8 @@
       "error": "无法加载常见问题。",
       "empty": "暂无常见问题。",
       "pickCategory": "选择主题",
-      "retry": "重试"
+      "retry": "重试",
+      "categories": { "account": "账户", "affiliate": "推广", "booking": "预订", "general": "通用", "payment": "付款", "rewards": "奖励", "vendor": "商家", "wallet": "钱包" }
     },
     "voice": {
       "start": "语音输入消息",
@@ -397,11 +398,18 @@
     "supportErrors": {
       "signIn": "登录后返回此草稿继续操作。",
       "checkFields": "检查标出的内容并重试。",
+      "notFound": "此工单已不可用，请返回客服工单列表。",
+      "notAvailable": "此账户无法打开该内容，请返回客服工单列表。",
+      "conflict": "此内容已更改，请刷新后再继续。",
+      "handoffChanged": "交接内容已更改，请检查并再次确认。",
       "closed": "此工单已关闭，请重新打开后再回复。",
       "checking": "操作结果尚未确认。请先查询工单状态，再决定是否重试。",
       "readUnavailable": "暂时无法读取信息，请重试。",
       "fileTooLarge": "请选择小于 10 MB 的文件。",
       "fileType": "请选择 JPEG、PNG、WEBP 或 PDF 文件。",
+      "fileContent": "无法确认此文件是否可用，请换一个文件。",
+      "chooseFile": "请选择要附加的文件。",
+      "uploadFailed": "文件未能附加，请检查网络后重试。",
       "paymentUncertain": "付款状态尚未确认。请先查询订单或联系客服，暂时不要重复付款。",
       "rateLimited": "此操作暂时受限，请稍后重试或联系人工客服。",
       "unavailable": "操作失败，但输入内容仍保留。请重试或联系人工客服。"

@@ -9,4 +9,12 @@ describe('supportError', () => {
   it('does not echo unknown internal codes', () => {
     expect(supportError('database_password_failed')).toEqual({ key: 'unavailable', action: 'contact_support' });
   });
+
+  it('gives recovery actions for missing, inaccessible, invalid, and throttled requests', () => {
+    expect(supportError('NOT_FOUND').action).toBe('return_to_list');
+    expect(supportError('FORBIDDEN').action).toBe('return_to_list');
+    expect(supportError('INVALID_FILE_CONTENT').action).toBe('choose_file');
+    expect(supportError('INVALID_CAPTION').action).toBe('edit_input');
+    expect(supportError('RATE_LIMITED').action).toBe('wait');
+  });
 });
