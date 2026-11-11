@@ -9,6 +9,7 @@ import { cleanUserContent } from '@/lib/moderation/clean';
 import { logModerationFlag } from '@/lib/moderation/flags';
 import { logAdminConductFlagIfNeeded } from '@/lib/moderation/admin-conduct';
 import { createHash } from 'node:crypto';
+import { loadSupportReplyPage } from '@/lib/support/reply-pagination';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -49,6 +50,44 @@ const PUBLIC_TRANSACTION_ERRORS: Record<string, { code: string; message: string;
   support_ticket_operation_conflict: { code: 'OPERATION_CONFLICT', message: 'This reply was already sent with different text.', status: 409 },
   support_ticket_invalid_reply: { code: 'VALIDATION_FAILED', message: 'Enter a valid reply and try again.', status: 422 },
 };
+
+export async function GET(request: Request, { params }: Props) {
+  const { id } = await params;
+  const url = new URL(request.url);
+  const beforeCreatedAt = url.searchParams.get('beforeCreatedAt');
+  const beforeId = url.searchParams.get('beforeId');
+  const hasValidTimestamp = beforeCreatedAt !== null
+    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(beforeCreatedAt)
+    && Number.isFinite(Date.parse(beforeCreatedAt));
+  if (Boolean(beforeCreatedAt) !== Boolean(beforeId)
+      || (beforeCreatedAt && !hasValidTimestamp)
+      || (beforeId && !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(beforeId))) {
+    return apiFail('INVALID_INPUT', 'Choose a valid reply history position.', 400);
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+
+  const service = createServiceClient();
+  const { data: ticket, error: ticketError } = await service.from('support_tickets')
+    .select('id, user_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (ticketError) return apiFail('READ_UNAVAILABLE', 'Unable to load this support request.', 503);
+  if (!ticket) return apiFail('NOT_FOUND', 'Ticket not found.', 404);
+  const isOwner = ticket.user_id === user.id;
+  const isAdmin = await isSuperAdmin(supabase, user.id);
+  if (!isOwner && !isAdmin) return apiFail('FORBIDDEN', 'Not your ticket.', 403);
+
+  const page = await loadSupportReplyPage(service, id, user.id,
+    beforeCreatedAt && beforeId ? { createdAt: beforeCreatedAt, id: beforeId } : undefined);
+  if (page.error) return apiFail('READ_UNAVAILABLE', 'Unable to load earlier replies.', 503);
+
+  const response = apiOk({ replies: page.replies ?? [], nextCursor: page.nextCursor });
+  response.headers.set('Cache-Control', 'private, no-store');
+  return response;
+}
 
 export async function POST(request: Request, { params }: Props) {
   const { id } = await params;

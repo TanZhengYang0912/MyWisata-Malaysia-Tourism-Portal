@@ -15,12 +15,13 @@ vi.mock('@/lib/affiliate/admin-guard', () => ({ isSuperAdmin }));
 vi.mock('@/lib/moderation/flags', () => ({ logModerationFlag }));
 vi.mock('@/lib/moderation/admin-conduct', () => ({ logAdminConductFlagIfNeeded }));
 
-const { POST } = await import('../route');
+const { GET, POST } = await import('../route');
 
 const TICKET_ID = '11111111-1111-4111-8111-111111111111';
 const TICKET_OWNER_ID = 'customer-1';
 const OPERATION_ID = '7b456ed4-615e-4210-a704-840abc4c1790';
 const CREATED_AT = '2026-08-09T00:00:00.000Z';
+const REPLY_ID = '33333333-3333-4333-8333-333333333333';
 
 function request(body: string) {
   return new Request(`http://localhost/api/support/tickets/${TICKET_ID}/replies`, {
@@ -153,5 +154,66 @@ describe('POST /api/support/tickets/[id]/replies', () => {
     const payload = await response.json();
     expect(payload).toMatchObject({ error: { code: 'WRITE_UNAVAILABLE' } });
     expect(payload.error.message).not.toContain('connection reset');
+  });
+});
+
+describe('GET /api/support/tickets/[id]/replies', () => {
+  beforeEach(() => {
+    getUser.mockReset().mockResolvedValue({ data: { user: { id: TICKET_OWNER_ID } } });
+    isSuperAdmin.mockReset().mockResolvedValue(false);
+    createServiceClient.mockReset();
+  });
+
+  it('returns a bounded earlier page after verifying ticket ownership', async () => {
+    const query: Record<string, (...args: unknown[]) => unknown> = {};
+    query.select = vi.fn(() => query);
+    query.eq = vi.fn(() => query);
+    query.or = vi.fn(() => query);
+    query.order = vi.fn(() => query);
+    query.limit = vi.fn(async () => ({
+      data: Array.from({ length: 31 }, (_, index) => {
+        const number = 31 - index;
+        return {
+        id: `reply-${String(number).padStart(2, '0')}`,
+        sender_id: TICKET_OWNER_ID,
+        sender_role: 'customer',
+        body: `Reply ${number}`,
+        attachment_url: null,
+        created_at: new Date(Date.UTC(2026, 0, number)).toISOString(),
+        };
+      }),
+      error: null,
+    }));
+    createServiceClient.mockReturnValue({
+      from: (table: string) => table === 'support_tickets'
+        ? { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: TICKET_ID, user_id: TICKET_OWNER_ID }, error: null }) }) }) }
+        : query,
+    });
+    const cursor = { createdAt: '2026-02-01T00:00:00.000Z', id: '33333333-3333-4333-8333-333333333333' };
+    const response = await GET(new Request(`http://localhost/api/support/tickets/${TICKET_ID}/replies?beforeCreatedAt=${encodeURIComponent(cursor.createdAt)}&beforeId=${cursor.id}`), {
+      params: Promise.resolve({ id: TICKET_ID }),
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(query.or).toHaveBeenCalledWith(`created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`);
+    expect(query.limit).toHaveBeenCalledWith(31);
+    expect(payload.data.replies).toHaveLength(30);
+    expect(payload.data.replies[0].body).toBe('Reply 2');
+    expect(payload.data.nextCursor).toEqual({ createdAt: new Date(Date.UTC(2026, 0, 2)).toISOString(), id: 'reply-02' });
+    expect(JSON.stringify(payload)).not.toContain('sender_id');
+  });
+
+  it('does not return replies for another account and rejects a malformed cursor', async () => {
+    const query = { select: vi.fn(() => query), eq: vi.fn(() => query), order: vi.fn(() => query), limit: vi.fn() };
+    createServiceClient.mockReturnValue({
+      from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: TICKET_ID, user_id: 'other-customer' }, error: null }) }) }) }),
+    });
+    const forbidden = await GET(new Request(`http://localhost/api/support/tickets/${TICKET_ID}/replies`), { params: Promise.resolve({ id: TICKET_ID }) });
+    expect(forbidden.status).toBe(403);
+
+    const invalidCursor = await GET(new Request(`http://localhost/api/support/tickets/${TICKET_ID}/replies?beforeCreatedAt=bad&beforeId=${REPLY_ID}`), { params: Promise.resolve({ id: TICKET_ID }) });
+    expect(invalidCursor.status).toBe(400);
+    expect(query.limit).not.toHaveBeenCalled();
   });
 });

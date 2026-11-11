@@ -21,6 +21,7 @@ function callRoute() {
 
 function mockService(overrides: { ticketUserId?: string; ticketError?: Error | null } = {}) {
   const replyQuery = vi.fn();
+  const replyLimit = vi.fn();
   createServiceClient.mockReturnValue({
     from: (table: string) => {
       if (table === 'support_tickets') {
@@ -37,13 +38,18 @@ function mockService(overrides: { ticketUserId?: string; ticketError?: Error | n
       }
       if (table === 'support_ticket_replies') {
         replyQuery();
-        const builder: Record<string, (...args: unknown[]) => unknown> = {};
+        const builder: Record<string, (...args: never[]) => unknown> = {};
         builder.select = () => builder;
         builder.eq = () => builder;
-        builder.order = async () => ({
+        builder.or = () => builder;
+        builder.order = () => builder;
+        builder.limit = async (limit: number) => {
+          replyLimit(limit);
+          return {
           data: [{ id: REPLY_ID, sender_id: OWNER_ID, sender_role: 'customer', body: 'Receipt', attachment_url: `${TICKET_ID}/${REPLY_ID}.png`, created_at: '2026-11-11T00:01:00.000Z' }],
           error: null,
-        });
+          };
+        };
         return builder;
       }
       if (table === 'ticket_mutes') {
@@ -56,7 +62,7 @@ function mockService(overrides: { ticketUserId?: string; ticketError?: Error | n
       throw new Error(`Unexpected table ${table}`);
     },
   });
-  return { replyQuery };
+  return { replyQuery, replyLimit };
 }
 
 describe('GET /api/support/tickets/[id]', () => {
@@ -67,15 +73,17 @@ describe('GET /api/support/tickets/[id]', () => {
   });
 
   it('returns attachment type metadata without exposing the private storage path', async () => {
-    const { replyQuery } = mockService();
+    const { replyQuery, replyLimit } = mockService();
 
     const response = await callRoute();
     const payload = await response.json();
 
     expect(response.status).toBe(200);
     expect(payload.data.replies[0]).toMatchObject({ id: REPLY_ID, attachment_type: 'image' });
+    expect(payload.data.repliesCursor).toBeNull();
     expect(JSON.stringify(payload)).not.toContain(`${TICKET_ID}/${REPLY_ID}.png`);
     expect(replyQuery).toHaveBeenCalledTimes(1);
+    expect(replyLimit).toHaveBeenCalledWith(31);
   });
 
   it('does not read replies for another account', async () => {

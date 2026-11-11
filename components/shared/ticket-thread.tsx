@@ -21,6 +21,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export interface ReplyMessage {
   id: string;
@@ -48,11 +49,16 @@ interface TicketThreadProps {
   ticketBody: string;
   ticketCreatedAt: string;
   replies: ReplyMessage[];
+  hasEarlierReplies?: boolean;
+  loadingEarlierReplies?: boolean;
+  earlierRepliesError?: boolean;
+  onLoadEarlierReplies?: () => void;
 }
 
-export function TicketThread({ ticketId, ticketIsMine, ticketBody, ticketCreatedAt, replies }: TicketThreadProps) {
+export function TicketThread({ ticketId, ticketIsMine, ticketBody, ticketCreatedAt, replies, hasEarlierReplies = false, loadingEarlierReplies = false, earlierRepliesError = false, onLoadEarlierReplies }: TicketThreadProps) {
   const { t } = useTranslation("common");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const lastItemKeyRef = useRef<string | null>(null);
   const [failedAttachments, setFailedAttachments] = useState<Record<string, boolean>>({});
   const [attachmentAttempts, setAttachmentAttempts] = useState<Record<string, number>>({});
   const [downloadingAttachments, setDownloadingAttachments] = useState<Record<string, boolean>>({});
@@ -90,11 +96,13 @@ export function TicketThread({ ticketId, ticketIsMine, ticketBody, ticketCreated
       body: r.body,
       attachmentType: r.attachment_type ?? null,
     })),
-  ].sort((a, b) => (a.at < b.at ? -1 : 1));
+  ].sort((a, b) => a.at === b.at ? a.key.localeCompare(b.key) : a.at < b.at ? -1 : 1);
+  const lastItemKey = items.at(-1)?.key ?? null;
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [items.length]);
+    if (lastItemKeyRef.current !== lastItemKey) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    lastItemKeyRef.current = lastItemKey;
+  }, [lastItemKey]);
 
   if (items.length === 0) {
     return <p className="text-sm text-muted-foreground text-center py-6">{t("ticket.noMessagesYet")}</p>;
@@ -102,6 +110,16 @@ export function TicketThread({ ticketId, ticketIsMine, ticketBody, ticketCreated
 
   return (
     <div className="space-y-2">
+      {hasEarlierReplies && onLoadEarlierReplies && (
+        <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-1">
+            {earlierRepliesError && <p role="alert" className="text-xs text-destructive">{t("chatbot.supportErrors.readUnavailable")}</p>}
+            <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={onLoadEarlierReplies} disabled={loadingEarlierReplies}>
+              {loadingEarlierReplies ? t("states.loadingEllipsis") : earlierRepliesError ? t("chatbot.faq.retry") : t("chatbot.history.loadEarlier")}
+            </Button>
+          </div>
+        </div>
+      )}
       {items.map((item) => {
         const isMine = item.isMine;
         const isImage = item.attachmentType === "image";

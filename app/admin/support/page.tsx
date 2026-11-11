@@ -78,6 +78,7 @@ interface TicketDetail {
   status: "open" | "in_progress" | "resolved" | "closed";
   createdAt: string;
   replies: ReplyMessage[];
+  repliesCursor: { createdAt: string; id: string } | null;
 }
 
 const CATEGORIES = TICKET_CATEGORIES;
@@ -113,6 +114,10 @@ function AdminSupportContent() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
   const [detail, setDetail] = useState<TicketDetail | null>(null);
+  const [loadingEarlierRepliesFor, setLoadingEarlierRepliesFor] = useState<string | null>(null);
+  const [earlierRepliesErrorFor, setEarlierRepliesErrorFor] = useState<string | null>(null);
+  const earlierRepliesRequestFor = useRef<string | null>(null);
+  const earlierRepliesController = useRef<AbortController | null>(null);
   const [reply, setReply] = useState("");
   const [replyOperationId, setReplyOperationId] = useState<string | null>(null);
   const speech = useSpeechInput({ lang: resolveRecognitionLangFromLocale(i18n.resolvedLanguage), onTranscriptChange: setReply });
@@ -162,6 +167,10 @@ function AdminSupportContent() {
   const visibleTickets = tickets ?? [];
 
   async function loadDetail(id: string): Promise<TicketDetail | null> {
+    earlierRepliesController.current?.abort();
+    earlierRepliesController.current = null;
+    earlierRepliesRequestFor.current = null;
+    setLoadingEarlierRepliesFor(null);
     try {
       const res = await fetch(`/api/support/tickets/${id}`);
       const result = (await res.json()) as { data: TicketDetail | null };
@@ -171,6 +180,39 @@ function AdminSupportContent() {
     } catch {
       setDetail(null);
       return null;
+    }
+  }
+
+  async function loadEarlierReplies(ticketId: string) {
+    if (detail?.id !== ticketId || !detail.repliesCursor || loadingEarlierRepliesFor === ticketId || earlierRepliesRequestFor.current === ticketId) return;
+    const cursor = detail.repliesCursor;
+    earlierRepliesRequestFor.current = ticketId;
+    const controller = new AbortController();
+    earlierRepliesController.current = controller;
+    setLoadingEarlierRepliesFor(ticketId);
+    setEarlierRepliesErrorFor(null);
+    try {
+      const params = new URLSearchParams({ beforeCreatedAt: cursor.createdAt, beforeId: cursor.id });
+      const response = await fetch(`/api/support/tickets/${ticketId}/replies?${params.toString()}`, { cache: "no-store", signal: controller.signal });
+      const result = await response.json().catch(() => ({})) as { data?: { replies?: ReplyMessage[]; nextCursor?: TicketDetail["repliesCursor"] } };
+      if (!response.ok || !result.data || !Array.isArray(result.data.replies)) throw new Error("support_replies_unavailable");
+      const olderReplies = result.data.replies;
+      const nextCursor = result.data.nextCursor ?? null;
+      setDetail((current) => current?.id === ticketId
+        && current.repliesCursor?.createdAt === cursor.createdAt
+        && current.repliesCursor?.id === cursor.id ? {
+        ...current,
+        replies: [...olderReplies, ...current.replies],
+        repliesCursor: nextCursor,
+      } : current);
+    } catch {
+      if (!controller.signal.aborted) setEarlierRepliesErrorFor(ticketId);
+    } finally {
+      if (earlierRepliesController.current === controller) {
+        earlierRepliesController.current = null;
+        if (earlierRepliesRequestFor.current === ticketId) earlierRepliesRequestFor.current = null;
+        setLoadingEarlierRepliesFor((current) => current === ticketId ? null : current);
+      }
     }
   }
 
@@ -591,6 +633,10 @@ function AdminSupportContent() {
                   ticketBody={detail.body}
                   ticketCreatedAt={detail.createdAt}
                   replies={detail.replies}
+                  hasEarlierReplies={Boolean(detail.repliesCursor)}
+                  loadingEarlierReplies={loadingEarlierRepliesFor === detail.id}
+                  earlierRepliesError={earlierRepliesErrorFor === detail.id}
+                  onLoadEarlierReplies={() => void loadEarlierReplies(detail.id)}
                 />
               </div>
 

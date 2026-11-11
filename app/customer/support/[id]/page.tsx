@@ -38,6 +38,7 @@ interface TicketDetail {
   resolvedAt: string | null;
   muted: boolean;
   replies: ReplyMessage[];
+  repliesCursor: { createdAt: string; id: string } | null;
 }
 
 const LOCKED_STATUSES = new Set(["resolved", "closed"]);
@@ -50,6 +51,10 @@ export default function CustomerTicketDetailPage() {
   const { showFeedback } = useActionFeedback();
   const [ticket, setTicket] = useState<TicketDetail | null | undefined>(undefined);
   const [ticketLoadError, setTicketLoadError] = useState<string | null>(null);
+  const [loadingEarlierReplies, setLoadingEarlierReplies] = useState(false);
+  const [earlierRepliesError, setEarlierRepliesError] = useState(false);
+  const earlierRepliesRequest = useRef(false);
+  const earlierRepliesController = useRef<AbortController | null>(null);
   const [reply, setReply] = useState("");
   const [replyDraftVersion, setReplyDraftVersion] = useState(0);
   const [replyDraftSaved, setReplyDraftSaved] = useState(false);
@@ -67,6 +72,10 @@ export default function CustomerTicketDetailPage() {
   const speech = useSpeechInput({ lang: resolveRecognitionLangFromLocale(i18n.resolvedLanguage), onTranscriptChange: setReply });
 
   async function loadTicket(): Promise<TicketDetail | null> {
+    earlierRepliesController.current?.abort();
+    earlierRepliesController.current = null;
+    earlierRepliesRequest.current = false;
+    setLoadingEarlierReplies(false);
     try {
       const res = await fetch(`/api/support/tickets/${id}`);
       const body = (await res.json().catch(() => ({}))) as { data?: TicketDetail | null; error?: { code?: string } };
@@ -77,12 +86,47 @@ export default function CustomerTicketDetailPage() {
         return null;
       }
       setTicketLoadError(null);
+      setEarlierRepliesError(false);
       setTicket(body.data);
       return body.data;
     } catch {
       setTicketLoadError("READ_UNAVAILABLE");
       setTicket((current) => current === undefined ? null : current);
       return null;
+    }
+  }
+
+  async function loadEarlierReplies() {
+    if (!ticket?.repliesCursor || loadingEarlierReplies || earlierRepliesRequest.current) return;
+    const targetTicketId = ticket.id;
+    const cursor = ticket.repliesCursor;
+    earlierRepliesRequest.current = true;
+    const controller = new AbortController();
+    earlierRepliesController.current = controller;
+    setLoadingEarlierReplies(true);
+    setEarlierRepliesError(false);
+    try {
+      const params = new URLSearchParams({ beforeCreatedAt: cursor.createdAt, beforeId: cursor.id });
+      const response = await fetch(`/api/support/tickets/${targetTicketId}/replies?${params.toString()}`, { cache: "no-store", signal: controller.signal });
+      const result = await response.json().catch(() => ({})) as { data?: { replies?: ReplyMessage[]; nextCursor?: TicketDetail["repliesCursor"] } };
+      if (!response.ok || !result.data || !Array.isArray(result.data.replies)) throw new Error("support_replies_unavailable");
+      const olderReplies = result.data.replies;
+      const nextCursor = result.data.nextCursor ?? null;
+      setTicket((current) => current?.id === targetTicketId
+        && current.repliesCursor?.createdAt === cursor.createdAt
+        && current.repliesCursor?.id === cursor.id ? {
+        ...current,
+        replies: [...olderReplies, ...current.replies],
+        repliesCursor: nextCursor,
+      } : current);
+    } catch {
+      if (!controller.signal.aborted) setEarlierRepliesError(true);
+    } finally {
+      if (earlierRepliesController.current === controller) {
+        earlierRepliesController.current = null;
+        earlierRepliesRequest.current = false;
+        setLoadingEarlierReplies(false);
+      }
     }
   }
 
@@ -328,6 +372,10 @@ export default function CustomerTicketDetailPage() {
             ticketBody={ticket.body}
             ticketCreatedAt={ticket.createdAt}
             replies={ticket.replies}
+            hasEarlierReplies={Boolean(ticket.repliesCursor)}
+            loadingEarlierReplies={loadingEarlierReplies}
+            earlierRepliesError={earlierRepliesError}
+            onLoadEarlierReplies={() => void loadEarlierReplies()}
           />
         </div>
       </div>

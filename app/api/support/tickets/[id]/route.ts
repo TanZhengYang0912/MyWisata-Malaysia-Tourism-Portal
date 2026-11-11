@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
+import { loadSupportReplyPage } from '@/lib/support/reply-pagination';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -35,12 +36,8 @@ export async function GET(_request: Request, { params }: Props) {
 
   // The ticket thread contains only its submitted body and explicit replies.
 
-  const { data: replies, error: repliesError } = await service
-    .from('support_ticket_replies')
-    .select('id, sender_id, sender_role, body, attachment_url, created_at')
-    .eq('ticket_id', id)
-    .order('created_at', { ascending: true });
-  if (repliesError) return apiFail('READ_UNAVAILABLE', 'Unable to load ticket replies.', 503);
+  const replyPage = await loadSupportReplyPage(service, id, user.id);
+  if (replyPage.error) return apiFail('READ_UNAVAILABLE', 'Unable to load ticket replies.', 503);
 
   // ticket_mutes' own RLS already scopes this to the caller's own row — an
   // admin viewing someone else's ticket just gets no row, which is correct
@@ -59,18 +56,7 @@ export async function GET(_request: Request, { params }: Props) {
     resolvedAt: ticket.resolved_at,
     lastActivityAt: ticket.last_reply_at ?? ticket.created_at,
     muted: Boolean(muteRow),
-    replies: (replies ?? []).map((reply) => {
-      const extension = reply.attachment_url?.split('.').pop()?.toLowerCase() ?? null;
-      return {
-        id: reply.id,
-        is_mine: reply.sender_id === user.id,
-        sender_role: reply.sender_role,
-        body: reply.body,
-        created_at: reply.created_at,
-        attachment_type: extension === 'jpg' || extension === 'jpeg' || extension === 'png' || extension === 'webp'
-          ? 'image'
-          : extension === 'pdf' ? 'document' : null,
-      };
-    }),
+    replies: replyPage.replies ?? [],
+    repliesCursor: replyPage.nextCursor,
   });
 }
