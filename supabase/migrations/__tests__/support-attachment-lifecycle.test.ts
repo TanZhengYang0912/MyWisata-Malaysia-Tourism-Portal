@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync('supabase/migrations/20261111163000_support_attachment_lifecycle.sql', 'utf8');
+const recoveryMigration = readFileSync('supabase/migrations/20261111165000_support_attachment_retry_recovery.sql', 'utf8');
 
 describe('support attachment lifecycle boundary', () => {
   it('registers upload ownership, content, state, and lease before external storage work', () => {
@@ -36,5 +37,11 @@ describe('support attachment lifecycle boundary', () => {
     expect(migration).toContain('REVOKE ALL ON TABLE public.support_ticket_replies FROM anon, authenticated');
     expect(migration).toContain('GRANT SELECT (ticket_id, sender_role, created_at)');
     expect(migration).not.toMatch(/GRANT SELECT\s*\([^)]*attachment_url/i);
+  });
+
+  it('preserves expired reservations and attachment manifests across ticket deletion', () => {
+    expect(recoveryMigration).toContain("FOREIGN KEY (ticket_id) REFERENCES public.support_tickets(id) ON DELETE RESTRICT");
+    expect(recoveryMigration).toContain("upload.state = 'reserved' AND upload.external_started_at IS NULL");
+    expect(recoveryMigration).toContain("v_upload.state <> 'deleted'");
   });
 });

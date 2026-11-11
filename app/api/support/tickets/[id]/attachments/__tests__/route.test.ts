@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   markSupportAttachmentUploaded: vi.fn(),
   abandonSupportAttachment: vi.fn(),
   commitSupportTicketAttachment: vi.fn(),
+  retrySupportAttachment: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { getUser: mocks.getUser } }) }));
@@ -52,6 +53,7 @@ function makeService() {
       if (name === 'mark_support_attachment_uploaded') return mocks.markSupportAttachmentUploaded(name, args);
       if (name === 'abandon_support_attachment') return mocks.abandonSupportAttachment(name, args);
       if (name === 'commit_support_ticket_attachment') return mocks.commitSupportTicketAttachment(name, args);
+      if (name === 'retry_support_attachment') return mocks.retrySupportAttachment(name, args);
       throw new Error(`Unexpected RPC ${name}`);
     },
     storage: { from: vi.fn(() => storage) },
@@ -105,6 +107,7 @@ describe('POST /api/support/tickets/[id]/attachments operation idempotency', () 
     mocks.markSupportAttachmentStarted.mockResolvedValue({ data: null, error: null });
     mocks.markSupportAttachmentUploaded.mockResolvedValue({ data: null, error: null });
     mocks.abandonSupportAttachment.mockResolvedValue({ data: null, error: null });
+    mocks.retrySupportAttachment.mockResolvedValue({ data: null, error: { message: 'support_attachment_retry_pending' } });
     mocks.commitSupportTicketAttachment.mockReset();
     mocks.getUser.mockResolvedValue({ data: { user: { id: ownerId } } });
     mocks.isSuperAdmin.mockResolvedValue(false);
@@ -174,5 +177,37 @@ describe('POST /api/support/tickets/[id]/attachments operation idempotency', () 
 
     expect(response.status).toBe(422);
     expect(storage.upload).not.toHaveBeenCalled();
+  });
+
+  it('asks the customer to select the file again when an uncertain upload cannot be found', async () => {
+    const { service, storage } = makeService();
+    mocks.reserveSupportAttachment.mockResolvedValue({
+      data: { state: 'unknown', storage_path: `${ticketId}/${uploadId}.png`, lease_token: leaseToken },
+      error: null,
+    });
+    mocks.createServiceClient.mockReturnValue(service);
+
+    const response = await submit([1, 2, 3], 'Receipt');
+    const payload = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(payload.error.code).toBe('ATTACHMENT_RESELECT_REQUIRED');
+    expect(storage.upload).not.toHaveBeenCalled();
+  });
+
+  it('restarts the same operation with a new path after cleanup confirmed deletion', async () => {
+    const { service, storage } = makeService();
+    mocks.reserveSupportAttachment.mockResolvedValue({ data: null, error: { message: 'support_attachment_result_unavailable' } });
+    mocks.retrySupportAttachment.mockResolvedValue({
+      data: { state: 'reserved', storage_path: `${ticketId}/${uploadId}.png`, lease_token: leaseToken },
+      error: null,
+    });
+    mocks.createServiceClient.mockReturnValue(service);
+
+    const response = await submit([1, 2, 3], 'Receipt');
+
+    expect(response.status).toBe(201);
+    expect(mocks.retrySupportAttachment).toHaveBeenCalledTimes(1);
+    expect(storage.upload).toHaveBeenCalledTimes(1);
   });
 });

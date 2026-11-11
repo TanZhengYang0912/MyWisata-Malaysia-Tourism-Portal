@@ -410,6 +410,7 @@
       "fileContent": "Fail ini tidak dapat disahkan. Pilih fail lain.",
       "chooseFile": "Pilih fail untuk dilampirkan.",
       "uploadFailed": "Fail tidak dilampirkan. Semak sambungan dan cuba lagi.",
+      "attachmentReselect": "Muat naik ini belum dapat disahkan. Pilih fail sekali lagi untuk memulakan muat naik baharu.",
       "paymentUncertain": "Status bayaran belum disahkan. Semak pesanan atau hubungi sokongan; jangan bayar lagi dahulu.",
       "rateLimited": "Tindakan ini dihadkan buat sementara. Tunggu sebentar atau hubungi sokongan.",
       "unavailable": "Ralat berlaku. Teks anda masih disimpan di sini. Cuba lagi atau hubungi sokongan."

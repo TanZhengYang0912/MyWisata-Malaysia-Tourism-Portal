@@ -121,16 +121,35 @@ export async function POST(request: Request, { params }: Props) {
     return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment status. Check this ticket before trying again.', 503);
   }
   if (reservationError) {
-    const knownErrors: Record<string, { code: string; message: string; status: number }> = {
-      support_ticket_not_found: { code: 'NOT_FOUND', message: 'Ticket not found.', status: 404 },
-      support_ticket_forbidden: { code: 'FORBIDDEN', message: 'You cannot reply to this ticket.', status: 403 },
-      support_ticket_locked: { code: 'TICKET_LOCKED', message: 'This ticket is resolved. Reopen it to reply.', status: 403 },
-      support_ticket_operation_conflict: { code: 'OPERATION_CONFLICT', message: 'This attachment key was already used for different content.', status: 409 },
-      support_ticket_invalid_attachment: { code: 'INVALID_INPUT', message: 'Choose a valid attachment and try again.', status: 422 },
-    };
-    const knownError = knownErrors[reservationError.message];
-    if (knownError) return apiFail(knownError.code, knownError.message, knownError.status);
-    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment status. Check this ticket before trying again.', 503);
+    if (reservationError.message === 'support_attachment_result_unavailable') {
+      try {
+        const retried = await service.rpc('retry_support_attachment', {
+          p_operation_id: operationId,
+          p_ticket_id: id,
+          p_actor_id: user.id,
+          p_sender_role: senderRole,
+          p_operation_payload_hash: operationPayloadHash,
+          p_server_sha256: fileHash,
+          p_mime_type: file.type,
+          p_size_bytes: file.size,
+        });
+        if (!retried.error && retried.data) reservationData = retried.data;
+        else if (retried.error) return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment status. Check this ticket before trying again.', 503);
+      } catch {
+        return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment status. Check this ticket before trying again.', 503);
+      }
+    } else {
+      const knownErrors: Record<string, { code: string; message: string; status: number }> = {
+        support_ticket_not_found: { code: 'NOT_FOUND', message: 'Ticket not found.', status: 404 },
+        support_ticket_forbidden: { code: 'FORBIDDEN', message: 'You cannot reply to this ticket.', status: 403 },
+        support_ticket_locked: { code: 'TICKET_LOCKED', message: 'This ticket is resolved. Reopen it to reply.', status: 403 },
+        support_ticket_operation_conflict: { code: 'OPERATION_CONFLICT', message: 'This attachment key was already used for different content.', status: 409 },
+        support_ticket_invalid_attachment: { code: 'INVALID_INPUT', message: 'Choose a valid attachment and try again.', status: 422 },
+      };
+      const knownError = knownErrors[reservationError.message];
+      if (knownError) return apiFail(knownError.code, knownError.message, knownError.status);
+      return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment status. Check this ticket before trying again.', 503);
+    }
   }
   if (typeof reservationData !== 'object' || reservationData === null) {
     return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment status. Check this ticket before trying again.', 503);
@@ -210,12 +229,10 @@ export async function POST(request: Request, { params }: Props) {
     }
     if (!existingFile) {
       if (downloadError?.statusCode === '404' && reservation.state === 'reserved') {
-        const { error: abandonError } = await service.rpc('abandon_support_attachment', {
-          p_operation_id: operationId,
-          p_actor_id: user.id,
-          p_lease_token: leaseToken,
-        });
-        if (!abandonError) return apiFail('UPLOAD_FAILED', 'The file was not attached. Choose it again to retry.', 502);
+        return apiFail('ATTACHMENT_RESELECT_REQUIRED', 'The file could not be confirmed. Choose it again to start a new upload.', 409);
+      }
+      if (downloadError?.statusCode === '404' && reservation.state === 'unknown') {
+        return apiFail('ATTACHMENT_RESELECT_REQUIRED', 'The file could not be confirmed. Choose it again to start a new upload.', 409);
       }
       return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment result. Check this ticket before trying again.', 503);
     }

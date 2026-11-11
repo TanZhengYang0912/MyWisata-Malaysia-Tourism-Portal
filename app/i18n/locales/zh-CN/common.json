@@ -410,6 +410,7 @@
       "fileContent": "无法确认此文件是否可用，请换一个文件。",
       "chooseFile": "请选择要附加的文件。",
       "uploadFailed": "文件未能附加，请检查网络后重试。",
+      "attachmentReselect": "暂时无法确认这次上传。请重新选择文件以开始新的上传。",
       "paymentUncertain": "付款状态尚未确认。请先查询订单或联系客服，暂时不要重复付款。",
       "rateLimited": "此操作暂时受限，请稍后重试或联系人工客服。",
       "unavailable": "操作失败，但输入内容仍保留。请重试或联系人工客服。"

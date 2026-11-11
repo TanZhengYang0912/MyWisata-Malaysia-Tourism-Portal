@@ -410,6 +410,7 @@
       "fileContent": "This file could not be checked. Choose a different file.",
       "chooseFile": "Choose a file to attach.",
       "uploadFailed": "The file was not attached. Check your connection and try again.",
+      "attachmentReselect": "We could not confirm this upload. Select the file again to start a new upload.",
       "paymentUncertain": "Payment status is not confirmed. Check your order or contact support; do not pay again yet.",
       "rateLimited": "This action is temporarily limited. Wait a moment or contact support.",
       "unavailable": "Something went wrong. Your text is still here. Try again or contact support."

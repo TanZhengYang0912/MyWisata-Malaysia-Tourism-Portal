@@ -22,6 +22,7 @@ const SUPPORT_ERRORS: Record<string, { key: string; action: SupportErrorAction }
   MISSING_FILE: { key: 'chooseFile', action: 'choose_file' },
   ATTACHMENT_UNAVAILABLE: { key: 'fileContent', action: 'choose_file' },
   UPLOAD_FAILED: { key: 'uploadFailed', action: 'choose_file' },
+  ATTACHMENT_RESELECT_REQUIRED: { key: 'attachmentReselect', action: 'choose_file' },
   PAYMENT_STATUS_UNCERTAIN: { key: 'paymentUncertain', action: 'open_record' },
   RATE_LIMITED: { key: 'rateLimited', action: 'wait' },
 };

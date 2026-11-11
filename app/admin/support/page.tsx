@@ -333,7 +333,7 @@ function AdminSupportContent() {
       const res = await fetch(`/api/support/tickets/${openTicketId}/attachments`, { method: "POST", body: formData });
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: { code?: string } };
-        if (body.error?.code === "UPLOAD_FAILED") setAttachmentOperationId(null);
+        if (body.error?.code === "UPLOAD_FAILED" || body.error?.code === "ATTACHMENT_RESELECT_REQUIRED") setAttachmentOperationId(null);
         showFeedback("error", body.error?.code ? tCommon(`chatbot.supportErrors.${supportError(body.error.code).key}`) : t("ui.support.errors.sendReply"));
         return;
       }
