@@ -229,10 +229,10 @@ export async function POST(request: Request, { params }: Props) {
     }
     if (!existingFile) {
       if (downloadError?.statusCode === '404' && reservation.state === 'reserved') {
-        return apiFail('ATTACHMENT_RESELECT_REQUIRED', 'The file could not be confirmed. Choose it again to start a new upload.', 409);
+        return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment result. Check this ticket before trying again.', 503);
       }
       if (downloadError?.statusCode === '404' && reservation.state === 'unknown') {
-        return apiFail('ATTACHMENT_RESELECT_REQUIRED', 'The file could not be confirmed. Choose it again to start a new upload.', 409);
+        return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment result. Check this ticket before trying again.', 503);
       }
       return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment result. Check this ticket before trying again.', 503);
     }

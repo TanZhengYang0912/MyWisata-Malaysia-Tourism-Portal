@@ -179,7 +179,7 @@ describe('POST /api/support/tickets/[id]/attachments operation idempotency', () 
     expect(storage.upload).not.toHaveBeenCalled();
   });
 
-  it('asks the customer to select the file again when an uncertain upload cannot be found', async () => {
+  it('keeps an uncertain upload pending when Storage has not confirmed the object', async () => {
     const { service, storage } = makeService();
     mocks.reserveSupportAttachment.mockResolvedValue({
       data: { state: 'unknown', storage_path: `${ticketId}/${uploadId}.png`, lease_token: leaseToken },
@@ -190,8 +190,8 @@ describe('POST /api/support/tickets/[id]/attachments operation idempotency', () 
     const response = await submit([1, 2, 3], 'Receipt');
     const payload = await response.json();
 
-    expect(response.status).toBe(409);
-    expect(payload.error.code).toBe('ATTACHMENT_RESELECT_REQUIRED');
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('WRITE_UNAVAILABLE');
     expect(storage.upload).not.toHaveBeenCalled();
   });
 
