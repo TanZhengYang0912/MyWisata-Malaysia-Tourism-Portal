@@ -88,6 +88,7 @@ interface ChatMessage {
   handoffPreviewSummary?: string;
   handoffSourceMessage?: string | null;
   handoffOperationId?: string;
+  handoffDraftTarget?: string;
   handoffDraftVersion?: number;
   handoffDraftSaved?: boolean;
   handoffConsented?: boolean;
@@ -591,8 +592,8 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
           role: "bot",
           text: message,
           statusItems: response.ok && result.data?.state === "available" ? result.data.items : undefined,
-          question: needsHumanHelp ? question : undefined,
-          feedbackStage: needsHumanHelp ? "awaiting_ticket" : undefined,
+          question: needsHumanHelp && !signInRequired ? question : undefined,
+          feedbackStage: needsHumanHelp && !signInRequired ? "awaiting_ticket" : undefined,
           statusActionHref: signInRequired ? `/login?next=${encodeURIComponent(pageHref)}` : pageHref,
           statusActionLabel: signInRequired ? t("chatbot.statusQuery.signInAction") : t("chatbot.statusQuery.openRecord"),
         }]);
@@ -750,7 +751,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     const pendingOperationId = readPendingSupportOperation(currentUser?.id ?? null, msg.messageId);
     const operationId = pendingOperationId ?? crypto.randomUUID();
     const hasPendingOperation = Boolean(pendingOperationId);
-    const draftTarget = msg.messageId ?? operationId;
+    const draftTarget = msg.messageId ?? msg.handoffDraftTarget ?? operationId;
     setCreatingTicketFor(msg.messageId ?? operationId);
     try {
       let subject = resolveTicketSubject(msg.question, t("chatbot.supportRequest"));
@@ -774,8 +775,9 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         handoffSummary: summary,
         handoffPreviewSubject: subject,
         handoffPreviewSummary: summary,
-        handoffSourceMessage: msg.question ?? null,
+        handoffSourceMessage: msg.messageId ? msg.question ?? null : null,
         handoffOperationId: operationId,
+        handoffDraftTarget: draftTarget,
         handoffDraftVersion: draftVersion,
         handoffDraftSaved: draftVersion > 0,
         ticketOperationUnknown: hasPendingOperation,
@@ -795,14 +797,21 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
 
   async function saveHandoffDraft(index: number): Promise<boolean> {
     const msg = messages[index];
-    if (!msg.handoffOperationId || !msg.messageId || !currentUser) return false;
+    if (!msg.handoffOperationId) return false;
+    if (!currentUser) {
+      setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
+        ? { ...item, ticketError: t("chatbot.ticketError"), ticketErrorCode: "UNAUTHORIZED", ticketNeedsSignIn: true }
+        : item));
+      return false;
+    }
+    const draftTarget = msg.messageId ?? msg.handoffDraftTarget ?? msg.handoffOperationId;
     const requestIdentity = identityRef.current;
     const response = await fetch("/api/support/drafts", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         surface: "handoff",
-        target: msg.messageId,
+        target: draftTarget,
         subject: msg.handoffSubject ?? "",
         body: msg.handoffSummary ?? "",
         expectedVersion: msg.handoffDraftVersion ?? 0,
@@ -883,8 +892,9 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       const ticketErrorText = t("chatbot.ticketError");
       if (res.ok && result.data) {
         setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: "ticket_created", ticketId: result.data!.id, ticketOperationUnknown: false, ticketOperationNotFound: false } : m)));
-        if (msg.messageId && currentUser) {
-          void fetch(`/api/support/drafts?surface=handoff&target=${encodeURIComponent(msg.messageId)}`, { method: "DELETE" });
+        const draftTarget = msg.messageId ?? msg.handoffDraftTarget ?? msg.handoffOperationId;
+        if (currentUser && draftTarget) {
+          void fetch(`/api/support/drafts?surface=handoff&target=${encodeURIComponent(draftTarget)}`, { method: "DELETE" });
         }
         if (msg.messageId && sessionKey) postFeedback({ sessionKey, messageId: msg.messageId, openedTicket: true });
       } else {

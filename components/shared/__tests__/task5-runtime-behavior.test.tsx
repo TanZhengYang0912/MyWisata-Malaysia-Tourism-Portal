@@ -85,6 +85,7 @@ const translations: Record<string, string> = {
   "common:chatbot.handoff.subject": "Translated ticket subject",
   "common:chatbot.handoff.summary": "Translated ticket summary",
   "common:chatbot.handoff.confirm": "Create translated ticket",
+  "common:chatbot.handoff.saveDraft": "Save translated draft",
   "common:chatbot.yes": "Yes translated",
   "common:filters.filter": "Translated filter",
   "common:notifications.categories.wallet": "Wallet translated",
@@ -190,6 +191,7 @@ describe("Task 5 shared runtime behavior", () => {
     }
     document.body.removeChild(container);
     vi.unstubAllGlobals();
+    document.defaultView.localStorage.clear();
   });
 
   it("uses translated known status labels and safely falls back for arbitrary/prototype statuses", () => {
@@ -345,6 +347,154 @@ describe("Task 5 shared runtime behavior", () => {
     await click(findButton("Retry translated"));
     expect(mocks.fetch).toHaveBeenCalledTimes(2);
     expect(container.textContent).toContain("chatbot.faq.empty");
+  });
+
+  it("lets a signed-in user hand off an unavailable status query using the operation draft target", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    const question = "Has my booking been confirmed?";
+    const reviewedSubject = "Please check my booking";
+    const reviewedSummary = "I need help confirming my booking.";
+    let draftReadTarget: string | null = null;
+    let draftWrite: { target?: string; subject?: string; body?: string; expectedVersion?: number } | undefined;
+    let draftDeleteTarget: string | null = null;
+    let previewPayload: { subject?: string; summary?: string; sessionKey?: string; messageId?: string } | undefined;
+    let ticketPayload: { operationId?: string; handoffToken?: string; subject?: string; body?: string; sourceMessageId?: string } | undefined;
+    mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/faq") return response({ data: { categories: [] } });
+      if (url === "/api/support/status") return response({ data: null, error: { code: "READ_UNAVAILABLE" } }, false);
+      if (String(url).startsWith("/api/support/drafts?")) {
+        const target = new URL(String(url), "https://example.test").searchParams.get("target");
+        if (init?.method === "DELETE") {
+          draftDeleteTarget = target;
+          return response({ data: { cleared: true } });
+        }
+        draftReadTarget = target;
+        return response({ data: { subject: "", body: "", version: 0 } });
+      }
+      if (url === "/api/support/drafts" && init?.method === "PUT") {
+        draftWrite = JSON.parse(String(init.body)) as typeof draftWrite;
+        return response({ data: { version: (draftWrite?.expectedVersion ?? 0) + 1, changed: true } });
+      }
+      if (url === "/api/support/handoff/preview") {
+        const previewRequest = JSON.parse(String(init?.body)) as { subject?: string; summary?: string; sessionKey?: string; messageId?: string };
+        previewPayload = previewRequest;
+        return response({ data: {
+          subject: previewRequest.subject,
+          summary: previewRequest.summary,
+          handoffToken: "signed-status-handoff-token",
+          sourceMessageId: null,
+          sourceMessage: null,
+        } });
+      }
+      if (url === "/api/support/tickets") {
+        ticketPayload = JSON.parse(String(init?.body)) as typeof ticketPayload;
+        return response({ data: { id: "ticket-status-1", category: "booking" } });
+      }
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    const questionInput = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
+    setInputValue(questionInput, question);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+    expect(container.textContent).toContain("chatbot.statusQuery.unavailable");
+    await click(findButton("Yes translated"));
+
+    expect(draftReadTarget).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(draftReadTarget).toBeTruthy();
+    const subjectInput = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("maxLength") === "255");
+    setInputValue(subjectInput, reviewedSubject);
+    const summaryInput = findOne(container, (element) => element.tagName === "TEXTAREA");
+    setInputValue(summaryInput, reviewedSummary);
+    await click(findButton("Save translated draft"));
+    expect(draftWrite).toMatchObject({ target: draftReadTarget, subject: reviewedSubject, body: reviewedSummary, expectedVersion: 0 });
+
+    const consent = findOne(container, (element) => element.tagName === "INPUT" && (element as unknown as { type: string }).type === "checkbox");
+    (consent as unknown as { checked: boolean }).checked = true;
+    await click(consent);
+    await click(findButton("Create translated ticket"));
+
+    if (!previewPayload) throw new Error("Handoff preview was not requested");
+    expect(previewPayload).toMatchObject({ subject: reviewedSubject, summary: reviewedSummary });
+    expect(previewPayload).not.toHaveProperty("messageId");
+    expect(ticketPayload).toMatchObject({
+      subject: reviewedSubject,
+      body: reviewedSummary,
+      handoffToken: "signed-status-handoff-token",
+    });
+    expect(ticketPayload).not.toHaveProperty("sourceMessageId");
+    expect(draftWrite).toMatchObject({ target: draftReadTarget, subject: reviewedSubject, body: reviewedSummary, expectedVersion: 1 });
+    expect(draftDeleteTarget).toBe(draftReadTarget);
+    expect(findOne(container, (element) => element.tagName === "A" && element.getAttribute("href") === "/customer/support/ticket-status-1")).toBeTruthy();
+  });
+
+  it("sends a guest with an unavailable status query to sign in without showing a dead-end ticket action", async () => {
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/support/status") return { ...response({ data: null, error: { code: "UNAUTHORIZED" } }, false), status: 401 } as Response;
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    const questionInput = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
+    setInputValue(questionInput, "Where is my order status?");
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+
+    expect(container.textContent).toContain("chatbot.statusQuery.signIn");
+    expect(container.textContent).not.toContain("Translated ticket offer");
+    expect(findOne(container, (element) => element.tagName === "A" && Boolean(element.getAttribute("href")?.startsWith("/login?next=")))).toBeTruthy();
+    expect(mocks.fetch.mock.calls.some(([url]) => String(url).includes("/api/support/drafts") || String(url).includes("/api/support/handoff/preview"))).toBe(false);
+  });
+
+  it("explains that a guest must sign in before saving a chatbot handoff draft", async () => {
+    const question = "How can I contact customer support?";
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/session/guest-token") return response({ data: { ready: true } });
+      if (url === "/api/chatbot/ask") return response({ data: {
+        sessionKey: "guest-support-session",
+        answer: "This needs a support teammate.",
+        botAnswered: false,
+        messageId: "guest-support-answer",
+        userMessageId: "guest-support-question",
+        language: "en",
+      } });
+      if (url === "/api/chatbot/feedback") return response({ data: null });
+      if (String(url).startsWith("/api/support/drafts?")) return { ...response({ data: null, error: { code: "UNAUTHORIZED" } }, false), status: 401 } as Response;
+      if (url === "/api/support/handoff/preview") return { ...response({ data: null, error: { code: "UNAUTHORIZED" } }, false), status: 401 } as Response;
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    const questionInput = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
+    setInputValue(questionInput, question);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    await click(findButton("Yes translated"));
+    const consent = findOne(container, (element) => element.tagName === "INPUT" && (element as unknown as { type: string }).type === "checkbox");
+    (consent as unknown as { checked: boolean }).checked = true;
+    await click(consent);
+    await click(findButton("Create translated ticket"));
+
+    expect(container.textContent).toContain("chatbot.supportErrors.signIn");
+    expect(findOne(container, (element) => element.tagName === "A" && Boolean(element.getAttribute("href")?.startsWith("/login?next=")))).toBeTruthy();
+    expect(mocks.fetch.mock.calls.some(([url]) => String(url) === "/api/support/tickets")).toBe(false);
   });
 
   it("drives the real chatbot send and ticket handlers without translating API answers or ticket subjects", async () => {

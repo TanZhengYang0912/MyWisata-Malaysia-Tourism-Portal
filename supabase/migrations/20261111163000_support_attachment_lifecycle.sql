@@ -238,7 +238,7 @@ BEGIN
     SELECT upload.id, upload.storage_path, upload.reply_id
       FROM public.support_attachment_uploads AS upload
      WHERE (
-       ((upload.state = 'uploaded'
+       (upload.state = 'uploaded'
          AND coalesce(upload.next_attempt_at, '-infinity'::timestamptz) <= now()
          AND upload.lease_expires_at <= now()
          AND upload.updated_at < now() - interval '24 hours')
