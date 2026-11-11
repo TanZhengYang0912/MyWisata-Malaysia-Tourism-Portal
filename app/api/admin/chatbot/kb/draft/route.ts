@@ -21,6 +21,7 @@ import { draftKbEntry } from '@/lib/chatbot/kb-draft';
 import { answerQuestion as matchKeyword, type KbDoc } from '@/lib/chatbot/match';
 import { classifyTicket } from '@/lib/chatbot/classify';
 import { prepareExternalText } from '@/lib/chatbot/pii';
+import { reserveAiQuota } from '@/lib/rate-limit/ai';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -60,6 +61,10 @@ export async function POST(request: Request) {
   const privacyCheck = prepareExternalText(`QUESTION: ${question}${existingMatch?.body ? `\nEXISTING ANSWER: ${existingMatch.body}` : ''}`);
   if (!privacyCheck.allowed) {
     return apiFail('PERSONAL_DATA_WITHHELD', 'The draft request was not sent to AI because it may contain personal details. Remove phone, email, identity, bank, or private-address details, or write the knowledge-base entry manually.', 422);
+  }
+
+  if (!(await reserveAiQuota(request, 'kb_draft', user.id))) {
+    return apiFail('RATE_LIMITED', 'AI drafting is temporarily unavailable. You can still write and save the entry manually.', 429);
   }
 
   const draft = await draftKbEntry(question, existingMatch?.body ?? null);

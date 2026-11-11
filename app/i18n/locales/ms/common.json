@@ -302,7 +302,9 @@
     "supportTeam": "Pasukan sokongan",
     "document": "Dokumen",
     "attachment": "Lampiran",
-    "loadingAttachment": "Memuatkan…"
+    "loadingAttachment": "Memuatkan…",
+    "retryAttachment": "Cuba semula lampiran",
+    "attachmentUnavailable": "Lampiran ini tidak tersedia buat sementara. Anda boleh cuba lagi."
   },
   "chatbot": {
     "title": "Sembang",
@@ -326,6 +328,46 @@
     "somethingWrong": "Maaf, sesuatu tidak kena. Sila cuba lagi.",
     "privacyBlocked": "Mesej penuh anda tidak dihantar kepada AI kerana mungkin mengandungi nombor telefon, e-mel, nombor pengenalan, butiran bank atau alamat peribadi. Buang butiran tersebut dan hantar semula, atau teruskan menggunakan FAQ tempatan tanpa AI.",
     "supportRequest": "Permintaan sokongan",
+    "handoff": {
+      "subject": "Tajuk tiket",
+      "summary": "Apakah yang perlu diketahui oleh pasukan sokongan?",
+      "confirm": "Cipta tiket",
+      "cancel": "Batal",
+      "invalid": "Masukkan tajuk dan mesej dalam had aksara.",
+      "cleanedReview": "Butiran peribadi telah dipadamkan. Semak teks yang dikemas kini sebelum mencipta tiket.",
+      "check": "Semak status tiket",
+      "retrySame": "Cuba semula penghantaran ini",
+      "notCreated": "Tiket belum direkodkan. Anda boleh menghantar semula permintaan yang sama dengan selamat.",
+      "signIn": "Log masuk untuk mencipta tiket"
+    },
+    "statusQuery": {
+      "signIn": "Log masuk untuk menyemak rekod akaun anda.",
+      "found": "Ini rekod terkini daripada akaun anda.",
+      "none": "Tiada rekod yang sepadan ditemui dalam akaun anda.",
+      "unavailable": "Rekod akaun tidak dapat disemak sekarang. Cuba lagi atau buka halaman akaun berkaitan.",
+      "signInAction": "Log masuk",
+      "openRecord": "Buka halaman akaun",
+      "values": {
+        "pending_payment": "Status bayaran perlu disemak",
+        "draft": "Belum dihantar",
+        "paid": "Dibayar",
+        "completed": "Selesai",
+        "cancelled": "Dibatalkan",
+        "refunded": "Dibayar balik",
+        "pending": "Menunggu",
+        "approved": "Diluluskan",
+        "processed": "Diproses",
+        "rejected": "Ditolak",
+        "failed": "Gagal",
+        "open": "Dibuka",
+        "in_progress": "Sedang diproses",
+        "resolved": "Selesai",
+        "closed": "Ditutup",
+        "confirmed": "Disahkan",
+        "checked_in": "Telah daftar masuk",
+        "unknown": "Status tidak tersedia"
+      }
+    },
     "faq": {
       "browse": "Lihat soalan lazim",
       "toggle": "Lihat soalan lazim",

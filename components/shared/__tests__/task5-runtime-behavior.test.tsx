@@ -73,6 +73,9 @@ const translations: Record<string, string> = {
   "common:chatbot.title": "Translated support title",
   "common:chatbot.list.supportLabel": "Translated support label",
   "common:chatbot.wantTicket": "Translated ticket offer",
+  "common:chatbot.handoff.subject": "Translated ticket subject",
+  "common:chatbot.handoff.summary": "Translated ticket summary",
+  "common:chatbot.handoff.confirm": "Create translated ticket",
   "common:chatbot.yes": "Yes translated",
   "common:filters.filter": "Translated filter",
   "common:notifications.categories.wallet": "Wallet translated",
@@ -314,13 +317,14 @@ describe("Task 5 shared runtime behavior", () => {
     expect(message.feedbackStage).toBe("awaiting_ticket");
     expect(resolveTicketSubject(message.question, "Translated support request")).toBe("Need help with my wallet");
     expect(resolveTicketSubject(undefined, "Translated support request")).toBe("Translated support request");
+    expect(resolveTicketSubject("x".repeat(500), "Support request")).toBe("x".repeat(255));
   });
 
   it("drives the real chatbot send and ticket handlers without translating API answers or ticket subjects", async () => {
     const question = "Why is my wallet withdrawal still pending?";
     const answer = "API answer [zh]: withdrawals can take two business days.";
     let askPayload: { question?: string } | undefined;
-    let ticketPayload: { sessionKey?: string; subject?: string; body?: string } | undefined;
+    let ticketPayload: { operationId?: string; subject?: string; body?: string } | undefined;
     mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === "/api/chatbot/ask") {
         askPayload = JSON.parse(String(init?.body)) as { question?: string };
@@ -330,8 +334,9 @@ describe("Task 5 shared runtime behavior", () => {
         });
       }
       if (url === "/api/chatbot/feedback") return response({ data: null, error: null });
+      if (url === "/api/support/handoff/preview") return response({ data: { subject: question, summary: question }, error: null });
       if (url === "/api/support/tickets") {
-        ticketPayload = JSON.parse(String(init?.body)) as { sessionKey?: string; subject?: string; body?: string };
+        ticketPayload = JSON.parse(String(init?.body)) as { operationId?: string; subject?: string; body?: string };
         return response({ data: { id: "ticket-zh-1", category: "support" }, error: null });
       }
       throw new Error(`Unexpected chatbot request: ${url}`);
@@ -357,7 +362,10 @@ describe("Task 5 shared runtime behavior", () => {
     expect(container.textContent).toContain("Translated ticket offer");
 
     await click(findButton("Yes translated"));
-    expect(ticketPayload).toEqual({ sessionKey: "chat-session-1", subject: question, body: question });
+    expect(ticketPayload).toBeUndefined();
+    await click(findButton("Create translated ticket"));
+    expect(ticketPayload).toEqual(expect.objectContaining({ subject: question, body: question }));
+    expect(ticketPayload?.operationId).toMatch(/^[0-9a-f-]{36}$/i);
   });
 
   it("opens a vendor thread from the merged widget's left pane", async () => {

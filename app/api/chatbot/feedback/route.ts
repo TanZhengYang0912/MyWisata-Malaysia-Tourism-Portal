@@ -21,7 +21,7 @@ import { chatbotFeedbackSchema } from '@/lib/validation/chatbot-schemas';
 export async function POST(request: Request) {
   const parsed = await parseBody(request, chatbotFeedbackSchema);
   if (!parsed.ok) return parsed.response;
-  const { sessionKey, messageId, question, botAnswered, helpful, openedTicket } = parsed.data;
+  const { sessionKey, messageId, botAnswered, helpful, openedTicket } = parsed.data;
   if (!sessionKey) return apiFail('BAD_REQUEST', 'Chat session is required for feedback.', 400);
 
   const authClient = await createClient();
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
   const { data: message, error: messageError } = await service
     .from('chatbot_messages')
-    .select('id,role,session_id,chatbot_sessions(id,session_key,user_id)')
+    .select('id,role,session_id,reply_to_message_id,chatbot_sessions(id,session_key,user_id)')
     .eq('id', messageId)
     .maybeSingle();
   if (messageError) return apiFail('DB_ERROR', 'Unable to verify this chat message.', 503);
@@ -47,6 +47,22 @@ export async function POST(request: Request) {
     || (relatedSession.user_id === null ? Boolean(user) : relatedSession.user_id !== user?.id)
   ) {
     return apiFail('FORBIDDEN', 'This chat session does not belong to you.', 403);
+  }
+
+  // Feedback analytics use the exact sanitized message linked by /ask.
+  // Historical replies remain unpaired; never guess by timestamp or trust
+  // question text echoed back by the browser.
+  let persistedQuestion: string | null = null;
+  if (message.reply_to_message_id) {
+    const { data: questionMessage, error: questionError } = await service
+      .from('chatbot_messages')
+      .select('id,role,session_id,body')
+      .eq('id', message.reply_to_message_id)
+      .eq('session_id', message.session_id)
+      .eq('role', 'user')
+      .maybeSingle();
+    if (questionError) return apiFail('DB_ERROR', 'Unable to verify this chat question.', 503);
+    persistedQuestion = questionMessage?.body ?? null;
   }
 
   const { data: existing, error: existingError } = await service
@@ -86,7 +102,7 @@ export async function POST(request: Request) {
       session_id: message.session_id,
       message_id: messageId,
       user_id: relatedSession.user_id,
-      question: question ?? null,
+      question: persistedQuestion,
       bot_answered: botAnswered,
       helpful: helpful ?? null,
       opened_ticket: openedTicket ?? false,

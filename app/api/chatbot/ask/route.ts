@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 
   const { data: botMsg, error: botMsgErr } = await service
     .from('chatbot_messages')
-    .insert({ session_id: session.id, role: 'bot', body: result.answer, kb_matched: result.kbMatched })
+    .insert({ session_id: session.id, role: 'bot', body: result.answer, kb_matched: result.kbMatched, reply_to_message_id: userMsg.id })
     .select('id')
     .single();
   if (botMsgErr) return apiFail('DB_ERROR', botMsgErr.message, 500);

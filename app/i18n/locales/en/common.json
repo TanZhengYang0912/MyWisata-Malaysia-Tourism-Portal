@@ -302,7 +302,9 @@
     "supportTeam": "Support team",
     "document": "Document",
     "attachment": "Attachment",
-    "loadingAttachment": "Loading…"
+    "loadingAttachment": "Loading…",
+    "retryAttachment": "Retry attachment",
+    "attachmentUnavailable": "This attachment is temporarily unavailable. You can try again."
   },
   "chatbot": {
     "title": "Chats",
@@ -326,6 +328,46 @@
     "somethingWrong": "Sorry, something went wrong. Please try again.",
     "privacyBlocked": "Your full message was kept from the AI because it may contain a phone number, email, ID, bank detail, or private address. Remove those details and send it again. You can also keep using the local FAQ without AI.",
     "supportRequest": "Support request",
+    "handoff": {
+      "subject": "Ticket title",
+      "summary": "What should the support team know?",
+      "confirm": "Create ticket",
+      "cancel": "Cancel",
+      "invalid": "Add a title and message within the character limits.",
+      "cleanedReview": "Personal details were removed. Review the updated text before creating the ticket.",
+      "check": "Check ticket status",
+      "retrySame": "Retry this submission",
+      "notCreated": "No ticket is recorded yet. You can safely retry this same submission.",
+      "signIn": "Sign in to create the ticket"
+    },
+    "statusQuery": {
+      "signIn": "Sign in to check your account records.",
+      "found": "Here are the latest records from your account.",
+      "none": "No matching records were found in your account.",
+      "unavailable": "I couldn't check your account right now. Try again or open the relevant account page.",
+      "signInAction": "Sign in",
+      "openRecord": "Open account page",
+      "values": {
+        "pending_payment": "Payment status needs checking",
+        "draft": "Not submitted",
+        "paid": "Paid",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "refunded": "Refunded",
+        "pending": "Pending",
+        "approved": "Approved",
+        "processed": "Processed",
+        "rejected": "Rejected",
+        "failed": "Failed",
+        "open": "Open",
+        "in_progress": "In progress",
+        "resolved": "Resolved",
+        "closed": "Closed",
+        "confirmed": "Confirmed",
+        "checked_in": "Checked in",
+        "unknown": "Status unavailable"
+      }
+    },
     "faq": {
       "browse": "Browse common questions",
       "toggle": "Browse common questions",

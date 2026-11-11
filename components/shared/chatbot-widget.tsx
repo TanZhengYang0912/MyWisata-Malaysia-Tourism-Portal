@@ -40,6 +40,8 @@ import { useSupportChat } from "@/components/providers/support-chat";
 import { useSpeechInput, resolveRecognitionLang, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
 import { ChatWidgetInbox } from "@/components/shared/chat-widget/chat-widget-inbox";
 import { ChatWidgetVendorThread } from "@/components/shared/chat-widget/chat-widget-vendor-thread";
+import { resolveCustomerSupportIntent } from "@/lib/chatbot/customer-intent";
+import type { CustomerStatusItem } from "@/lib/chatbot/customer-tools";
 
 // CLAUDE-VOICE-INPUT.md Part 2. Friendly copy per error kind — never a raw
 // error/exception reaching this UI (the hook itself already guarantees
@@ -75,6 +77,7 @@ type FeedbackStage =
   | "awaiting_helpful" // Flow 1: bot answered, ask "was this helpful?"
   | "helpful_done" // collapsed after Yes
   | "awaiting_ticket" // Flow 2 (bot couldn't answer) or Flow 1's "No" — offer a ticket
+  | "handoff_preview" // User reviews and edits the exact ticket content before sharing
   | "ticket_created" // collapsed after the ticket offer's Yes succeeds
   | "ticket_declined"; // collapsed after the ticket offer's No
 
@@ -92,6 +95,17 @@ interface ChatMessage {
   feedbackStage?: FeedbackStage;
   ticketId?: string;
   ticketError?: string;
+  statusItems?: CustomerStatusItem[];
+  statusActionHref?: string;
+  statusActionLabel?: string;
+  handoffSubject?: string;
+  handoffSummary?: string;
+  handoffPreviewSubject?: string;
+  handoffPreviewSummary?: string;
+  handoffOperationId?: string;
+  ticketOperationUnknown?: boolean;
+  ticketOperationNotFound?: boolean;
+  ticketNeedsSignIn?: boolean;
 }
 
 type ChatbotAnswerData = Pick<ChatMessage, "text" | "messageId" | "language" | "privacyBlocked"> & {
@@ -111,7 +125,7 @@ export function createBotMessage(data: ChatbotAnswerData, question: string): Cha
 }
 
 export function resolveTicketSubject(question: string | undefined, fallback: string): string {
-  return question ?? fallback;
+  return (question?.trim() || fallback).slice(0, 255);
 }
 
 const SESSION_STORAGE_KEY = "mw_chatbot_session";
@@ -206,7 +220,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
 
   function toggleFaq() {
     setFaqOpen((wasOpen) => {
-      if (!wasOpen && faq === undefined) void loadFaq();
+      if (!wasOpen && (faq === undefined || faq === null)) void loadFaq();
       if (wasOpen) setFaqCategory(null); // reset to the category list for next time
       return !wasOpen;
     });
@@ -251,9 +265,45 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     if (!question || sending) return;
     setSending(true);
     setMessages((m) => [...m, { role: "user", text: question }]);
-    if (explicitQuestion === undefined) setInput("");
 
     try {
+      const statusIntent = resolveCustomerSupportIntent(question);
+      if (statusIntent) {
+        const response = await fetch("/api/support/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ kind: statusIntent }),
+        });
+        const result = await response.json().catch(() => ({})) as {
+          data?: { state?: string; items?: CustomerStatusItem[] };
+        };
+        const signInRequired = response.status === 401;
+        const needsHumanHelp = signInRequired || !response.ok || result.data?.state === "unavailable";
+        const message = signInRequired
+          ? t("chatbot.statusQuery.signIn")
+          : !response.ok || result.data?.state === "unavailable"
+            ? t("chatbot.statusQuery.unavailable")
+            : result.data?.state === "available"
+            ? t("chatbot.statusQuery.found")
+            : result.data?.state === "no_records"
+              ? t("chatbot.statusQuery.none")
+              : t("chatbot.statusQuery.unavailable");
+        const pageHref = statusIntent === "tickets" ? "/customer/support"
+          : statusIntent === "bookings" ? "/customer/calendar"
+            : "/customer/orders";
+        setMessages((current) => [...current, {
+          role: "bot",
+          text: message,
+          statusItems: response.ok && result.data?.state === "available" ? result.data.items : undefined,
+          question: needsHumanHelp ? question : undefined,
+          feedbackStage: needsHumanHelp ? "awaiting_ticket" : undefined,
+          statusActionHref: signInRequired ? `/login?next=${encodeURIComponent(pageHref)}` : pageHref,
+          statusActionLabel: signInRequired ? t("chatbot.statusQuery.signInAction") : t("chatbot.statusQuery.openRecord"),
+        }]);
+        if (explicitQuestion === undefined) setInput((current) => current === question ? "" : current);
+        return;
+      }
+
       const res = await fetch("/api/chatbot/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -268,6 +318,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         return;
       }
       const { answer, botAnswered, messageId, language, privacyBlocked } = body.data;
+      if (explicitQuestion === undefined) setInput((current) => current === question ? "" : current);
       let effectiveSessionKey = sessionKey;
       if (body.data.sessionKey && body.data.sessionKey !== sessionKey) {
         effectiveSessionKey = body.data.sessionKey;
@@ -306,27 +357,130 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
 
   async function createTicket(index: number) {
     const msg = messages[index];
-    if (!msg.messageId || creatingTicketFor) return;
-    setCreatingTicketFor(msg.messageId);
-    setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: undefined } : m)));
+    if (!msg.question || creatingTicketFor) return;
+    const operationId = crypto.randomUUID();
+    setCreatingTicketFor(msg.messageId ?? operationId);
+    try {
+      const response = await fetch("/api/support/handoff/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: resolveTicketSubject(msg.question, t("chatbot.supportRequest")),
+          summary: msg.question ?? "",
+        }),
+      });
+      const result = await response.json().catch(() => ({})) as { data?: { subject: string; summary: string } };
+      if (!response.ok || !result.data) {
+        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError") } : m)));
+        return;
+      }
+      setMessages((prev) => prev.map((m, i) => (i === index ? {
+        ...m,
+        feedbackStage: "handoff_preview",
+        handoffSubject: result.data!.subject,
+        handoffSummary: result.data!.summary,
+        handoffPreviewSubject: result.data!.subject,
+        handoffPreviewSummary: result.data!.summary,
+        handoffOperationId: operationId,
+        ticketError: undefined,
+      } : m)));
+    } catch {
+      setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError") } : m)));
+    } finally {
+      setCreatingTicketFor(null);
+    }
+  }
+
+  async function confirmTicket(index: number) {
+    const msg = messages[index];
+    if (!msg.handoffOperationId || creatingTicketFor) return;
+    const subject = msg.handoffSubject?.trim() ?? "";
+    const summary = msg.handoffSummary?.trim() ?? "";
+    if (!subject || subject.length > 255 || !summary || summary.length > 2000) {
+      setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.handoff.invalid") } : m)));
+      return;
+    }
+    setCreatingTicketFor(msg.messageId ?? msg.handoffOperationId);
+    setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: undefined, ticketNeedsSignIn: false } : m)));
 
     try {
-      const subject = resolveTicketSubject(msg.question, t("chatbot.supportRequest"));
+      if (subject !== msg.handoffPreviewSubject || summary !== msg.handoffPreviewSummary) {
+        const previewResponse = await fetch("/api/support/handoff/preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subject, summary }),
+        });
+        const previewResult = await previewResponse.json().catch(() => ({})) as { data?: { subject: string; summary: string } };
+        if (!previewResponse.ok || !previewResult.data) throw new Error("preview_unavailable");
+        if (previewResult.data.subject !== subject || previewResult.data.summary !== summary) {
+          setMessages((prev) => prev.map((m, i) => (i === index ? {
+            ...m,
+            handoffSubject: previewResult.data!.subject,
+            handoffSummary: previewResult.data!.summary,
+            handoffPreviewSubject: previewResult.data!.subject,
+            handoffPreviewSummary: previewResult.data!.summary,
+            ticketError: t("chatbot.handoff.cleanedReview"),
+          } : m)));
+          return;
+        }
+      }
       const res = await fetch("/api/support/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionKey: sessionKey ?? undefined, subject, body: subject }),
+        body: JSON.stringify({ operationId: msg.handoffOperationId, subject, body: summary }),
       });
       const result = (await res.json()) as { data: { id: string; category: string } | null };
       const ticketErrorText = t("chatbot.ticketError");
       if (res.ok && result.data) {
-        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: "ticket_created", ticketId: result.data!.id } : m)));
-        postFeedback({ sessionKey: sessionKey ?? undefined, messageId: msg.messageId, openedTicket: true });
+        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: "ticket_created", ticketId: result.data!.id, ticketOperationUnknown: false, ticketOperationNotFound: false } : m)));
+        if (msg.messageId && sessionKey) postFeedback({ sessionKey, messageId: msg.messageId, openedTicket: true });
       } else {
-        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: ticketErrorText } : m)));
+        setMessages((prev) => prev.map((m, i) => (i === index ? {
+          ...m,
+          ticketError: ticketErrorText,
+          ticketNeedsSignIn: res.status === 401,
+          ticketOperationUnknown: res.status >= 500 || res.status === 409,
+        } : m)));
       }
     } catch {
-      setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError") } : m)));
+      setMessages((prev) => prev.map((m, i) => (i === index ? {
+        ...m,
+        ticketError: t("chatbot.ticketError"),
+        ticketNeedsSignIn: false,
+        ticketOperationUnknown: true,
+      } : m)));
+    } finally {
+      setCreatingTicketFor(null);
+    }
+  }
+
+  async function checkTicketOperation(index: number) {
+    const msg = messages[index];
+    if (!msg.handoffOperationId || creatingTicketFor) return;
+    setCreatingTicketFor(msg.messageId ?? msg.handoffOperationId);
+    try {
+      const response = await fetch(`/api/support/operations/${msg.handoffOperationId}`);
+      const result = await response.json().catch(() => ({})) as { data?: { state?: string; ticketId?: string } };
+      if (!response.ok || !result.data) {
+        setMessages((current) => current.map((item, itemIndex) => itemIndex === index
+          ? { ...item, ticketError: t("chatbot.statusQuery.unavailable") }
+          : item));
+        return;
+      }
+      if (result.data.state === "completed" && result.data.ticketId) {
+        setMessages((current) => current.map((item, itemIndex) => itemIndex === index
+          ? { ...item, feedbackStage: "ticket_created", ticketId: result.data!.ticketId, ticketOperationUnknown: false, ticketOperationNotFound: false, ticketError: undefined }
+          : item));
+        if (msg.messageId && sessionKey && currentUser) postFeedback({ sessionKey, messageId: msg.messageId, openedTicket: true });
+        return;
+      }
+      setMessages((current) => current.map((item, itemIndex) => itemIndex === index
+        ? { ...item, ticketOperationUnknown: false, ticketOperationNotFound: true, ticketError: t("chatbot.handoff.notCreated") }
+        : item));
+    } catch {
+      setMessages((current) => current.map((item, itemIndex) => itemIndex === index
+        ? { ...item, ticketError: t("chatbot.statusQuery.unavailable") }
+        : item));
     } finally {
       setCreatingTicketFor(null);
     }
@@ -413,6 +567,25 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                           {t("chatbot.privacyBlocked")}
                         </p>
                       )}
+                      {m.role === "bot" && m.statusItems && m.statusItems.length > 0 && (
+                        <ul className="mt-1.5 max-w-[85%] space-y-1">
+                          {m.statusItems.map((item) => (
+                            <li key={item.id}>
+                              <Link href={item.href} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-2.5 py-2 text-xs hover:bg-secondary">
+                                <span className="min-w-0 truncate">{item.label}</span>
+                                <span className="shrink-0 text-muted-foreground">
+                                  {t(`chatbot.statusQuery.values.${item.status.toLowerCase()}`)}
+                                </span>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {m.role === "bot" && m.statusActionHref && m.statusActionLabel && (
+                        <Link href={m.statusActionHref} className="mt-1 inline-block text-xs text-primary underline">
+                          {m.statusActionLabel}
+                        </Link>
+                      )}
                       {m.role === "bot" && m.feedbackStage && (
                         <div className="mt-1.5 max-w-[85%]">
                           {m.feedbackStage === "awaiting_helpful" && (
@@ -436,21 +609,60 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                                   variant="outline"
                                   className="h-7 px-2.5 text-xs"
                                   onClick={() => createTicket(i)}
-                                  disabled={creatingTicketFor === m.messageId}
+                                  disabled={Boolean(creatingTicketFor)}
                                 >
-                                  {creatingTicketFor === m.messageId ? t("chatbot.creatingTicket") : t("chatbot.yes")}
+                                  {creatingTicketFor ? t("chatbot.creatingTicket") : t("chatbot.yes")}
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   className="h-7 px-2.5 text-xs"
                                   onClick={() => declineTicket(i)}
-                                  disabled={creatingTicketFor === m.messageId}
+                                  disabled={Boolean(creatingTicketFor)}
                                 >
                                   {t("chatbot.no")}
                                 </Button>
                               </div>
                               {m.ticketError && <p className="text-[0.6875rem] text-destructive mt-1">{m.ticketError}</p>}
+                            </div>
+                          )}
+                          {m.feedbackStage === "handoff_preview" && (
+                            <div className="space-y-2 rounded-lg border border-border bg-background p-2.5">
+                              <label className="block text-xs font-medium">
+                                {t("chatbot.handoff.subject")}
+                                <input
+                                  value={m.handoffSubject ?? ""}
+                                  maxLength={255}
+                                  disabled={m.ticketOperationUnknown || m.ticketOperationNotFound}
+                                  onChange={(event) => setMessages((prev) => prev.map((item, index) => index === i ? { ...item, handoffSubject: event.target.value, handoffOperationId: crypto.randomUUID(), ticketError: undefined } : item))}
+                                  className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm font-normal"
+                                />
+                              </label>
+                              <label className="block text-xs font-medium">
+                                {t("chatbot.handoff.summary")}
+                                <textarea
+                                  value={m.handoffSummary ?? ""}
+                                  maxLength={2000}
+                                  rows={3}
+                                  disabled={m.ticketOperationUnknown || m.ticketOperationNotFound}
+                                  onChange={(event) => setMessages((prev) => prev.map((item, index) => index === i ? { ...item, handoffSummary: event.target.value, handoffOperationId: crypto.randomUUID(), ticketError: undefined } : item))}
+                                  className="mt-1 w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm font-normal"
+                                />
+                              </label>
+                              {m.ticketError && <p role="alert" className="text-xs text-destructive">{m.ticketError}</p>}
+                              {m.ticketNeedsSignIn && (
+                                <Link href="/login?next=%2Fcustomer%2Fsupport" target="_blank" rel="noreferrer" className="text-xs text-primary underline">
+                                  {t("chatbot.handoff.signIn")}
+                                </Link>
+                              )}
+                              <div className="flex justify-end gap-2">
+                                <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => setMessages((prev) => prev.map((item, index) => index === i ? { ...item, feedbackStage: "ticket_declined", ticketError: undefined } : item))} disabled={creatingTicketFor === (m.messageId ?? m.handoffOperationId) || m.ticketOperationUnknown || m.ticketOperationNotFound}>
+                                  {t("chatbot.handoff.cancel")}
+                                </Button>
+                                <Button size="sm" className="h-7 px-2.5 text-xs" onClick={() => m.ticketOperationUnknown ? void checkTicketOperation(i) : void confirmTicket(i)} disabled={creatingTicketFor === (m.messageId ?? m.handoffOperationId) || !m.handoffSubject?.trim() || !m.handoffSummary?.trim()}>
+                                  {creatingTicketFor === (m.messageId ?? m.handoffOperationId) ? t("chatbot.creatingTicket") : m.ticketOperationUnknown ? t("chatbot.handoff.check") : m.ticketOperationNotFound ? t("chatbot.handoff.retrySame") : t("chatbot.handoff.confirm")}
+                                </Button>
+                              </div>
                             </div>
                           )}
                           {m.feedbackStage === "ticket_declined" && <p className="text-xs text-muted-foreground px-1">{t("chatbot.noProblem")}</p>}

@@ -10,6 +10,7 @@ import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { updateKbDocumentSchema } from '@/lib/validation/chatbot-schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { embedText } from '@/lib/chatbot/embed';
+import { reserveAiQuota } from '@/lib/rate-limit/ai';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -29,23 +30,34 @@ export async function PATCH(request: Request, { params }: Props) {
   const { title, body, keywords, category, isActive } = parsed.data;
 
   const service = createServiceClient();
-  const { data: existing } = await service.from('chatbot_kb_documents').select('id, title, body').eq('id', id).maybeSingle();
+  const { data: existing, error: existingError } = await service.from('chatbot_kb_documents')
+    .select('id, title, body, keywords, category, is_active')
+    .eq('id', id)
+    .maybeSingle();
+  if (existingError) return apiFail('READ_UNAVAILABLE', 'Unable to load this knowledge-base entry.', 503);
   if (!existing) return apiFail('NOT_FOUND', 'KB document not found', 404);
 
   const updates: Record<string, unknown> = {};
-  if (title !== undefined) updates.title = title;
-  if (body !== undefined) updates.body = body;
-  if (keywords !== undefined) updates.keywords = keywords;
-  if (category !== undefined) updates.category = category;
-  if (isActive !== undefined) updates.is_active = isActive;
+  if (title !== undefined && title !== existing.title) updates.title = title;
+  if (body !== undefined && body !== existing.body) updates.body = body;
+  if (keywords !== undefined && JSON.stringify(keywords) !== JSON.stringify(existing.keywords ?? [])) updates.keywords = keywords;
+  if (category !== undefined && category !== existing.category) updates.category = category;
+  if (isActive !== undefined && isActive !== existing.is_active) updates.is_active = isActive;
 
-  const contentChanged = title !== undefined || body !== undefined;
+  const contentChanged = updates.title !== undefined || updates.body !== undefined;
+  const finalTitle = title ?? existing.title;
+  const finalBody = body ?? existing.body;
+  const willBeActive = isActive ?? existing.is_active;
+  if (willBeActive && `${finalTitle}\n${finalBody}`.includes('[ADMIN: confirm')) {
+    return apiFail('KB_REVIEW_REQUIRED', 'Confirm the marked policy details before publishing this entry.', 422);
+  }
+  if (Object.keys(updates).length === 0) return apiOk({ id, changed: false });
   if (contentChanged) updates.updated_at = new Date().toISOString();
 
   const { error } = await service.from('chatbot_kb_documents').update(updates).eq('id', id);
   if (error) return apiFail('DB_ERROR', error.message, 500);
 
-  if (contentChanged && process.env.LLM_API_KEY) {
+  if (contentChanged && process.env.LLM_API_KEY && await reserveAiQuota(request, 'kb_embedding', user.id)) {
     try {
       const embedding = await embedText(`${title ?? existing.title}\n${body ?? existing.body}`, 'kb');
       await service.from('chatbot_kb_documents').update({ embedding, embedded_at: new Date().toISOString() }).eq('id', id);
@@ -54,5 +66,5 @@ export async function PATCH(request: Request, { params }: Props) {
     }
   }
 
-  return apiOk({ id });
+  return apiOk({ id, changed: true });
 }

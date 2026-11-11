@@ -59,7 +59,11 @@ export async function POST(request: Request, { params }: Props) {
     return apiFail(validated.code, 'File must be a JPEG, PNG, WEBP, or PDF under 10 MB', 422);
   }
 
-  const rawCaption = (formData.get('caption') as string | null)?.trim() ?? '';
+  const captionField = formData.get('caption');
+  if (captionField !== null && typeof captionField !== 'string') {
+    return apiFail('INVALID_CAPTION', 'Caption must be text.', 422);
+  }
+  const rawCaption = captionField?.trim() ?? '';
   const cleaned = await cleanUserContent(rawCaption, service);
 
   const path = buildTicketAttachmentPath(id, crypto.randomUUID(), file.type);
@@ -106,41 +110,21 @@ export async function POST(request: Request, { params }: Props) {
 
   await notifyTicketReply(service, ticket, senderRole, cleaned.display || 'Sent an attachment');
 
-  const signed = await service.storage.from('ticket-attachments').createSignedUrl(path, 300);
-
   return apiOk(
     {
       id: reply.id,
       senderId: reply.sender_id,
       senderRole: reply.sender_role,
       body: reply.body,
-      attachmentUrl: reply.attachment_url,
       createdAt: reply.created_at,
       newStatus: statusUpdate.status ?? ticket.status,
-      signedUrl: signed.data?.signedUrl ?? null,
     },
     { status: 201 },
   );
 }
 
 export async function GET(request: Request, { params }: Props) {
-  const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-
-  const service = createServiceClient();
-  const { data: ticket } = await service.from('support_tickets').select('id, user_id').eq('id', id).maybeSingle();
-  if (!ticket) return apiFail('NOT_FOUND', 'Ticket not found', 404);
-
-  const isAdmin = await isSuperAdmin(supabase, user.id);
-  if (ticket.user_id !== user.id && !isAdmin) return apiFail('FORBIDDEN', 'Not your ticket', 403);
-
-  const path = new URL(request.url).searchParams.get('path');
-  if (!path || !path.startsWith(`${id}/`)) return apiFail('NOT_FOUND', 'Attachment not found', 404);
-
-  const signed = await service.storage.from('ticket-attachments').createSignedUrl(path, 300);
-  if (signed.error || !signed.data?.signedUrl) return apiFail('ATTACHMENT_UNAVAILABLE', 'Attachment is temporarily unavailable', 500);
-
-  return apiOk({ signedUrl: signed.data.signedUrl, expiresIn: 300 });
+  void request;
+  void params;
+  return apiFail('ATTACHMENT_ROUTE_MOVED', 'Refresh this ticket to open its attachment.', 410);
 }

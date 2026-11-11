@@ -9,6 +9,7 @@ import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { createKbDocumentSchema } from '@/lib/validation/chatbot-schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { embedText } from '@/lib/chatbot/embed';
+import { reserveAiQuota } from '@/lib/rate-limit/ai';
 
 export async function GET() {
   const supabase = await createClient();
@@ -52,6 +53,9 @@ export async function POST(request: Request) {
   const parsed = await parseBody(request, createKbDocumentSchema);
   if (!parsed.ok) return parsed.response;
   const { title, body, keywords, category, isActive } = parsed.data;
+  if ((isActive ?? true) && `${title}\n${body}`.includes('[ADMIN: confirm')) {
+    return apiFail('KB_REVIEW_REQUIRED', 'Confirm the marked policy details before publishing this entry.', 422);
+  }
 
   const service = createServiceClient();
   const { data: created, error } = await service
@@ -65,7 +69,7 @@ export async function POST(request: Request) {
   // LLM_API_KEY is missing or the call fails, the doc is still fully usable
   // via the keyword fallback; POST /api/admin/chatbot/reindex catches it
   // later once a key is available.
-  if (process.env.LLM_API_KEY) {
+  if ((isActive ?? true) && process.env.LLM_API_KEY && await reserveAiQuota(request, 'kb_embedding', user.id)) {
     try {
       const embedding = await embedText(`${title}\n${body}`, 'kb');
       await service.from('chatbot_kb_documents').update({ embedding, embedded_at: new Date().toISOString() }).eq('id', created.id);

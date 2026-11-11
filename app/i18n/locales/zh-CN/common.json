@@ -302,7 +302,9 @@
     "supportTeam": "客服团队",
     "document": "文件",
     "attachment": "附件",
-    "loadingAttachment": "加载中…"
+    "loadingAttachment": "加载中…",
+    "retryAttachment": "重试附件",
+    "attachmentUnavailable": "附件暂时无法使用，您可以重试。"
   },
   "chatbot": {
     "title": "聊天",
@@ -326,6 +328,46 @@
     "somethingWrong": "抱歉，出了点问题，请重试。",
     "privacyBlocked": "这条完整消息可能含有电话号码、邮箱、身份证件、银行资料或私人地址，因此没有发送给 AI。请删除这些资料后重新提问；也可以继续使用本地常见问题，不调用 AI。",
     "supportRequest": "支持请求",
+    "handoff": {
+      "subject": "工单标题",
+      "summary": "请告诉客服团队需要了解什么",
+      "confirm": "创建工单",
+      "cancel": "取消",
+      "invalid": "请填写标题和消息，并遵守字数限制。",
+      "cleanedReview": "已移除个人资料。请先检查更新后的内容，再创建工单。",
+      "check": "查询工单状态",
+      "retrySame": "安全重试这次提交",
+      "notCreated": "目前没有查到工单。可以安全地重试同一条提交。",
+      "signIn": "登录后创建工单"
+    },
+    "statusQuery": {
+      "signIn": "登录后即可查询您账户中的记录。",
+      "found": "这是您账户中最近的相关记录。",
+      "none": "您的账户中没有找到相关记录。",
+      "unavailable": "暂时无法查询账户记录。请重试，或打开相关账户页面查看。",
+      "signInAction": "登录",
+      "openRecord": "打开账户页面",
+      "values": {
+        "pending_payment": "付款状态需要核实",
+        "draft": "尚未提交",
+        "paid": "已付款",
+        "completed": "已完成",
+        "cancelled": "已取消",
+        "refunded": "已退款",
+        "pending": "处理中",
+        "approved": "已批准",
+        "processed": "已处理",
+        "rejected": "已拒绝",
+        "failed": "未成功",
+        "open": "待处理",
+        "in_progress": "处理中",
+        "resolved": "已解决",
+        "closed": "已关闭",
+        "confirmed": "已确认",
+        "checked_in": "已签到",
+        "unknown": "状态暂不可用"
+      }
+    },
     "faq": {
       "browse": "浏览常见问题",
       "toggle": "浏览常见问题",

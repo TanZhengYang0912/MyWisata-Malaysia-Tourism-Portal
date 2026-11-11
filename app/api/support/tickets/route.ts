@@ -21,6 +21,8 @@ import { getLatestReplyTimestamps, isUnread } from '@/lib/support/unread';
 import { cleanUserContent } from '@/lib/moderation/clean';
 import { logModerationFlag } from '@/lib/moderation/flags';
 import { createServiceClient } from '@/lib/supabase/service';
+import { reserveAiQuota } from '@/lib/rate-limit/ai';
+import { prepareExternalText } from '@/lib/chatbot/pii';
 
 export async function GET() {
   const supabase = await createClient();
@@ -57,10 +59,17 @@ export async function GET() {
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return apiFail('UNAUTHORIZED', 'Sign in before creating a support ticket.', 401);
+  const ownerUserId = user.id;
 
   const parsed = await parseBody(request, supportTicketSchema);
   if (!parsed.ok) return parsed.response;
-  const { sessionKey, withdrawalId, subject, body } = parsed.data;
+  const { sessionKey, withdrawalId, subject, body, operationId } = parsed.data;
+  if (sessionKey) {
+    // Legacy requests may still carry a session key, but no Support endpoint
+    // should read its transcript or attach the live session to a new ticket.
+    return apiFail('UPDATE_REQUIRED', 'Refresh Support and review the handoff details before creating a ticket.', 409);
+  }
 
   if (withdrawalId) {
     if (!user) return apiFail('UNAUTHORIZED', 'Sign in to link a withdrawal to a support ticket', 401);
@@ -74,19 +83,6 @@ export async function POST(request: Request) {
     if (withdrawal.status !== 'hold') return apiFail('INVALID_STATE', 'Only a held withdrawal can be linked to this support ticket', 409);
   }
 
-  let sessionId: string | null = null;
-  if (sessionKey) {
-    const { data: session, error: sessionError } = await createServiceClient()
-      .from('chatbot_sessions')
-      .select('id,user_id,session_key')
-      .eq('session_key', sessionKey)
-      .maybeSingle();
-    if (sessionError) return apiFail('DB_ERROR', 'Unable to verify the chat session.', 503);
-    if (!session) return apiFail('SESSION_NOT_FOUND', 'Chat session not found. Start a new conversation and try again.', 404);
-    if (session.user_id !== (user?.id ?? null)) return apiFail('FORBIDDEN', 'This chat session does not belong to you.', 403);
-    sessionId = session?.id ?? null;
-  }
-
   // CLAUDE-MODERATION.md: mask, never block — a ticket is often filed by an
   // upset user, and this is exactly the input that must never be rejected
   // for content. Classification runs on the cleaned (masked) text too, so a
@@ -96,32 +92,84 @@ export async function POST(request: Request) {
   const cleanedSubject = await cleanUserContent(subject, moderationService);
   const cleanedBody = await cleanUserContent(body, moderationService);
 
-  // AI classification (Gemini) with the keyword classifier as a safety net —
-  // CLAUDE-FIXES-2.md item 6. classifyTicketSmart() never throws: no
-  // LLM_API_KEY, an API error/timeout, or a reply outside the six valid
-  // categories all fall through to the keyword version automatically.
-  const { category, method } = await classifyTicketSmart(cleanedSubject.display, cleanedBody.display);
+  const operationPayloadHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify({
+    userId: ownerUserId,
+    withdrawalId: withdrawalId ?? null,
+    subject: cleanedSubject.display,
+    body: cleanedBody.display,
+  }))).then((digest) => Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join(''));
 
-  const { data, error } = await supabase
+  async function findOperationResult() {
+    if (!operationId) return { data: null, error: null };
+    let query = moderationService.from('support_tickets')
+      .select('id,category,operation_payload_hash')
+      .eq('operation_id', operationId);
+    query = query.eq('user_id', ownerUserId);
+    return query.maybeSingle();
+  }
+
+  if (operationId) {
+    const { data: existing, error: lookupError } = await findOperationResult();
+    if (lookupError) return apiFail('READ_UNAVAILABLE', 'Unable to check the ticket submission result.', 503);
+    if (existing) {
+      if (existing.operation_payload_hash !== operationPayloadHash) {
+        return apiFail('OPERATION_CONFLICT', 'This submission key was already used for different ticket details.', 409);
+      }
+      return apiOk({ id: existing.id, category: existing.category }, { status: 200 });
+    }
+  }
+
+  // Persist the support request using the local classifier first. Gemini is
+  // optional enrichment after the ticket exists, so a timeout or lost HTTP
+  // response cannot cause the same user intent to invoke Gemini twice.
+  const keywordClassification = await classifyTicketSmart(cleanedSubject.display, cleanedBody.display, false);
+
+  const { data, error } = await moderationService
     .from('support_tickets')
     .insert({
-      user_id: user?.id ?? null,
-      session_id: sessionId,
+      user_id: ownerUserId,
+      // The ticket contains only its explicitly confirmed body. Keep no live
+      // chat-session link that could expose later or unrelated conversation.
+      session_id: null,
       withdrawal_id: withdrawalId ?? null,
       subject: cleanedSubject.display,
       body: cleanedBody.display,
-      category,
-      classification_method: method,
+      category: keywordClassification.category,
+      classification_method: 'keyword',
       status: 'open',
+      operation_id: operationId ?? null,
+      operation_payload_hash: operationId ? operationPayloadHash : null,
     })
-    .select('id')
+    .select('id,category')
     .single();
 
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error) {
+    if (operationId && error.code === '23505') {
+      const { data: existing } = await findOperationResult();
+      if (existing?.operation_payload_hash === operationPayloadHash) {
+        return apiOk({ id: existing.id, category: existing.category }, { status: 200 });
+      }
+      if (existing) return apiFail('OPERATION_CONFLICT', 'This submission key was already used for different ticket details.', 409);
+    }
+    return apiFail('DB_ERROR', error.message, 500);
+  }
+
+  let category = data.category;
+  const allowAiClassification = prepareExternalText(`${cleanedSubject.display}\n${cleanedBody.display}`).allowed
+    && await reserveAiQuota(request, 'ticket_classification', user?.id ?? null).catch(() => false);
+  if (allowAiClassification) {
+    const aiClassification = await classifyTicketSmart(cleanedSubject.display, cleanedBody.display, true);
+    if (aiClassification.method === 'ai') {
+      const { error: classificationUpdateError } = await moderationService
+        .from('support_tickets')
+        .update({ category: aiClassification.category, classification_method: 'ai' })
+        .eq('id', data.id);
+      if (!classificationUpdateError) category = aiClassification.category;
+    }
+  }
 
   if (cleanedSubject.hadSlur || cleanedBody.hadSlur) {
-    const service = createServiceClient();
-    await logModerationFlag(service, {
+    await logModerationFlag(moderationService, {
       sourceType: 'ticket',
       sourceId: data.id,
       userId: user?.id ?? null,

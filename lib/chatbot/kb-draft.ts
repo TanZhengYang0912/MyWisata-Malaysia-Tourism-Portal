@@ -27,16 +27,12 @@ Draft a concise, accurate knowledge-base entry that would answer this
 question well next time.
 
 Rules — these are strict:
-- Only state facts you can reasonably infer are generally true for a
-  tourism booking platform (e.g. "bookings can typically be cancelled
-  before the activity starts" is a reasonable inference; a specific
-  cancellation window, fee percentage, or deadline is NOT — you cannot
-  know that).
-- Wherever a specific figure, deadline, percentage, or policy detail is
-  needed and you do not actually know it from the context given, write a
-  placeholder in EXACTLY this form: [ADMIN: confirm <what's needed>].
-  Never invent a specific number, deadline, percentage, or policy detail —
-  a placeholder is always correct where a fabricated fact is not.
+- Use only facts explicitly present in the supplied existing answer. Do not
+  infer MYLawatan policy from general tourism practice or from the question.
+- If the supplied answer does not establish a fact needed to answer, write
+  a placeholder in EXACTLY this form: [ADMIN: confirm <what's needed>].
+  Never invent a number, deadline, percentage, refund outcome, or platform
+  policy. When no reliable fact exists, make the draft a review request.
 - Be concise: the body should be 1-4 sentences.
 - Also suggest 3-8 keywords for this entry — the exact words/short phrases a
   customer would type when asking this, for a keyword-fallback matcher (not

@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), tables: {} as
 function query(result: unknown) {
   const terminal = Promise.resolve(result);
   const builder: Record<string, ReturnType<typeof vi.fn>> = {};
-  for (const method of ['select', 'eq', 'insert', 'update']) builder[method] = vi.fn(() => builder);
+  for (const method of ['select', 'eq', 'insert', 'update', 'lt', 'order', 'limit']) builder[method] = vi.fn(() => builder);
   builder.maybeSingle = vi.fn(() => terminal);
   builder.single = vi.fn(() => terminal);
   builder.then = terminal.then.bind(terminal) as ReturnType<typeof vi.fn>;
@@ -14,7 +14,7 @@ function query(result: unknown) {
 
 function feedbackQuery(existing: unknown, created: unknown) {
   const builder: Record<string, ReturnType<typeof vi.fn>> = {};
-  for (const method of ['select', 'eq', 'insert', 'update']) builder[method] = vi.fn(() => builder);
+  for (const method of ['select', 'eq', 'insert', 'update', 'lt', 'order', 'limit']) builder[method] = vi.fn(() => builder);
   builder.maybeSingle = vi.fn(async () => existing);
   builder.single = vi.fn(async () => created);
   builder.then = Promise.resolve(existing).then.bind(Promise.resolve(existing)) as ReturnType<typeof vi.fn>;
@@ -30,6 +30,7 @@ const botMessage = {
   id: '11111111-1111-4111-8111-111111111111',
   role: 'bot',
   session_id: '22222222-2222-4222-8222-222222222222',
+  created_at: '2026-11-11T10:00:01.000Z',
   chatbot_sessions: { id: '22222222-2222-4222-8222-222222222222', session_key: 'session-key-1', user_id: 'user-1' },
 };
 
@@ -95,10 +96,16 @@ describe('POST /api/chatbot/feedback ownership', () => {
   });
 
   it('writes feedback with the persisted session owner rather than trusting the request', async () => {
-    const response = await POST(request());
+    const botQuery = query({ data: null, error: null });
+    botQuery.maybeSingle
+      .mockReturnValueOnce(Promise.resolve({ data: { ...botMessage, reply_to_message_id: 'user-msg-1' }, error: null }))
+      .mockReturnValueOnce(Promise.resolve({ data: { id: 'user-msg-1', role: 'user', session_id: botMessage.session_id, body: 'My booking status? [PHONE]' }, error: null }));
+    mocks.tables.chatbot_messages = botQuery;
+    const response = await POST(request({ question: 'raw email me@example.com' }));
     expect(response.status).toBe(201);
     expect(mocks.tables.chatbot_feedback.insert).toHaveBeenCalledWith(expect.objectContaining({
       session_id: botMessage.session_id, user_id: 'user-1', message_id: botMessage.id,
+      question: 'My booking status? [PHONE]',
     }));
   });
 });

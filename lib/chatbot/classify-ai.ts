@@ -65,8 +65,8 @@ export interface ClassifyTicketResult {
 }
 
 /** Tries AI classification first, falls back to the keyword classifier (lib/chatbot/classify.ts) on any failure — the "safety net" (CLAUDE-FIXES-2.md's own words). */
-export async function classifyTicketSmart(subject: string, body: string): Promise<ClassifyTicketResult> {
-  const aiCategory = await classifyTicketAI(subject, body);
+export async function classifyTicketSmart(subject: string, body: string, useAI = true): Promise<ClassifyTicketResult> {
+  const aiCategory = useAI ? await classifyTicketAI(subject, body) : null;
   if (aiCategory) return { category: aiCategory, method: 'ai' };
   return { category: classifyTicket(`${subject} ${body}`), method: 'keyword' };
 }

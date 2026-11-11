@@ -28,15 +28,15 @@ describe('POST /api/support/tickets session ownership', () => {
       : query({ data: null, error: null }));
   });
 
-  it('does not attach a support ticket to another account chat session', async () => {
+  it('requires the refreshed handoff flow for requests that include a legacy session key', async () => {
     const response = await POST(new Request('http://localhost/api/support/tickets', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ sessionKey: 'victim-session', subject: 'Help', body: 'Need help with my order' }),
     }));
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(409);
     expect(mocks.classify).not.toHaveBeenCalled();
     expect(mocks.clean).not.toHaveBeenCalled();
-    expect(mocks.from).toHaveBeenCalledTimes(1);
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 });

@@ -19,7 +19,7 @@ import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import { AdminMobileRecordCard } from "@/components/admin/admin-mobile-record-card";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
-import { TicketThread, type ReplyMessage, type TranscriptMessage } from "@/components/shared/ticket-thread";
+import { TicketThread, type ReplyMessage } from "@/components/shared/ticket-thread";
 import { ReportChatButton } from "@/components/shared/report-chat-button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { ModerationFlagsPanel } from "@/components/admin/moderation-flags-panel";
@@ -71,12 +71,11 @@ const SORT_LABEL: Record<SortKey, string> = {
 
 interface TicketDetail {
   id: string;
-  userId: string | null;
+  viewerIsOwner: boolean;
   subject: string;
   body: string;
   status: "open" | "in_progress" | "resolved" | "closed";
   createdAt: string;
-  transcript: TranscriptMessage[];
   replies: ReplyMessage[];
 }
 
@@ -158,13 +157,16 @@ function AdminSupportContent() {
 
   const visibleTickets = tickets ?? [];
 
-  async function loadDetail(id: string) {
+  async function loadDetail(id: string): Promise<TicketDetail | null> {
     try {
       const res = await fetch(`/api/support/tickets/${id}`);
       const result = (await res.json()) as { data: TicketDetail | null };
-      setDetail(res.ok && result.data ? result.data : null);
+      const loadedDetail = res.ok && result.data ? result.data : null;
+      setDetail(loadedDetail);
+      return loadedDetail;
     } catch {
       setDetail(null);
+      return null;
     }
   }
 
@@ -192,7 +194,8 @@ function AdminSupportContent() {
   useEffect(() => {
     if (!openTicketId) return;
     (async () => {
-      await loadDetail(openTicketId);
+      const loadedDetail = await loadDetail(openTicketId);
+      if (!loadedDetail) return;
       // Marks read on actually opening the dialog (CLAUDE-FIXES-2.md item 1).
       await fetch(`/api/support/tickets/${openTicketId}/read`, { method: "PATCH" });
       setTickets((prev) => prev?.map((t) => (t.id === openTicketId ? { ...t, unread: false } : t)) ?? null);
@@ -555,11 +558,9 @@ function AdminSupportContent() {
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 <TicketThread
                   ticketId={openTicketId ?? undefined}
-                  currentUserId={currentUser.id}
-                  ticketOwnerId={detail.userId}
+                  ticketIsMine={detail.viewerIsOwner}
                   ticketBody={detail.body}
                   ticketCreatedAt={detail.createdAt}
-                  transcript={detail.transcript}
                   replies={detail.replies}
                 />
               </div>

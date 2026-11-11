@@ -10,7 +10,7 @@ import { ArrowLeft, Bell, BellOff, FileText, Mic, MicOff, Paperclip, Send, X } f
 import { useAuth } from "@/components/providers/auth";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
-import { TicketThread, type ReplyMessage, type TranscriptMessage } from "@/components/shared/ticket-thread";
+import { TicketThread, type ReplyMessage } from "@/components/shared/ticket-thread";
 import { ReportChatButton } from "@/components/shared/report-chat-button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { useTranslation } from "react-i18next";
@@ -28,7 +28,7 @@ const SPEECH_ERROR_KEY: Record<SpeechInputErrorKind, string> = {
 
 interface TicketDetail {
   id: string;
-  userId: string | null;
+  viewerIsOwner: boolean;
   subject: string;
   body: string;
   category: string;
@@ -36,7 +36,6 @@ interface TicketDetail {
   createdAt: string;
   resolvedAt: string | null;
   muted: boolean;
-  transcript: TranscriptMessage[];
   replies: ReplyMessage[];
 }
 
@@ -57,23 +56,25 @@ export default function CustomerTicketDetailPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const speech = useSpeechInput({ lang: resolveRecognitionLangFromLocale(i18n.resolvedLanguage), onTranscriptChange: setReply });
 
-  async function loadTicket() {
+  async function loadTicket(): Promise<TicketDetail | null> {
     try {
       const res = await fetch(`/api/support/tickets/${id}`);
       const body = (await res.json()) as { data: TicketDetail | null };
-      setTicket(res.ok && body.data ? body.data : null);
+      const data = res.ok && body.data ? body.data : null;
+      setTicket(data);
+      return data;
     } catch {
       setTicket(null);
+      return null;
     }
   }
 
   useEffect(() => {
     (async () => {
-      await loadTicket();
+      const loadedTicket = await loadTicket();
+      if (!loadedTicket) return;
       // Marks read on actually opening the thread, not just when a list
-      // row renders (CLAUDE-FIXES-2.md item 1's own instruction). Fire and
-      // forget — the badge will just stay stale for one more poll cycle if
-      // this happens to fail.
+      // row renders. A failed detail load must not mark unseen replies read.
       await fetch(`/api/support/tickets/${id}/read`, { method: "PATCH" });
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -206,11 +207,9 @@ export default function CustomerTicketDetailPage() {
         <div className="max-h-[50vh] overflow-y-auto px-4 py-4">
           <TicketThread
             ticketId={ticket.id}
-            currentUserId={currentUser.id}
-            ticketOwnerId={ticket.userId}
+            ticketIsMine={ticket.viewerIsOwner}
             ticketBody={ticket.body}
             ticketCreatedAt={ticket.createdAt}
-            transcript={ticket.transcript}
             replies={ticket.replies}
           />
         </div>

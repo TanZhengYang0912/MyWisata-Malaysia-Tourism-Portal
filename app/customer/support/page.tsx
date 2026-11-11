@@ -37,6 +37,7 @@ export default function CustomerSupportPage() {
   const [subject, setSubject] = useState(() => tCustomer("ui.support.withdrawalSubject"));
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [operationId, setOperationId] = useState(() => crypto.randomUUID());
   const [formError, setFormError] = useState("");
 
   useEffect(() => {
@@ -60,7 +61,7 @@ export default function CustomerSupportPage() {
     try {
       const response = await fetch("/api/support/tickets", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ withdrawalId, subject, body }),
+        body: JSON.stringify({ withdrawalId, operationId, subject, body }),
       });
       const result = await response.json() as { data?: { id: string }; error?: { message?: string } };
       if (!response.ok || !result.data) throw new Error(result.error?.message ?? tCustomer("ui.support.createError"));
@@ -93,8 +94,8 @@ export default function CustomerSupportPage() {
       {withdrawalId && <form onSubmit={submitWithdrawalTicket} className="mb-6 rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-5 space-y-3">
         <p className="font-semibold text-foreground">{tCustomer("ui.support.contact")}</p>
         <p className="text-sm text-muted-foreground">{tCustomer("ui.support.reference")} {withdrawalId}</p>
-        <input value={subject} onChange={(event) => setSubject(event.target.value)} maxLength={255} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" aria-label={tCustomer("ui.support.subject")} />
-        <textarea value={body} onChange={(event) => setBody(event.target.value)} required maxLength={2000} placeholder={tCustomer("ui.support.explain")} className="min-h-28 w-full rounded-xl border border-border bg-background p-3 text-sm" aria-label={tCustomer("ui.support.message")} />
+        <input value={subject} onChange={(event) => { setSubject(event.target.value); setOperationId(crypto.randomUUID()); }} maxLength={255} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" aria-label={tCustomer("ui.support.subject")} />
+        <textarea value={body} onChange={(event) => { setBody(event.target.value); setOperationId(crypto.randomUUID()); }} required maxLength={2000} placeholder={tCustomer("ui.support.explain")} className="min-h-28 w-full rounded-xl border border-border bg-background p-3 text-sm" aria-label={tCustomer("ui.support.message")} />
         {formError && <p role="alert" aria-live="assertive" className="text-sm text-red-600 dark:text-red-300">{formError}</p>}
         <button type="submit" disabled={sending || !body.trim()} aria-busy={sending} className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{sending ? tCustomer("ui.states.sending") : tCustomer("ui.support.sendInformation")}</button>
       </form>}
