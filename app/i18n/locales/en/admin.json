@@ -1204,6 +1204,8 @@
       "escalationRate": "Escalation rate",
       "questions": "Questions asked",
       "range": "Report range",
+      "dateRange": "{{from}} – {{to}}",
+      "noQuestions": "No questions were asked in this range.",
       "days": {
         "7": "Last 7 days",
         "30": "Last 30 days",
@@ -1241,6 +1243,10 @@
     "topUnanswered": {
       "empty": "Nothing unanswered yet — the KB is covering everything asked so far.",
       "title": "Top unanswered questions"
+    },
+    "topCommon": {
+      "empty": "No questions in this range.",
+      "title": "Most common questions"
     },
     "uncategorized": "uncategorized",
     "reindexErrors_one": ", {{count}} error(s)",

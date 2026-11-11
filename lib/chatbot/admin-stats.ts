@@ -10,6 +10,7 @@ export interface ChatbotAdminStats {
   totalQuestions: number;
   answeredCount: number;
   answerRate: number;
+  topCommon: UnansweredQuestion[];
   topUnanswered: UnansweredQuestion[];
   notHelpfulAnswered: UnansweredQuestion[];
   escalationRate: number;

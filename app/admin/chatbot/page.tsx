@@ -22,6 +22,7 @@ interface ChatbotStats {
   totalQuestions: number;
   answeredCount: number;
   answerRate: number;
+  topCommon: TopQuestion[];
   topUnanswered: TopQuestion[];
   notHelpfulAnswered: TopQuestion[];
   escalationRate: number;
@@ -80,7 +81,7 @@ const EMPTY_FORM: KbFormState = { title: "", body: "", keywords: "", category: "
 
 export default function AdminChatbotPage() {
   const { showFeedback } = useActionFeedback();
-  const { t } = useTranslation("admin");
+  const { t, i18n } = useTranslation("admin");
   const [stats, setStats] = useState<ChatbotStats | null | undefined>(undefined);
   const [statsDays, setStatsDays] = useState<7 | 30 | 90>(30);
   const [docs, setDocs] = useState<KbDoc[] | null | undefined>(undefined);
@@ -425,8 +426,48 @@ export default function AdminChatbotPage() {
           {[7, 30, 90].map((days) => <option key={days} value={days}>{t(`chatbot.metrics.days.${days}`)}</option>)}
         </select>
       </div>
+      <p className="mb-3 text-right text-xs text-muted-foreground">
+        {t("chatbot.metrics.dateRange", {
+          from: new Date(stats.range.from).toLocaleDateString(i18n.resolvedLanguage),
+          to: new Date(stats.range.to).toLocaleDateString(i18n.resolvedLanguage),
+        })}
+      </p>
+      {stats.totalQuestions === 0 && <p className="mb-3 text-sm text-muted-foreground">{t("chatbot.metrics.noQuestions")}</p>}
       <AdminMetricGrid items={[{ label: t("chatbot.metrics.questions"), value: stats.totalQuestions }, { label: t("chatbot.metrics.answerRate"), value: `${(stats.answerRate * 100).toFixed(0)}%` }, { label: t("chatbot.metrics.escalationRate"), value: `${(stats.escalationRate * 100).toFixed(0)}%`, detail: t("chatbot.metrics.escalationNote") }]} />
       <p className="mt-2 text-right text-xs text-muted-foreground">{t("chatbot.metrics.turnCoverage", { paired: stats.pairedUnansweredCount, legacy: stats.legacyUnpairedCount })}</p>
+
+      <div className="rounded-2xl border border-border bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
+        <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">
+          <TrendingUp size={13} /> {t("chatbot.topCommon.title")}
+        </p>
+        {stats.topCommon.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("chatbot.topCommon.empty")}</p>
+        ) : (
+          <div className="space-y-2">
+            {stats.topCommon.map((q, i) => (
+              <div key={`${q.question}-${i}`} className="flex min-w-0 flex-col gap-3 border-t border-border pt-3 text-sm first:border-t-0 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <span className="flex min-w-0 items-start gap-1.5 text-foreground">
+                    <MessageSquareText size={13} className="text-muted-foreground shrink-0" />
+                    <span className="break-words">{q.question}</span>
+                  </span>
+                  <p className="break-words pl-[19px] text-[0.6875rem] text-muted-foreground">
+                    {t("chatbot.questionMeta", { count: q.count, date: new Date(q.lastAskedAt).toLocaleDateString(i18n.resolvedLanguage) })}
+                  </p>
+                </div>
+                <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:shrink-0">
+                  <Button size="sm" variant="outline" className="min-h-11 min-w-[8rem] flex-1 justify-center whitespace-normal text-center sm:flex-none" onClick={() => addToKb(q.question)}>
+                    <Sparkles size={12} /> {t("chatbot.actions.addToKb")}
+                  </Button>
+                  <Button size="sm" variant="outline" className="min-h-11 min-w-[8rem] flex-1 justify-center whitespace-normal text-center sm:flex-none" disabled={draftingQuestion === q.question} onClick={() => draftAnswer(q.question)}>
+                    <WandSparkles size={12} /> {draftingQuestion === q.question ? t("chatbot.drafting") : t("chatbot.actions.aiDraft")}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="rounded-2xl border border-border bg-card p-4" style={{ boxShadow: "0 1px 10px rgba(1,0,102,0.07)" }}>
         <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-1.5">

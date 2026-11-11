@@ -1204,6 +1204,8 @@
       "escalationRate": "升级率",
       "questions": "提问数",
       "range": "统计范围",
+      "dateRange": "{{from}} – {{to}}",
+      "noQuestions": "此统计范围内没有用户提问。",
       "days": {
         "7": "最近 7 天",
         "30": "最近 30 天",
@@ -1241,6 +1243,10 @@
     "topUnanswered": {
       "empty": "尚无未回答问题——知识库已覆盖目前收到的所有提问。",
       "title": "最常见的未回答问题"
+    },
+    "topCommon": {
+      "empty": "此统计范围内没有用户提问。",
+      "title": "常见问题排行"
     },
     "uncategorized": "未分类",
     "reindexErrors_one": "，{{count}} 个错误",

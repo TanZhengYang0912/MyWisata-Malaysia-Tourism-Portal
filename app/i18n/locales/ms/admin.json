@@ -1204,6 +1204,8 @@
       "escalationRate": "Kadar eskalasi",
       "questions": "Soalan yang ditanya",
       "range": "Julat laporan",
+      "dateRange": "{{from}} – {{to}}",
+      "noQuestions": "Tiada soalan ditanya dalam julat ini.",
       "days": {
         "7": "7 hari lalu",
         "30": "30 hari lalu",
@@ -1241,6 +1243,10 @@
     "topUnanswered": {
       "empty": "Tiada soalan belum dijawab lagi — KB meliputi semua soalan yang ditanya setakat ini.",
       "title": "Soalan paling banyak belum dijawab"
+    },
+    "topCommon": {
+      "empty": "Tiada soalan dalam julat ini.",
+      "title": "Soalan paling lazim"
     },
     "uncategorized": "tidak dikategorikan",
     "reindexErrors_one": ", {{count}} ralat",

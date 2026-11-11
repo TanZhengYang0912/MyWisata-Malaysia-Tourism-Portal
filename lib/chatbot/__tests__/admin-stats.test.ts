@@ -13,6 +13,7 @@ describe('getChatbotAdminStats', () => {
       totalQuestions: 12,
       answeredCount: 8,
       answerRate: 0.8,
+      topCommon: [{ question: 'Refund update?', count: 4, lastAskedAt: '2026-09-02T00:00:00Z' }],
       topUnanswered: [{ question: 'Refund update?', count: 2, lastAskedAt: '2026-09-02T00:00:00Z' }],
       notHelpfulAnswered: [],
       escalationRate: 0.25,
