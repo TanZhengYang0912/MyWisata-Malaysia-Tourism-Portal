@@ -39,7 +39,11 @@ export const supportTicketSchema = z.object({
   withdrawalId: z.string().uuid().optional(),
   subject: z.string().trim().min(1).max(255),
   body: z.string().trim().min(1).max(2000),
-}).strict();
+}).strict().superRefine((data, ctx) => {
+  if (data.withdrawalId && !data.operationId) {
+    ctx.addIssue({ code: 'custom', path: ['operationId'], message: 'An operation id is required for withdrawal tickets' });
+  }
+});
 
 export type SupportTicketInput = z.infer<typeof supportTicketSchema>;
 
