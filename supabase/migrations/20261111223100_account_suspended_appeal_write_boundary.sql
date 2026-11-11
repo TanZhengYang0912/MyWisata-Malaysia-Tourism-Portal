@@ -1,10 +1,5 @@
--- Suspension appeals contain free-form evidence. Keep client roles read-only
--- on support tickets and funnel this one write through an atomic, service-only RPC.
-DROP POLICY IF EXISTS support_insert_own ON public.support_tickets;
-
-REVOKE INSERT, UPDATE, DELETE ON TABLE public.support_tickets FROM PUBLIC, anon, authenticated;
-REVOKE SELECT ON TABLE public.support_tickets FROM PUBLIC, anon;
-GRANT SELECT ON TABLE public.support_tickets TO authenticated;
+-- Suspension appeals contain free-form evidence. Funnel the new API write
+-- through an atomic, service-only RPC before the follow-up client grant lockdown.
 
 CREATE OR REPLACE FUNCTION public.create_account_suspension_appeal(
   p_user_id uuid,

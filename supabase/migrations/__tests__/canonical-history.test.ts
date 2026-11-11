@@ -36,6 +36,7 @@ const approvedForwardMigrations = [
   "20261111220000_support_operation_ledger.sql",
   "20261111223000_support_kb_draft_results.sql",
   "20261111223100_account_suspended_appeal_write_boundary.sql",
+  "20261111223200_account_suspended_appeal_direct_write_lockdown.sql",
   "20261106014314_chat_thread_summaries.sql",
   "20261107120518_repair_tng_ewallet_destination_label.sql",
   "20261107124912_vendor_outlet_listing_summary.sql",
