@@ -21,11 +21,12 @@ export async function POST(_request: Request, { params }: Props) {
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
   const service = createServiceClient();
-  const { data: ticket } = await service
+  const { data: ticket, error: ticketError } = await service
     .from('support_tickets')
     .select('id, subject, user_id, assigned_to, status')
     .eq('id', id)
     .maybeSingle();
+  if (ticketError) return apiFail('READ_UNAVAILABLE', 'Unable to load this ticket. Please try again.', 503);
   if (!ticket) return apiFail('NOT_FOUND', 'Ticket not found', 404);
   if (ticket.user_id !== user.id) return apiFail('FORBIDDEN', 'Not your ticket', 403);
 
@@ -37,9 +38,23 @@ export async function POST(_request: Request, { params }: Props) {
     .from('support_tickets')
     .update({ status: 'in_progress', reopened_at: new Date().toISOString(), resolved_at: null })
     .eq('id', id)
+    .in('status', [...LOCKED_STATUSES])
     .select('id, status')
-    .single();
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+    .maybeSingle();
+  if (error) return apiFail('WRITE_UNAVAILABLE', 'Unable to reopen this ticket. Please try again.', 503);
+
+  if (!data) {
+    // Another request may have reopened the ticket while this request waited
+    // on the row lock. Reconcile the current state and avoid a second notice.
+    const { data: current, error: currentError } = await service
+      .from('support_tickets')
+      .select('id, status')
+      .eq('id', id)
+      .maybeSingle();
+    if (currentError) return apiFail('READ_UNAVAILABLE', 'Unable to check this ticket. Please try again.', 503);
+    if (!current) return apiFail('NOT_FOUND', 'Ticket not found', 404);
+    return apiOk(current);
+  }
 
   await notifyTicketReopened(service, ticket);
 

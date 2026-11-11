@@ -176,7 +176,14 @@ export default function CustomerTicketDetailPage() {
     setReopening(true);
     try {
       const res = await fetch(`/api/support/tickets/${id}/reopen`, { method: "POST" });
-      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? tCustomer("ui.support.reopenError")); return; }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: { code?: string } };
+        const message = body.error?.code
+          ? tCommon(`chatbot.supportErrors.${supportError(body.error.code).key}`)
+          : tCustomer("ui.support.reopenError");
+        showFeedback("error", message);
+        return;
+      }
       showFeedback("success", tCustomer("ui.support.ticketReopened"));
       await loadTicket();
     } catch {
