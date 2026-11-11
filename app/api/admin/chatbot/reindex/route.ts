@@ -1,19 +1,13 @@
-// P4 — Member 4: KB re-embedding (CLAUDE-PHASE2.md Feature A)
-// POST /api/admin/chatbot/reindex — embeds every active KB doc whose
-// embedded_at is null or older than updated_at. Idempotent: a doc already
-// embedded since its last edit is skipped. Gated on super_admin,
-// checked server-side. Also called automatically by the KB editor's save
-// handler for the single doc just saved — this route exists for bulk
-// catch-up (e.g. after the migration first adds the embedding column, or if
-// a per-save embed failed because LLM_API_KEY was added later).
-
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { embedText } from '@/lib/chatbot/embed';
+import { reserveAiQuota } from '@/lib/rate-limit/ai';
 
-export async function POST() {
+const REINDEX_BATCH_SIZE = 10;
+
+export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
@@ -25,33 +19,36 @@ export async function POST() {
   }
 
   const service = createServiceClient();
-  const { data: docs, error } = await service
-    .from('chatbot_kb_documents')
-    .select('id, title, body, embedded_at, updated_at')
-    .eq('is_active', true);
-  if (error) {
-    console.error('[admin/chatbot/reindex] document lookup failed');
-    return apiFail('DB_ERROR', 'Knowledge-base entries could not be loaded. Please try again later.', 500);
-  }
-
-  const stale = (docs ?? []).filter((d) => !d.embedded_at || new Date(d.embedded_at) < new Date(d.updated_at));
+  const { data: claimed, error: claimError } = await service.rpc('claim_chatbot_kb_reindex', {
+    p_limit: REINDEX_BATCH_SIZE,
+    p_lease_seconds: 300,
+  });
+  if (claimError) return apiFail('READ_UNAVAILABLE', 'Knowledge-base entries could not be claimed. Please try again later.', 503);
 
   let reindexed = 0;
   const errors: { id: string; error: string }[] = [];
-
-  for (const doc of stale) {
+  for (const doc of (claimed ?? []) as { id: string; title: string; body: string; content_version: number; lease_token: string }[]) {
+    const quotaAvailable = await reserveAiQuota(request, 'kb_embedding', user.id).catch(() => false);
+    if (!quotaAvailable) {
+      await service.rpc('release_chatbot_kb_reindex', { p_id: doc.id, p_lease_token: doc.lease_token });
+      errors.push({ id: doc.id, error: 'AI indexing quota is temporarily unavailable. Retry this batch later.' });
+      continue;
+    }
     try {
       const embedding = await embedText(`${doc.title}\n${doc.body}`, 'kb');
-      const { error: updateErr } = await service
-        .from('chatbot_kb_documents')
-        .update({ embedding, embedded_at: new Date().toISOString() })
-        .eq('id', doc.id);
-      if (updateErr) throw updateErr;
+      const { data: updated, error: finishError } = await service.rpc('finish_chatbot_kb_reindex', {
+        p_id: doc.id,
+        p_content_version: doc.content_version,
+        p_lease_token: doc.lease_token,
+        p_embedding: embedding,
+      });
+      if (finishError || updated !== true) throw new Error('index_version_changed');
       reindexed += 1;
-    } catch (_err) {
+    } catch {
+      await service.rpc('release_chatbot_kb_reindex', { p_id: doc.id, p_lease_token: doc.lease_token });
       errors.push({ id: doc.id, error: 'This entry could not be indexed. Retry the indexing task later.' });
     }
   }
 
-  return apiOk({ scanned: (docs ?? []).length, reindexed, skipped: (docs?.length ?? 0) - stale.length, errors });
+  return apiOk({ scanned: (claimed ?? []).length, reindexed, skipped: 0, errors, batchSize: REINDEX_BATCH_SIZE });
 }

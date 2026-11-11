@@ -8,8 +8,6 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { createKbDocumentSchema } from '@/lib/validation/chatbot-schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
-import { embedText } from '@/lib/chatbot/embed';
-import { reserveAiQuota } from '@/lib/rate-limit/ai';
 
 export async function GET() {
   const supabase = await createClient();
@@ -60,23 +58,10 @@ export async function POST(request: Request) {
   const service = createServiceClient();
   const { data: created, error } = await service
     .from('chatbot_kb_documents')
-    .insert({ title, body, keywords, category: category ?? null, is_active: isActive ?? true })
-    .select('id')
+    .insert({ title, body, keywords, category: category ?? null, is_active: isActive ?? true, content_version: 1, embedding_version: null })
+    .select('id,content_version')
     .single();
   if (error) return apiFail('DB_ERROR', error.message, 500);
-
-  // "auto re-embed on save" (CLAUDE-PHASE2.md Feature A) — best-effort. If
-  // LLM_API_KEY is missing or the call fails, the doc is still fully usable
-  // via the keyword fallback; POST /api/admin/chatbot/reindex catches it
-  // later once a key is available.
-  if ((isActive ?? true) && process.env.LLM_API_KEY && await reserveAiQuota(request, 'kb_embedding', user.id)) {
-    try {
-      const embedding = await embedText(`${title}\n${body}`, 'kb');
-      await service.from('chatbot_kb_documents').update({ embedding, embedded_at: new Date().toISOString() }).eq('id', created.id);
-    } catch (err) {
-      console.error('[chatbot] inline embed on create failed', err instanceof Error ? err.message : err);
-    }
-  }
 
   return apiOk({ id: created.id });
 }
