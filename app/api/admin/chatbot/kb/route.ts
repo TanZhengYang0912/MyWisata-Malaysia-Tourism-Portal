@@ -28,7 +28,8 @@ export async function GET(request: Request) {
     .from('chatbot_kb_documents')
     .select('id, title, body, keywords, category, is_active, embedded_at, updated_at, created_at', { count: 'exact' })
     .order('is_active', { ascending: false })
-    .order('title', { ascending: true });
+    .order('title', { ascending: true })
+    .order('created_at', { ascending: false });
   const initialResult = await fetchPage().range((page - 1) * pageSize, page * pageSize - 1);
   let { data, error } = initialResult;
   if (error) return apiFail('READ_UNAVAILABLE', 'Unable to load the knowledge-base entries.', 503);

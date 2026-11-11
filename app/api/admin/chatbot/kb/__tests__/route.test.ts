@@ -14,13 +14,14 @@ function document(id: string) {
 
 function configurePages(pages: Array<{ data: ReturnType<typeof document>[]; count: number | null; error: unknown }>) {
   const range = vi.fn();
+  const order = vi.fn();
   for (const page of pages) range.mockResolvedValueOnce(page);
   const query: Record<string, (...args: unknown[]) => unknown> = {};
   query.select = () => query;
-  query.order = () => query;
+  query.order = (...args: unknown[]) => { order(...args); return query; };
   query.range = range;
   mocks.createServiceClient.mockReturnValue({ from: vi.fn(() => query) });
-  return range;
+  return { range, order };
 }
 
 describe('GET /api/admin/chatbot/kb pagination', () => {
@@ -32,17 +33,22 @@ describe('GET /api/admin/chatbot/kb pagination', () => {
 
   it('returns a bounded page with its exact total', async () => {
     const rows = Array.from({ length: 4 }, (_, index) => document(`doc-${index + 11}`));
-    const range = configurePages([{ data: rows, count: 14, error: null }]);
+    const { range, order } = configurePages([{ data: rows, count: 14, error: null }]);
     const response = await GET(new Request('http://localhost/api/admin/chatbot/kb?page=2'));
     const body = await response.json();
 
     expect(range).toHaveBeenCalledWith(10, 19);
+    expect(order.mock.calls).toEqual([
+      ['is_active', { ascending: false }],
+      ['title', { ascending: true }],
+      ['created_at', { ascending: false }],
+    ]);
     expect(body.data).toMatchObject({ page: 2, pageSize: 10, total: 14, totalPages: 2, documents: expect.any(Array) });
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
   });
 
   it('clamps a stale page when documents have been removed', async () => {
-    const range = configurePages([
+    const { range } = configurePages([
       { data: [], count: 11, error: null },
       { data: [document('doc-11')], count: null, error: null },
     ]);
