@@ -34,10 +34,14 @@ export async function GET(_request: Request, { params }: Props) {
   if (replyError) return apiFail('READ_UNAVAILABLE', 'Unable to load this ticket attachment.', 503);
   if (!reply?.attachment_url) return apiFail('NOT_FOUND', 'Attachment not found.', 404);
 
-  const extension = reply.attachment_url.split('.').pop()?.toLowerCase() ?? '';
+  const [ticketFolder, filename, ...extraSegments] = reply.attachment_url.split('/');
+  if (ticketFolder !== id || extraSegments.length > 0
+      || !/^[0-9a-f-]{36}\.(jpg|jpeg|png|webp|pdf)$/i.test(filename ?? '')) {
+    return apiFail('NOT_FOUND', 'Attachment not found.', 404);
+  }
+  const extension = filename.split('.').pop()?.toLowerCase() ?? '';
   const contentType = MIME_BY_EXTENSION[extension];
   if (!contentType) return apiFail('ATTACHMENT_UNAVAILABLE', 'Attachment is temporarily unavailable.', 503);
-  if (!reply.attachment_url.startsWith(`${id}/`)) return apiFail('NOT_FOUND', 'Attachment not found.', 404);
   const { data: file, error: downloadError } = await service
     .storage.from('ticket-attachments').download(reply.attachment_url);
   if (downloadError || !file) return apiFail('ATTACHMENT_UNAVAILABLE', 'Attachment is temporarily unavailable.', 503);

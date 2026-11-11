@@ -1,22 +1,14 @@
-// P4 — Member 4: support ticket file attachments — POST uploads a file as a
-// reply (optionally captioned), GET returns a short-lived signed URL for an
-// already-uploaded one. Mirrors app/api/chat/[threadId]/attachments/route.ts
-// (same validate -> upload -> insert -> sign shape) but writes into
-// support_ticket_replies instead of chat_messages, so it carries the same
-// side effects as POST .../replies (status transition, notify, moderation/
-// conduct flags) — those aren't shared into a helper since the two routes'
-// insert shapes differ enough (this one adds attachment_url, caption is
-// optional) that a shared function would need as many branches as it saves.
+// Support attachments are reserved before Storage and bound by one database
+// transaction after the server verifies the uploaded object's bytes.
 
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
-import { notifyTicketReply } from '@/lib/support/notify';
 import { cleanUserContent } from '@/lib/moderation/clean';
 import { logModerationFlag } from '@/lib/moderation/flags';
 import { logAdminConductFlagIfNeeded } from '@/lib/moderation/admin-conduct';
-import { readTicketAttachmentForm, validateChatAttachment, buildTicketAttachmentPath } from '@/lib/support/attachment';
+import { readTicketAttachmentForm, validateChatAttachment } from '@/lib/support/attachment';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
@@ -110,36 +102,196 @@ export async function POST(request: Request, { params }: Props) {
     return apiFail('TICKET_LOCKED', 'This ticket is resolved. Reopen it to reply.', 403);
   }
 
-  const path = buildTicketAttachmentPath(id, crypto.randomUUID(), file.type);
-  const upload = await service.storage.from('ticket-attachments').upload(path, validated.buffer, { contentType: file.type, upsert: false });
-  if (upload.error) return apiFail('UPLOAD_FAILED', 'Unable to upload attachment', 502);
-
-  const { data: reply, error: replyErr } = await service
-    .from('support_ticket_replies')
-    .insert({ ticket_id: id, sender_id: user.id, sender_role: senderRole, body: cleaned.display, attachment_url: path, operation_id: operationId, operation_payload_hash: operationPayloadHash })
-    .select('id, sender_id, sender_role, body, created_at, operation_payload_hash')
-    .single();
-  if (replyErr) {
-    await service.storage.from('ticket-attachments').remove([path]);
-    if (replyErr.code === '23505') {
-      const { data: racedReply, error: raceError } = await findExistingAttachmentReply();
-      if (raceError) return apiFail('READ_UNAVAILABLE', 'Unable to check the attachment result.', 503);
-      if (racedReply?.operation_payload_hash === operationPayloadHash) {
+  let reservationData: unknown;
+  let reservationError: { message: string } | null;
+  try {
+    const reservation = await service.rpc('reserve_support_attachment', {
+      p_operation_id: operationId,
+      p_ticket_id: id,
+      p_actor_id: user.id,
+      p_sender_role: senderRole,
+      p_operation_payload_hash: operationPayloadHash,
+      p_server_sha256: fileHash,
+      p_mime_type: file.type,
+      p_size_bytes: file.size,
+    });
+    reservationData = reservation.data;
+    reservationError = reservation.error;
+  } catch {
+    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment status. Check this ticket before trying again.', 503);
+  }
+  if (reservationError) {
+    const knownErrors: Record<string, { code: string; message: string; status: number }> = {
+      support_ticket_not_found: { code: 'NOT_FOUND', message: 'Ticket not found.', status: 404 },
+      support_ticket_forbidden: { code: 'FORBIDDEN', message: 'You cannot reply to this ticket.', status: 403 },
+      support_ticket_locked: { code: 'TICKET_LOCKED', message: 'This ticket is resolved. Reopen it to reply.', status: 403 },
+      support_ticket_operation_conflict: { code: 'OPERATION_CONFLICT', message: 'This attachment key was already used for different content.', status: 409 },
+      support_ticket_invalid_attachment: { code: 'INVALID_INPUT', message: 'Choose a valid attachment and try again.', status: 422 },
+    };
+    const knownError = knownErrors[reservationError.message];
+    if (knownError) return apiFail(knownError.code, knownError.message, knownError.status);
+    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment status. Check this ticket before trying again.', 503);
+  }
+  if (typeof reservationData !== 'object' || reservationData === null) {
+    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment status. Check this ticket before trying again.', 503);
+  }
+  const reservation = reservationData as Record<string, unknown>;
+  if (reservation.state === 'bound') {
+    const boundReply = reservation.reply;
+    if (typeof boundReply === 'object' && boundReply !== null) {
+      const reply = boundReply as Record<string, unknown>;
+      if (typeof reply.id === 'string' && typeof reply.sender_id === 'string'
+          && (reply.sender_role === 'customer' || reply.sender_role === 'admin')
+          && typeof reply.body === 'string' && typeof reply.created_at === 'string'
+          && typeof reply.new_status === 'string') {
         return apiOk({
-          id: racedReply.id,
-          senderId: racedReply.sender_id,
-          senderRole: racedReply.sender_role,
-          body: racedReply.body,
-          createdAt: racedReply.created_at,
-          newStatus: ticket.status,
+          id: reply.id,
+          senderId: reply.sender_id,
+          senderRole: reply.sender_role,
+          body: reply.body,
+          createdAt: reply.created_at,
+          newStatus: reply.new_status,
         });
       }
-      if (racedReply) return apiFail('OPERATION_CONFLICT', 'This attachment key was already used for different content.', 409);
     }
-    return apiFail('WRITE_UNAVAILABLE', 'The attachment could not be added. Keep the file selected and try again.', 503);
+    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment status. Check this ticket before trying again.', 503);
+  }
+  if (!['reserved', 'uploaded', 'unknown'].includes(String(reservation.state))
+      || typeof reservation.storage_path !== 'string'
+      || typeof reservation.lease_token !== 'string'
+      || !z.string().uuid().safeParse(reservation.lease_token).success) {
+    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment status. Check this ticket before trying again.', 503);
+  }
+  const pathParts = reservation.storage_path.split('/');
+  if (pathParts.length !== 2 || pathParts[0] !== id
+      || !/^[0-9a-f-]{36}\.(jpg|png|webp|pdf)$/i.test(pathParts[1])) {
+    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment status. Check this ticket before trying again.', 503);
+  }
+  const path = reservation.storage_path;
+  const leaseToken = reservation.lease_token;
+  const attachmentStorage = service.storage.from('ticket-attachments');
+  let objectVerified = reservation.state === 'uploaded' || reservation.state === 'unknown';
+
+  if (reservation.state === 'reserved') {
+    let startedError: { message: string } | null;
+    try {
+      ({ error: startedError } = await service.rpc('mark_support_attachment_started', {
+        p_operation_id: operationId,
+        p_actor_id: user.id,
+        p_lease_token: leaseToken,
+      }));
+    } catch {
+      return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment status. Check this ticket before trying again.', 503);
+    }
+    if (startedError) return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment status. Check this ticket before trying again.', 503);
+
+    let uploadError: unknown;
+    try {
+      ({ error: uploadError } = await attachmentStorage.upload(path, validated.buffer, { contentType: file.type, upsert: false }));
+    } catch {
+      return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment result. Check this ticket before trying again.', 503);
+    }
+    if (!uploadError) {
+      objectVerified = true;
+    } else {
+      objectVerified = false;
+    }
   }
 
-  if (cleaned.hadSlur) {
+  if (!objectVerified || reservation.state !== 'reserved') {
+    let existingFile: Blob | null = null;
+    let downloadError: { statusCode?: string } | null = null;
+    try {
+      const download = await attachmentStorage.download(path);
+      existingFile = download.data;
+      downloadError = download.error;
+    } catch {
+      return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment result. Check this ticket before trying again.', 503);
+    }
+    if (!existingFile) {
+      if (downloadError?.statusCode === '404' && reservation.state === 'reserved') {
+        const { error: abandonError } = await service.rpc('abandon_support_attachment', {
+          p_operation_id: operationId,
+          p_actor_id: user.id,
+          p_lease_token: leaseToken,
+        });
+        if (!abandonError) return apiFail('UPLOAD_FAILED', 'The file was not attached. Choose it again to retry.', 502);
+      }
+      return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment result. Check this ticket before trying again.', 503);
+    }
+    let existingBytes: Buffer;
+    try {
+      existingBytes = Buffer.from(await existingFile.arrayBuffer());
+    } catch {
+      return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment result. Check this ticket before trying again.', 503);
+    }
+    const existingHash = createHash('sha256').update(existingBytes).digest('hex');
+    if (existingBytes.length !== file.size || existingHash !== fileHash) {
+      return apiFail('OPERATION_CONFLICT', 'This attachment key was already used for different content.', 409);
+    }
+    objectVerified = true;
+  }
+
+  if (objectVerified) {
+    let uploadedError: { message: string } | null;
+    try {
+      ({ error: uploadedError } = await service.rpc('mark_support_attachment_uploaded', {
+        p_operation_id: operationId,
+        p_actor_id: user.id,
+        p_lease_token: leaseToken,
+      }));
+    } catch {
+      return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment result. Check this ticket before trying again.', 503);
+    }
+    if (uploadedError) return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment result. Check this ticket before trying again.', 503);
+  }
+
+  let result: unknown;
+  let commitError: { message: string } | null;
+  try {
+    const committed = await service.rpc('commit_support_ticket_attachment', {
+      p_ticket_id: id,
+      p_actor_id: user.id,
+      p_sender_role: senderRole,
+      p_body: cleaned.display,
+      p_attachment_path: path,
+      p_operation_id: operationId,
+      p_operation_payload_hash: operationPayloadHash,
+      p_lease_token: leaseToken,
+    });
+    result = committed.data;
+    commitError = committed.error;
+  } catch {
+    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment result. Check this ticket before trying again.', 503);
+  }
+  if (commitError) {
+    const knownErrors: Record<string, { code: string; message: string; status: number }> = {
+      support_ticket_not_found: { code: 'NOT_FOUND', message: 'Ticket not found.', status: 404 },
+      support_ticket_forbidden: { code: 'FORBIDDEN', message: 'You cannot reply to this ticket.', status: 403 },
+      support_ticket_locked: { code: 'TICKET_LOCKED', message: 'This ticket is resolved. Reopen it to reply.', status: 403 },
+      support_ticket_operation_conflict: { code: 'OPERATION_CONFLICT', message: 'This attachment key was already used for different content.', status: 409 },
+      support_ticket_invalid_attachment: { code: 'INVALID_INPUT', message: 'Choose a valid attachment and try again.', status: 422 },
+    };
+    const knownError = knownErrors[commitError.message];
+    if (knownError) return apiFail(knownError.code, knownError.message, knownError.status);
+    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment result. Check this ticket before trying again.', 503);
+  }
+  if (typeof result !== 'object' || result === null) {
+    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment result. Check this ticket before trying again.', 503);
+  }
+  const reply = result as Record<string, unknown>;
+  if (
+    typeof reply.id !== 'string'
+    || typeof reply.sender_id !== 'string'
+    || (reply.sender_role !== 'customer' && reply.sender_role !== 'admin')
+    || typeof reply.body !== 'string'
+    || typeof reply.created_at !== 'string'
+    || typeof reply.new_status !== 'string'
+    || typeof reply.created !== 'boolean'
+    || (reply.ticket_user_id !== null && typeof reply.ticket_user_id !== 'string')
+  ) return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the attachment result. Check this ticket before trying again.', 503);
+
+  if (reply.created && cleaned.hadSlur) {
     await logModerationFlag(service, {
       sourceType: 'ticket_reply',
       sourceId: reply.id,
@@ -148,26 +300,15 @@ export async function POST(request: Request, { params }: Props) {
     });
   }
 
-  if (senderRole === 'admin') {
+  if (reply.created && senderRole === 'admin') {
     await logAdminConductFlagIfNeeded(service, {
       cleaned,
       flaggedAdminId: user.id,
-      targetUserId: ticket.user_id,
+      targetUserId: reply.ticket_user_id as string | null,
       source: 'ticket_reply',
       sourceRefId: ticket.id,
     });
   }
-
-  const statusUpdate: { last_reply_at: string; status?: string; assigned_to?: string } = {
-    last_reply_at: new Date().toISOString(),
-  };
-  if (senderRole === 'admin') {
-    if (ticket.status === 'open') statusUpdate.status = 'in_progress';
-    if (!ticket.assigned_to) statusUpdate.assigned_to = user.id;
-  }
-  await service.from('support_tickets').update(statusUpdate).eq('id', id);
-
-  await notifyTicketReply(service, ticket, senderRole, cleaned.display || 'Sent an attachment');
 
   return apiOk(
     {
@@ -176,9 +317,9 @@ export async function POST(request: Request, { params }: Props) {
       senderRole: reply.sender_role,
       body: reply.body,
       createdAt: reply.created_at,
-      newStatus: statusUpdate.status ?? ticket.status,
+      newStatus: reply.new_status,
     },
-    { status: 201 },
+    { status: reply.created ? 201 : 200 },
   );
 }
 

@@ -55,6 +55,10 @@
     {
       "path": "/api/cron/purge-recommendation-images",
       "schedule": "17 * * * *"
+    },
+    {
+      "path": "/api/cron/support-maintenance",
+      "schedule": "23 * * * *"
     }
   ]
 }

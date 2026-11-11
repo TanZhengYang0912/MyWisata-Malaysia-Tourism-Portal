@@ -6,6 +6,7 @@
 // need for a separate admin-only version of this read).
 
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 
@@ -19,12 +20,13 @@ export async function GET(_request: Request, { params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  const { data: ticket, error: ticketErr } = await supabase
+  const service = createServiceClient();
+  const { data: ticket, error: ticketErr } = await service
     .from('support_tickets')
     .select('id, user_id, session_id, withdrawal_id, subject, body, category, status, assigned_to, created_at, resolved_at, last_reply_at')
     .eq('id', id)
     .maybeSingle();
-  if (ticketErr) return apiFail('DB_ERROR', ticketErr.message, 500);
+  if (ticketErr) return apiFail('READ_UNAVAILABLE', 'Unable to load this support request.', 503);
   if (!ticket) return apiFail('NOT_FOUND', 'Ticket not found', 404);
 
   const isOwner = ticket.user_id === user.id;
@@ -33,7 +35,7 @@ export async function GET(_request: Request, { params }: Props) {
 
   // The ticket thread contains only its submitted body and explicit replies.
 
-  const { data: replies, error: repliesError } = await supabase
+  const { data: replies, error: repliesError } = await service
     .from('support_ticket_replies')
     .select('id, sender_id, sender_role, body, attachment_url, created_at')
     .eq('ticket_id', id)
@@ -43,7 +45,7 @@ export async function GET(_request: Request, { params }: Props) {
   // ticket_mutes' own RLS already scopes this to the caller's own row — an
   // admin viewing someone else's ticket just gets no row, which is correct
   // (mute is "user side" only, an admin's own read of it is never relevant).
-  const { data: muteRow } = await supabase.from('ticket_mutes').select('id').eq('ticket_id', id).eq('user_id', user.id).maybeSingle();
+  const { data: muteRow } = await service.from('ticket_mutes').select('id').eq('ticket_id', id).eq('user_id', user.id).maybeSingle();
 
   return apiOk({
     id: ticket.id,
