@@ -1212,7 +1212,7 @@
       "escalationRate": "Kadar eskalasi",
       "questions": "Soalan yang ditanya",
       "range": "Julat laporan",
-      "dateRange": "{{from}} – {{to}}",
+      "dateRange": "{{from}} hingga {{to}}",
       "noQuestions": "Tiada soalan ditanya dalam julat ini.",
       "days": {
         "7": "7 hari lalu",

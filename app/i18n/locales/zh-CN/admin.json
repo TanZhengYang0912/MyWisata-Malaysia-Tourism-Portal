@@ -1212,7 +1212,7 @@
       "escalationRate": "升级率",
       "questions": "提问数",
       "range": "统计范围",
-      "dateRange": "{{from}} – {{to}}",
+      "dateRange": "{{from}} 至 {{to}}",
       "noQuestions": "此统计范围内没有用户提问。",
       "days": {
         "7": "最近 7 天",
