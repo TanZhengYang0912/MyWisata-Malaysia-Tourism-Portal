@@ -19,8 +19,8 @@ export interface GenerateDoc {
   body: string;
 }
 
-const POLICY_SENSITIVE_TERMS = /\b(payment|paid|pay|refund|refunded|withdraw|withdrawal|wallet|commission|kyc|identity verification|bank account|pembayaran|bayaran|dibayar|bayar|bayaran balik|pemulangan wang|pengeluaran|dompet|komisen|pengesahan identiti|akaun bank)\b/i;
-const POLICY_SENSITIVE_CJK_TERMS = ['付款', '支付', '退款', '提现', '钱包', '佣金', '身份验证', '银行账户'];
+const POLICY_SENSITIVE_TERMS = /\b(payments?|paid|pay|refunds?|refunded|withdrawals?|withdraw|wallets?|wallet|commissions?|commission|payouts?|payout|money|deposit|transfer|charge|fees?|kyc|identity verification|bank account|pembayaran|bayaran|dibayar|bayar|bayaran balik|pemulangan wang|pengeluaran|dompet|komisen|pengesahan identiti|akaun bank)\b/i;
+const POLICY_SENSITIVE_CJK_TERMS = ['付款', '支付', '退款', '提现', '钱包', '佣金', '身份验证', '银行账户', '转账', '提现款'];
 
 function isPolicySensitiveQuestion(question: string): boolean {
   return POLICY_SENSITIVE_TERMS.test(question) || POLICY_SENSITIVE_CJK_TERMS.some((term) => question.includes(term));

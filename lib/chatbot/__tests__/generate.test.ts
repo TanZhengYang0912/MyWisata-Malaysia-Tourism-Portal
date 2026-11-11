@@ -104,7 +104,8 @@ describe('generateAnswer help-article privacy check', () => {
     process.env.LLM_API_KEY = 'test-key';
     const fetchMock = vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Withdrawals take 3 working days.' }] } }] }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '退款将在 5 天内到账。' }] } }] }), { status: 200 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '退款将在 5 天内到账。' }] } }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Payouts arrive within 2 days.' }] } }] }), { status: 200 }));
 
     await expect(generateAnswer('How long does withdrawal take?', [
       { title: 'Wallet', body: 'Withdrawals take 3 working days.' },
@@ -112,7 +113,10 @@ describe('generateAnswer help-article privacy check', () => {
     await expect(generateAnswer('我的退款什么时候到账？', [
       { title: 'Refunds', body: '联系人工客服查询退款进度。' },
     ])).resolves.toBeNull();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await expect(generateAnswer('When do payouts arrive?', [
+      { title: 'Payouts', body: 'Contact the support team for an update.' },
+    ])).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it('still refuses a question where the user discloses their own details', async () => {
