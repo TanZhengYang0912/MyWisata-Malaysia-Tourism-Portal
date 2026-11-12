@@ -362,6 +362,7 @@
       "notCreated": "目前没有查到工单。可以安全地重试同一条提交。",
       "signIn": "登录后创建工单",
       "saveDraft": "保存草稿",
+      "savingDraft": "正在保存…",
       "draftSaved": "草稿已保存",
       "draftSaveFailed": "草稿未能保存，当前文字仍保留；请重试。",
       "draftLoadFailed": "无法加载已保存草稿。保存修改前请重试加载。",

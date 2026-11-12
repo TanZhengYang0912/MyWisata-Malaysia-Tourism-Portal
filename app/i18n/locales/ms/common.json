@@ -362,6 +362,7 @@
       "notCreated": "Tiket belum direkodkan. Anda boleh menghantar semula permintaan yang sama dengan selamat.",
       "signIn": "Log masuk untuk mencipta tiket",
       "saveDraft": "Simpan draf",
+      "savingDraft": "Menyimpan…",
       "draftSaved": "Draf disimpan",
       "draftSaveFailed": "Draf tidak dapat disimpan. Teks masih ada; cuba lagi.",
       "draftLoadFailed": "Draf tersimpan tidak dapat dimuatkan. Cuba muatkan semula sebelum menyimpan perubahan.",

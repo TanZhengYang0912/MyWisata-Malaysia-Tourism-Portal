@@ -362,6 +362,7 @@
       "notCreated": "No ticket is recorded yet. You can safely retry this same submission.",
       "signIn": "Sign in to create the ticket",
       "saveDraft": "Save draft",
+      "savingDraft": "Saving…",
       "draftSaved": "Draft saved",
       "draftSaveFailed": "Could not save this draft. Your text is still here; try again.",
       "draftLoadFailed": "Could not load the saved draft. Retry loading before you save changes.",

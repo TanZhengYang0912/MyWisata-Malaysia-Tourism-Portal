@@ -89,6 +89,7 @@ const translations: Record<string, string> = {
   "common:chatbot.handoff.summary": "Translated ticket summary",
   "common:chatbot.handoff.confirm": "Create translated ticket",
   "common:chatbot.handoff.saveDraft": "Save translated draft",
+  "common:chatbot.handoff.savingDraft": "Saving translated draft",
   "common:chatbot.handoff.retryDraftLoad": "Retry loading draft",
   "common:chatbot.yes": "Yes translated",
   "common:filters.filter": "Translated filter",
@@ -442,6 +443,167 @@ describe("Task 5 shared runtime behavior", () => {
     expect(findOne(container, (element) => element.tagName === "A" && element.getAttribute("href") === "/login?next=%2Fcustomer%2Fsupport")).toBeTruthy();
     expect(findButton("Retry loading draft")).toBeTruthy();
     expect(previewCalls).toBe(0);
+  });
+
+  it("preserves handoff edits and offers sign-in when saving the draft returns 401", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    let draftWrites = 0;
+    let savedPayload: { subject?: string; body?: string; expectedVersion?: number } | undefined;
+    mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/faq") return response({ data: { categories: [] } });
+      if (url === "/api/support/status") return response({ data: null, error: { code: "READ_UNAVAILABLE" } }, false);
+      if (String(url).startsWith("/api/support/drafts?") && init?.method !== "DELETE") {
+        return response({ data: { subject: "", body: "", version: 0 } });
+      }
+      if (url === "/api/support/drafts" && init?.method === "PUT") {
+        draftWrites += 1;
+        savedPayload = JSON.parse(String(init.body)) as typeof savedPayload;
+        if (draftWrites === 1) return { ...response({ data: null, error: { code: "UNAUTHORIZED" } }, false), status: 401 } as Response;
+        return response({ data: { version: 1, changed: true } });
+      }
+      if (url === "/api/support/handoff/preview") return response({ data: { subject: "Edited title", summary: "Edited summary", handoffToken: "signed-token" } });
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    const questionInput = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
+    setInputValue(questionInput, "Has my booking been confirmed?");
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+    await click(findButton("Yes translated"));
+
+    setInputValue(findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("maxLength") === "255"), "Edited title");
+    setInputValue(findOne(container, (element) => element.tagName === "TEXTAREA" && element.getAttribute("maxLength") === "2000"), "Edited summary");
+    await click(findButton("Save translated draft"));
+
+    expect(container.textContent).toContain("chatbot.supportErrors.signIn");
+    expect(findOne(container, (element) => element.tagName === "A" && element.getAttribute("href") === "/login?next=%2Fcustomer%2Fsupport")).toBeTruthy();
+    expect(findOne(container, (element) => element.getAttribute("role") === "alert").textContent).toContain("chatbot.supportErrors.signIn");
+
+    await click(findButton("Save translated draft"));
+
+    expect(draftWrites).toBe(2);
+    expect(savedPayload).toMatchObject({ subject: "Edited title", body: "Edited summary", expectedVersion: 0 });
+    expect(container.textContent).toContain("chatbot.handoff.draftSaved");
+  });
+
+  it("locks duplicate draft saves and keeps edits made while a save is pending", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    const draftWrites: { subject?: string; body?: string; expectedVersion?: number }[] = [];
+    let settleFirstWrite: ((result: Response) => void) | undefined;
+    mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/faq") return response({ data: { categories: [] } });
+      if (url === "/api/support/status") return response({ data: null, error: { code: "READ_UNAVAILABLE" } }, false);
+      if (String(url).startsWith("/api/support/drafts?") && init?.method !== "DELETE") {
+        return response({ data: { subject: "", body: "", version: 0 } });
+      }
+      if (url === "/api/support/drafts" && init?.method === "PUT") {
+        draftWrites.push(JSON.parse(String(init.body)) as { subject?: string; body?: string; expectedVersion?: number });
+        if (draftWrites.length === 1) return new Promise<Response>((resolve) => { settleFirstWrite = resolve; });
+        return response({ data: { version: 2, changed: true } });
+      }
+      if (url === "/api/support/handoff/preview") return response({ data: { subject: "Initial title", summary: "Initial summary", handoffToken: "signed-token" } });
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    const questionInput = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
+    setInputValue(questionInput, "Has my booking been confirmed?");
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+    await click(findButton("Yes translated"));
+    setInputValue(findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("maxLength") === "255"), "Initial title");
+    setInputValue(findOne(container, (element) => element.tagName === "TEXTAREA" && element.getAttribute("maxLength") === "2000"), "Initial summary");
+
+    const saveButton = findButton("Save translated draft");
+    await act(async () => {
+      saveButton.dispatchEvent(new TestEvent("click", { bubbles: true }));
+      saveButton.dispatchEvent(new TestEvent("click", { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(draftWrites).toHaveLength(1);
+    expect(findButton("Saving translated draft").disabled).toBe(true);
+
+    await act(async () => {
+      setInputValue(findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("maxLength") === "255"), "Edited during save");
+      setInputValue(findOne(container, (element) => element.tagName === "TEXTAREA" && element.getAttribute("maxLength") === "2000"), "Edited summary");
+    });
+    await act(async () => {
+      settleFirstWrite?.(response({ data: { version: 1, changed: true } }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(container.textContent).not.toContain("chatbot.handoff.draftSaved");
+    await click(findButton("Save translated draft"));
+    expect(draftWrites).toHaveLength(2);
+    expect(draftWrites[1]).toMatchObject({ subject: "Edited during save", body: "Edited summary", expectedVersion: 1 });
+    expect(container.textContent).toContain("chatbot.handoff.draftSaved");
+  });
+
+  it("keeps confirmed handoff content fixed until draft save and ticket creation finish", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    let settleDraftWrite: ((result: Response) => void) | undefined;
+    let previewPayload: { subject?: string; summary?: string } | undefined;
+    let ticketPayload: { subject?: string; body?: string } | undefined;
+    mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/faq") return response({ data: { categories: [] } });
+      if (url === "/api/support/status") return response({ data: null, error: { code: "READ_UNAVAILABLE" } }, false);
+      if (String(url).startsWith("/api/support/drafts?") && init?.method === "DELETE") return response({ data: { cleared: true } });
+      if (String(url).startsWith("/api/support/drafts?")) return response({ data: { subject: "", body: "", version: 0 } });
+      if (url === "/api/support/drafts" && init?.method === "PUT") return new Promise<Response>((resolve) => { settleDraftWrite = resolve; });
+      if (url === "/api/support/handoff/preview") {
+        previewPayload = JSON.parse(String(init?.body)) as typeof previewPayload;
+        return response({ data: { ...previewPayload, handoffToken: "signed-token" } });
+      }
+      if (url === "/api/support/tickets") {
+        const payload = JSON.parse(String(init?.body)) as { subject?: string; body?: string };
+        ticketPayload = payload;
+        return response({ data: { id: "confirmed-ticket-1", category: "general" } });
+      }
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    const questionInput = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
+    setInputValue(questionInput, "Has my booking been confirmed?");
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+    await click(findButton("Yes translated"));
+    setInputValue(findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("maxLength") === "255"), "Reviewed title");
+    setInputValue(findOne(container, (element) => element.tagName === "TEXTAREA" && element.getAttribute("maxLength") === "2000"), "Reviewed summary");
+    const consent = findOne(container, (element) => element.tagName === "INPUT" && (element as unknown as { type: string }).type === "checkbox");
+    (consent as unknown as { checked: boolean }).checked = true;
+    await click(consent);
+    await click(findButton("Create translated ticket"));
+
+    expect(findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("maxLength") === "255").disabled).toBe(true);
+    expect(findOne(container, (element) => element.tagName === "TEXTAREA" && element.getAttribute("maxLength") === "2000").disabled).toBe(true);
+    expect(findOne(container, (element) => element.tagName === "INPUT" && (element as unknown as { type: string }).type === "checkbox").disabled).toBe(true);
+    expect(previewPayload).toBeUndefined();
+
+    await act(async () => {
+      settleDraftWrite?.(response({ data: { version: 1, changed: true } }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(previewPayload).toEqual({ subject: "Reviewed title", summary: "Reviewed summary" });
+    expect(ticketPayload).toMatchObject({ subject: "Reviewed title", body: "Reviewed summary" });
   });
 
   it("lets a signed-in user hand off an unavailable status query using the operation draft target", async () => {
