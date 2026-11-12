@@ -41,6 +41,8 @@ const approvedForwardMigrations = [
   "20261112093302_support_ticket_reopen_operation_idempotency.sql",
   "20261112100000_support_ticket_attachment_bucket.sql",
   "20261112134833_support_handoff_sanitized_message_snapshot.sql",
+  "20261112143812_support_customer_refund_display_reference.sql",
+  "20261112155533_support_chatbot_evidence_provenance.sql",
   "20261106014314_chat_thread_summaries.sql",
   "20261107120518_repair_tng_ewallet_destination_label.sql",
   "20261107124912_vendor_outlet_listing_summary.sql",

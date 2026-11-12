@@ -15,6 +15,8 @@ export interface RetrievedDoc {
   body: string;
   category: string | null;
   similarity: number;
+  contentVersion: number;
+  reviewed: boolean;
 }
 
 /**
@@ -30,19 +32,21 @@ export async function retrieve(
   question: string,
   k = 3,
   beforeExternalCall?: () => Promise<void>,
+  requireReviewed = false,
 ): Promise<RetrievedDoc[]> {
   const [embedding, threshold] = await Promise.all([
     embedText(question, 'user', beforeExternalCall),
     getSimilarityThreshold(service),
   ]);
 
-  const { data, error } = await service.rpc('match_kb_documents', {
+  const { data, error } = await service.rpc('match_kb_documents_with_version', {
     query_embedding: embedding,
     match_count: k,
+    require_reviewed: requireReviewed,
   });
   if (error) throw new Error(`match_kb_documents RPC failed: ${error.message}`);
 
-  const rows = (data ?? []) as { id: string; title: string; body: string; category: string | null; similarity: number }[];
+  const rows = (data ?? []) as { id: string; title: string; body: string; category: string | null; similarity: number; content_version: number; reviewed: boolean }[];
   if (rows.length === 0 || rows[0].similarity < threshold) return [];
 
   return rows.map((r) => ({
@@ -51,5 +55,7 @@ export async function retrieve(
     body: r.body,
     category: r.category,
     similarity: Number(r.similarity),
+    contentVersion: Number(r.content_version),
+    reviewed: Boolean(r.reviewed),
   }));
 }

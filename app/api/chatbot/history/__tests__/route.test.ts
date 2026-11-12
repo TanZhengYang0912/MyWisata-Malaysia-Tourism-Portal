@@ -14,12 +14,20 @@ import { POST } from '../route';
 function makeBuilder(result: unknown, resolveAt: 'in' | 'limit' | 'maybeSingle' = 'limit') {
   const builder: Record<string, (...args: unknown[]) => unknown> = {};
   builder.is = vi.fn(() => builder);
-  builder.select = () => builder;
-  builder.eq = () => builder;
-  builder.in = () => resolveAt === 'in' ? Promise.resolve(result) : builder;
-  builder.or = () => builder;
-  builder.order = () => builder;
-  builder.limit = () => resolveAt === 'limit' ? Promise.resolve(result) : builder;
+  builder.select = vi.fn(() => builder);
+  builder.eq = vi.fn(() => builder);
+  builder.in = vi.fn(() => builder);
+  builder.or = vi.fn(() => builder);
+  builder.order = vi.fn(() => builder);
+  builder.limit = vi.fn(() => builder);
+  builder.then = (...args: unknown[]) => {
+    const onFulfilled = args[0];
+    const onRejected = args[1];
+    return Promise.resolve(result).then(
+      typeof onFulfilled === 'function' ? (value) => onFulfilled(value) : undefined,
+      typeof onRejected === 'function' ? (reason) => onRejected(reason) : undefined,
+    );
+  };
   builder.maybeSingle = () => resolveAt === 'maybeSingle' ? Promise.resolve(result) : builder;
   return builder;
 }
@@ -50,7 +58,10 @@ describe('POST /api/chatbot/history', () => {
     const session = makeBuilder({ data: { id: 'session-row-1' }, error: null }, 'maybeSingle');
     const messageQuery = makeBuilder({ data: messages, error: null });
     const feedback = makeBuilder({ data: [{ message_id: '22222222-2222-4222-8222-222222222222', helpful: null, opened_ticket: false }], error: null }, 'in');
-    const tables: Record<string, unknown> = { chatbot_sessions: session, chatbot_messages: messageQuery, chatbot_feedback: feedback };
+    const evidence = makeBuilder({ data: [{
+      message_id: '22222222-2222-4222-8222-222222222222', document_title_snapshot: 'Refund policy', content_version: 4, created_at: '2026-11-11T00:00:01Z',
+    }], error: null }, 'in');
+    const tables: Record<string, unknown> = { chatbot_sessions: session, chatbot_messages: messageQuery, chatbot_feedback: feedback, chatbot_message_kb_refs: evidence };
     mocks.createServiceClient.mockReturnValue({ from: (table: string) => tables[table] });
 
     const response = await POST(makeRequest());
@@ -58,6 +69,8 @@ describe('POST /api/chatbot/history', () => {
 
     expect(response.status).toBe(200);
     expect(payload.data.messages[1]).toMatchObject({ question: 'Where is my booking?', feedbackStage: 'awaiting_helpful' });
+    expect(payload.data.messages[1].evidence).toEqual([{ title: 'Refund policy', contentVersion: 4, checkedAt: '2026-11-11T00:00:01Z' }]);
+    expect(evidence.limit).toHaveBeenCalledWith(180);
     expect(response.headers.get('Cache-Control')).toContain('no-store');
   });
 

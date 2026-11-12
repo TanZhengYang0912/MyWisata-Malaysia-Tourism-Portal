@@ -110,6 +110,20 @@ export async function POST(request: Request) {
     .digest('hex');
   const actorKey = user ? `user:${user.id}` : `guest:${guestTokenHash}`;
 
+  const loadPublicEvidence = async (messageId: string) => {
+    const { data, error } = await service.from('chatbot_message_kb_refs')
+      .select('document_title_snapshot, content_version, created_at')
+      .eq('message_id', messageId)
+      .limit(6);
+    if (error) return { error: true, evidence: [] as { title: string; contentVersion: number; checkedAt: string }[] };
+    return {
+      error: false,
+      evidence: (data ?? []).flatMap((row) => row.document_title_snapshot && row.content_version !== null
+        ? [{ title: row.document_title_snapshot, contentVersion: Number(row.content_version), checkedAt: row.created_at }]
+        : []),
+    };
+  };
+
   const findExistingAnswer = async () => {
     const { data: existingUser, error: existingUserErr } = await service
       .from('chatbot_messages')
@@ -131,6 +145,8 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (existingBotErr) return { response: apiFail('DB_ERROR', 'Unable to check the previous answer.', 503) };
     if (!existingBot) return { response: null, userMessageId: existingUser.id as string };
+    const evidence = await loadPublicEvidence(existingBot.id);
+    if (evidence.error) return { response: apiFail('READ_UNAVAILABLE', 'Unable to restore the answer sources right now. Check the conversation and try again.', 503) };
     await service.rpc('reconcile_chatbot_ask_operation', {
       p_operation_id: operationId,
       p_actor_key: actorKey,
@@ -138,7 +154,7 @@ export async function POST(request: Request) {
       p_user_message_id: existingUser.id,
       p_bot_message_id: existingBot.id,
     });
-    return { response: apiOk({ sessionKey: session.session_key, answer: existingBot.body, botAnswered: existingBot.kb_matched, messageId: existingBot.id, userMessageId: existingUser.id, language: existingBot.answer_language, privacyBlocked: existingBot.privacy_blocked }), userMessageId: existingUser.id as string };
+    return { response: apiOk({ sessionKey: session.session_key, answer: existingBot.body, botAnswered: existingBot.kb_matched, messageId: existingBot.id, userMessageId: existingUser.id, language: existingBot.answer_language, privacyBlocked: existingBot.privacy_blocked, evidence: evidence.evidence }), userMessageId: existingUser.id as string };
   };
 
   const { data: reservation, error: reservationError } = await service.rpc('reserve_support_operation', {
@@ -230,7 +246,7 @@ export async function POST(request: Request) {
     });
   }
 
-  const { data: botMessageId, error: botMsgErr } = await service.rpc('complete_chatbot_ask_operation', {
+  const { data: botMessageId, error: botMsgErr } = await service.rpc('complete_chatbot_ask_operation_with_evidence', {
     p_operation_id: operationId,
     p_actor_key: actorKey,
     p_lease_token: operation.leaseToken,
@@ -240,19 +256,17 @@ export async function POST(request: Request) {
     p_kb_matched: result.kbMatched,
     p_answer_language: result.language,
     p_privacy_blocked: privacyBlocked,
+    p_kb_refs: result.usedKb.map((source) => ({
+      documentId: source.id,
+      title: source.title,
+      contentVersion: source.contentVersion,
+      score: source.similarity,
+    })),
   });
   if (botMsgErr || typeof botMessageId !== 'string') return apiFail('OPERATION_UNKNOWN', 'Your question was saved, but the answer could not be confirmed. Check chat history before sending again.', 503);
-
-  // Provenance — which KB docs (and their similarity, for RAG mode) backed
-  // this answer. See CLAUDE-PHASE2.md Feature A: "show which KB docs it
-  // used and their similarity scores." Best-effort: a failure here shouldn't
-  // fail the whole request, the user already has their answer.
-  if (result.usedKb.length > 0) {
-    const { error: refErr } = await service.from('chatbot_message_kb_refs').insert(
-      result.usedKb.map((k) => ({ message_id: botMessageId, document_id: k.id, score: k.similarity })),
-    );
-    if (refErr) console.error('[chatbot] failed to log kb refs', refErr.message);
-  }
+  const evidence = result.kbMatched
+    ? result.usedKb.map((source) => ({ title: source.title, contentVersion: source.contentVersion, checkedAt: new Date().toISOString() }))
+    : [];
 
   // CLAUDE-CHATBOT-FEEDBACK.md: this endpoint answers; it never escalates on
   // its own. botAnswered (== kbMatched: the bot produced a real answer, not
@@ -261,5 +275,5 @@ export async function POST(request: Request) {
   // lets the widget attach feedback/ticket state to this specific reply.
   // CLAUDE-P4-EXTRAS.md Extra 1: language lets the widget localize that
   // feedback-flow chrome (see lib/chatbot/strings.ts) to match this reply.
-  return apiOk({ sessionKey: session.session_key, answer: result.answer, botAnswered: result.kbMatched, messageId: botMessageId, userMessageId: userMessageId, language: result.language, privacyBlocked });
+  return apiOk({ sessionKey: session.session_key, answer: result.answer, botAnswered: result.kbMatched, messageId: botMessageId, userMessageId: userMessageId, language: result.language, privacyBlocked, evidence });
 }

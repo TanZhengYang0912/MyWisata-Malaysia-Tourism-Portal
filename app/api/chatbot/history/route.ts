@@ -88,6 +88,22 @@ export async function POST(request: Request) {
     feedbackByMessage = new Map((feedback ?? []).map((item) => [item.message_id, { helpful: item.helpful, opened_ticket: item.opened_ticket }]));
   }
 
+  const evidenceByMessage = new Map<string, { title: string; contentVersion: number; checkedAt: string }[]>();
+  if (botIds.length) {
+    const { data: evidenceRows, error: evidenceError } = await service.from('chatbot_message_kb_refs')
+      .select('message_id, document_title_snapshot, content_version, created_at')
+      .in('message_id', botIds)
+      .order('created_at', { ascending: true })
+      .limit(180);
+    if (evidenceError) return apiFail('READ_UNAVAILABLE', 'Unable to restore this conversation.', 503);
+    for (const row of evidenceRows ?? []) {
+      if (!row.document_title_snapshot || row.content_version === null) continue;
+      const references = evidenceByMessage.get(row.message_id) ?? [];
+      references.push({ title: row.document_title_snapshot, contentVersion: Number(row.content_version), checkedAt: row.created_at });
+      evidenceByMessage.set(row.message_id, references);
+    }
+  }
+
   const oldest = messages[0];
   const response = apiOk({
     messages: messages.map((row) => {
@@ -104,6 +120,7 @@ export async function POST(request: Request) {
           : feedback?.helpful === false ? 'awaiting_ticket'
           : row.kb_matched ? 'awaiting_helpful' : 'awaiting_ticket',
         botAnswered: row.role === 'bot' ? Boolean(row.kb_matched) : undefined,
+        evidence: row.role === 'bot' ? evidenceByMessage.get(row.id) ?? [] : undefined,
       };
     }),
     nextCursor: messages.length === 30 && oldest ? { createdAt: oldest.created_at, id: oldest.id } : null,

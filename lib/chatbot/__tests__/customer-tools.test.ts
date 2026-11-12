@@ -1,14 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import { queryCustomerSupportStatus } from '../customer-tools';
 
-const supportRefundsRpc = vi.fn();
-vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ rpc: supportRefundsRpc }) }));
+const mocks = vi.hoisted(() => ({ serviceFrom: vi.fn(), refundsRpc: vi.fn() }));
+vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: mocks.serviceFrom, rpc: mocks.refundsRpc }) }));
 
 function query(result: unknown) {
   const builder: Record<string, unknown> = {};
   for (const method of ['select', 'eq', 'order', 'limit', 'in']) {
     builder[method] = vi.fn(() => builder);
   }
+  builder.maybeSingle = vi.fn(() => Promise.resolve(result));
   builder.then = (resolve: (value: unknown) => unknown) => Promise.resolve(result).then(resolve);
   return builder as Record<string, ReturnType<typeof vi.fn>>;
 }
@@ -87,17 +88,17 @@ describe('queryCustomerSupportStatus', () => {
     await expect(queryCustomerSupportStatus({ from } as never, 'owner', 'bookings'))
       .resolves.toEqual({ state: 'no_records', items: [] });
 
-    supportRefundsRpc.mockResolvedValueOnce({ data: null, error: new Error('rpc unavailable') });
+    mocks.refundsRpc.mockResolvedValueOnce({ data: null, error: new Error('rpc unavailable') });
     await expect(queryCustomerSupportStatus({ from: vi.fn() } as never, 'owner', 'refunds'))
       .resolves.toEqual({ state: 'unavailable', items: [] });
 
-    supportRefundsRpc.mockResolvedValueOnce({ data: [], error: null });
+    mocks.refundsRpc.mockResolvedValueOnce({ data: [], error: null });
     await expect(queryCustomerSupportStatus({ from: vi.fn() } as never, 'owner', 'refunds'))
       .resolves.toEqual({ state: 'no_records', items: [] });
   });
 
   it('lists the latest refunds across all owned orders through a bounded owner-scoped query', async () => {
-    supportRefundsRpc.mockResolvedValue({
+    mocks.refundsRpc.mockResolvedValue({
       data: [{
         id: 'refund-id', order_id: 'older-order-id', order_display_id: 'ORD-1002', status: 'pending', created_at: '2026-11-01',
       }],
@@ -106,7 +107,7 @@ describe('queryCustomerSupportStatus', () => {
 
     const result = await queryCustomerSupportStatus({ from: vi.fn() } as never, 'signed-in-user', 'refunds');
 
-    expect(supportRefundsRpc).toHaveBeenCalledWith('list_support_customer_refunds', { p_owner_user_id: 'signed-in-user' });
+    expect(mocks.refundsRpc).toHaveBeenCalledWith('list_support_customer_refunds', { p_owner_user_id: 'signed-in-user' });
     expect(result).toEqual({ state: 'available', items: [expect.objectContaining({
       id: 'refund-id', label: 'ORD-1002', status: 'pending', href: '/customer/orders/older-order-id',
     })] });
@@ -114,7 +115,7 @@ describe('queryCustomerSupportStatus', () => {
 
   it('continues to render the current RPC response until the display-reference migration is applied', async () => {
     const orderId = '80000000-0000-0000-0000-000000000001';
-    supportRefundsRpc.mockResolvedValue({
+    mocks.refundsRpc.mockResolvedValue({
       data: [{ id: 'refund-id', order_id: orderId, status: 'pending', created_at: '2026-11-01' }],
       error: null,
     });
@@ -123,6 +124,43 @@ describe('queryCustomerSupportStatus', () => {
 
     expect(result).toEqual({ state: 'available', items: [expect.objectContaining({
       label: orderId, href: `/customer/orders/${orderId}`,
+    })] });
+  });
+
+  it('returns only the owner-scoped withdrawal status fields with a five-row database bound', async () => {
+    const withdrawals = query({ data: [{
+      id: 'withdrawal-id', status: 'pending_second_approval', created_at: '2026-11-01',
+    }], error: null });
+    mocks.serviceFrom.mockReturnValue(withdrawals);
+
+    const result = await queryCustomerSupportStatus({ from: vi.fn() } as never, 'owner-a', 'withdrawals');
+
+    expect(mocks.serviceFrom).toHaveBeenCalledWith('withdrawal_requests');
+    expect(withdrawals.select).toHaveBeenCalledWith('id,status,created_at');
+    expect(withdrawals.eq).toHaveBeenCalledWith('user_id', 'owner-a');
+    expect(withdrawals.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(withdrawals.limit).toHaveBeenCalledWith(5);
+    expect(result).toEqual({ state: 'available', items: [expect.objectContaining({
+      kind: 'withdrawals', status: 'pending_second_approval', href: '/customer/wallet/withdrawals/withdrawal-id',
+      actions: ['open_record', 'handoff'],
+    })] });
+  });
+
+  it('reads only the latest public KYC status and never selects review reasons', async () => {
+    const submission = query({ data: {
+      id: 'kyc-id', status: 'info_requested', created_at: '2026-11-01',
+    }, error: null });
+    mocks.serviceFrom.mockReturnValue(submission);
+
+    const result = await queryCustomerSupportStatus({ from: vi.fn() } as never, 'owner-a', 'kyc');
+
+    expect(mocks.serviceFrom).toHaveBeenCalledWith('kyc_submissions');
+    expect(submission.select).toHaveBeenCalledWith('id,status,created_at');
+    expect(submission.eq).toHaveBeenCalledWith('user_id', 'owner-a');
+    expect(submission.limit).toHaveBeenCalledWith(1);
+    expect(submission.select.mock.calls[0][0]).not.toContain('review_reason');
+    expect(result).toEqual({ state: 'available', items: [expect.objectContaining({
+      kind: 'kyc', status: 'info_requested', href: '/customer/kyc', actions: ['open_record', 'handoff'],
     })] });
   });
 });

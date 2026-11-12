@@ -43,6 +43,8 @@ import { ChatWidgetInbox } from "@/components/shared/chat-widget/chat-widget-inb
 import { ChatWidgetVendorThread } from "@/components/shared/chat-widget/chat-widget-vendor-thread";
 import { resolveCustomerSupportIntent } from "@/lib/chatbot/customer-intent";
 import type { CustomerStatusItem } from "@/lib/chatbot/customer-tools";
+import type { CustomerStatusKind } from "@/lib/chatbot/policy";
+import type { SupportPolicyAction } from "@/lib/chatbot/policy";
 import { supportError } from "@/lib/support/errors";
 
 // CLAUDE-VOICE-INPUT.md Part 2. Friendly copy per error kind — never a raw
@@ -81,6 +83,10 @@ interface ChatMessage {
   ticketError?: string;
   ticketErrorCode?: string;
   statusItems?: CustomerStatusItem[];
+  statusKind?: CustomerStatusKind;
+  statusActions?: readonly SupportPolicyAction[];
+  statusRetryAvailable?: boolean;
+  evidence?: { title: string; contentVersion: number; checkedAt: string }[];
   statusActionHref?: string;
   statusActionLabel?: string;
   handoffSubject?: string;
@@ -104,7 +110,7 @@ interface ChatHistoryCursor {
   id: string;
 }
 
-type ChatbotAnswerData = Pick<ChatMessage, "text" | "messageId" | "language" | "privacyBlocked"> & {
+type ChatbotAnswerData = Pick<ChatMessage, "text" | "messageId" | "language" | "privacyBlocked" | "evidence"> & {
   botAnswered: boolean;
 };
 
@@ -117,6 +123,7 @@ export function createBotMessage(data: ChatbotAnswerData, question: string): Cha
     question,
     language: data.language,
     privacyBlocked: data.privacyBlocked,
+    evidence: data.evidence,
     feedbackStage: data.botAnswered ? "awaiting_helpful" : "awaiting_ticket",
   };
 }
@@ -127,6 +134,30 @@ export function resolveTicketSubject(question: string | undefined, fallback: str
 
 export function chatbotSessionStorageKey(userId: string | null): string {
   return `mw_chatbot_session:${userId ?? "guest"}`;
+}
+
+function customerStatusPage(kind: CustomerStatusKind): string {
+  if (kind === "tickets") return "/customer/support";
+  if (kind === "bookings") return "/customer/calendar";
+  if (kind === "withdrawals") return "/customer/wallet/withdrawals";
+  if (kind === "kyc") return "/customer/kyc";
+  return "/customer/orders";
+}
+
+async function fetchCustomerStatus(kind: CustomerStatusKind) {
+  try {
+    const response = await fetch("/api/support/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind }),
+    });
+    const result = await response.json().catch(() => ({})) as {
+      data?: { state?: string; items?: CustomerStatusItem[]; actions?: readonly SupportPolicyAction[] };
+    };
+    return { ok: response.ok, signInRequired: response.status === 401, data: result.data };
+  } catch {
+    return { ok: false, signInRequired: false, data: undefined };
+  }
 }
 
 function chatbotAskOperationStorageKey(sessionKey: string): string {
@@ -202,7 +233,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   // instance instead of building a second chat surface.
   const { open, setOpen, selected, selectChat, unreadChatCount } = useSupportChat();
   const { currentUser, loading: authLoading } = useAuth();
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const { confirm } = useAppDialog();
   const { t: tCustomer } = useTranslation("customer");
   const identityKey = currentUser?.id ?? null;
@@ -240,6 +271,8 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   const guestCookieReadyRef = useRef(false);
   const pendingAskRef = useRef<{ identity: string | null; question: string; sessionKey: string; operationId: string; localMessageId: string } | null>(null);
   const ticketOperationLockRef = useRef(false);
+  const statusRefreshLocksRef = useRef(new Set<string>());
+  const [statusRefreshingId, setStatusRefreshingId] = useState<string | null>(null);
   const ticketOperationIdentityRef = useRef<string | null>(identityKey);
   const handoffDraftSaveLocksRef = useRef(new Set<string>());
   const [sending, setSending] = useState(false);
@@ -399,7 +432,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       const result = await response.json().catch(() => ({})) as {
         error?: { code?: string } | null;
         data?: {
-          messages: Array<{ id: string; role: "user" | "bot"; text: string; question?: string; feedbackStage?: FeedbackStage }>;
+          messages: Array<{ id: string; role: "user" | "bot"; text: string; question?: string; feedbackStage?: FeedbackStage; evidence?: ChatMessage["evidence"] }>;
           nextCursor: ChatHistoryCursor | null;
         };
       };
@@ -419,6 +452,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         messageId: item.role === "bot" ? item.id : undefined,
         question: item.question,
         feedbackStage: item.feedbackStage,
+        evidence: item.evidence,
         handoffOperationId: item.role === "bot" ? readPendingSupportOperation(identityKey, item.id) ?? undefined : undefined,
         ticketOperationUnknown: item.role === "bot" ? Boolean(readPendingSupportOperation(identityKey, item.id)) : false,
       }));
@@ -549,6 +583,63 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   // being clobbered by a stray effect re-run.
   const speech = useSpeechInput({ lang: resolveRecognitionLang(currentLanguage), onTranscriptChange: setInput });
 
+  function presentCustomerStatus(
+    localId: string,
+    kind: CustomerStatusKind,
+    question: string,
+    result: Awaited<ReturnType<typeof fetchCustomerStatus>>,
+    append: boolean,
+  ) {
+    const signInRequired = result.signInRequired;
+    const items = result.ok && result.data?.state === "available" ? result.data.items ?? [] : [];
+    const actions = result.data?.actions ?? (result.ok ? [] : ["refresh_status", "open_record", "handoff"] as const);
+    const unconfirmed = items.some((item) => item.actions.includes("refresh_status"));
+    const hasKnownResult = result.data?.state === "available" || result.data?.state === "no_records";
+    const needsHumanHelp = signInRequired || !result.ok || !hasKnownResult || unconfirmed;
+    const shouldOfferHuman = !signInRequired && (needsHumanHelp || result.data?.state === "no_records");
+    const message = signInRequired
+      ? t("chatbot.statusQuery.signIn")
+      : needsHumanHelp
+        ? t("chatbot.statusQuery.unavailable")
+        : result.data?.state === "available"
+          ? t("chatbot.statusQuery.found")
+          : result.data?.state === "no_records"
+            ? t("chatbot.statusQuery.none")
+            : t("chatbot.statusQuery.unavailable");
+    const pageHref = customerStatusPage(kind);
+    const statusMessage: ChatMessage = {
+      role: "bot",
+      localId,
+      text: message,
+      statusKind: kind,
+      statusActions: actions,
+      statusItems: items.length ? items : undefined,
+      statusRetryAvailable: !signInRequired && actions.includes("refresh_status"),
+      question: shouldOfferHuman && actions.includes("handoff") ? question : undefined,
+      feedbackStage: shouldOfferHuman && actions.includes("handoff") ? "awaiting_ticket" : undefined,
+      statusActionHref: signInRequired ? `/login?next=${encodeURIComponent(pageHref)}` : actions.includes("open_record") ? pageHref : undefined,
+      statusActionLabel: signInRequired ? t("chatbot.statusQuery.signInAction") : actions.includes("open_record") ? t("chatbot.statusQuery.openRecord") : undefined,
+    };
+    setMessages((current) => append
+      ? [...current, statusMessage]
+      : current.map((item) => item.localId === localId ? statusMessage : item));
+  }
+
+  async function refreshCustomerStatus(localId: string, kind: CustomerStatusKind, question: string) {
+    if (statusRefreshLocksRef.current.has(localId)) return;
+    statusRefreshLocksRef.current.add(localId);
+    const requestIdentity = identityRef.current;
+    setStatusRefreshingId(localId);
+    try {
+      const result = await fetchCustomerStatus(kind);
+      if (identityRef.current !== requestIdentity) return;
+      presentCustomerStatus(localId, kind, question, result, false);
+    } finally {
+      statusRefreshLocksRef.current.delete(localId);
+      setStatusRefreshingId((current) => current === localId ? null : current);
+    }
+  }
+
   /**
    * `explicitQuestion` is the FAQ path — an exact, curated KB question the
    * user tapped, sent as-is. The typed path (no argument) reads and clears
@@ -570,38 +661,10 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
 
     try {
       if (statusIntent) {
-        const response = await fetch("/api/support/status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ kind: statusIntent }),
-        });
-        const result = await response.json().catch(() => ({})) as {
-          data?: { state?: string; items?: CustomerStatusItem[] };
-        };
+        const statusLocalId = crypto.randomUUID();
+        const result = await fetchCustomerStatus(statusIntent);
         if (identityRef.current !== requestIdentity) return;
-        const signInRequired = response.status === 401;
-        const needsHumanHelp = signInRequired || !response.ok || result.data?.state === "unavailable";
-        const message = signInRequired
-          ? t("chatbot.statusQuery.signIn")
-          : !response.ok || result.data?.state === "unavailable"
-            ? t("chatbot.statusQuery.unavailable")
-            : result.data?.state === "available"
-            ? t("chatbot.statusQuery.found")
-            : result.data?.state === "no_records"
-              ? t("chatbot.statusQuery.none")
-              : t("chatbot.statusQuery.unavailable");
-        const pageHref = statusIntent === "tickets" ? "/customer/support"
-          : statusIntent === "bookings" ? "/customer/calendar"
-            : "/customer/orders";
-        setMessages((current) => [...current, {
-          role: "bot",
-          text: message,
-          statusItems: response.ok && result.data?.state === "available" ? result.data.items : undefined,
-          question: needsHumanHelp && !signInRequired ? question : undefined,
-          feedbackStage: needsHumanHelp && !signInRequired ? "awaiting_ticket" : undefined,
-          statusActionHref: signInRequired ? `/login?next=${encodeURIComponent(pageHref)}` : pageHref,
-          statusActionLabel: signInRequired ? t("chatbot.statusQuery.signInAction") : t("chatbot.statusQuery.openRecord"),
-        }]);
+        presentCustomerStatus(statusLocalId, statusIntent, question, result, true);
         if (explicitQuestion === undefined) setInput((current) => current === question ? "" : current);
         return;
       }
@@ -664,7 +727,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       });
       let res = await createAskRequest(pendingAsk.operationId);
       let body = (await res.json()) as {
-        data: { sessionKey: string; answer: string; botAnswered: boolean; messageId: string; userMessageId: string; language: ChatLanguage; privacyBlocked: boolean } | null;
+        data: { sessionKey: string; answer: string; botAnswered: boolean; messageId: string; userMessageId: string; language: ChatLanguage; privacyBlocked: boolean; evidence?: ChatMessage["evidence"] } | null;
         error: { code?: string; message: string } | null;
       };
       if (!res.ok && body.error?.code === "OPERATION_CONFLICT") {
@@ -710,7 +773,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       }
       setHistoryError(false);
       setGuestRecoverySessionKey(null);
-      const { answer, botAnswered, messageId, userMessageId, language, privacyBlocked } = body.data;
+      const { answer, botAnswered, messageId, userMessageId, language, privacyBlocked, evidence } = body.data;
       if (explicitQuestion === undefined) setInput((current) => current === question ? "" : current);
       let effectiveSessionKey = sessionKey;
       if (body.data.sessionKey && body.data.sessionKey !== sessionKey) {
@@ -723,7 +786,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         }
       }
 
-      setMessages((m) => [...m.map((message) => message.localId === localMessageId ? { ...message, localId: undefined, persistedId: userMessageId } : message), createBotMessage({ text: answer, messageId, language, privacyBlocked, botAnswered }, question)]);
+      setMessages((m) => [...m.map((message) => message.localId === localMessageId ? { ...message, localId: undefined, persistedId: userMessageId } : message), createBotMessage({ text: answer, messageId, language, privacyBlocked, evidence, botAnswered }, question)]);
 
       // Flow 2: the bot already knows it didn't help — there's no yes/no
       // helpfulness question to ask, so this is recorded automatically
@@ -1155,16 +1218,32 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                           {t("chatbot.privacyBlocked")}
                         </p>
                       )}
+                      {m.role === "bot" && m.evidence?.map((source, sourceIndex) => (
+                        <p key={`${source.title}-${source.contentVersion}-${sourceIndex}`} className="mt-1 max-w-[85%] px-1 text-[11px] text-muted-foreground">
+                          {t("chatbot.evidence", {
+                            title: source.title,
+                            version: source.contentVersion,
+                            checkedAt: new Intl.DateTimeFormat(i18n.resolvedLanguage ?? i18n.language ?? "en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(source.checkedAt)),
+                          })}
+                        </p>
+                      ))}
                       {m.role === "bot" && m.statusItems && m.statusItems.length > 0 && (
                         <ul className="mt-1.5 max-w-[85%] space-y-1">
                           {m.statusItems.map((item) => (
                             <li key={item.id}>
-                              <Link href={item.href} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-2.5 py-2 text-xs hover:bg-secondary">
-                                <span className="min-w-0 truncate">{item.label}</span>
-                                <span className="shrink-0 text-muted-foreground">
-                                  {t(`chatbot.statusQuery.values.${item.status.toLowerCase()}`)}
-                                </span>
-                              </Link>
+                              {item.actions.includes("open_record") ? (
+                                <Link href={item.href} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-2.5 py-2 text-xs hover:bg-secondary">
+                                  <span className="min-w-0 truncate">{item.kind === "withdrawals" || item.kind === "kyc" ? t(`chatbot.statusQuery.records.${item.kind}`) : item.label}</span>
+                                  <span className="shrink-0 text-muted-foreground">
+                                    {t(`chatbot.statusQuery.values.${item.status.toLowerCase()}`)}
+                                  </span>
+                                </Link>
+                              ) : (
+                                <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-2.5 py-2 text-xs">
+                                  <span className="min-w-0 truncate">{item.kind === "withdrawals" || item.kind === "kyc" ? t(`chatbot.statusQuery.records.${item.kind}`) : item.label}</span>
+                                  <span className="shrink-0 text-muted-foreground">{t(`chatbot.statusQuery.values.${item.status.toLowerCase()}`)}</span>
+                                </div>
+                              )}
                             </li>
                           ))}
                         </ul>
@@ -1173,6 +1252,18 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                         <Link href={m.statusActionHref} className="mt-1 inline-block text-xs text-primary underline">
                           {m.statusActionLabel}
                         </Link>
+                      )}
+                      {m.role === "bot" && m.statusRetryAvailable && m.statusKind && m.localId && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="mt-1 h-7 px-2.5 text-xs"
+                          disabled={statusRefreshingId === m.localId}
+                          onClick={() => void refreshCustomerStatus(m.localId!, m.statusKind!, m.question ?? "")}
+                        >
+                          {statusRefreshingId === m.localId ? t("chatbot.statusQuery.refreshing") : t("chatbot.statusQuery.retry")}
+                        </Button>
                       )}
                       {m.role === "bot" && m.feedbackStage && (
                         <div className="mt-1.5 max-w-[85%]">

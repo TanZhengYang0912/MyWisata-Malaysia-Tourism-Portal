@@ -2,9 +2,10 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { queryCustomerSupportStatus } from '@/lib/chatbot/customer-tools';
+import { allowedCustomerStatusActions, type SupportEvidenceState } from '@/lib/chatbot/policy';
 import { getAuthenticatedUser } from '@/lib/auth/request-user';
 
-const schema = z.object({ kind: z.enum(['orders', 'bookings', 'refunds', 'tickets']) }).strict();
+const schema = z.object({ kind: z.enum(['orders', 'bookings', 'refunds', 'tickets', 'withdrawals', 'kyc']) }).strict();
 
 export async function POST(request: Request) {
   const parsed = await parseBody(request, schema);
@@ -21,7 +22,14 @@ export async function POST(request: Request) {
     }
 
     const result = await queryCustomerSupportStatus(db, authentication.user.id, parsed.data.kind);
-    const response = apiOk(result);
+    const evidence: SupportEvidenceState = result.state === 'unavailable' ? 'unavailable'
+      : result.state === 'no_records' || result.items.some((item) => item.status === 'unknown') ? 'none'
+        : 'verified_record';
+    const response = apiOk({
+      ...result,
+      actions: allowedCustomerStatusActions(parsed.data.kind, evidence),
+      checkedAt: new Date().toISOString(),
+    });
     response.headers.set('Cache-Control', 'private, no-store');
     return response;
   } catch {

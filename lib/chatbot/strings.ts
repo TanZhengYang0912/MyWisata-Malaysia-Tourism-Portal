@@ -14,6 +14,7 @@ import type { ChatLanguage } from './language';
 
 export interface ChatStrings {
   fallback: string;
+  sensitiveUnavailable: string;
   greeting: string;
   chitchat: string;
   unclear: string;
@@ -35,6 +36,7 @@ export const CHAT_STRINGS: Record<ChatLanguage, ChatStrings> = {
   en: {
     fallback:
       "I'm an AI assistant and I can only help with things like bookings, vouchers, your wallet, withdrawals, and affiliate questions — I couldn't answer that one.",
+    sensitiveUnavailable: "I can't confirm that from a reviewed support article or your account record. I can check your status or connect you with Support.",
     greeting:
       "Hi! I'm the MYLawatan assistant. I can help with bookings, vouchers, your wallet, withdrawals, or affiliate earnings. What do you need?",
     chitchat: "Glad to help! Let me know if there's anything else you need.",
@@ -55,6 +57,7 @@ export const CHAT_STRINGS: Record<ChatLanguage, ChatStrings> = {
   bm: {
     fallback:
       "Saya pembantu AI dan hanya boleh bantu dengan perkara seperti tempahan, baucar, dompet, pengeluaran, dan soalan affiliate — soalan itu saya tidak dapat jawab.",
+    sensitiveUnavailable: "Saya tidak dapat mengesahkan perkara itu daripada artikel sokongan yang telah disemak atau rekod akaun anda. Saya boleh menyemak status atau menghubungkan anda dengan pasukan sokongan.",
     greeting:
       "Hai! Saya pembantu MYLawatan. Saya boleh bantu dengan tempahan, baucar, dompet, pengeluaran, atau pendapatan affiliate. Apa yang awak perlukan?",
     chitchat: "Sama-sama! Beritahu saya jika ada apa-apa lagi yang awak perlukan.",
@@ -75,6 +78,7 @@ export const CHAT_STRINGS: Record<ChatLanguage, ChatStrings> = {
   zh: {
     fallback:
       "我是AI助手，只能协助预订、优惠券、钱包、提现和联盟营销方面的问题——这个问题我无法回答。",
+    sensitiveUnavailable: "我无法根据已审核的客服文章或你的账户记录确认这件事。你可以重新查询状态，或联系人工客服。",
     greeting:
       "你好！我是MYLawatan的助手。我可以协助预订、优惠券、钱包、提现或联盟营销收入方面的问题。请问需要什么帮助？",
     chitchat: "很高兴能帮到你！如果还有其他需要，请告诉我。",

@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({ createAuthClient: vi.fn(), getUser: vi.fn(), f
 function query(result: unknown) {
   const terminal = Promise.resolve(result);
   const builder: Record<string, ReturnType<typeof vi.fn>> = {};
-  for (const method of ['select', 'eq', 'insert']) builder[method] = vi.fn(() => builder);
+  for (const method of ['select', 'eq', 'insert', 'limit']) builder[method] = vi.fn(() => builder);
   builder.maybeSingle = vi.fn(() => terminal);
   builder.single = vi.fn(() => terminal);
   builder.then = terminal.then.bind(terminal) as ReturnType<typeof vi.fn>;
@@ -40,13 +40,14 @@ describe('POST /api/chatbot/ask session ownership', () => {
         data: { state: 'running', shouldExecute: true, leaseToken: 'lease-token' }, error: null,
       });
       if (name === 'mark_support_operation_external_started') return Promise.resolve({ data: true, error: null });
-      if (name === 'complete_chatbot_ask_operation') return Promise.resolve({ data: 'bot-message-1', error: null });
+      if (name === 'complete_chatbot_ask_operation_with_evidence') return Promise.resolve({ data: 'bot-message-1', error: null });
       return Promise.resolve({ data: true, error: null });
     });
     mocks.from.mockImplementation((table: string) => {
       if (table === 'chatbot_sessions') return query({
         data: { id: 'session-1', session_key: 'victim-session', user_id: 'victim', guest_token_hash: null, channel: 'customer' }, error: null,
       });
+      if (table === 'chatbot_message_kb_refs') return query({ data: [], error: null });
       messageQuery += 1;
       const result = messageQuery === 1
         ? { data: null, error: null }
@@ -161,11 +162,38 @@ describe('POST /api/chatbot/ask session ownership', () => {
 
     expect(mocks.answer).toHaveBeenCalledWith('Call me at [PHONE]', false);
     expect(body.data.privacyBlocked).toBe(true);
-    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation', expect.objectContaining({
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation_with_evidence', expect.objectContaining({
       p_operation_id: expect.any(String),
       p_actor_key: 'user:victim',
       p_user_message_id: 'user-message-1',
     }));
+  });
+
+  it('commits reference snapshots with the answer and exposes only safe citation fields', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'victim' } } });
+    mocks.clean.mockResolvedValue({
+      display: 'How are refunds handled?', original: 'How are refunds handled?',
+      hadProfanity: false, hadSlur: false, hadPII: false, severity: 'low',
+    });
+    mocks.answer.mockResolvedValue({
+      answer: 'Contact Support to request a refund.', kbMatched: true, canEscalate: false,
+      usedKb: [{ id: 'internal-document-id', title: 'Refund policy', contentVersion: 6, similarity: 0.91 }],
+      mode: 'llm', piiDetected: false, language: 'en',
+    });
+
+    const response = await POST(new Request('http://localhost/api/chatbot/ask', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionKey: 'victim-session', operationId: crypto.randomUUID(), question: 'How are refunds handled?' }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation_with_evidence', expect.objectContaining({
+      p_kb_refs: [{ documentId: 'internal-document-id', title: 'Refund policy', contentVersion: 6, score: 0.91 }],
+    }));
+    expect(body.data.evidence).toEqual([expect.objectContaining({ title: 'Refund policy', contentVersion: 6 })]);
+    expect(body.data.evidence[0]).not.toHaveProperty('documentId');
+    expect(body.data.evidence[0]).not.toHaveProperty('body');
   });
 
   it('returns the stored answer for a repeated operation without calling the model again', async () => {
@@ -184,6 +212,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
       if (table === 'chatbot_sessions') return query({
         data: { id: sessionId, session_key: 'victim-session', user_id: 'victim', guest_token_hash: null, channel: 'customer' }, error: null,
       });
+      if (table === 'chatbot_message_kb_refs') return query({ data: [], error: null });
       messageQuery += 1;
       return query(messageQuery === 1
         ? { data: { id: 'user-message-1', operation_payload_hash: payloadHash }, error: null }
@@ -228,7 +257,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
     });
     mocks.rpc.mockImplementation((name: string) => name === 'reserve_support_operation'
       ? Promise.resolve({ data: { state: 'running', shouldExecute: true, leaseToken: 'recovered-lease', created: false }, error: null })
-      : name === 'complete_chatbot_ask_operation'
+      : name === 'complete_chatbot_ask_operation_with_evidence'
         ? Promise.resolve({ data: 'bot-message-1', error: null })
         : Promise.resolve({ data: true, error: null }));
     let messageQuery = 0;
@@ -236,6 +265,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
       if (table === 'chatbot_sessions') return query({
         data: { id: 'session-1', session_key: 'victim-session', user_id: 'victim', guest_token_hash: null, channel: 'customer' }, error: null,
       });
+      if (table === 'chatbot_message_kb_refs') return query({ data: [], error: null });
       messageQuery += 1;
       return query(messageQuery === 1
         ? { data: { id: 'saved-user-message', operation_payload_hash: createHash('sha256').update(JSON.stringify({ sessionId: 'session-1', userId: 'victim', question: 'Where is my booking?' })).digest('hex') }, error: null }
@@ -249,7 +279,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
     }));
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation', expect.objectContaining({
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation_with_evidence', expect.objectContaining({
       p_user_message_id: 'saved-user-message',
     }));
   });
@@ -266,7 +296,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
     });
     mocks.rpc.mockImplementation((name: string) => name === 'reserve_support_operation'
       ? Promise.resolve({ data: { state: 'running', shouldExecute: true, leaseToken: 'recovered-lease', created: false }, error: null })
-      : name === 'complete_chatbot_ask_operation'
+      : name === 'complete_chatbot_ask_operation_with_evidence'
         ? Promise.resolve({ data: 'bot-message-1', error: null })
         : Promise.resolve({ data: true, error: null }));
     const payloadHash = createHash('sha256').update(JSON.stringify({
@@ -277,6 +307,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
       if (table === 'chatbot_sessions') return query({
         data: { id: 'session-1', session_key: 'victim-session', user_id: 'victim', guest_token_hash: null, channel: 'customer' }, error: null,
       });
+      if (table === 'chatbot_message_kb_refs') return query({ data: [], error: null });
       messageQuery += 1;
       const results = [
         { data: null, error: null },
@@ -293,7 +324,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
     }));
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation', expect.objectContaining({
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation_with_evidence', expect.objectContaining({
       p_user_message_id: 'competing-user-message',
     }));
     expect(mocks.rpc).not.toHaveBeenCalledWith('mark_support_operation_unknown', expect.anything());

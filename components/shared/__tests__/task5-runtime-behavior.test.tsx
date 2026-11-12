@@ -63,7 +63,7 @@ import { ReportChatButton } from "@/components/shared/report-chat-button";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { SupportChatProvider } from "@/components/providers/support-chat";
 
-type TranslationOptions = { defaultValue?: string; count?: number };
+type TranslationOptions = { defaultValue?: string; count?: number; title?: string; version?: number; checkedAt?: string };
 
 const translations: Record<string, string> = {
   "common:accessibility.closeConfirmation": "Close translated confirmation",
@@ -72,6 +72,13 @@ const translations: Record<string, string> = {
   "common:chatbot.emptyPrompt": "Ask a translated question",
   "common:chatbot.inputPlaceholder": "Translated question",
   "common:chatbot.askResultUnknown": "Translated outcome not ready",
+  "common:chatbot.evidence": "Reference article: {{title}} · v{{version}} · checked {{checkedAt}}",
+  "common:chatbot.statusQuery.unavailable": "Translated status unavailable. Retry or open your account page.",
+  "common:chatbot.statusQuery.retry": "Translated status retry",
+  "common:chatbot.statusQuery.refreshing": "Translated status checking",
+  "common:chatbot.statusQuery.found": "Translated records found",
+  "common:chatbot.statusQuery.openRecord": "Translated open account page",
+  "common:chatbot.statusQuery.records.withdrawals": "Translated withdrawal request",
   "common:chatbot.authUnavailable": "Translated account check outage; check your connection and retry",
   "common:chatbot.sessionUnavailable": "Translated chat check outage; check your connection and try again",
   "common:chatbot.guestClaim.prompt": "Continue guest conversation translated",
@@ -116,7 +123,11 @@ const translations: Record<string, string> = {
 
 function translate(namespace: string, key: string, options?: TranslationOptions) {
   const value = translations[`${namespace}:${key}`] ?? options?.defaultValue ?? key;
-  return options?.count === undefined ? value : value.replace("{{count}}", String(options.count));
+  return value
+    .replace("{{count}}", options?.count === undefined ? "{{count}}" : String(options.count))
+    .replace("{{title}}", options?.title ?? "{{title}}")
+    .replace("{{version}}", options?.version === undefined ? "{{version}}" : String(options.version))
+    .replace("{{checkedAt}}", options?.checkedAt ?? "{{checkedAt}}");
 }
 
 const commonTranslate = (key: string, options?: TranslationOptions) => translate("common", key, options);
@@ -695,7 +706,7 @@ describe("Task 5 shared runtime behavior", () => {
     const questionInput = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
     setInputValue(questionInput, question);
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
-    expect(container.textContent).toContain("chatbot.statusQuery.unavailable");
+    expect(container.textContent).toContain("Translated status unavailable. Retry or open your account page.");
     await click(findButton("Yes translated"));
 
     expect(draftReadTarget).toMatch(/^[0-9a-f-]{36}$/i);
@@ -830,7 +841,7 @@ describe("Task 5 shared runtime behavior", () => {
 
   it("drives the real chatbot send and ticket handlers without translating API answers or ticket subjects", async () => {
     mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
-    const question = "Why is my wallet withdrawal still pending?";
+    const question = "I need help understanding wallet withdrawals.";
     const reviewedSubject = "Please check withdrawal status";
     const answer = "API answer [zh]: withdrawals can take two business days.";
     const askPayloads: { question?: string; operationId?: string; sessionKey?: string }[] = [];
@@ -892,7 +903,7 @@ describe("Task 5 shared runtime behavior", () => {
     expect(askPayloads[1].operationId).toBe(askPayloads[0].operationId);
     expect(askPayloads[1].sessionKey).toBe(askPayloads[0].sessionKey);
     expect(document.defaultView?.localStorage.getItem(`mw_chatbot_ask_operation:${askPayloads[0].sessionKey}`)).toBeNull();
-    expect(container.textContent?.match(/Why is my wallet withdrawal still pending\?/g)).toHaveLength(1);
+    expect(container.textContent?.match(/I need help understanding wallet withdrawals\./g)).toHaveLength(1);
     expect(container.textContent).toContain(answer);
     expect(container.textContent).toContain("Translated support title");
     expect(container.textContent).not.toContain("Translated answer");
@@ -922,6 +933,71 @@ describe("Task 5 shared runtime behavior", () => {
     expect(handoffPreviewCalls).toBe(2);
     expect(ticketPayload?.operationId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(document.defaultView?.localStorage.getItem("mw_chatbot_support_operations:customer-1")).not.toContain(question);
+  });
+
+  it("retries an unavailable account status in place without resending the question to Gemini", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    const question = "Has my withdrawal been paid?";
+    let statusRequests = 0;
+    let askRequests = 0;
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/faq") return response({ data: { categories: [] } });
+      if (url === "/api/support/status") {
+        statusRequests += 1;
+        if (statusRequests === 1) return { ...response({ data: null, error: { code: "READ_UNAVAILABLE" } }, false), status: 503 } as Response;
+        return response({ data: { state: "available", items: [{
+          id: "withdrawal-1", kind: "withdrawals", status: "pending", label: "Withdrawal request",
+          href: "/customer/wallet/withdrawals/withdrawal-1", createdAt: "2026-11-13T00:00:00Z", actions: ["open_record", "handoff"],
+        }] } });
+      }
+      if (url === "/api/chatbot/ask") { askRequests += 1; throw new Error("Status retry must not invoke the chatbot"); }
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    const input = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
+    setInputValue(input, question);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+
+    expect(container.textContent).toContain("Translated status unavailable. Retry or open your account page.");
+    expect(findButton("Translated status retry")).toBeTruthy();
+    await click(findButton("Translated status retry"));
+
+    expect(statusRequests).toBe(2);
+    expect(askRequests).toBe(0);
+    expect(container.textContent).toContain("Translated withdrawal request");
+    expect(container.textContent).toContain("Translated records found");
+    expect(container.textContent?.match(/Has my withdrawal been paid\?/g)).toHaveLength(1);
+    expect(findOne(container, (element) => element.tagName === "A" && element.getAttribute("href") === "/customer/wallet/withdrawals/withdrawal-1")).toBeTruthy();
+  });
+
+  it("shows versioned KB source titles without exposing internal document identifiers", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/faq") return response({ data: { categories: [] } });
+      if (url === "/api/chatbot/ask") return response({ data: { sessionKey: "customer-session", answer: "Use Wallet settings.", botAnswered: true, messageId: "bot-1", userMessageId: "user-1", language: "en", privacyBlocked: false, evidence: [{ title: "Wallet withdrawal policy", contentVersion: 3, checkedAt: "2026-11-13T00:00:00Z" }] } });
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    const input = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
+    setInputValue(input, "Where can I read about wallet settings?");
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+
+    expect(container.textContent).toContain("Reference article: Wallet withdrawal policy · v3");
+    expect(container.textContent).not.toContain("internal-document-id");
   });
 
   it("keeps the question and offers a retry when the auth service is temporarily unavailable", async () => {
