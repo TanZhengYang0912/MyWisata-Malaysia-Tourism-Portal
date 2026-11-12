@@ -136,6 +136,7 @@ export function TicketThread({ ticketId, ticketIsMine, ticketBody, ticketCreated
                   <a href={attachmentSrc ?? "#"} target="_blank" rel="noreferrer" className="block">
                     {/* eslint-disable-next-line @next/next/no-img-element -- authenticated same-origin endpoint */}
                     <img
+                      loading="lazy"
                       src={`${attachmentSrc}?retry=${attachmentAttempts[item.key] ?? 0}`}
                       alt={t("ticket.attachment")}
                       onError={() => setFailedAttachments((current) => ({ ...current, [item.key]: true }))}
