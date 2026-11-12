@@ -57,4 +57,18 @@ describe('PATCH /api/support/tickets/[id]/read', () => {
     expect(response.status).toBe(422);
     expect(mocks.update).not.toHaveBeenCalled();
   });
+
+  it('returns a stable retryable error when the read marker update fails', async () => {
+    mocks.from.mockReturnValueOnce(query({ data: { id: ticketId, user_id: 'owner-1' }, error: null }))
+      .mockReturnValueOnce(query({ data: { id: replyId, created_at: replyTime, sender_role: 'admin' }, error: null }))
+      .mockReturnValueOnce(query({ data: null, error: { code: 'XX000', message: 'internal-db-password=hidden' } }));
+
+    const response = await PATCH(request({ lastDisplayedReplyId: replyId }), { params: Promise.resolve({ id: ticketId }) });
+    const payload = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('READ_UNAVAILABLE');
+    expect(payload.error.message).toBe('Unable to update the ticket read status.');
+    expect(JSON.stringify(payload)).not.toContain('internal-db-password');
+  });
 });

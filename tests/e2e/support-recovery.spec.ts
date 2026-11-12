@@ -259,3 +259,93 @@ test('mocked ticket history loads earlier replies in a bounded page and keeps th
   expect(new URL(historyRequestUrl).searchParams.get('beforeCreatedAt')).toBe(cursor.createdAt);
   expect(new URL(historyRequestUrl).searchParams.get('beforeId')).toBe(cursor.id);
 });
+
+test('mocked failed ticket read marker stays actionable and retries the displayed reply', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const ticketId = '9fae18d3-38d2-4d9d-91c5-fc74119c91ee';
+  const replyId = '00000000-0000-4000-8000-000000000041';
+  let readAttempts = 0;
+  let displayedReplyId = '';
+
+  await context.route(`**/api/support/tickets/${ticketId}`, (route) => route.fulfill({ status: 200, json: { data: {
+    id: ticketId, viewerIsOwner: true, subject: 'Read recovery test', body: 'Original request', category: 'general', status: 'open',
+    createdAt: '2026-04-01T00:00:00.000Z', resolvedAt: null, muted: false,
+    replies: [{ id: replyId, is_mine: false, sender_role: 'admin', body: 'Please check the latest details.', created_at: '2026-04-01T00:01:00.000Z', attachment_type: null }],
+    repliesCursor: null,
+  }, error: null } }));
+  await context.route(`**/api/support/tickets/${ticketId}/read`, async (route) => {
+    readAttempts += 1;
+    displayedReplyId = String(route.request().postDataJSON()?.lastDisplayedReplyId ?? '');
+    if (readAttempts === 1) {
+      await route.fulfill({ status: 503, json: { data: null, error: { code: 'READ_UNAVAILABLE' } } });
+      return;
+    }
+    await route.fulfill({ status: 200, json: { data: { id: ticketId, column: 'customer_last_read_at', changed: true }, error: null } });
+  });
+  await context.route(`**/api/support/drafts?surface=ticket_reply**`, (route) => route.fulfill({ status: 200, json: {
+    data: { body: '', version: 0 }, error: null,
+  } }));
+
+  await page.goto(`/customer/support/${ticketId}`);
+  await expect(page.getByText('Please check the latest details.')).toBeVisible();
+  await expect(page.locator('[role="alert"]').filter({ hasText: 'Could not load this information. Try again.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(page.locator('[role="alert"]').filter({ hasText: 'Could not load this information. Try again.' })).toHaveCount(0);
+  expect(readAttempts).toBe(2);
+  expect(displayedReplyId).toBe(replyId);
+});
+
+test('mocked ticket remains unread while its browser tab is hidden', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const ticketId = 'cd6cdb77-d77e-4539-ae3f-7f79c5dc5b7b';
+  let readAttempts = 0;
+  await page.addInitScript(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+  });
+  await context.route(`**/api/support/tickets/${ticketId}`, (route) => route.fulfill({ status: 200, json: { data: {
+    id: ticketId, viewerIsOwner: true, subject: 'Hidden tab read test', body: 'Original request', category: 'general', status: 'open',
+    createdAt: '2026-04-01T00:00:00.000Z', resolvedAt: null, muted: false,
+    replies: [{ id: '00000000-0000-4000-8000-000000000042', is_mine: false, sender_role: 'admin', body: 'New support reply', created_at: '2026-04-01T00:01:00.000Z', attachment_type: null }],
+    repliesCursor: null,
+  }, error: null } }));
+  await context.route(`**/api/support/tickets/${ticketId}/read`, (route) => {
+    readAttempts += 1;
+    return route.fulfill({ status: 200, json: { data: { id: ticketId, column: 'customer_last_read_at', changed: true }, error: null } });
+  });
+  await context.route(`**/api/support/drafts?surface=ticket_reply**`, (route) => route.fulfill({ status: 200, json: {
+    data: { body: '', version: 0 }, error: null,
+  } }));
+
+  await page.goto(`/customer/support/${ticketId}`);
+  await expect(page.getByText('New support reply')).toBeVisible();
+  expect(readAttempts).toBe(0);
+
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect.poll(() => readAttempts).toBe(1);
+});
+
+test('mocked ticket read permission failure gives a path back to the ticket list', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const ticketId = '0fb163b9-7831-4a6b-9daf-13549e05346d';
+
+  await context.route(`**/api/support/tickets/${ticketId}`, (route) => route.fulfill({ status: 200, json: { data: {
+    id: ticketId, viewerIsOwner: true, subject: 'Permission recovery test', body: 'Original request', category: 'general', status: 'open',
+    createdAt: '2026-04-01T00:00:00.000Z', resolvedAt: null, muted: false,
+    replies: [{ id: '00000000-0000-4000-8000-000000000043', is_mine: false, sender_role: 'admin', body: 'Please check the latest details.', created_at: '2026-04-01T00:01:00.000Z', attachment_type: null }],
+    repliesCursor: null,
+  }, error: null } }));
+  await context.route(`**/api/support/tickets/${ticketId}/read`, (route) => route.fulfill({
+    status: 403, json: { data: null, error: { code: 'FORBIDDEN' } },
+  }));
+  await context.route(`**/api/support/drafts?surface=ticket_reply**`, (route) => route.fulfill({ status: 200, json: {
+    data: { body: '', version: 0 }, error: null,
+  } }));
+
+  await page.goto(`/customer/support/${ticketId}`);
+  await expect(page.getByText("Couldn't load this ticket")).toBeVisible();
+  await expect(page.getByRole('link', { name: 'My Tickets' })).toHaveAttribute('href', '/customer/support');
+  await expect(page.getByRole('button', { name: 'Retry' })).toHaveCount(0);
+});

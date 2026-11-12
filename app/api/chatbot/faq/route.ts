@@ -42,7 +42,13 @@ export async function GET() {
     .order('category')
     .order('title');
 
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error) {
+    return apiFail(
+      'READ_UNAVAILABLE',
+      'Frequently asked questions are temporarily unavailable. Please try again.',
+      503,
+    );
+  }
 
   // Uncategorised KB entries fall into 'general' rather than their own
   // "null" bucket — category is nullable in the schema and a blank chip

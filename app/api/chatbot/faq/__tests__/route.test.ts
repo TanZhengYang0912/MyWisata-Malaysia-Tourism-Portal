@@ -83,11 +83,19 @@ describe('GET /api/chatbot/faq', () => {
     expect(body.data.categories).toEqual([]);
   });
 
-  it('surfaces a database failure as a 500', async () => {
-    from.mockReturnValue(queryStub({ data: null, error: { message: 'kb unavailable' } }));
+  it('returns a stable retryable error without exposing database diagnostics', async () => {
+    from.mockReturnValue(queryStub({
+      data: null,
+      error: { message: 'kb unavailable: postgres://internal.invalid/private' },
+    }));
 
     const response = await GET();
+    const body = await response.json();
 
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('READ_UNAVAILABLE');
+    expect(body.error.message).toBe('Frequently asked questions are temporarily unavailable. Please try again.');
+    expect(JSON.stringify(body)).not.toContain('postgres://internal.invalid/private');
+    expect(body.error.requestId).toEqual(expect.any(String));
   });
 });

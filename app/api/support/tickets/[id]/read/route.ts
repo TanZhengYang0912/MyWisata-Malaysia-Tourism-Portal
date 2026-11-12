@@ -44,7 +44,7 @@ export async function PATCH(request: Request, { params }: Props) {
     .or(`${column}.is.null,${column}.lt.${reply.created_at}`)
     .select('id')
     .maybeSingle();
-  if (error) return apiFail('DB_ERROR', 'Unable to update the ticket read status.', 500);
+  if (error) return apiFail('READ_UNAVAILABLE', 'Unable to update the ticket read status.', 503);
 
   return apiOk({ id, column, changed: Boolean(updated) });
 }

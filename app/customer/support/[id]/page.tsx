@@ -3,7 +3,7 @@
 // P4 — Member 4: customer ticket detail + reply thread. CLAUDE-FIXES.md Fix 2,
 // bubble rendering delegated to the shared <TicketThread> per CLAUDE-FIXES-2.md item 2.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Bell, BellOff, FileText, Mic, MicOff, Paperclip, Send, X } from "lucide-react";
@@ -50,7 +50,15 @@ export default function CustomerTicketDetailPage() {
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
   const [ticket, setTicket] = useState<TicketDetail | null | undefined>(undefined);
+  const [ticketLoadedForId, setTicketLoadedForId] = useState<string | null>(null);
   const [ticketLoadError, setTicketLoadError] = useState<string | null>(null);
+  const [readStatusErrorCode, setReadStatusErrorCode] = useState<string | null>(null);
+  const currentTicketId = useRef(id);
+  const ticketLoadGeneration = useRef(0);
+  const ticketLoadController = useRef<AbortController | null>(null);
+  const loadedTicketId = useRef<string | null>(null);
+  const completedReadMarkers = useRef(new Set<string>());
+  const pendingReadMarkers = useRef(new Set<string>());
   const [loadingEarlierReplies, setLoadingEarlierReplies] = useState(false);
   const [earlierRepliesError, setEarlierRepliesError] = useState(false);
   const earlierRepliesRequest = useRef(false);
@@ -71,30 +79,109 @@ export default function CustomerTicketDetailPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const speech = useSpeechInput({ lang: resolveRecognitionLangFromLocale(i18n.resolvedLanguage), onTranscriptChange: setReply });
 
+  useLayoutEffect(() => {
+    currentTicketId.current = id;
+  }, [id]);
+
   async function loadTicket(): Promise<TicketDetail | null> {
+    const requestedTicketId = id;
+    ticketLoadController.current?.abort();
+    const controller = new AbortController();
+    ticketLoadController.current = controller;
+    const requestGeneration = ++ticketLoadGeneration.current;
+    const isCurrentRequest = () => !controller.signal.aborted
+      && requestGeneration === ticketLoadGeneration.current
+      && requestedTicketId === currentTicketId.current;
     earlierRepliesController.current?.abort();
     earlierRepliesController.current = null;
     earlierRepliesRequest.current = false;
     setLoadingEarlierReplies(false);
     try {
-      const res = await fetch(`/api/support/tickets/${id}`);
+      const res = await fetch(`/api/support/tickets/${requestedTicketId}`, { cache: "no-store", signal: controller.signal });
       const body = (await res.json().catch(() => ({}))) as { data?: TicketDetail | null; error?: { code?: string } };
+      if (!isCurrentRequest()) return null;
       if (!res.ok || !body.data) {
-        const errorCode = body.error?.code ?? (res.ok ? "NOT_FOUND" : undefined);
-        setTicketLoadError(errorCode ?? "READ_UNAVAILABLE");
-        setTicket((current) => current === undefined ? null : current);
+        const statusCode = res.status === 401 ? "UNAUTHORIZED"
+          : res.status === 403 ? "FORBIDDEN"
+            : res.status === 404 ? "NOT_FOUND"
+              : undefined;
+        const errorCode = body.error?.code ?? statusCode ?? (res.ok ? "NOT_FOUND" : "READ_UNAVAILABLE");
+        const ticketIsUnavailable = errorCode === "UNAUTHORIZED" || errorCode === "FORBIDDEN" || errorCode === "NOT_FOUND";
+        setTicketLoadError(errorCode);
+        setReadStatusErrorCode(null);
+        if (ticketIsUnavailable || loadedTicketId.current !== requestedTicketId) {
+          loadedTicketId.current = requestedTicketId;
+          setTicketLoadedForId(requestedTicketId);
+          setTicket(null);
+        } else {
+          setTicket((current) => current === undefined ? null : current);
+        }
         return null;
       }
+      loadedTicketId.current = requestedTicketId;
+      setTicketLoadedForId(requestedTicketId);
       setTicketLoadError(null);
+      setReadStatusErrorCode(null);
       setEarlierRepliesError(false);
       setTicket(body.data);
       return body.data;
     } catch {
+      if (!isCurrentRequest()) return null;
       setTicketLoadError("READ_UNAVAILABLE");
-      setTicket((current) => current === undefined ? null : current);
+      setReadStatusErrorCode(null);
+      if (loadedTicketId.current !== requestedTicketId) {
+        loadedTicketId.current = requestedTicketId;
+        setTicketLoadedForId(requestedTicketId);
+        setTicket(null);
+      } else {
+        setTicket((current) => current === undefined ? null : current);
+      }
       return null;
+    } finally {
+      if (ticketLoadController.current === controller) ticketLoadController.current = null;
     }
   }
+
+  const markDisplayedRepliesAsRead = useCallback(async (displayedTicket: TicketDetail) => {
+    if (displayedTicket.id !== currentTicketId.current || !displayedTicket.viewerIsOwner || document.visibilityState !== "visible") return;
+    const lastIncomingReply = [...displayedTicket.replies].reverse().find((reply) => reply.sender_role === "admin");
+    if (!lastIncomingReply) return;
+    const markerKey = `${displayedTicket.id}:${lastIncomingReply.id}`;
+    if (completedReadMarkers.current.has(markerKey) || pendingReadMarkers.current.has(markerKey)) return;
+
+    pendingReadMarkers.current.add(markerKey);
+    try {
+      const response = await fetch(`/api/support/tickets/${displayedTicket.id}/read`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lastDisplayedReplyId: lastIncomingReply.id }),
+      });
+      const result = await response.json().catch(() => ({})) as { data?: unknown; error?: { code?: string } };
+      if (!response.ok || !result.data) {
+        const errorCode = response.status === 401 ? "UNAUTHORIZED"
+          : response.status === 403 ? "FORBIDDEN"
+            : response.status === 404 ? "NOT_FOUND"
+              : "READ_UNAVAILABLE";
+        if (currentTicketId.current !== displayedTicket.id) return;
+        if (errorCode === "UNAUTHORIZED" || errorCode === "FORBIDDEN" || errorCode === "NOT_FOUND") {
+          loadedTicketId.current = displayedTicket.id;
+          setTicketLoadedForId(displayedTicket.id);
+          setTicketLoadError(errorCode);
+          setReadStatusErrorCode(null);
+          setTicket(null);
+        } else {
+          setReadStatusErrorCode(errorCode);
+        }
+        return;
+      }
+      completedReadMarkers.current.add(markerKey);
+      if (currentTicketId.current === displayedTicket.id) setReadStatusErrorCode(null);
+    } catch {
+      if (currentTicketId.current === displayedTicket.id) setReadStatusErrorCode("READ_UNAVAILABLE");
+    } finally {
+      pendingReadMarkers.current.delete(markerKey);
+    }
+  }, []);
 
   async function loadEarlierReplies() {
     if (!ticket?.repliesCursor || loadingEarlierReplies || earlierRepliesRequest.current) return;
@@ -131,20 +218,28 @@ export default function CustomerTicketDetailPage() {
   }
 
   useEffect(() => {
-    (async () => {
-      const loadedTicket = await loadTicket();
-      if (!loadedTicket) return;
-      const lastDisplayedReply = [...loadedTicket.replies].reverse().find((reply) => reply.sender_role === "admin");
-      if (lastDisplayedReply) {
-        await fetch(`/api/support/tickets/${id}/read`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lastDisplayedReplyId: lastDisplayedReply.id }),
-        });
-      }
-    })();
+    let isActive = true;
+    void Promise.resolve().then(() => {
+      if (isActive) void loadTicket();
+    });
+    return () => {
+      isActive = false;
+      ticketLoadGeneration.current += 1;
+      ticketLoadController.current?.abort();
+      ticketLoadController.current = null;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (!ticket) return;
+    const markWhenVisible = () => {
+      if (document.visibilityState === "visible") void markDisplayedRepliesAsRead(ticket);
+    };
+    markWhenVisible();
+    document.addEventListener("visibilitychange", markWhenVisible);
+    return () => document.removeEventListener("visibilitychange", markWhenVisible);
+  }, [markDisplayedRepliesAsRead, ticket]);
 
   const loadReplyDraft = async (signal?: AbortSignal) => {
     if (!currentUser || !ticket?.viewerIsOwner) return;
@@ -307,16 +402,26 @@ export default function CustomerTicketDetailPage() {
     }
   }
 
-  if (ticket === undefined || !currentUser) {
+  if (ticketLoadedForId !== id || ticket === undefined || !currentUser) {
     return <div role="status" aria-live="polite" className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-sm text-muted-foreground">{tCustomer("ui.states.loading")}</div>;
   }
   if (ticket === null) {
-    const canRetry = supportTicketLoadFailure(ticketLoadError ?? undefined) === "retry";
+    const errorCode = ticketLoadError ?? "READ_UNAVAILABLE";
+    const requiresSignIn = errorCode === "UNAUTHORIZED";
+    const canRetry = !requiresSignIn && supportTicketLoadFailure(errorCode) === "retry";
     return (
       <EmptyState
         title={tCustomer("ui.support.ticketLoadError")}
-        description={canRetry ? tCommon(`chatbot.supportErrors.${supportError(ticketLoadError ?? "READ_UNAVAILABLE").key}`) : tCustomer("ui.support.ticketNotFound")}
-        action={canRetry ? <Button type="button" variant="outline" onClick={() => void loadTicket()}>{tCustomer("ui.support.retry")}</Button> : undefined}
+        description={requiresSignIn || canRetry ? tCommon(`chatbot.supportErrors.${supportError(errorCode).key}`) : tCustomer("ui.support.ticketNotFound")}
+        action={requiresSignIn ? (
+          <Link href={`/login?next=${encodeURIComponent(`/customer/support/${id}`)}`} className="text-primary underline">
+            {tCustomer("ui.guest.signIn")}
+          </Link>
+        ) : canRetry ? (
+          <Button type="button" variant="outline" onClick={() => void loadTicket()}>{tCustomer("ui.support.retry")}</Button>
+        ) : (
+          <Link href="/customer/support" className="text-primary underline">{tCustomer("ui.support.myTickets")}</Link>
+        )}
       />
     );
   }
@@ -331,6 +436,25 @@ export default function CustomerTicketDetailPage() {
         <div role="alert" className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           <span>{tCommon(`chatbot.supportErrors.${supportError(ticketLoadError).key}`)}</span>
           <Button type="button" size="sm" variant="outline" onClick={() => void loadTicket()}>{tCustomer("ui.support.retry")}</Button>
+        </div>
+      )}
+
+      {readStatusErrorCode && (
+        <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <span>{tCommon(`chatbot.supportErrors.${supportError(readStatusErrorCode).key}`)}</span>
+          {readStatusErrorCode === "UNAUTHORIZED" ? (
+            <Link href={`/login?next=${encodeURIComponent(`/customer/support/${ticket.id}`)}`} className="text-primary underline">
+              {tCustomer("ui.guest.signIn")}
+            </Link>
+          ) : readStatusErrorCode === "FORBIDDEN" || readStatusErrorCode === "NOT_FOUND" ? (
+            <Link href="/customer/support" className="text-primary underline">
+              {tCustomer("ui.support.myTickets")}
+            </Link>
+          ) : (
+            <Button type="button" size="sm" variant="outline" onClick={() => void loadTicket()}>
+              {tCustomer("ui.support.retry")}
+            </Button>
+          )}
         </div>
       )}
 

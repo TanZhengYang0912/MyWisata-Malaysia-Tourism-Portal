@@ -12,7 +12,7 @@ export async function GET() {
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
   const { data, error } = await supabase.from('chat_thread_mutes').select('thread_id').eq('user_id', user.id);
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error) return apiFail('READ_UNAVAILABLE', 'Unable to load muted conversations. Please try again.', 503);
 
   return apiOk((data ?? []).map((row) => row.thread_id));
 }
