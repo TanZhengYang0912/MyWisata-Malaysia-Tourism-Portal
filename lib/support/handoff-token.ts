@@ -8,8 +8,16 @@ function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
-export function handoffContentHash(subject: string, summary: string, sourceMessageId: string | null = null): string {
-  return hashToken(JSON.stringify({ subject, summary, sourceMessageId }));
+export function handoffContentHash(
+  subject: string,
+  summary: string,
+  sourceMessageId: string | null = null,
+  sourceMessageSnapshot: string | null = null,
+): string {
+  const content = { subject, summary, sourceMessageId };
+  return hashToken(JSON.stringify(sourceMessageId
+    ? { ...content, sourceMessageSnapshot }
+    : content));
 }
 
 export interface HandoffSource {
@@ -17,6 +25,7 @@ export interface HandoffSource {
   botMessageId: string | null;
   userMessageId: string | null;
   userMessageBody: string | null;
+  sanitizedMessageSnapshot: string | null;
 }
 
 export async function createHandoffToken(ownerId: string, subject: string, summary: string, source: HandoffSource = {
@@ -24,9 +33,15 @@ export async function createHandoffToken(ownerId: string, subject: string, summa
   botMessageId: null,
   userMessageId: null,
   userMessageBody: null,
+  sanitizedMessageSnapshot: null,
 }): Promise<string> {
+  const hasSourceMessage = source.userMessageId !== null;
+  if (hasSourceMessage !== (source.userMessageBody !== null)
+    || hasSourceMessage !== (source.sanitizedMessageSnapshot !== null)) {
+    throw new Error('support_handoff_source_snapshot_invalid');
+  }
   const token = randomBytes(32).toString('base64url');
-  const contentHash = handoffContentHash(subject, summary, source.userMessageId);
+  const contentHash = handoffContentHash(subject, summary, source.userMessageId, source.sanitizedMessageSnapshot);
   const { error } = await createServiceClient().from('support_handoff_tokens').insert({
     token_hash: hashToken(token),
     owner_id: ownerId,
@@ -35,6 +50,7 @@ export async function createHandoffToken(ownerId: string, subject: string, summa
     source_bot_message_id: source.botMessageId,
     source_user_message_id: source.userMessageId,
     source_message_hash: source.userMessageBody ? hashToken(source.userMessageBody) : null,
+    source_message_snapshot: source.sanitizedMessageSnapshot,
     expires_at: new Date(Date.now() + TOKEN_TTL_SECONDS * 1000).toISOString(),
   });
   if (error) throw new Error('support_handoff_token_unavailable');
@@ -49,6 +65,7 @@ export interface HandoffTicketInput {
   subject: string;
   summary: string;
   sourceMessageId?: string | null;
+  sourceMessageSnapshot?: string | null;
   category: string;
 }
 
@@ -59,7 +76,7 @@ export async function createTicketFromHandoff(input: HandoffTicketInput) {
     p_operation_id: input.operationId,
     p_operation_payload_hash: input.operationPayloadHash,
     p_handoff_token_hash: hashToken(input.token),
-    p_content_hash: handoffContentHash(input.subject, input.summary, input.sourceMessageId ?? null),
+    p_content_hash: handoffContentHash(input.subject, input.summary, input.sourceMessageId ?? null, input.sourceMessageSnapshot ?? null),
     p_source_message_id: input.sourceMessageId ?? null,
     p_subject: input.subject,
     p_body: input.summary,

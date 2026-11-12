@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(new URL('../20261111210000_support_handoff_consent_and_private_chat_reads.sql', import.meta.url), 'utf8');
+const sanitizedSnapshotMigration = readFileSync(new URL('../20261112134833_support_handoff_sanitized_message_snapshot.sql', import.meta.url), 'utf8');
 const rlsContract = readFileSync(new URL('../../tests/chatbot-guest-session-rls.sql', import.meta.url), 'utf8');
 
 describe('support handoff privacy and consent migration', () => {
@@ -25,5 +26,20 @@ describe('support handoff privacy and consent migration', () => {
     expect(migration).toContain("'support_handoff_service_role_required'");
     expect(migration).toMatch(/REVOKE ALL ON FUNCTION public\.create_support_ticket_from_handoff\(uuid, uuid, text, text, text, uuid, text, text, text\)[\s\S]*FROM PUBLIC, anon, authenticated/i);
     expect(migration).toMatch(/GRANT EXECUTE ON FUNCTION public\.create_support_ticket_from_handoff\(uuid, uuid, text, text, text, uuid, text, text, text\)[\s\S]*TO service_role/i);
+  });
+
+  it('stores only the reviewed sanitized source snapshot and hides preexisting snapshots', () => {
+    expect(sanitizedSnapshotMigration).toContain('ADD COLUMN source_message_snapshot text');
+    expect(sanitizedSnapshotMigration).toContain('handoff_source_message_sanitized boolean NOT NULL DEFAULT false');
+    expect(sanitizedSnapshotMigration).toContain('v_handoff.source_message_snapshot IS NULL');
+    expect(sanitizedSnapshotMigration).toContain('v_source_message_snapshot := v_handoff.source_message_snapshot');
+    expect(sanitizedSnapshotMigration).toContain('handoff_source_message, handoff_source_message_sanitized');
+    expect(sanitizedSnapshotMigration).toContain('v_source_message_snapshot, (v_source_message_snapshot IS NOT NULL)');
+    expect(sanitizedSnapshotMigration).not.toMatch(/handoff_source_message\s*=\s*coalesce\(handoff_source_message, v_source_message_body\)/);
+    expect(sanitizedSnapshotMigration).toMatch(/REVOKE SELECT ON TABLE public\.support_tickets FROM PUBLIC, anon, authenticated/i);
+    expect(sanitizedSnapshotMigration).toMatch(/GRANT SELECT \([\s\S]*customer_last_read_at[\s\S]*TO authenticated/i);
+    expect(sanitizedSnapshotMigration).not.toMatch(/GRANT SELECT \([\s\S]*handoff_source_message[\s\S]*TO authenticated/i);
+    expect(sanitizedSnapshotMigration).toContain('DROP POLICY IF EXISTS demo_allow_all ON public.support_tickets');
+    expect(sanitizedSnapshotMigration).toMatch(/CREATE POLICY support_customer_read ON public\.support_tickets[\s\S]*FOR SELECT TO authenticated[\s\S]*\(SELECT auth\.uid\(\)\) = user_id/i);
   });
 });

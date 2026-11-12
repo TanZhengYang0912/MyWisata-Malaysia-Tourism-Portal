@@ -19,7 +19,13 @@ function callRoute() {
   });
 }
 
-function mockService(overrides: { ticketUserId?: string; ticketError?: Error | null } = {}) {
+function mockService(overrides: {
+  ticketUserId?: string;
+  ticketError?: Error | null;
+  handoffSourceMessage?: string | null;
+  handoffConsentedAt?: string | null;
+  handoffSourceMessageSanitized?: boolean;
+} = {}) {
   const replyQuery = vi.fn();
   const replyLimit = vi.fn();
   createServiceClient.mockReturnValue({
@@ -29,7 +35,7 @@ function mockService(overrides: { ticketUserId?: string; ticketError?: Error | n
           select: () => ({
             eq: () => ({
               maybeSingle: async () => ({
-                data: { id: TICKET_ID, user_id: overrides.ticketUserId ?? OWNER_ID, session_id: null, withdrawal_id: null, subject: 'Question', body: 'Help', category: 'general', status: 'open', assigned_to: null, created_at: '2026-11-11T00:00:00.000Z', resolved_at: null, last_reply_at: null },
+                data: { id: TICKET_ID, user_id: overrides.ticketUserId ?? OWNER_ID, session_id: null, withdrawal_id: null, subject: 'Question', body: 'Help', category: 'general', status: 'open', assigned_to: null, created_at: '2026-11-11T00:00:00.000Z', resolved_at: null, last_reply_at: null, handoff_source_message: overrides.handoffSourceMessage ?? null, handoff_consented_at: overrides.handoffConsentedAt ?? null, handoff_source_message_sanitized: overrides.handoffSourceMessageSanitized ?? false },
                 error: overrides.ticketError ?? null,
               }),
             }),
@@ -90,9 +96,58 @@ describe('GET /api/support/tickets/[id]', () => {
     const { replyQuery } = mockService({ ticketUserId: 'other-customer' });
 
     const response = await callRoute();
+    const payload = await response.json();
 
     expect(response.status).toBe(403);
+    expect(JSON.stringify(payload)).not.toContain('private selected question');
     expect(replyQuery).not.toHaveBeenCalled();
+  });
+
+  it('returns the consented handoff question snapshot to the ticket owner', async () => {
+    mockService({
+      handoffSourceMessage: 'My card number is [REDACTED].',
+      handoffConsentedAt: '2026-11-11T00:00:00.000Z',
+      handoffSourceMessageSanitized: true,
+    });
+
+    const response = await callRoute();
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.data.handoffSourceMessage).toBe('My card number is [REDACTED].');
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+  });
+
+  it('does not return an older source message without a sanitized snapshot marker', async () => {
+    mockService({
+      handoffSourceMessage: 'private selected question',
+      handoffConsentedAt: '2026-11-11T00:00:00.000Z',
+      handoffSourceMessageSanitized: false,
+    });
+
+    const response = await callRoute();
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.data.handoffSourceMessage).toBeNull();
+    expect(JSON.stringify(payload)).not.toContain('private selected question');
+  });
+
+  it('returns the consented handoff question snapshot to an authorized support admin', async () => {
+    isSuperAdmin.mockResolvedValue(true);
+    mockService({
+      ticketUserId: 'ticket-owner',
+      handoffSourceMessage: 'Selected question',
+      handoffConsentedAt: '2026-11-11T00:00:00.000Z',
+      handoffSourceMessageSanitized: true,
+    });
+
+    const response = await callRoute();
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.data.viewerIsOwner).toBe(false);
+    expect(payload.data.handoffSourceMessage).toBe('Selected question');
   });
 
   it('maps a ticket database failure to a safe read error', async () => {

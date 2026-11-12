@@ -77,6 +77,7 @@ interface TicketDetail {
   viewerIsOwner: boolean;
   subject: string;
   body: string;
+  handoffSourceMessage: string | null;
   status: "open" | "in_progress" | "resolved" | "closed";
   createdAt: string;
   replies: ReplyMessage[];
@@ -740,6 +741,7 @@ function AdminSupportContent() {
                   ticketId={openTicketId ?? undefined}
                   ticketIsMine={detail.viewerIsOwner}
                   ticketBody={detail.body}
+                  handoffSourceMessage={detail.handoffSourceMessage}
                   ticketCreatedAt={detail.createdAt}
                   replies={detail.replies}
                   hasEarlierReplies={Boolean(detail.repliesCursor)}

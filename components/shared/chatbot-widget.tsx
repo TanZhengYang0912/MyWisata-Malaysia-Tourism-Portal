@@ -955,7 +955,10 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
           consent: true,
           subject,
           body: summary,
-          ...(previewResult.data.sourceMessageId ? { sourceMessageId: previewResult.data.sourceMessageId } : {}),
+          ...(previewResult.data.sourceMessageId ? {
+            sourceMessageId: previewResult.data.sourceMessageId,
+            sourceMessage: previewResult.data.sourceMessage ?? undefined,
+          } : {}),
         }),
       });
       const result = (await res.json().catch(() => ({}))) as { data?: { id: string; category: string } | null; error?: { code?: string } | null };

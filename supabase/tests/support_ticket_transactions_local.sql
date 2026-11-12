@@ -12,6 +12,8 @@ CREATE ROLE service_role NOLOGIN BYPASSRLS;
 CREATE SCHEMA auth;
 CREATE SCHEMA app_private;
 CREATE SCHEMA storage;
+CREATE SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 -- Minimal bucket metadata schema for the private attachment bucket migration.
 CREATE TABLE storage.buckets (
@@ -40,6 +42,12 @@ LANGUAGE sql
 STABLE
 AS $$ SELECT current_setting('request.jwt.claim.role', true) $$;
 
+CREATE FUNCTION auth.uid()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+
 CREATE TABLE public.users (
   id uuid PRIMARY KEY,
   email text UNIQUE NOT NULL,
@@ -54,7 +62,9 @@ CREATE TABLE public.roles (
 CREATE TABLE public.chatbot_sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES public.users(id),
-  guest_token_hash text
+  guest_token_hash text,
+  session_key text,
+  channel text
 );
 
 CREATE TABLE public.chatbot_messages (
@@ -81,8 +91,11 @@ CREATE TABLE public.support_tickets (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES public.users(id),
   session_id uuid,
+  withdrawal_id uuid,
   subject varchar(255) NOT NULL,
   body text NOT NULL,
+  category varchar(20) NOT NULL DEFAULT 'general',
+  classification_method text NOT NULL DEFAULT 'keyword',
   status varchar(20) NOT NULL DEFAULT 'open'
     CONSTRAINT support_tickets_status_check
     CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),
@@ -90,9 +103,14 @@ CREATE TABLE public.support_tickets (
   resolved_at timestamptz,
   reopened_at timestamptz,
   last_reply_at timestamptz,
+  customer_last_read_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY demo_allow_all ON public.support_tickets
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 CREATE TABLE public.support_ticket_replies (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -140,7 +158,10 @@ AS $$
 $$;
 
 GRANT USAGE ON SCHEMA public, auth, app_private TO anon, authenticated, service_role;
+GRANT USAGE ON SCHEMA extensions TO service_role;
+GRANT EXECUTE ON FUNCTION extensions.digest(text, text) TO service_role;
 GRANT EXECUTE ON FUNCTION auth.role() TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION app_private.is_super_admin(uuid) TO service_role;
 GRANT SELECT ON app_private.fixture_super_admins TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON
@@ -184,7 +205,8 @@ INSERT INTO public.support_tickets (id, user_id, subject, body, status, assigned
   ('10000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000001', 'Customer reply case', 'Initial message', 'open', '00000000-0000-4000-8000-000000000002'),
   ('10000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000001', 'Reopen case', 'Initial message', 'resolved', '00000000-0000-4000-8000-000000000002'),
   ('10000000-0000-4000-8000-000000000004', '00000000-0000-4000-8000-000000000001', 'Closed case', 'Initial message', 'closed', '00000000-0000-4000-8000-000000000002'),
-  ('10000000-0000-4000-8000-000000000005', '00000000-0000-4000-8000-000000000001', 'Muted case', 'Initial message', 'open', '00000000-0000-4000-8000-000000000002');
+  ('10000000-0000-4000-8000-000000000005', '00000000-0000-4000-8000-000000000001', 'Muted case', 'Initial message', 'open', '00000000-0000-4000-8000-000000000002'),
+  ('10000000-0000-4000-8000-000000000008', '00000000-0000-4000-8000-000000000003', 'Other customer case', 'Private message', 'open', '00000000-0000-4000-8000-000000000002');
 INSERT INTO public.ticket_mutes (ticket_id, user_id)
 VALUES ('10000000-0000-4000-8000-000000000005', '00000000-0000-4000-8000-000000000001');
 
@@ -199,6 +221,9 @@ VALUES ('10000000-0000-4000-8000-000000000005', '00000000-0000-4000-8000-0000000
 \ir ../migrations/20261111220000_support_operation_ledger.sql
 \ir ../migrations/20261112093302_support_ticket_reopen_operation_idempotency.sql
 \ir ../migrations/20261112100000_support_ticket_attachment_bucket.sql
+\ir ../migrations/20261111192000_support_handoff_tokens.sql
+\ir ../migrations/20261111210000_support_handoff_consent_and_private_chat_reads.sql
+\ir ../migrations/20261112134833_support_handoff_sanitized_message_snapshot.sql
 
 DO $$
 BEGIN
@@ -212,9 +237,59 @@ BEGIN
      OR NOT has_function_privilege('service_role', 'public.reopen_support_ticket(uuid,uuid,uuid,text,uuid)', 'EXECUTE') THEN
     RAISE EXCEPTION 'service role cannot execute a support ticket RPC';
   END IF;
+  IF has_column_privilege('authenticated', 'public.support_tickets', 'handoff_source_message', 'SELECT')
+     OR has_column_privilege('authenticated', 'public.support_tickets', 'handoff_source_message_sanitized', 'SELECT')
+     OR has_column_privilege('authenticated', 'public.support_tickets', 'operation_payload_hash', 'SELECT') THEN
+    RAISE EXCEPTION 'authenticated clients can select internal handoff or operation columns';
+  END IF;
+  IF NOT has_column_privilege('authenticated', 'public.support_tickets', 'user_id', 'SELECT')
+     OR NOT has_column_privilege('authenticated', 'public.support_tickets', 'subject', 'SELECT')
+     OR NOT has_column_privilege('authenticated', 'public.support_tickets', 'customer_last_read_at', 'SELECT') THEN
+    RAISE EXCEPTION 'authenticated customer list reads lost a required column grant';
+  END IF;
+  IF has_column_privilege('anon', 'public.support_tickets', 'subject', 'SELECT') THEN
+    RAISE EXCEPTION 'anonymous clients can select support tickets';
+  END IF;
+  IF EXISTS (
+       SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public'
+          AND tablename = 'support_tickets'
+          AND policyname IN ('demo_allow_all', 'support_own_or_admin')
+     ) OR NOT EXISTS (
+       SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public'
+          AND tablename = 'support_tickets'
+          AND policyname = 'support_customer_read'
+          AND cmd = 'SELECT'
+          AND qual LIKE '%auth.uid()%user_id%'
+     ) THEN
+    RAISE EXCEPTION 'support ticket RLS is not owner-scoped';
+  END IF;
 END;
 $$;
 
+SELECT set_config('request.jwt.claim.role', 'authenticated', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', true);
+SET LOCAL ROLE authenticated;
+
+DO $$
+DECLARE
+  v_owned_count integer;
+  v_other_count integer;
+BEGIN
+  SELECT count(*) INTO v_owned_count
+    FROM public.support_tickets
+   WHERE id = '10000000-0000-4000-8000-000000000001';
+  SELECT count(*) INTO v_other_count
+    FROM public.support_tickets
+   WHERE id = '10000000-0000-4000-8000-000000000008';
+  IF v_owned_count <> 1 OR v_other_count <> 0 THEN
+    RAISE EXCEPTION 'authenticated customer RLS does not scope ticket rows to the owner';
+  END IF;
+END;
+$$;
+
+RESET ROLE;
 SELECT set_config('request.jwt.claim.role', 'service_role', true);
 SET LOCAL ROLE service_role;
 
@@ -414,6 +489,117 @@ BEGIN
   IF NOT v_forbidden THEN RAISE EXCEPTION 'non-owner reopened another customer ticket'; END IF;
 
   RAISE NOTICE 'Support reply/reopen fixture passed: reply replay, reopen replay after an intervening close, new reopen intent, ownership, status transition, mute, and notification behavior.';
+END;
+$$;
+
+DO $$
+DECLARE
+  v_ticket_id uuid;
+  v_category text;
+  v_created boolean;
+  v_replay_created boolean;
+  v_replay_ticket_id uuid;
+  v_legacy_rejected boolean := false;
+  v_raw_message text := 'My IC number is 990101-14-5678';
+  v_safe_message text := 'My IC number is [IC]';
+  v_source_message_id uuid := '50000000-0000-4000-8000-000000000001';
+  v_session_id uuid := '50000000-0000-4000-8000-000000000002';
+  v_handoff_token_hash text := repeat('c', 64);
+  v_content_hash text := repeat('d', 64);
+  v_operation_id uuid := '50000000-0000-4000-8000-000000000003';
+  v_operation_hash text := repeat('e', 64);
+BEGIN
+  INSERT INTO public.chatbot_sessions (id, user_id, session_key, channel)
+  VALUES (v_session_id, '00000000-0000-4000-8000-000000000001', 'fixture-customer-session', 'customer');
+  INSERT INTO public.chatbot_messages (id, session_id, role, body)
+  VALUES (v_source_message_id, v_session_id, 'user', v_raw_message);
+  INSERT INTO public.support_handoff_tokens (
+    token_hash, owner_id, content_hash, source_session_id, source_user_message_id,
+    source_message_hash, source_message_snapshot, expires_at
+  ) VALUES (
+    v_handoff_token_hash,
+    '00000000-0000-4000-8000-000000000001',
+    v_content_hash,
+    v_session_id,
+    v_source_message_id,
+    encode(extensions.digest(v_raw_message, 'sha256'), 'hex'),
+    v_safe_message,
+    now() + interval '15 minutes'
+  );
+
+  SELECT ticket_id, category, created
+    INTO v_ticket_id, v_category, v_created
+    FROM public.create_support_ticket_from_handoff(
+      '00000000-0000-4000-8000-000000000001',
+      v_operation_id,
+      v_operation_hash,
+      v_handoff_token_hash,
+      v_content_hash,
+      v_source_message_id,
+      'Question',
+      'Please help.',
+      'general'
+    );
+  IF NOT v_created OR v_category <> 'general' THEN
+    RAISE EXCEPTION 'sanitized handoff did not create a ticket';
+  END IF;
+  IF (SELECT handoff_source_message FROM public.support_tickets WHERE id = v_ticket_id) <> v_safe_message
+     OR (SELECT handoff_source_message_sanitized FROM public.support_tickets WHERE id = v_ticket_id) IS NOT TRUE THEN
+    RAISE EXCEPTION 'ticket did not store and mark the exact sanitized preview snapshot';
+  END IF;
+  IF (SELECT handoff_source_message FROM public.support_tickets WHERE id = v_ticket_id) = v_raw_message THEN
+    RAISE EXCEPTION 'raw chat message was copied into the support ticket';
+  END IF;
+
+  SELECT ticket_id, created
+    INTO v_replay_ticket_id, v_replay_created
+    FROM public.create_support_ticket_from_handoff(
+      '00000000-0000-4000-8000-000000000001',
+      v_operation_id,
+      v_operation_hash,
+      v_handoff_token_hash,
+      v_content_hash,
+      v_source_message_id,
+      'Question',
+      'Please help.',
+      'general'
+    );
+  IF v_replay_created OR v_replay_ticket_id <> v_ticket_id THEN
+    RAISE EXCEPTION 'handoff retry did not return the original ticket';
+  END IF;
+
+  INSERT INTO public.support_handoff_tokens (
+    token_hash, owner_id, content_hash, source_session_id, source_user_message_id,
+    source_message_hash, expires_at
+  ) VALUES (
+    repeat('f', 64),
+    '00000000-0000-4000-8000-000000000001',
+    repeat('1', 64),
+    v_session_id,
+    v_source_message_id,
+    encode(extensions.digest(v_raw_message, 'sha256'), 'hex'),
+    now() + interval '15 minutes'
+  );
+  BEGIN
+    PERFORM public.create_support_ticket_from_handoff(
+      '00000000-0000-4000-8000-000000000001',
+      '50000000-0000-4000-8000-000000000004',
+      repeat('2', 64),
+      repeat('f', 64),
+      repeat('1', 64),
+      v_source_message_id,
+      'Old preview',
+      'Please help.',
+      'general'
+    );
+  EXCEPTION WHEN SQLSTATE '22023' THEN
+    v_legacy_rejected := SQLERRM = 'support_handoff_invalid';
+  END;
+  IF NOT v_legacy_rejected THEN
+    RAISE EXCEPTION 'legacy token without a sanitized snapshot was accepted';
+  END IF;
+
+  RAISE NOTICE 'Sanitized handoff snapshot fixture passed: raw input stayed out of ticket storage, snapshot retry was idempotent, and old unsafe tokens were rejected.';
 END;
 $$;
 

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
-import { cleanUserContent } from '@/lib/moderation/clean';
+import { cleanUserContentBatch } from '@/lib/moderation/clean';
 import { createClient } from '@/lib/supabase/server';
 import { createHandoffToken, type HandoffSource } from '@/lib/support/handoff-token';
 
@@ -20,15 +20,16 @@ export async function POST(request: Request) {
     const { data: { user } } = await auth.auth.getUser();
     if (!user) return apiFail('UNAUTHORIZED', 'Sign in to prepare a support ticket.', 401);
     const service = createServiceClient();
-    let source: HandoffSource = { sessionId: null, botMessageId: null, userMessageId: null, userMessageBody: null };
+    let source: HandoffSource = { sessionId: null, botMessageId: null, userMessageId: null, userMessageBody: null, sanitizedMessageSnapshot: null };
     if (parsed.data.messageId && !parsed.data.sessionKey) {
       return apiFail('HANDOFF_REVIEW_REQUIRED', 'Review the ticket details again before submitting.', 409);
     }
     if (parsed.data.messageId && parsed.data.sessionKey) {
       const { data: session, error: sessionError } = await service
         .from('chatbot_sessions')
-        .select('id, user_id')
+        .select('id, user_id, channel')
         .eq('session_key', parsed.data.sessionKey)
+        .eq('channel', 'customer')
         .maybeSingle();
       if (sessionError) return apiFail('READ_UNAVAILABLE', 'Unable to verify the selected conversation.', 503);
       if (!session || session.user_id !== user.id) return apiFail('FORBIDDEN', 'This conversation is not available to this account.', 403);
@@ -55,19 +56,22 @@ export async function POST(request: Request) {
         botMessageId: botMessage.id,
         userMessageId: userMessage.id,
         userMessageBody: userMessage.body,
+        sanitizedMessageSnapshot: null,
       };
     }
-    const [subject, summary] = await Promise.all([
-      cleanUserContent(parsed.data.subject, service),
-      cleanUserContent(parsed.data.summary, service),
-    ]);
+    const contentToClean = [parsed.data.subject, parsed.data.summary];
+    if (source.userMessageBody !== null) contentToClean.push(source.userMessageBody);
+    const cleanedContent = await cleanUserContentBatch(contentToClean, service);
+    const subject = cleanedContent[0];
+    const summary = cleanedContent[1];
+    if (source.userMessageBody !== null) source.sanitizedMessageSnapshot = cleanedContent[2].display;
     const handoffToken = await createHandoffToken(user.id, subject.display, summary.display, source);
     const response = apiOk({
       subject: subject.display,
       summary: summary.display,
       handoffToken,
       sourceMessageId: source.userMessageId,
-      sourceMessage: source.userMessageBody,
+      sourceMessage: source.sanitizedMessageSnapshot,
     });
     response.headers.set('Cache-Control', 'private, no-store');
     return response;

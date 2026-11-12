@@ -36,12 +36,16 @@ export const supportTicketSchema = z.object({
   handoffToken: z.string().min(1).max(4096).optional(),
   consent: z.boolean().optional(),
   sourceMessageId: z.string().uuid().optional(),
+  sourceMessage: z.string().min(1).max(2000).optional(),
   withdrawalId: z.string().uuid().optional(),
   subject: z.string().trim().min(1).max(255),
   body: z.string().trim().min(1).max(2000),
 }).strict().superRefine((data, ctx) => {
   if (data.withdrawalId && !data.operationId) {
     ctx.addIssue({ code: 'custom', path: ['operationId'], message: 'An operation id is required for withdrawal tickets' });
+  }
+  if (Boolean(data.sourceMessageId) !== (data.sourceMessage !== undefined)) {
+    ctx.addIssue({ code: 'custom', path: ['sourceMessage'], message: 'The selected source message must match the reviewed preview' });
   }
 });
 

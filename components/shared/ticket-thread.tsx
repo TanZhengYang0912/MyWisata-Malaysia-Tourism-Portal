@@ -39,6 +39,7 @@ interface ThreadItem {
   isBot: boolean;
   label: string | null;
   body: string;
+  handoffSourceMessage?: string | null;
   attachmentType: "image" | "document" | null;
 }
 
@@ -47,6 +48,7 @@ interface TicketThreadProps {
   ticketId?: string;
   ticketIsMine: boolean;
   ticketBody: string;
+  handoffSourceMessage?: string | null;
   ticketCreatedAt: string;
   replies: ReplyMessage[];
   hasEarlierReplies?: boolean;
@@ -55,7 +57,7 @@ interface TicketThreadProps {
   onLoadEarlierReplies?: () => void;
 }
 
-export function TicketThread({ ticketId, ticketIsMine, ticketBody, ticketCreatedAt, replies, hasEarlierReplies = false, loadingEarlierReplies = false, earlierRepliesError = false, onLoadEarlierReplies }: TicketThreadProps) {
+export function TicketThread({ ticketId, ticketIsMine, ticketBody, handoffSourceMessage, ticketCreatedAt, replies, hasEarlierReplies = false, loadingEarlierReplies = false, earlierRepliesError = false, onLoadEarlierReplies }: TicketThreadProps) {
   const { t } = useTranslation("common");
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastItemKeyRef = useRef<string | null>(null);
@@ -86,7 +88,7 @@ export function TicketThread({ ticketId, ticketIsMine, ticketBody, ticketCreated
   }
 
   const items: ThreadItem[] = [
-    { key: "ticket-body", at: ticketCreatedAt, isMine: ticketIsMine, isBot: false, label: null, body: ticketBody, attachmentType: null },
+    { key: "ticket-body", at: ticketCreatedAt, isMine: ticketIsMine, isBot: false, label: null, body: ticketBody, handoffSourceMessage, attachmentType: null },
     ...replies.map((r) => ({
       key: r.id,
       at: r.created_at,
@@ -164,12 +166,18 @@ export function TicketThread({ ticketId, ticketIsMine, ticketBody, ticketCreated
                 )}
               </div>
             )}
-            {item.body && (
+            {(item.body || item.handoffSourceMessage) && (
             <div
               className={`w-fit max-w-full break-words rounded-xl px-3 py-2 text-sm ${
                 item.isBot ? "bg-teal/10 text-foreground" : isMine ? "bg-primary text-white" : "bg-muted text-foreground"
               }`}
             >
+              {item.handoffSourceMessage && (
+                <blockquote className="mb-2 border-l-2 border-current/40 pl-2">
+                  <p className="mb-1 text-xs font-medium">{t("chatbot.handoff.selectedQuestion")}</p>
+                  <p className="whitespace-pre-wrap break-words">{item.handoffSourceMessage}</p>
+                </blockquote>
+              )}
               {item.body}
             </div>
             )}

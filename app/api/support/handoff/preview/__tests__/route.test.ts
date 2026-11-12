@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ clean: vi.fn(), getUser: vi.fn(), createServiceClient: vi.fn(), createToken: vi.fn() }));
+const mocks = vi.hoisted(() => ({ clean: vi.fn(), cleanBatch: vi.fn(), getUser: vi.fn(), createServiceClient: vi.fn(), createToken: vi.fn() }));
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser } })) }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: mocks.createServiceClient }));
-vi.mock('@/lib/moderation/clean', () => ({ cleanUserContent: mocks.clean }));
+vi.mock('@/lib/moderation/clean', () => ({ cleanUserContent: mocks.clean, cleanUserContentBatch: mocks.cleanBatch }));
 vi.mock('@/lib/support/handoff-token', () => ({ createHandoffToken: mocks.createToken }));
 
 import { POST } from '../route';
@@ -22,6 +22,7 @@ describe('POST /api/support/handoff/preview', () => {
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-handoff-secret');
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'owner-1' } }, error: null });
     mocks.clean.mockImplementation(async (text: string) => ({ display: text.replace('012-3456789', '[PHONE]') }));
+    mocks.cleanBatch.mockImplementation(async (texts: string[]) => texts.map((text) => ({ display: text.replace('012-3456789', '[PHONE]') })));
     mocks.createServiceClient.mockReturnValue({});
     mocks.createToken.mockResolvedValue('opaque-token');
   });
@@ -33,13 +34,14 @@ describe('POST /api/support/handoff/preview', () => {
     await expect(response.json()).resolves.toMatchObject({
       data: { subject: 'Help [PHONE]', summary: 'My booking is missing. Call [PHONE]', handoffToken: expect.any(String) },
     });
-    expect(mocks.clean).toHaveBeenCalledTimes(2);
+    expect(mocks.cleanBatch).toHaveBeenCalledOnce();
+    expect(mocks.cleanBatch.mock.calls[0][0]).toEqual(['Help 012-3456789', 'My booking is missing. Call 012-3456789']);
   });
 
   it('rejects missing or oversized preview content before moderation', async () => {
     expect((await POST(request('', 'summary'))).status).toBe(422);
     expect((await POST(request('x', 'y'.repeat(2001)))).status).toBe(422);
-    expect(mocks.clean).not.toHaveBeenCalled();
+    expect(mocks.cleanBatch).not.toHaveBeenCalled();
   });
 
   it('rejects a selected conversation owned by another account', async () => {
@@ -57,14 +59,73 @@ describe('POST /api/support/handoff/preview', () => {
 
     expect(response.status).toBe(403);
     expect(query.maybeSingle).toHaveBeenCalledTimes(1);
+    expect(mocks.cleanBatch).not.toHaveBeenCalled();
+  });
+
+  it('rejects an owned admin-ai conversation as a customer handoff source', async () => {
+    let selectedChannel: string | null = null;
+    const sessionQuery = {
+      select: vi.fn(() => sessionQuery),
+      eq: vi.fn((column: string, value: string) => {
+        if (column === 'channel') selectedChannel = value;
+        return sessionQuery;
+      }),
+      maybeSingle: vi.fn(async () => ({
+        data: selectedChannel === 'customer' ? null : { id: 'session-1', user_id: 'owner-1', channel: 'admin' },
+        error: null,
+      })),
+    };
+    mocks.createServiceClient.mockReturnValue({ from: () => sessionQuery });
+
+    const response = await POST(request('Help', 'My question', {
+      sessionKey: 'session-secret',
+      messageId: '33333333-3333-4333-8333-333333333333',
+    }));
+
+    expect(response.status).toBe(403);
+    expect(sessionQuery.eq).toHaveBeenCalledWith('channel', 'customer');
     expect(mocks.clean).not.toHaveBeenCalled();
+  });
+
+  it('shows and token-binds the redacted snapshot of a selected historical message', async () => {
+    const sessionQuery = {
+      select: vi.fn(() => sessionQuery),
+      eq: vi.fn(() => sessionQuery),
+      maybeSingle: vi.fn(async () => ({ data: { id: 'session-1', user_id: 'owner-1', channel: 'customer' }, error: null })),
+    };
+    const messageResults = [
+      { id: '33333333-3333-4333-8333-333333333333', reply_to_message_id: '44444444-4444-4444-8444-444444444444' },
+      { id: '44444444-4444-4444-8444-444444444444', body: 'Call me at 012-3456789' },
+    ];
+    const messagesQuery = {
+      select: vi.fn(() => messagesQuery),
+      eq: vi.fn(() => messagesQuery),
+      maybeSingle: vi.fn(async () => ({ data: messageResults.shift(), error: null })),
+    };
+    mocks.createServiceClient.mockReturnValue({ from: (table: string) => table === 'chatbot_sessions' ? sessionQuery : messagesQuery });
+
+    const response = await POST(request('Help', 'My question', {
+      sessionKey: 'session-secret',
+      messageId: '33333333-3333-4333-8333-333333333333',
+    }));
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.data.sourceMessage).toBe('Call me at [PHONE]');
+    expect(mocks.createToken).toHaveBeenCalledWith('owner-1', 'Help', 'My question', {
+      sessionId: 'session-1',
+      botMessageId: '33333333-3333-4333-8333-333333333333',
+      userMessageId: '44444444-4444-4444-8444-444444444444',
+      userMessageBody: 'Call me at 012-3456789',
+      sanitizedMessageSnapshot: 'Call me at [PHONE]',
+    });
   });
 
   it('binds the signed preview token to the verified source message', async () => {
     const sessionQuery = {
       select: vi.fn(() => sessionQuery),
       eq: vi.fn(() => sessionQuery),
-      maybeSingle: vi.fn(async () => ({ data: { id: 'session-1', user_id: 'owner-1' }, error: null })),
+      maybeSingle: vi.fn(async () => ({ data: { id: 'session-1', user_id: 'owner-1', channel: 'customer' }, error: null })),
     };
     const messageResults = [
       { id: '33333333-3333-4333-8333-333333333333', reply_to_message_id: '44444444-4444-4444-8444-444444444444' },
@@ -90,6 +151,7 @@ describe('POST /api/support/handoff/preview', () => {
       botMessageId: '33333333-3333-4333-8333-333333333333',
       userMessageId: '44444444-4444-4444-8444-444444444444',
       userMessageBody: 'My original question',
+      sanitizedMessageSnapshot: 'My original question',
     });
     expect(messagesQuery.maybeSingle).toHaveBeenCalledTimes(2);
   });

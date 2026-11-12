@@ -3,9 +3,8 @@
 // CLAUDE.md Step 8.
 // GET  /api/support/tickets — "My Tickets" list (CLAUDE-FIXES.md Fix 2).
 //
-// support_tickets has real RLS policies (support_own_or_admin SELECT,
-// support_insert_own INSERT WITH CHECK user_id = auth.uid() OR NULL —
-// 007_public_read_policies.sql). chatbot_sessions is no longer readable by
+// Customer reads use the owner-scoped support_customer_read policy; ticket
+// writes and admin views go through service-backed server APIs. chatbot_sessions is no longer readable by
 // guests (20261014120000), so linking a session reads it with the service
 // client and checks ownership here. Guest ticket submission is intentionally allowed by the schema
 // (user_id nullable, RLS explicitly permits NULL), so this doesn't require
@@ -89,7 +88,7 @@ export async function POST(request: Request) {
 
   const parsed = await parseBody(request, supportTicketSchema);
   if (!parsed.ok) return parsed.response;
-  const { sessionKey, withdrawalId, subject, body, operationId, handoffToken, consent } = parsed.data;
+  const { sessionKey, withdrawalId, subject, body, operationId, handoffToken, consent, sourceMessage } = parsed.data;
   const sourceMessageId = parsed.data.sourceMessageId;
   if (sessionKey) {
     // Legacy requests may still carry a session key, but no Support endpoint
@@ -168,6 +167,7 @@ export async function POST(request: Request) {
       subject: cleanedSubject.display,
       summary: cleanedBody.display,
       sourceMessageId: sourceMessageId ?? null,
+      sourceMessageSnapshot: sourceMessage ?? null,
       category: safeCategory,
     });
     if (result.error || !result.data) {

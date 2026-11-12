@@ -24,7 +24,7 @@ export async function GET(_request: Request, { params }: Props) {
   const service = createServiceClient();
   const { data: ticket, error: ticketErr } = await service
     .from('support_tickets')
-    .select('id, user_id, session_id, withdrawal_id, subject, body, category, status, assigned_to, created_at, resolved_at, last_reply_at')
+    .select('id, user_id, session_id, withdrawal_id, subject, body, category, status, assigned_to, created_at, resolved_at, last_reply_at, handoff_consented_at, handoff_source_message, handoff_source_message_sanitized')
     .eq('id', id)
     .maybeSingle();
   if (ticketErr) return apiFail('READ_UNAVAILABLE', 'Unable to load this support request.', 503);
@@ -44,12 +44,13 @@ export async function GET(_request: Request, { params }: Props) {
   // (mute is "user side" only, an admin's own read of it is never relevant).
   const { data: muteRow } = await service.from('ticket_mutes').select('id').eq('ticket_id', id).eq('user_id', user.id).maybeSingle();
 
-  return apiOk({
+  const response = apiOk({
     id: ticket.id,
     viewerIsOwner: isOwner,
     withdrawalId: ticket.withdrawal_id,
     subject: ticket.subject,
     body: ticket.body,
+    handoffSourceMessage: ticket.handoff_consented_at && ticket.handoff_source_message_sanitized ? ticket.handoff_source_message : null,
     category: ticket.category,
     status: ticket.status,
     createdAt: ticket.created_at,
@@ -59,4 +60,6 @@ export async function GET(_request: Request, { params }: Props) {
     replies: replyPage.replies ?? [],
     repliesCursor: replyPage.nextCursor,
   });
+  response.headers.set('Cache-Control', 'private, no-store');
+  return response;
 }

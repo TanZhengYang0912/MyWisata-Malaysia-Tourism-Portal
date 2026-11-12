@@ -832,7 +832,7 @@ describe("Task 5 shared runtime behavior", () => {
     const reviewedSubject = "Please check withdrawal status";
     const answer = "API answer [zh]: withdrawals can take two business days.";
     const askPayloads: { question?: string; operationId?: string; sessionKey?: string }[] = [];
-    let ticketPayload: { operationId?: string; handoffToken?: string; subject?: string; body?: string } | undefined;
+    let ticketPayload: { operationId?: string; handoffToken?: string; subject?: string; body?: string; sourceMessageId?: string; sourceMessage?: string } | undefined;
     let handoffPreviewCalls = 0;
     mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
@@ -856,10 +856,12 @@ describe("Task 5 shared runtime behavior", () => {
           subject: handoffPreviewCalls === 1 ? reviewedSubject : reviewedSubject,
           summary: question,
           handoffToken: "signed-preview-token",
+          sourceMessageId: "question-zh-1",
+          sourceMessage: "Selected sanitized question [PHONE]",
         }, error: null });
       }
       if (url === "/api/support/tickets") {
-        ticketPayload = JSON.parse(String(init?.body)) as { operationId?: string; subject?: string; body?: string };
+        ticketPayload = JSON.parse(String(init?.body)) as typeof ticketPayload;
         return response({ data: { id: "ticket-zh-1", category: "support" }, error: null });
       }
       throw new Error(`Unexpected chatbot request: ${url}`);
@@ -908,7 +910,13 @@ describe("Task 5 shared runtime behavior", () => {
     (consent as unknown as { checked: boolean }).checked = true;
     await click(consent);
     await click(findButton("Create translated ticket"));
-    expect(ticketPayload).toEqual(expect.objectContaining({ subject: reviewedSubject, body: question, handoffToken: "signed-preview-token" }));
+    expect(ticketPayload).toEqual(expect.objectContaining({
+      subject: reviewedSubject,
+      body: question,
+      handoffToken: "signed-preview-token",
+      sourceMessageId: "question-zh-1",
+      sourceMessage: "Selected sanitized question [PHONE]",
+    }));
     expect(handoffPreviewCalls).toBe(2);
     expect(ticketPayload?.operationId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(document.defaultView?.localStorage.getItem("mw_chatbot_support_operations:customer-1")).not.toContain(question);

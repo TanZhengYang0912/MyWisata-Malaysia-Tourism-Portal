@@ -56,6 +56,22 @@ describe('POST /api/support/tickets operation idempotency', () => {
     }));
   });
 
+  it('requires the exact previewed source snapshot when a message id is selected', async () => {
+    const responseWithoutSnapshot = await POST(request({ sourceMessageId: '44444444-4444-4444-8444-444444444444' }));
+    expect(responseWithoutSnapshot.status).toBe(422);
+    expect(mocks.createTicketFromHandoff).not.toHaveBeenCalled();
+
+    const responseWithSnapshot = await POST(request({
+      sourceMessageId: '44444444-4444-4444-8444-444444444444',
+      sourceMessage: 'My redacted question [PHONE]',
+    }));
+
+    expect(responseWithSnapshot.status).toBe(200);
+    expect(mocks.createTicketFromHandoff).toHaveBeenCalledWith(expect.objectContaining({
+      sourceMessageSnapshot: 'My redacted question [PHONE]',
+    }));
+  });
+
   it('rejects reuse of an operation key for different ticket details', async () => {
     mocks.createTicketFromHandoff.mockResolvedValue({ data: null, error: 'support_ticket_operation_conflict' });
 

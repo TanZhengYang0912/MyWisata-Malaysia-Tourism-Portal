@@ -34,6 +34,7 @@ interface TicketDetail {
   viewerIsOwner: boolean;
   subject: string;
   body: string;
+  handoffSourceMessage: string | null;
   category: string;
   status: "open" | "in_progress" | "resolved" | "closed";
   createdAt: string;
@@ -727,6 +728,7 @@ export default function CustomerTicketDetailPage() {
             ticketId={ticket.id}
             ticketIsMine={ticket.viewerIsOwner}
             ticketBody={ticket.body}
+            handoffSourceMessage={ticket.handoffSourceMessage}
             ticketCreatedAt={ticket.createdAt}
             replies={ticket.replies}
             hasEarlierReplies={Boolean(ticket.repliesCursor)}
