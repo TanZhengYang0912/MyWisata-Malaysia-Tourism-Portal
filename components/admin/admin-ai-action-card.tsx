@@ -6,9 +6,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Check, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import type { ProposedAction } from "@/lib/admin-ai/actions";
+import type { ChoiceList, ProposedAction } from "@/lib/admin-ai/actions";
 
 type CardState = "pending" | "running" | "done" | "cancelled" | "failed";
 
@@ -75,6 +76,92 @@ export function AdminAiActionCard({ action }: { action: ProposedAction }) {
             {t(`aiAssistant.card.${state}`)}{error ? `: ${error}` : ""}
           </span>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * An on/off table the assistant offered. Nothing has run: flipping a switch
+ * only stages it, and Save sends one PATCH per changed row to the existing
+ * admin route from this browser session, so that route's checks decide.
+ */
+export function AdminAiChoiceTable({ choices }: { choices: ChoiceList }) {
+  const { t } = useTranslation("admin");
+  const [rows, setRows] = useState(choices.rows);
+  const [next, setNext] = useState<Record<string, boolean>>(() => Object.fromEntries(choices.rows.map((row) => [row.key, row.active])));
+  const [results, setResults] = useState<Record<string, "done" | "failed">>({});
+  const [saving, setSaving] = useState(false);
+  const changed = rows.filter((row) => next[row.key] !== row.active);
+
+  async function save() {
+    setSaving(true);
+    // One at a time: at most ~100 small PATCHes, and each result is shown on its row.
+    for (const row of changed) {
+      const isActive = next[row.key];
+      let ok = false;
+      if (row.request.url.startsWith("/api/")) {
+        try {
+          const res = await fetch(row.request.url, {
+            method: row.request.method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...row.request.body, isActive }),
+          });
+          ok = res.ok;
+        } catch {
+          ok = false;
+        }
+      }
+      setResults((current) => ({ ...current, [row.key]: ok ? "done" : "failed" }));
+      if (ok) setRows((current) => current.map((r) => (r.key === row.key ? { ...r, active: isActive } : r)));
+      else setNext((current) => ({ ...current, [row.key]: row.active }));
+    }
+    setSaving(false);
+  }
+
+  return (
+    <div data-ai-choices={choices.action} className="w-full max-w-[85%] rounded-xl border border-border bg-background p-3 text-sm shadow-sm lg:max-w-3xl">
+      <p className="font-semibold text-foreground">{t(`aiAssistant.actions.${choices.action}`)}</p>
+      <div className="mt-2 max-h-80 overflow-y-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <th className="py-2 pr-3">{t("aiAssistant.choices.name")}</th>
+              <th className="w-24 py-2 pr-3">{t("aiAssistant.choices.active")}</th>
+              <th className="w-6 py-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.key} className="border-b border-border/60 last:border-0">
+                <td className="break-words py-2 pr-3 text-foreground">{row.label}</td>
+                <td className="py-2 pr-3">
+                  <label className="flex items-center gap-2 text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      aria-label={row.label}
+                      checked={next[row.key]}
+                      onChange={(event) => setNext((current) => ({ ...current, [row.key]: event.target.checked }))}
+                      disabled={saving}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    {t(`aiAssistant.card.${next[row.key] ? "on" : "off"}`)}
+                  </label>
+                </td>
+                <td className="py-2">
+                  {results[row.key] === "done" && <Check size={14} className="text-primary" aria-label={t("aiAssistant.card.done")} />}
+                  {results[row.key] === "failed" && <X size={14} className="text-destructive" aria-label={t("aiAssistant.card.failed")} />}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-3 flex items-center gap-2">
+        <Button size="sm" onClick={save} disabled={saving || changed.length === 0}>
+          {saving ? t("aiAssistant.card.running") : t("aiAssistant.choices.save", { count: changed.length })}
+        </Button>
       </div>
     </div>
   );

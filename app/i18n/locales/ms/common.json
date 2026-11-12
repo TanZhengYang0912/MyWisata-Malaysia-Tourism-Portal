@@ -308,7 +308,7 @@
     "title": "Sembang",
     "myTickets": "Tiket Saya",
     "closeChat": "Tutup sembang",
-    "emptyPrompt": "Tanya tentang ganjaran, pautan afiliasi, pengeluaran, tempahan atau pengesahan.",
+    "emptyPrompt": "Tanya di mana untuk mencari sesuatu, bandingkan senarai, dapatkan cadangan, semak pesanan anda atau minta bayaran balik.",
     "inputPlaceholder": "Tanya soalan…",
     "send": "Hantar mesej",
     "openChat": "Sembang dengan kami",
@@ -344,7 +344,29 @@
     },
     "expandChat": "Kembangkan ke skrin penuh",
     "collapseChat": "Keluar skrin penuh",
-    "resizeSidebar": "Ubah saiz senarai perbualan"
+    "resizeSidebar": "Ubah saiz senarai perbualan",
+    "agent": {
+      "compare": {
+        "price": "Harga dari",
+        "rating": "Penilaian",
+        "shop": "Kedai",
+        "area": "Kawasan",
+        "hours": "Waktu"
+      },
+      "refund": {
+        "title": "Permintaan bayaran balik",
+        "order": "Pesanan",
+        "items": "Item",
+        "total": "Jumlah",
+        "reason": "Sebab",
+        "confirm": "Sahkan bayaran balik",
+        "cancel": "Batal",
+        "running": "Menghantar…",
+        "done": "Bayaran balik diminta. Jejakinya di halaman pesanan.",
+        "cancelled": "Dibatalkan",
+        "failed": "Gagal"
+      }
+    }
   },
   "account": {
     "menu": "Menu akaun",

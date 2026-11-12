@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTION_NAMES, listRecords, proposeAction } from '@/lib/admin-ai/actions';
+import { ACTION_NAMES, buildChoiceList, listRecords, proposeAction } from '@/lib/admin-ai/actions';
 
 const TICKET = '5f2c1a7e-2026-4123-8123-0123456789ab';
 
@@ -88,6 +88,33 @@ describe('Group B proposals', () => {
 });
 
 describe('admin AI record lists', () => {
+  it('lists only items an on or off action applies to', async () => {
+    const filters: unknown[][] = [];
+    const chain: Record<string, unknown> = {};
+    for (const m of ['select', 'order', 'limit']) chain[m] = () => chain;
+    chain.eq = (...args: unknown[]) => { filters.push(args); return chain; };
+    chain.then = (resolve: (v: unknown) => unknown) => resolve({ data: [], error: null });
+    await listRecords({ from: () => chain } as never, 'hotel_amenities', undefined, false);
+    expect(filters).toEqual([['is_active', false]]);
+    filters.length = 0;
+    await listRecords({ from: () => chain } as never, 'hotel_amenities');
+    expect(filters).toEqual([]);
+  });
+
+  it('builds an on/off table whose rows only target the existing toggle routes', async () => {
+    const table = await buildChoiceList(fakeDb(null, [{ code: 'wifi', label_en: 'Free Wi-Fi', is_active: false }]), 'hotel_amenities', false);
+    expect(table).toMatchObject({
+      action: 'set_hotel_amenity_active',
+      rows: [{ key: 'wifi', label: 'Free Wi-Fi', active: false, request: { method: 'PATCH', url: '/api/admin/hotel-amenities', body: { code: 'wifi' } } }],
+    });
+    expect(await buildChoiceList(fakeDb(null), 'open_tickets')).toEqual({ error: 'unknown kind' });
+  });
+
+  it('refuses a card that would change nothing', async () => {
+    expect(await proposeAction(fakeDb({ code: 'wifi', label_en: 'Free Wi-Fi', is_active: true }), 'set_hotel_amenity_active', JSON.stringify({ code: 'wifi', active: true }))).toEqual({ error: 'already on' });
+    expect(await proposeAction(fakeDb({ code: 'wifi', label_en: 'Free Wi-Fi', is_active: true }), 'set_hotel_amenity_active', JSON.stringify({ code: 'wifi', active: false }))).toMatchObject({ action: 'set_hotel_amenity_active' });
+  });
+
   it('withholds ticket text that may hold personal details', async () => {
     const result = await listRecords(fakeDb(null, [
       { id: TICKET, subject: 'Call me on 012-3456789', category: 'payment', status: 'open', created_at: '2026-11-10T00:00:00Z' },

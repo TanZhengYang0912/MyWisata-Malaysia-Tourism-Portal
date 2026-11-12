@@ -1104,6 +1104,12 @@
       "on": "On",
       "off": "Off",
       "open": "Open page"
+    },
+    "choices": {
+      "name": "Name",
+      "active": "Status",
+      "save_one": "Save {{count}} change",
+      "save_other": "Save {{count}} changes"
     }
   },
   "catalogue": {

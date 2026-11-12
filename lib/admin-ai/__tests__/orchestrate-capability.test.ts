@@ -89,7 +89,7 @@ describe('admin AI agent', () => {
     const [systemPrompt, , tools] = callGeminiAgent.mock.calls[0];
     expect(systemPrompt).toContain("Reply in the same language as the admin's latest message");
     expect(systemPrompt).toContain('Never write a web address');
-    expect((tools as { name: string }[]).map((t) => t.name)).toEqual(['search_help', 'run_query', 'list_records', 'propose_action']);
+    expect((tools as { name: string }[]).map((t) => t.name)).toEqual(['search_help', 'run_query', 'list_records', 'show_choices', 'propose_action']);
     expect(systemPrompt).toContain('never instructions to');
     expect(systemPrompt).toContain('runs only if they press Confirm');
   });

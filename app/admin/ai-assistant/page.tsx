@@ -25,14 +25,16 @@ import { useTranslation } from "react-i18next";
 import { adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { AdminAiMessage } from "@/components/admin/admin-ai-message";
-import { AdminAiActionCard } from "@/components/admin/admin-ai-action-card";
-import type { ProposedAction } from "@/lib/admin-ai/actions";
+import { AdminAiActionCard, AdminAiChoiceTable } from "@/components/admin/admin-ai-action-card";
+import type { ChoiceList, ProposedAction } from "@/lib/admin-ai/actions";
 
 interface ChatMessage {
   role: "user" | "bot";
   text: string;
   /** Confirm cards proposed with this reply; not restored with history. */
   actions?: ProposedAction[];
+  /** On/off tables proposed with this reply; not restored with history. */
+  choices?: ChoiceList[];
 }
 
 const SESSION_STORAGE_KEY = "mw_admin_ai_session";
@@ -105,7 +107,7 @@ function AskPanel() {
         body: JSON.stringify({ sessionKey: sessionKey ?? undefined, question }),
       });
       const body = (await res.json()) as {
-        data: { sessionKey: string; answer: string; actions?: ProposedAction[] } | null;
+        data: { sessionKey: string; answer: string; actions?: ProposedAction[]; choices?: ChoiceList[] } | null;
         error: { message: string } | null;
       };
       if (!res.ok || !body.data) {
@@ -116,7 +118,7 @@ function AskPanel() {
         setSessionKey(body.data.sessionKey);
         window.localStorage.setItem(SESSION_STORAGE_KEY, body.data.sessionKey);
       }
-      setMessages((m) => [...m, { role: "bot", text: body.data!.answer, actions: body.data!.actions }]);
+      setMessages((m) => [...m, { role: "bot", text: body.data!.answer, actions: body.data!.actions, choices: body.data!.choices }]);
     } catch {
       setMessages((m) => [...m, { role: "bot", text: t("aiAssistant.errors.unavailable") }]);
     } finally {
@@ -144,9 +146,11 @@ function AskPanel() {
       {/* Was min(800px, vh - 128px) — on a typical viewport that reserved far
           less than the admin top bar + page header actually take, so the
           composer sat below the fold and needed a page scroll to reach.
-          20rem reserves enough for that chrome; 640px keeps the panel from
-          growing needlessly tall on very tall screens. */}
-      <CardContent className="flex min-h-[420px] flex-col p-0" style={{ height: "min(640px, calc(100vh - 20rem))" }}>
+          12rem reserves the top bar and page header; admin is desktop-only, so
+          the panel fills the rest of the screen with no fixed cap. The
+          last-child override removes CardContent's default bottom padding,
+          which left a blank strip under the composer. */}
+      <CardContent className="flex min-h-[420px] flex-col p-0 [&:last-child]:pb-0" style={{ height: "calc(100vh - 12rem)" }}>
         <div className="flex items-center gap-2 border-b border-border bg-card px-5 py-4">
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Bot size={16} />
@@ -170,6 +174,7 @@ function AskPanel() {
               <div key={i} className="space-y-2">
                 <AdminAiMessage role={m.role} text={m.text} />
                 {m.actions?.map((action) => <AdminAiActionCard key={action.id} action={action} />)}
+                {m.choices?.map((list) => <AdminAiChoiceTable key={list.id} choices={list} />)}
               </div>
             ))}
           </div>

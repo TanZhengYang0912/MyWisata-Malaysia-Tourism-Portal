@@ -1104,6 +1104,12 @@
       "on": "Hidup",
       "off": "Mati",
       "open": "Buka halaman"
+    },
+    "choices": {
+      "name": "Nama",
+      "active": "Keadaan",
+      "save_one": "Simpan {{count}} perubahan",
+      "save_other": "Simpan {{count}} perubahan"
     }
   },
   "catalogue": {

@@ -1104,6 +1104,12 @@
       "on": "启用",
       "off": "停用",
       "open": "打开页面"
+    },
+    "choices": {
+      "name": "名称",
+      "active": "状态",
+      "save_one": "保存 {{count}} 项更改",
+      "save_other": "保存 {{count}} 项更改"
     }
   },
   "catalogue": {
