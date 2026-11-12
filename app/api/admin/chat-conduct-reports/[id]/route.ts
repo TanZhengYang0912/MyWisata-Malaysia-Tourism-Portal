@@ -6,17 +6,33 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { reviewChatConductReport } from '@/lib/moderation/chat-conduct-reports';
+import { getRequestId } from '@/lib/request-id';
+import { getAuthenticatedUser } from '@/lib/auth/request-user';
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
-export async function PATCH(_request: Request, { params }: Props) {
+export async function PATCH(request: Request, { params }: Props) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdmin(supabase, user.id))) {
+  const authentication = await getAuthenticatedUser(supabase);
+  if (authentication.state === 'unauthenticated') return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  if (authentication.state === 'unavailable') {
+    const requestId = getRequestId(request);
+    console.error('[admin/chat-conduct-reports] authentication check failed', { requestId });
+    return apiFail('READ_UNAVAILABLE', 'Unable to verify your sign-in. Please retry.', 503, undefined, { requestId });
+  }
+  const { user } = authentication;
+  let canReviewReports: boolean;
+  try {
+    canReviewReports = await isSuperAdmin(supabase, user.id, { throwOnLookupError: true });
+  } catch {
+    const requestId = getRequestId(request);
+    console.error('[admin/chat-conduct-reports] review access check failed', { requestId });
+    return apiFail('READ_UNAVAILABLE', 'Unable to verify review access. Please retry.', 503, undefined, { requestId });
+  }
+  if (!canReviewReports) {
     return apiFail('FORBIDDEN', 'Chat report review is limited to super admins', 403);
   }
 

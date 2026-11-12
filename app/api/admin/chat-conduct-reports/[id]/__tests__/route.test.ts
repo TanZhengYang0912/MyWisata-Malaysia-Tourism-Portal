@@ -31,6 +31,18 @@ beforeEach(() => {
 });
 
 describe('PATCH /api/admin/chat-conduct-reports/[id]', () => {
+  it('returns a retryable error when authentication cannot be verified', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: { name: 'AuthRetryableFetchError', status: 503 } });
+
+    const response = await callRoute();
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('READ_UNAVAILABLE');
+    expect(JSON.stringify(body)).not.toContain('AuthRetryableFetchError');
+    expect(mocks.reviewChatConductReport).not.toHaveBeenCalled();
+  });
+
   it('requires a signed-in super admin', async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null } });
     expect((await callRoute()).status).toBe(401);
@@ -53,5 +65,17 @@ describe('PATCH /api/admin/chat-conduct-reports/[id]', () => {
   it('keeps a missing report distinct from a duplicate review', async () => {
     mocks.reviewChatConductReport.mockResolvedValue('not_found');
     expect((await callRoute()).status).toBe(404);
+  });
+
+  it('returns a retryable safe error when the super-admin check cannot be read', async () => {
+    mocks.isSuperAdmin.mockRejectedValue(new Error('super_admin_lookup_unavailable'));
+
+    const response = await callRoute();
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('READ_UNAVAILABLE');
+    expect(JSON.stringify(body)).not.toContain('super_admin_lookup_unavailable');
+    expect(mocks.reviewChatConductReport).not.toHaveBeenCalled();
   });
 });

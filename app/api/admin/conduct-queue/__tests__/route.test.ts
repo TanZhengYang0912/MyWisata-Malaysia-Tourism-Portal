@@ -50,6 +50,31 @@ describe('GET /api/admin/conduct-queue', () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
+  it('returns a retryable error when authentication cannot be verified', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: { name: 'AuthRetryableFetchError', status: 503 } });
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('QUEUE_UNAVAILABLE');
+    expect(JSON.stringify(body)).not.toContain('AuthRetryableFetchError');
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('returns a retryable safe error when the super-admin check cannot be read', async () => {
+    mocks.isSuperAdmin.mockRejectedValue(new Error('super_admin_lookup_unavailable'));
+
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('QUEUE_UNAVAILABLE');
+    expect(JSON.stringify(body)).not.toContain('super_admin_lookup_unavailable');
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.isSuperAdmin).toHaveBeenCalledWith(expect.anything(), 'admin-1', { throwOnLookupError: true });
+  });
+
   it.each([
     '?page=0',
     '?pageSize=10',

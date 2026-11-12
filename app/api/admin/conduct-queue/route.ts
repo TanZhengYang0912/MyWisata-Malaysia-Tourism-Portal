@@ -4,12 +4,27 @@ import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { conductQueueQuerySchema, getConductQueue } from '@/lib/moderation/conduct-queue';
 import { getRequestId } from '@/lib/request-id';
+import { getAuthenticatedUser } from '@/lib/auth/request-user';
 
 export async function GET(request: Request) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
-  if (!(await isSuperAdmin(supabase, user.id))) {
+  const authentication = await getAuthenticatedUser(supabase);
+  if (authentication.state === 'unauthenticated') return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  if (authentication.state === 'unavailable') {
+    const requestId = getRequestId(request);
+    console.error('[admin/conduct-queue] authentication check failed', { requestId });
+    return apiFail('QUEUE_UNAVAILABLE', 'Unable to verify your sign-in. Please retry.', 503, undefined, { requestId });
+  }
+  const { user } = authentication;
+  let canReviewConduct: boolean;
+  try {
+    canReviewConduct = await isSuperAdmin(supabase, user.id, { throwOnLookupError: true });
+  } catch {
+    const requestId = getRequestId(request);
+    console.error('[admin/conduct-queue] access check failed', { requestId });
+    return apiFail('QUEUE_UNAVAILABLE', 'Unable to verify review access. Please retry.', 503, undefined, { requestId });
+  }
+  if (!canReviewConduct) {
     return apiFail('FORBIDDEN', 'Conduct review is limited to super admins', 403);
   }
 

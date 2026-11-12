@@ -17,6 +17,7 @@ import { reportChatSchema } from '@/lib/validation/conduct-schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { createChatConductReport } from '@/lib/moderation/chat-conduct-reports';
 import { getRequestId } from '@/lib/request-id';
+import { getAuthenticatedUser } from '@/lib/auth/request-user';
 
 function safeErrorCode(error: unknown): string {
   if (!error || typeof error !== 'object' || !('code' in error)) return 'unknown';
@@ -32,8 +33,14 @@ function writeUnavailable(request: Request, errorCode: string) {
 
 export async function POST(request: Request) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  const authentication = await getAuthenticatedUser(supabase);
+  if (authentication.state === 'unauthenticated') return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  if (authentication.state === 'unavailable') {
+    const requestId = getRequestId(request);
+    console.error('[conduct/report] authentication check failed', { requestId });
+    return apiFail('READ_UNAVAILABLE', 'Unable to verify your sign-in. Check your connection and try again.', 503, undefined, { requestId });
+  }
+  const { user } = authentication;
 
   const parsed = await parseBody(request, reportChatSchema);
   if (!parsed.ok) return parsed.response;
@@ -82,7 +89,17 @@ export async function POST(request: Request) {
     if (ticketError) return apiFail('READ_UNAVAILABLE', 'Unable to verify this support request. Try again.', 503);
     if (!ticket) return apiFail('NOT_FOUND', 'Ticket not found', 404);
 
-    const isParticipant = ticket.user_id === user.id || (await isSuperAdmin(supabase, user.id));
+    let isTicketAdmin = false;
+    if (ticket.user_id !== user.id) {
+      try {
+        isTicketAdmin = await isSuperAdmin(supabase, user.id, { throwOnLookupError: true });
+      } catch {
+        const requestId = getRequestId(request);
+        console.error('[conduct/report] ticket access check failed', { requestId });
+        return apiFail('READ_UNAVAILABLE', 'Unable to verify access to this support request. Try again.', 503, undefined, { requestId });
+      }
+    }
+    const isParticipant = ticket.user_id === user.id || isTicketAdmin;
     if (!isParticipant) return apiFail('NOT_FOUND', 'Ticket not found', 404);
 
     partyAId = ticket.user_id;

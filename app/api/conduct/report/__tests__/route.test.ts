@@ -55,6 +55,18 @@ describe('POST /api/conduct/report', () => {
     expect(mocks.from).not.toHaveBeenCalled();
   });
 
+  it('returns a retryable error when authentication cannot be verified', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: { name: 'AuthRetryableFetchError', status: 503 } });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('READ_UNAVAILABLE');
+    expect(JSON.stringify(body)).not.toContain('AuthRetryableFetchError');
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
   it('rejects an invalid ticket id before querying', async () => {
     const invalidRequest = new Request('http://localhost/api/conduct/report', {
       method: 'POST',
@@ -145,6 +157,20 @@ describe('POST /api/conduct/report', () => {
     expect(forbidden.status).toBe(404);
     expect((await missing.json()).error.code).toBe('NOT_FOUND');
     expect((await forbidden.json()).error.code).toBe('NOT_FOUND');
+  });
+
+  it('returns a retryable read error when the non-owner admin check is unavailable', async () => {
+    mocks.from.mockReturnValue(query({ data: { id: ticketId, user_id: 'other-user', assigned_to: null }, error: null }));
+    mocks.isSuperAdmin.mockRejectedValue(new Error('super_admin_lookup_unavailable'));
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('READ_UNAVAILABLE');
+    expect(JSON.stringify(body)).not.toContain('super_admin_lookup_unavailable');
+    expect(mocks.createReport).not.toHaveBeenCalled();
+    expect(mocks.isSuperAdmin).toHaveBeenCalledWith(expect.anything(), ownerId, { throwOnLookupError: true });
   });
 
   it('does not return raw insert errors to the reporter', async () => {

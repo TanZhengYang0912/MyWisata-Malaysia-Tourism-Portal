@@ -29,6 +29,18 @@ beforeEach(() => {
 });
 
 describe('GET /api/admin/chat-conduct-reports', () => {
+  it('returns a retryable error when authentication cannot be verified', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: { name: 'AuthRetryableFetchError', status: 503 } });
+
+    const response = await GET(new Request('http://localhost/api/admin/chat-conduct-reports'));
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('QUEUE_UNAVAILABLE');
+    expect(JSON.stringify(body)).not.toContain('AuthRetryableFetchError');
+    expect(mocks.getConductQueue).not.toHaveBeenCalled();
+  });
+
   it('forces the compatibility list through the bounded reported-chat query', async () => {
     const response = await GET(new Request('http://localhost/api/admin/chat-conduct-reports'));
 
@@ -37,5 +49,17 @@ describe('GET /api/admin/chat-conduct-reports', () => {
       page: 1, pageSize: 15, query: '', reviewState: 'all', recordType: 'reported_chat',
     });
     await expect(response.json()).resolves.toMatchObject({ data: { items: [], total: 0, pageSize: 15 } });
+  });
+
+  it('returns a retryable safe error when the super-admin check cannot be read', async () => {
+    mocks.isSuperAdmin.mockRejectedValue(new Error('super_admin_lookup_unavailable'));
+
+    const response = await GET(new Request('http://localhost/api/admin/chat-conduct-reports'));
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('QUEUE_UNAVAILABLE');
+    expect(JSON.stringify(body)).not.toContain('super_admin_lookup_unavailable');
+    expect(mocks.getConductQueue).not.toHaveBeenCalled();
   });
 });
