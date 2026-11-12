@@ -816,3 +816,64 @@ test('mocked ticket read permission failure gives a path back to the ticket list
   await expect(page.getByRole('link', { name: 'My Tickets' })).toHaveAttribute('href', '/customer/support');
   await expect(page.getByRole('button', { name: 'Retry' })).toHaveCount(0);
 });
+
+test('mocked duplicate report is shown as already reported without offering another submission', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const ticketId = '6f1d1227-f1b4-4e73-a796-e06527d27c2a';
+  let reportAttempts = 0;
+
+  await context.route(`**/api/support/tickets/${ticketId}`, (route) => route.fulfill({ status: 200, json: { data: {
+    id: ticketId, viewerIsOwner: true, subject: 'Duplicate report test', body: 'Original request', category: 'general', status: 'open',
+    createdAt: '2026-04-01T00:00:00.000Z', resolvedAt: null, muted: false, replies: [], repliesCursor: null,
+  }, error: null } }));
+  await context.route(`**/api/support/tickets/${ticketId}/read`, (route) => route.fulfill({ status: 200, json: { data: { changed: false }, error: null } }));
+  await context.route(`**/api/support/drafts?surface=ticket_reply**`, (route) => route.fulfill({ status: 200, json: {
+    data: { body: '', version: 0 }, error: null,
+  } }));
+  await context.route('**/api/conduct/report', async (route) => {
+    reportAttempts += 1;
+    await route.fulfill({ status: 409, json: { error: { code: 'ALREADY_REPORTED' } } });
+  });
+
+  await page.goto(`/customer/support/${ticketId}`);
+  await page.getByRole('button', { name: 'Report this conversation' }).click();
+  await page.getByRole('textbox', { name: 'Reason (optional)' }).fill('This was already reported.');
+  await page.getByRole('button', { name: 'Submit report' }).click();
+
+  await expect(page.getByText('You have already reported this conversation.')).toBeVisible();
+  await expect(page.getByText('Reported', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Report this conversation' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Submit report' })).toHaveCount(0);
+  expect(reportAttempts).toBe(1);
+});
+
+test('mocked expired report session keeps the reason and links back to this ticket after sign-in', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const ticketId = 'e2ca2bc8-f421-48e5-9174-6678234600fd';
+  let reportAttempts = 0;
+
+  await context.route(`**/api/support/tickets/${ticketId}`, (route) => route.fulfill({ status: 200, json: { data: {
+    id: ticketId, viewerIsOwner: true, subject: 'Expired report session test', body: 'Original request', category: 'general', status: 'open',
+    createdAt: '2026-04-01T00:00:00.000Z', resolvedAt: null, muted: false, replies: [], repliesCursor: null,
+  }, error: null } }));
+  await context.route(`**/api/support/tickets/${ticketId}/read`, (route) => route.fulfill({ status: 200, json: { data: { changed: false }, error: null } }));
+  await context.route(`**/api/support/drafts?surface=ticket_reply**`, (route) => route.fulfill({ status: 200, json: {
+    data: { body: '', version: 0 }, error: null,
+  } }));
+  await context.route('**/api/conduct/report', async (route) => {
+    reportAttempts += 1;
+    await route.fulfill({ status: 401, json: { error: { code: 'UNAUTHORIZED' } } });
+  });
+
+  await page.goto(`/customer/support/${ticketId}`);
+  await page.getByRole('button', { name: 'Report this conversation' }).click();
+  const reason = page.getByRole('textbox', { name: 'Reason (optional)' });
+  await reason.fill('Please review this conversation.');
+  await page.getByRole('button', { name: 'Submit report' }).click();
+
+  await expect(page.getByRole('alert').filter({ hasText: 'Your session expired. Sign in to return to this support request.' })).toBeVisible();
+  await expect(reason).toHaveValue('Please review this conversation.');
+  await expect(page.getByRole('button', { name: 'Copy reason' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', `/login?next=%2Fcustomer%2Fsupport%2F${ticketId}`);
+  expect(reportAttempts).toBe(1);
+});
