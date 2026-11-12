@@ -103,6 +103,43 @@ describe('POST /api/chatbot/feedback ownership', () => {
     expect(mocks.tables.chatbot_feedback.update).toHaveBeenCalledWith({ helpful: false });
   });
 
+  it('skips the write when repeated feedback has no changes', async () => {
+    const feedback = feedbackQuery({ data: {
+      id: '33333333-3333-4333-8333-333333333333',
+      session_id: botMessage.session_id,
+      user_id: 'user-1',
+      helpful: true,
+      opened_ticket: false,
+    }, error: null }, { data: null, error: null });
+    mocks.tables.chatbot_feedback = feedback;
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    expect(feedback.update).not.toHaveBeenCalled();
+    expect(feedback.insert).not.toHaveBeenCalled();
+  });
+
+  it('merges a concurrent first feedback insert into the existing message row', async () => {
+    const feedback = feedbackQuery({ data: null, error: null }, { data: null, error: { code: '23505' } });
+    feedback.maybeSingle
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: {
+        id: '33333333-3333-4333-8333-333333333333',
+        session_id: botMessage.session_id,
+        user_id: 'user-1',
+        helpful: false,
+        opened_ticket: true,
+      }, error: null });
+    mocks.tables.chatbot_feedback = feedback;
+
+    const response = await POST(request({ helpful: true, openedTicket: false }));
+
+    expect(response.status).toBe(200);
+    expect(feedback.insert).toHaveBeenCalledTimes(1);
+    expect(feedback.update).toHaveBeenCalledWith({ helpful: true });
+  });
+
   it('does not expose database details when a feedback update fails', async () => {
     const builder = feedbackQuery({ data: {
       id: '33333333-3333-4333-8333-333333333333',

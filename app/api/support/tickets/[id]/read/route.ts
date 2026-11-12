@@ -8,7 +8,10 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-const readSchema = z.object({ lastDisplayedReplyId: z.string().uuid() }).strict();
+const readSchema = z.object({
+  surface: z.enum(['customer', 'admin']),
+  lastDisplayedReplyId: z.string().uuid(),
+}).strict();
 
 export async function PATCH(request: Request, { params }: Props) {
   const { id } = await params;
@@ -24,11 +27,13 @@ export async function PATCH(request: Request, { params }: Props) {
   if (ticketError) return apiFail('READ_UNAVAILABLE', 'Unable to update the ticket read status.', 503);
   if (!ticket) return apiFail('NOT_FOUND', 'Ticket not found', 404);
 
-  const isAdmin = await isSuperAdmin(supabase, user.id);
-  const isOwner = ticket.user_id === user.id;
-  if (!isAdmin && !isOwner) return apiFail('FORBIDDEN', 'Not your ticket', 403);
-  const incomingRole = isAdmin ? 'customer' : 'admin';
-  const column = isAdmin ? 'admin_last_read_at' : 'customer_last_read_at';
+  const isAdminSurface = parsed.data.surface === 'admin';
+  const canReadSurface = isAdminSurface
+    ? await isSuperAdmin(supabase, user.id)
+    : ticket.user_id === user.id;
+  if (!canReadSurface) return apiFail('FORBIDDEN', 'Not your ticket', 403);
+  const incomingRole = isAdminSurface ? 'customer' : 'admin';
+  const column = isAdminSurface ? 'admin_last_read_at' : 'customer_last_read_at';
   const { data: reply, error: replyError } = await service
     .from('support_ticket_replies')
     .select('id,created_at,sender_role')

@@ -2884,10 +2884,24 @@
       "allReviewed": "所有内容均已审核。",
       "noMatchingRecords": "没有符合这些筛选条件的行为记录。"
     },
+    "states": {
+      "loading": "正在加载行为记录…",
+      "updating": "正在更新结果…"
+    },
+    "errors": {
+      "load": "无法加载行为记录。请重试查看。",
+      "staleLoad": "无法刷新这些结果，当前显示最近一次加载的记录。",
+      "reviewFailed": "此记录未能更新。请重试并标记为已审核。",
+      "reviewSignIn": "登录状态已过期。请在新标签页登录，然后返回此处重试。",
+      "reviewNotFound": "此记录已不可用。请刷新结果后再继续。",
+      "alreadyReviewed": "此记录已审核，队列已刷新。"
+    },
     "actions": {
       "viewLog": "查看记录",
       "marking": "标记中…",
       "markReviewed": "标记为已审核",
+      "retry": "重试",
+      "signIn": "登录",
       "reviewed": "已审核"
     },
     "dialogs": {

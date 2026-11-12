@@ -327,6 +327,271 @@ test('mocked ticket remains unread while its browser tab is hidden', async ({ pa
   await expect.poll(() => readAttempts).toBe(1);
 });
 
+test('mocked reopen reuses the saved operation after a lost response and intervening close', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const ticketId = '2b96d06d-2a34-4a21-8e34-19d365ba0b91';
+  const operationKey = `mw_support_reopen_operation:${customerUser.id}:${ticketId}`;
+  const operationIds: string[] = [];
+  let ticketStatus: 'closed' | 'in_progress' = 'closed';
+  let reopenAttempts = 0;
+
+  await context.route(`**/api/support/tickets/${ticketId}`, (route) => route.fulfill({ status: 200, json: { data: {
+    id: ticketId,
+    viewerIsOwner: true,
+    subject: 'Reopen recovery test',
+    body: 'Please check this resolved request.',
+    category: 'general',
+    status: ticketStatus,
+    createdAt: '2026-04-01T00:00:00.000Z',
+    resolvedAt: '2026-04-01T01:00:00.000Z',
+    muted: false,
+    replies: [],
+    repliesCursor: null,
+  }, error: null } }));
+  await context.route(`**/api/support/tickets/${ticketId}/reopen`, async (route) => {
+    const request = route.request();
+    operationIds.push(String(request.postDataJSON()?.operationId ?? ''));
+    reopenAttempts += 1;
+    if (reopenAttempts === 1) {
+      ticketStatus = 'in_progress';
+      await route.fulfill({ status: 503, json: { data: null, error: { code: 'WRITE_UNAVAILABLE' } } });
+      return;
+    }
+    if (reopenAttempts === 3) {
+      await route.fulfill({ status: 200, json: { data: {
+        id: 'another-ticket', status: 'in_progress', changed: true, replayed: false,
+      }, error: null } });
+      return;
+    }
+    ticketStatus = 'closed';
+    await route.fulfill({ status: 200, json: { data: {
+      id: ticketId, status: 'in_progress', changed: true, replayed: true,
+    }, error: null } });
+  });
+  await context.route(`**/api/support/drafts?surface=ticket_reply**`, (route) => route.fulfill({ status: 200, json: {
+    data: { body: '', version: 0 }, error: null,
+  } }));
+
+  await page.goto(`/customer/support/${ticketId}`);
+  await page.getByRole('button', { name: 'Reopen' }).click();
+  await expect(page.locator('[role="alert"]').filter({ hasText: 'The result is not confirmed yet.' })).toBeVisible();
+  const savedOperationId = await page.evaluate((key) => localStorage.getItem(key), operationKey);
+  expect(savedOperationId).toMatch(/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i);
+
+  ticketStatus = 'closed';
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Reopen' })).toBeVisible();
+  await page.getByRole('button', { name: 'Reopen' }).click();
+  await expect(page.getByText('This reopen request was already processed. The current ticket status is shown below.')).toBeVisible();
+  await expect(page.getByText('Closed', { exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), operationKey)).toBeNull();
+
+  await page.getByRole('button', { name: 'Reopen' }).click();
+  await expect(page.locator('[role="alert"]').filter({ hasText: 'The result is not confirmed yet.' })).toBeVisible();
+  expect(operationIds[0]).toBe(savedOperationId);
+  expect(operationIds[1]).toBe(savedOperationId);
+  expect(operationIds[2]).not.toBe(savedOperationId);
+  await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), operationKey)).toBe(operationIds[2]);
+});
+
+test('mocked reply keeps one operation across refresh and retries saved-draft cleanup safely', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const ticketId = '55f3209b-56aa-43c3-b6e5-f97d57400855';
+  const operationKey = `mw_support_reply_operation:${customerUser.id}:${ticketId}`;
+  const replyText = 'Please check the booking confirmation.';
+  const operationIds: string[] = [];
+  let savedDraft: { body: string; version: number } | null = null;
+  let committedReply = false;
+  let replyAttempts = 0;
+  let draftDeleteAttempts = 0;
+
+  await context.route(`**/api/support/tickets/${ticketId}`, (route) => route.fulfill({ status: 200, json: { data: {
+    id: ticketId, viewerIsOwner: true, subject: 'Reply recovery test', body: 'Please confirm this booking.', category: 'general', status: 'open',
+    createdAt: '2026-04-01T00:00:00.000Z', resolvedAt: null, muted: false,
+    replies: committedReply ? [{
+      id: '00000000-0000-4000-8000-000000000055', is_mine: true, sender_role: 'customer', body: replyText,
+      created_at: '2026-04-01T00:01:00.000Z', attachment_type: null,
+    }] : [],
+    repliesCursor: null,
+  }, error: null } }));
+  await context.route(`**/api/support/tickets/${ticketId}/read`, (route) => route.fulfill({
+    status: 200, json: { data: { changed: false }, error: null },
+  }));
+  await context.route('**/api/support/drafts**', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, json: { data: savedDraft ?? { body: '', version: 0 }, error: null } });
+      return;
+    }
+    if (route.request().method() === 'PUT') {
+      const input = route.request().postDataJSON() as { body: string };
+      savedDraft = { body: input.body, version: 1 };
+      await route.fulfill({ status: 200, json: { data: { version: 1, changed: true }, error: null } });
+      return;
+    }
+    if (route.request().method() === 'DELETE') {
+      draftDeleteAttempts += 1;
+      if (draftDeleteAttempts === 1) {
+        await route.fulfill({ status: 503, json: { data: null, error: { code: 'WRITE_UNAVAILABLE' } } });
+        return;
+      }
+      savedDraft = null;
+      await route.fulfill({ status: 200, json: { data: { cleared: true }, error: null } });
+      return;
+    }
+    await route.fulfill({ status: 405, json: { data: null, error: { code: 'METHOD_NOT_ALLOWED' } } });
+  });
+  await context.route(`**/api/support/tickets/${ticketId}/replies`, async (route) => {
+    const payload = route.request().postDataJSON() as { body: string; operationId: string };
+    operationIds.push(payload.operationId);
+    replyAttempts += 1;
+    if (replyAttempts === 1) {
+      committedReply = true;
+      await route.fulfill({ status: 503, json: { data: null, error: { code: 'WRITE_UNAVAILABLE' } } });
+      return;
+    }
+    await route.fulfill({ status: 200, json: { data: {
+      id: '00000000-0000-4000-8000-000000000055', senderId: customerUser.id, senderRole: 'customer',
+      body: payload.body, createdAt: '2026-04-01T00:01:00.000Z', newStatus: 'open',
+    }, error: null } });
+  });
+
+  await page.goto(`/customer/support/${ticketId}`);
+  const reply = page.getByRole('textbox', { name: 'Reply' });
+  await reply.fill(replyText);
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await expect.poll(() => savedDraft?.body).toBe(replyText);
+  await reply.press('Enter');
+  await expect(page.locator('[role="alert"]').filter({ hasText: 'The result is not confirmed yet.' })).toBeVisible();
+  const firstOperationId = await page.evaluate((key) => sessionStorage.getItem(key), operationKey);
+  expect(firstOperationId).toMatch(/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i);
+
+  await page.reload();
+  await expect(page.getByRole('textbox', { name: 'Reply' })).toHaveValue(replyText);
+  await page.getByRole('textbox', { name: 'Reply' }).press('Enter');
+  await expect(page.locator('[role="status"]').filter({ hasText: 'Reply sent, but its saved draft could not be cleared.' })).toBeVisible();
+  expect(await page.evaluate((key) => sessionStorage.getItem(key), operationKey)).toBe(firstOperationId);
+
+  await page.reload();
+  await expect(page.getByRole('textbox', { name: 'Reply' })).toHaveValue(replyText);
+  await page.getByRole('textbox', { name: 'Reply' }).press('Enter');
+  await expect(page.locator('[role="status"]').filter({ hasText: 'Reply sent.' })).toBeVisible();
+  await expect.poll(() => page.evaluate((key) => sessionStorage.getItem(key), operationKey)).toBeNull();
+  expect(replyAttempts).toBe(3);
+  expect(operationIds).toEqual([firstOperationId, firstOperationId, firstOperationId]);
+  expect(committedReply).toBe(true);
+  expect(draftDeleteAttempts).toBe(2);
+});
+
+test('mocked reply conflict requires review before using a new operation', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const ticketId = 'a4f90852-c232-439a-bfc7-dd8b30e2e408';
+  const operationKey = `mw_support_reply_operation:${customerUser.id}:${ticketId}`;
+  const oldOperationId = '11111111-1111-4111-8111-111111111111';
+  const revisedReply = 'A revised reply from another saved draft. Updated.';
+  const operationIds: string[] = [];
+  let replyAttempts = 0;
+
+  await page.addInitScript(({ key, operationId }) => sessionStorage.setItem(key, operationId), { key: operationKey, operationId: oldOperationId });
+  await context.route(`**/api/support/tickets/${ticketId}`, (route) => route.fulfill({ status: 200, json: { data: {
+    id: ticketId, viewerIsOwner: true, subject: 'Reply conflict test', body: 'Original request', category: 'general', status: 'open',
+    createdAt: '2026-04-01T00:00:00.000Z', resolvedAt: null, muted: false, replies: [], repliesCursor: null,
+  }, error: null } }));
+  await context.route(`**/api/support/tickets/${ticketId}/read`, (route) => route.fulfill({ status: 200, json: { data: { changed: false }, error: null } }));
+  await context.route('**/api/support/drafts?surface=ticket_reply**', (route) => route.fulfill({
+    status: 200, json: { data: { body: 'A revised reply from another saved draft.', version: 2 }, error: null },
+  }));
+  await context.route(`**/api/support/tickets/${ticketId}/replies`, async (route) => {
+    const payload = route.request().postDataJSON() as { operationId: string };
+    operationIds.push(payload.operationId);
+    replyAttempts += 1;
+    if (replyAttempts === 1) {
+      await route.fulfill({ status: 409, json: { data: null, error: { code: 'OPERATION_CONFLICT' } } });
+      return;
+    }
+    await route.fulfill({ status: 201, json: { data: {
+      id: '00000000-0000-4000-8000-000000000056', senderId: customerUser.id, senderRole: 'customer',
+      body: revisedReply, createdAt: '2026-04-01T00:01:00.000Z', newStatus: 'open',
+    }, error: null } });
+  });
+
+  await page.goto(`/customer/support/${ticketId}`);
+  const reply = page.getByRole('textbox', { name: 'Reply' });
+  await expect(reply).toHaveValue('A revised reply from another saved draft.');
+  await reply.fill(revisedReply);
+  await reply.press('Enter');
+  await expect(page.locator('[role="alert"]').filter({ hasText: 'An earlier reply used this request reference.' })).toBeVisible();
+  expect(replyAttempts).toBe(1);
+  expect(await page.evaluate((key) => sessionStorage.getItem(key), operationKey)).toBeNull();
+
+  await reply.press('Enter');
+  await expect(page.locator('[role="status"]').filter({ hasText: 'Reply sent.' })).toBeVisible();
+  expect(replyAttempts).toBe(2);
+  expect(operationIds[0]).toBe(oldOperationId);
+  expect(operationIds[1]).not.toBe(oldOperationId);
+});
+
+test('mocked reply does not send when the tab cannot persist its recovery reference', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const ticketId = 'c6765938-a8c5-48b3-a2ca-12730bf774ed';
+  const operationKey = `mw_support_reply_operation:${customerUser.id}:${ticketId}`;
+  let replyAttempts = 0;
+
+  await page.addInitScript((key) => {
+    const originalSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (candidateKey, value) {
+      if (candidateKey === key) throw new DOMException('blocked', 'QuotaExceededError');
+      originalSetItem.call(this, candidateKey, value);
+    };
+  }, operationKey);
+  await context.route(`**/api/support/tickets/${ticketId}`, (route) => route.fulfill({ status: 200, json: { data: {
+    id: ticketId, viewerIsOwner: true, subject: 'Reply storage test', body: 'Original request', category: 'general', status: 'open',
+    createdAt: '2026-04-01T00:00:00.000Z', resolvedAt: null, muted: false, replies: [], repliesCursor: null,
+  }, error: null } }));
+  await context.route(`**/api/support/tickets/${ticketId}/read`, (route) => route.fulfill({ status: 200, json: { data: { changed: false }, error: null } }));
+  await context.route('**/api/support/drafts?surface=ticket_reply**', (route) => route.fulfill({
+    status: 200, json: { data: { body: '', version: 0 }, error: null },
+  }));
+  await context.route(`**/api/support/tickets/${ticketId}/replies`, async (route) => {
+    replyAttempts += 1;
+    await route.fulfill({ status: 201, json: { data: { id: '00000000-0000-4000-8000-000000000057' }, error: null } });
+  });
+
+  await page.goto(`/customer/support/${ticketId}`);
+  const reply = page.getByRole('textbox', { name: 'Reply' });
+  await reply.fill('Please verify this request.');
+  await reply.press('Enter');
+  await expect(page.locator('[role="alert"]').filter({ hasText: 'This tab cannot save the reply reference' })).toBeVisible();
+  expect(replyAttempts).toBe(0);
+});
+
+test('mocked attachment waits for an unresolved text reply to be checked first', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const ticketId = '7ca7d57d-864b-42bc-afdf-1d7d0ec8bb8a';
+  const operationKey = `mw_support_reply_operation:${customerUser.id}:${ticketId}`;
+  let attachmentAttempts = 0;
+
+  await page.addInitScript((key) => sessionStorage.setItem(key, '22222222-2222-4222-8222-222222222222'), operationKey);
+  await context.route(`**/api/support/tickets/${ticketId}`, (route) => route.fulfill({ status: 200, json: { data: {
+    id: ticketId, viewerIsOwner: true, subject: 'Pending reply attachment test', body: 'Original request', category: 'general', status: 'open',
+    createdAt: '2026-04-01T00:00:00.000Z', resolvedAt: null, muted: false, replies: [], repliesCursor: null,
+  }, error: null } }));
+  await context.route(`**/api/support/tickets/${ticketId}/read`, (route) => route.fulfill({ status: 200, json: { data: { changed: false }, error: null } }));
+  await context.route('**/api/support/drafts?surface=ticket_reply**', (route) => route.fulfill({
+    status: 200, json: { data: { body: '', version: 0 }, error: null },
+  }));
+  await context.route(`**/api/support/tickets/${ticketId}/attachments`, async (route) => {
+    attachmentAttempts += 1;
+    await route.fulfill({ status: 201, json: { data: { id: '00000000-0000-4000-8000-000000000058' }, error: null } });
+  });
+
+  await page.goto(`/customer/support/${ticketId}`);
+  await page.locator('input[type="file"]').setInputFiles({ name: 'evidence.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') });
+  await expect(page.getByText('evidence.pdf')).toBeVisible();
+  await page.getByRole('textbox', { name: 'Reply' }).press('Enter');
+  await expect(page.locator('[role="alert"]').filter({ hasText: 'A reply still needs checking.' })).toBeVisible();
+  expect(attachmentAttempts).toBe(0);
+});
+
 test('mocked ticket read permission failure gives a path back to the ticket list', async ({ page, context }) => {
   test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
   const ticketId = '0fb163b9-7831-4a6b-9daf-13549e05346d';

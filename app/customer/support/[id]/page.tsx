@@ -42,6 +42,75 @@ interface TicketDetail {
 }
 
 const LOCKED_STATUSES = new Set(["resolved", "closed"]);
+const TICKET_STATUS_VALUES = new Set(["open", "in_progress", "resolved", "closed"]);
+const REOPEN_OPERATION_STORAGE_PREFIX = "mw_support_reopen_operation:";
+const REPLY_OPERATION_STORAGE_PREFIX = "mw_support_reply_operation:";
+const OPERATION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+interface ReplyOperation {
+  storageKey: string;
+  operationId: string;
+  submitted: boolean;
+  completed?: boolean;
+}
+
+function readReopenOperation(storageKey: string): string | null {
+  try {
+    const operationId = window.localStorage.getItem(storageKey);
+    return operationId && OPERATION_ID_PATTERN.test(operationId) ? operationId : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveReopenOperation(storageKey: string, operationId: string): boolean {
+  try {
+    window.localStorage.setItem(storageKey, operationId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function clearReopenOperation(storageKey: string) {
+  try {
+    window.localStorage.removeItem(storageKey);
+  } catch {
+    // A confirmed database result must not be hidden by cleanup failure.
+  }
+}
+
+function replyOperationStorageKey(ownerId: string, ticketId: string): string {
+  return `${REPLY_OPERATION_STORAGE_PREFIX}${ownerId}:${ticketId}`;
+}
+
+function readReplyOperation(storageKey: string): string | null {
+  try {
+    const operationId = window.sessionStorage.getItem(storageKey);
+    return operationId && OPERATION_ID_PATTERN.test(operationId) ? operationId : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveReplyOperation(storageKey: string, operationId: string): boolean {
+  try {
+    window.sessionStorage.setItem(storageKey, operationId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function clearReplyOperation(storageKey: string, operationId: string) {
+  try {
+    if (window.sessionStorage.getItem(storageKey) === operationId) {
+      window.sessionStorage.removeItem(storageKey);
+    }
+  } catch {
+    // The server result remains authoritative if browser cleanup is unavailable.
+  }
+}
 
 export default function CustomerTicketDetailPage() {
   const { t: tCustomer, i18n } = useTranslation("customer");
@@ -54,6 +123,7 @@ export default function CustomerTicketDetailPage() {
   const [ticketLoadError, setTicketLoadError] = useState<string | null>(null);
   const [readStatusErrorCode, setReadStatusErrorCode] = useState<string | null>(null);
   const currentTicketId = useRef(id);
+  const currentOwnerId = useRef(currentUser?.id ?? null);
   const ticketLoadGeneration = useRef(0);
   const ticketLoadController = useRef<AbortController | null>(null);
   const loadedTicketId = useRef<string | null>(null);
@@ -69,7 +139,7 @@ export default function CustomerTicketDetailPage() {
   const [savingReplyDraft, setSavingReplyDraft] = useState(false);
   const [replyDraftLoadFailed, setReplyDraftLoadFailed] = useState(false);
   const replyDraftInputTouched = useRef(false);
-  const [replyOperationId, setReplyOperationId] = useState<string | null>(null);
+  const [replyOperation, setReplyOperation] = useState<ReplyOperation | null>(null);
   const [attachmentOperationId, setAttachmentOperationId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [reopening, setReopening] = useState(false);
@@ -77,11 +147,34 @@ export default function CustomerTicketDetailPage() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const speech = useSpeechInput({ lang: resolveRecognitionLangFromLocale(i18n.resolvedLanguage), onTranscriptChange: setReply });
+  function updateReply(value: string) {
+    replyDraftInputTouched.current = true;
+    setReply(value);
+    setReplyDraftSaved(false);
+    setReplyDraftLoadFailed(false);
+    const storageKey = currentUser?.id ? replyOperationStorageKey(currentUser.id, id) : null;
+    let previous = replyOperation;
+    if (previous?.storageKey === storageKey && previous.completed) {
+      clearReplyOperation(previous.storageKey, previous.operationId);
+      previous = null;
+    }
+    setReplyOperation(previous?.storageKey === storageKey && previous.submitted
+      ? previous
+      : value.trim() && storageKey
+        ? { storageKey, operationId: crypto.randomUUID(), submitted: false }
+        : null);
+    if (pendingFile) setAttachmentOperationId(crypto.randomUUID());
+  }
+
+  const speech = useSpeechInput({ lang: resolveRecognitionLangFromLocale(i18n.resolvedLanguage), onTranscriptChange: updateReply });
 
   useLayoutEffect(() => {
     currentTicketId.current = id;
   }, [id]);
+
+  useLayoutEffect(() => {
+    currentOwnerId.current = currentUser?.id ?? null;
+  }, [currentUser?.id]);
 
   async function loadTicket(): Promise<TicketDetail | null> {
     const requestedTicketId = id;
@@ -154,7 +247,7 @@ export default function CustomerTicketDetailPage() {
       const response = await fetch(`/api/support/tickets/${displayedTicket.id}/read`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lastDisplayedReplyId: lastIncomingReply.id }),
+        body: JSON.stringify({ surface: "customer", lastDisplayedReplyId: lastIncomingReply.id }),
       });
       const result = await response.json().catch(() => ({})) as { data?: unknown; error?: { code?: string } };
       if (!response.ok || !result.data) {
@@ -297,8 +390,20 @@ export default function CustomerTicketDetailPage() {
     if (pendingFile) return sendAttachment();
     const text = reply.trim();
     if (!text || sending) return;
-    const operationId = replyOperationId ?? crypto.randomUUID();
-    setReplyOperationId(operationId);
+    if (!currentUser?.id) {
+      showFeedback("error", tCommon("chatbot.supportErrors.signIn"));
+      return;
+    }
+    const storageKey = replyOperationStorageKey(currentUser.id, id);
+    const currentOperation = replyOperation?.storageKey === storageKey ? replyOperation : null;
+    const operationId = currentOperation?.submitted && !currentOperation.completed
+      ? currentOperation.operationId
+      : readReplyOperation(storageKey) ?? currentOperation?.operationId ?? crypto.randomUUID();
+    if (!saveReplyOperation(storageKey, operationId)) {
+      showFeedback("error", tCommon("chatbot.supportErrors.replyRecoveryUnavailable"));
+      return;
+    }
+    setReplyOperation({ storageKey, operationId, submitted: true });
     setSending(true);
     try {
       const res = await fetch(`/api/support/tickets/${id}/replies`, {
@@ -306,16 +411,39 @@ export default function CustomerTicketDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: text, operationId }),
       });
+      const result = await res.json().catch(() => null) as { data?: { id?: unknown }; error?: { code?: string } } | null;
       if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: { code?: string } };
-        showFeedback("error", body.error?.code ? tCommon(`chatbot.supportErrors.${supportError(body.error.code).key}`) : tCustomer("ui.support.replyError"));
+        if (result?.error?.code === "OPERATION_CONFLICT") {
+          clearReplyOperation(storageKey, operationId);
+          setReplyOperation({ storageKey, operationId: crypto.randomUUID(), submitted: false });
+          await loadTicket();
+          showFeedback("error", tCustomer("ui.support.replyOperationConflict"));
+          return;
+        }
+        showFeedback("error", result?.error?.code ? tCommon(`chatbot.supportErrors.${supportError(result.error.code).key}`) : tCustomer("ui.support.replyError"));
+        return;
+      }
+      if (typeof result?.data?.id !== "string") {
+        showFeedback("error", tCommon("chatbot.supportErrors.checking"));
         return;
       }
       setReply("");
       setReplyDraftSaved(false);
-      setReplyOperationId(null);
-      void fetch(`/api/support/drafts?surface=ticket_reply&target=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => undefined);
-      showFeedback("success", tCustomer("ui.support.replySent"));
+      let draftCleared = false;
+      try {
+        const deleteResponse = await fetch(`/api/support/drafts?surface=ticket_reply&target=${encodeURIComponent(id)}`, { method: "DELETE" });
+        draftCleared = deleteResponse.ok;
+      } catch {
+        draftCleared = false;
+      }
+      if (draftCleared) {
+        clearReplyOperation(storageKey, operationId);
+        setReplyOperation(null);
+        showFeedback("success", tCustomer("ui.support.replySent"));
+      } else {
+        setReplyOperation({ storageKey, operationId, submitted: true, completed: true });
+        showFeedback("success", tCustomer("ui.support.replyDraftCleanupFailed"));
+      }
       await loadTicket();
     } catch {
       showFeedback("error", tCommon("chatbot.supportErrors.checking"));
@@ -334,6 +462,16 @@ export default function CustomerTicketDetailPage() {
 
   async function sendAttachment() {
     if (!pendingFile || uploading) return;
+    if (currentUser?.id && readReplyOperation(replyOperationStorageKey(currentUser.id, id))) {
+      setUploading(true);
+      try {
+        await loadTicket();
+        showFeedback("error", tCustomer("ui.support.replyPendingBeforeAttachment"));
+      } finally {
+        setUploading(false);
+      }
+      return;
+    }
     setUploading(true);
     try {
       const formData = new FormData();
@@ -351,7 +489,7 @@ export default function CustomerTicketDetailPage() {
       }
       setReply("");
       setReplyDraftSaved(false);
-      setReplyOperationId(null);
+      setReplyOperation(null);
       setPendingFile(null);
       setAttachmentOperationId(null);
       showFeedback("success", tCustomer("ui.support.replySent"));
@@ -381,22 +519,54 @@ export default function CustomerTicketDetailPage() {
   }
 
   async function reopenTicket() {
-    if (reopening) return;
+    if (reopening || !currentUser?.id) return;
+    const ownerId = currentUser.id;
+    const storageKey = `${REOPEN_OPERATION_STORAGE_PREFIX}${ownerId}:${id}`;
+    const storedOperationId = readReopenOperation(storageKey);
+    const operationId = storedOperationId ?? crypto.randomUUID();
+    if (!saveReopenOperation(storageKey, operationId)) {
+      showFeedback("error", tCommon("chatbot.supportErrors.reopenRecoveryUnavailable"));
+      return;
+    }
     setReopening(true);
     try {
-      const res = await fetch(`/api/support/tickets/${id}/reopen`, { method: "POST" });
+      const res = await fetch(`/api/support/tickets/${id}/reopen`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operationId }),
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: { code?: string } };
+        if (currentOwnerId.current !== ownerId || currentTicketId.current !== id) return;
+        const errorCode = body.error?.code;
+        if (res.status < 500 && errorCode !== "OPERATION_UNKNOWN" && errorCode !== "WRITE_UNAVAILABLE") {
+          clearReopenOperation(storageKey);
+        }
         const message = body.error?.code
           ? tCommon(`chatbot.supportErrors.${supportError(body.error.code).key}`)
           : tCustomer("ui.support.reopenError");
         showFeedback("error", message);
         return;
       }
-      showFeedback("success", tCustomer("ui.support.ticketReopened"));
+      if (currentOwnerId.current !== ownerId || currentTicketId.current !== id) return;
+      const body = await res.json().catch(() => null) as {
+        data?: { id?: unknown; status?: unknown; changed?: unknown; replayed?: unknown };
+      } | null;
+      if (!body?.data || body.data.id !== id
+          || typeof body.data.status !== "string" || !TICKET_STATUS_VALUES.has(body.data.status)
+          || typeof body.data.changed !== "boolean" || typeof body.data.replayed !== "boolean") {
+        showFeedback("error", tCommon("chatbot.supportErrors.checking"));
+        return;
+      }
+      clearReopenOperation(storageKey);
+      showFeedback("success", body.data.replayed === true
+        ? tCustomer("ui.support.ticketReopenReplayed")
+        : tCustomer("ui.support.ticketReopened"));
       await loadTicket();
     } catch {
-      showFeedback("error", tCommon("chatbot.supportErrors.checking"));
+      if (currentOwnerId.current === ownerId && currentTicketId.current === id) {
+        showFeedback("error", tCommon("chatbot.supportErrors.checking"));
+      }
     } finally {
       setReopening(false);
     }
@@ -481,7 +651,7 @@ export default function CustomerTicketDetailPage() {
           >
             {ticket.muted ? <BellOff size={14} /> : <Bell size={14} />}
           </button>
-          <ReportChatButton chatType="user_admin" threadId={ticket.id} />
+          <ReportChatButton chatType="user_admin" threadId={ticket.id} returnPath={`/customer/support/${ticket.id}`} />
         </div>
       </div>
       <p className="text-xs text-muted-foreground mb-6">
@@ -541,12 +711,7 @@ export default function CustomerTicketDetailPage() {
             <input
               value={reply}
               onChange={(e) => {
-                replyDraftInputTouched.current = true;
-                setReply(e.target.value);
-                setReplyDraftSaved(false);
-                setReplyDraftLoadFailed(false);
-                setReplyOperationId(e.target.value.trim() ? crypto.randomUUID() : null);
-                if (pendingFile) setAttachmentOperationId(crypto.randomUUID());
+                updateReply(e.target.value);
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.nativeEvent.isComposing) {

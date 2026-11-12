@@ -15,6 +15,7 @@
     "test:dev-stripe": "node --test scripts/lib/stripe-dev-env.test.mjs",
     "test:geonames-import": "node --test scripts/lib/geonames-cities.test.mjs",
     "import:geonames-cities": "node scripts/import-geonames-cities.mjs",
+    "test:support-concurrency-db": "node scripts/test-support-ticket-concurrency-db.mjs",
     "test:kyc-db:replay": "node scripts/replay-kyc-security-db.mjs",
     "seed:remote-demo": "REMOTE_DEMO_SEED=1 node scripts/seed-remote-demo.mjs",
     "seed:demo-vendor-accounts": "DEMO_VENDOR_ACCOUNTS=1 node scripts/seed-demo-vendor-accounts.mjs",

@@ -1,14 +1,13 @@
-// P4 — CLAUDE-SUPPORT-MUTE-REPORT.md Feature 4: reported-chat list.
-// GET /api/admin/chat-conduct-reports — every human-submitted chat report,
-// newest first. Super-admin only, matching the Flagged Conduct tab's gate
-// (spec: "keep it consistent: the panel is super-admin").
-
+// Compatibility list endpoint kept bounded for any existing external caller.
+// The conduct panel uses the unified /api/admin/conduct-queue endpoint.
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
-import { getChatConductReports } from '@/lib/moderation/chat-conduct-reports';
+import { conductQueueQuerySchema, getConductQueue } from '@/lib/moderation/conduct-queue';
+import { getRequestId } from '@/lib/request-id';
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
@@ -16,8 +15,28 @@ export async function GET() {
     return apiFail('FORBIDDEN', 'Chat report review is limited to super admins', 403);
   }
 
-  // chat_conduct_reports has an is_super_admin()-only SELECT policy
-  // (migration 20260812010000) — the cookie-aware client is enough here.
-  const reports = await getChatConductReports(supabase);
-  return apiOk(reports);
+  const params = new URL(request.url).searchParams;
+  const parsed = conductQueueQuerySchema.safeParse({
+    ...Object.fromEntries(params),
+    reviewState: params.get('reviewState') ?? 'all',
+    recordType: 'reported_chat',
+  });
+  if (!parsed.success) return apiFail('VALIDATION_FAILED', 'Invalid conduct queue filters', 422);
+
+  const result = await getConductQueue(createServiceClient(), user.id, parsed.data);
+  if (!result.ok) {
+    const requestId = getRequestId(request);
+    console.error('[admin/chat-conduct-reports] read failed', { requestId, errorCode: result.errorCode });
+    return apiFail('QUEUE_UNAVAILABLE', 'Unable to load chat reports. Please retry.', 503, undefined, { requestId });
+  }
+
+  const response = apiOk({
+    items: result.data.items.flatMap((item) => item.kind === 'reported_chat' ? [item.data] : []),
+    total: result.data.total,
+    page: result.data.page,
+    pageSize: result.data.pageSize,
+    totalPages: result.data.totalPages,
+  });
+  response.headers.set('Cache-Control', 'private, no-store');
+  return response;
 }

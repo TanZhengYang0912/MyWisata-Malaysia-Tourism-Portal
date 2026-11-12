@@ -2884,10 +2884,24 @@
       "allReviewed": "Everything has been reviewed.",
       "noMatchingRecords": "No conduct records match these filters."
     },
+    "states": {
+      "loading": "Loading conduct records…",
+      "updating": "Updating results…"
+    },
+    "errors": {
+      "load": "Conduct records could not be loaded. Retry to check them again.",
+      "staleLoad": "Could not refresh these results. Showing the last loaded records.",
+      "reviewFailed": "This record was not updated. Retry to mark it reviewed.",
+      "reviewSignIn": "Your session expired. Sign in in a new tab, then return here and retry.",
+      "reviewNotFound": "This record is no longer available. Refresh the results before continuing.",
+      "alreadyReviewed": "This record was already reviewed. The queue has been refreshed."
+    },
     "actions": {
       "viewLog": "View log",
       "marking": "Marking…",
       "markReviewed": "Mark reviewed",
+      "retry": "Retry",
+      "signIn": "Sign in",
       "reviewed": "Reviewed"
     },
     "dialogs": {

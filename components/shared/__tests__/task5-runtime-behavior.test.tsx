@@ -1,12 +1,13 @@
 import React, { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { TestElement, TestEvent, findOne, installTestDom, type TestDocument } from "./render-test-dom";
+import { TestElement, TestEvent, findElements, findOne, installTestDom, type TestDocument } from "./render-test-dom";
 
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
   useTranslation: vi.fn(),
   useAuth: vi.fn(),
+  showFeedback: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({ useTranslation: mocks.useTranslation }));
@@ -27,6 +28,7 @@ vi.mock("lucide-react", () => {
 vi.mock("@/components/ui/button", () => ({ Button: (props: React.ComponentProps<"button">) => <button {...props} /> }));
 vi.mock("@/components/utils", () => ({ cn: (...values: unknown[]) => values.filter(Boolean).join(" ") }));
 vi.mock("@/components/providers/auth", () => ({ useAuth: mocks.useAuth }));
+vi.mock("@/components/providers/action-feedback", () => ({ useActionFeedback: () => ({ showFeedback: mocks.showFeedback }) }));
 // support-chat.tsx (unread-count realtime) and use-chat-presence.ts (online
 // dot) both call this at module/hook scope — without a mock, the real
 // createBrowserClient throws immediately for missing env vars, before any
@@ -55,6 +57,7 @@ import { AdminSegmentedFilter } from "@/components/admin/segmented-filter";
 import { ChatbotWidget, chatbotSessionStorageKey, createBotMessage, resolveTicketSubject } from "@/components/shared/chatbot-widget";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { NotificationCenter } from "@/components/shared/notification-center";
+import { ReportChatButton } from "@/components/shared/report-chat-button";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { SupportChatProvider } from "@/components/providers/support-chat";
 
@@ -170,6 +173,7 @@ describe("Task 5 shared runtime behavior", () => {
 
   beforeEach(() => {
     mocks.fetch.mockReset();
+    mocks.showFeedback.mockReset();
     mocks.useTranslation.mockImplementation((namespace: string) => ({
       t: namespace === "admin" ? adminTranslate : commonTranslate,
       i18n: { resolvedLanguage: "en" },
@@ -871,5 +875,155 @@ describe("Task 5 shared runtime behavior", () => {
 
     await render(<AdminConfirmDialog open title="batchActions.approve" description="confirm.approve" confirmLabel="batchActions.approve" confirmationPhrase="CONFIRM" confirmationResetKey="reviewed-data-changed" onCancel={vi.fn()} onConfirm={onConfirm} />);
     expect(findButton("Approve translated").disabled).toBe(true);
+  });
+});
+
+describe("ReportChatButton failure recovery", () => {
+  beforeAll(async () => {
+    document = installTestDom();
+    ({ createRoot } = await import("react-dom/client"));
+  });
+
+  beforeEach(() => {
+    mocks.fetch.mockReset();
+    mocks.showFeedback.mockReset();
+    vi.stubGlobal("navigator", { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
+    mocks.useTranslation.mockImplementation(() => ({ t: commonTranslate, i18n: { resolvedLanguage: "en" } }));
+    vi.stubGlobal("fetch", mocks.fetch);
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container as unknown as Element);
+  });
+
+  afterEach(() => {
+    if (root) {
+      act(() => root?.unmount());
+      root = undefined;
+    }
+    document.body.removeChild(container);
+    vi.unstubAllGlobals();
+  });
+
+  it("treats an existing open report as reported instead of offering a futile retry", async () => {
+    mocks.fetch.mockResolvedValue({ ok: false, json: async () => ({ error: { code: "ALREADY_REPORTED" } }) });
+    await render(<ReportChatButton chatType="user_admin" threadId="ticket-1" returnPath="/customer/support/ticket-1" />);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "conductReport.reportConversation"));
+    await click(findButton("conductReport.submit"));
+
+    expect(container.textContent).toContain("conductReport.reported");
+    expect(findElements(container, (element) => element.tagName === "TEXTAREA")).toHaveLength(0);
+  });
+
+  it("keeps the reason and offers a return-to-ticket sign-in action after a 401", async () => {
+    const ticketId = "0192b643-7ac2-7f7a-a02c-bd64c018fdc7";
+    mocks.fetch.mockResolvedValue({ ok: false, json: async () => ({ error: { code: "UNAUTHORIZED" } }) });
+    await render(<ReportChatButton chatType="user_admin" threadId={ticketId} returnPath={`/customer/support/${ticketId}`} />);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "conductReport.reportConversation"));
+    const textarea = findOne(container, (element) => element.tagName === "TEXTAREA");
+    await act(async () => { setInputValue(textarea, "Please review this conversation."); });
+    await click(findButton("conductReport.submit"));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+
+    expect(container.textContent).toContain("conductReport.signInRequired");
+    expect(textarea.value).toBe("Please review this conversation.");
+    expect(findOne(container, (element) => element.tagName === "A" && element.getAttribute("href") === `/login?next=${encodeURIComponent(`/customer/support/${ticketId}`)}`)).toBeTruthy();
+    await click(findButton("conductReport.copyReason"));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("Please review this conversation.");
+    expect(container.textContent).toContain("conductReport.reasonCopied");
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+  });
+
+  it("preserves the selected admin ticket as the sign-in return destination", async () => {
+    const ticketId = "0192b643-7ac2-7f7a-a02c-bd64c018fdc7";
+    mocks.fetch.mockResolvedValue({ ok: false, json: async () => ({ error: { code: "UNAUTHORIZED" } }) });
+    await render(<ReportChatButton chatType="user_admin" threadId={ticketId} returnPath={`/admin/support?ticket=${ticketId}`} />);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "conductReport.reportConversation"));
+    await click(findButton("conductReport.submit"));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+
+    expect(findOne(container, (element) => element.tagName === "A" && element.getAttribute("href") === `/login?next=${encodeURIComponent(`/admin/support?ticket=${ticketId}`)}`)).toBeTruthy();
+  });
+
+  it("keeps an unknown write result from inviting an immediate duplicate submission", async () => {
+    mocks.fetch.mockRejectedValue(new Error("connection dropped after request"));
+    await render(<ReportChatButton chatType="user_admin" threadId="ticket-1" returnPath="/customer/support/ticket-1" />);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "conductReport.reportConversation"));
+    const textarea = findOne(container, (element) => element.tagName === "TEXTAREA");
+    await act(async () => { setInputValue(textarea, "Please review this conversation."); });
+    await click(findButton("conductReport.submit"));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+
+    expect(container.textContent).toContain("conductReport.submitResultUnknown");
+    expect(textarea.value).toBe("Please review this conversation.");
+    expect(findButton("conductReport.submit").disabled).toBe(true);
+    expect(findOne(container, (element) => element.tagName === "A" && element.getAttribute("href") === "/customer/support/ticket-1")).toBeTruthy();
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats a write-unavailable response as uncertain and blocks immediate resubmission", async () => {
+    mocks.fetch.mockResolvedValue({ ok: false, json: async () => ({ error: { code: "WRITE_UNAVAILABLE" } }) });
+    await render(<ReportChatButton chatType="user_admin" threadId="ticket-1" returnPath="/customer/support/ticket-1" />);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "conductReport.reportConversation"));
+    await click(findButton("conductReport.submit"));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+
+    expect(container.textContent).toContain("conductReport.submitResultUnknown");
+    expect(findButton("conductReport.submit").disabled).toBe(true);
+  });
+
+  it("keeps the reason available when the server cannot verify the conversation", async () => {
+    mocks.fetch.mockResolvedValue({ ok: false, json: async () => ({ error: { code: "READ_UNAVAILABLE" } }) });
+    await render(<ReportChatButton chatType="user_admin" threadId="ticket-1" returnPath="/customer/support/ticket-1" />);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "conductReport.reportConversation"));
+    const textarea = findOne(container, (element) => element.tagName === "TEXTAREA");
+    await act(async () => { setInputValue(textarea, "Keep this reason while I retry."); });
+    await click(findButton("conductReport.submit"));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+
+    expect(container.textContent).toContain("conductReport.readUnavailable");
+    expect(textarea.value).toBe("Keep this reason while I retry.");
+  });
+
+  it("sends only one request when submit is triggered twice in the same event turn", async () => {
+    const requestResolution: { resolve?: (value: Response) => void } = {};
+    mocks.fetch.mockImplementation(() => new Promise<Response>((resolve) => { requestResolution.resolve = resolve; }));
+    await render(<ReportChatButton chatType="user_admin" threadId="ticket-1" returnPath="/customer/support/ticket-1" />);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "conductReport.reportConversation"));
+    await act(async () => { setInputValue(findOne(container, (element) => element.tagName === "TEXTAREA"), "Please review this conversation."); });
+    const submit = findButton("conductReport.submit");
+
+    await act(async () => {
+      submit.dispatchEvent(new TestEvent("click", { bubbles: true }));
+      submit.dispatchEvent(new TestEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      requestResolution.resolve?.({ ok: true, json: async () => ({ data: { id: "report-1" } }) } as Response);
+      await Promise.resolve();
+    });
+  });
+
+  it("does not let cancel imply that an in-flight report request was withdrawn", async () => {
+    const requestResolution: { resolve?: (value: Response) => void } = {};
+    mocks.fetch.mockImplementation(() => new Promise<Response>((resolve) => { requestResolution.resolve = resolve; }));
+    await render(<ReportChatButton chatType="user_admin" threadId="ticket-1" returnPath="/customer/support/ticket-1" />);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "conductReport.reportConversation"));
+    const textarea = findOne(container, (element) => element.tagName === "TEXTAREA");
+    await act(async () => { setInputValue(textarea, "Please review this conversation."); });
+    await click(findButton("conductReport.submit"));
+
+    expect(findButton("conductReport.submit").disabled).toBe(true);
+    expect(findButton("actions.cancel").disabled).toBe(true);
+    expect(findOne(container, (element) => element.tagName === "TEXTAREA")).toBeTruthy();
+
+    await act(async () => {
+      requestResolution.resolve?.({ ok: true, json: async () => ({ data: { id: "report-1" } }) } as Response);
+      await Promise.resolve();
+    });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(container.textContent).toContain("conductReport.reported");
   });
 });

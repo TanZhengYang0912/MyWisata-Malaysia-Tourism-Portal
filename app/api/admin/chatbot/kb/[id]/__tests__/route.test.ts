@@ -48,6 +48,18 @@ describe('PATCH /api/admin/chatbot/kb/[id]', () => {
     }));
   });
 
+  it('returns an unchanged revision result without client-side writes or embedding work', async () => {
+    mocks.rpc.mockResolvedValue({ data: { documentId, revisionId: null, changed: false, contentVersion: 3 }, error: null });
+
+    const response = await PATCH(request(versionedDraft), context());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data).toMatchObject({ changed: false, contentVersion: 3 });
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
   it('refuses direct activation and requires the publish flow', async () => {
     const response = await PATCH(request({ isActive: true }), context());
     const body = await response.json();

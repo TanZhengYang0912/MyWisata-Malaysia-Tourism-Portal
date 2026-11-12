@@ -53,4 +53,13 @@ describe('POST /api/support/status ownership', () => {
     expect((await POST(request({ kind: 'kyc', userId: 'customer-a' }))).status).toBe(422);
     expect(mocks.from).not.toHaveBeenCalled();
   });
+
+  it('rejects a caller-supplied owner even when the requested record kind is valid', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'customer-a' } }, error: null });
+
+    const response = await POST(request({ kind: 'orders', userId: 'customer-b' }));
+
+    expect(response.status).toBe(422);
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
 });

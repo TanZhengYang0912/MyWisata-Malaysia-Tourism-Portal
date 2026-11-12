@@ -247,7 +247,7 @@ function AdminSupportContent() {
         const readResponse = await fetch(`/api/support/tickets/${openTicketId}/read`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lastDisplayedReplyId: lastDisplayedReply.id }),
+          body: JSON.stringify({ surface: "admin", lastDisplayedReplyId: lastDisplayedReply.id }),
         });
         if (readResponse.ok) setTickets((prev) => prev?.map((t) => (t.id === openTicketId ? { ...t, unread: false } : t)) ?? null);
       }
@@ -607,7 +607,7 @@ function AdminSupportContent() {
             <div className="flex flex-col gap-2 pr-6 sm:flex-row sm:items-center sm:justify-between">
               <DialogTitle className="break-words">{detail?.subject}</DialogTitle>
               <div className="flex flex-wrap items-center gap-2">
-                {detail && openTicketId && <ReportChatButton chatType="user_admin" threadId={openTicketId} />}
+                {detail && openTicketId && <ReportChatButton chatType="user_admin" threadId={openTicketId} returnPath={`/admin/support?ticket=${openTicketId}`} />}
                 {detail && detail.status !== "resolved" && (
                   <Button
                     size="sm"

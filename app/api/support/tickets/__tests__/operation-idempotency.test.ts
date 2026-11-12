@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), rpc: vi.fn(), classify: vi.fn(), createTicketFromHandoff: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), rpc: vi.fn(), classify: vi.fn(), createTicketFromHandoff: vi.fn(), reserveAiQuota: vi.fn() }));
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser } })) }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: mocks.from, rpc: mocks.rpc }) }));
 vi.mock('@/lib/moderation/clean', () => ({ cleanUserContent: vi.fn(async (text: string) => ({ display: text, original: text, hadSlur: false, hadPII: false })) }));
 vi.mock('@/lib/moderation/flags', () => ({ logModerationFlag: vi.fn() }));
 vi.mock('@/lib/chatbot/classify-ai', () => ({ classifyTicketSmart: mocks.classify }));
-vi.mock('@/lib/rate-limit/ai', () => ({ reserveAiQuota: vi.fn(async () => false) }));
+vi.mock('@/lib/rate-limit/ai', () => ({ reserveAiQuota: mocks.reserveAiQuota }));
 vi.mock('@/lib/support/handoff-token', () => ({ createTicketFromHandoff: mocks.createTicketFromHandoff }));
 vi.mock('@/lib/support/unread', () => ({ getLatestReplyTimestamps: vi.fn(), isUnread: vi.fn() }));
 
@@ -28,6 +28,7 @@ describe('POST /api/support/tickets operation idempotency', () => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'owner-1' } }, error: null });
     mocks.classify.mockResolvedValue({ category: 'general', method: 'keyword' });
+    mocks.reserveAiQuota.mockResolvedValue(false);
     mocks.createTicketFromHandoff.mockResolvedValue({ data: { id: 'ticket-existing', category: 'booking', created: false }, error: null });
   });
 
@@ -36,6 +37,7 @@ describe('POST /api/support/tickets operation idempotency', () => {
 
     expect(response.status).toBe(200);
     expect(mocks.createTicketFromHandoff).toHaveBeenCalledWith(expect.objectContaining({ ownerId: 'owner-1', token: 'test-handoff-token' }));
+    expect(mocks.reserveAiQuota).not.toHaveBeenCalled();
   });
 
   it('requires explicit confirmation and passes normalized content and its operation hash to the transaction', async () => {
@@ -61,5 +63,17 @@ describe('POST /api/support/tickets operation idempotency', () => {
 
     expect(response.status).toBe(409);
     expect(mocks.createTicketFromHandoff).toHaveBeenCalledTimes(1);
+  });
+
+  it('still creates a confirmed handoff ticket with keyword classification when AI quota is exhausted', async () => {
+    mocks.createTicketFromHandoff.mockResolvedValue({ data: { id: 'ticket-new', category: 'general', created: true }, error: null });
+
+    const response = await POST(request({ operationId: 'd3277304-74a2-4fc8-9ba7-301fce273dd7' }));
+
+    expect(response.status).toBe(201);
+    expect(mocks.createTicketFromHandoff).toHaveBeenCalledTimes(1);
+    expect(mocks.reserveAiQuota).toHaveBeenCalledWith(expect.any(Request), 'ticket_classification', 'owner-1');
+    expect(mocks.classify).toHaveBeenCalledTimes(1);
+    expect(mocks.classify).toHaveBeenCalledWith('Help with my order', 'Please check my order', false);
   });
 });

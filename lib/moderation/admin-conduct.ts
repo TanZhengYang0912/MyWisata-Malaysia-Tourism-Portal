@@ -40,57 +40,9 @@ export async function logAdminConductFlagIfNeeded(service: SupabaseClient, input
   if (error) console.error('[admin-conduct] failed to log flag', source, error.message);
 }
 
-export interface AdminConductFlagRow {
-  id: string;
-  flaggedAdminId: string;
-  flaggedAdminName: string;
-  targetUserId: string | null;
-  targetUserName: string | null;
-  source: AdminConductSource;
-  sourceRefId: string;
-  originalText: string;
-  severity: 'medium' | 'high';
-  status: 'open' | 'reviewed';
-  createdAt: string;
-  reviewedAt: string | null;
-  reviewedBy: string | null;
-}
+export type ConductReviewResult = 'reviewed' | 'already_reviewed' | 'not_found';
 
-function userDisplayName(row: { full_name: string | null; email: string } | undefined): string {
-  return row?.full_name ?? row?.email ?? 'Unknown user';
-}
-
-export async function getAdminConductFlags(service: SupabaseClient): Promise<AdminConductFlagRow[]> {
-  const { data: flagsData } = await service
-    .from('admin_conduct_flags')
-    .select('id, flagged_admin_id, target_user_id, source, source_ref_id, original_text, severity, status, created_at, reviewed_at, reviewed_by')
-    .order('created_at', { ascending: false });
-  const flags = flagsData ?? [];
-
-  const userIds = [...new Set(flags.flatMap((f) => [f.flagged_admin_id, f.target_user_id]).filter((id): id is string => Boolean(id)))];
-  const { data: usersData } = userIds.length
-    ? await service.from('users').select('id, full_name, email').in('id', userIds)
-    : { data: [] as { id: string; full_name: string | null; email: string }[] };
-  const usersById = new Map((usersData ?? []).map((u) => [u.id, u]));
-
-  return flags.map((f) => ({
-    id: f.id,
-    flaggedAdminId: f.flagged_admin_id,
-    flaggedAdminName: userDisplayName(usersById.get(f.flagged_admin_id)),
-    targetUserId: f.target_user_id,
-    targetUserName: f.target_user_id ? userDisplayName(usersById.get(f.target_user_id)) : null,
-    source: f.source,
-    sourceRefId: f.source_ref_id,
-    originalText: f.original_text,
-    severity: f.severity,
-    status: f.status,
-    createdAt: f.created_at,
-    reviewedAt: f.reviewed_at,
-    reviewedBy: f.reviewed_by,
-  }));
-}
-
-export async function reviewAdminConductFlag(service: SupabaseClient, id: string, reviewerId: string): Promise<boolean> {
+export async function reviewAdminConductFlag(service: SupabaseClient, id: string, reviewerId: string): Promise<ConductReviewResult> {
   const { data, error } = await service
     .from('admin_conduct_flags')
     .update({ status: 'reviewed', reviewed_at: new Date().toISOString(), reviewed_by: reviewerId })
@@ -99,5 +51,13 @@ export async function reviewAdminConductFlag(service: SupabaseClient, id: string
     .select('id')
     .maybeSingle();
   if (error) throw error;
-  return Boolean(data);
+  if (data) return 'reviewed';
+
+  const { data: existing, error: readError } = await service
+    .from('admin_conduct_flags')
+    .select('status')
+    .eq('id', id)
+    .maybeSingle();
+  if (readError) throw readError;
+  return existing?.status === 'reviewed' ? 'already_reviewed' : 'not_found';
 }

@@ -21,13 +21,13 @@ export async function PATCH(_request: Request, { params }: Props) {
   }
 
   const service = createServiceClient();
-  let reviewed: boolean;
+  let reviewed: 'reviewed' | 'already_reviewed' | 'not_found';
   try {
     reviewed = await reviewChatConductReport(service, id, user.id);
   } catch {
     return apiFail('DB_ERROR', 'Unable to update chat report', 500);
   }
-  if (!reviewed) return apiFail('NOT_FOUND', 'Chat report not found or already reviewed', 404);
+  if (reviewed === 'not_found') return apiFail('NOT_FOUND', 'Chat report not found', 404);
 
-  return apiOk({ id, status: 'reviewed' });
+  return apiOk({ id, status: 'reviewed', alreadyReviewed: reviewed === 'already_reviewed' });
 }

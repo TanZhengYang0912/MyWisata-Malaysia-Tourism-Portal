@@ -78,6 +78,16 @@ describe('answerQuestion with several questions', () => {
     expect(result).toMatchObject({ kbMatched: false, canEscalate: true });
   });
 
+  it('does not invent a live stock or payment-configuration answer when no reviewed source matches', async () => {
+    mocks.retrieve.mockResolvedValue([]);
+
+    const result = await answerQuestion('The tour is sold out. Can you reserve a place, and is the payment setup broken?');
+
+    expect(mocks.generateAnswer).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ kbMatched: false, canEscalate: true, usedKb: [] });
+    expect(result.answer).not.toMatch(/reserve|payment setup|available/i);
+  });
+
   it('keyword fallback answers each question once', async () => {
     delete process.env.LLM_API_KEY;
     mocks.kbRows = [

@@ -170,14 +170,14 @@ describe('shared APIs do not give approver a staff override', () => {
   });
 
   it.each([
-    ['support/tickets/[id]', 'GET', {}],
-    ['support/tickets/[id]/read', 'PATCH', { lastDisplayedReplyId: id }],
-    ['support/tickets/[id]/replies', 'POST', { body: 'A valid ticket reply.', operationId: id }],
-    ['support/tickets/[id]/attachments', 'POST', {}],
-    ['conduct/report', 'POST', { chatType: 'user_admin', threadId: id, reason: 'Please review this ticket' }],
-    ['vendor/share-analytics', 'GET', {}],
-  ] as [string, string, Record<string, unknown>][])('%s %s denies access to someone else’s resource', async (path, method, body) => {
-    expect(await call(path, method, body)).toMatchObject({ status: 403 });
+    ['support/tickets/[id]', 'GET', {}, 403],
+    ['support/tickets/[id]/read', 'PATCH', { surface: 'customer', lastDisplayedReplyId: id }, 403],
+    ['support/tickets/[id]/replies', 'POST', { body: 'A valid ticket reply.', operationId: id }, 403],
+    ['support/tickets/[id]/attachments', 'POST', {}, 403],
+    ['conduct/report', 'POST', { chatType: 'user_admin', threadId: id, reason: 'Please review this ticket' }, 404],
+    ['vendor/share-analytics', 'GET', {}, 403],
+  ] as [string, string, Record<string, unknown>, number][])('%s %s denies access to someone else’s resource', async (path, method, body, expectedStatus) => {
+    expect(await call(path, method, body)).toMatchObject({ status: expectedStatus });
     expect(mocks.storage).not.toHaveBeenCalled();
     expect(mocks.serviceFrom.mock.calls.every(([table]) => ['support_tickets', 'moderation_custom_words'].includes(String(table)))).toBe(true);
   });
@@ -202,7 +202,7 @@ describe('shared APIs do not give approver a staff override', () => {
       if (table === 'support_ticket_replies') return incomingReply;
       throw reachedBusinessData;
     });
-    expect(await call('support/tickets/[id]/read', 'PATCH', { lastDisplayedReplyId: id })).toMatchObject({ status: 200 });
+    expect(await call('support/tickets/[id]/read', 'PATCH', { surface: 'customer', lastDisplayedReplyId: id })).toMatchObject({ status: 200 });
     expect(update).toHaveBeenCalledWith({ customer_last_read_at: expect.any(String) });
   });
 

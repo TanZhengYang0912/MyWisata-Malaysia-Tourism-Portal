@@ -2884,10 +2884,24 @@
       "allReviewed": "Semuanya telah disemak.",
       "noMatchingRecords": "Tiada rekod kelakuan sepadan dengan penapis ini."
     },
+    "states": {
+      "loading": "Memuatkan rekod kelakuan…",
+      "updating": "Mengemas kini hasil…"
+    },
+    "errors": {
+      "load": "Rekod kelakuan tidak dapat dimuatkan. Cuba lagi untuk menyemaknya.",
+      "staleLoad": "Hasil ini tidak dapat dikemas kini. Rekod terakhir yang dimuatkan masih dipaparkan.",
+      "reviewFailed": "Rekod ini tidak dikemas kini. Cuba lagi untuk menandainya telah disemak.",
+      "reviewSignIn": "Sesi anda telah tamat. Log masuk dalam tab baharu, kemudian kembali ke sini dan cuba lagi.",
+      "reviewNotFound": "Rekod ini tidak lagi tersedia. Muat semula hasil sebelum meneruskan.",
+      "alreadyReviewed": "Rekod ini telah disemak. Senarai telah dikemas kini."
+    },
     "actions": {
       "viewLog": "Lihat log",
       "marking": "Menanda…",
       "markReviewed": "Tanda telah disemak",
+      "retry": "Cuba lagi",
+      "signIn": "Log masuk",
       "reviewed": "Disemak"
     },
     "dialogs": {

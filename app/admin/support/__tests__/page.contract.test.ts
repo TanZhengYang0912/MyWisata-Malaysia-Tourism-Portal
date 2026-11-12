@@ -25,6 +25,7 @@ describe('support ticket pagination', () => {
     expect(pageSource).toContain('setStatusFilter(value); setTicketPage(1); setSelectedIds(new Set());');
     expect(pageSource).toContain('return () => controller.abort();');
     expect(pageSource).toContain('setDebouncedSearch(searchQuery.trim()), 250');
+    expect(pageSource).toContain('surface: "admin", lastDisplayedReplyId: lastDisplayedReply.id');
   });
 
   it('keeps queue failures retryable instead of showing an empty queue', () => {

@@ -50,6 +50,7 @@ let container: HTMLElement;
 let resolveSlowTicket!: (response: Response) => void;
 let slowTicketRequest: Promise<Response>;
 const readRequests: string[] = [];
+const readRequestBodies: string[] = [];
 const ticketReads: string[] = [];
 
 function getLinkHrefs() {
@@ -76,13 +77,15 @@ beforeAll(async () => {
 beforeEach(() => {
   mocks.ticketId = firstTicketId;
   readRequests.length = 0;
+  readRequestBodies.length = 0;
   ticketReads.length = 0;
   slowTicketRequest = new Promise((resolve) => { resolveSlowTicket = resolve; });
-  mocks.fetch.mockImplementation((input: RequestInfo | URL) => {
+  mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url.includes('/api/support/tickets/') && !url.includes('/read') && !url.includes('/replies')) ticketReads.push(url);
     if (url.includes('/read')) {
       readRequests.push(url);
+      readRequestBodies.push(String(init?.body ?? ''));
       return Promise.resolve(Response.json({ data: null, error: { code: 'READ_UNAVAILABLE' } }, { status: 503 }));
     }
     if (url.startsWith('/api/support/drafts')) return Promise.resolve(Response.json({ data: { body: '', version: 0 } }));
@@ -139,6 +142,7 @@ describe('Customer support ticket detail navigation', () => {
     });
     await vi.waitFor(() => expect(container.textContent).toContain('First ticket body'));
     await vi.waitFor(() => expect(readRequests).toHaveLength(1));
+    expect(JSON.parse(readRequestBodies[0])).toEqual({ surface: 'customer', lastDisplayedReplyId: firstTicketId });
 
     await act(async () => {
       mocks.ticketId = slowTicketId;
