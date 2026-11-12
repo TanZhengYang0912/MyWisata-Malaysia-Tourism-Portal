@@ -564,31 +564,233 @@ test('mocked reply does not send when the tab cannot persist its recovery refere
   expect(replyAttempts).toBe(0);
 });
 
-test('mocked attachment waits for an unresolved text reply to be checked first', async ({ page, context }) => {
+test('mocked attachment reuses its operation after refresh and retries saved-draft cleanup safely', async ({ page, context }) => {
   test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
   const ticketId = '7ca7d57d-864b-42bc-afdf-1d7d0ec8bb8a';
-  const operationKey = `mw_support_reply_operation:${customerUser.id}:${ticketId}`;
+  const operationKey = `mw_support_attachment_operation:customer:${customerUser.id}:${ticketId}`;
+  const operationIds: string[] = [];
   let attachmentAttempts = 0;
-
-  await page.addInitScript((key) => sessionStorage.setItem(key, '22222222-2222-4222-8222-222222222222'), operationKey);
+  let draftDeleteAttempts = 0;
+  let savedDraft: { body: string; version: number } | null = null;
   await context.route(`**/api/support/tickets/${ticketId}`, (route) => route.fulfill({ status: 200, json: { data: {
-    id: ticketId, viewerIsOwner: true, subject: 'Pending reply attachment test', body: 'Original request', category: 'general', status: 'open',
+    id: ticketId, viewerIsOwner: true, subject: 'Attachment recovery test', body: 'Original request', category: 'general', status: 'open',
     createdAt: '2026-04-01T00:00:00.000Z', resolvedAt: null, muted: false, replies: [], repliesCursor: null,
   }, error: null } }));
   await context.route(`**/api/support/tickets/${ticketId}/read`, (route) => route.fulfill({ status: 200, json: { data: { changed: false }, error: null } }));
-  await context.route('**/api/support/drafts?surface=ticket_reply**', (route) => route.fulfill({
-    status: 200, json: { data: { body: '', version: 0 }, error: null },
-  }));
+  await context.route('**/api/support/drafts**', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, json: { data: savedDraft ?? { body: '', version: 0 }, error: null } });
+      return;
+    }
+    if (route.request().method() === 'PUT') {
+      const input = route.request().postDataJSON() as { body: string };
+      savedDraft = { body: input.body, version: 1 };
+      await route.fulfill({ status: 200, json: { data: { version: 1, changed: true }, error: null } });
+      return;
+    }
+    if (route.request().method() === 'DELETE') {
+      draftDeleteAttempts += 1;
+      if (draftDeleteAttempts === 1) {
+        await route.fulfill({ status: 503, json: { data: null, error: { code: 'WRITE_UNAVAILABLE' } } });
+        return;
+      }
+      savedDraft = null;
+      await route.fulfill({ status: 200, json: { data: { cleared: true }, error: null } });
+      return;
+    }
+    await route.fulfill({ status: 405, json: { data: null, error: { code: 'METHOD_NOT_ALLOWED' } } });
+  });
   await context.route(`**/api/support/tickets/${ticketId}/attachments`, async (route) => {
+    const operationId = route.request().postData()?.match(/name="operationId"\r\n\r\n([^\r]+)/)?.[1] ?? '';
+    operationIds.push(operationId);
     attachmentAttempts += 1;
-    await route.fulfill({ status: 201, json: { data: { id: '00000000-0000-4000-8000-000000000058' }, error: null } });
+    if (attachmentAttempts === 1) {
+      await route.fulfill({ status: 503, json: { data: null, error: { code: 'WRITE_UNAVAILABLE' } } });
+      return;
+    }
+    await route.fulfill({ status: attachmentAttempts === 2 ? 201 : 200, json: { data: {
+      id: '00000000-0000-4000-8000-000000000058',
+    }, error: null } });
   });
 
   await page.goto(`/customer/support/${ticketId}`);
+  const fileInput = page.locator('input[type="file"]');
+  await fileInput.setInputFiles({ name: 'evidence.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') });
+  const caption = page.getByRole('textbox', { name: 'Reply' });
+  await caption.fill('Please review the attached receipt.');
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await expect.poll(() => savedDraft?.body).toBe('Please review the attached receipt.');
+  await caption.press('Enter');
+  await expect(page.locator('[role="alert"]').filter({ hasText: 'The upload result is not confirmed.' })).toBeVisible();
+  const operationId = await page.evaluate((key) => sessionStorage.getItem(key), operationKey);
+  expect(operationId).toMatch(/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i);
+
+  await page.reload();
+  await expect(page.getByRole('textbox', { name: 'Reply' })).toHaveValue('Please review the attached receipt.');
   await page.locator('input[type="file"]').setInputFiles({ name: 'evidence.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') });
-  await expect(page.getByText('evidence.pdf')).toBeVisible();
   await page.getByRole('textbox', { name: 'Reply' }).press('Enter');
-  await expect(page.locator('[role="alert"]').filter({ hasText: 'A reply still needs checking.' })).toBeVisible();
+  await expect(page.locator('[role="status"]').filter({ hasText: 'Attachment sent, but its saved draft could not be cleared.' })).toBeVisible();
+  expect(await page.evaluate((key) => sessionStorage.getItem(key), operationKey)).toBe(operationId);
+  await expect(page.getByRole('textbox', { name: 'Reply' })).toHaveValue('Please review the attached receipt.');
+
+  await page.getByRole('textbox', { name: 'Reply' }).press('Enter');
+  await expect(page.locator('[role="status"]').filter({ hasText: 'Reply sent.' })).toBeVisible();
+  await expect.poll(() => page.evaluate((key) => sessionStorage.getItem(key), operationKey)).toBeNull();
+  expect(attachmentAttempts).toBe(3);
+  expect(operationIds).toEqual([operationId, operationId, operationId]);
+  expect(draftDeleteAttempts).toBe(2);
+});
+
+test('mocked attachment keeps its operation reference when a successful response is malformed', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const ticketId = '012802df-81e2-4de9-a731-cfb8973e6a10';
+  const operationKey = `mw_support_attachment_operation:customer:${customerUser.id}:${ticketId}`;
+  const operationIds: string[] = [];
+  let attachmentAttempts = 0;
+
+  await context.route(`**/api/support/tickets/${ticketId}`, (route) => route.fulfill({ status: 200, json: { data: {
+    id: ticketId, viewerIsOwner: true, subject: 'Malformed attachment response test', body: 'Original request', category: 'general', status: 'open',
+    createdAt: '2026-04-01T00:00:00.000Z', resolvedAt: null, muted: false, replies: [], repliesCursor: null,
+  }, error: null } }));
+  await context.route(`**/api/support/tickets/${ticketId}/read`, (route) => route.fulfill({ status: 200, json: { data: { changed: false }, error: null } }));
+  await context.route('**/api/support/drafts**', (route) => route.fulfill({ status: 200, json: {
+    data: { body: '', version: 0 }, error: null,
+  } }));
+  await context.route(`**/api/support/tickets/${ticketId}/attachments`, async (route) => {
+    operationIds.push(route.request().postData()?.match(/name="operationId"\r\n\r\n([^\r]+)/)?.[1] ?? '');
+    attachmentAttempts += 1;
+    await route.fulfill({ status: 201, json: attachmentAttempts === 1
+      ? { data: null, error: null }
+      : { data: { id: '00000000-0000-4000-8000-000000000060' }, error: null } });
+  });
+
+  await page.goto(`/customer/support/${ticketId}`);
+  await page.locator('input[type="file"]').setInputFiles({ name: 'receipt.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 test') });
+  await page.getByRole('textbox', { name: 'Reply' }).press('Enter');
+  await expect(page.locator('[role="alert"]').filter({ hasText: 'The upload result is not confirmed.' })).toBeVisible();
+  const operationId = await page.evaluate((key) => sessionStorage.getItem(key), operationKey);
+  expect(operationId).toMatch(/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i);
+
+  await page.getByRole('textbox', { name: 'Reply' }).press('Enter');
+  await expect(page.locator('[role="status"]').filter({ hasText: 'Reply sent.' })).toBeVisible();
+  await expect.poll(() => page.evaluate((key) => sessionStorage.getItem(key), operationKey)).toBeNull();
+  expect(attachmentAttempts).toBe(2);
+  expect(operationIds).toEqual([operationId, operationId]);
+});
+
+test('mocked attachment conflict refreshes the ticket and waits for a second explicit send', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const ticketId = '38ca1457-cbd3-4174-b4f8-65e1941ba611';
+  const operationKey = `mw_support_attachment_operation:customer:${customerUser.id}:${ticketId}`;
+  const operationIds: string[] = [];
+  let attachmentAttempts = 0;
+  let ticketReads = 0;
+
+  await context.route(`**/api/support/tickets/${ticketId}`, (route) => {
+    ticketReads += 1;
+    return route.fulfill({ status: 200, json: { data: {
+      id: ticketId, viewerIsOwner: true, subject: 'Attachment conflict test', body: 'Original request', category: 'general', status: 'open',
+      createdAt: '2026-04-01T00:00:00.000Z', resolvedAt: null, muted: false, replies: [], repliesCursor: null,
+    }, error: null } });
+  });
+  await context.route(`**/api/support/tickets/${ticketId}/read`, (route) => route.fulfill({ status: 200, json: { data: { changed: false }, error: null } }));
+  await context.route('**/api/support/drafts**', (route) => route.fulfill({ status: 200, json: {
+    data: { body: '', version: 0 }, error: null,
+  } }));
+  await context.route(`**/api/support/tickets/${ticketId}/attachments`, async (route) => {
+    operationIds.push(route.request().postData()?.match(/name="operationId"\r\n\r\n([^\r]+)/)?.[1] ?? '');
+    attachmentAttempts += 1;
+    if (attachmentAttempts === 1) {
+      await route.fulfill({ status: 503, json: { data: null, error: { code: 'WRITE_UNAVAILABLE' } } });
+      return;
+    }
+    if (attachmentAttempts === 2) {
+      await route.fulfill({ status: 409, json: { data: null, error: { code: 'OPERATION_CONFLICT' } } });
+      return;
+    }
+    await route.fulfill({ status: 201, json: { data: { id: '00000000-0000-4000-8000-000000000061' }, error: null } });
+  });
+
+  await page.goto(`/customer/support/${ticketId}`);
+  const fileInput = page.locator('input[type="file"]');
+  await fileInput.setInputFiles({ name: 'first.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 first') });
+  await page.getByRole('textbox', { name: 'Reply' }).press('Enter');
+  await expect(page.locator('[role="alert"]').filter({ hasText: 'The upload result is not confirmed.' })).toBeVisible();
+  const firstOperationId = await page.evaluate((key) => sessionStorage.getItem(key), operationKey);
+  expect(firstOperationId).toMatch(/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i);
+
+  await fileInput.setInputFiles({ name: 'replacement.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 replacement') });
+  await page.getByRole('textbox', { name: 'Reply' }).press('Enter');
+  await expect(page.locator('[role="alert"]').filter({ hasText: 'An earlier upload used this request reference.' })).toBeVisible();
+  const replacementOperationId = await page.evaluate((key) => sessionStorage.getItem(key), operationKey);
+  expect(replacementOperationId).toMatch(/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i);
+  expect(replacementOperationId).not.toBe(firstOperationId);
+  expect(attachmentAttempts).toBe(2);
+
+  await page.getByRole('textbox', { name: 'Reply' }).press('Enter');
+  await expect(page.locator('[role="status"]').filter({ hasText: 'Reply sent.' })).toBeVisible();
+  expect(attachmentAttempts).toBe(3);
+  expect(operationIds).toEqual([firstOperationId, firstOperationId, replacementOperationId]);
+  expect(ticketReads).toBeGreaterThanOrEqual(3);
+});
+
+test('mocked attachment blocks sending its caption as a separate reply while the result is unknown', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const ticketId = '8a1d4531-41d6-47c1-8f4e-954dd434cf59';
+  const attachmentKey = `mw_support_attachment_operation:customer:${customerUser.id}:${ticketId}`;
+  let replyAttempts = 0;
+
+  await page.addInitScript((key) => sessionStorage.setItem(key, '33333333-3333-4333-8333-333333333333'), attachmentKey);
+  await context.route(`**/api/support/tickets/${ticketId}`, (route) => route.fulfill({ status: 200, json: { data: {
+    id: ticketId, viewerIsOwner: true, subject: 'Pending attachment test', body: 'Original request', category: 'general', status: 'open',
+    createdAt: '2026-04-01T00:00:00.000Z', resolvedAt: null, muted: false, replies: [], repliesCursor: null,
+  }, error: null } }));
+  await context.route(`**/api/support/tickets/${ticketId}/read`, (route) => route.fulfill({ status: 200, json: { data: { changed: false }, error: null } }));
+  await context.route('**/api/support/drafts**', (route) => route.fulfill({ status: 200, json: {
+    data: { body: 'This was the attachment caption.', version: 1 }, error: null,
+  } }));
+  await context.route(`**/api/support/tickets/${ticketId}/replies`, async (route) => {
+    replyAttempts += 1;
+    await route.fulfill({ status: 201, json: { data: { id: '00000000-0000-4000-8000-000000000062' }, error: null } });
+  });
+
+  await page.goto(`/customer/support/${ticketId}`);
+  const reply = page.getByRole('textbox', { name: 'Reply' });
+  await expect(reply).toHaveValue('This was the attachment caption.');
+  await reply.press('Enter');
+  await expect(page.locator('[role="alert"]').filter({ hasText: 'The upload result is not confirmed.' })).toBeVisible();
+  expect(replyAttempts).toBe(0);
+});
+
+test('mocked attachment is not sent when browser session storage blocks its recovery reference', async ({ page, context }) => {
+  test.skip(!await mockCustomerSession(context), 'Local browser environment needs the public Supabase client settings.');
+  const ticketId = '3f354914-32c7-4c4c-852a-17b3e8fecc1b';
+  let attachmentAttempts = 0;
+
+  await page.addInitScript(() => {
+    const originalSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key.startsWith('mw_support_attachment_operation:')) throw new DOMException('blocked', 'QuotaExceededError');
+      return originalSetItem.call(this, key, value);
+    };
+  });
+  await context.route(`**/api/support/tickets/${ticketId}`, (route) => route.fulfill({ status: 200, json: { data: {
+    id: ticketId, viewerIsOwner: true, subject: 'Attachment storage test', body: 'Original request', category: 'general', status: 'open',
+    createdAt: '2026-04-01T00:00:00.000Z', resolvedAt: null, muted: false, replies: [], repliesCursor: null,
+  }, error: null } }));
+  await context.route(`**/api/support/tickets/${ticketId}/read`, (route) => route.fulfill({ status: 200, json: { data: { changed: false }, error: null } }));
+  await context.route('**/api/support/drafts**', (route) => route.fulfill({ status: 200, json: {
+    data: { body: '', version: 0 }, error: null,
+  } }));
+  await context.route(`**/api/support/tickets/${ticketId}/attachments`, async (route) => {
+    attachmentAttempts += 1;
+    await route.fulfill({ status: 201, json: { data: { id: '00000000-0000-4000-8000-000000000063' }, error: null } });
+  });
+
+  await page.goto(`/customer/support/${ticketId}`);
+  await page.locator('input[type="file"]').setInputFiles({ name: 'blocked.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 blocked') });
+  await page.getByRole('textbox', { name: 'Reply' }).press('Enter');
+  await expect(page.locator('[role="alert"]').filter({ hasText: 'This tab cannot save the upload reference' })).toBeVisible();
   expect(attachmentAttempts).toBe(0);
 });
 

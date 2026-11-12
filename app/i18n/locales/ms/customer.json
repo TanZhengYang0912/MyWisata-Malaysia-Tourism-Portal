@@ -644,7 +644,7 @@
       "replySent": "Balasan dihantar.",
       "replyOperationConflict": "Balasan terdahulu menggunakan rujukan ini. Perbualan telah dimuat semula. Semak perbualan sebelum menghantar teks ini lagi.",
       "replyDraftCleanupFailed": "Balasan telah dihantar, tetapi draf tersimpan tidak dapat dipadam. Draf mungkin muncul semula selepas dimuat semula; semak perbualan sebelum menghantarnya lagi.",
-      "replyPendingBeforeAttachment": "Terdapat balasan yang masih perlu disemak. Buang lampiran dan semak atau cuba semula balasan itu sebelum menghantar fail.",
+      "attachmentDraftCleanupFailed": "Lampiran telah dihantar, tetapi draf tersimpan tidak dapat dipadam. Kekalkan fail dan kapsyen ini, kemudian hantar lagi untuk mencuba pembersihan dengan selamat.",
       "replyRetry": "Balasan tidak dapat dihantar. Sila cuba lagi.",
       "reopenError": "Tiket tidak dapat dibuka semula.",
       "ticketReopened": "Tiket dibuka semula.",

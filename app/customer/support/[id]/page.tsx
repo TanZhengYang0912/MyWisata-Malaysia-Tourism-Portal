@@ -16,6 +16,7 @@ import { useActionFeedback } from "@/components/providers/action-feedback";
 import { useTranslation } from "react-i18next";
 import { useSpeechInput, resolveRecognitionLangFromLocale, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
 import { supportError, supportTicketLoadFailure } from "@/lib/support/errors";
+import { clearSessionOperationId, readSessionOperationId, saveSessionOperationId, supportAttachmentOperationStorageKey } from "@/lib/support/operation-storage";
 
 // CLAUDE-VOICE-INPUT.md, mounted on support tickets. Same friendly copy as
 // the chatbot widget's and chat-thread-panel's mic buttons — keys, not
@@ -146,6 +147,8 @@ export default function CustomerTicketDetailPage() {
   const [muting, setMuting] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const attachmentOperationStorageKeyRef = useRef<string | null>(null);
+  const uploadInFlightRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   function updateReply(value: string) {
     replyDraftInputTouched.current = true;
@@ -163,7 +166,11 @@ export default function CustomerTicketDetailPage() {
       : value.trim() && storageKey
         ? { storageKey, operationId: crypto.randomUUID(), submitted: false }
         : null);
-    if (pendingFile) setAttachmentOperationId(crypto.randomUUID());
+    if (pendingFile && currentUser?.id) {
+      const attachmentStorageKey = supportAttachmentOperationStorageKey("customer", currentUser.id, id);
+      attachmentOperationStorageKeyRef.current = attachmentStorageKey;
+      setAttachmentOperationId(readSessionOperationId(attachmentStorageKey) ?? crypto.randomUUID());
+    }
   }
 
   const speech = useSpeechInput({ lang: resolveRecognitionLangFromLocale(i18n.resolvedLanguage), onTranscriptChange: updateReply });
@@ -394,6 +401,11 @@ export default function CustomerTicketDetailPage() {
       showFeedback("error", tCommon("chatbot.supportErrors.signIn"));
       return;
     }
+    const unresolvedAttachment = supportAttachmentOperationStorageKey("customer", currentUser.id, id);
+    if (readSessionOperationId(unresolvedAttachment)) {
+      showFeedback("error", tCommon("chatbot.supportErrors.attachmentChecking"));
+      return;
+    }
     const storageKey = replyOperationStorageKey(currentUser.id, id);
     const currentOperation = replyOperation?.storageKey === storageKey ? replyOperation : null;
     const operationId = currentOperation?.submitted && !currentOperation.completed
@@ -457,47 +469,92 @@ export default function CustomerTicketDetailPage() {
     event.target.value = "";
     if (!file || uploading) return;
     setPendingFile(file);
-    setAttachmentOperationId(crypto.randomUUID());
+    const storageKey = currentUser?.id ? supportAttachmentOperationStorageKey("customer", currentUser.id, id) : null;
+    attachmentOperationStorageKeyRef.current = storageKey;
+    setAttachmentOperationId(storageKey ? readSessionOperationId(storageKey) : null);
   }
 
   async function sendAttachment() {
-    if (!pendingFile || uploading) return;
-    if (currentUser?.id && readReplyOperation(replyOperationStorageKey(currentUser.id, id))) {
-      setUploading(true);
-      try {
-        await loadTicket();
-        showFeedback("error", tCustomer("ui.support.replyPendingBeforeAttachment"));
-      } finally {
-        setUploading(false);
-      }
+    if (!pendingFile || uploading || uploadInFlightRef.current) return;
+    if (!currentUser?.id) {
+      showFeedback("error", tCommon("chatbot.supportErrors.signIn"));
       return;
     }
+    const storageKey = supportAttachmentOperationStorageKey("customer", currentUser.id, id);
+    if (attachmentOperationStorageKeyRef.current && attachmentOperationStorageKeyRef.current !== storageKey) {
+      showFeedback("error", tCommon("chatbot.supportErrors.attachmentRecoveryAnotherTicket"));
+      return;
+    }
+    const currentOperationId = attachmentOperationStorageKeyRef.current === storageKey ? attachmentOperationId : null;
+    const operationId = currentOperationId ?? readSessionOperationId(storageKey) ?? crypto.randomUUID();
+    if (!saveSessionOperationId(storageKey, operationId)) {
+      showFeedback("error", tCommon("chatbot.supportErrors.attachmentRecoveryUnavailable"));
+      return;
+    }
+    uploadInFlightRef.current = true;
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", pendingFile);
-      const operationId = attachmentOperationId ?? crypto.randomUUID();
       setAttachmentOperationId(operationId);
+      attachmentOperationStorageKeyRef.current = storageKey;
       formData.append("operationId", operationId);
       if (reply.trim()) formData.append("caption", reply.trim());
       const res = await fetch(`/api/support/tickets/${id}/attachments`, { method: "POST", body: formData });
       if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: { code?: string } };
-        if (body.error?.code === "UPLOAD_FAILED" || body.error?.code === "ATTACHMENT_RESELECT_REQUIRED") setAttachmentOperationId(null);
+        if (body.error?.code === "OPERATION_CONFLICT") {
+          const nextOperationId = crypto.randomUUID();
+          const savedNextOperation = saveSessionOperationId(storageKey, nextOperationId);
+          setAttachmentOperationId(nextOperationId);
+          await loadTicket();
+          showFeedback("error", tCommon(savedNextOperation
+            ? "chatbot.supportErrors.attachmentConflict"
+            : "chatbot.supportErrors.attachmentRecoveryUnavailable"));
+          return;
+        }
+        if (body.error?.code === "WRITE_UNAVAILABLE" || res.status >= 500) {
+          await loadTicket();
+          showFeedback("error", tCommon("chatbot.supportErrors.attachmentChecking"));
+          return;
+        }
+        if (body.error?.code === "UPLOAD_FAILED" || body.error?.code === "ATTACHMENT_RESELECT_REQUIRED") {
+          clearSessionOperationId(storageKey, operationId);
+          setAttachmentOperationId(null);
+        }
         showFeedback("error", body.error?.code ? tCommon(`chatbot.supportErrors.${supportError(body.error.code).key}`) : tCustomer("ui.support.attachmentError"));
         return;
       }
-      setReply("");
-      setReplyDraftSaved(false);
-      setReplyOperation(null);
-      setPendingFile(null);
-      setAttachmentOperationId(null);
-      showFeedback("success", tCustomer("ui.support.replySent"));
-      void fetch(`/api/support/drafts?surface=ticket_reply&target=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => undefined);
+      const result = await res.json().catch(() => null) as { data?: { id?: unknown } } | null;
+      if (typeof result?.data?.id !== "string") {
+        await loadTicket();
+        showFeedback("error", tCommon("chatbot.supportErrors.attachmentChecking"));
+        return;
+      }
+      let draftCleared = false;
+      try {
+        const deleteResponse = await fetch(`/api/support/drafts?surface=ticket_reply&target=${encodeURIComponent(id)}`, { method: "DELETE" });
+        draftCleared = deleteResponse.ok;
+      } catch {
+        draftCleared = false;
+      }
+      if (draftCleared) {
+        clearSessionOperationId(storageKey, operationId);
+        setReply("");
+        setReplyDraftSaved(false);
+        setPendingFile(null);
+        setAttachmentOperationId(null);
+        attachmentOperationStorageKeyRef.current = null;
+        showFeedback("success", tCustomer("ui.support.replySent"));
+      } else {
+        showFeedback("success", tCustomer("ui.support.attachmentDraftCleanupFailed"));
+      }
       await loadTicket();
     } catch {
-      showFeedback("error", tCommon("chatbot.supportErrors.checking"));
+      await loadTicket();
+      showFeedback("error", tCommon("chatbot.supportErrors.attachmentChecking"));
     } finally {
+      uploadInFlightRef.current = false;
       setUploading(false);
     }
   }
