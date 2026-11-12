@@ -35,7 +35,13 @@ describe('cleanupSupportAttachments', () => {
   });
 
   it('does not call storage when the bounded claim is empty', async () => {
-    await expect(cleanupSupportAttachments()).resolves.toEqual({ claimed: 0, deleted: 0, rescheduled: 0 });
+    await expect(cleanupSupportAttachments()).resolves.toEqual({
+      claimed: 0,
+      deleted: 0,
+      failed: 0,
+      skipped: 0,
+      rescheduled: 0,
+    });
     expect(remove).not.toHaveBeenCalled();
   });
 
@@ -46,7 +52,13 @@ describe('cleanupSupportAttachments', () => {
     });
     finish.mockResolvedValue({ data: { deleted: 1, rescheduled: 0 }, error: null });
 
-    await expect(cleanupSupportAttachments()).resolves.toEqual({ claimed: 1, deleted: 1, rescheduled: 0 });
+    await expect(cleanupSupportAttachments()).resolves.toEqual({
+      claimed: 1,
+      deleted: 1,
+      failed: 0,
+      skipped: 0,
+      rescheduled: 0,
+    });
     expect(remove).toHaveBeenCalledWith(['22222222-2222-4222-8222-222222222222/33333333-3333-4333-8333-333333333333.pdf']);
     expect(finish).toHaveBeenCalledWith('finish_support_attachment_cleanup', {
       p_token: CLEANUP_TOKEN,
@@ -63,12 +75,43 @@ describe('cleanupSupportAttachments', () => {
     remove.mockResolvedValue({ data: null, error: new Error('storage unavailable') });
     finish.mockResolvedValue({ data: { deleted: 0, rescheduled: 1 }, error: null });
 
-    await expect(cleanupSupportAttachments()).resolves.toEqual({ claimed: 1, deleted: 0, rescheduled: 1 });
+    await expect(cleanupSupportAttachments()).resolves.toEqual({
+      claimed: 1,
+      deleted: 0,
+      failed: 1,
+      skipped: 0,
+      rescheduled: 1,
+    });
     expect(finish).toHaveBeenCalledWith('finish_support_attachment_cleanup', {
       p_token: CLEANUP_TOKEN,
       p_deleted_ids: [],
       p_failed_ids: [UPLOAD_ID],
     });
+  });
+
+  it('reports claimed rows that the finish RPC did not account for as skipped', async () => {
+    claim.mockResolvedValue({
+      data: { token: CLEANUP_TOKEN, items: [{ id: UPLOAD_ID, storage_path: STORAGE_PATH }] },
+      error: null,
+    });
+
+    await expect(cleanupSupportAttachments()).resolves.toMatchObject({
+      claimed: 1,
+      deleted: 0,
+      failed: 0,
+      skipped: 1,
+      rescheduled: 0,
+    });
+  });
+
+  it('rejects finish counts that exceed the claimed batch', async () => {
+    claim.mockResolvedValue({
+      data: { token: CLEANUP_TOKEN, items: [{ id: UPLOAD_ID, storage_path: STORAGE_PATH }] },
+      error: null,
+    });
+    finish.mockResolvedValue({ data: { deleted: 2, rescheduled: 0 }, error: null });
+
+    await expect(cleanupSupportAttachments()).rejects.toThrow('support_attachment_cleanup_accounting_invalid');
   });
 });
 

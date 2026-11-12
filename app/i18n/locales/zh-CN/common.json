@@ -444,7 +444,7 @@
       "attachmentChecking": "上传结果尚未确认。请先检查工单；如果附件没有显示，请重新选择同一文件并填写相同说明后再重试。",
       "attachmentRecoveryAnotherTicket": "另一张工单的上传结果仍需核对。请先重新打开那张工单，使用相同文件和说明重试，再发送此工单的内容。",
       "readUnavailable": "暂时无法读取信息，请重试。",
-      "fileTooLarge": "请选择小于 10 MB 的文件。",
+      "fileTooLarge": "请选择不超过 10 MiB 的文件。",
       "fileType": "请选择 JPEG、PNG、WEBP 或 PDF 文件。",
       "fileContent": "无法确认此文件是否可用，请换一个文件。",
       "chooseFile": "请选择要附加的文件。",

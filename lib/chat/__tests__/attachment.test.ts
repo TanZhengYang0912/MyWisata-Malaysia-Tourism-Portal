@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildChatAttachmentPath, validateChatAttachment } from '../attachment';
+import {
+  buildChatAttachmentPath,
+  validateChatAttachment,
+  validateChatAttachmentMetadata,
+} from '../attachment';
 
 const JPEG_HEADER = [0xff, 0xd8, 0xff];
 
@@ -33,6 +37,26 @@ describe('validateChatAttachment', () => {
   it('rejects content whose bytes do not match the claimed type', async () => {
     const result = await validateChatAttachment(fakeFile({ type: 'image/png', bytes: JPEG_HEADER }));
     expect(result).toEqual({ ok: false, code: 'INVALID_FILE_CONTENT' });
+  });
+});
+
+describe('validateChatAttachmentMetadata', () => {
+  it('accepts an allowed type at the file size limit without reading file bytes', () => {
+    expect(validateChatAttachmentMetadata({ type: 'application/pdf', size: 10 * 1024 * 1024 })).toEqual({ ok: true });
+  });
+
+  it('rejects unsupported type before the file is submitted', () => {
+    expect(validateChatAttachmentMetadata({ type: 'application/zip', size: 12 })).toEqual({
+      ok: false,
+      code: 'INVALID_FILE_TYPE',
+    });
+  });
+
+  it('rejects a file larger than 10 MB before the file is submitted', () => {
+    expect(validateChatAttachmentMetadata({ type: 'image/jpeg', size: 10 * 1024 * 1024 + 1 })).toEqual({
+      ok: false,
+      code: 'FILE_TOO_LARGE',
+    });
   });
 });
 

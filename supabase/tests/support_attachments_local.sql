@@ -58,17 +58,67 @@ DECLARE
   v_conflict boolean := false;
   v_invalid boolean := false;
   v_forbidden boolean := false;
+  v_attachment_rpc_count integer;
+  v_service_role_rpc_count integer;
 BEGIN
-  IF has_function_privilege('anon', 'public.reserve_support_attachment(uuid,uuid,uuid,text,text,text,text,integer)', 'EXECUTE')
-     OR has_function_privilege('authenticated', 'public.reserve_support_attachment(uuid,uuid,uuid,text,text,text,text,integer)', 'EXECUTE')
-     OR has_function_privilege('authenticated', 'public.claim_support_attachment_cleanup()', 'EXECUTE')
-     OR has_function_privilege('authenticated', 'public.commit_support_ticket_attachment(uuid,uuid,text,text,text,uuid,text,uuid)', 'EXECUTE')
-     OR has_table_privilege('authenticated', 'public.support_attachment_uploads', 'SELECT') THEN
-    RAISE EXCEPTION 'browser role can access a service-only attachment table or RPC';
+  SELECT count(*)::integer,
+         count(*) FILTER (WHERE has_function_privilege('service_role', proc.oid, 'EXECUTE'))::integer
+    INTO v_attachment_rpc_count, v_service_role_rpc_count
+    FROM pg_proc AS proc
+    JOIN pg_namespace AS namespace ON namespace.oid = proc.pronamespace
+   WHERE namespace.nspname = 'public'
+     AND proc.proname = ANY(ARRAY[
+       'reserve_support_attachment',
+       'mark_support_attachment_started',
+       'mark_support_attachment_uploaded',
+       'abandon_support_attachment',
+       'claim_support_attachment_cleanup',
+       'finish_support_attachment_cleanup',
+       'commit_support_ticket_attachment',
+       'retry_support_attachment',
+       'claim_support_attachment_reconciliation',
+       'finish_support_attachment_reconciliation'
+     ]);
+  IF v_attachment_rpc_count <> 10 OR v_service_role_rpc_count <> 10 THEN
+    RAISE EXCEPTION 'service role cannot execute every attachment RPC (% of %)',
+      v_service_role_rpc_count, v_attachment_rpc_count;
   END IF;
-  IF NOT has_function_privilege('service_role', 'public.reserve_support_attachment(uuid,uuid,uuid,text,text,text,text,integer)', 'EXECUTE')
-     OR NOT has_function_privilege('service_role', 'public.commit_support_ticket_attachment(uuid,uuid,text,text,text,uuid,text,uuid)', 'EXECUTE') THEN
-    RAISE EXCEPTION 'service role cannot execute an attachment RPC';
+
+  IF EXISTS (
+    SELECT 1
+      FROM pg_proc AS proc
+      JOIN pg_namespace AS namespace ON namespace.oid = proc.pronamespace
+     WHERE namespace.nspname = 'public'
+       AND proc.proname = ANY(ARRAY[
+         'reserve_support_attachment',
+         'mark_support_attachment_started',
+         'mark_support_attachment_uploaded',
+         'abandon_support_attachment',
+         'claim_support_attachment_cleanup',
+         'finish_support_attachment_cleanup',
+         'commit_support_ticket_attachment',
+         'retry_support_attachment',
+         'claim_support_attachment_reconciliation',
+         'finish_support_attachment_reconciliation'
+       ])
+       AND (
+         has_function_privilege('anon', proc.oid, 'EXECUTE')
+         OR has_function_privilege('authenticated', proc.oid, 'EXECUTE')
+       )
+  ) OR EXISTS (
+    SELECT 1
+      FROM unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE']) AS privilege_name
+     WHERE has_table_privilege('anon', 'public.support_attachment_uploads', privilege_name)
+        OR has_table_privilege('authenticated', 'public.support_attachment_uploads', privilege_name)
+  ) OR has_column_privilege('anon', 'public.support_ticket_replies', 'attachment_url', 'SELECT')
+     OR has_column_privilege('authenticated', 'public.support_ticket_replies', 'attachment_url', 'SELECT') THEN
+    RAISE EXCEPTION 'browser role can access a private attachment table, RPC, or path column';
+  END IF;
+
+  IF NOT has_table_privilege('service_role', 'public.support_attachment_uploads', 'SELECT')
+     OR NOT has_table_privilege('service_role', 'public.support_attachment_uploads', 'INSERT')
+     OR NOT has_table_privilege('service_role', 'public.support_attachment_uploads', 'UPDATE') THEN
+    RAISE EXCEPTION 'service role cannot maintain the attachment upload manifest';
   END IF;
 
   BEGIN

@@ -444,7 +444,7 @@
       "attachmentChecking": "The upload result is not confirmed. Check the ticket; if it is missing, reselect the same file and enter the same caption before retrying.",
       "attachmentRecoveryAnotherTicket": "An upload on another ticket still needs checking. Reopen that ticket and retry the same file and caption before sending here.",
       "readUnavailable": "Could not load this information. Try again.",
-      "fileTooLarge": "Choose a file smaller than 10 MB.",
+      "fileTooLarge": "Choose a file up to 10 MiB.",
       "fileType": "Choose a JPEG, PNG, WEBP, or PDF file.",
       "fileContent": "This file could not be checked. Choose a different file.",
       "chooseFile": "Choose a file to attach.",

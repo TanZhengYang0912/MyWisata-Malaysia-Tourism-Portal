@@ -16,6 +16,7 @@ import { useActionFeedback } from "@/components/providers/action-feedback";
 import { useTranslation } from "react-i18next";
 import { useSpeechInput, resolveRecognitionLangFromLocale, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
 import { supportError, supportTicketLoadFailure } from "@/lib/support/errors";
+import { validateChatAttachmentMetadata } from "@/lib/chat/attachment";
 import { clearSessionOperationId, readSessionOperationId, saveSessionOperationId, supportAttachmentOperationStorageKey } from "@/lib/support/operation-storage";
 
 // CLAUDE-VOICE-INPUT.md, mounted on support tickets. Same friendly copy as
@@ -468,6 +469,11 @@ export default function CustomerTicketDetailPage() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file || uploading) return;
+    const validation = validateChatAttachmentMetadata(file);
+    if (!validation.ok) {
+      showFeedback("error", tCommon(`chatbot.supportErrors.${supportError(validation.code).key}`));
+      return;
+    }
     setPendingFile(file);
     const storageKey = currentUser?.id ? supportAttachmentOperationStorageKey("customer", currentUser.id, id) : null;
     attachmentOperationStorageKeyRef.current = storageKey;

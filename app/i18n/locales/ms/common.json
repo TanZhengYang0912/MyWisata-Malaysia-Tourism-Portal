@@ -444,7 +444,7 @@
       "attachmentChecking": "Hasil muat naik belum disahkan. Semak tiket; jika lampiran tiada, pilih fail yang sama dan masukkan kapsyen yang sama sebelum mencuba lagi.",
       "attachmentRecoveryAnotherTicket": "Muat naik pada tiket lain masih perlu disemak. Buka semula tiket itu dan cuba fail serta kapsyen yang sama sebelum menghantar di sini.",
       "readUnavailable": "Maklumat ini tidak dapat dimuatkan. Cuba lagi.",
-      "fileTooLarge": "Pilih fail yang lebih kecil daripada 10 MB.",
+      "fileTooLarge": "Pilih fail bersaiz sehingga 10 MiB.",
       "fileType": "Pilih fail JPEG, PNG, WEBP atau PDF.",
       "fileContent": "Fail ini tidak dapat disahkan. Pilih fail lain.",
       "chooseFile": "Pilih fail untuk dilampirkan.",

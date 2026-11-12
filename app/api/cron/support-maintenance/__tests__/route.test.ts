@@ -9,7 +9,7 @@ import { GET } from '../route';
 describe('GET /api/cron/support-maintenance', () => {
   beforeEach(() => {
     vi.stubEnv('CRON_SECRET', 'cron-secret');
-    mocks.cleanup.mockResolvedValue({ claimed: 0, deleted: 0, rescheduled: 0 });
+    mocks.cleanup.mockResolvedValue({ claimed: 0, deleted: 0, failed: 0, skipped: 0, rescheduled: 0 });
     mocks.reconcile.mockResolvedValue({ claimed: 0, recovered: 0, unknown: 0 });
     mocks.rpc.mockResolvedValue({ data: 4, error: null });
   });
@@ -21,6 +21,8 @@ describe('GET /api/cron/support-maintenance', () => {
     await expect(response.json()).resolves.toEqual({
       claimed: 0,
       deleted: 0,
+      failed: 0,
+      skipped: 0,
       rescheduled: 0,
       reconciliation: { claimed: 0, recovered: 0, unknown: 0 },
       expiredHandoffTokens: 4,

@@ -71,7 +71,9 @@ export async function cleanupSupportAttachments() {
   const { data, error } = await service.rpc('claim_support_attachment_cleanup');
   const parsed = cleanupBatchSchema.safeParse(data);
   if (error || !parsed.success) throw new Error('support_attachment_cleanup_unavailable');
-  if (!parsed.data.items.length) return { claimed: 0, deleted: 0, rescheduled: 0 };
+  if (!parsed.data.items.length) {
+    return { claimed: 0, deleted: 0, failed: 0, skipped: 0, rescheduled: 0 };
+  }
 
   const ids = parsed.data.items.map((item) => item.id);
   const paths = parsed.data.items.map((item) => item.storage_path);
@@ -89,6 +91,14 @@ export async function cleanupSupportAttachments() {
   });
   const result = cleanupResultSchema.safeParse(finished);
   if (finishError || !result.success) throw new Error('support_attachment_cleanup_unconfirmed');
+  const claimed = parsed.data.items.length;
+  const accounted = result.data.deleted + result.data.rescheduled;
+  if (accounted > claimed) throw new Error('support_attachment_cleanup_accounting_invalid');
 
-  return { claimed: parsed.data.items.length, ...result.data };
+  return {
+    claimed,
+    ...result.data,
+    failed: result.data.rescheduled,
+    skipped: claimed - accounted,
+  };
 }

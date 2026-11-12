@@ -28,6 +28,7 @@ import { useSpeechInput, resolveRecognitionLangFromLocale, type SpeechInputError
 import { TICKET_CATEGORIES } from "@/lib/chatbot/classify";
 import { teamForCategory } from "@/lib/support/team-routing";
 import { supportError } from "@/lib/support/errors";
+import { validateChatAttachmentMetadata } from "@/lib/chat/attachment";
 import { clearSessionOperationId, readSessionOperationId, saveSessionOperationId, supportAttachmentOperationStorageKey } from "@/lib/support/operation-storage";
 
 // CLAUDE-VOICE-INPUT.md, mounted on the admin ticket reply composer too.
@@ -398,6 +399,11 @@ function AdminSupportContent() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file || uploading) return;
+    const validation = validateChatAttachmentMetadata(file);
+    if (!validation.ok) {
+      showFeedback("error", tCommon(`chatbot.supportErrors.${supportError(validation.code).key}`));
+      return;
+    }
     const storageKey = currentUser?.id && openTicketId
       ? supportAttachmentOperationStorageKey("admin", currentUser.id, openTicketId)
       : null;
