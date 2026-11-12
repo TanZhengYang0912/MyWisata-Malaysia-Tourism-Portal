@@ -328,6 +328,13 @@
     "yes": "Yes",
     "no": "No",
     "gladToHelp": "Glad I could help.",
+    "feedback": {
+      "saving": "Saving your feedback…",
+      "saveFailed": "Your feedback couldn't be saved. You can retry.",
+      "retry": "Retry",
+      "signIn": "Your sign-in expired. Sign in again to save your feedback.",
+      "signInAction": "Sign in"
+    },
     "wantTicket": "Want to open a support ticket?",
     "creatingTicket": "Creating…",
     "noProblem": "No problem. Ask me anything else.",

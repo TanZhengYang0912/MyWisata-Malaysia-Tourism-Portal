@@ -328,6 +328,13 @@
     "yes": "Ya",
     "no": "Tidak",
     "gladToHelp": "Gembira dapat membantu.",
+    "feedback": {
+      "saving": "Sedang menyimpan maklum balas…",
+      "saveFailed": "Maklum balas tidak dapat disimpan. Anda boleh cuba lagi.",
+      "retry": "Cuba lagi",
+      "signIn": "Sesi log masuk anda tamat. Log masuk semula untuk menyimpan maklum balas.",
+      "signInAction": "Log masuk"
+    },
     "wantTicket": "Mahu buka tiket sokongan?",
     "creatingTicket": "Sedang mencipta…",
     "noProblem": "Tiada masalah. Tanya saya apa-apa sahaja lagi.",

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   retrieve: vi.fn(),
   generateAnswer: vi.fn(),
+  searchKbs: vi.fn(),
   kbRows: [] as { id: string; title: string; body: string; keywords: string[]; category: string | null; content_version: number; published_source_refs?: unknown[] }[],
 }));
 
@@ -10,11 +11,12 @@ vi.mock('../retrieve', () => ({ retrieve: mocks.retrieve }));
 vi.mock('../generate', () => ({ generateAnswer: mocks.generateAnswer }));
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
-    from: () => ({ select: () => ({ eq: async () => ({ data: mocks.kbRows }) }) }),
+    rpc: mocks.searchKbs,
   }),
 }));
 
 import { answerQuestion } from '../answer';
+import { answerQuestion as matchKeyword } from '../match';
 
 const doc = (id: string, similarity: number) => ({ id, title: id, body: `${id} body`, category: null, similarity, contentVersion: 2, reviewed: true });
 
@@ -23,6 +25,22 @@ describe('answerQuestion with several questions', () => {
     process.env.LLM_API_KEY = 'test-key';
     mocks.retrieve.mockReset();
     mocks.generateAnswer.mockReset();
+    mocks.searchKbs.mockReset();
+    mocks.searchKbs.mockImplementation(async (_functionName: string, args: { p_questions: string[]; p_reviewed_only: boolean[] }) => {
+      const data = args.p_questions.flatMap((question, index) => {
+        const candidates = mocks.kbRows
+          .filter((row) => !args.p_reviewed_only[index] || Boolean(row.published_source_refs?.length))
+          .map((row) => ({ id: row.id, title: row.title, body: row.body, keywords: row.keywords, category: row.category }));
+        const match = matchKeyword(question, candidates);
+        const source = mocks.kbRows.find((row) => row.id === match?.id);
+        return match && source ? [{
+          question_index: index + 1,
+          ...source,
+          score: 0.5,
+        }] : [];
+      });
+      return { data, error: null };
+    });
     mocks.kbRows = [];
   });
   afterEach(() => {
@@ -38,7 +56,7 @@ describe('answerQuestion with several questions', () => {
     expect(mocks.retrieve).toHaveBeenCalledTimes(1);
     expect(mocks.retrieve.mock.calls[0][2]).toBe(3);
     expect(mocks.retrieve.mock.calls[0][4]).toBe(true);
-    expect(mocks.generateAnswer).toHaveBeenCalledWith('How do I withdraw my earnings?', [doc('wallet', 0.9)], 1);
+    expect(mocks.generateAnswer).toHaveBeenCalledWith('How do I withdraw my earnings?', [doc('wallet', 0.9)], 1, expect.any(Function));
     expect(result.kbMatched).toBe(true);
   });
 
@@ -56,7 +74,7 @@ describe('answerQuestion with several questions', () => {
       ['Can I cancel a booking', 2],
     ]);
     expect(mocks.retrieve.mock.calls.map((call) => call[4])).toEqual([true, false]);
-    expect(mocks.generateAnswer).toHaveBeenCalledWith('Can I cancel a booking', [doc('booking', 0.88), doc('shared', 0.8)], 1);
+    expect(mocks.generateAnswer).toHaveBeenCalledWith('Can I cancel a booking', [doc('booking', 0.88), doc('shared', 0.8)], 1, expect.any(Function));
     expect(result).toMatchObject({ answer: 'wallet body\n\nBooking answer.', kbMatched: true, mode: 'llm' });
     expect(result.usedKb.map((ref) => ref.id)).toEqual(['wallet', 'booking', 'shared']);
   });
@@ -74,6 +92,7 @@ describe('answerQuestion with several questions', () => {
 
   it('marks the first provider call once across parallel embeddings and generation', async () => {
     const events: string[] = [];
+    const reserveProviderCall = vi.fn(async () => true);
     const beforeExternalCall = vi.fn(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
       events.push('marked');
@@ -89,10 +108,28 @@ describe('answerQuestion with several questions', () => {
       return 'Both answered.';
     });
 
-    await answerQuestion('How do I withdraw my earnings? Can I cancel a booking?', true, beforeExternalCall);
+    await answerQuestion('How do I withdraw my earnings? Can I cancel a booking?', true, beforeExternalCall, reserveProviderCall);
 
     expect(beforeExternalCall).toHaveBeenCalledTimes(1);
+    expect(reserveProviderCall).toHaveBeenCalledTimes(3);
     expect(events).toEqual(['marked', 'embedded', 'embedded', 'generated']);
+  });
+
+  it('falls back without marking an external call when a provider quota is exhausted', async () => {
+    const reserveProviderCall = vi.fn(async () => false);
+    const beforeExternalCall = vi.fn(async () => undefined);
+    mocks.retrieve.mockImplementation(async (_service, _question, _count, beforeCall) => {
+      await beforeCall?.();
+      return [];
+    });
+
+    const result = await answerQuestion('How do I check my booking?', true, beforeExternalCall, reserveProviderCall);
+
+    expect(reserveProviderCall).toHaveBeenCalledTimes(1);
+    expect(beforeExternalCall).not.toHaveBeenCalled();
+    expect(mocks.generateAnswer).not.toHaveBeenCalled();
+    expect(mocks.searchKbs).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ mode: 'keyword', canEscalate: true, kbMatched: false });
   });
 
   it('still answers the covered question when another finds nothing', async () => {
@@ -139,6 +176,24 @@ describe('answerQuestion with several questions', () => {
       { id: 'wallet', title: 'Wallet', contentVersion: 3, reviewed: true, similarity: null },
       { id: 'booking', title: 'Booking', contentVersion: 4, reviewed: true, similarity: null },
     ]);
+    expect(mocks.searchKbs).toHaveBeenCalledWith('search_support_kb_keywords', {
+      p_questions: ['How do I withdraw my earnings', 'Can I cancel a booking', 'Can I cancel my booking today'],
+      p_reviewed_only: [true, false, false],
+    });
+  });
+
+  it('falls back safely and keeps the handoff path when keyword lookup is unavailable', async () => {
+    delete process.env.LLM_API_KEY;
+    mocks.searchKbs.mockResolvedValue({ data: null, error: { code: 'XX000', message: 'private database detail' } });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const result = await answerQuestion('Where can I find the help desk?', false);
+
+    expect(mocks.searchKbs).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ kbMatched: false, canEscalate: true, mode: 'keyword', usedKb: [] });
+    expect(error).toHaveBeenCalledWith('[chatbot] keyword KB lookup failed', 'XX000');
+    expect(error.mock.calls.flat().join(' ')).not.toContain('private database detail');
+    error.mockRestore();
   });
 
   it('keeps sensitive keyword fallback tied to active published articles and their version', async () => {
@@ -188,5 +243,9 @@ describe('answerQuestion with several questions', () => {
       ['refund-policy', true],
       ['booking', false],
     ]);
+    expect(mocks.searchKbs).toHaveBeenCalledWith('search_support_kb_keywords', {
+      p_questions: ['What is your refund policy', 'Can I cancel a booking'],
+      p_reviewed_only: [true, false],
+    });
   });
 });

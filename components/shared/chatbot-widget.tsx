@@ -33,8 +33,9 @@ import Link from "next/link";
 import { ChevronLeft, HelpCircle, MessageCircle, Mic, MicOff, Minimize2, Maximize2, Send, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/shared/pagination";
 import { useAppDialog } from "@/components/providers/app-dialog";
-import type { FaqCategory } from "@/app/api/chatbot/faq/route";
+import type { FaqCategory, FaqQuestionPage } from "@/app/api/chatbot/faq/route";
 import type { ChatLanguage } from "@/lib/chatbot/language";
 import { useAuth } from "@/components/providers/auth";
 import { useSupportChat } from "@/components/providers/support-chat";
@@ -79,6 +80,11 @@ interface ChatMessage {
   /** The original question was withheld from AI; the reply used local FAQ matching. */
   privacyBlocked?: boolean;
   feedbackStage?: FeedbackStage;
+  feedbackSaving?: boolean;
+  feedbackSaveFailed?: boolean;
+  feedbackNeedsSignIn?: boolean;
+  feedbackLoginHref?: string;
+  feedbackVote?: boolean;
   ticketId?: string;
   ticketError?: string;
   ticketErrorCode?: string;
@@ -216,13 +222,14 @@ function storePendingSupportOperation(userId: string, messageId: string, operati
 
 async function postFeedback(payload: Record<string, unknown>) {
   try {
-    await fetch("/api/chatbot/feedback", {
+    const response = await fetch("/api/chatbot/feedback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    return { saved: response.ok, requiresSignIn: response.status === 401 };
   } catch {
-    // best-effort — a logging failure must never visibly break the chat flow
+    return { saved: false, requiresSignIn: false };
   }
 }
 
@@ -275,6 +282,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   const [statusRefreshingId, setStatusRefreshingId] = useState<string | null>(null);
   const ticketOperationIdentityRef = useRef<string | null>(identityKey);
   const handoffDraftSaveLocksRef = useRef(new Set<string>());
+  const feedbackSaveLocksRef = useRef(new Set<string>());
   const [sending, setSending] = useState(false);
   const [creatingTicketFor, setCreatingTicketFor] = useState<string | null>(null);
   const [savingHandoffDraftFor, setSavingHandoffDraftFor] = useState<string | null>(null);
@@ -323,6 +331,12 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   const [faq, setFaq] = useState<FaqCategory[] | null | undefined>(undefined);
   const [faqOpen, setFaqOpen] = useState(false);
   const [faqCategory, setFaqCategory] = useState<string | null>(null);
+  const [faqQuestionPage, setFaqQuestionPage] = useState<{ category: string; data: FaqQuestionPage } | null>(null);
+  const [faqPage, setFaqPage] = useState(1);
+  const [faqPageLoading, setFaqPageLoading] = useState(false);
+  const [faqPageError, setFaqPageError] = useState(false);
+  const faqPageRequestIdRef = useRef(0);
+  const faqPageAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -547,10 +561,48 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     }
   }
 
+  async function loadFaqQuestions(category: string, page: number) {
+    const requestId = ++faqPageRequestIdRef.current;
+    faqPageAbortRef.current?.abort();
+    const controller = new AbortController();
+    faqPageAbortRef.current = controller;
+    setFaqPage(page);
+    setFaqPageLoading(true);
+    setFaqPageError(false);
+    try {
+      const params = new URLSearchParams({ category, page: String(page) });
+      const res = await fetch(`/api/chatbot/faq?${params}`, { signal: controller.signal });
+      const body = (await res.json().catch(() => ({}))) as { data?: FaqQuestionPage | null };
+      if (!res.ok || !body.data) throw new Error("faq_page_unavailable");
+      if (requestId !== faqPageRequestIdRef.current) return;
+      setFaqQuestionPage({ category, data: body.data });
+      setFaqPage(body.data.page);
+    } catch {
+      if (controller.signal.aborted || requestId !== faqPageRequestIdRef.current) return;
+      setFaqPageError(true);
+    } finally {
+      if (requestId === faqPageRequestIdRef.current) setFaqPageLoading(false);
+    }
+  }
+
+  function openFaqCategory(category: string) {
+    setFaqCategory(category);
+    setFaqPage(1);
+    void loadFaqQuestions(category, 1);
+  }
+
+  function returnToFaqCategories() {
+    faqPageAbortRef.current?.abort();
+    faqPageRequestIdRef.current += 1;
+    setFaqPageLoading(false);
+    setFaqPageError(false);
+    setFaqCategory(null);
+  }
+
   function toggleFaq() {
     setFaqOpen((wasOpen) => {
       if (!wasOpen && (faq === undefined || faq === null)) void loadFaq();
-      if (wasOpen) setFaqCategory(null); // reset to the category list for next time
+      if (wasOpen) returnToFaqCategories(); // reset to the category list for next time
       return !wasOpen;
     });
   }
@@ -809,9 +861,29 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
 
   function submitHelpful(index: number, helpful: boolean) {
     const msg = messages[index];
-    if (!msg.messageId) return;
-    setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: helpful ? "helpful_done" : "awaiting_ticket" } : m)));
-    postFeedback({ sessionKey: sessionKey ?? undefined, messageId: msg.messageId, question: msg.question, botAnswered: true, helpful });
+    if (!msg?.messageId || feedbackSaveLocksRef.current.has(msg.messageId)) return;
+    feedbackSaveLocksRef.current.add(msg.messageId);
+    setMessages((prev) => prev.map((item) => (item.messageId === msg.messageId
+      ? { ...item, feedbackSaving: true, feedbackSaveFailed: false, feedbackVote: helpful, feedbackStage: helpful ? "awaiting_helpful" : "awaiting_ticket" }
+      : item)));
+    void postFeedback({ sessionKey: sessionKey ?? undefined, messageId: msg.messageId, question: msg.question, botAnswered: true, helpful })
+      .then((result) => {
+        feedbackSaveLocksRef.current.delete(msg.messageId!);
+        const feedbackLoginHref = result.requiresSignIn
+          ? `/login?next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`
+          : undefined;
+        setMessages((prev) => prev.map((item) => (item.messageId === msg.messageId
+          ? {
+            ...item,
+            feedbackSaving: false,
+            feedbackSaveFailed: !result.saved,
+            feedbackNeedsSignIn: !result.saved && result.requiresSignIn,
+            feedbackLoginHref: !result.saved ? feedbackLoginHref : undefined,
+            feedbackVote: result.saved ? undefined : helpful,
+            feedbackStage: helpful ? (result.saved ? "helpful_done" : "awaiting_helpful") : "awaiting_ticket",
+          }
+          : item)));
+      });
   }
 
   function declineTicket(index: number) {
@@ -1267,13 +1339,36 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                       )}
                       {m.role === "bot" && m.feedbackStage && (
                         <div className="mt-1.5 max-w-[85%]">
+                          {m.feedbackSaving && <p role="status" className="mb-1 px-1 text-xs text-muted-foreground">{t("chatbot.feedback.saving")}</p>}
+                          {m.feedbackSaveFailed && (
+                            <div role="alert" className="mb-1 flex items-center gap-2 rounded-lg border border-destructive/30 bg-background px-2.5 py-1.5">
+                              <span className="flex-1 text-xs text-destructive">
+                                {m.feedbackNeedsSignIn ? t("chatbot.feedback.signIn") : t("chatbot.feedback.saveFailed")}
+                              </span>
+                              {m.feedbackNeedsSignIn && m.feedbackLoginHref ? (
+                                <Link href={m.feedbackLoginHref} className="text-xs font-medium underline underline-offset-2">
+                                  {t("chatbot.feedback.signInAction")}
+                                </Link>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2.5 text-xs"
+                                  onClick={() => submitHelpful(i, m.feedbackVote ?? true)}
+                                  disabled={m.feedbackSaving}
+                                >
+                                  {t("chatbot.feedback.retry")}
+                                </Button>
+                              )}
+                            </div>
+                          )}
                           {m.feedbackStage === "awaiting_helpful" && (
                             <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5">
                               <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wasThisHelpful")}</span>
-                              <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, true)}>
+                              <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, true)} disabled={m.feedbackSaving}>
                                 {t("chatbot.yes")}
                               </Button>
-                              <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, false)}>
+                              <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, false)} disabled={m.feedbackSaving}>
                                 {t("chatbot.no")}
                               </Button>
                             </div>
@@ -1417,11 +1512,11 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                             <button
                               key={c.category}
                               type="button"
-                              onClick={() => setFaqCategory(c.category)}
+                              onClick={() => openFaqCategory(c.category)}
                               className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-secondary"
                             >
                               {faqCategoryLabel(c.category, t)}
-                              <span className="ml-1 text-muted-foreground">{c.questions.length}</span>
+                              <span className="ml-1 text-muted-foreground">{c.count}</span>
                             </button>
                           ))}
                         </div>
@@ -1431,13 +1526,25 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                       <>
                         <button
                           type="button"
-                          onClick={() => setFaqCategory(null)}
+                          onClick={returnToFaqCategories}
                           className="mb-2 flex items-center gap-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
                         >
                           <ChevronLeft size={12} /> {faqCategoryLabel(faqCategory, t)}
                         </button>
+                        {faqPageLoading && (faqQuestionPage?.category !== faqCategory || faqQuestionPage.data.page !== faqPage) && (
+                          <p role="status" className="text-xs text-muted-foreground">{t("chatbot.faq.loading")}</p>
+                        )}
+                        {faqPageError && (
+                          <div role="alert" className="flex items-center justify-between gap-2 text-xs text-destructive">
+                            <span>{t("chatbot.faq.error")}</span>
+                            <button type="button" className="underline" onClick={() => void loadFaqQuestions(faqCategory, faqPage)}>{t("chatbot.faq.retry")}</button>
+                          </div>
+                        )}
+                        {faqQuestionPage?.category === faqCategory && faqQuestionPage.data.page === faqPage && faqQuestionPage.data.questions.length === 0 && (
+                          <p className="text-xs text-muted-foreground">{t("chatbot.faq.empty")}</p>
+                        )}
                         <div className="flex flex-col gap-1">
-                          {(faq.find((c) => c.category === faqCategory)?.questions ?? []).map((q) => (
+                          {(faqQuestionPage?.category === faqCategory && faqQuestionPage.data.page === faqPage ? faqQuestionPage.data.questions : []).map((q) => (
                             <button
                               key={q.id}
                               type="button"
@@ -1453,6 +1560,17 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                             </button>
                           ))}
                         </div>
+                        {faqQuestionPage?.category === faqCategory && faqQuestionPage.data.page === faqPage && faqQuestionPage.data.totalPages > 1 && (
+                          <Pagination
+                            currentPage={faqPage}
+                            totalPages={faqQuestionPage.data.totalPages}
+                            totalItems={faqQuestionPage.data.total}
+                            pageSize={faqQuestionPage.data.pageSize}
+                            onPageChange={(page) => void loadFaqQuestions(faqCategory, page)}
+                            disabled={faqPageLoading}
+                            className="mt-1"
+                          />
+                        )}
                       </>
                     )}
                   </div>

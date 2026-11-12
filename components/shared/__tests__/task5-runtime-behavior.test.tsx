@@ -89,6 +89,8 @@ const translations: Record<string, string> = {
   "common:chatbot.newConversation": "Start new chat translated",
   "common:chatbot.history.unavailable": "History unavailable translated",
   "common:chatbot.faq.retry": "Retry translated",
+  "common:chatbot.faq.toggle": "Browse translated FAQs",
+  "common:accessibility.nextPage": "Next translated page",
   "common:chatbot.myTickets": "Translated my tickets",
   "common:chatbot.no": "No translated",
   "common:chatbot.send": "Send translated message",
@@ -96,6 +98,12 @@ const translations: Record<string, string> = {
   "common:chatbot.title": "Translated support title",
   "common:chatbot.list.supportLabel": "Translated support label",
   "common:chatbot.wantTicket": "Translated ticket offer",
+  "common:chatbot.gladToHelp": "Glad I could help.",
+  "common:chatbot.feedback.saveFailed": "Feedback could not be saved translated",
+  "common:chatbot.feedback.saving": "Saving feedback translated",
+  "common:chatbot.feedback.retry": "Retry feedback translated",
+  "common:chatbot.feedback.signIn": "Sign in again to save feedback translated",
+  "common:chatbot.feedback.signInAction": "Sign in translated",
   "common:chatbot.handoff.subject": "Translated ticket subject",
   "common:chatbot.handoff.summary": "Translated ticket summary",
   "common:chatbot.handoff.confirm": "Create translated ticket",
@@ -230,6 +238,7 @@ describe("Task 5 shared runtime behavior", () => {
     // real currentUser — everything else never touches vendor-chat fetches.
     mocks.useAuth.mockReturnValue({ currentUser: null });
     vi.stubGlobal("fetch", mocks.fetch);
+    Object.defineProperty(window, "location", { configurable: true, value: { pathname: "/customer/support", search: "?from=chat" } });
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container as unknown as Element);
@@ -243,7 +252,172 @@ describe("Task 5 shared runtime behavior", () => {
     }
     document.body.removeChild(container);
     vi.unstubAllGlobals();
+    delete (window as unknown as { location?: unknown }).location;
     document.defaultView.localStorage.clear();
+  });
+
+  it("shows feedback save failure and lets the user retry without losing the vote", async () => {
+    let feedbackRequests = 0;
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/faq") return response({ data: { categories: [] } });
+      if (url === "/api/chatbot/session/guest-token") return response({ data: { ready: true } });
+      if (url === "/api/chatbot/ask") return response({ data: {
+        sessionKey: "feedback-session",
+        answer: "Here is the answer.",
+        botAnswered: true,
+        messageId: "feedback-answer",
+        userMessageId: "feedback-question",
+        language: "en",
+      } });
+      if (url === "/api/chatbot/feedback") {
+        feedbackRequests += 1;
+        if (feedbackRequests === 1) return response({ error: { code: "WRITE_UNAVAILABLE" } }, false);
+        return response({ data: { id: "feedback-row" } });
+      }
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    setInputValue(findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question"), "I need help");
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+
+    await click(findButton("Yes translated"));
+
+    expect(container.textContent).toContain("Feedback could not be saved translated");
+    expect(container.textContent).not.toContain("Glad I could help.");
+    await click(findButton("Retry feedback translated"));
+
+    expect(feedbackRequests).toBe(2);
+    expect(container.textContent).toContain("Glad I could help.");
+    expect(container.textContent).not.toContain("Feedback could not be saved translated");
+  });
+
+  it("offers sign-in and returns to the current page when feedback receives 401", async () => {
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/faq") return response({ data: { categories: [] } });
+      if (url === "/api/chatbot/session/guest-token") return response({ data: { ready: true } });
+      if (url === "/api/chatbot/ask") return response({ data: {
+        sessionKey: "feedback-session",
+        answer: "Here is the answer.",
+        botAnswered: true,
+        messageId: "feedback-answer",
+        userMessageId: "feedback-question",
+        language: "en",
+      } });
+      if (url === "/api/chatbot/feedback") {
+        return { ...response({ error: { code: "UNAUTHORIZED" } }, false), status: 401 } as Response;
+      }
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    setInputValue(findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question"), "I need help");
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+    await click(findButton("Yes translated"));
+
+    const currentPage = `${window.location.pathname}${window.location.search}`;
+    expect(container.textContent).toContain("Sign in again to save feedback translated");
+    expect(findOne(container, (element) => element.tagName === "A" && element.getAttribute("href") === `/login?next=${encodeURIComponent(currentPage)}`)).toBeTruthy();
+    expect(container.textContent).not.toContain("Retry feedback translated");
+  });
+
+  it("keeps the ticket offer available when a negative feedback save fails", async () => {
+    let feedbackRequests = 0;
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/faq") return response({ data: { categories: [] } });
+      if (url === "/api/chatbot/session/guest-token") return response({ data: { ready: true } });
+      if (url === "/api/chatbot/ask") return response({ data: {
+        sessionKey: "feedback-session",
+        answer: "Here is the answer.",
+        botAnswered: true,
+        messageId: "feedback-answer",
+        userMessageId: "feedback-question",
+        language: "en",
+      } });
+      if (url === "/api/chatbot/feedback") {
+        feedbackRequests += 1;
+        if (feedbackRequests === 1) throw new Error("temporary network interruption");
+        return response({ data: { id: "feedback-row" } });
+      }
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    setInputValue(findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question"), "I need help");
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+
+    await click(findButton("No translated"));
+
+    expect(container.textContent).toContain("Feedback could not be saved translated");
+    expect(container.textContent).toContain("Translated ticket offer");
+    await click(findButton("Retry feedback translated"));
+
+    expect(feedbackRequests).toBe(2);
+    expect(container.textContent).toContain("Translated ticket offer");
+    expect(container.textContent).not.toContain("temporary network interruption");
+  });
+
+  it("blocks duplicate feedback requests while the first save is pending", async () => {
+    let resolveFeedback: ((result: Response) => void) | undefined;
+    let feedbackRequests = 0;
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/faq") return response({ data: { categories: [] } });
+      if (url === "/api/chatbot/session/guest-token") return response({ data: { ready: true } });
+      if (url === "/api/chatbot/ask") return response({ data: {
+        sessionKey: "feedback-session",
+        answer: "Here is the answer.",
+        botAnswered: true,
+        messageId: "feedback-answer",
+        userMessageId: "feedback-question",
+        language: "en",
+      } });
+      if (url === "/api/chatbot/feedback") {
+        feedbackRequests += 1;
+        return new Promise<Response>((resolve) => { resolveFeedback = resolve; });
+      }
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    setInputValue(findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question"), "I need help");
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+
+    const yesButton = findButton("Yes translated");
+    await click(yesButton);
+    expect(yesButton.disabled).toBe(true);
+    await click(yesButton);
+    expect(feedbackRequests).toBe(1);
+
+    await act(async () => {
+      resolveFeedback?.(response({ data: { id: "feedback-row" } }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Glad I could help.");
   });
 
   it("uses translated known status labels and safely falls back for arbitrary/prototype statuses", () => {
@@ -394,11 +568,56 @@ describe("Task 5 shared runtime behavior", () => {
     await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
     await click(findButton("Translated support label"));
-    await click(findOne(container, (element) => element.getAttribute("aria-label") === "chatbot.faq.toggle"));
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Browse translated FAQs"));
     expect(container.textContent).toContain("chatbot.faq.error");
     await click(findButton("Retry translated"));
     expect(mocks.fetch).toHaveBeenCalledTimes(2);
     expect(container.textContent).toContain("chatbot.faq.empty");
+  });
+
+  it("loads FAQ questions by database page", async () => {
+    let pageTwoRequests = 0;
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/faq") return response({ data: { categories: [{ category: "wallet", count: 11 }] } });
+      if (url === "/api/chatbot/faq?category=wallet&page=1") return response({ data: {
+        category: "wallet",
+        questions: [{ id: "wallet-1", question: "How do I withdraw?" }],
+        page: 1,
+        pageSize: 10,
+        total: 11,
+        totalPages: 2,
+      } });
+      if (url === "/api/chatbot/faq?category=wallet&page=2") {
+        pageTwoRequests += 1;
+        return response({ data: {
+          category: "wallet",
+          questions: [{ id: "wallet-11", question: "How do I update my bank details?" }],
+          page: 2,
+          pageSize: 10,
+          total: 11,
+          totalPages: 2,
+        } });
+      }
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Browse translated FAQs"));
+    expect(container.textContent).toContain("11");
+
+    await click(findButton("chatbot.faq.categories.wallet"));
+    expect(container.textContent).toContain("How do I withdraw?");
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Next translated page"));
+
+    expect(pageTwoRequests).toBe(1);
+    expect(container.textContent).toContain("How do I update my bank details?");
+    expect(container.textContent).not.toContain("How do I withdraw?");
   });
 
   it("keeps a saved handoff draft recoverable when draft loading fails", async () => {

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const migration = readFileSync(join(process.cwd(), 'supabase/migrations/20261111190000_chatbot_kb_review_workflow.sql'), 'utf8');
+const noOpMigration = readFileSync(join(process.cwd(), 'supabase/migrations/20261112180000_support_kb_revision_noop_sources.sql'), 'utf8');
 const securityMigration = readFileSync(join(process.cwd(), 'supabase/migrations/20261111085703_support_kb_rls_and_reviewer_authorization.sql'), 'utf8');
 
 describe('chatbot KB review workflow migration', () => {
@@ -19,6 +20,15 @@ describe('chatbot KB review workflow migration', () => {
     expect(migration).toMatch(/chatbot_kb_revision_conflict/);
     expect(migration).toMatch(/creation_operation_id uuid UNIQUE/);
     expect(migration).toMatch(/v_revision\.revision_hash <> v_hash OR v_revision\.author_id <> p_author_id/);
+  });
+
+  it('treats unchanged published source references as a no-op while preserving review for changed sources', () => {
+    expect(noOpMigration).toMatch(/p_source_refs\s*=\s*v_document\.published_source_refs/);
+    expect(noOpMigration).toMatch(/v_document_keywords\s*=\s*v_input_keywords/);
+    expect(noOpMigration).toMatch(/v_revision_keywords\s*=\s*v_input_keywords/);
+    expect(noOpMigration).toMatch(/coalesce\(nullif\(btrim\(v_document\.category\), ''\), 'general'\)/);
+    expect(noOpMigration).not.toMatch(/jsonb_array_length\(p_source_refs\)\s*=\s*0/);
+    expect(noOpMigration).toMatch(/INSERT INTO public\.chatbot_kb_revisions/);
   });
 
   it('publishes only a confirmed, sourced current revision and invalidates stale embeddings', () => {

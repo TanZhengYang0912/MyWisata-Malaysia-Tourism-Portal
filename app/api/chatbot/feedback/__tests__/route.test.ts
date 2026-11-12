@@ -135,6 +135,8 @@ describe('POST /api/chatbot/feedback ownership', () => {
       id: '33333333-3333-4333-8333-333333333333',
       session_id: botMessage.session_id,
       user_id: 'user-1',
+      question: null,
+      question_source_version: 1,
       opened_ticket: true,
     }, error: null }, { data: null, error: null });
 
@@ -148,6 +150,8 @@ describe('POST /api/chatbot/feedback ownership', () => {
       id: '33333333-3333-4333-8333-333333333333',
       session_id: botMessage.session_id,
       user_id: 'user-1',
+      question: null,
+      question_source_version: 1,
       helpful: true,
       opened_ticket: false,
     }, error: null }, { data: null, error: null });
@@ -168,6 +172,8 @@ describe('POST /api/chatbot/feedback ownership', () => {
         id: '33333333-3333-4333-8333-333333333333',
         session_id: botMessage.session_id,
         user_id: 'user-1',
+        question: null,
+        question_source_version: 1,
         helpful: false,
         opened_ticket: true,
       }, error: null });
@@ -185,6 +191,8 @@ describe('POST /api/chatbot/feedback ownership', () => {
       id: '33333333-3333-4333-8333-333333333333',
       session_id: botMessage.session_id,
       user_id: 'user-1',
+      question: null,
+      question_source_version: 1,
       helpful: null,
       opened_ticket: false,
     }, error: null }, { data: null, error: null });
@@ -193,6 +201,8 @@ describe('POST /api/chatbot/feedback ownership', () => {
         id: '33333333-3333-4333-8333-333333333333',
         session_id: botMessage.session_id,
         user_id: 'user-1',
+        question: null,
+        question_source_version: 1,
         helpful: null,
         opened_ticket: false,
       }, error: null })
@@ -210,13 +220,61 @@ describe('POST /api/chatbot/feedback ownership', () => {
     const botQuery = query({ data: null, error: null });
     botQuery.maybeSingle
       .mockReturnValueOnce(Promise.resolve({ data: { ...botMessage, reply_to_message_id: 'user-msg-1' }, error: null }))
-      .mockReturnValueOnce(Promise.resolve({ data: { id: 'user-msg-1', role: 'user', session_id: botMessage.session_id, body: 'My booking status? [PHONE]' }, error: null }));
+      .mockReturnValueOnce(Promise.resolve({ data: { id: 'user-msg-1', role: 'user', session_id: botMessage.session_id, body: 'My booking status? [PHONE]', body_sanitized: true }, error: null }));
     mocks.tables.chatbot_messages = botQuery;
     const response = await POST(request({ question: 'raw email me@example.com' }));
     expect(response.status).toBe(201);
     expect(mocks.tables.chatbot_feedback.insert).toHaveBeenCalledWith(expect.objectContaining({
       session_id: botMessage.session_id, user_id: 'user-1', message_id: botMessage.id,
-      question: 'My booking status? [PHONE]',
+      question: 'My booking status? [PHONE]', question_source_version: 1,
     }));
+  });
+
+  it('repairs a legacy feedback echo from the linked sanitized question on retry', async () => {
+    const botQuery = query({ data: null, error: null });
+    botQuery.maybeSingle
+      .mockReturnValueOnce(Promise.resolve({ data: { ...botMessage, reply_to_message_id: 'user-msg-1' }, error: null }))
+      .mockReturnValueOnce(Promise.resolve({ data: { id: 'user-msg-1', role: 'user', session_id: botMessage.session_id, body: 'My booking status? [PHONE]', body_sanitized: true }, error: null }));
+    mocks.tables.chatbot_messages = botQuery;
+    const feedback = feedbackQuery({ data: {
+      id: '33333333-3333-4333-8333-333333333333',
+      session_id: botMessage.session_id,
+      user_id: 'user-1',
+      question: 'raw email me@example.com',
+      question_source_version: 0,
+      helpful: true,
+      opened_ticket: false,
+    }, error: null }, { data: { id: '33333333-3333-4333-8333-333333333333' }, error: null });
+    mocks.tables.chatbot_feedback = feedback;
+
+    const response = await POST(request({ question: 'raw email me@example.com' }));
+
+    expect(response.status).toBe(200);
+    expect(feedback.update).toHaveBeenCalledWith({ question: 'My booking status? [PHONE]', question_source_version: 1 });
+    expect(JSON.stringify(feedback.update.mock.calls)).not.toContain('raw email me@example.com');
+  });
+
+  it('does not copy a legacy question whose sanitization cannot be proven', async () => {
+    const botQuery = query({ data: null, error: null });
+    botQuery.maybeSingle
+      .mockReturnValueOnce(Promise.resolve({ data: { ...botMessage, reply_to_message_id: 'legacy-user-msg' }, error: null }))
+      .mockReturnValueOnce(Promise.resolve({ data: {
+        id: 'legacy-user-msg',
+        role: 'user',
+        session_id: botMessage.session_id,
+        body: 'Contact me at legacy@example.com',
+        body_sanitized: false,
+      }, error: null }));
+    mocks.tables.chatbot_messages = botQuery;
+
+    const response = await POST(request({ question: 'Contact me at legacy@example.com' }));
+
+    expect(response.status).toBe(201);
+    expect(botQuery.select).toHaveBeenLastCalledWith('id,role,session_id,body,body_sanitized');
+    expect(mocks.tables.chatbot_feedback.insert).toHaveBeenCalledWith(expect.objectContaining({
+      question: null,
+      question_source_version: 1,
+    }));
+    expect(JSON.stringify(mocks.tables.chatbot_feedback.insert.mock.calls)).not.toContain('legacy@example.com');
   });
 });

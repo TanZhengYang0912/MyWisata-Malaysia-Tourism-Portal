@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 
-const mocks = vi.hoisted(() => ({ createAuthClient: vi.fn(), getUser: vi.fn(), from: vi.fn(), rpc: vi.fn(), answer: vi.fn(), clean: vi.fn(), reserveQuota: vi.fn(), guestCredential: vi.fn(), tokenHash: vi.fn(), bindGuest: vi.fn() }));
+const mocks = vi.hoisted(() => ({ createAuthClient: vi.fn(), getUser: vi.fn(), from: vi.fn(), rpc: vi.fn(), answer: vi.fn(), clean: vi.fn(), reserveQuota: vi.fn(), guestCredential: vi.fn(), tokenHash: vi.fn(), bindGuest: vi.fn(), messageInserts: [] as unknown[] }));
 function query(result: unknown) {
   const terminal = Promise.resolve(result);
   const builder: Record<string, ReturnType<typeof vi.fn>> = {};
@@ -28,6 +28,7 @@ import { POST } from '../route';
 describe('POST /api/chatbot/ask session ownership', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.messageInserts.length = 0;
     mocks.createAuthClient.mockResolvedValue({ auth: { getUser: mocks.getUser } });
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'attacker' } } });
     let messageQuery = 0;
@@ -54,7 +55,12 @@ describe('POST /api/chatbot/ask session ownership', () => {
         : messageQuery === 2
           ? { data: { id: 'user-message-1' }, error: null }
           : { data: { id: 'bot-message-1' }, error: null };
-      return query(result);
+      const builder = query(result);
+      builder.insert.mockImplementation((values: unknown) => {
+        mocks.messageInserts.push(values);
+        return builder;
+      });
+      return builder;
     });
   });
 
@@ -124,6 +130,33 @@ describe('POST /api/chatbot/ask session ownership', () => {
     expect(mocks.answer).not.toHaveBeenCalled();
   });
 
+  it('passes a per-provider quota reservation callback into the answer pipeline', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'victim' } } });
+    mocks.clean.mockResolvedValue({
+      display: 'How do I check my booking?', original: 'How do I check my booking?',
+      hadProfanity: false, hadSlur: false, hadPII: false, severity: 'low',
+    });
+    mocks.reserveQuota.mockResolvedValue(true);
+    mocks.answer.mockImplementation(async (_question, _useAi, _markExternalCall, reserveProviderCall) => {
+      expect(reserveProviderCall).toBeTypeOf('function');
+      await reserveProviderCall?.();
+      await reserveProviderCall?.();
+      return {
+        answer: 'Check your booking page.', kbMatched: true, canEscalate: false,
+        usedKb: [], mode: 'llm', piiDetected: false, language: 'en',
+      };
+    });
+
+    const response = await POST(new Request('http://localhost/api/chatbot/ask', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionKey: 'victim-session', operationId: crypto.randomUUID(), question: 'How do I check my booking?' }),
+    }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.reserveQuota).toHaveBeenCalledTimes(2);
+    expect(mocks.reserveQuota).toHaveBeenCalledWith(expect.any(Request), 'chatbot', 'victim');
+  });
+
   it('does not report a guest session mismatch when credential binding is unavailable', async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null } });
     mocks.bindGuest.mockResolvedValue('unavailable');
@@ -167,6 +200,27 @@ describe('POST /api/chatbot/ask session ownership', () => {
       p_actor_key: 'user:victim',
       p_user_message_id: 'user-message-1',
     }));
+    expect(mocks.messageInserts[0]).toEqual(expect.objectContaining({ body: 'Call me at [PHONE]', body_sanitized: true }));
+  });
+
+  it('marks the stored question as sanitized only after server-side cleaning', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'victim' } } });
+    mocks.clean.mockResolvedValue({
+      display: 'Call me at [PHONE]', original: 'Call me at [PHONE]',
+      hadProfanity: false, hadSlur: false, hadPII: true, severity: 'low',
+    });
+    mocks.answer.mockResolvedValue({
+      answer: 'Here is a local FAQ match.', kbMatched: true, canEscalate: false,
+      usedKb: [], mode: 'keyword', piiDetected: true, language: 'en',
+    });
+
+    const response = await POST(new Request('http://localhost/api/chatbot/ask', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionKey: 'victim-session', operationId: crypto.randomUUID(), question: 'Call me at 012-3456789' }),
+    }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.messageInserts[0]).toEqual(expect.objectContaining({ body: 'Call me at [PHONE]', body_sanitized: true }));
   });
 
   it('commits reference snapshots with the answer and exposes only safe citation fields', async () => {

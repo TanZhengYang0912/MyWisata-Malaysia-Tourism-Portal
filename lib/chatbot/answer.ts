@@ -32,7 +32,6 @@
 import { createServiceClient } from '@/lib/supabase/service';
 import { retrieve, type RetrievedDoc } from './retrieve';
 import { generateAnswer } from './generate';
-import { answerQuestion as matchKeyword, type KbDoc } from './match';
 import { classifyIntent, splitQuestions } from './intent';
 import { prepareKbText, redactPII } from './pii';
 import { detectLanguage, type ChatLanguage } from './language';
@@ -102,62 +101,65 @@ async function answerWithKeywordFallback(
   piiDetected: boolean,
   language: ChatLanguage,
 ): Promise<AnswerResult> {
-  const { data: kbRows } = await service
-    .from('chatbot_kb_documents')
-    .select('id, title, body, keywords, category, content_version, published_source_refs')
-    .eq('is_active', true);
+  interface KeywordMatchRow {
+    question_index: number;
+    id: string;
+    title: string;
+    body: string;
+    keywords: string[];
+    category: string | null;
+    content_version: number | null;
+    published_source_refs: unknown;
+  }
 
-  const safeRows = (kbRows ?? []).filter((row) => prepareKbText(`TITLE: ${row.title}\nBODY: ${row.body}`).allowed);
-  const sourceById = new Map(safeRows.map((row) => [row.id, row]));
+  const domains = questions.map((question) => detectSensitiveSupportDomain(question));
+  const { data, error } = await service.rpc('search_support_kb_keywords', {
+    p_questions: questions,
+    p_reviewed_only: domains.map((domain) => domain !== null),
+  });
+  if (error) console.error('[chatbot] keyword KB lookup failed', error.code ?? 'unknown');
+
+  const safeRows = ((error ? [] : data ?? []) as KeywordMatchRow[]).filter((row) => (
+    prepareKbText(`TITLE: ${row.title}\nBODY: ${row.body}`).allowed
+  ));
   const reviewedIds = new Set(safeRows
     .filter((row) => Array.isArray(row.published_source_refs) && row.published_source_refs.length > 0)
     .map((row) => row.id));
-  const docs: KbDoc[] = safeRows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    body: row.body,
-    keywords: row.keywords ?? [],
-    category: row.category,
-  }));
 
   // The keyword matcher only ever scores against an English KB (Extra 1
   // deliberately doesn't translate the KB — see lib/chatbot/retrieve.ts's
   // header), so its ANSWER is always English regardless of `language`. Only
-  // the fallback line (no match at all) gets localized here — there's
-  // nothing to translate on a successful match without risking exactly the
-  // "subtly wrong translation" the extras doc warns about, and this path
-  // only runs when the LLM is unavailable/failing anyway.
-  // One match per question, each doc shown once.
-  const questionMatches = questions.map((question) => {
-    const domain = detectSensitiveSupportDomain(question);
-    const candidates = domain ? docs.filter((doc) => reviewedIds.has(doc.id)) : docs;
-    const match = matchKeyword(question, candidates);
-    return { domain, match };
-  });
+  // the fallback line (no match at all) gets localized here. Each question
+  // is ranked in Postgres; the RPC returns at most ten candidates, after the
+  // full active set has been scored, for this safety check.
+  const questionMatches = questions.map((_question, index) => ({
+    domain: domains[index],
+    match: safeRows.find((row) => row.question_index === index + 1) ?? null,
+  }));
   if (questionMatches.some(({ domain, match }) => domain && (
     !match || !resolveSupportPolicy(domain, 'published_kb').canAnswerPolicy
   ))) {
     return { answer: CHAT_STRINGS[language].sensitiveUnavailable, kbMatched: false, canEscalate: true, usedKb: [], mode: 'keyword', piiDetected, language };
   }
   const matches = [...new Map(
-    questionMatches.map(({ match }) => match).filter((doc): doc is KbDoc => doc !== null).map((doc) => [doc.id, doc]),
+    questionMatches.map(({ match }) => match).filter((row): row is KeywordMatchRow => row !== null).map((row) => [row.id, row]),
   ).values()];
   const hasUnansweredQuestion = questionMatches.some(({ match }) => match === null);
   const answerParts = matches.map((doc) => doc.body);
   if (hasUnansweredQuestion && matches.length > 0) answerParts.push(CHAT_STRINGS[language].fallback);
   return matches.length > 0
     ? { answer: answerParts.join('\n\n'), kbMatched: true, canEscalate: hasUnansweredQuestion, usedKb: matches.map((doc) => {
-      const source = sourceById.get(doc.id);
-      return { id: doc.id, title: doc.title, contentVersion: Number(source?.content_version ?? 0), reviewed: reviewedIds.has(doc.id), similarity: null };
+      return { id: doc.id, title: doc.title, contentVersion: Number(doc.content_version ?? 0), reviewed: reviewedIds.has(doc.id), similarity: null };
     }), mode: 'keyword', piiDetected, language }
     : { answer: CHAT_STRINGS[language].fallback, kbMatched: false, canEscalate: true, usedKb: [], mode: 'keyword', piiDetected, language };
 }
 
-/** `useAi: false` (caller over its AI quota) answers from the keyword matcher instead of the LLM. */
+/** `useAi: false` skips the model; when enabled, each provider call reserves quota before leaving the server. */
 export async function answerQuestion(
   question: string,
   useAi = true,
   beforeExternalCall?: () => Promise<void>,
+  reserveProviderCall?: () => Promise<boolean>,
 ): Promise<AnswerResult> {
   // Computed once from the raw question, independent of which mode ends up
   // answering it — a keyword-mode or intent-gated reply can still follow a
@@ -210,12 +212,18 @@ export async function answerQuestion(
           return externalCallMarker;
         }
         : undefined;
+      const prepareProviderCall = async () => {
+        if (reserveProviderCall && !(await reserveProviderCall())) {
+          throw new Error('AI_QUOTA_EXHAUSTED');
+        }
+        await markBeforeExternalCall?.();
+      };
       // Each question clears the similarity threshold on its own, so one
       // off-topic question no longer sinks an on-topic one beside it.
       const k = retrievalCount(questions.length);
       const questionEvidence = await Promise.all(questions.map(async (question) => {
         const domain = detectSensitiveSupportDomain(question);
-        const docs = await retrieve(service, question, k, markBeforeExternalCall, domain !== null);
+        const docs = await retrieve(service, question, k, prepareProviderCall, domain !== null);
         return { question, domain, docs };
       }));
       const sensitiveQuestions = questionEvidence.filter(({ domain }) => domain !== null);
@@ -244,9 +252,7 @@ export async function answerQuestion(
         if (ordinaryQuestions.length > 0) {
           if (ordinaryDocs.length > 0) {
             const ordinaryQuestion = ordinaryQuestions.map(({ question }) => question).join('\n');
-            ordinaryAnswer = markBeforeExternalCall
-              ? await generateAnswer(ordinaryQuestion, ordinaryDocs, ordinaryQuestions.length, markBeforeExternalCall)
-              : await generateAnswer(ordinaryQuestion, ordinaryDocs, ordinaryQuestions.length);
+            ordinaryAnswer = await generateAnswer(ordinaryQuestion, ordinaryDocs, ordinaryQuestions.length, prepareProviderCall);
             usedLlm = true;
           }
           ordinaryAnswer ??= strings.fallback;
@@ -300,9 +306,7 @@ export async function answerQuestion(
         return { answer: strings.sensitiveUnavailable, kbMatched: false, canEscalate: true, usedKb: [], mode: 'llm', piiDetected, language };
       }
       const usedKb: UsedKbRef[] = evidenceDocs.map((r) => ({ id: r.id, title: r.title, contentVersion: r.contentVersion, reviewed: r.reviewed, similarity: r.similarity }));
-      const llmAnswer = markBeforeExternalCall
-        ? await generateAnswer(question, evidenceDocs, questions.length, markBeforeExternalCall)
-        : await generateAnswer(question, evidenceDocs, questions.length);
+      const llmAnswer = await generateAnswer(question, evidenceDocs, questions.length, prepareProviderCall);
 
       if (llmAnswer === null) {
         // NO_ANSWER — still record which docs were retrieved/considered,

@@ -195,7 +195,7 @@ export async function POST(request: Request) {
   if (!userMessageId) {
     const { data: userMsg, error: userMsgErr } = await service
       .from('chatbot_messages')
-      .insert({ session_id: session.id, role: 'user', body: cleaned.display, pii_detected: cleaned.hadPII, operation_id: operationId, operation_payload_hash: operationPayloadHash })
+      .insert({ session_id: session.id, role: 'user', body: cleaned.display, pii_detected: cleaned.hadPII, body_sanitized: true, operation_id: operationId, operation_payload_hash: operationPayloadHash })
       .select('id')
       .single();
     if (userMsgErr?.code === '23505') {
@@ -220,7 +220,8 @@ export async function POST(request: Request) {
   if (!userMessageId) return apiFail('OPERATION_UNKNOWN', 'The previous question could not be confirmed. Check chat history before sending again.', 409);
 
   const privacyBlocked = !prepareExternalText(question).allowed;
-  const useAi = !privacyBlocked && await reserveAiQuota(request, 'chatbot', user?.id ?? null);
+  const useAi = !privacyBlocked;
+  const reserveProviderCall = useAi ? async () => reserveAiQuota(request, 'chatbot', user?.id ?? null).catch(() => false) : undefined;
   const beforeExternalCall = useAi ? async () => {
     const { data: externalStarted, error: externalStartError } = await service.rpc('mark_support_operation_external_started', {
       p_operation_id: operationId,
@@ -230,7 +231,7 @@ export async function POST(request: Request) {
     if (externalStartError || externalStarted !== true) throw new Error('support_operation_lease_lost');
   } : undefined;
   const result = useAi
-    ? await answerQuestion(cleaned.display, true, beforeExternalCall)
+    ? await answerQuestion(cleaned.display, true, beforeExternalCall, reserveProviderCall)
     : await answerQuestion(cleaned.display, false);
 
   // Slurs are a safety issue, not just civility — surfaced to admin even
