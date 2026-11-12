@@ -94,6 +94,7 @@ interface ChatMessage {
   handoffConsented?: boolean;
   ticketOperationUnknown?: boolean;
   ticketOperationNotFound?: boolean;
+  handoffDraftLoadFailed?: boolean;
   ticketNeedsSignIn?: boolean;
 }
 
@@ -753,18 +754,42 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     const hasPendingOperation = Boolean(pendingOperationId);
     const draftTarget = msg.messageId ?? msg.handoffDraftTarget ?? operationId;
     setCreatingTicketFor(msg.messageId ?? operationId);
+    setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
+      ? { ...item, ticketError: undefined, ticketErrorCode: undefined, ticketNeedsSignIn: false, handoffDraftLoadFailed: false }
+      : item));
     try {
       let subject = resolveTicketSubject(msg.question, t("chatbot.supportRequest"));
       let summary = msg.question;
       let draftVersion = 0;
-      const draftResponse = await fetch(`/api/support/drafts?surface=handoff&target=${encodeURIComponent(draftTarget)}`, { cache: "no-store" }).catch(() => null);
-      if (identityRef.current !== requestIdentity) return;
-      if (draftResponse?.ok) {
-        const draftResult = await draftResponse.json().catch(() => ({})) as { data?: { subject?: string; body?: string; version?: number } };
-        if (draftResult.data && typeof draftResult.data.version === "number" && draftResult.data.version > 0) {
-          subject = draftResult.data.subject ?? subject;
-          summary = draftResult.data.body ?? summary;
-          draftVersion = draftResult.data.version;
+      if (currentUser) {
+        const draftResponse = await fetch(`/api/support/drafts?surface=handoff&target=${encodeURIComponent(draftTarget)}`, { cache: "no-store" }).catch(() => null);
+        if (identityRef.current !== requestIdentity) return;
+        if (draftResponse?.status === 401) {
+          setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
+            ? { ...item, ticketErrorCode: "UNAUTHORIZED", ticketNeedsSignIn: true, handoffDraftLoadFailed: true }
+            : item));
+          return;
+        }
+        if (!draftResponse?.ok) {
+          setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
+            ? { ...item, handoffDraftLoadFailed: true }
+            : item));
+          return;
+        }
+        const draftResult = await draftResponse.json().catch(() => null) as { data?: { subject?: unknown; body?: unknown; version?: unknown } } | null;
+        if (identityRef.current !== requestIdentity) return;
+        const draft = draftResult?.data;
+        if (!draft || typeof draft.subject !== "string" || typeof draft.body !== "string"
+          || typeof draft.version !== "number" || !Number.isInteger(draft.version) || draft.version < 0) {
+          setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
+            ? { ...item, handoffDraftLoadFailed: true }
+            : item));
+          return;
+        }
+        if (draft.version > 0) {
+          subject = draft.subject;
+          summary = draft.body;
+          draftVersion = draft.version;
         }
       }
       if (identityRef.current !== requestIdentity) return;
@@ -780,6 +805,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         handoffDraftTarget: draftTarget,
         handoffDraftVersion: draftVersion,
         handoffDraftSaved: draftVersion > 0,
+        handoffDraftLoadFailed: false,
         ticketOperationUnknown: hasPendingOperation,
         ticketError: undefined,
       } : m)));
@@ -1109,16 +1135,28 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                           {m.feedbackStage === "awaiting_ticket" && (
                             <div className="rounded-lg border border-border bg-background px-2.5 py-1.5">
                               <div className="flex items-center gap-2">
-                                <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wantTicket")}</span>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 px-2.5 text-xs"
-                                  onClick={() => createTicket(i)}
-                                  disabled={Boolean(creatingTicketFor)}
-                                >
-                                  {creatingTicketFor ? t("chatbot.creatingTicket") : t("chatbot.yes")}
-                                </Button>
+                                <span role={m.handoffDraftLoadFailed ? "alert" : undefined} className="text-xs text-muted-foreground flex-1">{m.handoffDraftLoadFailed ? t("chatbot.handoff.draftLoadFailed") : t("chatbot.wantTicket")}</span>
+                                {m.handoffDraftLoadFailed ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2.5 text-xs"
+                                    onClick={() => createTicket(i)}
+                                    disabled={Boolean(creatingTicketFor)}
+                                  >
+                                    {creatingTicketFor ? t("chatbot.creatingTicket") : t("chatbot.handoff.retryDraftLoad")}
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2.5 text-xs"
+                                    onClick={() => createTicket(i)}
+                                    disabled={Boolean(creatingTicketFor)}
+                                  >
+                                    {creatingTicketFor ? t("chatbot.creatingTicket") : t("chatbot.yes")}
+                                  </Button>
+                                )}
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -1129,7 +1167,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                                   {t("chatbot.no")}
                                 </Button>
                               </div>
-                              {m.ticketError && <p role="alert" className="text-[0.6875rem] text-destructive mt-1">{m.ticketErrorCode ? t(`chatbot.supportErrors.${supportError(m.ticketErrorCode).key}`) : m.ticketError}</p>}
+                              {(m.ticketError || m.ticketErrorCode) && <p role="alert" className="text-[0.6875rem] text-destructive mt-1">{m.ticketErrorCode ? t(`chatbot.supportErrors.${supportError(m.ticketErrorCode).key}`) : m.ticketError}</p>}
                               {m.ticketNeedsSignIn && (
                                 <Link href="/login?next=%2Fcustomer%2Fsupport" target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-primary underline">
                                   {t("chatbot.handoff.signIn")}
