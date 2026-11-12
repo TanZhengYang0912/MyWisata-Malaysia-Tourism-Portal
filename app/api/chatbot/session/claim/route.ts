@@ -5,14 +5,24 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { isSameOriginMutation } from '@/lib/checkout/guest-session';
 import { apiFail, parseBody } from '@/lib/validation/schemas';
 import { clearChatbotGuestCookie, hashChatbotGuestCredential, readChatbotGuestCredential } from '@/lib/chatbot/guest-session';
+import { getAuthenticatedUser } from '@/lib/auth/request-user';
 
 const claimSchema = z.object({ sessionKey: z.string().min(1).max(64) }).strict();
 
 export async function POST(request: Request) {
   if (!isSameOriginMutation(request)) return apiFail('FORBIDDEN', 'This request could not be verified.', 403);
-  const auth = await createClient();
-  const { data: { user } } = await auth.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in to continue this conversation.', 401);
+  let auth: Awaited<ReturnType<typeof createClient>>;
+  try {
+    auth = await createClient();
+  } catch {
+    return apiFail('AUTH_UNAVAILABLE', 'Unable to verify your sign-in right now. Check your connection and try again.', 503);
+  }
+  const authentication = await getAuthenticatedUser(auth);
+  if (authentication.state === 'unavailable') {
+    return apiFail('AUTH_UNAVAILABLE', 'Unable to verify your sign-in right now. Check your connection and try again.', 503);
+  }
+  if (authentication.state !== 'authenticated') return apiFail('UNAUTHORIZED', 'Sign in to continue this conversation.', 401);
+  const user = authentication.user;
   const guestCredential = readChatbotGuestCredential(request);
   const parsed = await parseBody(request, claimSchema);
   if (!parsed.ok) return parsed.response;

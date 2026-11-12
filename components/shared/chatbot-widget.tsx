@@ -646,6 +646,10 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
             setHistoryError(true);
             setGuestRecoverySessionKey(targetSessionKey);
             setMessages((m) => [...m, { role: 'bot', text: t('chatbot.guestSessionUnavailable') }]);
+          } else if (cookieResult.error?.code === 'READ_UNAVAILABLE') {
+            setMessages((m) => [...m, { role: 'bot', text: t('chatbot.sessionUnavailable') }]);
+          } else if (cookieResult.error?.code === 'AUTH_UNAVAILABLE') {
+            setMessages((m) => [...m, { role: 'bot', text: t('chatbot.authUnavailable') }]);
           } else {
             setMessages((m) => [...m, { role: 'bot', text: t('chatbot.somethingWrong') }]);
           }
@@ -678,6 +682,10 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       if (!res.ok || !body.data) {
         if (body.error?.code === "OPERATION_UNKNOWN") {
           setMessages((m) => [...m, { role: "bot", text: t("chatbot.askResultUnknown") }]);
+        } else if (body.error?.code === "AUTH_UNAVAILABLE") {
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.authUnavailable") }]);
+        } else if (body.error?.code === "SESSION_UNAVAILABLE") {
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.sessionUnavailable") }]);
         } else if (body.error?.code === "OPERATION_CONFLICT") {
           storePendingAskOperation(targetSessionKey, null);
           pendingAskRef.current = null;

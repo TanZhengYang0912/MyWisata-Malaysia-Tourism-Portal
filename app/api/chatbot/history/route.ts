@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { bindChatbotGuestSessionToken, hashChatbotGuestCredential, readChatbotGuestCredential } from '@/lib/chatbot/guest-session';
+import { getAuthenticatedUser } from '@/lib/auth/request-user';
 
 const querySchema = z.object({
   sessionKey: z.string().min(1).max(64),
@@ -11,8 +12,17 @@ const querySchema = z.object({
 }).strict().refine((value) => Boolean(value.beforeCreatedAt) === Boolean(value.beforeId));
 
 export async function POST(request: Request) {
-  const auth = await createClient();
-  const { data: { user } } = await auth.auth.getUser();
+  let auth: Awaited<ReturnType<typeof createClient>>;
+  try {
+    auth = await createClient();
+  } catch {
+    return apiFail('AUTH_UNAVAILABLE', 'Unable to verify your sign-in right now. Check your connection and try again.', 503);
+  }
+  const authentication = await getAuthenticatedUser(auth);
+  if (authentication.state === 'unavailable') {
+    return apiFail('AUTH_UNAVAILABLE', 'Unable to verify your sign-in right now. Check your connection and try again.', 503);
+  }
+  const user = authentication.state === 'authenticated' ? authentication.user : null;
   const guestCredential = user ? null : readChatbotGuestCredential(request);
   if (!user && !guestCredential) return apiFail('UNAUTHORIZED', 'This guest conversation is no longer available.', 401);
   const guestTokenHash = guestCredential ? hashChatbotGuestCredential(guestCredential) : null;
@@ -27,9 +37,16 @@ export async function POST(request: Request) {
   sessionQuery = user ? sessionQuery.eq('user_id', user.id) : sessionQuery.is('user_id', null);
   const { data: session, error: sessionError } = await sessionQuery.maybeSingle();
   if (sessionError) return apiFail('READ_UNAVAILABLE', 'Unable to restore this conversation.', 503);
-  if (!session || (!user && session.guest_token_hash !== guestTokenHash
-      && !(session.guest_token_hash === null && guestTokenHash && await bindChatbotGuestSessionToken(parsed.data.sessionKey, guestTokenHash)))) {
+  if (!session) {
     return apiFail('NOT_FOUND', 'This conversation is no longer available.', 404);
+  }
+  if (!user && session.guest_token_hash !== guestTokenHash) {
+    if (session.guest_token_hash !== null || !guestTokenHash) {
+      return apiFail('NOT_FOUND', 'This conversation is no longer available.', 404);
+    }
+    const binding = await bindChatbotGuestSessionToken(parsed.data.sessionKey, guestTokenHash);
+    if (binding === 'unavailable') return apiFail('READ_UNAVAILABLE', 'Unable to restore this conversation. Try again.', 503);
+    if (binding !== 'bound') return apiFail('NOT_FOUND', 'This conversation is no longer available.', 404);
   }
 
   let query = service.from('chatbot_messages')

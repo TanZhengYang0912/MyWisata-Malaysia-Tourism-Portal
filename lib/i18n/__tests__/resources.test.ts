@@ -114,6 +114,18 @@ describe("translation resources", () => {
     expect(malay.common.chatbot.statusQuery.values.no_show).toBe("Tidak hadir");
   });
 
+  it("keeps the authentication outage recovery action clear in all customer locales", async () => {
+    const [english, chinese, malay] = await Promise.all([
+      loadTestResources("en"),
+      loadTestResources("zh-CN"),
+      loadTestResources("ms"),
+    ]);
+
+    expect(english.common.chatbot.authUnavailable).toContain("retry");
+    expect(chinese.common.chatbot.authUnavailable).toContain("重试");
+    expect(malay.common.chatbot.authUnavailable).toContain("cuba lagi");
+  });
+
   it("uses the right meaning for customer and vendor financial labels", async () => {
     const [english, chinese, malay] = await Promise.all([
       loadTestResources("en"),

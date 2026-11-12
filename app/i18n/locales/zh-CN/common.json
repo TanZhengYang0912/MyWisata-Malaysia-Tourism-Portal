@@ -335,6 +335,8 @@
     "viewMyTickets": "查看我的工单",
     "ticketError": "暂时无法创建工单，请重试。",
     "somethingWrong": "抱歉，出了点问题，请重试。",
+    "authUnavailable": "暂时无法验证您的账户。请检查网络后重试。",
+    "sessionUnavailable": "暂时无法验证这段对话。请检查网络后重试。",
     "askResultUnknown": "问题已保存，但答案尚未确认。请先查看聊天记录，再决定是否重新发送。",
     "askOperationConflict": "这与之前尚未完成的问题不一致。再次发送即可开始新的请求。",
     "guestCookieUnavailable": "访客聊天需要 Cookie。请启用 Cookie 或登录，然后重新发送。",

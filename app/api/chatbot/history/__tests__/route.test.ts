@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), createServiceClient: vi.fn(), guestCredential: vi.fn(), tokenHash: vi.fn(), bindGuest: vi.fn() }));
-vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { getUser: mocks.getUser } }) }));
+const mocks = vi.hoisted(() => ({ createAuthClient: vi.fn(), getUser: vi.fn(), createServiceClient: vi.fn(), guestCredential: vi.fn(), tokenHash: vi.fn(), bindGuest: vi.fn() }));
+vi.mock('@/lib/supabase/server', () => ({ createClient: mocks.createAuthClient }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: mocks.createServiceClient }));
 vi.mock('@/lib/chatbot/guest-session', () => ({
   readChatbotGuestCredential: mocks.guestCredential,
@@ -35,10 +35,11 @@ function makeRequest() {
 describe('POST /api/chatbot/history', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.createAuthClient.mockResolvedValue({ auth: { getUser: mocks.getUser } });
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'owner-1' } } });
     mocks.guestCredential.mockReturnValue('a'.repeat(43));
     mocks.tokenHash.mockReturnValue('b'.repeat(64));
-    mocks.bindGuest.mockResolvedValue(true);
+    mocks.bindGuest.mockResolvedValue('bound');
   });
 
   it('returns only the owned customer session and bounded message batch', async () => {
@@ -68,6 +69,49 @@ describe('POST /api/chatbot/history', () => {
     const response = await POST(makeRequest());
 
     expect(response.status).toBe(404);
+    expect(from).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns a retryable auth failure instead of an expired guest-session response', async () => {
+    mocks.getUser.mockResolvedValue({
+      data: { user: null },
+      error: { name: 'AuthRetryableFetchError', status: 503 },
+    });
+    mocks.guestCredential.mockReturnValue(null);
+
+    const response = await POST(makeRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('AUTH_UNAVAILABLE');
+    expect(mocks.guestCredential).not.toHaveBeenCalled();
+    expect(mocks.createServiceClient).not.toHaveBeenCalled();
+  });
+
+  it('returns a retryable auth failure when the server auth client cannot be created', async () => {
+    mocks.createAuthClient.mockRejectedValue(new Error('server auth client unavailable'));
+
+    const response = await POST(makeRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('AUTH_UNAVAILABLE');
+    expect(mocks.guestCredential).not.toHaveBeenCalled();
+    expect(mocks.createServiceClient).not.toHaveBeenCalled();
+  });
+
+  it('returns a retryable read error when legacy guest credential binding is unavailable', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null } });
+    mocks.bindGuest.mockResolvedValue('unavailable');
+    const session = makeBuilder({ data: { id: 'guest-session-row', guest_token_hash: null }, error: null }, 'maybeSingle');
+    const from = vi.fn(() => session);
+    mocks.createServiceClient.mockReturnValue({ from });
+
+    const response = await POST(makeRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('READ_UNAVAILABLE');
     expect(from).toHaveBeenCalledTimes(1);
   });
 

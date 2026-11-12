@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), sameOrigin: vi.fn(), readCredential: vi.fn(), newCredential: vi.fn(), setCookie: vi.fn(), select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn(), bind: vi.fn(), hash: vi.fn() }));
-vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser } })) }));
+const mocks = vi.hoisted(() => ({ createAuthClient: vi.fn(), getUser: vi.fn(), sameOrigin: vi.fn(), readCredential: vi.fn(), newCredential: vi.fn(), setCookie: vi.fn(), select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn(), bind: vi.fn(), hash: vi.fn() }));
+vi.mock('@/lib/supabase/server', () => ({ createClient: mocks.createAuthClient }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: () => ({ select: mocks.select, eq: mocks.eq, maybeSingle: mocks.maybeSingle }) }) }));
 vi.mock('@/lib/checkout/guest-session', () => ({ isSameOriginMutation: mocks.sameOrigin }));
 vi.mock('@/lib/chatbot/guest-session', () => ({
@@ -24,6 +24,7 @@ function makeRequest() {
 describe('POST /api/chatbot/session/guest-token', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.createAuthClient.mockResolvedValue({ auth: { getUser: mocks.getUser } });
     mocks.sameOrigin.mockReturnValue(true);
     mocks.getUser.mockResolvedValue({ data: { user: null } });
     mocks.readCredential.mockReturnValue(null);
@@ -32,7 +33,7 @@ describe('POST /api/chatbot/session/guest-token', () => {
     mocks.eq.mockReturnThis();
     mocks.maybeSingle.mockResolvedValue({ data: null, error: null });
     mocks.hash.mockReturnValue('h'.repeat(64));
-    mocks.bind.mockResolvedValue(true);
+    mocks.bind.mockResolvedValue('bound');
   });
 
   it('sets a server-generated HttpOnly credential without returning its value', async () => {
@@ -66,6 +67,18 @@ describe('POST /api/chatbot/session/guest-token', () => {
     expect(mocks.setCookie).not.toHaveBeenCalled();
   });
 
+  it('does not issue a guest credential while the auth service is unavailable', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: { name: 'AuthRetryableFetchError', status: 503 } });
+
+    const response = await POST(makeRequest());
+    const payload = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('AUTH_UNAVAILABLE');
+    expect(mocks.newCredential).not.toHaveBeenCalled();
+    expect(mocks.setCookie).not.toHaveBeenCalled();
+  });
+
   it('does not silently replace a lost credential for an already bound session', async () => {
     mocks.maybeSingle.mockResolvedValue({ data: { user_id: null, channel: 'customer', guest_token_hash: 'x'.repeat(64) }, error: null });
     const request = new Request('http://localhost/api/chatbot/session/guest-token', {
@@ -93,5 +106,21 @@ describe('POST /api/chatbot/session/guest-token', () => {
     expect(response.status).toBe(200);
     expect(mocks.bind).toHaveBeenCalledWith('legacy-session', 'h'.repeat(64));
     expect(mocks.setCookie).toHaveBeenCalled();
+  });
+
+  it('does not report a temporary binding outage as a lost guest conversation', async () => {
+    mocks.maybeSingle.mockResolvedValue({ data: { user_id: null, channel: 'customer', guest_token_hash: null }, error: null });
+    mocks.bind.mockResolvedValue('unavailable');
+    const request = new Request('http://localhost/api/chatbot/session/guest-token', {
+      method: 'POST', headers: { origin: 'http://localhost', 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionKey: 'legacy-session' }),
+    });
+
+    const response = await POST(request);
+    const payload = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('READ_UNAVAILABLE');
+    expect(mocks.setCookie).not.toHaveBeenCalled();
   });
 });

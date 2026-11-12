@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), rpc: vi.fn(), answer: vi.fn(), clean: vi.fn(), reserveQuota: vi.fn(), guestCredential: vi.fn(), tokenHash: vi.fn(), bindGuest: vi.fn() }));
+const mocks = vi.hoisted(() => ({ createAuthClient: vi.fn(), getUser: vi.fn(), from: vi.fn(), rpc: vi.fn(), answer: vi.fn(), clean: vi.fn(), reserveQuota: vi.fn(), guestCredential: vi.fn(), tokenHash: vi.fn(), bindGuest: vi.fn() }));
 function query(result: unknown) {
   const terminal = Promise.resolve(result);
   const builder: Record<string, ReturnType<typeof vi.fn>> = {};
@@ -11,7 +11,7 @@ function query(result: unknown) {
   builder.then = terminal.then.bind(terminal) as ReturnType<typeof vi.fn>;
   return builder;
 }
-vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser } })) }));
+vi.mock('@/lib/supabase/server', () => ({ createClient: mocks.createAuthClient }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: mocks.from, rpc: mocks.rpc }) }));
 vi.mock('@/lib/chatbot/answer', () => ({ answerQuestion: mocks.answer }));
 vi.mock('@/lib/moderation/clean', () => ({ cleanUserContent: mocks.clean }));
@@ -28,12 +28,13 @@ import { POST } from '../route';
 describe('POST /api/chatbot/ask session ownership', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.createAuthClient.mockResolvedValue({ auth: { getUser: mocks.getUser } });
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'attacker' } } });
     let messageQuery = 0;
     mocks.reserveQuota.mockResolvedValue(false);
     mocks.guestCredential.mockReturnValue('a'.repeat(43));
     mocks.tokenHash.mockReturnValue('b'.repeat(64));
-    mocks.bindGuest.mockResolvedValue(true);
+    mocks.bindGuest.mockResolvedValue('bound');
     mocks.rpc.mockImplementation((name: string) => {
       if (name === 'reserve_support_operation') return Promise.resolve({
         data: { state: 'running', shouldExecute: true, leaseToken: 'lease-token' }, error: null,
@@ -44,7 +45,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
     });
     mocks.from.mockImplementation((table: string) => {
       if (table === 'chatbot_sessions') return query({
-        data: { id: 'session-1', session_key: 'victim-session', user_id: 'victim' }, error: null,
+        data: { id: 'session-1', session_key: 'victim-session', user_id: 'victim', guest_token_hash: null, channel: 'customer' }, error: null,
       });
       messageQuery += 1;
       const result = messageQuery === 1
@@ -65,6 +66,80 @@ describe('POST /api/chatbot/ask session ownership', () => {
     expect(response.status).toBe(403);
     expect(mocks.answer).not.toHaveBeenCalled();
     expect(mocks.clean).not.toHaveBeenCalled();
+  });
+
+  it('does not append a customer message to an admin AI session', async () => {
+    const sessionQuery = query({ data: {
+      id: 'admin-session', session_key: 'admin-session', user_id: 'attacker', guest_token_hash: null, channel: 'admin',
+    }, error: null });
+    mocks.from.mockReturnValue(sessionQuery);
+
+    const response = await POST(new Request('http://localhost/api/chatbot/ask', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionKey: 'admin-session', operationId: crypto.randomUUID(), question: 'How can I contact support?' }),
+    }));
+
+    expect(response.status).toBe(403);
+    expect(sessionQuery.eq).toHaveBeenCalledWith('channel', 'customer');
+    expect(mocks.clean).not.toHaveBeenCalled();
+    expect(mocks.answer).not.toHaveBeenCalled();
+  });
+
+  it('does not treat an authentication service outage as an anonymous guest', async () => {
+    mocks.getUser.mockResolvedValue({
+      data: { user: null },
+      error: { name: 'AuthRetryableFetchError', status: 503 },
+    });
+    mocks.guestCredential.mockReturnValue(null);
+
+    const response = await POST(new Request('http://localhost/api/chatbot/ask', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ operationId: crypto.randomUUID(), question: 'How do I change my profile?' }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('AUTH_UNAVAILABLE');
+    expect(mocks.guestCredential).not.toHaveBeenCalled();
+    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.clean).not.toHaveBeenCalled();
+    expect(mocks.reserveQuota).not.toHaveBeenCalled();
+    expect(mocks.answer).not.toHaveBeenCalled();
+  });
+
+  it('returns a retryable auth failure when the server auth client cannot be created', async () => {
+    mocks.createAuthClient.mockRejectedValue(new Error('server auth client unavailable'));
+
+    const response = await POST(new Request('http://localhost/api/chatbot/ask', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ operationId: crypto.randomUUID(), question: 'How do I change my profile?' }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('AUTH_UNAVAILABLE');
+    expect(mocks.guestCredential).not.toHaveBeenCalled();
+    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.answer).not.toHaveBeenCalled();
+  });
+
+  it('does not report a guest session mismatch when credential binding is unavailable', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null } });
+    mocks.bindGuest.mockResolvedValue('unavailable');
+    mocks.from.mockImplementation((table: string) => table === 'chatbot_sessions'
+      ? query({ data: { id: 'guest-session', session_key: 'guest-session', user_id: null, guest_token_hash: null, channel: 'customer' }, error: null })
+      : query({ data: null, error: null }));
+
+    const response = await POST(new Request('http://localhost/api/chatbot/ask', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionKey: 'guest-session', operationId: crypto.randomUUID(), question: 'Where is my booking?' }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('SESSION_UNAVAILABLE');
+    expect(mocks.clean).not.toHaveBeenCalled();
+    expect(mocks.answer).not.toHaveBeenCalled();
   });
 
   it('uses local FAQ mode and reports when personal data is withheld from AI', async () => {
@@ -107,7 +182,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
     let messageQuery = 0;
     mocks.from.mockImplementation((table: string) => {
       if (table === 'chatbot_sessions') return query({
-        data: { id: sessionId, session_key: 'victim-session', user_id: 'victim' }, error: null,
+        data: { id: sessionId, session_key: 'victim-session', user_id: 'victim', guest_token_hash: null, channel: 'customer' }, error: null,
       });
       messageQuery += 1;
       return query(messageQuery === 1
@@ -159,7 +234,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
     let messageQuery = 0;
     mocks.from.mockImplementation((table: string) => {
       if (table === 'chatbot_sessions') return query({
-        data: { id: 'session-1', session_key: 'victim-session', user_id: 'victim' }, error: null,
+        data: { id: 'session-1', session_key: 'victim-session', user_id: 'victim', guest_token_hash: null, channel: 'customer' }, error: null,
       });
       messageQuery += 1;
       return query(messageQuery === 1
@@ -200,7 +275,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
     let messageQuery = 0;
     mocks.from.mockImplementation((table: string) => {
       if (table === 'chatbot_sessions') return query({
-        data: { id: 'session-1', session_key: 'victim-session', user_id: 'victim' }, error: null,
+        data: { id: 'session-1', session_key: 'victim-session', user_id: 'victim', guest_token_hash: null, channel: 'customer' }, error: null,
       });
       messageQuery += 1;
       const results = [

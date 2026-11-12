@@ -335,6 +335,8 @@
     "viewMyTickets": "Lihat tiket saya",
     "ticketError": "Tidak dapat mencipta tiket sekarang. Sila cuba lagi.",
     "somethingWrong": "Maaf, sesuatu tidak kena. Sila cuba lagi.",
+    "authUnavailable": "Akaun anda tidak dapat disahkan sekarang. Semak sambungan anda dan cuba lagi.",
+    "sessionUnavailable": "Chat ini tidak dapat disahkan sekarang. Semak sambungan anda dan cuba lagi.",
     "askResultUnknown": "Soalan anda telah disimpan, tetapi jawapannya belum dapat disahkan. Semak sejarah chat sebelum menghantarnya sekali lagi.",
     "askOperationConflict": "Soalan ini tidak sepadan dengan permintaan terdahulu yang belum selesai. Hantar sekali lagi untuk memulakan permintaan baharu.",
     "guestCookieUnavailable": "Chat tetamu memerlukan kuki. Aktifkan kuki atau log masuk, kemudian hantar semula.",

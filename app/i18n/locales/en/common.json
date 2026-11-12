@@ -335,6 +335,8 @@
     "viewMyTickets": "View my tickets",
     "ticketError": "Couldn't create a ticket right now. Please try again.",
     "somethingWrong": "Sorry, something went wrong. Please try again.",
+    "authUnavailable": "I couldn't verify your account right now. Check your connection and retry.",
+    "sessionUnavailable": "I couldn't verify this chat right now. Check your connection and try again.",
     "askResultUnknown": "Your question was saved, but the answer is not confirmed yet. Check chat history before sending it again.",
     "askOperationConflict": "This does not match the earlier pending question. Send it again to start a new request.",
     "guestCookieUnavailable": "Guest chat needs cookies. Enable cookies or sign in, then send again.",

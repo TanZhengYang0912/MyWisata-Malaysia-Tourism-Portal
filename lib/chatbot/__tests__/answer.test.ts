@@ -59,6 +59,29 @@ describe('answerQuestion with several questions', () => {
     expect(result.usedKb.map((ref) => ref.id)).toEqual(['wallet', 'booking', 'shared']);
   });
 
+  it('marks the first provider call once across parallel embeddings and generation', async () => {
+    const events: string[] = [];
+    const beforeExternalCall = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      events.push('marked');
+    });
+    mocks.retrieve.mockImplementation(async (_service, _question, _count, beforeCall) => {
+      await beforeCall?.();
+      events.push('embedded');
+      return [doc(_question, 0.9)];
+    });
+    mocks.generateAnswer.mockImplementation(async (_question, _docs, _count, beforeCall) => {
+      await beforeCall?.();
+      events.push('generated');
+      return 'Both answered.';
+    });
+
+    await answerQuestion('How do I withdraw my earnings? Can I cancel a booking?', true, beforeExternalCall);
+
+    expect(beforeExternalCall).toHaveBeenCalledTimes(1);
+    expect(events).toEqual(['marked', 'embedded', 'embedded', 'generated']);
+  });
+
   it('still answers the covered question when another finds nothing', async () => {
     mocks.retrieve.mockResolvedValueOnce([doc('wallet', 0.9)]).mockResolvedValueOnce([]);
     mocks.generateAnswer.mockResolvedValue('Withdraw from Wallet. I do not have information about parking.');

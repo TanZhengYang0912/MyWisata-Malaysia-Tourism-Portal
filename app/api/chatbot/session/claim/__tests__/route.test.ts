@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), rpc: vi.fn(), sameOrigin: vi.fn(), guestCredential: vi.fn(), tokenHash: vi.fn(), clearCookie: vi.fn() }));
-vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser } })) }));
+const mocks = vi.hoisted(() => ({ createAuthClient: vi.fn(), getUser: vi.fn(), rpc: vi.fn(), sameOrigin: vi.fn(), guestCredential: vi.fn(), tokenHash: vi.fn(), clearCookie: vi.fn() }));
+vi.mock('@/lib/supabase/server', () => ({ createClient: mocks.createAuthClient }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ rpc: mocks.rpc }) }));
 vi.mock('@/lib/checkout/guest-session', () => ({ isSameOriginMutation: mocks.sameOrigin }));
 vi.mock('@/lib/chatbot/guest-session', () => ({
@@ -23,6 +23,7 @@ function makeRequest(sessionKey = 'guest-session-key') {
 describe('POST /api/chatbot/session/claim', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.createAuthClient.mockResolvedValue({ auth: { getUser: mocks.getUser } });
     mocks.sameOrigin.mockReturnValue(true);
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'account-1' } } });
     mocks.guestCredential.mockReturnValue('a'.repeat(43));
@@ -59,6 +60,17 @@ describe('POST /api/chatbot/session/claim', () => {
     const response = await POST(makeRequest());
 
     expect(response.status).toBe(401);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('returns a retryable auth error instead of treating an auth outage as expired login', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: { name: 'AuthRetryableFetchError', status: 503 } });
+
+    const response = await POST(makeRequest());
+    const payload = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(payload.error.code).toBe('AUTH_UNAVAILABLE');
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 

@@ -167,10 +167,20 @@ export async function answerQuestion(
 
   if (useAi && process.env.LLM_API_KEY) {
     try {
+      // Retrieval can issue several embeddings in parallel. Persist the
+      // operation's external-call boundary once before the first provider
+      // request, then share that result with later embeddings/generation.
+      let externalCallMarker: Promise<void> | undefined;
+      const markBeforeExternalCall = beforeExternalCall
+        ? () => {
+          externalCallMarker ??= Promise.resolve().then(beforeExternalCall);
+          return externalCallMarker;
+        }
+        : undefined;
       // Each question clears the similarity threshold on its own, so one
       // off-topic question no longer sinks an on-topic one beside it.
       const k = retrievalCount(questions.length);
-      const retrieved = mergeRetrieved(await Promise.all(questions.map((q) => retrieve(service, q, k))));
+      const retrieved = mergeRetrieved(await Promise.all(questions.map((q) => retrieve(service, q, k, markBeforeExternalCall))));
       if (retrieved.length === 0) {
         // Threshold check happens BEFORE the LLM call — the model never
         // sees an off-topic question at all. See lib/chatbot/retrieve.ts.
@@ -178,8 +188,8 @@ export async function answerQuestion(
       }
 
       const usedKb: UsedKbRef[] = retrieved.map((r) => ({ id: r.id, similarity: r.similarity }));
-      const llmAnswer = beforeExternalCall
-        ? await generateAnswer(question, retrieved, questions.length, beforeExternalCall)
+      const llmAnswer = markBeforeExternalCall
+        ? await generateAnswer(question, retrieved, questions.length, markBeforeExternalCall)
         : await generateAnswer(question, retrieved, questions.length);
 
       if (llmAnswer === null) {

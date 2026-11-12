@@ -72,6 +72,8 @@ const translations: Record<string, string> = {
   "common:chatbot.emptyPrompt": "Ask a translated question",
   "common:chatbot.inputPlaceholder": "Translated question",
   "common:chatbot.askResultUnknown": "Translated outcome not ready",
+  "common:chatbot.authUnavailable": "Translated account check outage; check your connection and retry",
+  "common:chatbot.sessionUnavailable": "Translated chat check outage; check your connection and try again",
   "common:chatbot.guestClaim.prompt": "Continue guest conversation translated",
   "common:chatbot.guestClaim.continue": "Continue guest chat translated",
   "common:chatbot.guestClaim.working": "Linking guest chat translated",
@@ -920,6 +922,67 @@ describe("Task 5 shared runtime behavior", () => {
     expect(handoffPreviewCalls).toBe(2);
     expect(ticketPayload?.operationId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(document.defaultView?.localStorage.getItem("mw_chatbot_support_operations:customer-1")).not.toContain(question);
+  });
+
+  it("keeps the question and offers a retry when the auth service is temporarily unavailable", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    const question = "How do I change my profile?";
+    let askRequests = 0;
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/faq") return response({ data: { categories: [] } });
+      if (url === "/api/chatbot/ask") {
+        askRequests += 1;
+        return response({ data: null, error: { code: "AUTH_UNAVAILABLE" } }, false);
+      }
+      throw new Error(`Unexpected chatbot request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    const input = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
+    setInputValue(input, question);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+
+    expect(container.textContent).toContain("Translated account check outage; check your connection and retry");
+    expect((input as unknown as { value: string }).value).toBe(question);
+    expect(askRequests).toBe(1);
+  });
+
+  it("keeps the question and gives a retry path when guest session verification is temporarily unavailable", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: null });
+    const question = "What are your opening hours?";
+    let askRequests = 0;
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/faq") return response({ data: { categories: [] } });
+      if (url === "/api/chatbot/session/guest-token") return response({ data: null, error: { code: "READ_UNAVAILABLE" } }, false);
+      if (url === "/api/chatbot/ask") {
+        askRequests += 1;
+        throw new Error("ask must wait until guest session verification succeeds");
+      }
+      throw new Error(`Unexpected chatbot request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    const input = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
+    await act(async () => { setInputValue(input, question); });
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+
+    expect(container.textContent).toContain("Translated chat check outage; check your connection and try again");
+    expect((input as unknown as { value: string }).value).toBe(question);
+    expect(askRequests).toBe(0);
   });
 
   it("recovers a refreshed ask when its stored operation belongs to a different question", async () => {

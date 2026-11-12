@@ -25,8 +25,16 @@ export interface RetrievedDoc {
  * embedding/RPC failure — lib/chatbot/answer.ts is responsible for catching
  * this and falling back to the keyword matcher.
  */
-export async function retrieve(service: SupabaseClient, question: string, k = 3): Promise<RetrievedDoc[]> {
-  const [embedding, threshold] = await Promise.all([embedText(question), getSimilarityThreshold(service)]);
+export async function retrieve(
+  service: SupabaseClient,
+  question: string,
+  k = 3,
+  beforeExternalCall?: () => Promise<void>,
+): Promise<RetrievedDoc[]> {
+  const [embedding, threshold] = await Promise.all([
+    embedText(question, 'user', beforeExternalCall),
+    getSimilarityThreshold(service),
+  ]);
 
   const { data, error } = await service.rpc('match_kb_documents', {
     query_embedding: embedding,

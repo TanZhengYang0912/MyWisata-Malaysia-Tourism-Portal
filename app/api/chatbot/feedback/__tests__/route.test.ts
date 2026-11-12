@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), tables: {} as Record<string, Record<string, ReturnType<typeof vi.fn>>>, guestCredential: vi.fn(), tokenHash: vi.fn(), bindGuest: vi.fn() }));
+const mocks = vi.hoisted(() => ({ createAuthClient: vi.fn(), getUser: vi.fn(), from: vi.fn(), tables: {} as Record<string, Record<string, ReturnType<typeof vi.fn>>>, guestCredential: vi.fn(), tokenHash: vi.fn(), bindGuest: vi.fn() }));
 
 function query(result: unknown) {
   const terminal = Promise.resolve(result);
@@ -21,7 +21,7 @@ function feedbackQuery(existing: unknown, created: unknown) {
   return builder;
 }
 
-vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser } })) }));
+vi.mock('@/lib/supabase/server', () => ({ createClient: mocks.createAuthClient }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn(() => ({ from: mocks.from })) }));
 vi.mock('@/lib/chatbot/guest-session', () => ({
   readChatbotGuestCredential: mocks.guestCredential,
@@ -36,7 +36,7 @@ const botMessage = {
   role: 'bot',
   session_id: '22222222-2222-4222-8222-222222222222',
   created_at: '2026-11-11T10:00:01.000Z',
-  chatbot_sessions: { id: '22222222-2222-4222-8222-222222222222', session_key: 'session-key-1', user_id: 'user-1' },
+  chatbot_sessions: { id: '22222222-2222-4222-8222-222222222222', session_key: 'session-key-1', user_id: 'user-1', guest_token_hash: null, channel: 'customer' },
 };
 
 function request(overrides: Record<string, unknown> = {}) {
@@ -49,10 +49,11 @@ function request(overrides: Record<string, unknown> = {}) {
 describe('POST /api/chatbot/feedback ownership', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.createAuthClient.mockResolvedValue({ auth: { getUser: mocks.getUser } });
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
     mocks.guestCredential.mockReturnValue('a'.repeat(43));
     mocks.tokenHash.mockReturnValue('b'.repeat(64));
-    mocks.bindGuest.mockResolvedValue(true);
+    mocks.bindGuest.mockResolvedValue('bound');
     mocks.tables = {
       chatbot_messages: query({ data: botMessage, error: null }),
       chatbot_feedback: feedbackQuery({ data: null, error: null }, { data: { id: '44444444-4444-4444-8444-444444444444' }, error: null }),
@@ -63,6 +64,17 @@ describe('POST /api/chatbot/feedback ownership', () => {
   it('rejects a feedback request without its session key before any service write', async () => {
     const response = await POST(request({ sessionKey: undefined }));
     expect(response.status).toBe(400);
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it('returns a retryable auth failure instead of treating an auth outage as a guest', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: { name: 'AuthRetryableFetchError', status: 503 } });
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('AUTH_UNAVAILABLE');
     expect(mocks.from).not.toHaveBeenCalled();
   });
 
@@ -82,11 +94,39 @@ describe('POST /api/chatbot/feedback ownership', () => {
     expect(mocks.tables.chatbot_feedback.insert).not.toHaveBeenCalled();
   });
 
+  it('does not attach customer feedback to an admin AI message', async () => {
+    mocks.tables.chatbot_messages = query({ data: {
+      ...botMessage,
+      chatbot_sessions: { ...botMessage.chatbot_sessions, channel: 'admin' },
+    }, error: null });
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(403);
+    expect(mocks.tables.chatbot_feedback.insert).not.toHaveBeenCalled();
+  });
+
   it('does not attach an authenticated user to a guest session', async () => {
     mocks.tables.chatbot_messages = query({ data: {
       ...botMessage, chatbot_sessions: { ...botMessage.chatbot_sessions, user_id: null },
     }, error: null });
     expect((await POST(request())).status).toBe(403);
+    expect(mocks.tables.chatbot_feedback.insert).not.toHaveBeenCalled();
+  });
+
+  it('returns a retryable error instead of treating guest binding outages as forbidden', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
+    mocks.tables.chatbot_messages = query({ data: {
+      ...botMessage,
+      chatbot_sessions: { ...botMessage.chatbot_sessions, user_id: null, guest_token_hash: null },
+    }, error: null });
+    mocks.bindGuest.mockResolvedValue('unavailable');
+
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error.code).toBe('READ_UNAVAILABLE');
     expect(mocks.tables.chatbot_feedback.insert).not.toHaveBeenCalled();
   });
 

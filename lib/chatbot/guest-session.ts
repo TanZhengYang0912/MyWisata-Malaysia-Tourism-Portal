@@ -41,14 +41,20 @@ export function clearChatbotGuestCookie(response: NextResponse): void {
   });
 }
 
-export async function bindChatbotGuestSessionToken(sessionKey: string, tokenHash: string): Promise<boolean> {
+export type ChatbotGuestSessionBinding = 'bound' | 'not_bound' | 'unavailable';
+
+export async function bindChatbotGuestSessionToken(
+  sessionKey: string,
+  tokenHash: string,
+): Promise<ChatbotGuestSessionBinding> {
   try {
     const { data, error } = await createServiceClient().rpc('bind_chatbot_guest_session_token', {
       p_session_key: sessionKey,
       p_guest_token_hash: tokenHash,
     });
-    return !error && typeof data === 'object' && data !== null && data.bound === true;
+    if (error || typeof data !== 'object' || data === null || typeof data.bound !== 'boolean') return 'unavailable';
+    return data.bound ? 'bound' : 'not_bound';
   } catch {
-    return false;
+    return 'unavailable';
   }
 }
