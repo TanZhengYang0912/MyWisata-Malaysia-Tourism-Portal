@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   useTranslation: vi.fn(),
   useAuth: vi.fn(),
   showFeedback: vi.fn(),
+  confirm: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({ useTranslation: mocks.useTranslation }));
@@ -29,6 +30,7 @@ vi.mock("@/components/ui/button", () => ({ Button: (props: React.ComponentProps<
 vi.mock("@/components/utils", () => ({ cn: (...values: unknown[]) => values.filter(Boolean).join(" ") }));
 vi.mock("@/components/providers/auth", () => ({ useAuth: mocks.useAuth }));
 vi.mock("@/components/providers/action-feedback", () => ({ useActionFeedback: () => ({ showFeedback: mocks.showFeedback }) }));
+vi.mock("@/components/providers/app-dialog", () => ({ useAppDialog: () => ({ confirm: mocks.confirm }) }));
 // support-chat.tsx (unread-count realtime) and use-chat-presence.ts (online
 // dot) both call this at module/hook scope — without a mock, the real
 // createBrowserClient throws immediately for missing env vars, before any
@@ -167,6 +169,35 @@ async function click(element: TestElement) {
   });
 }
 
+async function openGuestHandoffPreview(question = "How can I contact customer support?") {
+  mocks.fetch.mockImplementation(async (url: string) => {
+    if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+    if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+    if (url === "/api/chat/mutes") return response({ data: [] });
+    if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+    if (url === "/api/chatbot/faq") return response({ data: { categories: [] } });
+    if (url === "/api/chatbot/session/guest-token") return response({ data: { ready: true } });
+    if (url === "/api/chatbot/ask") return response({ data: {
+      sessionKey: "guest-support-session",
+      answer: "This needs a support teammate.",
+      botAnswered: false,
+      messageId: "guest-support-answer",
+      userMessageId: "guest-support-question",
+      language: "en",
+    } });
+    if (url === "/api/chatbot/feedback") return response({ data: null });
+    throw new Error(`Unexpected support request: ${url}`);
+  });
+
+  await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+  await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+  await click(findButton("Translated support label"));
+  const questionInput = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
+  setInputValue(questionInput, question);
+  await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+  await click(findButton("Yes translated"));
+}
+
 describe("Task 5 shared runtime behavior", () => {
   beforeAll(async () => {
     document = installTestDom();
@@ -176,6 +207,8 @@ describe("Task 5 shared runtime behavior", () => {
   beforeEach(() => {
     mocks.fetch.mockReset();
     mocks.showFeedback.mockReset();
+    mocks.confirm.mockReset();
+    mocks.confirm.mockResolvedValue(true);
     mocks.useTranslation.mockImplementation((namespace: string) => ({
       t: namespace === "admin" ? adminTranslate : commonTranslate,
       i18n: { resolvedLanguage: "en" },
@@ -752,6 +785,45 @@ describe("Task 5 shared runtime behavior", () => {
     expect(container.textContent).toContain("chatbot.supportErrors.signIn");
     expect(findOne(container, (element) => element.tagName === "A" && Boolean(element.getAttribute("href")?.startsWith("/login?next=")))).toBeTruthy();
     expect(mocks.fetch.mock.calls.some(([url]) => String(url) === "/api/support/tickets")).toBe(false);
+  });
+
+  it("keeps edited handoff content when the user declines to discard it", async () => {
+    mocks.confirm.mockResolvedValue(false);
+    await openGuestHandoffPreview();
+    const subject = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("maxLength") === "255");
+    const summary = findOne(container, (element) => element.tagName === "TEXTAREA" && element.getAttribute("maxLength") === "2000");
+    setInputValue(subject, "Edited title");
+    setInputValue(summary, "Edited summary");
+
+    await click(findButton("chatbot.handoff.cancel"));
+
+    expect(mocks.confirm).toHaveBeenCalledWith("chatbot.handoff.discardUnsavedConfirm");
+    expect(findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("maxLength") === "255").value).toBe("Edited title");
+    expect(findOne(container, (element) => element.tagName === "TEXTAREA" && element.getAttribute("maxLength") === "2000").value).toBe("Edited summary");
+    expect(container.textContent).not.toContain("chatbot.noProblem");
+    expect(mocks.fetch.mock.calls.some(([url]) => String(url) === "/api/support/tickets")).toBe(false);
+  });
+
+  it("discards edited handoff content only after the user confirms", async () => {
+    await openGuestHandoffPreview();
+    setInputValue(findOne(container, (element) => element.tagName === "TEXTAREA" && element.getAttribute("maxLength") === "2000"), "Edited summary");
+
+    await click(findButton("chatbot.handoff.cancel"));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+
+    expect(mocks.confirm).toHaveBeenCalledWith("chatbot.handoff.discardUnsavedConfirm");
+    expect(container.textContent).toContain("chatbot.noProblem");
+    expect(findElements(container, (element) => element.tagName === "TEXTAREA" && element.getAttribute("maxLength") === "2000")).toHaveLength(0);
+    expect(mocks.fetch.mock.calls.some(([url]) => String(url) === "/api/support/tickets")).toBe(false);
+  });
+
+  it("does not ask for confirmation when the handoff preview is unchanged", async () => {
+    await openGuestHandoffPreview();
+
+    await click(findButton("chatbot.handoff.cancel"));
+
+    expect(mocks.confirm).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("chatbot.noProblem");
   });
 
   it("drives the real chatbot send and ticket handlers without translating API answers or ticket subjects", async () => {

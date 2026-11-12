@@ -366,7 +366,8 @@
       "draftSaved": "草稿已保存",
       "draftSaveFailed": "草稿未能保存，当前文字仍保留；请重试。",
       "draftLoadFailed": "无法加载已保存草稿。保存修改前请重试加载。",
-      "retryDraftLoad": "重试加载草稿"
+      "retryDraftLoad": "重试加载草稿",
+      "discardUnsavedConfirm": "要放弃尚未保存的工单标题和摘要吗？"
     },
     "history": {
       "loadEarlier": "加载更早的消息",

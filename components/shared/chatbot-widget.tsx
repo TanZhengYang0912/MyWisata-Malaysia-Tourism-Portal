@@ -33,6 +33,7 @@ import Link from "next/link";
 import { ChevronLeft, HelpCircle, MessageCircle, Mic, MicOff, Minimize2, Maximize2, Send, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { useAppDialog } from "@/components/providers/app-dialog";
 import type { FaqCategory } from "@/app/api/chatbot/faq/route";
 import type { ChatLanguage } from "@/lib/chatbot/language";
 import { useAuth } from "@/components/providers/auth";
@@ -202,6 +203,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   const { open, setOpen, selected, selectChat, unreadChatCount } = useSupportChat();
   const { currentUser, loading: authLoading } = useAuth();
   const { t } = useTranslation("common");
+  const { confirm } = useAppDialog();
   const { t: tCustomer } = useTranslation("customer");
   const identityKey = currentUser?.id ?? null;
   const identityRef = useRef<string | null>(identityKey);
@@ -745,6 +747,19 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: "ticket_declined" } : m)));
   }
 
+  async function cancelHandoffPreview(index: number) {
+    const message = messages[index];
+    if (!message || message.feedbackStage !== "handoff_preview") return;
+    const hasUnsavedEdits = !message.handoffDraftSaved && (
+      (message.handoffSubject ?? "") !== (message.handoffPreviewSubject ?? "")
+      || (message.handoffSummary ?? "") !== (message.handoffPreviewSummary ?? "")
+    );
+    if (hasUnsavedEdits && !(await confirm(t("chatbot.handoff.discardUnsavedConfirm")))) return;
+    setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
+      ? { ...item, feedbackStage: "ticket_declined", ticketError: undefined }
+      : item));
+  }
+
   async function createTicket(index: number) {
     const msg = messages[index];
     if (!msg.question || creatingTicketFor || ticketOperationLockRef.current) return;
@@ -1247,7 +1262,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                               <div className="flex items-center justify-end gap-2">
                                 {m.handoffDraftSaved && <span className="mr-auto text-xs text-muted-foreground">{t("chatbot.handoff.draftSaved")}</span>}
                                 {currentUser && <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => void saveHandoffDraft(i)} disabled={!m.handoffSubject?.trim() || !m.handoffSummary?.trim() || savingHandoffDraftFor === `${currentUser.id}:${m.messageId ?? m.handoffDraftTarget ?? m.handoffOperationId}`}>{savingHandoffDraftFor === `${currentUser.id}:${m.messageId ?? m.handoffDraftTarget ?? m.handoffOperationId}` ? t("chatbot.handoff.savingDraft") : t("chatbot.handoff.saveDraft")}</Button>}
-                                <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => setMessages((prev) => prev.map((item, index) => index === i ? { ...item, feedbackStage: "ticket_declined", ticketError: undefined } : item))} disabled={creatingTicketFor === (m.messageId ?? m.handoffOperationId) || m.ticketOperationUnknown || m.ticketOperationNotFound}>
+                                <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => void cancelHandoffPreview(i)} disabled={creatingTicketFor === (m.messageId ?? m.handoffOperationId) || m.ticketOperationUnknown || m.ticketOperationNotFound}>
                                   {t("chatbot.handoff.cancel")}
                                 </Button>
                                 <Button size="sm" className="h-7 px-2.5 text-xs" onClick={() => m.ticketOperationUnknown ? void checkTicketOperation(i) : void confirmTicket(i)} disabled={creatingTicketFor === (m.messageId ?? m.handoffOperationId) || !m.handoffSubject?.trim() || !m.handoffSummary?.trim() || (!m.ticketOperationUnknown && !m.handoffConsented)}>

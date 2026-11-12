@@ -366,7 +366,8 @@
       "draftSaved": "Draft saved",
       "draftSaveFailed": "Could not save this draft. Your text is still here; try again.",
       "draftLoadFailed": "Could not load the saved draft. Retry loading before you save changes.",
-      "retryDraftLoad": "Retry loading draft"
+      "retryDraftLoad": "Retry loading draft",
+      "discardUnsavedConfirm": "Discard the unsaved ticket title and summary?"
     },
     "history": {
       "loadEarlier": "Load earlier messages",

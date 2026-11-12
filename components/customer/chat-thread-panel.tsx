@@ -9,6 +9,8 @@ import type { ChatMessage } from "@/backend/core/types";
 import type { PendingChatContext } from "@/components/providers/support-chat";
 import AiWritingAssistant from "@/components/vendor/ai-writing-assistant";
 import { useSpeechInput, resolveRecognitionLang, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
+import { guestLoginHref } from "@/lib/auth/guest-mode";
+import { REPORT_TEXT_MAX_LENGTH } from "@/lib/validation/conduct-schemas";
 
 // CLAUDE-CAMPAIGN-CLEARING-TRANSLATE.md Feature 3 — matches lib/chatbot/language.ts's
 // vocabulary (kept as a literal union here, not imported, to avoid pulling a
@@ -45,6 +47,19 @@ const REPORT_REASONS = [
   "spam",
   "other",
 ] as const;
+
+type ReportState = "idle" | "sending" | "sent" | "already_reported" | "unknown";
+type ReportErrorKey = "reportSignInRequired" | "reportReadUnavailable" | "reportWriteUnknown" | "reportBlocked" | "reportRateLimited" | "reportConversationUnavailable" | "reportInvalid" | "reportFailed" | "reportStatusUnavailable" | "reportNotFoundYet";
+
+function reportLoginHref(threadId: string): string {
+  const current = typeof window !== "undefined" && window.location?.href
+    ? new URL(window.location.href)
+    : new URL("/customer", "https://mywisata.invalid");
+  if (current.pathname === "/customer" || current.pathname.startsWith("/customer/")) {
+    current.searchParams.set("chat", threadId);
+  }
+  return guestLoginHref(`${current.pathname}${current.search}${current.hash}`);
+}
 
 interface ChatThreadPanelProps {
   threadId: string;
@@ -104,7 +119,11 @@ export function ChatThreadPanel({
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState<(typeof REPORT_REASONS)[number]>(REPORT_REASONS[0]);
   const [reportDetails, setReportDetails] = useState("");
-  const [reportState, setReportState] = useState<"idle" | "sending" | "sent">("idle");
+  const [reportState, setReportState] = useState<ReportState>("idle");
+  const [reportErrorKey, setReportErrorKey] = useState<ReportErrorKey | null>(null);
+  const [checkingReport, setCheckingReport] = useState(false);
+  const reportSubmitLockRef = useRef(false);
+  const reportStatusLockRef = useRef(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
@@ -258,19 +277,82 @@ export function ChatThreadPanel({
   }
 
   async function handleReport() {
-    if (reportState === "sending") return;
+    if (reportSubmitLockRef.current || reportState === "sending" || reportState === "unknown") return;
+    reportSubmitLockRef.current = true;
     setReportState("sending");
+    setReportErrorKey(null);
     try {
       const response = await fetch(`/api/chat/${threadId}/report`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason: reportReason, details: reportDetails }),
       });
-      if (!response.ok) throw new Error(t("strictMigration.chat.reportFailed"));
-      setReportState("sent");
+      const payload = await response.json().catch(() => null) as { data?: unknown; error?: { code?: string } } | null;
+      const code = payload?.error?.code;
+      if (response.ok) {
+        setReportState("sent");
+        return;
+      }
+      if (code === "ALREADY_REPORTED") {
+        setReportState("already_reported");
+        return;
+      }
+      if (response.status === 401 || code === "UNAUTHORIZED") {
+        setReportState("idle");
+        setReportErrorKey("reportSignInRequired");
+      } else if (code === "READ_UNAVAILABLE") {
+        setReportState("idle");
+        setReportErrorKey("reportReadUnavailable");
+      } else if (code === "REPORT_BLOCKED") {
+        setReportState("idle");
+        setReportErrorKey("reportBlocked");
+      } else if (code === "RATE_LIMITED") {
+        setReportState("idle");
+        setReportErrorKey("reportRateLimited");
+      } else if (response.status === 422 || code === "INVALID_REASON" || code === "VALIDATION_FAILED") {
+        setReportState("idle");
+        setReportErrorKey("reportInvalid");
+      } else if (response.status === 404 || response.status === 403) {
+        setReportState("idle");
+        setReportErrorKey("reportConversationUnavailable");
+      } else if (response.status >= 500 || code === "WRITE_UNAVAILABLE") {
+        setReportState("unknown");
+        setReportErrorKey("reportWriteUnknown");
+      } else {
+        setReportState("idle");
+        setReportErrorKey("reportFailed");
+      }
     } catch {
-      setReportState("idle");
-      setError(t("strictMigration.chat.reportFailed"));
+      setReportState("unknown");
+      setReportErrorKey("reportWriteUnknown");
+    } finally {
+      reportSubmitLockRef.current = false;
+    }
+  }
+
+  async function checkReportStatus() {
+    if (reportStatusLockRef.current || reportState !== "unknown") return;
+    reportStatusLockRef.current = true;
+    setCheckingReport(true);
+    setReportErrorKey(null);
+    try {
+      const response = await fetch(`/api/chat/${threadId}/report`, { cache: "no-store" });
+      const payload = await response.json().catch(() => null) as { data?: { reported?: unknown }; error?: { code?: string } } | null;
+      if (response.status === 401 || payload?.error?.code === "UNAUTHORIZED") {
+        setReportErrorKey("reportSignInRequired");
+      } else if (!response.ok || typeof payload?.data?.reported !== "boolean") {
+        setReportErrorKey("reportStatusUnavailable");
+      } else if (payload.data.reported) {
+        setReportState("already_reported");
+        setReportErrorKey(null);
+      } else {
+        setReportErrorKey("reportNotFoundYet");
+      }
+    } catch {
+      setReportErrorKey("reportStatusUnavailable");
+    } finally {
+      reportStatusLockRef.current = false;
+      setCheckingReport(false);
     }
   }
 
@@ -365,33 +447,59 @@ export function ChatThreadPanel({
             </button>
             {reportOpen && (
               <div className="absolute right-0 top-11 z-10 w-64 rounded-2xl border border-border bg-card p-4 shadow-lg">
-                {reportState === "sent" ? (
-                  <p className="text-sm font-medium text-foreground">{t("ui.chat.reportSubmitted")}</p>
+                {reportState === "sent" || reportState === "already_reported" ? (
+                  <p className="text-sm font-medium text-foreground">{t(reportState === "sent" ? "ui.chat.reportSubmitted" : "ui.chat.reportAlreadySubmitted")}</p>
                 ) : (
                   <>
                     <p className="mb-2 text-sm font-semibold text-foreground">{t("ui.chat.reportConversation")}</p>
+                    {reportErrorKey && (
+                      <div role="alert" className="mb-2 text-xs text-destructive">
+                        <p>{t(`strictMigration.chat.${reportErrorKey}`)}</p>
+                        {reportErrorKey === "reportSignInRequired" && (
+                          <Link href={reportLoginHref(threadId)} className="mt-1 inline-block text-primary underline">
+                            {t("strictMigration.chat.reportSignIn")}
+                          </Link>
+                        )}
+                        {(reportErrorKey === "reportWriteUnknown" || reportErrorKey === "reportNotFoundYet") && (
+                          <Link href="/help" className="mt-1 inline-block text-primary underline">
+                            {t("strictMigration.chat.reportHelp")}
+                          </Link>
+                        )}
+                      </div>
+                    )}
                     <select
                       value={reportReason}
-                      onChange={(event) => setReportReason(event.target.value as (typeof REPORT_REASONS)[number])}
+                      aria-label={t("strictMigration.chat.reportReasonLabel")}
+                      disabled={reportState === "sending" || reportState === "unknown"}
+                      onChange={(event) => { setReportReason(event.target.value as (typeof REPORT_REASONS)[number]); setReportErrorKey(null); }}
                       className="mb-2 w-full rounded-xl border border-border bg-input-background px-3 py-2 text-sm"
                     >
                       {REPORT_REASONS.map((reason) => <option key={reason} value={reason}>{t(`strictMigration.chat.reportReasons.${reason}`)}</option>)}
                     </select>
                     <textarea
                       value={reportDetails}
-                      onChange={(event) => setReportDetails(event.target.value)}
+                      aria-label={t("strictMigration.chat.detailsOptional")}
+                      maxLength={REPORT_TEXT_MAX_LENGTH}
+                      disabled={reportState === "sending" || reportState === "unknown"}
+                      onChange={(event) => { setReportDetails(event.target.value); setReportErrorKey(null); }}
                       placeholder={t("strictMigration.chat.detailsOptional")}
                       rows={2}
                       className="mb-2 w-full resize-none rounded-xl border border-border bg-input-background px-3 py-2 text-sm"
                     />
-                    <button
-                      type="button"
-                      onClick={handleReport}
-                      disabled={reportState === "sending"}
-                      className="w-full rounded-xl bg-destructive px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                    >
-                      {reportState === "sending" ? t("ui.actions.submitting") : t("ui.actions.submit")}
-                    </button>
+                    {reportState === "unknown" ? (
+                      <button type="button" onClick={checkReportStatus} disabled={checkingReport} className="w-full rounded-xl border border-border px-3 py-2 text-sm font-semibold text-foreground disabled:opacity-50">
+                        {checkingReport ? t("strictMigration.chat.checkingReportStatus") : t("strictMigration.chat.checkReportStatus")}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleReport}
+                        disabled={reportState === "sending"}
+                        className="w-full rounded-xl bg-destructive px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                      >
+                        {reportState === "sending" ? t("ui.actions.submitting") : t("ui.actions.submit")}
+                      </button>
+                    )}
                   </>
                 )}
               </div>

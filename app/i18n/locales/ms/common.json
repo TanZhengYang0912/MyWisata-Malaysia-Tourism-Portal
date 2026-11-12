@@ -366,7 +366,8 @@
       "draftSaved": "Draf disimpan",
       "draftSaveFailed": "Draf tidak dapat disimpan. Teks masih ada; cuba lagi.",
       "draftLoadFailed": "Draf tersimpan tidak dapat dimuatkan. Cuba muatkan semula sebelum menyimpan perubahan.",
-      "retryDraftLoad": "Cuba muatkan semula draf"
+      "retryDraftLoad": "Cuba muatkan semula draf",
+      "discardUnsavedConfirm": "Buang tajuk dan ringkasan tiket yang belum disimpan?"
     },
     "history": {
       "loadEarlier": "Muatkan mesej terdahulu",
