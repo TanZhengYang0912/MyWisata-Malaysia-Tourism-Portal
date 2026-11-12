@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServiceClient } from '@/lib/supabase/service';
+import { formatOrderReference } from '@/lib/checkout/order-reference';
 
 export type CustomerStatusKind = 'orders' | 'bookings' | 'refunds' | 'tickets';
 
@@ -18,7 +19,7 @@ export type CustomerStatusResult =
 
 const REFUND_STATUSES = new Set(['pending', 'approved', 'processed', 'rejected', 'failed']);
 const ORDER_STATUSES = new Set(['draft', 'pending_payment', 'paid', 'completed', 'cancelled', 'refunded']);
-const BOOKING_STATUSES = new Set(['confirmed', 'cancelled', 'completed', 'checked_in']);
+const BOOKING_STATUSES = new Set(['confirmed', 'in_use', 'checked_in', 'no_show', 'cancelled', 'completed']);
 const TICKET_STATUSES = new Set(['open', 'in_progress', 'resolved', 'closed']);
 
 export async function queryCustomerSupportStatus(
@@ -28,7 +29,7 @@ export async function queryCustomerSupportStatus(
 ): Promise<CustomerStatusResult> {
   if (kind === 'orders') {
     const { data, error } = await db.from('orders')
-      .select('id,status,created_at')
+      .select('id,display_id,status,created_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(5);
@@ -36,7 +37,7 @@ export async function queryCustomerSupportStatus(
     const items = (data ?? []).map((row) => ({
       id: row.id,
       status: ORDER_STATUSES.has(row.status.toLowerCase()) ? row.status.toLowerCase() : 'unknown',
-      label: `#${row.id.slice(0, 8).toUpperCase()}`,
+      label: formatOrderReference(row.id, row.display_id),
       href: `/customer/orders/${row.id}`,
       createdAt: row.created_at,
     }));
@@ -45,7 +46,7 @@ export async function queryCustomerSupportStatus(
 
   if (kind === 'bookings') {
     const { data, error } = await db.from('bookings')
-      .select('id,status,created_at')
+      .select('id,display_id,status,created_at')
       .eq('customer_id', userId)
       .order('created_at', { ascending: false })
       .limit(5);
@@ -53,7 +54,7 @@ export async function queryCustomerSupportStatus(
     const items = (data ?? []).map((row) => ({
       id: row.id,
       status: BOOKING_STATUSES.has(row.status) ? row.status : 'unknown',
-      label: `#${row.id.slice(0, 8).toUpperCase()}`,
+      label: formatOrderReference(row.id, row.display_id),
       href: `/customer/bookings/${row.id}`,
       createdAt: row.created_at,
     }));
@@ -83,11 +84,17 @@ export async function queryCustomerSupportStatus(
   const { data: refunds, error: refundsError } = await createServiceClient()
     .rpc('list_support_customer_refunds', { p_owner_user_id: userId });
   if (refundsError) return { state: 'unavailable', items: [] };
-  const refundRows = (refunds ?? []) as Array<{ id: string; order_id: string; status: string; created_at: string }>;
+  const refundRows = (refunds ?? []) as Array<{
+    id: string;
+    order_id: string;
+    order_display_id?: string | null;
+    status: string;
+    created_at: string;
+  }>;
   const items = refundRows.map((refund) => ({
     id: refund.id,
     status: REFUND_STATUSES.has(refund.status) ? refund.status : 'unknown',
-    label: `#${refund.order_id.slice(0, 8).toUpperCase()}`,
+    label: formatOrderReference(refund.order_id, refund.order_display_id),
     href: `/customer/orders/${refund.order_id}`,
     createdAt: refund.created_at,
   }));

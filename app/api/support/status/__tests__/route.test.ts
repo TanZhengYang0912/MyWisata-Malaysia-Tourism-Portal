@@ -31,17 +31,28 @@ describe('POST /api/support/status ownership', () => {
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'customer-a', app_metadata: { role: 'super_admin' } } }, error: null });
   });
 
-  it('scopes each lookup to the current authenticated user even when that user is staff', async () => {
-    const firstQuery = mocks.query();
-    const secondQuery = mocks.query();
-    mocks.from.mockImplementationOnce(() => firstQuery).mockImplementationOnce(() => secondQuery);
+  it('scopes each table lookup to the current user even when that user is staff', async () => {
+    for (const [kind, column, table] of [
+      ['orders', 'user_id', 'orders'],
+      ['bookings', 'customer_id', 'bookings'],
+      ['tickets', 'user_id', 'support_tickets'],
+    ] as const) {
+      const firstQuery = mocks.query();
+      const secondQuery = mocks.query();
+      mocks.from.mockImplementationOnce(() => firstQuery).mockImplementationOnce(() => secondQuery);
 
-    expect((await POST(request({ kind: 'orders' }))).status).toBe(200);
-    mocks.getUser.mockResolvedValue({ data: { user: { id: 'customer-b' } }, error: null });
-    expect((await POST(request({ kind: 'orders' }))).status).toBe(200);
+      expect((await POST(request({ kind }))).status).toBe(200);
+      mocks.getUser.mockResolvedValue({ data: { user: { id: 'customer-b' } }, error: null });
+      expect((await POST(request({ kind }))).status).toBe(200);
 
-    expect(firstQuery.eq).toHaveBeenCalledWith('user_id', 'customer-a');
-    expect(secondQuery.eq).toHaveBeenCalledWith('user_id', 'customer-b');
+      expect(firstQuery.eq).toHaveBeenCalledWith(column, 'customer-a');
+      expect(secondQuery.eq).toHaveBeenCalledWith(column, 'customer-b');
+      expect(mocks.from).toHaveBeenCalledWith(table);
+      mocks.getUser.mockResolvedValue({
+        data: { user: { id: 'customer-a', app_metadata: { role: 'super_admin' } } },
+        error: null,
+      });
+    }
   });
 
   it('requires login and rejects unsupported status kinds before querying records', async () => {
@@ -51,6 +62,28 @@ describe('POST /api/support/status ownership', () => {
 
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'customer-a' } }, error: null });
     expect((await POST(request({ kind: 'kyc', userId: 'customer-a' }))).status).toBe(422);
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it('distinguishes an authentication service failure from an expired session', async () => {
+    mocks.getUser.mockResolvedValue({
+      data: { user: null },
+      error: { name: 'AuthRetryableFetchError', status: 503 },
+    });
+
+    const response = await POST(request({ kind: 'orders' }));
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ error: { code: 'AUTH_UNAVAILABLE' } });
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it('treats a thrown auth transport error as temporarily unavailable', async () => {
+    mocks.getUser.mockRejectedValue(new Error('network connection lost'));
+
+    const response = await POST(request({ kind: 'orders' }));
+
+    expect(response.status).toBe(503);
     expect(mocks.from).not.toHaveBeenCalled();
   });
 

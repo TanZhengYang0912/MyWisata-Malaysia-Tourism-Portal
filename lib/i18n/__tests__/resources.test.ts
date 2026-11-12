@@ -99,6 +99,21 @@ describe("translation resources", () => {
     expect(malay.auth.staffInvitation.states.revoked).toContain("ditarik balik");
   });
 
+  it("translates every persisted customer booking status in support cards", async () => {
+    const [english, chinese, malay] = await Promise.all([
+      loadTestResources("en"),
+      loadTestResources("zh-CN"),
+      loadTestResources("ms"),
+    ]);
+
+    expect(english.common.chatbot.statusQuery.values.in_use).toBe("In use");
+    expect(english.common.chatbot.statusQuery.values.no_show).toBe("No-show");
+    expect(chinese.common.chatbot.statusQuery.values.in_use).toBe("使用中");
+    expect(chinese.common.chatbot.statusQuery.values.no_show).toBe("未到场");
+    expect(malay.common.chatbot.statusQuery.values.in_use).toBe("Sedang digunakan");
+    expect(malay.common.chatbot.statusQuery.values.no_show).toBe("Tidak hadir");
+  });
+
   it("uses the right meaning for customer and vendor financial labels", async () => {
     const [english, chinese, malay] = await Promise.all([
       loadTestResources("en"),

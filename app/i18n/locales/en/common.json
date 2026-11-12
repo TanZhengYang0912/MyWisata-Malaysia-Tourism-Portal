@@ -397,7 +397,9 @@
         "resolved": "Resolved",
         "closed": "Closed",
         "confirmed": "Confirmed",
+        "in_use": "In use",
         "checked_in": "Checked in",
+        "no_show": "No-show",
         "unknown": "Status unavailable"
       }
     },

@@ -397,7 +397,9 @@
         "resolved": "Selesai",
         "closed": "Ditutup",
         "confirmed": "Disahkan",
+        "in_use": "Sedang digunakan",
         "checked_in": "Telah daftar masuk",
+        "no_show": "Tidak hadir",
         "unknown": "Status tidak tersedia"
       }
     },

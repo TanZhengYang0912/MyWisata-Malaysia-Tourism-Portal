@@ -397,7 +397,9 @@
         "resolved": "已解决",
         "closed": "已关闭",
         "confirmed": "已确认",
+        "in_use": "使用中",
         "checked_in": "已签到",
+        "no_show": "未到场",
         "unknown": "状态暂不可用"
       }
     },
