@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Disposable PostgreSQL 17 regression checks for Support ticket concurrency.
+ * Disposable PostgreSQL 17 regression checks for Support ticket transactions,
+ * attachment lifecycle, and reservation/cleanup concurrency.
  * This runner starts its own loopback-only Docker database and never accepts
  * a Supabase, FYP, or caller-provided database target.
  */
@@ -26,7 +27,10 @@ const sharedOperationId = '30000000-0000-4000-8000-000000000001';
 const reopenTicketId = '10000000-0000-4000-8000-000000000006';
 const lockedReplyTicketId = '10000000-0000-4000-8000-000000000002';
 const fanoutTicketId = '10000000-0000-4000-8000-000000000007';
+const cleanupWinsAttachmentOperationId = '40000000-0000-4000-8000-000000000001';
+const reservationWinsAttachmentOperationId = '40000000-0000-4000-8000-000000000002';
 const sharedPayloadHash = 'a'.repeat(64);
+const attachmentFileHash = 'f'.repeat(64);
 
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
@@ -115,6 +119,14 @@ async function installExistingFixture() {
     'exec', container, 'psql', '-U', 'postgres', '-d', 'postgres',
     '-v', 'ON_ERROR_STOP=1', '-f', '/tmp/support/tests/support_operations.sql',
   ]);
+
+  const attachmentFixturePath = path.join(root, 'supabase/tests/support_attachments_local.sql');
+  assert.ok(fs.existsSync(attachmentFixturePath), 'The local attachment lifecycle fixture must exist.');
+  runDocker(['cp', attachmentFixturePath, `${container}:/tmp/support/tests/support_attachments_local.sql`]);
+  runDocker([
+    'exec', container, 'psql', '-U', 'postgres', '-d', 'postgres',
+    '-v', 'ON_ERROR_STOP=1', '-f', '/tmp/support/tests/support_attachments_local.sql',
+  ]);
 }
 
 async function connectTestClients(config) {
@@ -139,6 +151,40 @@ async function reserveOperation(client, operationId, payloadHash) {
     [operationId, `user:${customerId}`, customerId, payloadHash],
   );
   return result.rows[0].value;
+}
+
+async function reserveAttachment(client, operationId, payloadHash) {
+  const result = await client.query(
+    `SELECT public.reserve_support_attachment(
+      $1::uuid, $2::uuid, $3::uuid, 'customer', $4, $5,
+      'application/pdf', 12
+    ) AS value`,
+    [operationId, '10000000-0000-4000-8000-000000000001', customerId, payloadHash, attachmentFileHash],
+  );
+  return result.rows[0].value;
+}
+
+async function createStaleUploadedAttachment(client, observer, operationId, payloadHash) {
+  const reserved = await reserveAttachment(client, operationId, payloadHash);
+  assert.equal(reserved.state, 'reserved');
+  await client.query(
+    'SELECT public.mark_support_attachment_started($1::uuid, $2::uuid, $3::uuid)',
+    [operationId, customerId, reserved.lease_token],
+  );
+  await client.query(
+    'SELECT public.mark_support_attachment_uploaded($1::uuid, $2::uuid, $3::uuid)',
+    [operationId, customerId, reserved.lease_token],
+  );
+  const result = await observer.query(
+    `UPDATE public.support_attachment_uploads
+        SET lease_expires_at = now() - interval '1 minute',
+            updated_at = now() - interval '2 days'
+      WHERE operation_id = $1
+      RETURNING id`,
+    [operationId],
+  );
+  assert.equal(result.rowCount, 1);
+  return { ...reserved, id: result.rows[0].id };
 }
 
 async function waitForLock(observer, applicationName) {
@@ -306,6 +352,77 @@ async function verifyRecipientEventDeduplication({ a, b, observer }) {
   console.log('PASS: per-recipient event keys deduplicated across duplicate inserts and reply replay.');
 }
 
+async function verifyAttachmentReservationCleanupRace({ a, b, observer }) {
+  const cleanupWins = await createStaleUploadedAttachment(
+    a, observer, cleanupWinsAttachmentOperationId, '1'.repeat(64),
+  );
+
+  await a.query('BEGIN');
+  const cleanupClaim = await a.query('SELECT public.claim_support_attachment_cleanup() AS value');
+  const cleanup = cleanupClaim.rows[0].value;
+  assert.equal(cleanup.items.length, 1);
+  assert.equal(cleanup.items[0].id, cleanupWins.id);
+  const cleanupPromise = reserveAttachment(b, cleanupWinsAttachmentOperationId, '1'.repeat(64))
+    .then((value) => ({ value }), (error) => ({ error }));
+  await waitForLock(observer, 'support-concurrency-b');
+  await a.query('COMMIT');
+
+  const blockedReservation = await cleanupPromise;
+  assert.equal(blockedReservation.error?.message, 'support_attachment_result_unavailable');
+  const deletingState = await observer.query(
+    'SELECT state FROM public.support_attachment_uploads WHERE id = $1',
+    [cleanupWins.id],
+  );
+  assert.equal(deletingState.rows[0].state, 'deleting');
+  const deleted = await a.query(
+    `SELECT public.finish_support_attachment_cleanup(
+       $1::uuid, ARRAY[$2::uuid], ARRAY[]::uuid[]
+     ) AS value`,
+    [cleanup.token, cleanupWins.id],
+  );
+  assert.equal(deleted.rows[0].value.deleted, 1);
+
+  const reservationWins = await createStaleUploadedAttachment(
+    a, observer, reservationWinsAttachmentOperationId, '2'.repeat(64),
+  );
+  await a.query('BEGIN');
+  const renewed = await reserveAttachment(a, reservationWinsAttachmentOperationId, '2'.repeat(64));
+  assert.equal(renewed.state, 'uploaded');
+  const skippedCleanup = await b.query('SELECT public.claim_support_attachment_cleanup() AS value');
+  assert.deepEqual(skippedCleanup.rows[0].value.items, []);
+  await a.query('COMMIT');
+
+  const activeLease = await observer.query(
+    `SELECT state, lease_token, lease_expires_at > now() AS active
+       FROM public.support_attachment_uploads WHERE id = $1`,
+    [reservationWins.id],
+  );
+  assert.equal(activeLease.rows[0].state, 'uploaded');
+  assert.equal(activeLease.rows[0].lease_token, renewed.lease_token);
+  assert.equal(activeLease.rows[0].active, true);
+
+  const bound = await a.query(
+    `SELECT public.commit_support_ticket_attachment(
+       $1::uuid, $2::uuid, 'customer', 'Race-safe PDF', $3,
+       $4::uuid, $5, $6::uuid
+     ) AS value`,
+    [
+      '10000000-0000-4000-8000-000000000001', customerId,
+      renewed.storage_path, reservationWinsAttachmentOperationId,
+      '2'.repeat(64), renewed.lease_token,
+    ],
+  );
+  assert.equal(bound.rows[0].value.created, true);
+  const boundCleanup = await b.query('SELECT public.claim_support_attachment_cleanup() AS value');
+  assert.deepEqual(boundCleanup.rows[0].value.items, []);
+  const finalState = await observer.query(
+    'SELECT state FROM public.support_attachment_uploads WHERE id = $1',
+    [reservationWins.id],
+  );
+  assert.equal(finalState.rows[0].state, 'bound');
+  console.log('PASS: cleanup claims cannot race a renewed upload lease or remove an attachment after binding.');
+}
+
 async function main() {
   rejectExternalDatabaseTargets();
   requireLocalDockerDaemon();
@@ -334,6 +451,7 @@ async function main() {
   await verifyOperationReplayAndAccess({ ...sessions, leaseToken });
   await verifyCloseReplyRace(sessions);
   await verifyRecipientEventDeduplication(sessions);
+  await verifyAttachmentReservationCleanupRace(sessions);
 }
 
 try {

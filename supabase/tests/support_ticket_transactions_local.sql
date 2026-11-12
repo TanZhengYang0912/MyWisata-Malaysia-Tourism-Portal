@@ -1,6 +1,6 @@
 -- Execute with psql against an empty, disposable PostgreSQL database only.
 -- This fixture installs the existing support ticket migrations, exercises the
--- reply/reopen RPCs with minimum schema dependencies, and rolls everything back.
+-- reply/reopen/attachment RPCs with minimum schema dependencies, and rolls back.
 \set ON_ERROR_STOP on
 
 BEGIN;
@@ -11,6 +11,24 @@ CREATE ROLE service_role NOLOGIN BYPASSRLS;
 
 CREATE SCHEMA auth;
 CREATE SCHEMA app_private;
+CREATE SCHEMA storage;
+
+-- Minimal bucket metadata schema for the private attachment bucket migration.
+CREATE TABLE storage.buckets (
+  id text PRIMARY KEY,
+  name text NOT NULL,
+  public boolean NOT NULL DEFAULT false,
+  file_size_limit bigint,
+  allowed_mime_types text[]
+);
+
+-- The attachment migration revokes browser policies from this table. The
+-- disposable fixture needs only the relation; it never stores real objects.
+CREATE TABLE storage.objects (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  bucket_id text NOT NULL,
+  name text NOT NULL
+);
 
 CREATE TABLE auth.users (
   id uuid PRIMARY KEY
@@ -82,6 +100,7 @@ CREATE TABLE public.support_ticket_replies (
   sender_id uuid NOT NULL REFERENCES public.users(id),
   sender_role varchar(10) NOT NULL CHECK (sender_role IN ('customer', 'admin')),
   body text NOT NULL,
+  attachment_url text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -173,8 +192,13 @@ VALUES ('10000000-0000-4000-8000-000000000005', '00000000-0000-4000-8000-0000000
 \ir ../migrations/20261111153000_support_reply_operation_keys.sql
 \ir ../migrations/20261111160000_commit_support_ticket_reply_atomically.sql
 \ir ../migrations/20261111161000_commit_support_ticket_reopen_atomically.sql
+\ir ../migrations/20261111163000_support_attachment_lifecycle.sql
+\ir ../migrations/20261111164000_commit_support_ticket_attachment_atomically.sql
+\ir ../migrations/20261111165000_support_attachment_retry_recovery.sql
+\ir ../migrations/20261111212000_support_attachment_upload_reconciliation.sql
 \ir ../migrations/20261111220000_support_operation_ledger.sql
 \ir ../migrations/20261112093302_support_ticket_reopen_operation_idempotency.sql
+\ir ../migrations/20261112100000_support_ticket_attachment_bucket.sql
 
 DO $$
 BEGIN
