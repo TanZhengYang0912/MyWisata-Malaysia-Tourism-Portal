@@ -191,7 +191,7 @@ function AskPanel() {
               className={`${adminFilterControlClassName} flex-1`}
               disabled={sending}
             />
-            <Button size="icon" className="h-9 w-9 shrink-0 rounded-full" onClick={send} disabled={sending || !input.trim()}>
+            <Button size="icon" className="h-9 w-9 shrink-0 rounded-full" onClick={send} disabled={sending || !input.trim()} aria-label={t("aiAssistant.ask.send")}>
               <Send size={14} />
             </Button>
           </div>

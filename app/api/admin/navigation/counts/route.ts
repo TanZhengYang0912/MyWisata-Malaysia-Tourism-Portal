@@ -118,6 +118,8 @@ export async function GET(request: Request) {
         p_review_statuses: [...WITHDRAWAL_REVIEW_STATUSES],
       });
       if (error || !rawSummary || typeof rawSummary !== 'object' || Array.isArray(rawSummary)) {
+        // The cause was being dropped, so an unavailable tile gave nothing to diagnose.
+        console.error('[admin-queue-summary] withdrawal summary unavailable', error?.message ?? 'unexpected result shape');
         withdrawalAvailability = 'unavailable';
       } else {
         const row = rawSummary as Record<string, unknown>;
@@ -145,7 +147,10 @@ export async function GET(request: Request) {
             };
           }
         }
-        if (!withdrawalSummary) withdrawalAvailability = 'unavailable';
+        if (!withdrawalSummary) {
+          console.error('[admin-queue-summary] withdrawal summary had an invalid value or an incomplete 7-day activity list');
+          withdrawalAvailability = 'unavailable';
+        }
       }
     }
     if (!withdrawalSummary) {

@@ -1033,6 +1033,7 @@
       "clear": "清空对话",
       "empty": "例如“有多少提现待处理？”、“如何批准退款？”或“把未处理的付款工单标为处理中”。在您点击卡片上的确认之前，不会有任何更改。",
       "placeholder": "提问…",
+      "send": "发送",
       "restoring": "正在恢复对话…",
       "title": "询问助手"
     },
@@ -1512,6 +1513,7 @@
     "openItems_other": "{{count}} 个待处理项目",
     "walletPending_one": "{{count}} 个请求需要决定，{{amount}} 正在审核中。",
     "walletPending_other": "{{count}} 个请求需要决定，{{amount}} 正在审核中。",
+    "someSourcesUnavailable": "部分数据源不可用",
     "queueUnavailable": "待办数据暂时不可用",
     "staleData": "刷新失败，当前显示上次成功加载的数据。"
   },
