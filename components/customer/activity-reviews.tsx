@@ -19,7 +19,7 @@ import type { ReviewRatingBucket } from "@/backend/domains/vendor-reviews";
 
 interface Props {
   productId: string;
-  /** Reviews are filtered to this outlet when set. Changing it refreshes the preview and closes any open review list. */
+  /** Reviews are filtered to this outlet when set. Changing it goes back to page 1 of that outlet's reviews. */
   outletId?: string;
   rating: number;
   totalReviews: number;
@@ -43,7 +43,6 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
   const { t, i18n } = useTranslation("customer");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const gate = useCustomerCapabilityGate();
-  const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState(initialReviews);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [summaryRating, setSummaryRating] = useState(rating);
@@ -67,13 +66,17 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
   const previousOutletId = useRef(outletId);
 
   async function refreshPreview() {
-    const response = await fetch(`/api/products/${productId}/reviews?${reviewsQueryString(1, 3, outletId)}`, { cache: "no-store" });
+    const response = await fetch(`/api/products/${productId}/reviews?${reviewsQueryString(1, DEFAULT_REVIEW_PAGE_SIZE, outletId)}`, { cache: "no-store" });
     const payload = await response.json();
     if (!response.ok || !payload.data) throw new Error(payload.error?.message || t("ui.reviews.loadError"));
     setPreview(payload.data.items);
     setSummaryTotal(payload.data.total);
     setViewer(payload.data.viewer ?? null);
     setRatingBuckets(payload.data.ratingBuckets ?? []);
+    // A new review lands on page 1 of all ratings, so the list goes back there.
+    setSelectedRating(null);
+    setPage(1);
+    setFilteredTotal(payload.data.total);
   }
 
   // The SSR preview remains visible while this request also loads the viewer's
@@ -82,7 +85,8 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
     const changedOutlet = previousOutletId.current !== outletId;
     previousOutletId.current = outletId;
     if (changedOutlet) {
-      setOpen(false);
+      setPage(1);
+      setError("");
       setReviewFormOpen(false);
       setReviewMessage("");
       setReviewError("");
@@ -93,7 +97,7 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
       setPreviewLoading(true);
     }
     let cancelled = false;
-    void fetch(`/api/products/${productId}/reviews?${reviewsQueryString(1, 3, outletId)}`, { cache: "no-store" })
+    void fetch(`/api/products/${productId}/reviews?${reviewsQueryString(1, DEFAULT_REVIEW_PAGE_SIZE, outletId)}`, { cache: "no-store" })
       .then(async (response) => {
         const payload = await response.json();
         if (!response.ok || !payload.data) throw new Error(payload.error?.message || t("ui.reviews.loadError"));
@@ -129,12 +133,6 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
     }
   }
 
-  function openAllReviews() {
-    setSelectedRating(null);
-    setFilteredTotal(summaryTotal);
-    setOpen(true);
-    void loadPage(1, null);
-  }
 
   function reviewPresentation(review: ProductReview): FeedbackReviewItem {
     const reviewTitle = review.title
@@ -275,56 +273,31 @@ export function ActivityReviews({ productId, outletId, rating, totalReviews, ini
         ) : summaryTotal === 0 ? (
           <p className="mt-4 rounded-xl bg-muted px-3 py-3 text-sm text-muted-foreground">{t("ui.states.noReviews")}</p>
         ) : (
-          <div className="mt-4 space-y-3">
-            <FeedbackCollection mode="reviews" items={preview.slice(0, 3).map(reviewPresentation)} />
-            {summaryTotal > 3 && (
-              <button type="button" onClick={openAllReviews} className="w-full rounded-xl border border-primary/20 px-4 py-3 text-sm font-semibold text-primary transition hover:bg-secondary">
-                {t("ui.actions.viewAll")} {summaryTotal}
-              </button>
+          <div className="mt-4">
+            {loading ? <p className="py-10 text-center text-sm text-muted-foreground">{t("ui.reviews.loading")}</p> : error ? <div className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}<button type="button" onClick={() => void loadPage(page)} className="ml-2 font-semibold underline">{t("ui.actions.retry")}</button></div> : (
+              <FeedbackCollection
+                mode="reviews"
+                // Page 1 of all ratings is the preview already loaded with the page; other pages and ratings come from loadPage.
+                items={(page === 1 && selectedRating === null ? preview : reviews).slice(0, DEFAULT_REVIEW_PAGE_SIZE).map(reviewPresentation)}
+                emptyState={<p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">{t("ui.reviews.noReviewsForRating")}</p>}
+                controls={ratingBuckets.length > 1 ? (
+                  <>
+                    <Button type="button" size="sm" variant={selectedRating === null ? "default" : "outline"} onClick={() => { setSelectedRating(null); setPage(1); setFilteredTotal(summaryTotal); setError(""); }}>
+                      {t("ui.reviews.allRatings")} ({summaryTotal})
+                    </Button>
+                    {ratingBuckets.map(({ rating: stars, count }) => (
+                      <Button key={stars} type="button" size="sm" variant={selectedRating === stars ? "default" : "outline"} onClick={() => { setSelectedRating(stars); void loadPage(1, stars); }}>
+                        <Star size={13} aria-hidden="true" /> {t("ui.reviews.ratingBucketLabel", { rating: stars, reviewCount: count })}
+                      </Button>
+                    ))}
+                  </>
+                ) : undefined}
+              />
             )}
+            {!error && <Pagination ariaLabel={t("ui.reviews.pages")} currentPage={pageState.page} totalPages={pageState.totalPages} totalItems={filteredTotal} pageSize={DEFAULT_REVIEW_PAGE_SIZE} disabled={loading} onPageChange={(nextPage) => void loadPage(nextPage)} />}
           </div>
         )}
       </section>
-
-      {open && (
-        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/45 p-0 sm:items-center sm:p-6" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
-          <section className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-card p-5 shadow-2xl sm:rounded-3xl sm:p-6" role="dialog" aria-modal="true" aria-labelledby="all-reviews-title">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{t("ui.reviews.guestReviews")}</p>
-                <h2 id="all-reviews-title" className="mt-1 text-xl font-bold text-foreground">{t("ui.reviews.allReviews", { count: summaryTotal })}</h2>
-              </div>
-              <button type="button" onClick={() => setOpen(false)} className="rounded-full p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground" aria-label={t("ui.reviews.closeAll")}><X size={18} /></button>
-            </div>
-
-            {loading ? <p className="py-10 text-center text-sm text-muted-foreground">{t("ui.reviews.loading")}</p> : error ? <div className="mt-5 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}<button type="button" onClick={() => void loadPage(page)} className="ml-2 font-semibold underline">{t("ui.actions.retry")}</button></div> : (
-              <div className="mt-5">
-                <FeedbackCollection
-                  mode="reviews"
-                  items={reviews.map(reviewPresentation)}
-                  emptyState={<p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">{selectedRating === null ? t("ui.states.noReviews") : t("ui.reviews.noReviewsForRating")}</p>}
-                  controls={(
-                    <>
-                      <Button type="button" size="sm" variant={selectedRating === null ? "default" : "outline"} onClick={() => { setSelectedRating(null); void loadPage(1, null); }}>
-                        {t("ui.reviews.allRatings")} ({summaryTotal})
-                      </Button>
-                      {ratingBuckets.map(({ rating: stars, count }) => (
-                        <Button key={stars} type="button" size="sm" variant={selectedRating === stars ? "default" : "outline"} onClick={() => { setSelectedRating(stars); void loadPage(1, stars); }}>
-                          <Star size={13} aria-hidden="true" /> {t("ui.reviews.ratingBucketLabel", { rating: stars, reviewCount: count })}
-                        </Button>
-                      ))}
-                    </>
-                  )}
-                />
-              </div>
-            )}
-
-            {!loading && !error && (
-              <Pagination ariaLabel={t("ui.reviews.pages")} currentPage={pageState.page} totalPages={pageState.totalPages} totalItems={filteredTotal} pageSize={DEFAULT_REVIEW_PAGE_SIZE} onPageChange={(nextPage) => void loadPage(nextPage)} />
-            )}
-          </section>
-        </div>
-      )}
     </>
   );
 }

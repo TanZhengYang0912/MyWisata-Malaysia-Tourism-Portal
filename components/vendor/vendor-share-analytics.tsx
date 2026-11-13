@@ -73,7 +73,7 @@ export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-6 shadow-sm">
+      <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-6 shadow-sm">
         <p className="text-sm text-gray-400 dark:text-muted-foreground">{t('share.loading')}</p>
       </div>
     );
@@ -81,7 +81,7 @@ export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-6 shadow-sm">
+      <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-6 shadow-sm">
         <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p>
       </div>
     );
@@ -99,7 +99,7 @@ export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
         <StatCard icon={ShoppingBag} label={t('share.ordersFromShares')} value={stats.totals.orders} tone="amber" />
       </div>
 
-      <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+      <div className="rounded-2xl border border-gray-100 dark:border-border bg-card shadow-sm">
         <div className="flex items-center justify-between border-b border-gray-100 dark:border-border px-6 py-4">
           <div>
             <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
@@ -113,7 +113,7 @@ export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
                 key={key}
                 type="button"
                 onClick={() => setSortKey(key)}
-                className={`rounded-md px-3 py-1.5 capitalize ${sortKey === key ? 'bg-white dark:bg-card text-primary shadow-sm' : 'text-gray-500 dark:text-muted-foreground'}`}
+                className={`rounded-md px-3 py-1.5 capitalize ${sortKey === key ? 'bg-card text-primary shadow-sm' : 'text-gray-500 dark:text-muted-foreground'}`}
               >
                 {t(`share.sort.${key}`)}
               </button>
@@ -163,7 +163,7 @@ export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
 function StatCard({ icon: Icon, label, value, tone }: { icon: typeof Share2; label: string; value: number; tone: 'teal' | 'blue' | 'amber' }) {
   const toneClass = { teal: 'bg-secondary text-primary', blue: 'bg-secondary text-primary', amber: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-200' }[tone];
   return (
-    <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-6 shadow-sm">
+    <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-6 shadow-sm">
       <div className="mb-4 flex items-center gap-3">
         <div className={`flex h-10 w-10 items-center justify-center rounded-full ${toneClass}`}>
           <Icon size={18} />

@@ -9,6 +9,7 @@ import type { WithdrawalHistoryCursor, WithdrawalHistoryPage } from "@/backend/d
 import { StatusBadge } from "@/components/shared/status-badge";
 import { ApiErrorNotice } from "@/components/shared/api-error-notice";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/shared/pagination";
 import { formatMYR } from "@/lib/i18n/format";
 
 type WithdrawalHistoryResult = {
@@ -109,20 +110,21 @@ export function WithdrawalHistory({ userId }: { userId: string }) {
         </div>
       )}
       {!loading && !currentResult?.failed && page && page.requests.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4">
-          <p role="status" className="text-xs text-muted-foreground">
-            {t("ui.wallet.withdrawalHistory.page", { page: cursors.length, pages, total: total ?? "—" })}
-          </p>
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" disabled={cursors.length <= 1} onClick={() => setCursors((current) => current.slice(0, -1))}>
-              {t("ui.wallet.withdrawalHistory.previous")}
-            </Button>
-            <Button type="button" variant="outline" disabled={!page.hasMore || !page.nextCursor} onClick={() => {
-              if (page.nextCursor) setCursors((current) => [...current, page.nextCursor]);
-            }}>
-              {t("ui.wallet.withdrawalHistory.next")}
-            </Button>
-          </div>
+        <div className="border-t border-border px-5 pb-4">
+          <Pagination
+            stepOnly
+            ariaLabel={t("ui.wallet.withdrawalHistory.title")}
+            currentPage={cursors.length}
+            totalPages={pages}
+            // The total is only known once the first page reports it; until then the range summary is left out.
+            totalItems={total ?? pages * 25}
+            showSummary={total !== null}
+            pageSize={25}
+            onPageChange={(next) => {
+              if (next < cursors.length) setCursors((current) => current.slice(0, -1));
+              else if (page.hasMore && page.nextCursor) { const nextCursor = page.nextCursor; setCursors((current) => [...current, nextCursor]); }
+            }}
+          />
         </div>
       )}
     </section>

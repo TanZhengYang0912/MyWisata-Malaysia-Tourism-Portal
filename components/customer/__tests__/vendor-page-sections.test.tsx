@@ -18,6 +18,7 @@ let container: TestElement;
 let root: ReturnType<typeof import("react-dom/client").createRoot>;
 async function render(element: React.ReactElement) { await act(async () => { root.render(element); }); }
 async function click(element: TestElement) { await act(async () => { element.dispatchEvent(new TestEvent("click", { bubbles: true })); }); }
+const nextPage = () => findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("aria-label") === "accessibility.nextPage");
 const button = (text: string) => findOne(container, (element) => element.tagName === "BUTTON" && (element.textContent ?? "").includes(text));
 
 const product = (index: number, productType: string | null = "activity") => ({ id: `p${index}`, vendorId: "v1", name: `Product ${index}`, description: null, productType, imageUrl: null, fromPrice: 10, requiresBooking: true, rating: 0, reviews: 0, soldAt: [] });
@@ -34,12 +35,15 @@ describe("vendor page sections", () => {
   beforeEach(() => { container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container as unknown as Element); });
   afterEach(() => { act(() => root.unmount()); document.body.removeChild(container); });
 
-  it("shows eight listing cards, then the rest after Show all", async () => {
-    await render(<VendorListingGrid products={Array.from({ length: 30 }, (_, index) => product(index))} returnTo="/customer/vendor/v1" />);
-    expect(findElements(container, (element) => element.hasAttribute("data-card"))).toHaveLength(8);
-    expect(container.textContent).toContain('ui.vendor.showingCount {"shown":8,"total":30}');
-    await click(button("ui.vendor.showAllExperiences"));
-    expect(findElements(container, (element) => element.hasAttribute("data-card"))).toHaveLength(30);
+  it("pages the listing eight cards at a time, and a type chip goes back to page 1", async () => {
+    await render(<VendorListingGrid products={[...Array.from({ length: 29 }, (_, index) => product(index)), product(29, "food")]} returnTo="/customer/vendor/v1" />);
+    const cards = () => findElements(container, (element) => element.hasAttribute("data-card")).map((card) => card.textContent);
+    expect(cards()).toHaveLength(8);
+    expect(container.textContent).not.toContain("ui.vendor.showAllExperiences");
+    await click(nextPage());
+    expect(cards()).toEqual(Array.from({ length: 8 }, (_, index) => `Product ${index + 8}`));
+    await click(button("ui.labels.all"));
+    expect(cards()[0]).toBe("Product 0");
   });
 
   it("offers type chips only when the listing has two or more types, and filters by them", async () => {
@@ -50,12 +54,12 @@ describe("vendor page sections", () => {
     expect(findElements(container, (element) => element.hasAttribute("data-card")).map((card) => card.textContent)).toEqual(["Product 2", "Product 3"]);
   });
 
-  it("shows four outlet cards, then all of them after Show all", async () => {
+  it("pages the outlets eight at a time", async () => {
     await render(<VendorLocationList locations={Array.from({ length: 13 }, (_, index) => location(index))} />);
     const cards = () => findElements(container, (element) => element.hasAttribute("data-outlet-card"));
-    expect(cards()).toHaveLength(4);
-    await click(button("ui.vendor.showAllLocations"));
-    expect(cards()).toHaveLength(13);
+    expect(cards()).toHaveLength(8);
+    await click(nextPage());
+    expect(cards()).toHaveLength(5);
     expect(findElements(container, (element) => element.tagName === "A").map((link) => link.getAttribute("href"))).toContain("/customer/outlets/o12");
   });
 

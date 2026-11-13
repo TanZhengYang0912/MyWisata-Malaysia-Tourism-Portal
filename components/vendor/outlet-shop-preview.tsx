@@ -135,7 +135,7 @@ export default function OutletShopPreview({ vendorId, outlet, onEdit }: Props) {
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-col gap-4 rounded-3xl border border-primary/10 bg-white p-4 shadow-sm sm:p-6 lg:flex-row lg:items-end lg:justify-between">
+      <header className="flex flex-col gap-4 rounded-3xl border border-primary/10 bg-card p-4 shadow-sm sm:p-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             <Store size={15} /> {t("shopPreview.title")}
@@ -187,7 +187,7 @@ export default function OutletShopPreview({ vendorId, outlet, onEdit }: Props) {
         </div>
       )}
 
-      <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-3xl border border-gray-100 bg-card shadow-sm">
         <div className="flex flex-col gap-1 border-b border-gray-100 bg-gray-50/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
@@ -198,8 +198,8 @@ export default function OutletShopPreview({ vendorId, outlet, onEdit }: Props) {
             {preview.isPublished ? t("shopPreview.liveVersion") : t("shopPreview.draftVersion")}
           </span>
         </div>
-        <div className="bg-[#f8fafc] p-3 sm:p-6">
-          <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
+        <div className="bg-background p-3 sm:p-6">
+          <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl border border-gray-100 bg-card shadow-sm">
             <OutletPageRenderer
               document={preview.document}
               outlet={outlet}

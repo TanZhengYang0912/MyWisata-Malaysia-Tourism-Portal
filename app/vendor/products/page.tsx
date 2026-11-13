@@ -368,7 +368,7 @@ export default function VendorProductsPage() {
           <button
             type="button"
             onClick={handleExportProducts}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50"
           >
             <Download size={16} /> {t('ui.common.exportCsv')}
           </button>
@@ -386,25 +386,25 @@ export default function VendorProductsPage() {
 
       {/* Top 4 KPI Summary Cards */}
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-muted-foreground">
             {t('ui.status.active')}
           </p>
           <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-foreground">{stats.active}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-muted-foreground">
             {t('ui.products.attentionNeeded')}
           </p>
           <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-300">{stats.lowStockOrBooking}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-muted-foreground">
             {t('ui.status.archived')}
           </p>
           <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-foreground">{stats.archived}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-muted-foreground">
             {t('ui.products.outletsManaged')}
           </p>
@@ -465,7 +465,7 @@ export default function VendorProductsPage() {
               className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
                 filters.featured
                   ? 'bg-amber-600 text-white shadow-sm hover:bg-amber-700'
-                  : 'border border-amber-300 dark:border-amber-500/30 bg-white dark:bg-card text-amber-900 dark:text-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10'
+                  : 'border border-amber-300 dark:border-amber-500/30 bg-card text-amber-900 dark:text-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10'
               }`}
             >
               {filters.featured ? t('ui.products.allStatuses') : t('ui.products.featuredTab', { count: featuredIds.length })}
@@ -479,7 +479,7 @@ export default function VendorProductsPage() {
       {canManageOutlet && <BatchActionBar selectedCount={selectedIds.length} total={pagination.total} allFilteredSelected={allFilteredSelected} onSelectAllFiltered={() => { setAllFilteredSelected(true); setSelectedIds(products.map((product) => product.id)); }} onClear={() => { setSelectedIds([]); setAllFilteredSelected(false); setBatchMessage(''); }} onApply={applyBatch} actions={[{ value: 'archive', label: t('ui.products.archiveSelected') }, { value: 'restore', label: t('ui.products.restoreSelected') }]} busy={batchBusy} message={batchMessage} />}
       <div className="flex items-center justify-between text-xs text-gray-500 dark:text-muted-foreground"><span>{t('ui.products.resultCount', { count: pagination.total.toLocaleString() })}</span><span className="inline-flex items-center gap-1"><SlidersHorizontal size={14} /> {t('ui.products.perPage', { count: 10 })}</span></div>
       {error && <div className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">{error}</div>}
-      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-card shadow-sm">
         {loading ? <div className="space-y-3 p-5">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-xl bg-gray-100 dark:bg-muted" />)}</div> : products.length === 0 ? <div className="px-6 py-16 text-center text-gray-400 dark:text-muted-foreground"><PackageCheck className="mx-auto mb-3 opacity-30" size={34} /><p className="text-sm">{t('ui.products.noMatches')}</p><button type="button" onClick={clearFilters} className="mt-3 text-sm font-semibold text-primary hover:underline">{t('ui.common.clearFilters')}</button></div> : <>
           {canManageOutlet && <div className="border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-5 py-3 text-xs text-gray-500 dark:text-muted-foreground"><label className="inline-flex items-center gap-2 font-semibold"><input type="checkbox" checked={products.length > 0 && products.every((product) => selectedIds.includes(product.id))} onChange={(event) => setSelectedIds(event.target.checked ? products.map((product) => product.id) : [])} /> {t('ui.products.selectCurrentPage')}</label></div>}
           <div className="overflow-x-auto">
@@ -664,7 +664,7 @@ export default function VendorProductsPage() {
       {/* Covered Outlets Modal */}
       {viewingOutletsProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white dark:bg-card shadow-2xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-150">
+          <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-card shadow-2xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 px-6 py-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-200">
@@ -719,7 +719,7 @@ export default function VendorProductsPage() {
                   return displayOutlets.map((outlet, idx) => (
                     <div
                       key={outlet.id || idx}
-                      className="flex items-start justify-between gap-3 rounded-xl border border-gray-200/80 dark:border-border bg-white dark:bg-card p-3.5 shadow-sm"
+                      className="flex items-start justify-between gap-3 rounded-xl border border-gray-200/80 dark:border-border bg-card p-3.5 shadow-sm"
                     >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
@@ -755,7 +755,7 @@ export default function VendorProductsPage() {
       )}
 
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      {canManageOutlet && (showForm || editingProduct) && vendorId && <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white dark:bg-card p-6 shadow-2xl"><ProductForm vendorId={vendorId} outletIds={isOwner ? undefined : user?.activeOutletIds} initialData={editingProduct ? { id: editingProduct.id, outletId: editingProduct.outlet_id, categoryId: editingProduct.category_id || undefined, name: editingProduct.name, description: editingProduct.description || undefined, productType: editingProduct.product_type as any, basePrice: editingProduct.base_price, requiresBooking: editingProduct.requires_booking, ticketEntryPolicy: editingProduct.ticket_entry_policy ?? 'single_entry', ticketEntryLimit: editingProduct.ticket_entry_limit ?? 1, ticketValidityDays: editingProduct.ticket_validity_days ?? undefined, coverUrl: productImageUrl(editingProduct.cover_url) || undefined, tags: editingProduct.tags || undefined, submissionMode: 'review', gallery: editingProduct.media_assets?.map((media) => ({ url: media.url, alt: media.alt_text || undefined })), availableStock: editingProduct.inventoryConfigured && (editingProduct.variants ?? []).filter((variant) => variant.is_active !== false).length === 1 ? editingProduct.availableStock : undefined, lowStockThreshold: editingProduct.inventoryConfigured && (editingProduct.variants ?? []).filter((variant) => variant.is_active !== false).length === 1 ? editingProduct.lowStockThreshold : undefined, inventoryConfigured: editingProduct.inventoryConfigured, inventorySetupSingleEntry: (editingProduct.variants ?? []).filter((variant) => variant.is_active !== false).length <= 1, defaultCapacity: editingProduct.default_capacity || undefined, digitalAssetUrl: editingProduct.digital_asset_url || undefined, digitalAssetName: editingProduct.digital_asset_name || undefined, digitalAssetType: editingProduct.digital_asset_type || undefined, digitalAssetSize: editingProduct.digital_asset_size || undefined } : undefined} onSuccess={() => { setShowForm(false); setEditingProduct(null); setSelectedProduct(null); loadProducts(pagination.page); }} onClose={() => { setShowForm(false); setEditingProduct(null); }} /></div></div>}
+      {canManageOutlet && (showForm || editingProduct) && vendorId && <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-card p-6 shadow-2xl"><ProductForm vendorId={vendorId} outletIds={isOwner ? undefined : user?.activeOutletIds} initialData={editingProduct ? { id: editingProduct.id, outletId: editingProduct.outlet_id, categoryId: editingProduct.category_id || undefined, name: editingProduct.name, description: editingProduct.description || undefined, productType: editingProduct.product_type as any, basePrice: editingProduct.base_price, requiresBooking: editingProduct.requires_booking, ticketEntryPolicy: editingProduct.ticket_entry_policy ?? 'single_entry', ticketEntryLimit: editingProduct.ticket_entry_limit ?? 1, ticketValidityDays: editingProduct.ticket_validity_days ?? undefined, coverUrl: productImageUrl(editingProduct.cover_url) || undefined, tags: editingProduct.tags || undefined, submissionMode: 'review', gallery: editingProduct.media_assets?.map((media) => ({ url: media.url, alt: media.alt_text || undefined })), availableStock: editingProduct.inventoryConfigured && (editingProduct.variants ?? []).filter((variant) => variant.is_active !== false).length === 1 ? editingProduct.availableStock : undefined, lowStockThreshold: editingProduct.inventoryConfigured && (editingProduct.variants ?? []).filter((variant) => variant.is_active !== false).length === 1 ? editingProduct.lowStockThreshold : undefined, inventoryConfigured: editingProduct.inventoryConfigured, inventorySetupSingleEntry: (editingProduct.variants ?? []).filter((variant) => variant.is_active !== false).length <= 1, defaultCapacity: editingProduct.default_capacity || undefined, digitalAssetUrl: editingProduct.digital_asset_url || undefined, digitalAssetName: editingProduct.digital_asset_name || undefined, digitalAssetType: editingProduct.digital_asset_type || undefined, digitalAssetSize: editingProduct.digital_asset_size || undefined } : undefined} onSuccess={() => { setShowForm(false); setEditingProduct(null); setSelectedProduct(null); loadProducts(pagination.page); }} onClose={() => { setShowForm(false); setEditingProduct(null); }} /></div></div>}
     </div>
   );
 }

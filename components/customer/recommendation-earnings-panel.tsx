@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { formatMYR } from "@/lib/i18n/format";
 import type { RecommendationEarnings } from "@/lib/recommendations/earnings";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/shared/pagination";
 
 interface Props {
   /** Limit the list to a single recommendation (detail page). */
@@ -142,23 +143,19 @@ export function RecommendationEarningsPanel({ recommendationId, showEmpty = fals
         })}
       </div>
       {data.totalCount > 10 && (
-        <div className="flex items-center justify-between border-t border-border px-5 py-3">
-          <p className="text-xs text-muted-foreground">
-            {t("ui.pagination.showing", {
-              from: cursorHistory.length === 1 ? 1 : (cursorHistory.length - 1) * 10 + 1,
-              to: Math.min(cursorHistory.length * 10, data.totalCount),
-              total: data.totalCount,
-              items: t("ui.recommendationEarnings.title"),
-            })}
-          </p>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" disabled={cursorHistory.length <= 1} onClick={() => setCursorState({ recommendationId, history: cursorHistory.slice(0, -1) })}>
-              {t("ui.pagination.previousPage")}
-            </Button>
-            <Button size="sm" variant="outline" disabled={!data.hasMore || !data.nextCursor} onClick={() => data.nextCursor && setCursorState({ recommendationId, history: [...cursorHistory, data.nextCursor] })}>
-              {t("ui.pagination.nextPage")}
-            </Button>
-          </div>
+        <div className="border-t border-border px-5 pb-3">
+          <Pagination
+            stepOnly
+            ariaLabel={t("ui.recommendationEarnings.title")}
+            currentPage={cursorHistory.length}
+            totalPages={Math.ceil(data.totalCount / 10)}
+            totalItems={data.totalCount}
+            pageSize={10}
+            onPageChange={(next) => {
+              if (next < cursorHistory.length) setCursorState({ recommendationId, history: cursorHistory.slice(0, -1) });
+              else if (data.hasMore && data.nextCursor) setCursorState({ recommendationId, history: [...cursorHistory, data.nextCursor] });
+            }}
+          />
         </div>
       )}
     </div>

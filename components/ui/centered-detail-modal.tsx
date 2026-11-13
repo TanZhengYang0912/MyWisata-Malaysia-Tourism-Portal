@@ -25,8 +25,8 @@ export default function CenteredDetailModal({ eyebrow, title, subtitle, closeLab
   const sizeClassName = size === 'xl' ? 'max-w-5xl' : size === 'lg' ? 'max-w-2xl' : 'max-w-lg';
   const titleColorClassName = layout === 'fixed' ? 'text-gray-950 dark:text-foreground' : 'text-gray-950';
   const layoutClassName = layout === 'fixed'
-    ? `flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden rounded-none bg-white dark:bg-card p-4 shadow-2xl outline-none sm:h-[90vh] sm:max-h-[90vh] sm:rounded-2xl ${sizeClassName}`
-    : `max-h-[90vh] w-full overscroll-contain overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl outline-none ${sizeClassName}`;
+    ? `flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden rounded-none bg-card p-4 shadow-2xl outline-none sm:h-[90vh] sm:max-h-[90vh] sm:rounded-2xl ${sizeClassName}`
+    : `max-h-[90vh] w-full overscroll-contain overflow-y-auto rounded-2xl bg-card p-6 shadow-2xl outline-none ${sizeClassName}`;
 
   useEffect(() => {
     const previousActiveElement = document.activeElement as HTMLElement | null;

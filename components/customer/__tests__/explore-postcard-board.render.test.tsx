@@ -130,7 +130,10 @@ describe("ExplorePostcardBoard", () => {
     expect(hrefs.filter((href) => href?.startsWith("/customer/products/"))).toHaveLength(3); // s1, s3 and the P.S. (s4)
     expect(hrefs).toContain(getOutletShopHref("outlet-s2"));
     expect(hrefs).toContain("/customer/place/sabah");
-    expect(back.textContent).toContain(`ui.explore.postcard.seeAll|${JSON.stringify({ count: 4, state: "Sabah" })}`);
+    // The place link is the shared See more; the count and state stay in its accessible name.
+    const placeLink = links(back).find((link) => link.getAttribute("href") === "/customer/place/sabah");
+    expect(placeLink?.textContent).toBe("ui.actions.seeMore");
+    expect(placeLink?.getAttribute("aria-label")).toContain(`ui.explore.postcard.seeAll|${JSON.stringify({ count: 4, state: "Sabah" })}`);
     const ps = links(back).find((link) => (link.textContent ?? "").includes("ui.explore.postcard.ps"))!;
     await click(ps);
     expect(onSponsoredClick).toHaveBeenCalledTimes(1);

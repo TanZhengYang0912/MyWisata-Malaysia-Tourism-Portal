@@ -142,8 +142,12 @@ describe("promotion campaign home spotlight", () => {
     expect(unavailable).toContain("ui.actions.retry");
     expect(empty).toContain("ui.promotionCampaigns.emptyTitle");
     expect(empty).not.toContain("ui.promotionCampaigns.unavailableTitle");
-    expect(getPanelActions(unavailable, ["ui.promotionCampaigns.allCampaigns"])).toContain("bg-highlight-yellow");
-    expect(getPanelActions(empty, ["ui.promotionCampaigns.allCampaigns"])).toContain("bg-highlight-yellow");
+    // "Browse all events" is the shared See more link; its old wording stays in the accessible name.
+    for (const markup of [unavailable, empty]) {
+      const actions = getPanelActions(markup, ["ui.actions.seeMore", "ui.promotionCampaigns.allCampaigns"]);
+      expect(actions).toContain('href="/customer/events"');
+      expect(actions).not.toContain("bg-highlight-yellow");
+    }
   });
 
   it("renders accessible slide indicators only when multiple campaigns are eligible", () => {

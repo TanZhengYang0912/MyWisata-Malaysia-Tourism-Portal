@@ -15,6 +15,7 @@ import { AiTag } from "@/components/customer/ai-tag";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ShareButton } from "@/components/shared/share-button";
 import { Button } from "@/components/ui/button";
+import { SeeMoreLink } from "@/components/customer/see-more-link";
 import { ActivityReviews } from "@/components/customer/activity-reviews";
 import { ProductCard } from "@/components/customer/product-card";
 import { toOutletCatalogueCard } from "@/lib/customer/product-catalogue";
@@ -260,9 +261,7 @@ export function ActivityDetailClient({
                   {namesOutlet && (
                     <>
                       {" — "}{outletShortName(selectedOutlet!.outletName, selectedOutlet!.vendorName)} {t("ui.map.outlet")}
-                      <Link href={getOutletShopHref(selectedOutlet!.outletId)} className="underline underline-offset-2 hover:no-underline">
-                        {t("ui.actions.visitOutlet")}
-                      </Link>
+                      <SeeMoreLink href={getOutletShopHref(selectedOutlet!.outletId)} ariaLabel={t("ui.actions.visitOutlet")} />
                     </>
                   )}
                 </p>
@@ -319,7 +318,7 @@ export function ActivityDetailClient({
                {placeBound ? <MapPin size={12} className="mr-1 inline align-[-1px]" /> : <Store size={12} className="mr-1 inline align-[-1px]" />}
                {publicPlace ? t("strictMigration.activityDetail.noVendorRequired") : placeBound ? t("strictMigration.activityDetail.placeDetails") : (selectedOutlet!.vendorName ?? t("strictMigration.activityDetail.localVendor"))}
              </span>
-             {!placeBound && <Link href={`/customer/vendors/${selectedOutlet!.vendorId}`} className="shrink-0 font-semibold text-primary hover:underline">{t("ui.actions.visitVendor")}</Link>}
+             {!placeBound && <SeeMoreLink href={`/customer/vendors/${selectedOutlet!.vendorId}`} ariaLabel={t("ui.actions.visitVendor")} />}
            </div>
 
           {publicPlace ? <div className="rounded-2xl border border-[#cbd7f2] bg-[#f3f5ff] p-4 text-sm text-muted-foreground">{t("ui.activity.publicPlaceAccess")}</div> : <>
@@ -491,9 +490,9 @@ export function ActivityDetailClient({
               )}
             </div>
             {relatedScope === "vendor" ? (
-              <Link href={returnTo !== "/customer" ? returnTo : `/customer/vendors/${selectedOutlet.vendorId}`} className="text-sm font-bold text-primary hover:underline">{t("ui.actions.visitVendor")} →</Link>
+              <SeeMoreLink href={returnTo !== "/customer" ? returnTo : `/customer/vendors/${selectedOutlet.vendorId}`} ariaLabel={t("ui.actions.visitVendor")} />
             ) : (
-              <Link href={getOutletShopHref(selectedOutlet.outletId)} className="text-sm font-bold text-primary hover:underline">{t("ui.actions.visitOutlet")} →</Link>
+              <SeeMoreLink href={getOutletShopHref(selectedOutlet.outletId)} ariaLabel={t("ui.actions.visitOutlet")} />
             )}
           </div>
           <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">

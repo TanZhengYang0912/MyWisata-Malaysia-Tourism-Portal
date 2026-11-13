@@ -42,7 +42,7 @@ export default function AiWritingAssistant({
       </div>
       {error && <p role="alert" className="mt-2 text-xs text-red-700 dark:text-red-200">{error}</p>}
       {draft && (
-        <div className="mt-3 rounded-lg border border-violet-200 dark:border-violet-500/30 bg-white dark:bg-card p-3">
+        <div className="mt-3 rounded-lg border border-violet-200 dark:border-violet-500/30 bg-card p-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-200">{t("assistant.draftPreview")}</p>
           <div className="mt-2 text-sm leading-6 text-gray-800 dark:text-foreground">{draft}</div>
           {(onApply || onDiscard) && <div className="mt-3 flex flex-wrap gap-2">

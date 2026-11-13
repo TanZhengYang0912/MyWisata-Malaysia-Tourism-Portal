@@ -445,7 +445,7 @@ export function CustomerHomeClient({
           ) : nearbyPartners ? (
             <p className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
               {t(nearbyLocationSource === "none" ? "ui.home.nearbyNoLocation" : "ui.home.noNearbyPartners")} {" "}
-              <Link href="/customer/vendors" className="font-semibold text-primary underline-offset-4 hover:underline">{t("ui.home.viewPartners")}</Link>
+              <SeeMoreLink href="/customer/vendors" ariaLabel={t("ui.home.viewPartners")} />
             </p>
           ) : null}
         </section>

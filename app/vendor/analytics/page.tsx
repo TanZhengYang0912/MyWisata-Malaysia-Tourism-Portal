@@ -14,7 +14,7 @@ export default async function VendorAnalyticsPage({ searchParams }: Props) {
   const { t } = await getServerTranslation('vendor');
   const params = await searchParams;
   const data = await getVendorAnalyticsData(normalizeFilter(params?.filter), params?.outlet);
-  if (!data) return <div className="rounded-2xl bg-white dark:bg-card p-10 text-center text-gray-500 dark:text-muted-foreground">{t('ui.analytics.noVendor')}</div>;
+  if (!data) return <div className="rounded-2xl bg-card p-10 text-center text-gray-500 dark:text-muted-foreground">{t('ui.analytics.noVendor')}</div>;
 
   return <VendorAnalyticsWorkspace data={data} />;
 }

@@ -1,15 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight, CalendarDays } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
 import { formatDate, formatDateTime } from "@/lib/i18n/format";
 import { isMalaysiaFullDayRange } from "@/lib/datetime/malaysia";
 import { getEventOperationalLabelKey } from "@/lib/promotion-campaigns/locations";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
+import { SeeMoreLink } from "@/components/customer/see-more-link";
 import { LocalizedContent } from "@/components/customer/localized-content";
 
 function CampaignPoster({
@@ -80,12 +79,9 @@ export function PromotionCampaignCard({
           >
             <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title} />
           </h2>
-          <Button asChild className="group mt-5 min-h-11 w-full shrink-0 rounded-full hover:-translate-y-0.5 hover:shadow-md lg:mt-auto">
-            <Link href={`/customer/events/${encodeURIComponent(campaign.slug)}`}>
-              {t("ui.promotionCampaigns.viewAllVendors", { count: campaign.vendors.length })}
-              <ArrowRight size={16} aria-hidden="true" className="transition-transform group-hover:translate-x-1" />
-            </Link>
-          </Button>
+          <div className="mt-5 flex justify-end lg:mt-auto">
+            <SeeMoreLink href={`/customer/events/${encodeURIComponent(campaign.slug)}`} ariaLabel={t("ui.promotionCampaigns.vendorCount", { count: campaign.vendors.length })} />
+          </div>
         </div>
       </div>
     </article>

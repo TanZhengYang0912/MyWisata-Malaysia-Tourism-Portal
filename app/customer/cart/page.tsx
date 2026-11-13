@@ -4,6 +4,7 @@ import { formatStayRange } from "@/lib/customer/booking-view";
 import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { SeeMoreLink } from "@/components/customer/see-more-link";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { CalendarClock, Check, ChevronDown, ImageOff, Info, Search, ShoppingCart, Tag, Trash2, X } from "lucide-react";
@@ -464,7 +465,7 @@ export default function CartPage() {
                 />
                 <span className="break-words whitespace-normal text-sm font-semibold text-foreground">{group.outlet?.name ?? tCustomer("ui.cart.unavailableOutlet")}</span>
               </label>
-              {group.outlet && <Link href={`/customer/outlets/${group.outletId}`} className="shrink-0 text-xs font-semibold text-primary hover:underline">{tCustomer("ui.cart.viewOutlet")}</Link>}
+              {group.outlet && <SeeMoreLink href={`/customer/outlets/${group.outletId}`} ariaLabel={tCustomer("ui.cart.viewOutlet")} />}
             </header>
             <div className="space-y-3 p-3">
         {group.rows.map(({ item, index }) => {

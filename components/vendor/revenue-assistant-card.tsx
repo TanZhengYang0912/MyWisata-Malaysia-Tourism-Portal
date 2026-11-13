@@ -90,7 +90,7 @@ export function VendorRevenueAssistantCard() {
   const hasActions = Boolean(cached && cached.mode !== "no-data" && cached.actions.length > 0);
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+    <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-card shadow-sm">
       <div className="flex flex-col gap-2 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Sparkles size={18} className="text-primary" />

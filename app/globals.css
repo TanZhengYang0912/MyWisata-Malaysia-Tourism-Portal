@@ -9,11 +9,12 @@
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f8fafc;
+  /* One warm off-white for every page, card and popover (2026-11-14): no pure-white surfaces anywhere. */
+  --background: #faf9f6;
   --foreground: #0f172a;
-  --card: #ffffff;
+  --card: #faf9f6;
   --card-foreground: #0f172a;
-  --popover: #ffffff;
+  --popover: #faf9f6;
   --popover-foreground: #0f172a;
   --primary: #010066;
   --primary-foreground: #f8fafc;
@@ -151,24 +152,6 @@
   --travel-blue: #8f9dff;
   --travel-blue-surface: #232c4a;
   --malaysia-blue: #8f9dff;
-}
-
-/* The customer portal sits on a warm beige page in light mode; dark mode keeps the dark page. */
-.customer-portal {
-  --background: #f6f1e6;
-}
-
-.dark .customer-portal {
-  --background: #0b1120;
-}
-
-/* The top navigation keeps the site's original page colour. */
-.customer-portal > nav {
-  --background: #f8fafc;
-}
-
-.dark .customer-portal > nav {
-  --background: #0b1120;
 }
 
 /* Font-size accessibility control: next-themes' own no-flash script handles

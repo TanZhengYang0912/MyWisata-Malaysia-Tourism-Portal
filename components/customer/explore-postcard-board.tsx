@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { DiscoveryResult } from "@/backend/core/types";
 import { MalaysiaStateOutline, stateAnchor } from "@/components/demo-map/malaysia-state-map";
+import { SeeMoreLink } from "@/components/customer/see-more-link";
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -208,9 +209,9 @@ export function ExplorePostcardBoard({
           <span>{card.dest.state}</span>
           <span>{t("ui.place.placesToVisit", { count: card.count })}</span>
         </div>
-        <Button asChild className="mt-auto w-full whitespace-normal sm:w-auto">
-          <Link href={card.seeAllHref}>{t("ui.explore.postcard.seeAll", { count: card.count, state: card.dest.state })}</Link>
-        </Button>
+        <div className="mt-auto [--primary:var(--mw-paper-ink)]">
+          <SeeMoreLink href={card.seeAllHref} ariaLabel={t("ui.explore.postcard.seeAll", { count: card.count, state: card.dest.state })} />
+        </div>
       </div>
     </div>
   );

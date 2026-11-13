@@ -97,7 +97,7 @@ function RoomCard({ outlet, room, adults, rooms, availabilityStale, onSetRoomCou
       </div>
       <div className="flex flex-col items-start justify-between gap-3 sm:items-end sm:text-right">
         <div>
-          <ReferencePrice amountMYR={Number(room.base_price)} className="font-[family-name:var(--font-mono)] text-xl font-bold text-primary" />
+          <ReferencePrice amountMYR={Number(room.base_price)} className="text-xl font-extrabold tabular-nums text-primary" />
           <p className="text-xs text-muted-foreground">{t("ui.property.perNight")}</p>
           <p className="mt-1 text-xs font-semibold text-foreground">
             {t("ui.hotel.totalFor", { count: stay.nights, rooms: stay.rooms })} <ReferencePrice amountMYR={offer.total * stay.rooms} />

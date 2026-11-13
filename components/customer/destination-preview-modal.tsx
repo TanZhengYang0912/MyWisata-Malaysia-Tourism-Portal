@@ -51,7 +51,7 @@ export function DestinationPreviewModal({ destination, onClose, onExplore }: Des
         aria-modal="true"
         aria-labelledby="destination-preview-title"
         aria-describedby="destination-preview-description"
-        className="relative w-full max-w-2xl overflow-hidden rounded-[28px] bg-white dark:bg-card text-slate-950 dark:text-foreground shadow-2xl shadow-[#06102a]/25"
+        className="relative w-full max-w-2xl overflow-hidden rounded-[28px] bg-card text-slate-950 dark:text-foreground shadow-2xl shadow-[#06102a]/25"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="relative h-56 overflow-hidden sm:h-64">

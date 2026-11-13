@@ -28,6 +28,8 @@ export interface PaginationProps {
   showSummary?: boolean;
   disabled?: boolean;
   className?: string;
+  /** Keyset (cursor) lists can only step one page back or forward: ‹ 2 / 5 › with no « », and the page number is not editable. */
+  stepOnly?: boolean;
 }
 
 // Editorial pager: « ‹ 3 / 20 › ». See docs/coding-standards.md → "Editorial control style".
@@ -41,6 +43,7 @@ export function Pagination({
   showSummary = true,
   disabled = false,
   className,
+  stepOnly = false,
 }: PaginationProps) {
   const { t } = useTranslation("common");
   const safeTotalPages = Math.max(1, totalPages);
@@ -126,14 +129,14 @@ export function Pagination({
       ) : <span aria-hidden="true" />}
       {safeTotalPages > 1 && (
         <div className="inline-flex items-center">
-          {arrow(ChevronsLeft, 1, t("accessibility.firstPage"), page <= 1)}
+          {!stepOnly && arrow(ChevronsLeft, 1, t("accessibility.firstPage"), page <= 1)}
           {arrow(ChevronLeft, page - 1, t("accessibility.previousPage"), page <= 1)}
           <div className="flex min-h-8 items-center gap-1 px-1 leading-none">
             <span
               className={`relative mr-0.5 whitespace-pre text-[26px] font-extrabold leading-none tabular-nums focus-within:underline focus-within:decoration-primary focus-within:decoration-2 focus-within:underline-offset-4 ${invalid ? "text-destructive" : "text-accent"}`}
             >
-              {draft || " "}
-              <input
+              {stepOnly ? page : draft || " "}
+              {!stepOnly && <input
                 value={draft}
                 inputMode="numeric"
                 disabled={disabled}
@@ -147,7 +150,7 @@ export function Pagination({
                 onKeyDown={onKeyDown}
                 onBlur={commit}
                 className="absolute inset-0 h-full w-full border-0 bg-transparent p-0 text-left text-transparent caret-primary outline-none [font:inherit]"
-              />
+              />}
             </span>
             <span aria-hidden="true" className="text-[15px] font-bold leading-none text-primary">/</span>
             <span className="text-[15px] font-bold leading-none text-primary">
@@ -156,7 +159,7 @@ export function Pagination({
             </span>
           </div>
           {arrow(ChevronRight, page + 1, t("accessibility.nextPage"), page >= safeTotalPages)}
-          {arrow(ChevronsRight, safeTotalPages, t("accessibility.lastPage"), page >= safeTotalPages)}
+          {!stepOnly && arrow(ChevronsRight, safeTotalPages, t("accessibility.lastPage"), page >= safeTotalPages)}
         </div>
       )}
     </nav>
