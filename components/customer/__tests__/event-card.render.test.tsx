@@ -34,6 +34,13 @@ describe("EventCard", () => {
     expect(markup.toLowerCase()).not.toContain("entry");
   });
 
+  it("puts the dates and the hours on separate lines so the closing time is never cut off", () => {
+    const markup = renderToStaticMarkup(<EventCard campaign={campaign} day="2026-11-13" now={now} />);
+    expect(markup).toContain(`<span class="block truncate max-sm:whitespace-normal">${formatEventDateRange("2026-11-12", "2026-11-14", "en")}</span>`);
+    expect(markup).toContain(`<span class="block truncate">${formatEventHours("10:00", "18:00", "en")}</span>`);
+    expect(markup).not.toContain(" · ");
+  });
+
   it("falls back to a calendar picture without a poster", () => {
     expect(renderToStaticMarkup(<EventCard campaign={campaign} day="2026-11-13" now={now} />)).toContain("lucide-calendar-days");
   });
