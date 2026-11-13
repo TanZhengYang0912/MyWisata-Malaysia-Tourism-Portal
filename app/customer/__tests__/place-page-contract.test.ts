@@ -61,7 +61,11 @@ describe("place page layout and copy", () => {
   });
 
   it("uses customer-facing access copy, omits empty operator metadata, and keeps a compact hero", () => {
-    expect(pageSource).toContain('t("ui.place.noGate")');
+    // Entry wording matches the place cards: not specified / free / reference price.
+    expect(pageSource).toContain('t("ui.place.entryNotSpecified")');
+    expect(pageSource).toContain('<ReferencePrice amountMYR={place.entryFee} /> {t("ui.place.referenceEntry")}');
+    expect(pageSource).not.toContain('t("ui.place.noGate")');
+    expect(pageSource).not.toContain('t("ui.place.entryFee"');
     expect(pageSource).toContain("{operator &&");
     expect(pageSource).not.toContain('t("ui.place.noOperator")');
     expect(pageSource).toContain("absolute inset-0 h-full w-full object-cover");
@@ -84,15 +88,14 @@ describe("place page discovery controls", () => {
     expect(listSource).toContain('t("ui.place.allAreas"');
     expect(listSource).toContain('className="mt-14"');
     expect(listSource).toContain("mt-6 rounded-2xl");
-    expect(listSource).toContain("mt-6 grid items-stretch gap-5");
-    expect(cardSource).toContain('t("ui.outletMenu.chooseOptions"');
-    expect(cardSource).toContain('t("ui.actions.viewDetails")');
-    expect(cardSource).toContain('t("ui.place.explorePlace"');
-    expect(cardSource).toContain("block h-48 shrink-0 overflow-hidden bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:h-52");
-    // Static card: no hover lift or border change that suggests the whole card is clickable.
-    expect(cardSource).toContain('rounded-[1.5rem] border border-border bg-card shadow-sm">');
-    expect(cardSource).not.toContain("hover:-translate-y");
-    expect(cardSource).toContain("mt-auto flex items-center justify-between");
+    expect(listSource).toContain("mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-2");
+    // A POI is one whole-card link on the shared place card: no View Details / Choose Options buttons.
+    expect(cardSource).toContain("<PlaceActivityCard");
+    expect(cardSource).toContain("href={`/customer/place/${place.slug}`}");
+    expect(cardSource).not.toContain('t("ui.outletMenu.chooseOptions"');
+    expect(cardSource).not.toContain('t("ui.actions.viewDetails")');
+    expect(cardSource).not.toContain("productCount === 0");
+    expect(pageSource).toContain('mt-3 grid grid-cols-1 items-start gap-6 lg:grid-cols-2');
   });
 });
 

@@ -108,7 +108,7 @@ export function PromotionCampaignsClient({ initialCampaigns, initialError }: Pro
         </div>
       ) : !error && view === "calendar" ? <EventsCalendar campaigns={sortedCampaigns} />
         : !error && view === "map" ? <EventsMap campaigns={sortedCampaigns} />
-        : !error && <div className="space-y-8">{sortedCampaigns.map((campaign) => <PromotionCampaignCard key={campaign.id} campaign={campaign} />)}</div>}
+        : !error && <div className="space-y-16">{sortedCampaigns.map((campaign) => <PromotionCampaignCard key={campaign.id} campaign={campaign} />)}</div>}
     </CustomerPageShell>
   );
 }

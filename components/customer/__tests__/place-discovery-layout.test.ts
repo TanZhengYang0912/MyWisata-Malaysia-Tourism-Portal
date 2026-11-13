@@ -16,11 +16,10 @@ describe("place discovery section layout", () => {
     expect(source).toContain("parsePlaceAreaIds");
     expect(source).toContain("AreaPicker");
     expect(source).toContain('searchParams.getAll("area")');
-    expect(source).toContain("items-stretch");
-    expect(card).toContain("group-hover/place-media:scale-105");
-    expect(card).toContain("break-words whitespace-normal");
-    expect(card).not.toContain("line-clamp-2");
-    expect(card).toContain("min-h-[390px]");
+    // One POI per row on phones, two on desktop; each card's own height (no stretched blank space).
+    expect(source).toContain("grid grid-cols-1 items-start gap-6 lg:grid-cols-2");
+    expect(card).toContain("<PlaceActivityCard");
+    expect(card).not.toContain('t("ui.place.cardFallback")');
   });
 
   it("gives Nearby businesses a local-partner summary and recoverable empty state", () => {

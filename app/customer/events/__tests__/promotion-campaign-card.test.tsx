@@ -43,15 +43,22 @@ const campaign: PromotionCampaignPublic = {
 };
 
 describe("promotion campaign card variants", () => {
-  it("shows the event pass with every joining stall in a strip under it", () => {
+  it("shows the photo-left card with no ticket stub, and every joining stall in a strip under it", () => {
     const markup = renderToStaticMarkup(createElement(PromotionCampaignCard, { campaign }));
 
-    expect(markup).toContain("ui.promotionCampaigns.endsAt");
     expect(markup).toContain(campaign.summary);
-    expect(markup).toContain('data-slot="featured-end"');
+    expect(markup).not.toContain('data-slot="featured-end"');
+    expect(markup).not.toContain("ui.promotionCampaigns.endsAt");
     expect(markup).toContain('src="https://example.test/event-poster.jpg"');
-    const strip = markup.slice(markup.indexOf('data-slot="campaign-stall-strip"'));
-    expect(markup.indexOf('data-slot="campaign-stall-strip"')).toBeGreaterThan(markup.indexOf('data-slot="featured-end"'));
+    const contentAt = markup.indexOf('data-slot="promotion-campaign-content"');
+    const stripAt = markup.indexOf('data-slot="campaign-stall-strip"');
+    expect(stripAt).toBeGreaterThan(contentAt);
+    const content = markup.slice(contentAt, stripAt);
+    expect(content).toContain("ui.promotionCampaigns.exploreCampaign");
+    expect(content).toContain('href="/customer/events/heritage-walk"');
+    expect(content).toMatch(/<h2 [^>]*text-primary/);
+    expect(content).toMatch(/lucide-map(?!-)/);
+    const strip = markup.slice(stripAt);
     expect(strip).toContain("ui.promotionCampaigns.stallsJoining");
     for (let index = 0; index < 6; index += 1) {
       expect(strip).toContain(`Vendor ${index}`);
@@ -65,7 +72,7 @@ describe("promotion campaign card variants", () => {
   it("leaves out the stall strip when no vendor has joined", () => {
     const markup = renderToStaticMarkup(createElement(PromotionCampaignCard, { campaign: { ...campaign, vendors: [] } }));
 
-    expect(markup).toContain('data-slot="featured-end"');
+    expect(markup).toContain("ui.promotionCampaigns.exploreCampaign");
     expect(markup).not.toContain('data-slot="campaign-stall-strip"');
   });
 

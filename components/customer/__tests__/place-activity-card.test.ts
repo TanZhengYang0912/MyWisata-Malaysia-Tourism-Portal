@@ -41,6 +41,12 @@ describe("place activity card", () => {
     expect(source).not.toContain("action?: ReactNode");
   });
 
+  it("translates the description from the field the caller names, defaulting to description", () => {
+    expect(source).toContain('descriptionField?: "description" | "tagline" | "intro"');
+    expect(source).toContain('field={translation.descriptionField ?? "description"}');
+    expect(source).toContain("description?: string");
+  });
+
   it("keeps free and official items from looking purchasable", () => {
     expect(placeAccessSource).not.toContain("ReferencePrice");
     expect(placeInformationSource).not.toContain("ReferencePrice");
