@@ -85,7 +85,7 @@ function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; in
             </LocalizedContent>
             <p className="mt-1 text-xs capitalize text-[#6d7e83]">{typeLabel} · {vendorBacked && activity.requiresBooking ? t("ui.search.guidedBookable") : vendorBacked ? t("ui.search.vendorExperience") : t("ui.labels.publicPlace")}</p>
           </div>
-          <span className="shrink-0 text-right font-[family-name:var(--font-mono)] text-sm font-bold text-[#010066]">{vendorBacked ? <ReferencePrice amountMYR={Number(activity.price)} /> : t("ui.labels.freeToExplore")}</span>
+          <span className="shrink-0 text-right tabular-nums text-sm font-bold text-[#010066]">{vendorBacked ? <ReferencePrice amountMYR={Number(activity.price)} /> : t("ui.labels.freeToExplore")}</span>
         </div>
         <p className="break-words whitespace-normal text-xs leading-5 text-[#6d7e83]"><LocalizedContent entityType="product" entityId={activity.id} field="description" sourceText={activity.description} /></p>
         <div className="flex flex-wrap items-start justify-between gap-3 text-[11px] text-[#6d7e83]">

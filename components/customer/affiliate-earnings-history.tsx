@@ -182,7 +182,7 @@ export function AffiliateEarningsHistory({
                 </p>
               </div>
               <p
-                className={`shrink-0 font-bold font-[family-name:var(--font-mono)] ${c.status === "reversed" || c.status === "rejected" ? "text-muted-foreground line-through" : "text-foreground"}`}
+                className={`shrink-0 font-bold tabular-nums ${c.status === "reversed" || c.status === "rejected" ? "text-muted-foreground line-through" : "text-foreground"}`}
               >
                 {formatMYR(c.amount)}
               </p>

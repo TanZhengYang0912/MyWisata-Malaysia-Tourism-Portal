@@ -176,7 +176,7 @@ export function ExplorePostcardBoard({
         : <span aria-hidden="true" className="h-10 w-10 shrink-0 rounded bg-muted" />}
       <span className="min-w-0">
         <span className="block truncate text-sm font-semibold">{activity.name}</span>
-        <ReferencePrice amountMYR={Number(activity.price)} className="font-[family-name:var(--font-mono)] text-xs font-bold text-[color:var(--mw-paper-ink)]" />
+        <ReferencePrice amountMYR={Number(activity.price)} className="tabular-nums text-xs font-bold text-[color:var(--mw-paper-ink)]" />
       </span>
     </Link>
   );

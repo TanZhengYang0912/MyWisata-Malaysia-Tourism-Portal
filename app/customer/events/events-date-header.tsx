@@ -95,7 +95,7 @@ export function EventsDateHeader({
                 className={`grid min-h-[55px] w-full content-center justify-items-center gap-px rounded-[5px] border transition-colors hover:border-primary focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-primary/30 min-[900px]:min-h-[66px] min-[900px]:w-[clamp(46px,5.25vw,70px)] max-[520px]:min-h-[53px] ${selected ? "border-primary bg-primary text-primary-foreground" : "border-transparent text-foreground"}`}
               >
                 <span aria-hidden="true" className={`text-[11px] max-[520px]:text-[10px] ${selected ? "text-[#fff3ac] max-[520px]:text-accent dark:text-primary-foreground dark:max-[520px]:text-primary-foreground" : ""}`}>{formatDay(value, locale, { weekday: "short" })}</span>
-                <span aria-hidden="true" className="font-[family-name:var(--font-mono)] text-[20px] font-bold leading-[1.1] min-[900px]:text-[23px]">{formatDay(value, locale, { day: "numeric" })}</span>
+                <span aria-hidden="true" className="tabular-nums text-[20px] font-bold leading-[1.1] min-[900px]:text-[23px]">{formatDay(value, locale, { day: "numeric" })}</span>
                 <span aria-hidden="true" className={`size-[5px] rounded-full ${selected ? "bg-accent" : "bg-primary"} ${hasEvents(value) ? "" : "invisible"}`} />
               </button>
             );

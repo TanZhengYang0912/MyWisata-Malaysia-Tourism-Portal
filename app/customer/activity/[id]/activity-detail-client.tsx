@@ -309,7 +309,7 @@ export function ActivityDetailClient({
               <h2 className="mt-1 text-lg font-bold text-foreground">{t(body.panelTitleKey(activity))}</h2>
             </div>
             <div className="text-right">
-              {publicPlace ? <><p className="text-lg font-bold text-primary">{t("ui.labels.freeToExplore")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.publicAccess")}</p></> : <><ReferencePrice amountMYR={price} className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary" /><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug, t)}</p></>}
+              {publicPlace ? <><p className="text-lg font-bold text-primary">{t("ui.labels.freeToExplore")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.publicAccess")}</p></> : <><ReferencePrice amountMYR={price} className="tabular-nums text-2xl font-bold text-primary" /><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug, t)}</p></>}
             </div>
           </div>
 
@@ -348,7 +348,7 @@ export function ActivityDetailClient({
                           <OutletChoiceStatus choice={choice} status={outletStatus} />
                         </span>
                       </span>
-                      <span className="shrink-0 text-sm font-bold text-primary font-[family-name:var(--font-mono)]">
+                      <span className="shrink-0 text-sm font-bold text-primary tabular-nums">
                         <ReferencePrice amountMYR={choice.price} />
                       </span>
                     </button>
@@ -512,7 +512,7 @@ export function ActivityDetailClient({
         <div className="mx-auto flex max-w-7xl items-center gap-3">
           <div className="min-w-0">
             <p className="break-words whitespace-normal text-xs text-muted-foreground">{t(body.quantityLabelKey, { count: qty })}</p>
-            <ReferencePrice amountMYR={price * qty} className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary" />
+            <ReferencePrice amountMYR={price * qty} className="tabular-nums text-lg font-bold text-primary" />
           </div>
           {added ? (
             <Link href="/customer/cart" className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-primary px-4 text-sm font-bold text-white">{t("ui.activityDetail.viewCart")}</Link>

@@ -90,16 +90,16 @@ export function RecommendationEarningsPanel({ recommendationId, showEmpty = fals
       <div className="grid grid-cols-2 gap-4 px-5 py-4 sm:grid-cols-3">
         <div>
           <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">{t("ui.recommendationEarnings.pending")}</p>
-          <p className="mt-1 text-lg font-bold text-foreground font-[family-name:var(--font-mono)]">{formatMYR(pending)}</p>
+          <p className="mt-1 text-lg font-bold text-foreground tabular-nums">{formatMYR(pending)}</p>
         </div>
         <div>
           <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">{t("ui.recommendationEarnings.lifetime")}</p>
-          <p className="mt-1 text-lg font-bold text-foreground font-[family-name:var(--font-mono)]">{formatMYR(lifetime)}</p>
+          <p className="mt-1 text-lg font-bold text-foreground tabular-nums">{formatMYR(lifetime)}</p>
         </div>
         {!scoped && (
           <div>
             <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">{t("ui.recommendationEarnings.convertedVendors")}</p>
-            <p className="mt-1 text-lg font-bold text-foreground font-[family-name:var(--font-mono)]">{data.totals.convertedVendors}</p>
+            <p className="mt-1 text-lg font-bold text-foreground tabular-nums">{data.totals.convertedVendors}</p>
           </div>
         )}
       </div>
@@ -135,7 +135,7 @@ export function RecommendationEarningsPanel({ recommendationId, showEmpty = fals
                 </p>
                 <p className="text-xs text-muted-foreground">{statusLine}</p>
               </div>
-              <p className={`shrink-0 font-bold font-[family-name:var(--font-mono)] ${inactive ? "text-muted-foreground line-through" : "text-foreground"}`}>
+              <p className={`shrink-0 font-bold tabular-nums ${inactive ? "text-muted-foreground line-through" : "text-foreground"}`}>
                 {formatMYR(c.amount)}
               </p>
             </div>

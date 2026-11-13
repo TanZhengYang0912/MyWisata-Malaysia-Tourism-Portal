@@ -37,7 +37,7 @@ export function EventCard({ campaign, day, now }: { campaign: PromotionCampaignP
           info={
             <div className="flex flex-col gap-1.5">
               {/* Dates and hours on their own lines: real date ranges are long, and the closing time must stay visible. */}
-              <span className="font-[family-name:var(--font-mono)] text-[11px] font-bold text-primary max-sm:text-[10px]">
+              <span className="tabular-nums text-[11px] font-bold text-primary max-sm:text-[10px]">
                 <span className="block truncate max-sm:whitespace-normal">{formatEventDateRange(location.startsOn, location.endsOn, locale)}</span>
                 <span className="block truncate">{formatEventHours(location.opensAt, location.closesAt, locale)}</span>
               </span>
