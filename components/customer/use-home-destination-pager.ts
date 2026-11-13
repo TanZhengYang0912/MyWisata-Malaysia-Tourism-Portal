@@ -29,7 +29,11 @@ function railPosition(viewport: HTMLElement) {
   });
 }
 
-export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement | null>) {
+/** verticalWheel: false leaves an up/down wheel to scroll the page (card carousels); only sideways wheels turn pages. */
+export function useHomeDestinationPager(
+  viewportRef: React.RefObject<HTMLElement | null>,
+  { verticalWheel = true }: { verticalWheel?: boolean } = {},
+) {
   const [pager, setPager] = useState<PagerState>(INITIAL_PAGER_STATE);
   const metricsRef = useRef({ pageStep: 0, pageCount: 1 });
   const wheelTurnRef = useRef(INITIAL_WHEEL_TURN_STATE);
@@ -44,7 +48,8 @@ export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement
 
   const sync = useCallback(() => {
     const viewport = viewportRef.current;
-    if (!viewport || viewport.clientWidth === 0) return;
+    // No width yet (hidden, or a test DOM without layout): keep the one-page default.
+    if (!viewport || !viewport.clientWidth) return;
 
     const pageStep = viewport.clientWidth;
     const { pageCount, progress, page } = railPosition(viewport);
@@ -105,6 +110,7 @@ export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement
       });
     };
     const onWheel = (event: WheelEvent) => {
+      if (!verticalWheel && Math.abs(event.deltaY) >= Math.abs(event.deltaX)) return;
       const result = decideWheelTurn(wheelTurnRef.current, {
         deltaX: event.deltaX,
         deltaY: event.deltaY,
@@ -156,7 +162,7 @@ export function useHomeDestinationPager(viewportRef: React.RefObject<HTMLElement
       if (pendingPageTimerRef.current !== null) window.clearTimeout(pendingPageTimerRef.current);
       if (touchSettleTimerRef.current !== null) window.clearTimeout(touchSettleTimerRef.current);
     };
-  }, [goToPage, sync, viewportRef]);
+  }, [goToPage, sync, verticalWheel, viewportRef]);
 
   return { ...pager, goToPage };
 }

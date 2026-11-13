@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ComputedActivity, SponsoredPlacement } from "@/backend/core/types";
 import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
-import { pageHomeHighlights, rankDiscoveryResults, selectHomeDiscoverySections } from "@/lib/customer/discovery-ranking";
+import { rankDiscoveryResults, selectHomeDiscoverySections } from "@/lib/customer/discovery-ranking";
 
 function activity(id: string, overrides: Partial<ComputedActivity> = {}): ComputedActivity {
   return {
@@ -266,22 +266,5 @@ describe('home highlights pager', () => {
     const result = selectHomeDiscoverySections(activities, activities.slice(0, 6));
     expect(result.highlightItems).toHaveLength(12);
     expect(result.forYouItems.map(({ id }) => id)).toEqual(['i4', 'i5']);
-  });
-
-  it.each([
-    [0, 0, [0, 0, 0]],
-    [4, 1, [4, 4, 4]],
-    [5, 2, [4, 1, 1]],
-    [12, 3, [4, 4, 4]],
-  ])('pages %i highlights 4 at a time into %i pages', (count, pageCount, pageSizes) => {
-    const items = ids(count);
-    expect(pageHomeHighlights(items, 0).pageCount).toBe(pageCount);
-    expect([0, 1, 2].map((page) => pageHomeHighlights(items, page).items.length)).toEqual(pageSizes);
-  });
-
-  it('clamps the page at both ends', () => {
-    const items = ids(12);
-    expect(pageHomeHighlights(items, -1)).toMatchObject({ page: 0, items: ['i0', 'i1', 'i2', 'i3'] });
-    expect(pageHomeHighlights(items, 9)).toMatchObject({ page: 2, items: ['i8', 'i9', 'i10', 'i11'] });
   });
 });

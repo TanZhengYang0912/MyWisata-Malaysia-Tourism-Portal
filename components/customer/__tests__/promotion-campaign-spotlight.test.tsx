@@ -206,6 +206,16 @@ describe("promotion campaign home spotlight", () => {
     );
     expect(markup.match(/<div(?=[^>]*data-testid="frame")[^>]*>/)?.[0]).toContain("overflow-hidden");
   });
+
+  it("keeps the slide dots navy at rest and turns them yellow on hover or press", () => {
+    const markup = renderToStaticMarkup(
+      <FeaturedRecommendationsFrame headingId="h" eyebrow={null} title="t" description={null} carouselLabel="c" slideLabel={(page, total) => `${page}/${total}`} carouselTestId="frame" activeSlideIndex={0} slideCount={2} onSelectSlide={() => {}} onNext={() => {}}>
+        <div />
+      </FeaturedRecommendationsFrame>,
+    );
+    expect(markup).toContain("w-3.5 bg-primary");
+    expect(markup.match(/group-hover:bg-accent group-active:bg-accent/g)).toHaveLength(2);
+  });
 });
 
 describe("campaign carousel interactions", () => {

@@ -23,7 +23,8 @@ import { HomeDestinationWormIndicator } from "@/components/customer/home-destina
 import { useHomeDestinationPager } from "@/components/customer/use-home-destination-pager";
 import { Button } from "@/components/ui/button";
 import { SeeMoreLink } from "@/components/customer/see-more-link";
-import { pageHomeHighlights } from "@/lib/customer/discovery-ranking";
+import { CardCarousel } from "@/components/customer/card-carousel";
+import { HOME_HIGHLIGHT_LIMIT } from "@/lib/customer/discovery-ranking";
 import { useRouter } from "next/navigation";
 
 const HERO_CROSSFADE_DURATION_MS = 240;
@@ -102,18 +103,16 @@ export function CustomerHomeClient({
       keepalive: true,
     });
   }, []);
-  const [highlightPage, setHighlightPage] = useState(0);
-  const highlights = pageHomeHighlights(highlightItems, highlightPage);
-  const visibleHighlights = highlights.items;
-  // Impressions only for the highlight page actually shown.
-  useEffect(() => {
-    for (const activity of visibleHighlights) {
+  const featuredHighlights = highlightItems.slice(0, HOME_HIGHLIGHT_LIMIT);
+  // Impressions only for the highlight page the carousel settled on.
+  const recordHighlightImpressions = (first: number, perPage: number) => {
+    for (const activity of featuredHighlights.slice(first, first + perPage)) {
       const placementId = activity.sponsorship?.placementId;
       if (!placementId || impressedPlacementIds.current.has(placementId)) continue;
       impressedPlacementIds.current.add(placementId);
       recordSponsoredEvent(activity, "impression");
     }
-  }, [visibleHighlights, recordSponsoredEvent]);
+  };
   const [activeState, setActiveState] = useState(() => HOME_DESTINATIONS[0].state);
   const [outgoingHeroState, setOutgoingHeroState] = useState<string | null>(null);
   const [incomingHeroVisible, setIncomingHeroVisible] = useState(false);
@@ -375,40 +374,19 @@ export function CustomerHomeClient({
 
         {highlightItems.length > 0 && (
           <section aria-labelledby="featured-highlights-heading" className="mt-12">
-            <div className="mb-5 flex items-end justify-between gap-4 border-b border-border/70 pb-4">
-              <div>
-                <h2 id="featured-highlights-heading" className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
-                  {t("ui.home.featuredHighlights")}
-                </h2>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                {highlights.pageCount > 1 && (
-                  <div className="inline-flex items-center" data-testid="home-highlights-pager">
-                    {([[ChevronLeft, -1, "accessibility.previousPage", highlights.page <= 0], [ChevronRight, 1, "accessibility.nextPage", highlights.page >= highlights.pageCount - 1]] as const).map(([Icon, step, label, atEdge]) => (
-                      <button
-                        key={label}
-                        type="button"
-                        onClick={() => setHighlightPage(highlights.page + step)}
-                        disabled={atEdge}
-                        aria-label={t(label, { ns: "common" })}
-                        aria-controls="featured-highlights-grid"
-                        className="inline-flex h-10 w-7 items-center justify-center text-primary transition-[color,transform] duration-150 hover:text-accent focus-visible:text-accent focus-visible:outline-none active:scale-[0.85] active:text-accent disabled:cursor-not-allowed disabled:text-primary/20 disabled:active:scale-100"
-                      >
-                        <Icon size={16} aria-hidden="true" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <SeeMoreLink href="/customer/explore" />
-              </div>
+            <div className="mb-5 flex items-center justify-between gap-4 border-b border-border/70 pb-4">
+              <h2 id="featured-highlights-heading" className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
+                {t("ui.home.featuredHighlights")}
+              </h2>
+              <SeeMoreLink href="/customer/explore" />
             </div>
-            <div id="featured-highlights-grid" className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-              {visibleHighlights.map((activity) => (
+            <CardCarousel label={t("ui.home.featuredHighlights")} onPageView={recordHighlightImpressions}>
+              {featuredHighlights.map((activity) => (
                 activity.property
                   ? <ActivityCard key={activity.id} activity={activity} onSponsoredClick={activity.sponsorship ? () => recordSponsoredEvent(activity, "click") : undefined} />
                   : <ProductCard key={activity.id} listing={toDiscoveryCatalogueCard(activity)} returnTo="/customer" source="home" onSponsoredClick={activity.sponsorship ? () => recordSponsoredEvent(activity, "click") : undefined} />
               ))}
-            </div>
+            </CardCarousel>
           </section>
         )}
 
@@ -430,10 +408,10 @@ export function CustomerHomeClient({
           </section>
         )}
 
-        <EventPartnersSection partners={eventPartners.slice(0, 4)} featured />
+        <EventPartnersSection partners={eventPartners.slice(0, HOME_HIGHLIGHT_LIMIT)} featured />
 
         <section className="mt-12" aria-labelledby="nearby-partners-heading">
-          <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-4">
             <div>
               <h2 id="nearby-partners-heading" className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
                 {t("ui.home.nearbyPartners")}
@@ -461,9 +439,9 @@ export function CustomerHomeClient({
           {nearbyLoading ? (
             <p role="status" aria-live="polite" className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">{t("ui.states.loading")}</p>
           ) : nearbyPartners && nearbyPartners.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-              {nearbyPartners.slice(0, 4).map((partner, index) => <VendorCard key={partner.id} vendor={partner} index={index} />)}
-            </div>
+            <CardCarousel label={t("ui.home.nearbyPartners")}>
+              {nearbyPartners.slice(0, HOME_HIGHLIGHT_LIMIT).map((partner, index) => <VendorCard key={partner.id} vendor={partner} index={index} />)}
+            </CardCarousel>
           ) : nearbyPartners ? (
             <p className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
               {t(nearbyLocationSource === "none" ? "ui.home.nearbyNoLocation" : "ui.home.noNearbyPartners")} {" "}
@@ -474,13 +452,13 @@ export function CustomerHomeClient({
 
         {/* 5. Featured Partners */}
         <section className="mt-12">
-          <div className="flex items-center justify-between mb-5">
+          <div className="mb-5 flex items-center justify-between gap-4 border-b border-border/70 pb-4">
             <h2 className="text-2xl font-bold font-[family-name:var(--font-display)]">{t("ui.home.featuredPartners")}</h2>
             <SeeMoreLink href="/customer/vendors" />
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-            {vendors.slice(0, 4).map((vendor, index) => <VendorCard key={vendor.id} vendor={vendor} index={index} />)}
-          </div>
+          <CardCarousel label={t("ui.home.featuredPartners")}>
+            {vendors.slice(0, HOME_HIGHLIGHT_LIMIT).map((vendor, index) => <VendorCard key={vendor.id} vendor={vendor} index={index} />)}
+          </CardCarousel>
         </section>
       </div>
 

@@ -2982,11 +2982,19 @@
       "views": {
         "label": "Pilih cara melihat acara",
         "list": "Senarai",
-        "calendar": "Kalendar",
         "map": "Peta & acara",
-        "calendarEmpty": "Tiada lokasi acara dalam tempoh ini.",
         "unpinned_one": "{{count}} lokasi belum ada pin peta. Lihat paparan Senarai untuk alamatnya.",
         "unpinned_other": "{{count}} lokasi belum ada pin peta. Lihat paparan Senarai untuk alamatnya."
+      },
+      "dateEmpty": "Tiada acara pada tarikh ini.",
+      "datePicker": {
+        "openCalendar": "Buka kalendar",
+        "chooseDate": "Pilih tarikh",
+        "previousDay": "Hari sebelumnya",
+        "nextDay": "Hari seterusnya",
+        "previousMonth": "Bulan sebelumnya",
+        "nextMonth": "Bulan seterusnya",
+        "backToToday": "Kembali ke hari ini"
       }
     },
     "recommendationReasons": {

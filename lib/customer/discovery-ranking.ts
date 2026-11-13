@@ -136,14 +136,6 @@ export function selectHomeDiscoverySections(
 }
 
 export const HOME_HIGHLIGHT_LIMIT = 12;
-export const HOME_HIGHLIGHTS_PER_PAGE = 4;
-
-/** One page of Home highlights (4 per page); the page is clamped to the ones that exist. */
-export function pageHomeHighlights<T>(items: T[], page: number) {
-  const pageCount = Math.ceil(items.length / HOME_HIGHLIGHTS_PER_PAGE);
-  const current = Math.min(Math.max(0, page), Math.max(0, pageCount - 1));
-  return { items: items.slice(current * HOME_HIGHLIGHTS_PER_PAGE, (current + 1) * HOME_HIGHLIGHTS_PER_PAGE), page: current, pageCount };
-}
 
 /** Same grouping for ranked items that carry extra data (e.g. For You's reasons): the best-ranked room keeps its slot. */
 export function groupRankedByProperty<T extends { activity: ComputedActivity & { property?: DiscoveryPropertySummary } }>(items: T[]): T[] {

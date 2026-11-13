@@ -35,6 +35,31 @@ export function getNextEventSession(locations: PromotionCampaignPublicLocation[]
   return next;
 }
 
+/** True when any location runs on `day` (YYYY-MM-DD, Malaysia date). */
+export function campaignRunsOn(campaign: Pick<PromotionCampaignPublic, "locations">, day: string): boolean {
+  return campaign.locations.some((location) => location.startsOn <= day && day <= location.endsOn);
+}
+
+/** The session to show for `day`: among locations running that day, the one open now (today only), else the
+ * first that has not closed yet today, else the earliest opening. openNow is only set when `day` is today in `now`. */
+export function getEventSessionOn(locations: PromotionCampaignPublicLocation[], day: string, now?: Date): { location: PromotionCampaignPublicLocation; openNow?: boolean } | null {
+  const running = locations
+    .filter((location) => location.startsOn <= day && day <= location.endsOn)
+    .sort((a, b) => a.opensAt.slice(0, 5).localeCompare(b.opensAt.slice(0, 5)));
+  if (!running.length) return null;
+  const local = now ? getMalaysiaDateTimeLocalValue(now) : null;
+  if (!local || local.slice(0, 10) !== day) return { location: running[0] };
+  const time = local.slice(11, 16);
+  const open = running.find((location) => location.opensAt.slice(0, 5) <= time && time < location.closesAt.slice(0, 5));
+  if (open) return { location: open, openNow: true };
+  return { location: running.find((location) => time < location.closesAt.slice(0, 5)) ?? running[0], openNow: false };
+}
+
+/** Approved stalls at one location (each vendor stall whose locationId matches). */
+export function countLocationStalls(campaign: Pick<PromotionCampaignPublic, "vendors">, locationId: string): number {
+  return campaign.vendors.reduce((count, vendor) => count + vendor.stalls.filter((stall) => stall.locationId === locationId).length, 0);
+}
+
 export function getEventOperationalLabelKey(campaign: Pick<PromotionCampaignPublic, "visibility" | "operationalStatus">): string {
   if (campaign.operationalStatus === "between_sessions") return "ui.promotionCampaigns.betweenSessions";
   if (campaign.operationalStatus === "operating") return "ui.promotionCampaigns.operating";
