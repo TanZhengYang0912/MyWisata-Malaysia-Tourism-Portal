@@ -1829,7 +1829,21 @@
       "applicationDeadline": "Applications close (Malaysia time)",
       "approvalDeadline": "Approvals close (Malaysia time)",
       "setupStarts": "Setup starts (Malaysia time)",
-      "approvalWindowClosed": "The approval window has closed. Contact the organiser about this application."
+      "approvalWindowClosed": "The approval window has closed. Contact the organiser about this application.",
+      "staff": {
+        "title": "On-site staff",
+        "createLink": "Create staff link",
+        "copyLink": "Copy link",
+        "copied": "Link copied",
+        "resetLink": "Reset link",
+        "resetConfirm": "Reset the link? The current link stops working for new staff; staff who already joined keep access.",
+        "validUntil": "Valid until {{date}}",
+        "membersEmpty": "No staff yet",
+        "joinedAt": "Joined {{date}}",
+        "remove": "Remove",
+        "removeConfirm": "Remove {{name}}? They can no longer scan for this event, even with the link.",
+        "loadError": "Unable to load staff"
+      }
     },
     "eventOrders": {
       "title": "Event reservations",
@@ -1847,6 +1861,31 @@
       "free": "Free",
       "collected": "Collected",
       "toCollect": "To collect"
+    },
+    "eventStaff": {
+      "join": {
+        "title": "Join as event staff",
+        "nameLabel": "Your name",
+        "emailLabel": "Email",
+        "sendCode": "Send code",
+        "resendCode": "Send a new code",
+        "codeLabel": "6-digit code",
+        "verifyAndJoin": "Verify and join",
+        "join": "Join",
+        "signedInAs": "Signed in as {{email}}",
+        "useAnotherEmail": "Use another email",
+        "invalidLink": "This link is invalid or has expired.",
+        "removed": "You were removed from this event's staff."
+      },
+      "home": {
+        "title": "Event scanning",
+        "empty": "No active events",
+        "scan": "Scan",
+        "notToday": "Not today"
+      },
+      "scan": {
+        "back": "Back to events"
+      }
     }
   },
   "address": {

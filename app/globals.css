@@ -162,6 +162,15 @@
   --background: #0b1120;
 }
 
+/* The top navigation keeps the site's original page colour. */
+.customer-portal > nav {
+  --background: #f8fafc;
+}
+
+.dark .customer-portal > nav {
+  --background: #0b1120;
+}
+
 /* Font-size accessibility control: next-themes' own no-flash script handles
    the .dark class; this attribute is set the same way (a blocking inline
    script in the <head>, before hydration) so root font-size never flashes

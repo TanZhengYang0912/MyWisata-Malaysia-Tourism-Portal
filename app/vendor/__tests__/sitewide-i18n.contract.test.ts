@@ -17,6 +17,7 @@ export const VENDOR_I18N_FILES = [
   'app/vendor/events/page.tsx',
   'app/vendor/events/[id]/page.tsx',
   'app/vendor/events/[id]/event-listings-manager.tsx',
+  'app/vendor/events/[id]/event-staff-manager.tsx',
   'app/vendor/events/[id]/pickup-slots-manager.tsx',
   'app/vendor/inbox/page.tsx',
   'app/vendor/listings/page.tsx',
