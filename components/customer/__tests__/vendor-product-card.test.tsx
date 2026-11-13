@@ -32,7 +32,8 @@ describe("vendor product cards", () => {
     expect(markup).not.toContain("outletId=");
     expect(markup).toContain("ui.vendor.locationCount:2");
     expect(markup).toContain("RM12");
-    expect(markup).not.toContain("0.0");
+    // Visible text only: class names such as tracking-[-0.01em] are not a rating.
+    expect(markup.replace(/<[^>]*>/g, "")).not.toContain("0.0");
   });
   it("uses the same aggregate presentation while retaining home and vendor navigation modes", () => {
     const listing = toVendorCatalogueCard({ ...product, rating: 4.5, reviews: 7, soldAt: [...product.soldAt, { ...product.soldAt[0], id: 'o2', price: 5 }] });

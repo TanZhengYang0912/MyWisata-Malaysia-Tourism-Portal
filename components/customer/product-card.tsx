@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { BedDouble, ImageOff, Store } from "lucide-react";
+import { BedDouble, ImageOff, Map as MapIcon, Store } from "lucide-react";
 import { useOptionalWishlist, useWishlist } from "@/components/providers/wishlist";
 import { SaveToggleButton } from "@/components/customer/save-toggle-button";
 import { ShareButton } from "@/components/shared/share-button";
@@ -59,7 +59,7 @@ function CatalogueProductCard({ listing: product, returnTo, source, onSponsoredC
   const location = product.pinnedOutletName
     ? <CardLocation icon={<Store size={13} aria-hidden="true" />}>{product.pinnedOutletName}</CardLocation>
     : locationCount > 1
-      ? <CardLocation>{t("ui.vendor.locationCount", { count: locationCount })}</CardLocation>
+      ? <CardLocation icon={<MapIcon size={13} aria-hidden="true" />}>{t("ui.vendor.locationCount", { count: locationCount })}</CardLocation>
       : product.singleOutlet && [product.singleOutlet.city, product.singleOutlet.state].some(Boolean)
         ? <CardLocation>{[product.singleOutlet.city, product.singleOutlet.state].filter(Boolean).join(", ")}</CardLocation>
         : null;

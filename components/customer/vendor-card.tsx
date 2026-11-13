@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Map as MapIcon } from "lucide-react";
 import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import { CardFrame, CardLocationStatus } from "@/components/customer/card-frame";
@@ -68,6 +69,7 @@ export function VendorCard({ vendor, categories = [], destinationHref, index = 0
       title={vendor.name}
       info={info ?? <CardLocationStatus
         location={t("ui.vendor.locationCount", { count: vendor.outlets.length })}
+        icon={<MapIcon size={13} aria-hidden="true" />}
         open={vendor.openNow}
         openLabel={t("ui.operatingHours.openNow")}
         closedLabel={t("ui.operatingHours.closedNow")}

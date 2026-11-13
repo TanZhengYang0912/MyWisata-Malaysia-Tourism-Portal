@@ -10,21 +10,21 @@ export function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]).join("").toUpperCase();
 }
 
-/** Every stall joining a campaign, as a sideways-scrolling row under its event pass. */
+/** Every stall joining a campaign, as a sideways-scrolling row under its events page card. */
 export function CampaignStallStrip({ campaign }: { campaign: PromotionCampaignPublic }) {
   const { t } = useTranslation("customer");
   if (campaign.vendors.length === 0) return null;
   const slug = encodeURIComponent(campaign.slug);
 
   return (
-    <div data-slot="campaign-stall-strip" className="border-t border-dashed border-border bg-secondary/30">
-      <div className="flex items-center justify-between gap-3 px-[18px] pt-3">
+    <div data-slot="campaign-stall-strip" className="border-t border-border">
+      <div className="flex items-center justify-between gap-3 pt-3">
         <p className="text-[12.5px] font-bold text-foreground">{t("ui.promotionCampaigns.stallsJoining", { count: campaign.vendors.length })}</p>
         <Link href={`/customer/events/${slug}`} className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
           {t("ui.promotionCampaigns.viewAllStalls")} <ArrowUpRight size={13} aria-hidden="true" />
         </Link>
       </div>
-      <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-[18px] pb-[18px] pt-3">
+      <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 pt-3">
         {campaign.vendors.map((vendor) => {
           const stall = vendor.stalls[0];
           return (
