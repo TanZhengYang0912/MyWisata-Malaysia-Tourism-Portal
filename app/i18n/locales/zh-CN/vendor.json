@@ -1626,6 +1626,12 @@
       "loadError": "无法加载您的活动推广。",
       "uploadError": "无法上传图片。",
       "imageRequired": "请先上传图片再提交。",
+      "validation": {
+        "title": "请输入至少 3 个字符的活动名称。",
+        "details": "请用至少 10 个字符描述活动。",
+        "datesRequired": "请在日历上选择推广的开始和结束日期。",
+        "datesOrder": "结束日期不能早于开始日期。"
+      },
       "submitError": "无法提交活动推广。",
       "submitSuccess": "活动推广已提交审核。",
       "resubmitSuccess": "活动推广已重新提交审核。",

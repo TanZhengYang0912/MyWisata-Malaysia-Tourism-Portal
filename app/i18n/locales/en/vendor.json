@@ -1626,6 +1626,12 @@
       "loadError": "Unable to load your event promotions.",
       "uploadError": "Unable to upload the image.",
       "imageRequired": "Upload an image before submitting.",
+      "validation": {
+        "title": "Enter an event name of at least 3 characters.",
+        "details": "Describe the event in at least 10 characters.",
+        "datesRequired": "Pick the first and last day of the promotion on the calendar.",
+        "datesOrder": "The last day can't be before the first day."
+      },
       "submitError": "Unable to submit the event promotion.",
       "submitSuccess": "Event promotion submitted for review.",
       "resubmitSuccess": "Event promotion resubmitted for review.",
