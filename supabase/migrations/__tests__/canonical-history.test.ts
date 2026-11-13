@@ -37,6 +37,7 @@ const approvedForwardMigrations = [
   "20261111223000_support_kb_draft_results.sql",
   "20261111223100_account_suspended_appeal_write_boundary.sql",
   "20261111223200_account_suspended_appeal_direct_write_lockdown.sql",
+  "20261114015805_restrict_support_ticket_select_columns.sql",
   "20261112083348_support_conduct_queue_pagination.sql",
   "20261112093302_support_ticket_reopen_operation_idempotency.sql",
   "20261112100000_support_ticket_attachment_bucket.sql",
