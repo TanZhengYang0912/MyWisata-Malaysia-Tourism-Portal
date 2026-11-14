@@ -12,13 +12,20 @@ import ProductMediaUploader from "@/components/vendor/product-media-uploader";
 import AiWritingAssistant from "@/components/vendor/ai-writing-assistant";
 import { resolveBlockContent } from "@/components/outlet/outlet-block-renderer";
 import type { OutletRendererOutlet } from "@/components/outlet/outlet-block-types";
+import { canonicalCategorySlug, getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatMYR } from "@/lib/i18n/format";
+
+export type HeroAiDraft = { title: string; body: string; cta?: string; seoDescription?: string };
+type HeroAiField = keyof HeroAiDraft;
 
 interface ProductOption {
   id: string;
   name: string;
   base_price: number;
+  category?: string | null;
+  category_slug?: string | null;
 }
 
 interface Props {
@@ -41,13 +48,102 @@ interface Props {
   onUpdateBlock: (updates: Partial<OutletPageBlock>) => void;
   onUpdateHero: (updates: Record<string, unknown>) => void;
   onUpdateGallery: (gallery: GalleryItem[]) => void;
-  heroAiDraft?: { title: string; body: string; cta?: string } | null;
+  heroAiDraft?: HeroAiDraft | null;
+  /** Current page SEO description, so the AI draft can be compared against it. */
+  seoDescription?: string;
   heroAiBusy?: boolean;
   heroAiError?: string | null;
   onGenerateHeroAi?: () => void;
-  onApplyHeroAi?: () => void;
+  onApplyHeroAi?: (picked: Partial<HeroAiDraft>) => void;
   onDiscardHeroAi?: () => void;
   outlet: OutletRendererOutlet;
+}
+
+/**
+ * Side-by-side review of an AI hero suggestion. Each changed field can be
+ * ticked off individually; nothing reaches the draft until Apply.
+ */
+function HeroAiDraftReview({
+  draft,
+  current,
+  busy,
+  error,
+  onGenerate,
+  onApply,
+  onDiscard,
+}: {
+  draft: HeroAiDraft | null | undefined;
+  current: Partial<HeroAiDraft>;
+  busy?: boolean;
+  error?: string | null;
+  onGenerate: () => void;
+  onApply?: (picked: Partial<HeroAiDraft>) => void;
+  onDiscard?: () => void;
+}) {
+  const { t } = useTranslation("vendor");
+  const [skipped, setSkipped] = useState<Set<HeroAiField>>(() => new Set());
+  const [reviewedDraft, setReviewedDraft] = useState(draft);
+  // A new suggestion resets the ticks (derived during render, no effect needed).
+  if (draft !== reviewedDraft) {
+    setReviewedDraft(draft);
+    setSkipped(new Set());
+  }
+  const labels: Record<HeroAiField, string> = {
+    title: t("builder.inspector.title"),
+    body: t("builder.inspector.supportingCopy"),
+    cta: t("builder.inspector.buttonLabel"),
+    seoDescription: t("builder.seoDescription"),
+  };
+  const rows = draft
+    ? (Object.keys(labels) as HeroAiField[])
+      .map((field) => ({ field, before: (current[field] ?? "").trim(), after: (draft[field] ?? "").trim() }))
+      .filter((row) => row.after && row.after !== row.before)
+    : [];
+  const picked = rows.filter((row) => !skipped.has(row.field));
+  const apply = onApply && picked.length > 0
+    ? () => onApply(Object.fromEntries(picked.map((row) => [row.field, row.after])) as Partial<HeroAiDraft>)
+    : undefined;
+
+  return (
+    <AiWritingAssistant
+      compact
+      label={t("assistant.heroLabel")}
+      buttonLabel={t("assistant.generate")}
+      busy={busy}
+      error={error}
+      onGenerate={onGenerate}
+      onApply={apply}
+      onDiscard={onDiscard}
+      draft={draft && (rows.length === 0
+        ? <p className="text-xs text-gray-600">{t("builder.inspector.aiNoChanges")}</p>
+        : (
+          <ul className="divide-y divide-violet-100">
+            {rows.map((row) => (
+              <li key={row.field} className="py-2 first:pt-0 last:pb-0">
+                <label className="flex cursor-pointer items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    className="mt-1 size-4 shrink-0 accent-primary"
+                    checked={!skipped.has(row.field)}
+                    onChange={(event) => setSkipped((prev) => {
+                      const next = new Set(prev);
+                      if (event.target.checked) next.delete(row.field);
+                      else next.add(row.field);
+                      return next;
+                    })}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-semibold text-gray-500">{labels[row.field]}</span>
+                    {row.before && <span className="block break-words text-xs text-gray-500 line-through decoration-gray-400/70">{row.before}</span>}
+                    <span className="block break-words text-sm text-gray-900">{row.after}</span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        ))}
+    />
+  );
 }
 
 function MediaLibrary({
@@ -140,6 +236,7 @@ export default function OutletBuilderInspector({
   onUpdateHero,
   onUpdateGallery,
   heroAiDraft,
+  seoDescription,
   heroAiBusy,
   heroAiError,
   onGenerateHeroAi,
@@ -148,6 +245,26 @@ export default function OutletBuilderInspector({
   outlet,
 }: Props) {
   const { t } = useTranslation(["vendor", "customer"]);
+  const productGroups = Array.from(products.reduce((groups, product) => {
+    const normalizedSlug = product.category_slug?.trim().toLowerCase();
+    const key = canonicalCategorySlug(normalizedSlug) || normalizedSlug || product.category?.trim().toLowerCase() || "uncategorized";
+    const existing = groups.get(key);
+    if (existing) existing.products.push(product);
+    else {
+      const labelKey = getOptionalDiscoveryCategoryLabelKey(product.category_slug);
+      groups.set(key, {
+        label: labelKey ? t(labelKey, { ns: "customer" }) : product.category || t("builder.inspector.uncategorized"),
+        products: [product],
+      });
+    }
+    return groups;
+  }, new Map<string, { label: string; products: ProductOption[] }>()));
+  const categoryOrder = ["accommodation", "food", "activity", "retail"];
+  productGroups.sort(([left], [right]) => {
+    const leftIndex = categoryOrder.indexOf(left);
+    const rightIndex = categoryOrder.indexOf(right);
+    return (leftIndex < 0 ? categoryOrder.length : leftIndex) - (rightIndex < 0 ? categoryOrder.length : rightIndex);
+  });
   const panelClassName =
     "min-h-0 h-full overflow-y-auto border-t border-primary/10 bg-white p-4 sm:p-5 lg:sticky lg:top-0 lg:border-l lg:border-t-0";
 
@@ -158,11 +275,9 @@ export default function OutletBuilderInspector({
           {t("builder.inspector.editingHero")}
         </p>
         <div className="mt-4 space-y-3">
-          {onGenerateHeroAi && <AiWritingAssistant
-            compact
-            label={t("assistant.heroLabel")}
-            buttonLabel={t("assistant.generate")}
-            draft={heroAiDraft && <div><p className="font-semibold">{heroAiDraft.title}</p><p className="mt-1">{heroAiDraft.body}</p>{heroAiDraft.cta && <p className="mt-2 text-xs text-gray-500">{t("builder.inspector.buttonValue", { value: heroAiDraft.cta })}</p>}</div>}
+          {onGenerateHeroAi && <HeroAiDraftReview
+            draft={heroAiDraft}
+            current={{ title: hero.title, body: hero.body, cta: hero.cta, seoDescription }}
             busy={heroAiBusy}
             error={heroAiError}
             onGenerate={onGenerateHeroAi}
@@ -371,31 +486,41 @@ export default function OutletBuilderInspector({
             <p className="text-xs font-semibold text-gray-600">
               {t("builder.inspector.productsFromOutlet")}
             </p>
-            <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-xl border border-gray-200 p-2">
-              {products.map((product) => (
-                <label
-                  key={product.id}
-                  className="flex items-center gap-2 rounded-lg px-1.5 py-1 text-xs hover:bg-secondary"
-                >
-                  <input
-                    type="checkbox"
-                    checked={block.productIds?.includes(product.id) || false}
-                    onChange={() => {
-                      const current = block.productIds || [];
-                      onUpdateBlock({
-                        productIds: current.includes(product.id)
-                          ? current.filter((id) => id !== product.id)
-                          : [...current, product.id].slice(0, 12),
-                      });
-                    }}
-                  />
-                  <span className="min-w-0 flex-1 truncate">
-                    {product.name}
-                  </span>
-                  <span className="font-mono text-[10px] text-gray-400">
-                    {formatMYR(Number(product.base_price))}
-                  </span>
-                </label>
+            <div className="mt-2 max-h-64 space-y-3 overflow-y-auto rounded-xl border border-gray-200 p-2">
+              {productGroups.map(([categoryKey, group]) => (
+                <section key={categoryKey}>
+                  <h4 className="sticky top-0 z-[1] flex items-center justify-between gap-2 bg-white px-1.5 py-1 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                    <span className="min-w-0 break-words">{group.label}</span>
+                    <span className="shrink-0 font-mono">{group.products.length}</span>
+                  </h4>
+                  <div className="space-y-1">
+                    {group.products.map((product) => (
+                      <label
+                        key={product.id}
+                        className="flex min-h-10 items-start gap-2 rounded-lg px-1.5 py-2 text-xs hover:bg-secondary"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={block.productIds?.includes(product.id) || false}
+                          onChange={() => {
+                            const current = block.productIds || [];
+                            onUpdateBlock({
+                              productIds: current.includes(product.id)
+                                ? current.filter((id) => id !== product.id)
+                                : [...current, product.id].slice(0, 12),
+                            });
+                          }}
+                        />
+                        <span className="min-w-0 flex-1 break-words leading-4">
+                          {product.name}
+                        </span>
+                        <span className="shrink-0 whitespace-nowrap font-mono text-[10px] text-gray-400">
+                          {formatMYR(Number(product.base_price))}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           </div>

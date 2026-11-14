@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ authorizeVendor: vi.fn(), from: vi.fn(), select: vi.fn() }));
+const mocks = vi.hoisted(() => ({ authorizeVendor: vi.fn(), from: vi.fn(), select: vi.fn(), gte: vi.fn(), lte: vi.fn() }));
 
 vi.mock('@/lib/vendor-authorization', () => ({ authorizeVendor: mocks.authorizeVendor }));
 
@@ -30,6 +30,8 @@ describe('GET vendor orders by orderId', () => {
 
     const query = {
       select: mocks.select.mockReturnThis(),
+      gte: mocks.gte.mockReturnThis(),
+      lte: mocks.lte.mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       in: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
@@ -131,6 +133,33 @@ describe('GET vendor orders by orderId', () => {
     expect(mocks.select).toHaveBeenCalledWith(expect.stringContaining('categories(slug)'), expect.anything());
     expect(mocks.from).toHaveBeenCalledWith('orders');
     expect(mocks.authorizeVendor).toHaveBeenCalledWith(VENDOR_ID, undefined, { requireApproved: true });
+  });
+
+  it('filters by whole Malaysia calendar days so orders on the end date are included', async () => {
+    const response = await GET(
+      new Request(`http://localhost/api/vendors/${VENDOR_ID}/orders?from=2026-11-01&to=2026-11-14`),
+      { params: Promise.resolve({ vendorId: VENDOR_ID }) },
+    );
+
+    expect(response.status).toBe(200);
+    // 2026-11-01 00:00 MYT and 2026-11-14 23:59:59.999 MYT, in UTC.
+    expect(mocks.gte).toHaveBeenCalledWith('created_at', '2026-10-31T16:00:00.000Z');
+    expect(mocks.lte).toHaveBeenCalledWith('created_at', '2026-11-14T15:59:59.999Z');
+  });
+
+  it('rejects an inverted or malformed date range before querying', async () => {
+    const inverted = await GET(
+      new Request(`http://localhost/api/vendors/${VENDOR_ID}/orders?from=2026-11-14&to=2026-11-01`),
+      { params: Promise.resolve({ vendorId: VENDOR_ID }) },
+    );
+    const malformed = await GET(
+      new Request(`http://localhost/api/vendors/${VENDOR_ID}/orders?to=2026-02-30`),
+      { params: Promise.resolve({ vendorId: VENDOR_ID }) },
+    );
+
+    expect(inverted.status).toBe(422);
+    expect(malformed.status).toBe(422);
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 });
 

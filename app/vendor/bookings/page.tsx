@@ -16,7 +16,6 @@ import {
   MoreHorizontal,
   Save,
   ScanLine,
-  Search,
   Users,
   X,
 } from "lucide-react";
@@ -43,7 +42,10 @@ import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { getBookingSlotAvailability } from "@/lib/customer/booking-slot-presenter";
 import { formatStayRange } from "@/lib/customer/booking-view";
 import { VendorPageHeader } from "@/components/vendor/vendor-page-header";
-import { MobileFilterToggle } from "@/components/vendor/compact-filter-bar";
+import { SelectPageBar } from "@/components/vendor/select-page-bar";
+import { VendorMetricCard } from "@/components/vendor/vendor-metric-card";
+import { FilterDateField, FilterSegmented } from "@/components/vendor/compact-filter-bar";
+import { VendorListFilters } from "@/components/vendor/vendor-list-filters";
 import {
   getMalaysiaDateInputValue,
   getMalaysiaDateRangeDefaults,
@@ -283,7 +285,6 @@ export default function VendorBookingsPage() {
     outletId: "",
     productId: searchParams.get("productId") ?? "",
   });
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [scheduleOutletId, setScheduleOutletId] = useState("");
   const [scheduleDraft, setScheduleDraft] =
     useState<Record<DayKey, DaySchedule>>(scheduleFor());
@@ -658,9 +659,6 @@ export default function VendorBookingsPage() {
     if (tab === "operating-hours" && outletId) setScheduleOutletId(outletId);
   }
 
-  const selectedFilterCount = [filters.outletId, filters.productId, filters.from, filters.to].filter(Boolean).length;
-  const hasFilters = Boolean(filters.q || filters.status || filters.from || filters.to || filters.outletId || filters.productId);
-
   return (
     <div className="space-y-5">
       <VendorPageHeader
@@ -700,46 +698,12 @@ export default function VendorBookingsPage() {
         </div>}
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.status.confirmed")}</p>
-          <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">
-            {stats.confirmed || 0}
-          </p>
-          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">
-            {t("ui.bookings.currentFilter")}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.status.checked_in")}</p>
-          <p className="mt-1 text-2xl font-bold text-primary">
-            {stats.checked_in || 0}
-          </p>
-          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">
-            {t("ui.bookings.currentFilter")}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.status.cancelled")}</p>
-          <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">
-            {stats.cancelled || 0}
-          </p>
-          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">
-            {t("ui.bookings.currentFilter")}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-primary/10 bg-secondary p-4 shadow-sm">
-          <p className="text-xs text-primary">
-            {t("ui.bookings.outletsManaged")}
-          </p>
-          <p className="mt-1 text-2xl font-bold text-primary">
-            {outlets.length}
-          </p>
-          <p className="mt-1 text-xs text-primary">
-            {t("ui.bookings.allVendorOutlets")}
-          </p>
-        </div>
-      </div>
+      <section aria-label={t("ui.bookings.reservations")} className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+        <VendorMetricCard label={t("ui.status.confirmed")} value={stats.confirmed || 0} note={t("ui.bookings.currentFilter")} />
+        <VendorMetricCard label={t("ui.status.checked_in")} value={stats.checked_in || 0} note={t("ui.bookings.currentFilter")} />
+        <VendorMetricCard label={t("ui.status.cancelled")} value={stats.cancelled || 0} note={t("ui.bookings.currentFilter")} />
+        <VendorMetricCard label={t("ui.bookings.outletsManaged")} value={outlets.length} note={t("ui.bookings.allVendorOutlets")} />
+      </section>
 
       <div className="flex flex-col gap-2 md:hidden">
         <button
@@ -778,113 +742,95 @@ export default function VendorBookingsPage() {
         )}
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex rounded-xl bg-gray-100 dark:bg-muted p-1">
-            <button
-              type="button"
-              onClick={() => switchTab("reservations")}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${tab === "reservations" ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground"}`}
-            >
-              <Users size={15} /> {t("ui.bookings.reservations")}
-            </button>
-            <button
-              type="button"
-              onClick={() => switchTab("operating-hours")}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${tab === "operating-hours" ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground"}`}
-            >
-              <Clock3 size={15} /> {t("ui.bookings.operatingHours")}
-            </button>
-          </div>
+      {/* Workspace navigation sits above the filters: it switches what the page manages,
+          while the status row below only narrows the reservation list. */}
+      <div role="tablist" aria-label={t("ui.bookings.workspaceTabs")} className="flex gap-1 border-b border-border">
+        {([
+          { value: "reservations", label: t("ui.bookings.reservations"), icon: Users },
+          { value: "operating-hours", label: t("ui.bookings.operatingHours"), icon: Clock3 },
+        ] as const).map(({ value, label, icon: Icon }) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={tab === value}
+            onClick={() => switchTab(value)}
+            className={`-mb-px inline-flex min-h-11 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${tab === value ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          >
+            <Icon size={15} aria-hidden="true" /> {label}
+          </button>
+        ))}
+      </div>
 
-          {tab === "reservations" && (
-            <div className="flex max-w-full flex-nowrap gap-1 overflow-x-auto rounded-xl bg-gray-100 dark:bg-muted p-1">
-              {[
-                { value: "", label: t("ui.orders.allOrders") || "All" },
+      <VendorListFilters
+        query={filters.q}
+        onQueryChange={(q) => setFilters((current) => ({ ...current, q }))}
+        placeholder={tab === "reservations" ? t("ui.bookings.searchPlaceholder") : t("ui.bookings.searchOperatingPlaceholder")}
+        chips={[
+          ...(tab === "reservations" && filters.status ? [{ key: 'status', label: t(`ui.status.${filters.status}`), onRemove: () => setFilters((current) => ({ ...current, status: '' })) }] : []),
+          ...(filters.outletId ? [{ key: 'outlet', label: outlets.find((outlet) => outlet.id === filters.outletId)?.name ?? filters.outletId, onRemove: () => setOutletFilter('') }] : []),
+          ...(tab === "reservations" && filters.productId ? [{ key: 'experience', label: products.find((product) => product.id === filters.productId)?.name ?? filters.productId, onRemove: () => setFilters((current) => ({ ...current, productId: '' })) }] : []),
+          ...(tab === "reservations" && filters.from ? [{ key: 'from', label: `${t('filters.from')}: ${filters.from}`, onRemove: () => setFilters((current) => ({ ...current, from: '' })) }] : []),
+          ...(tab === "reservations" && filters.to ? [{ key: 'to', label: `${t('filters.to')}: ${filters.to}`, onRemove: () => setFilters((current) => ({ ...current, to: '' })) }] : []),
+        ]}
+        onClearAll={clearFilters}
+        drawerTitle={t('ui.listFilters.drawerTitle')}
+      >
+        {tab === "reservations" && (
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-foreground">{t("ui.bookings.statusFilter")}</p>
+            <FilterSegmented
+              ariaLabel={t("ui.bookings.statusFilter")}
+              options={[
+                { value: "", label: t("ui.bookings.allBookings") },
                 { value: "confirmed", label: t("ui.status.confirmed") },
                 { value: "checked_in", label: t("ui.status.checked_in") },
                 { value: "cancelled", label: t("ui.status.cancelled") },
-              ].map((f) => (
-                <button
-                  key={f.value || "all"}
-                  type="button"
-                  onClick={() =>
-                    setFilters((current) => ({ ...current, status: f.value }))
-                  }
-                  className={`min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold ${filters.status === f.value ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"}`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="flex min-w-0 items-center gap-2">
-          <label className="relative min-w-0 flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-muted-foreground" size={15} aria-hidden="true" />
-            <input
-              value={filters.q}
-              onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
-              placeholder={tab === "reservations" ? t("ui.bookings.searchPlaceholder") : t("ui.bookings.searchOperatingPlaceholder")}
-              aria-label={tab === "reservations" ? t("ui.bookings.searchPlaceholder") : t("ui.bookings.searchOperatingPlaceholder")}
-              className="h-11 w-full rounded-xl border border-gray-200 dark:border-border pl-9 pr-3 text-sm outline-none focus:border-primary"
+              ]}
+              value={filters.status}
+              onChange={(status) => setFilters((current) => ({ ...current, status }))}
             />
-          </label>
-          <MobileFilterToggle
-            controlId="booking-filters"
-            isOpen={filtersOpen}
-            selectedFilterCount={selectedFilterCount}
-            onToggle={() => setFiltersOpen((open) => !open)}
-          />
-        </div>
-
-        <div id="booking-filters" className={`${filtersOpen ? "grid" : "hidden"} min-w-0 gap-3 rounded-xl border border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 p-3 sm:grid-cols-2 lg:grid`}>
+          </div>
+        )}
+        <label className="block space-y-2 text-sm font-semibold text-foreground">
+          <span>{t("ui.bookings.allOutlets")}</span>
           <select
-            value={filters.outletId}
-            onChange={(event) => setOutletFilter(event.target.value)}
-            aria-label={t("ui.bookings.allOutlets")}
-            className="h-11 min-w-0 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm text-gray-600 dark:text-muted-foreground outline-none focus:border-primary"
-          >
-            <option value="">{t("ui.bookings.allOutlets")}</option>
-            {outlets.map((outlet) => (
-              <option key={outlet.id} value={outlet.id}>
-                {outletShortName(outlet.name)} · {outletLocation(outlet.city, outlet.state)}
-              </option>
-            ))}
-          </select>
-          {tab === "reservations" && (
-            <select
-              value={filters.productId}
-              onChange={(event) => setFilters((current) => ({ ...current, productId: event.target.value }))}
-              aria-label={t("ui.bookings.allExperiences")}
-              className="h-11 min-w-0 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm text-gray-600 dark:text-muted-foreground outline-none focus:border-primary"
+              value={filters.outletId}
+              onChange={(event) => setOutletFilter(event.target.value)}
+              aria-label={t("ui.bookings.allOutlets")}
+              className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
             >
-              <option value="">{t("ui.bookings.allExperiences")}</option>
-              {filteredProducts.map((product) => (
-                <option key={product.id} value={product.id}>{product.name}</option>
+              <option value="">{t("ui.bookings.allOutlets")}</option>
+              {outlets.map((outlet) => (
+                <option key={outlet.id} value={outlet.id}>
+                  {outletShortName(outlet.name)} · {outletLocation(outlet.city, outlet.state)}
+                </option>
               ))}
-            </select>
-          )}
-          {tab === "reservations" && (
-            <>
-              <label className="min-w-0 text-xs font-medium text-gray-500 dark:text-muted-foreground">
-                {t("ui.orders.fromDate")}
-                <input type="date" value={filters.from} onFocus={primeDateRange} onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))} className="mt-1 h-11 w-full rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm text-gray-700 dark:text-foreground" />
-              </label>
-              <label className="min-w-0 text-xs font-medium text-gray-500 dark:text-muted-foreground">
-                {t("ui.orders.toDate")}
-                <input type="date" value={filters.to} onFocus={primeDateRange} onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))} className="mt-1 h-11 w-full rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm text-gray-700 dark:text-foreground" />
-              </label>
-            </>
-          )}
-          {hasFilters && (
-            <button type="button" onClick={clearFilters} className="min-h-11 justify-self-start px-2 text-sm font-semibold text-primary hover:underline sm:col-span-2">
-              {t("ui.common.clearFilters")}
-            </button>
-          )}
-        </div>
-      </div>
+          </select>
+        </label>
+        {tab === "reservations" && (
+          <>
+            <label className="block space-y-2 text-sm font-semibold text-foreground">
+              <span>{t("ui.bookings.allExperiences")}</span>
+                <select
+                  value={filters.productId}
+                  onChange={(event) => setFilters((current) => ({ ...current, productId: event.target.value }))}
+                  aria-label={t("ui.bookings.allExperiences")}
+                  className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                >
+                  <option value="">{t("ui.bookings.allExperiences")}</option>
+                  {filteredProducts.map((product) => (
+                    <option key={product.id} value={product.id}>{product.name}</option>
+                  ))}
+                </select>
+            </label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <FilterDateField label={t("filters.from")} value={filters.from} onFocus={primeDateRange} onChange={(from) => setFilters((current) => ({ ...current, from }))} className="w-full" />
+              <FilterDateField label={t("filters.to")} value={filters.to} min={filters.from || undefined} onFocus={primeDateRange} onChange={(to) => setFilters((current) => ({ ...current, to }))} className="w-full" />
+            </div>
+          </>
+        )}
+      </VendorListFilters>
 
       {tab === "reservations" && (
         <BatchActionBar
@@ -939,31 +885,16 @@ export default function VendorBookingsPage() {
 
       {tab === "reservations" ? (
         <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
-          <div className="flex items-center justify-between border-b border-gray-100 dark:border-border px-5 py-3 text-xs text-gray-500 dark:text-muted-foreground">
-            <label className="inline-flex items-center gap-2 font-semibold">
-              <input
-                type="checkbox"
-                checked={
-                  bookings.length > 0 &&
-                  bookings.every((booking) => selectedIds.includes(booking.id))
-                }
-                onChange={(event) =>
-                  setSelectedIds(
-                    event.target.checked
-                      ? bookings.map((booking) => booking.id)
-                      : [],
-                  )
-                }
-              />{" "}
-              {t("ui.bookings.selectCurrentPage")}
-            </label>
-            <span>
-              {t("ui.bookings.pageSummary", {
-                count: pagination.total.toLocaleString(),
-                perPage: 10,
-              })}
-            </span>
-          </div>
+          <SelectPageBar
+            pageIds={bookings.map((booking) => booking.id)}
+            selectedIds={selectedIds}
+            onChange={setSelectedIds}
+            label={t("ui.bookings.selectCurrentPage")}
+            summary={t("ui.bookings.pageSummary", {
+              count: pagination.total.toLocaleString(),
+              perPage: 10,
+            })}
+          />
 
           {loading ? (
             <div className="space-y-3 p-5">
@@ -988,7 +919,7 @@ export default function VendorBookingsPage() {
           ) : (
             <div className="overflow-x-auto">
               <div className="xl:min-w-[960px]">
-                <div className="hidden grid-cols-[32px_minmax(120px,1.2fr)_minmax(170px,1.5fr)_minmax(100px,1fr)_90px_100px_190px] gap-4 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground xl:grid">
+                <div className="hidden grid-cols-[32px_minmax(120px,1.2fr)_minmax(170px,1.5fr)_minmax(100px,1fr)_90px_100px_190px] gap-4 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-5 py-3 text-xs font-semibold text-gray-500 dark:text-muted-foreground xl:grid">
                   <span></span>
                   <span>{t("ui.orders.customerColumn")}</span>
                   <span>{t("ui.orders.itemsColumn")}</span>
@@ -1209,7 +1140,7 @@ export default function VendorBookingsPage() {
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                <p className="text-xs font-semibold text-primary">
                   {t("ui.bookings.reservationDetails")}
                 </p>
                 <h2 className="mt-1 text-xl font-bold text-gray-950 dark:text-foreground">
@@ -1376,7 +1307,7 @@ function WeeklyOperatingHoursRow({
   return (
     <div
       data-day={day}
-      className={`grid gap-3 rounded-2xl border px-4 py-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-colors md:grid-cols-[minmax(110px,0.8fr)_120px_minmax(280px,1.4fr)] md:items-center ${isOpen ? "border-gray-200/80 bg-gradient-to-r from-white dark:from-card to-gray-50/80" : "border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70"}`}
+      className={`grid gap-3 rounded-2xl border px-4 py-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-colors md:grid-cols-[minmax(110px,0.8fr)_120px_minmax(280px,1.4fr)] md:items-center ${isOpen ? "border-gray-200/80 bg-card" : "border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70"}`}
     >
       <div className="min-w-0">
         <p className="text-sm font-semibold text-gray-900 dark:text-foreground">{label}</p>
@@ -1560,7 +1491,7 @@ function OperatingHoursPanel({
         <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-5 shadow-sm">
           <div className="flex flex-col gap-3 border-b border-gray-100 dark:border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+              <p className="text-xs font-semibold text-primary">
                 {t("ui.bookings.weeklyHours")}
               </p>
               <h2 className="mt-1 text-xl font-bold text-gray-950 dark:text-foreground">
@@ -1615,7 +1546,7 @@ function OperatingHoursPanel({
             )}
           </div>
           <div className="mt-4" data-booking-hours-summary>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-muted-foreground">
+            <p className="text-xs font-semibold text-gray-500 dark:text-muted-foreground">
               {t("ui.bookings.scheduleSummary")}
             </p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -1675,7 +1606,7 @@ function OperatingHoursPanel({
         <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-5 shadow-sm">
           <div className="flex flex-col gap-4 border-b border-gray-100 dark:border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-200">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-200">
                 {t("ui.bookings.dateExceptions")}
               </p>
               <h2 className="mt-1 text-lg font-bold text-gray-950 dark:text-foreground">
@@ -1903,7 +1834,7 @@ function OperatingHoursPanel({
               })}
             </span>
           </div>
-          <div className="hidden grid-cols-[32px_minmax(220px,1.5fr)_minmax(130px,0.8fr)_110px_110px_90px] gap-3 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground md:grid">
+          <div className="hidden grid-cols-[32px_minmax(220px,1.5fr)_minmax(130px,0.8fr)_110px_110px_90px] gap-3 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-4 py-3 text-[11px] font-semibold text-gray-500 dark:text-muted-foreground md:grid">
             <span />
             <span>{t("ui.bookings.slotTime")}</span>
             <span>{t("ui.bookings.outlet")}</span>

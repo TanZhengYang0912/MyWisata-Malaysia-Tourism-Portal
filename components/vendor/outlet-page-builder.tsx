@@ -14,6 +14,8 @@ import {
   Eye,
   Globe2,
   RotateCcw,
+  Plus,
+  SlidersHorizontal,
 } from "lucide-react";
 import {
   duplicateOutletPageBlock,
@@ -30,6 +32,7 @@ import {
   serializeOutletBuilderLocalDraft,
   getOutletBuilderMediaUrls,
 } from "@/components/vendor/outlet-builder-editing";
+import { relationOne } from "@/lib/customer/outlet-shop";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import { GRID_COLS, firstFreeSlot, fits, gridRowCount } from "@/lib/vendor/outlet-grid";
 import {
@@ -45,7 +48,7 @@ import {
   type History,
 } from "@/components/vendor/outlet-builder-history";
 import OutletBuilderCanvas from "@/components/vendor/outlet-builder-canvas";
-import OutletBuilderInspector from "@/components/vendor/outlet-builder-inspector";
+import OutletBuilderInspector, { type HeroAiDraft } from "@/components/vendor/outlet-builder-inspector";
 import OutletBuilderPalette from "@/components/vendor/outlet-builder-palette";
 import { OutletPageRenderer } from "@/components/outlet/outlet-page-renderer";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -71,6 +74,9 @@ interface Product {
   name: string;
   base_price: number;
   cover_url?: string | null;
+  categories?: { name?: string | null; slug?: string | null } | { name?: string | null; slug?: string | null }[] | null;
+  category?: string | null;
+  category_slug?: string | null;
 }
 
 export default function OutletPageBuilder({
@@ -100,7 +106,7 @@ export default function OutletPageBuilder({
     phone: outletPhone,
   };
   const [products, setProducts] = useState<Product[]>([]);
-  const [heroAiDraft, setHeroAiDraft] = useState<{ title: string; body: string; cta?: string } | null>(null);
+  const [heroAiDraft, setHeroAiDraft] = useState<HeroAiDraft | null>(null);
   const [heroAiBusy, setHeroAiBusy] = useState(false);
   const [heroAiError, setHeroAiError] = useState<string | null>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>("hero");
@@ -111,6 +117,9 @@ export default function OutletPageBuilder({
     return "desktop";
   });
   const [mobilePanel, setMobilePanel] = useState<"preview" | "blocks" | "edit">("preview");
+  // Desktop (lg+) tool drawer beside the preview. Closed by default so the
+  // live preview gets the width; "add" and "page" are separate jobs.
+  const [toolPanel, setToolPanel] = useState<"add" | "page" | null>(null);
   const [draftVersion, setDraftVersion] = useState(0);
   const [publishedDocument, setPublishedDocument] =
     useState<OutletPageDocument | null>(null);
@@ -173,10 +182,15 @@ export default function OutletPageBuilder({
           localDraft?.pending === true &&
           localDraft.draftVersion === serverDraftVersion;
         const loaded = canRecover ? localDraft.document : serverDraft;
-        const loadedProducts = (productPayload.data?.items || []).map((product: Product) => ({
-          ...product,
-          base_price: Number(product.base_price),
-        }));
+        const loadedProducts = (productPayload.data?.items || []).map((product: Product) => {
+          const category = relationOne(product.categories);
+          return {
+            ...product,
+            base_price: Number(product.base_price),
+            category: category?.name ?? product.category ?? null,
+            category_slug: category?.slug ?? product.category_slug ?? null,
+          };
+        });
         const canSanitizeProductSelections =
           !productPayload.error && Array.isArray(productPayload.data?.items);
         const safeDocument = canSanitizeProductSelections
@@ -382,13 +396,14 @@ export default function OutletPageBuilder({
       const response = await fetch(`/api/vendors/${vendorId}/ai/content`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // Outlet facts and products are loaded on the server from this outlet;
+        // only the unsaved editor text travels with the request.
         body: JSON.stringify({
           surface: "outlet_page",
           outletId,
-          outletName,
           heroTitle: document.hero.title,
           heroBody: document.hero.body,
-          productNames: products.map((product) => product.name).slice(0, 24),
+          seoDescription: document.seoDescription || undefined,
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -764,7 +779,7 @@ export default function OutletPageBuilder({
             </div>
           </div>
         )}
-        <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] md:grid-rows-[auto_minmax(0,1fr)_minmax(0,42vh)] lg:grid-cols-[260px_minmax(0,1fr)_340px] lg:grid-rows-1">
+        <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] md:grid-rows-[auto_minmax(0,1fr)_minmax(0,42vh)] lg:grid-cols-[auto_minmax(0,1fr)_340px] lg:grid-rows-1">
           <Tabs
             value={mobilePanel}
             onValueChange={(value) => {
@@ -777,14 +792,47 @@ export default function OutletPageBuilder({
               <TabsTrigger value="blocks">{t("builder.palette.title")}</TabsTrigger>
               <TabsTrigger value="edit">{t("builder.inspector.editElement")}</TabsTrigger>
             </TabsList>
-            <TabsContent value="blocks" forceMount className="min-h-0 overflow-y-auto data-[state=inactive]:hidden data-[state=active]:block md:block md:data-[state=inactive]:block">
-              <div className="min-h-0 overflow-y-auto border-b border-primary/10 lg:border-b-0 lg:border-r">
-                <OutletBuilderPalette
-                  onAddBlock={(type) => addBlock(type)}
-                  onBeginDrag={() => undefined}
-                />
-                <div className="border-t border-primary/10 bg-white p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+            <TabsContent value="blocks" forceMount className="min-h-0 overflow-y-auto data-[state=inactive]:hidden data-[state=active]:block md:block md:data-[state=inactive]:block lg:flex lg:overflow-hidden lg:data-[state=inactive]:flex">
+              {/* lg+: a slim rail opens one tool at a time; below lg both tools stack in the "blocks" tab as before. */}
+              <nav aria-label={t("builder.tools")} className="hidden w-[72px] shrink-0 flex-col items-stretch gap-1 border-r border-primary/10 bg-white px-2 py-3 lg:flex">
+                {([
+                  { key: "add", label: t("builder.palette.title"), icon: Plus },
+                  { key: "page", label: t("builder.pageSettings"), icon: SlidersHorizontal },
+                ] as const).map(({ key, label, icon: Icon }) => {
+                  const isOpen = toolPanel === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={isOpen}
+                      aria-controls="outlet-builder-tool-panel"
+                      onClick={() => setToolPanel((current) => (current === key ? null : key))}
+                      className={`flex flex-col items-center gap-1 rounded-xl px-1 py-2.5 text-[10px] font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${isOpen ? "bg-secondary text-primary" : "text-gray-500 hover:bg-secondary/60 hover:text-primary"}`}
+                    >
+                      <Icon size={18} aria-hidden="true" />
+                      <span className="text-center">{label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+              <div
+                id="outlet-builder-tool-panel"
+                className={`min-h-0 overflow-y-auto border-b border-primary/10 lg:w-[264px] lg:border-b-0 lg:border-r ${toolPanel ? "" : "lg:hidden"}`}
+              >
+                <div className="hidden items-center justify-between border-b border-primary/10 bg-white px-4 py-2.5 lg:flex">
+                  <p className="text-sm font-bold text-primary">{toolPanel === "page" ? t("builder.pageSettings") : t("builder.palette.title")}</p>
+                  <button type="button" onClick={() => setToolPanel(null)} aria-label={t("builder.closeTools")} className="rounded-lg p-1.5 text-gray-500 hover:bg-secondary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                    <X size={15} aria-hidden="true" />
+                  </button>
+                </div>
+                <div className={toolPanel === "page" ? "lg:hidden" : ""}>
+                  <OutletBuilderPalette
+                    onAddBlock={(type) => addBlock(type)}
+                    onBeginDrag={() => undefined}
+                  />
+                </div>
+                <div className={`border-t border-primary/10 bg-white p-4 lg:border-t-0 ${toolPanel === "add" ? "lg:hidden" : ""}`}>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary lg:hidden">
                     {t("builder.pageSettings")}
                   </p>
                   <div className="mt-3 space-y-3">
@@ -949,10 +997,22 @@ export default function OutletPageBuilder({
                 onUpdateHero={updateHero}
                 onUpdateGallery={updateGallery}
                 heroAiDraft={heroAiDraft}
+                seoDescription={document.seoDescription}
                 heroAiBusy={heroAiBusy}
                 heroAiError={heroAiError}
                 onGenerateHeroAi={() => void generateHeroAiDraft()}
-                onApplyHeroAi={() => { if (heroAiDraft) updateHero(heroAiDraft); setHeroAiDraft(null); }}
+                onApplyHeroAi={(picked) => {
+                  // Only the fields the vendor ticked are written to the draft document; Publish stays a separate step.
+                  // One update (and one undo step): updateDocument reads the render-time document, so two
+                  // calls in a row would make the second overwrite the first.
+                  const { seoDescription, ...heroUpdates } = picked;
+                  updateDocument((current) => ({
+                    ...current,
+                    hero: { ...current.hero, ...heroUpdates },
+                    ...(seoDescription !== undefined ? { seoDescription } : {}),
+                  }));
+                  setHeroAiDraft(null);
+                }}
                 onDiscardHeroAi={() => setHeroAiDraft(null)}
               />
             </TabsContent>

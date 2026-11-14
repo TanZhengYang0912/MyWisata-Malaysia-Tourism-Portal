@@ -2,6 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ authorizeVendor: vi.fn() }));
 vi.mock('@/lib/vendor-authorization', () => ({ authorizeVendor: mocks.authorizeVendor }));
+const mediaMocks = vi.hoisted(() => ({ reserve: vi.fn(), markStored: vi.fn() }));
+vi.mock('@/lib/vendor/media-objects', () => ({
+  reserveVendorMediaObject: mediaMocks.reserve,
+  markVendorMediaObjectStored: mediaMocks.markStored,
+  MEDIA_RESERVE_FAILED: { code: 'UPLOAD_UNAVAILABLE', message: 'Uploads are temporarily unavailable. Please try again.', status: 503 },
+}));
+
 
 import { DELETE, GET, PUT } from '../route';
 
@@ -33,6 +40,8 @@ describe('/api/vendors/[vendorId]/media/gallery', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     upload = vi.fn().mockResolvedValue({ error: null });
+    mediaMocks.reserve.mockResolvedValue({ ok: true, objectId: 'media-object-1' });
+    mediaMocks.markStored.mockResolvedValue(undefined);
     remove = vi.fn().mockResolvedValue({ error: null });
     rpc = vi.fn().mockResolvedValue({ data: null, error: null });
     order = vi.fn().mockResolvedValue({ data: oldRows, error: null });
@@ -83,6 +92,22 @@ describe('/api/vendors/[vendorId]/media/gallery', () => {
     const response = await PUT(requestWithFiles(1), params());
     expect(response.status).toBe(422);
     expect(upload).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('registers every gallery image before writing it', async () => {
+    await PUT(requestWithFiles(), params());
+    expect(mediaMocks.reserve).toHaveBeenCalledTimes(3);
+    expect(mediaMocks.reserve).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ bucket: 'vendor-products', vendorId, purpose: 'vendor_gallery', path: upload.mock.calls[0][0] }));
+    expect(mediaMocks.markStored).toHaveBeenCalledTimes(3);
+  });
+
+  it('stops and cleans earlier uploads when a later image cannot be registered', async () => {
+    mediaMocks.reserve.mockResolvedValueOnce({ ok: true, objectId: 'media-object-1' }).mockResolvedValueOnce({ ok: false });
+    const response = await PUT(requestWithFiles(), params());
+    expect(response.status).toBe(503);
+    expect(upload).toHaveBeenCalledTimes(1);
+    expect(remove.mock.calls[0][0]).toHaveLength(1);
     expect(rpc).not.toHaveBeenCalled();
   });
 

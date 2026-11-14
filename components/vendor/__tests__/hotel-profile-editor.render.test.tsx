@@ -6,8 +6,11 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string, options?: Record<string, unknown>) => (options?.note ? `${key}:${options.note}` : key), i18n: { language: "en", resolvedLanguage: "en" } }),
 }));
+vi.mock("@/components/providers/action-feedback", () => ({
+  useActionFeedback: () => ({ showFeedback: vi.fn() }),
+}));
 
-import { HotelProfileForm, type HotelProfileFormData } from "../hotel-profile-editor";
+import { HotelProfileEditor, HotelProfileForm, type HotelProfileFormData } from "../hotel-profile-editor";
 
 const data: HotelProfileFormData = {
   isHotel: true,
@@ -44,11 +47,41 @@ describe("hotel profile editor", () => {
   it("groups profile fields and keeps the review action reachable on a phone", () => {
     const markup = render({});
 
-    expect(markup.match(/<section class="rounded-2xl border border-border bg-card p-4 sm:p-5">/g)).toHaveLength(3);
-    expect(markup).toContain("sticky bottom-0");
+    // About, amenities, check-in/out, policies and photos each get one section card.
+    expect(markup.match(/scroll-mt-24 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-border dark:bg-card/g)).toHaveLength(5);
+    expect(markup).toContain('href="#hotel-amenities"');
+    expect(markup).toContain("grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3");
+    expect(markup).toContain("sticky bottom-20");
+    expect(markup).toContain("sm:static");
     expect(markup).toContain("safe-area-inset-bottom");
     expect(markup).toContain("min-h-11 w-full sm:w-auto");
     expect(markup).not.toContain("hotelProfile.description");
+  });
+
+  it("does not offer to resubmit an unchanged profile for review", () => {
+    const markup = render({});
+    expect(markup).toContain("hotelProfile.noChanges");
+    const submitButtons = markup.match(/<button[^>]*type="submit"[^>]*>/g) ?? [];
+    expect(submitButtons).toHaveLength(2);
+    expect(submitButtons.every((button) => button.includes('disabled=""'))).toBe(true);
+  });
+
+  it("uses the full-width Vendor workspace header for the hotel profile", () => {
+    const markup = renderToStaticMarkup(
+      <HotelProfileEditor
+        vendorId="vendor-1"
+        outletId="outlet-1"
+        outletName="Baba House"
+        onClose={() => undefined}
+      >
+        <div>Shop builder</div>
+      </HotelProfileEditor>,
+    );
+
+    expect(markup).toContain('class="w-full space-y-6"');
+    expect(markup).toContain("hotelProfile.eyebrow");
+    expect(markup).toContain("Baba House");
+    expect(markup).not.toContain("max-w-4xl");
   });
 
   it("replaces the page builder with the hotel editor for hotels", () => {

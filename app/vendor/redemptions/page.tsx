@@ -14,7 +14,6 @@ import {
   MoreHorizontal,
   PackageCheck,
   RefreshCw,
-  Search,
   Store,
   Ticket,
   TicketPercent,
@@ -23,7 +22,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
-import { MobileFilterToggle } from '@/components/vendor/compact-filter-bar';
+import { VendorMetricCard } from '@/components/vendor/vendor-metric-card';
+import { VendorListFilters } from '@/components/vendor/vendor-list-filters';
 import { VendorMobileRecordCard } from '@/components/vendor/mobile-record-card';
 import type { RedemptionRecord } from '@/app/api/vendors/[vendorId]/redemptions/route';
 
@@ -31,6 +31,15 @@ interface OutletOption {
   id: string;
   name: string;
 }
+
+const KIND_FILTERS = [
+  { value: 'all', labelKey: 'ui.redemptions.filters.all', fallback: 'All Activity' },
+  { value: 'voucher', labelKey: 'ui.redemptions.filters.vouchers', fallback: 'Vouchers' },
+  { value: 'ticket', labelKey: 'ui.redemptions.filters.tickets', fallback: 'Tickets' },
+  { value: 'retail_pickup', labelKey: 'ui.redemptions.filters.retail', fallback: 'Retail pickups' },
+  { value: 'event_pickup', labelKey: 'ui.redemptions.filters.eventPickups', fallback: 'Event pickups' },
+  { value: 'food_order', labelKey: 'ui.redemptions.filters.foodOrders', fallback: 'Food scans' },
+] as const;
 
 export default function VendorRedemptionsPage() {
   const { t, i18n } = useTranslation('vendor');
@@ -40,7 +49,17 @@ export default function VendorRedemptionsPage() {
 
   const [records, setRecords] = useState<RedemptionRecord[]>([]);
   const [outlets, setOutlets] = useState<OutletOption[]>([]);
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<{
+    totalCount: number;
+    todayCount: number;
+    voucherCount: number;
+    ticketCount: number;
+    retailCount: number;
+    activeOutletsCount: number;
+    // Undefined until the server reports these counters (see migration 20261113231500).
+    eventPickupCount?: number;
+    foodOrderCount?: number;
+  }>({
     totalCount: 0,
     todayCount: 0,
     voucherCount: 0,
@@ -57,7 +76,6 @@ export default function VendorRedemptionsPage() {
   const [outletFilter, setOutletFilter] = useState('');
   const [kindFilter, setKindFilter] = useState<'all' | 'voucher' | 'ticket' | 'event_pickup' | 'retail_pickup' | 'food_order'>('all');
   const [search, setSearch] = useState('');
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Load Outlets for filter
@@ -182,33 +200,15 @@ export default function VendorRedemptionsPage() {
         </div>}
       />
 
-      {/* KPI Cards */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.totalRedemptions', 'Total Redemptions')}</p>
-          <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">{stats.totalCount}</p>
-          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.allTime', 'All recorded scans')}</p>
-        </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.todayScans', "Today's Scans")}</p>
-          <p className="mt-1 text-2xl font-bold text-primary">{stats.todayCount}</p>
-          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.redeemedToday', 'Redeemed today')}</p>
-        </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.vouchersUsed', 'Vouchers Redeemed')}</p>
-          <p className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-300">{stats.voucherCount}</p>
-          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.storePromos', 'Store vouchers')}</p>
-        </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.ticketsAdmitted', 'Tickets Admitted')}</p>
-          <p className="mt-1 text-2xl font-bold text-[#b45309]">{stats.ticketCount}</p>
-          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.checkedInGuests', 'Guest check-ins')}</p>
-        </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.retailPickups', 'Retail pickups')}</p>
-          <p className="mt-1 text-2xl font-bold text-primary">{stats.retailCount}</p>
-          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.retailItemsHandedOver', 'Order lines handed over')}</p>
-        </div>
+      {/* Counters follow the active kind/outlet/search filters; each scan kind has its own figure. */}
+      <section aria-label={t('ui.redemptions.title')} className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 2xl:grid-cols-7">
+        <VendorMetricCard density="compact" label={t('ui.redemptions.totalRedemptions')} value={stats.totalCount} note={t('ui.redemptions.allTime')} />
+        <VendorMetricCard density="compact" label={t('ui.redemptions.todayScans')} value={stats.todayCount} note={t('ui.redemptions.redeemedToday')} />
+        <VendorMetricCard density="compact" label={t('ui.redemptions.ticketsAdmitted')} value={stats.ticketCount} note={t('ui.redemptions.checkedInGuests')} />
+        <VendorMetricCard density="compact" label={t('ui.redemptions.vouchersUsed')} value={stats.voucherCount} note={t('ui.redemptions.storePromos')} />
+        <VendorMetricCard density="compact" label={t('ui.redemptions.retailPickups')} value={stats.retailCount} note={t('ui.redemptions.retailItemsHandedOver')} />
+        <VendorMetricCard density="compact" label={t('ui.redemptions.eventPickups')} value={stats.eventPickupCount ?? '—'} note={loading ? undefined : stats.eventPickupCount === undefined ? t('ui.scanner.counterPending') : t('ui.redemptions.eventPickupsNote')} />
+        <VendorMetricCard density="compact" label={t('ui.redemptions.foodOrders')} value={stats.foodOrderCount ?? '—'} note={loading ? undefined : stats.foodOrderCount === undefined ? t('ui.scanner.counterPending') : t('ui.redemptions.foodOrdersNote')} />
       </section>
 
       <div className="flex justify-end md:hidden">
@@ -227,96 +227,42 @@ export default function VendorRedemptionsPage() {
         </details>
       </div>
 
-      {/* Filter and Search Bar */}
-      <section className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-          {/* Kind Filter Pills */}
-          <div className="inline-flex max-w-full shrink-0 flex-nowrap overflow-x-auto rounded-xl bg-gray-100 dark:bg-muted p-1 text-xs font-semibold">
-            {(
-              [
-                { value: 'all', label: t('ui.redemptions.filters.all', 'All Activity') },
-                { value: 'voucher', label: t('ui.redemptions.filters.vouchers', 'Vouchers') },
-                { value: 'ticket', label: t('ui.redemptions.filters.tickets', 'Tickets') },
-                { value: 'retail_pickup', label: t('ui.redemptions.filters.retail', 'Retail pickups') },
-                { value: 'food_order', label: t('ui.redemptions.filters.foodOrders', 'Food scans') },
-              ] as const
-            ).map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => {
-                  setKindFilter(item.value);
-                  setPage(1);
-                }}
-                className={`min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition ${
-                  kindFilter === item.value ? 'bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm' : 'text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-          <span className="shrink-0 text-xs text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.filteredCount', { count: totalRecords })}</span>
-        </div>
-
-        {outlets.length > 1 && (
-          <select
-            value={outletFilter}
-            onChange={(event) => {
-              setOutletFilter(event.target.value);
-              setPage(1);
-            }}
-            aria-label={t('ui.redemptions.allOutlets', 'All Outlets')}
-            className="hidden h-11 min-w-0 max-w-xs rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-semibold text-gray-700 dark:text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary lg:block"
-          >
-            <option value="">{t('ui.redemptions.allOutlets', 'All Outlets')}</option>
-            {outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}
+      <VendorListFilters
+        query={search}
+        onQueryChange={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        placeholder={t('ui.redemptions.searchPlaceholder', 'Search code, item, staff...')}
+        chips={[
+          ...(kindFilter !== 'all' ? [{ key: 'kind', label: t(KIND_FILTERS.find((item) => item.value === kindFilter)?.labelKey ?? 'ui.redemptions.filters.all'), onRemove: () => { setKindFilter('all'); setPage(1); } }] : []),
+          ...(outletFilter ? [{ key: 'outlet', label: outlets.find((outlet) => outlet.id === outletFilter)?.name ?? outletFilter, onRemove: () => { setOutletFilter(''); setPage(1); } }] : []),
+        ]}
+        onClearAll={() => {
+          setSearch('');
+          setKindFilter('all');
+          setOutletFilter('');
+          setPage(1);
+        }}
+        drawerTitle={t('ui.listFilters.drawerTitle')}
+      >
+        <label className="block space-y-2 text-sm font-semibold text-foreground">
+          <span>{t('ui.listFilters.kind')}</span>
+          <select value={kindFilter} onChange={(event) => { setKindFilter(event.target.value as typeof kindFilter); setPage(1); }} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/15">
+            {KIND_FILTERS.map((item) => <option key={item.value} value={item.value}>{t(item.labelKey, item.fallback)}</option>)}
           </select>
-        )}
-
-        {/* Search */}
-        <div className="flex min-w-0 gap-2 lg:w-72 lg:shrink-0">
-          <label className="relative min-w-0 flex-1">
-          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            placeholder={t('ui.redemptions.searchPlaceholder', 'Search code, item, staff...')}
-            aria-label={t('ui.redemptions.searchPlaceholder', 'Search code, item, staff...')}
-            className="h-11 w-full rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card pl-9 pr-3 text-sm text-gray-800 dark:text-foreground outline-none placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary"
-          />
-          </label>
-          {outlets.length > 1 && (
-            <MobileFilterToggle
-              controlId="redemption-filters"
-              isOpen={filtersOpen}
-              selectedFilterCount={outletFilter ? 1 : 0}
-              onToggle={() => setFiltersOpen((open) => !open)}
-            />
-          )}
-        </div>
-
+        </label>
         {outlets.length > 1 && (
-          <div id="redemption-filters" className={`${filtersOpen ? 'flex' : 'hidden'} min-w-0 flex-col gap-2 rounded-xl border border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 p-3 lg:hidden`}>
-            <select
-              value={outletFilter}
-              onChange={(event) => {
-                setOutletFilter(event.target.value);
-                setPage(1);
-              }}
-              aria-label={t('ui.redemptions.allOutlets', 'All Outlets')}
-              className="h-11 w-full min-w-0 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-semibold text-gray-700 dark:text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-            >
+          <label className="block space-y-2 text-sm font-semibold text-foreground">
+            <span>{t('ui.redemptions.allOutlets', 'All Outlets')}</span>
+            <select value={outletFilter} onChange={(event) => { setOutletFilter(event.target.value); setPage(1); }} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/15">
               <option value="">{t('ui.redemptions.allOutlets', 'All Outlets')}</option>
               {outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}
             </select>
-          </div>
+          </label>
         )}
-      </section>
+      </VendorListFilters>
+      <div className="text-sm text-muted-foreground">{t('ui.redemptions.filteredCount', { count: totalRecords })}</div>
 
       {/* Main Table */}
       <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
@@ -388,7 +334,7 @@ export default function VendorRedemptionsPage() {
           <div className="hidden md:block overflow-x-auto">
             {/* Six columns cannot share a phone width; keep a readable minimum and scroll inside the card. */}
             <table className="w-full min-w-[56rem] text-left text-sm">
-              <thead className="border-b border-gray-100 dark:border-border bg-gray-50/75 dark:bg-muted/75 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-muted-foreground">
+              <thead className="border-b border-gray-100 dark:border-border bg-gray-50/75 dark:bg-muted/75 text-xs font-boldr text-gray-500 dark:text-muted-foreground">
                 <tr>
                   <th className="px-5 py-3.5">{t('ui.redemptions.table.type', 'Type')}</th>
                   <th className="px-5 py-3.5">{t('ui.redemptions.table.item', 'Item & Code')}</th>

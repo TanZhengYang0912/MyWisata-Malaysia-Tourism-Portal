@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import {
-  AlertTriangle, ArrowRight, ArrowUpRight, Banknote, CalendarDays, Compass, Landmark, MapPinned, ShoppingBag, TicketPercent,
+  AlertTriangle, ArrowRight, CalendarDays, Compass, Landmark, TicketPercent,
 } from 'lucide-react';
 import { getVendorDashboardData, formatGrowth, type DashboardFilter } from '@/lib/vendor-dashboard';
 import { formatMYR } from '@/lib/i18n/format';
@@ -19,6 +19,8 @@ import { dashboardFilterLabel } from '@/lib/vendor/performance-ranking';
 import { getServerTranslation } from '@/lib/i18n/server';
 import { normalizeDashboardSalesMode } from '@/lib/vendor/dashboard-metrics';
 import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
+import { VendorMetricCard } from '@/components/vendor/vendor-metric-card';
+import { DataFreshness } from '@/components/vendor/data-freshness';
 
 interface Props { searchParams?: Promise<{ filter?: string; from?: string; to?: string; sales?: string | string[] }> }
 
@@ -28,14 +30,6 @@ function normalizeFilter(value: string | undefined): DashboardFilter {
   return FILTERS.includes(value as DashboardFilter) ? value as DashboardFilter : '30d';
 }
 
-function statTone(tone: string) {
-  return {
-    teal: 'bg-secondary text-primary',
-    amber: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-200',
-    blue: 'bg-secondary text-primary',
-    rose: 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-200',
-  }[tone] || 'bg-gray-100 dark:bg-muted text-gray-700 dark:text-foreground';
-}
 
 export default async function VendorDashboard({ searchParams }: Props) {
   const { t } = await getServerTranslation('vendor');
@@ -48,17 +42,20 @@ export default async function VendorDashboard({ searchParams }: Props) {
   const data = await getVendorDashboardData(filter, { from: params?.from, to: params?.to }, salesMode);
   if (!data) redirect('/login');
   const isOutletManager = data.role === 'outlet_manager';
+  // Server render time of these figures; DashboardRealtime re-renders on vendor changes.
+  const generatedAt = new Date().toISOString();
 
-  const stats = isOutletManager ? [
-    { label: t(isDemoSales ? 'ui.dashboard.demoRevenue' : 'ui.dashboard.totalRevenue'), value: formatMYR(data.stats.totalRevenue), note: formatGrowth(data.stats.revenueGrowth), icon: Banknote, tone: 'teal' },
-    { label: t('ui.dashboard.totalOrders'), value: data.stats.totalOrders.toLocaleString(), note: formatGrowth(data.stats.ordersGrowth), icon: ShoppingBag, tone: 'blue' },
-    { label: t('ui.dashboard.bookingActivity'), value: data.stats.bookingItems.toLocaleString(), note: t('ui.dashboard.bookingsInPeriod'), icon: CalendarDays, tone: 'teal' },
-    { label: t('ui.dashboard.ordersToFulfil'), value: data.stats.pendingOrders.toLocaleString(), note: t('ui.dashboard.assignedOutletOperations'), icon: ShoppingBag, tone: 'amber' },
+  // Outlet Managers come here to work: orders waiting for them lead. Owners lead with revenue.
+  const stats: Array<{ label: string; value: string; note: string; attention?: boolean }> = isOutletManager ? [
+    { label: t('ui.dashboard.ordersToFulfil'), value: data.stats.pendingOrders.toLocaleString(), note: t('ui.dashboard.assignedOutletOperations'), attention: data.stats.pendingOrders > 0 },
+    { label: t(isDemoSales ? 'ui.dashboard.demoRevenue' : 'ui.dashboard.totalRevenue'), value: formatMYR(data.stats.totalRevenue), note: formatGrowth(data.stats.revenueGrowth) },
+    { label: t('ui.dashboard.totalOrders'), value: data.stats.totalOrders.toLocaleString(), note: formatGrowth(data.stats.ordersGrowth) },
+    { label: t('ui.dashboard.bookingActivity'), value: data.stats.bookingItems.toLocaleString(), note: t('ui.dashboard.bookingsInPeriod') },
   ] : [
-    { label: t(isDemoSales ? 'ui.dashboard.demoRevenue' : 'ui.dashboard.totalRevenue'), value: formatMYR(data.stats.totalRevenue), note: formatGrowth(data.stats.revenueGrowth), icon: Banknote, tone: 'teal' },
-    { label: t('ui.dashboard.totalOrders'), value: data.stats.totalOrders.toLocaleString(), note: formatGrowth(data.stats.ordersGrowth), icon: ShoppingBag, tone: 'blue' },
-    { label: t('ui.dashboard.activeListings'), value: data.stats.activeProducts.toLocaleString(), note: t('ui.dashboard.publishedProducts'), icon: Compass, tone: 'amber' },
-    { label: t('ui.dashboard.outletsManaged'), value: data.stats.activeOutlets.toLocaleString(), note: t('ui.dashboard.acrossMalaysia'), icon: MapPinned, tone: 'rose' },
+    { label: t(isDemoSales ? 'ui.dashboard.demoRevenue' : 'ui.dashboard.totalRevenue'), value: formatMYR(data.stats.totalRevenue), note: formatGrowth(data.stats.revenueGrowth) },
+    { label: t('ui.dashboard.totalOrders'), value: data.stats.totalOrders.toLocaleString(), note: formatGrowth(data.stats.ordersGrowth) },
+    { label: t('ui.dashboard.activeListings'), value: data.stats.activeProducts.toLocaleString(), note: t('ui.dashboard.publishedProducts') },
+    { label: t('ui.dashboard.outletsManaged'), value: data.stats.activeOutlets.toLocaleString(), note: t('ui.dashboard.acrossMalaysia') },
   ];
 
   return (
@@ -67,17 +64,12 @@ export default async function VendorDashboard({ searchParams }: Props) {
       <VendorPageHeader
         eyebrow={<><Landmark size={15} aria-hidden="true" /> {t('ui.dashboard.partnerPortal')}</>}
         title={isOutletManager ? t('ui.dashboard.outletOperations') : t('ui.dashboard.overview')}
-        actions={<DashboardFilterControl />}
+        actions={<div className="flex flex-wrap items-center justify-end gap-3"><DataFreshness generatedAt={generatedAt} /><DashboardFilterControl /></div>}
       />
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-        {stats.map(({ label, value, note, icon: Icon, tone }) => (
-          <article key={label} className="relative min-w-0 overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm sm:p-6">
-            <div className="absolute -right-3 -top-3 opacity-[0.045]"><Icon size={104} /></div>
-            <div className="mb-3 flex min-w-0 items-center gap-2 sm:mb-5 sm:gap-3"><div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full sm:h-10 sm:w-10 ${statTone(tone)}`}><Icon size={18} /></div><p className="min-w-0 text-sm font-medium leading-5 text-gray-600 dark:text-muted-foreground sm:text-base">{label}</p></div>
-            <p className="break-words text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground sm:text-3xl">{value}</p>
-            <div className={`mt-2 inline-flex max-w-full items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold sm:mt-3 ${note.includes('vs previous') && !note.startsWith('-') ? 'bg-secondary text-primary' : 'bg-gray-50 dark:bg-muted/50 text-gray-500 dark:text-muted-foreground'}`}><ArrowUpRight size={13} className="shrink-0" /><span className="break-words">{note}</span></div>
-          </article>
+      <section className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+        {stats.map(({ label, value, note, attention }) => (
+          <VendorMetricCard key={label} label={label} value={value} note={note} tone={attention ? 'attention' : 'default'} />
         ))}
       </section>
 

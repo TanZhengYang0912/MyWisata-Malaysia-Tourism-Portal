@@ -10,9 +10,7 @@ import {
   Eye,
   MoreHorizontal,
   PackageCheck,
-  Search,
   ShoppingBag,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -28,11 +26,13 @@ import { productImageUrl } from "@/lib/storage/product-image";
 import { formatMYR } from "@/lib/i18n/format";
 import { formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
-import { getMalaysiaDateRangeDefaults } from "@/lib/datetime/date-input";
 import type { StayBookingDetails } from "@/backend/core/types";
 import CenteredDetailModal from "@/components/ui/centered-detail-modal";
 import { VendorPageHeader } from "@/components/vendor/vendor-page-header";
-import { MobileFilterToggle } from "@/components/vendor/compact-filter-bar";
+import { VendorMetricCard } from "@/components/vendor/vendor-metric-card";
+import { FilterDateRange, FilterSegmented, isInvalidDateRange } from "@/components/vendor/compact-filter-bar";
+import { VendorListFilters } from "@/components/vendor/vendor-list-filters";
+import { SelectPageBar } from "@/components/vendor/select-page-bar";
 import { VendorMobileRecordCard } from "@/components/vendor/mobile-record-card";
 import {
   getBatchFulfilmentActions,
@@ -185,10 +185,6 @@ export default function VendorOrdersPage() {
     useState<OrderFilters>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  function primeDateRange() {
-    const defaults = getMalaysiaDateRangeDefaults();
-    setDraftFilters((current) => ({ ...current, from: current.from || defaults.from, to: current.to || defaults.to }));
-  }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -272,18 +268,6 @@ export default function VendorOrdersPage() {
     router.replace(nextQuery ? `/vendor/orders?${nextQuery}` : "/vendor/orders", { scroll: false });
   }, [items, linkedOrderId, loading, router, searchParams]);
 
-  const quickFilter =
-    filters.fulfilStatus === "pending" || filters.fulfilStatus === "ready"
-      ? "attention"
-      : filters.fulfilStatus;
-  const activeFilterCount = [
-    filters.fulfilStatus,
-    filters.orderStatus,
-    filters.from,
-    filters.to,
-  ].filter(Boolean).length;
-  const hasFilters = Boolean(filters.q || activeFilterCount);
-
   function clearSelectionAfterFilterChange() {
     setSelectedIds([]);
     setAllFilteredSelected(false);
@@ -297,6 +281,7 @@ export default function VendorOrdersPage() {
   }
 
   function applyAdvancedFilters() {
+    if (isInvalidDateRange(draftFilters)) return;
     setFilters(draftFilters);
     setFiltersOpen(false);
     clearSelectionAfterFilterChange();
@@ -650,28 +635,13 @@ export default function VendorOrdersPage() {
         </div>}
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.orders.needsAttention")}</p>
-          <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-300">{stats.attention}</p>
-          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t("ui.products.currentPage")}</p>
-        </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.orders.markReady")}</p>
-          <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">{stats.ready}</p>
-          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t("ui.products.currentPage")}</p>
-        </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.orders.completed")}</p>
-          <p className="mt-1 text-2xl font-bold text-primary">{stats.fulfilled}</p>
-          <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t("ui.products.currentPage")}</p>
-        </div>
-        <div className="rounded-2xl border border-primary/10 bg-secondary p-4 shadow-sm">
-          <p className="text-xs text-primary">{t("ui.dashboard.totalRevenue")}</p>
-          <p className="mt-1 text-2xl font-bold text-primary">{formatMYR(stats.totalSales)}</p>
-          <p className="mt-1 text-xs text-primary">{t("ui.products.currentPage")}</p>
-        </div>
-      </div>
+      {/* Same card for every figure; only work that is waiting gets a colour. */}
+      <section aria-label={t("ui.orders.title")} className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+        <VendorMetricCard label={t("ui.orders.needsAttention")} value={stats.attention} tone={stats.attention > 0 ? "attention" : "default"} note={t("ui.products.currentPage")} />
+        <VendorMetricCard label={t("ui.orders.readyCount")} value={stats.ready} note={t("ui.products.currentPage")} />
+        <VendorMetricCard label={t("ui.orders.completed")} value={stats.fulfilled} note={t("ui.products.currentPage")} />
+        <VendorMetricCard label={t("ui.orders.pageOrderTotal")} value={formatMYR(stats.totalSales)} note={t("ui.products.currentPage")} />
+      </section>
 
       <div className="flex justify-end md:hidden">
         <details className="group relative">
@@ -689,247 +659,95 @@ export default function VendorOrdersPage() {
         </details>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm">
-        <div className="flex max-w-full flex-nowrap gap-1 overflow-x-auto rounded-xl bg-gray-100 dark:bg-muted p-1">
-          {[
-            { value: "", label: t("ui.orders.allOrders") },
-            { value: "attention", label: t("ui.orders.needsAttention") },
-            { value: "fulfilled", label: t("ui.orders.completed") },
-            { value: "cancelled", label: t("ui.status.cancelled") },
-          ].map((filter) => (
-            <button
-              key={filter.value || "all"}
-              type="button"
-              onClick={() => applyQuickFilter(filter.value)}
-              className={`min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold ${quickFilter === filter.value ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"}`}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex min-w-0 items-center gap-2">
-          <label className="relative min-w-0 flex-1">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-muted-foreground"
-              size={15}
-              aria-hidden="true"
-            />
-            <input
-              value={filters.q}
-              onChange={(event) => {
-                const q = event.target.value;
-                setFilters((current) => ({ ...current, q }));
-                setDraftFilters((current) => ({ ...current, q }));
-              }}
-              placeholder={t("ui.orders.searchPlaceholder")}
-              aria-label={t("ui.orders.searchPlaceholder")}
-              className="h-11 w-full rounded-xl border border-gray-200 dark:border-border pl-9 pr-3 text-sm outline-none focus:border-primary"
-            />
-          </label>
-          <MobileFilterToggle
-            controlId="order-filters"
-            isOpen={filtersOpen}
-            selectedFilterCount={activeFilterCount}
-            mobileOnly={false}
-            onToggle={() => {
-              setDraftFilters(filters);
-              setFiltersOpen((open) => !open);
-            }}
+      <VendorListFilters
+        query={filters.q}
+        onQueryChange={(q) => {
+          setFilters((current) => ({ ...current, q }));
+          setDraftFilters((current) => ({ ...current, q }));
+        }}
+        placeholder={t("ui.orders.searchPlaceholder")}
+        chips={[
+          ...(filters.fulfilStatus ? [{
+            key: "fulfilStatus",
+            label: filters.fulfilStatus === "attention" ? t("ui.orders.needsAttention") : filters.fulfilStatus === "fulfilled" ? t("ui.orders.completed") : t(`ui.status.${filters.fulfilStatus}`),
+            onRemove: () => applyQuickFilter(""),
+          }] : []),
+          ...(filters.orderStatus ? [{
+            key: "orderStatus",
+            label: t(`ui.status.${filters.orderStatus}`),
+            onRemove: () => {
+              const nextFilters = { ...filters, orderStatus: "" };
+              setFilters(nextFilters);
+              setDraftFilters(nextFilters);
+              clearSelectionAfterFilterChange();
+            },
+          }] : []),
+          ...(filters.from || filters.to ? [{
+            key: "dateRange",
+            label: `${t("ui.orders.dateRange")}: ${filters.from || "…"} – ${filters.to || "…"}`,
+            onRemove: () => {
+              const nextFilters = { ...filters, from: "", to: "" };
+              setFilters(nextFilters);
+              setDraftFilters(nextFilters);
+              clearSelectionAfterFilterChange();
+            },
+          }] : []),
+        ]}
+        onClearAll={clearFilters}
+        drawerTitle={t("ui.orders.advancedFilters")}
+        open={filtersOpen}
+        onOpenChange={(open) => {
+          if (open) setDraftFilters(filters);
+          setFiltersOpen(open);
+        }}
+        onApply={applyAdvancedFilters}
+        applyDisabled={isInvalidDateRange(draftFilters)}
+        resultCountLabel={t("ui.orders.applyFilters")}
+      >
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-foreground">{t("ui.listFilters.quickStatus")}</p>
+          <FilterSegmented
+            layout="grid"
+            ariaLabel={t("ui.listFilters.quickStatus")}
+            options={[
+              { value: "", label: t("ui.orders.allOrders") },
+              { value: "attention", label: t("ui.orders.needsAttention") },
+              { value: "fulfilled", label: t("ui.orders.completed") },
+              { value: "cancelled", label: t("ui.status.cancelled") },
+            ]}
+            value={draftFilters.fulfilStatus === "pending" || draftFilters.fulfilStatus === "ready" ? "attention" : draftFilters.fulfilStatus}
+            onChange={(fulfilStatus) => setDraftFilters((current) => ({ ...current, fulfilStatus }))}
           />
         </div>
-
-        {filtersOpen && (
-          <div
-            id="order-filters"
-            className="rounded-xl border border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 p-4"
+        <label className="block space-y-2 text-sm font-semibold text-foreground">
+          <span>{t("ui.orders.fulfilmentStatus")}</span>
+          <select
+            value={draftFilters.fulfilStatus}
+            onChange={(event) => setDraftFilters((current) => ({ ...current, fulfilStatus: event.target.value }))}
+            className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-foreground">
-                  {t("ui.orders.advancedFilters")}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setFiltersOpen(false)}
-                aria-label={t("ui.orders.closeFilters")}
-                className="rounded-lg p-1.5 text-gray-400 dark:text-muted-foreground hover:bg-white dark:hover:bg-card hover:text-gray-700 dark:hover:text-foreground"
-              >
-                <X size={15} aria-hidden="true" />
-              </button>
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="flex flex-col gap-1.5 text-xs font-semibold text-gray-600 dark:text-muted-foreground">
-                {t("ui.orders.fulfilmentStatus")}
-                <select
-                  value={draftFilters.fulfilStatus}
-                  onChange={(event) =>
-                    setDraftFilters((current) => ({
-                      ...current,
-                      fulfilStatus: event.target.value,
-                    }))
-                  }
-                  className="h-10 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-normal text-gray-700 dark:text-foreground outline-none focus:border-primary"
-                >
-                  <option value="">{t("ui.orders.allItems")}</option>
-                  <option value="attention">
-                    {t("ui.orders.needsAttention")}
-                  </option>
-                  {FULFILMENT_STATUS_OPTIONS.map((status) => (
-                    <option key={status} value={status}>
-                      {t(`ui.status.${status}`)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1.5 text-xs font-semibold text-gray-600 dark:text-muted-foreground">
-                {t("ui.orders.orderStatusFilter")}
-                <select
-                  value={draftFilters.orderStatus}
-                  onChange={(event) =>
-                    setDraftFilters((current) => ({
-                      ...current,
-                      orderStatus: event.target.value,
-                    }))
-                  }
-                  className="h-10 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-normal text-gray-700 dark:text-foreground outline-none focus:border-primary"
-                >
-                  <option value="">{t("ui.orders.allOrderStates")}</option>
-                  {ORDER_STATUS_OPTIONS.map((status) => (
-                    <option key={status} value={status}>
-                      {t(`ui.status.${status}`)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="sm:col-span-2">
-                <p className="mb-1.5 text-xs font-semibold text-gray-600 dark:text-muted-foreground">
-                  {t("ui.orders.dateRange")}
-                </p>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <label className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3">
-                    <span className="shrink-0 text-xs text-gray-400 dark:text-muted-foreground">
-                      {t("ui.orders.fromDate")}
-                    </span>
-                    <input
-                      type="date"
-                      value={draftFilters.from}
-                      onFocus={primeDateRange}
-                      onChange={(event) =>
-                        setDraftFilters((current) => ({
-                          ...current,
-                          from: event.target.value,
-                        }))
-                      }
-                      aria-label={t("ui.orders.fromDate")}
-                      className="h-10 min-w-0 flex-1 bg-transparent text-sm text-gray-700 dark:text-foreground outline-none"
-                    />
-                  </label>
-                  <label className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3">
-                    <span className="shrink-0 text-xs text-gray-400 dark:text-muted-foreground">
-                      {t("ui.orders.toDate")}
-                    </span>
-                    <input
-                      type="date"
-                      value={draftFilters.to}
-                      onFocus={primeDateRange}
-                      onChange={(event) =>
-                        setDraftFilters((current) => ({
-                          ...current,
-                          to: event.target.value,
-                        }))
-                      }
-                      aria-label={t("ui.orders.toDate")}
-                      className="h-10 min-w-0 flex-1 bg-transparent text-sm text-gray-700 dark:text-foreground outline-none"
-                    />
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 dark:border-border pt-3">
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="rounded-lg px-3 py-2 text-xs font-semibold text-gray-500 dark:text-muted-foreground hover:bg-white dark:hover:bg-card hover:text-gray-900 dark:hover:text-foreground"
-              >
-                {t("ui.common.clearFilters")}
-              </button>
-              <button
-                type="button"
-                onClick={applyAdvancedFilters}
-                className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white hover:bg-primary/90"
-              >
-                {t("ui.orders.applyFilters")}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {hasFilters && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-gray-500 dark:text-muted-foreground">
-              {t("ui.orders.activeFilters")}
-            </span>
-            {filters.q && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-muted px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-foreground">
-                {t("ui.orders.searchFilter")}: {filters.q}
-              </span>
-            )}
-            {filters.fulfilStatus && (
-              <button
-                type="button"
-                onClick={() => applyQuickFilter("")}
-                className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-primary"
-              >
-                {filters.fulfilStatus === "attention"
-                  ? t("ui.orders.needsAttention")
-                  : t(`ui.status.${filters.fulfilStatus}`)}
-                <X size={12} aria-hidden="true" />
-              </button>
-            )}
-            {filters.orderStatus && (
-              <button
-                type="button"
-                onClick={() => {
-                  const nextFilters = { ...filters, orderStatus: "" };
-                  setFilters(nextFilters);
-                  setDraftFilters(nextFilters);
-                  clearSelectionAfterFilterChange();
-                }}
-                className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-primary"
-              >
-                {t(`ui.status.${filters.orderStatus}`)}
-                <X size={12} aria-hidden="true" />
-              </button>
-            )}
-            {(filters.from || filters.to) && (
-              <button
-                type="button"
-                onClick={() => {
-                  const nextFilters = { ...filters, from: "", to: "" };
-                  setFilters(nextFilters);
-                  setDraftFilters(nextFilters);
-                  clearSelectionAfterFilterChange();
-                }}
-                className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-primary"
-              >
-                {filters.from || "…"} – {filters.to || "…"}
-                <X size={12} aria-hidden="true" />
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="text-xs font-semibold text-primary hover:underline"
-            >
-              {t("ui.common.clearFilters")}
-            </button>
-          </div>
-        )}
-      </div>
+            <option value="">{t("ui.orders.allItems")}</option>
+            <option value="attention">{t("ui.orders.needsAttention")}</option>
+            {FULFILMENT_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{t(`ui.status.${status}`)}</option>)}
+          </select>
+        </label>
+        <label className="block space-y-2 text-sm font-semibold text-foreground">
+          <span>{t("ui.orders.orderStatusFilter")}</span>
+          <select
+            value={draftFilters.orderStatus}
+            onChange={(event) => setDraftFilters((current) => ({ ...current, orderStatus: event.target.value }))}
+            className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+          >
+            <option value="">{t("ui.orders.allOrderStates")}</option>
+            {ORDER_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{t(`ui.status.${status}`)}</option>)}
+          </select>
+        </label>
+        <FilterDateRange
+          legend={t("ui.orders.dateRange")}
+          value={{ from: draftFilters.from, to: draftFilters.to }}
+          onChange={(range) => setDraftFilters((current) => ({ ...current, ...range }))}
+        />
+      </VendorListFilters>
 
       <BatchActionBar
         selectedCount={selectedIds.length}
@@ -980,31 +798,16 @@ export default function VendorOrdersPage() {
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-border px-5 py-3 text-xs text-gray-500 dark:text-muted-foreground">
-              <label className="inline-flex items-center gap-2 font-semibold">
-                <input
-                  type="checkbox"
-                  checked={
-                    items.length > 0 &&
-                    items.every((order) => selectedIds.includes(order.id))
-                  }
-                  onChange={(event) =>
-                    setSelectedIds(
-                      event.target.checked
-                        ? items.map((order) => order.id)
-                        : [],
-                    )
-                  }
-                />{" "}
-                {t('ui.orders.selectCurrentPage')}
-              </label>
-              <span>
-                {t("ui.orders.pageSummary", {
-                  count: pagination.total.toLocaleString(),
-                  perPage: 10,
-                })}
-              </span>
-            </div>
+            <SelectPageBar
+              pageIds={items.map((order) => order.id)}
+              selectedIds={selectedIds}
+              onChange={setSelectedIds}
+              label={t('ui.orders.selectCurrentPage')}
+              summary={t("ui.orders.pageSummary", {
+                count: pagination.total.toLocaleString(),
+                perPage: 10,
+              })}
+            />
             <div data-mobile-order-list className="space-y-3 p-3 xl:hidden">
               {items.map((order) => {
                 const customer = customerFor(order);
@@ -1063,22 +866,10 @@ export default function VendorOrdersPage() {
                       </>
                     }
                     footer={
+                      // Same rule as the desktop row: one primary next step, details as a
+                      // square icon. "Review items" already opens the details, so it stands alone.
                       <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setSelectedItem(order)}
-                          aria-label={
-                            orderAction === "review"
-                              ? t("ui.orders.reviewItems")
-                              : t("ui.orders.viewDetails")
-                          }
-                          className={`min-h-11 min-w-0 gap-1.5 px-2 text-xs ${orderAction ? "flex-1" : "w-full"}`}
-                        >
-                          <Eye size={15} aria-hidden="true" />
-                          <span className="truncate">{t("ui.orders.viewDetails")}</span>
-                        </Button>
-                        {orderAction && (
+                        {orderAction ? (
                           <Button
                             type="button"
                             onClick={() =>
@@ -1086,15 +877,30 @@ export default function VendorOrdersPage() {
                                 ? setSelectedItem(order)
                                 : requestOrderAction(order, orderAction)
                             }
-                            aria-label={actionLabel}
-                            className="min-h-11 min-w-0 flex-1 gap-1.5 whitespace-nowrap px-2 text-xs"
+                            aria-label={`${actionLabel} ${displayOrderId}`}
+                            className="min-h-11 min-w-0 flex-1 gap-1.5 whitespace-nowrap px-3 text-xs"
                           >
                             {orderAction === "ready" ? (
                               <Check size={15} aria-hidden="true" />
+                            ) : orderAction === "review" ? (
+                              <Eye size={15} aria-hidden="true" />
                             ) : (
                               <PackageCheck size={15} aria-hidden="true" />
                             )}
                             <span className="truncate">{actionLabel}</span>
+                          </Button>
+                        ) : null}
+                        {orderAction !== "review" && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setSelectedItem(order)}
+                            aria-label={`${t("ui.orders.viewDetails")} ${displayOrderId}`}
+                            title={t("ui.orders.viewDetails")}
+                            className={orderAction ? "size-11 shrink-0 p-0" : "min-h-11 w-full gap-1.5 px-3 text-xs"}
+                          >
+                            <Eye size={15} aria-hidden="true" />
+                            {!orderAction && <span className="truncate">{t("ui.orders.viewDetails")}</span>}
                           </Button>
                         )}
                       </div>
@@ -1152,14 +958,14 @@ export default function VendorOrdersPage() {
             </div>
             <div className="hidden overflow-x-auto xl:block">
               <div className="xl:min-w-[1000px]">
-                <div className="hidden grid-cols-[32px_minmax(120px,1.2fr)_minmax(170px,1.5fr)_minmax(100px,1fr)_90px_100px_230px] gap-4 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground xl:grid">
+                <div className="hidden grid-cols-[32px_minmax(140px,1.2fr)_minmax(190px,1.6fr)_minmax(100px,1fr)_90px_110px_170px] gap-4 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-5 py-3 text-xs font-semibold text-gray-500 dark:text-muted-foreground xl:grid">
                   <span></span>
                   <span>{t('ui.orders.customerColumn')}</span>
                   <span>{t("ui.orders.itemsColumn")}</span>
                   <span>{t("ui.orders.outletColumn")}</span>
                   <span>{t("ui.orders.totalColumn")}</span>
                   <span>{t("ui.orders.statusColumn")}</span>
-                  <span className="text-center">
+                  <span className="text-right">
                     {t("ui.orders.actionColumn")}
                   </span>
                 </div>
@@ -1182,7 +988,7 @@ export default function VendorOrdersPage() {
                     return (
                       <article
                         key={order.id}
-                        className="grid gap-3 px-4 py-4 transition hover:bg-secondary/30 xl:grid-cols-[32px_minmax(120px,1.2fr)_minmax(170px,1.5fr)_minmax(100px,1fr)_90px_100px_230px] xl:items-center xl:gap-4 xl:px-5"
+                        className="grid gap-3 px-4 py-4 transition hover:bg-secondary/30 xl:grid-cols-[32px_minmax(140px,1.2fr)_minmax(190px,1.6fr)_minmax(100px,1fr)_90px_110px_170px] xl:items-center xl:gap-4 xl:px-5"
                       >
                         <div>
                           <input
@@ -1195,9 +1001,13 @@ export default function VendorOrdersPage() {
                           />
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-gray-800 dark:text-foreground">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedItem(order)}
+                            className="block max-w-full truncate text-left font-medium text-gray-800 dark:text-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-sm"
+                          >
                             {customer.full_name || t("ui.orders.guest")}
-                          </p>
+                          </button>
                           <div className="mt-1 flex min-w-0 items-center gap-1 text-xs text-gray-500 dark:text-muted-foreground">
                             <span className="truncate font-mono">{displayOrderId}</span>
                             <Button
@@ -1258,21 +1068,9 @@ export default function VendorOrdersPage() {
                             })}
                           </span>
                         </div>
-                        <div className="flex w-full flex-col items-stretch gap-2 border-t border-gray-100 dark:border-border pt-3 xl:max-w-[14rem] xl:justify-self-center xl:border-0 xl:pt-0">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedItem(order)}
-                            aria-label={
-                              orderAction === "review"
-                                ? t("ui.orders.reviewItems")
-                                : t("ui.orders.viewDetails")
-                            }
-                            className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-gray-200 dark:border-border px-2.5 py-2 text-xs font-semibold text-gray-600 dark:text-muted-foreground hover:border-primary/30 hover:bg-gray-50 dark:hover:bg-muted/50 hover:text-primary"
-                          >
-                            <Eye size={15} aria-hidden="true" />
-                            <span>{t("ui.orders.viewDetails")}</span>
-                          </button>
-                          {orderAction && (
+                        {/* One primary next step per row; details stay one click away as a quiet icon button. */}
+                        <div className="flex items-center justify-end gap-2">
+                          {orderAction ? (
                             <button
                               type="button"
                               onClick={() =>
@@ -1280,17 +1078,30 @@ export default function VendorOrdersPage() {
                                   ? setSelectedItem(order)
                                   : requestOrderAction(order, orderAction)
                               }
-                              aria-label={actionLabel}
-                              className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg bg-primary px-2.5 py-2 text-xs font-semibold text-white hover:bg-primary/90"
+                              aria-label={`${actionLabel} ${displayOrderId}`}
+                              className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-1"
                             >
                               {orderAction === "ready" ? (
-                                <Check size={15} aria-hidden="true" />
+                                <Check size={14} aria-hidden="true" />
+                              ) : orderAction === "review" ? (
+                                <Eye size={14} aria-hidden="true" />
                               ) : (
-                                <PackageCheck size={15} aria-hidden="true" />
+                                <PackageCheck size={14} aria-hidden="true" />
                               )}
                               <span>{actionLabel}</span>
                             </button>
-                          )}
+                          ) : null}
+                          {orderAction !== "review" && <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setSelectedItem(order)}
+                            aria-label={`${t("ui.orders.viewDetails")} ${displayOrderId}`}
+                            title={t("ui.orders.viewDetails")}
+                            className="size-9 shrink-0 rounded-lg border border-border text-muted-foreground hover:border-primary/30 hover:bg-secondary hover:text-primary"
+                          >
+                            <Eye size={15} aria-hidden="true" />
+                          </Button>}
                         </div>
                       </article>
                     );

@@ -25,7 +25,7 @@ const accent = {
     subtitle: 'ranking.selling.subtitle',
     iconClass: 'text-primary',
     pillClass: 'bg-secondary text-primary ring-primary/10',
-    heroClass: 'border-primary/10 bg-gradient-to-br from-secondary via-white dark:via-card to-white dark:to-card',
+    heroClass: 'border-primary/10 bg-card',
     rankClass: 'bg-primary text-white',
     barClass: 'bg-primary',
     linkLabel: 'ranking.selling.link',
@@ -37,7 +37,7 @@ const accent = {
     subtitle: 'ranking.rated.subtitle',
     iconClass: 'text-amber-600 dark:text-amber-300',
     pillClass: 'bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-200 ring-amber-100',
-    heroClass: 'border-amber-100 dark:border-amber-500/30 bg-gradient-to-br from-amber-50 dark:from-amber-500/10 via-white dark:via-card to-white dark:to-card',
+    heroClass: 'border-amber-100 dark:border-amber-500/30 bg-card',
     rankClass: 'bg-amber-500 text-white',
     barClass: 'bg-amber-500',
     linkLabel: 'ranking.rated.link',
@@ -58,7 +58,7 @@ export default async function PerformanceRankingCard({ kind, periodLabel, items,
       <header className="border-b border-gray-100 dark:border-border p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-muted-foreground"><Icon size={14} className={style.iconClass} /> {t(kind === 'selling' && salesMode === 'all' ? 'ui.dashboard.salesMode.all' : kind === 'selling' && salesMode === 'demo' ? 'ui.dashboard.salesMode.demo' : style.eyebrow)}</div>
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold text-gray-400 dark:text-muted-foreground"><Icon size={14} className={style.iconClass} /> {t(kind === 'selling' && salesMode === 'all' ? 'ui.dashboard.salesMode.all' : kind === 'selling' && salesMode === 'demo' ? 'ui.dashboard.salesMode.demo' : style.eyebrow)}</div>
             <h2 className="text-lg font-semibold text-gray-950 dark:text-foreground">{t(style.title)}</h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{t(style.subtitle)}</p>
           </div>

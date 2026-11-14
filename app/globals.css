@@ -887,52 +887,46 @@ body {
 /* Vendor event-promotion availability calendar: reuses .mw-customer-calendar's
    theme (it's a generic FullCalendar/MYLawatan skin, not customer-specific)
    plus day states this booking-style picker needs that the read-only
-   customer calendar doesn't: full/past days are visibly un-pickable, and the
-   currently-chosen range is highlighted. */
+   customer calendar doesn't. Past days stay quiet and un-pickable; only full
+   days carry the destructive hatch, so red always means "taken", never just
+   "in the past". The chosen range is one band with filled start/end caps.
+   Tokens keep both themes correct without .dark overrides. */
 .mw-customer-calendar .fc .fc-daygrid-day.mw-calendar-day--past {
-  background: #fee2e2;
   cursor: not-allowed;
 }
 
 .mw-customer-calendar .fc .fc-daygrid-day.mw-calendar-day--past .fc-daygrid-day-number {
-  color: #991b1b;
-  opacity: 0.8;
-}
-
-.dark .mw-customer-calendar .fc .fc-daygrid-day.mw-calendar-day--past {
-  background: color-mix(in srgb, #f87171 20%, transparent);
-}
-
-.dark .mw-customer-calendar .fc .fc-daygrid-day.mw-calendar-day--past .fc-daygrid-day-number {
-  color: #fca5a5;
+  color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
+  font-weight: 500;
 }
 
 .mw-customer-calendar .fc .fc-daygrid-day.mw-calendar-day--blocked {
-  background: #fee2e2;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--destructive) 11%, transparent) 0 4px, transparent 4px 8px);
   cursor: not-allowed;
 }
 
 .mw-customer-calendar .fc .fc-daygrid-day.mw-calendar-day--blocked .fc-daygrid-day-number {
-  color: #991b1b;
-  text-decoration: line-through;
-  opacity: 0.8;
-}
-
-.dark .mw-customer-calendar .fc .fc-daygrid-day.mw-calendar-day--blocked {
-  background: color-mix(in srgb, #f87171 20%, transparent);
-}
-
-.dark .mw-customer-calendar .fc .fc-daygrid-day.mw-calendar-day--blocked .fc-daygrid-day-number {
-  color: #fca5a5;
+  color: var(--destructive);
+  font-weight: 600;
 }
 
 .mw-customer-calendar .fc .fc-daygrid-day.mw-calendar-day--selected {
-  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
 }
 
 .mw-customer-calendar .fc .fc-daygrid-day.mw-calendar-day--selected .fc-daygrid-day-number {
   color: var(--primary);
-  font-weight: 800;
+  font-weight: 700;
+}
+
+.mw-customer-calendar .fc .fc-daygrid-day.mw-calendar-day--range-start,
+.mw-customer-calendar .fc .fc-daygrid-day.mw-calendar-day--range-end {
+  background: var(--primary);
+}
+
+.mw-customer-calendar .fc .fc-daygrid-day.mw-calendar-day--range-start .fc-daygrid-day-number,
+.mw-customer-calendar .fc .fc-daygrid-day.mw-calendar-day--range-end .fc-daygrid-day-number {
+  color: var(--primary-foreground);
 }
 
 /* Shared selection control: native checkboxes keep their semantic form

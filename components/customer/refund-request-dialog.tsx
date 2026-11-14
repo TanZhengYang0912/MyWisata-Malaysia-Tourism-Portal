@@ -172,10 +172,10 @@ export function RefundRequestDialog({
           </div>
 
           <div className="flex items-center justify-end gap-3 border-t border-border pt-3">
-            <Button type="button" variant="outline" className="rounded-xl px-4" onClick={onCancel} disabled={submitting}>
+            <Button type="button" variant="outline" className="rounded-xl" onClick={onCancel} disabled={submitting}>
               {t("ui.actions.cancel")}
             </Button>
-            <Button type="submit" disabled={submitting} className="rounded-xl bg-primary px-5 font-semibold text-white hover:bg-primary/90">
+            <Button type="submit" disabled={submitting} className="rounded-xl bg-primary font-semibold text-white hover:bg-primary/90">
               {submitting ? t("ui.states.submitting") : t("ui.orders.submitRefund")}
             </Button>
           </div>

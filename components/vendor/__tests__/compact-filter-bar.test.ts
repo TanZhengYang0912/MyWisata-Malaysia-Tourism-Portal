@@ -6,7 +6,7 @@ const source = readFileSync(resolve(process.cwd(), "components/vendor/compact-fi
 
 describe("compact vendor filter bar accessibility", () => {
   it("labels the search field and select controls", () => {
-    expect(source).toContain("aria-label={t('filters.searchByName'");
+    expect(source).toContain('aria-label={searchLabel} placeholder={searchLabel}');
     expect(source).toContain("aria-label={t(select.placeholder");
   });
 

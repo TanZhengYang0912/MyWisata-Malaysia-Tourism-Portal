@@ -1,7 +1,8 @@
 import React, { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { TestElement, TestEvent, findOne, installTestDom, type TestDocument } from "./render-test-dom";
+import { TestElement, TestEvent, findElements, findOne, installTestDom, type TestDocument } from "./render-test-dom";
+import type { Role } from "@/backend/core/types";
 
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
@@ -180,6 +181,21 @@ describe("Task 5 shared runtime behavior", () => {
     vi.unstubAllGlobals();
   });
 
+  it.each<Role>(["vendor_owner", "outlet_manager", "event_vendor", "admin", "approver", "staff", "super_admin"])(
+    "hides the customer chat launcher for %s",
+    async (role) => {
+      mocks.useAuth.mockReturnValue({ currentUser: { id: "non-customer", role } });
+      await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+      expect(findElements(container, (element) => element.getAttribute("aria-label") === "Open translated chat")).toHaveLength(0);
+    },
+  );
+
+  it("keeps the customer chat launcher visible", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    expect(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat")).toBeTruthy();
+  });
+
   it("uses translated known status labels and safely falls back for arbitrary/prototype statuses", () => {
     const known = renderToStaticMarkup(<StatusBadge status="completed" />);
     const unknown = renderToStaticMarkup(<StatusBadge status="not-a-status" />);
@@ -274,7 +290,8 @@ describe("Task 5 shared runtime behavior", () => {
     await render(<NotificationBell />);
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "accessibility.notifications"));
 
-    const panel = findOne(container, (element) => element.className.includes("w-[min(26rem"));
+    // The panel is portalled out of the header (see notification-bell.tsx).
+    const panel = findOne(document.body, (element) => element.className.includes("w-[min(26rem"));
     expect(panel.style.position).toBe("fixed");
     expect(panel.style.left).toBe("24px");
     expect(panel.style.top).toBe("62px");
@@ -297,12 +314,12 @@ describe("Task 5 shared runtime behavior", () => {
     await render(<NotificationBell scope="vendor" vendorId="vendor-1" />);
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "accessibility.notifications"));
 
-    expect(container.textContent).toContain("Vendor notice 15");
-    expect(container.textContent).not.toContain("Vendor notice 16");
-    expect(container.textContent).not.toContain("View all notifications");
-    await click(findButton("Load more translated"));
+    expect(document.body.textContent).toContain("Vendor notice 15");
+    expect(document.body.textContent).not.toContain("Vendor notice 16");
+    expect(document.body.textContent).not.toContain("View all notifications");
+    await click(findOne(document.body, (element) => element.tagName === "BUTTON" && element.textContent.includes("Load more translated")));
 
-    expect(container.textContent).toContain("Vendor notice 20");
+    expect(document.body.textContent).toContain("Vendor notice 20");
     expect(mocks.fetch.mock.calls.some(([url]) => String(url).includes("page=2") && String(url).includes("scope=vendor"))).toBe(true);
   });
 
@@ -361,7 +378,7 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("opens a vendor thread from the merged widget's left pane", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "cust-1" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "cust-1", role: "customer" } });
     const apiThread = {
       id: "thread-1",
       customer_id: "cust-1",

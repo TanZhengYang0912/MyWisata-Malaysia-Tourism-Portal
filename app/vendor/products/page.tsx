@@ -3,16 +3,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { Archive, CirclePlus, Copy, Download, Eye, MapPin, PackageCheck, Pencil, RotateCcw, SlidersHorizontal, Star, Store, Utensils, X } from 'lucide-react';
+import { Archive, CirclePlus, Copy, Download, Eye, MapPin, PackageCheck, Pencil, RotateCcw, SlidersHorizontal, Star, Store, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { toRM } from '@/lib/money';
 import { StatusBadge } from '@/components/ui/badge';
 import ProductForm from '@/components/vendor/product-form';
 import ProductDetailsPage from '@/components/vendor/product-details-page';
-import CompactFilterBar from '@/components/vendor/compact-filter-bar';
+import { VendorListFilters } from '@/components/vendor/vendor-list-filters';
 import CompactThumbnail from '@/components/vendor/compact-thumbnail';
 import { Pagination as SharedPagination } from '@/components/shared/pagination';
+import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
+import { SelectPageBar } from '@/components/vendor/select-page-bar';
+import { VendorMetricCard } from '@/components/vendor/vendor-metric-card';
 import BatchActionBar from '@/components/vendor/batch-action-bar';
 import { outletLocation, outletShortName, outletIdLabel } from '@/lib/outlet-display';
 import { useActionFeedback } from '@/components/providers/action-feedback';
@@ -119,12 +122,26 @@ export default function VendorProductsPage() {
   const tableGridClass = canManageOutlet
     ? 'xl:min-w-[1020px] xl:grid-cols-[32px_minmax(280px,2fr)_minmax(200px,1.2fr)_130px_110px_160px]'
     : 'xl:min-w-[960px] xl:grid-cols-[minmax(280px,2fr)_minmax(200px,1.2fr)_130px_110px_140px]';
-  const filterSelects = [
-    { value: filters.productType, placeholder: 'ui.products.allTypes', options: TYPE_OPTIONS, onChange: (value: string) => setFilters((current) => ({ ...current, productType: value })) },
-    { value: filters.status, placeholder: 'ui.products.allStatuses', options: [{ value: 'active', label: 'ui.status.active' }, { value: 'inactive', label: 'ui.status.inactive' }, { value: 'archived', label: 'ui.status.archived' }], onChange: (value: string) => setFilters((current) => ({ ...current, status: value })) },
-    ...(isOwner ? [{ value: filters.outletId, placeholder: 'ui.products.allOutlets', options: outlets.map((outlet) => ({ value: outlet.id, label: `${outletShortName(outlet.name)} · ${outlet.city || outlet.state || 'Malaysia'}` })), onChange: (value: string) => setFilters((current) => ({ ...current, outletId: value })) }] : []),
-    { value: filters.sort, placeholder: 'ui.products.sortBy', options: SORT_OPTIONS, onChange: (value: string) => setFilters((current) => ({ ...current, sort: value })) },
+  // Status and featured remain mutually exclusive, as in the previous toolbar.
+  const statusTabs = [
+    { value: '', label: t('ui.products.allStatuses') },
+    { value: 'active', label: t('ui.status.active') },
+    { value: 'inactive', label: t('ui.status.inactive') },
+    { value: 'archived', label: t('ui.status.archived') },
   ];
+  const selectStatusTab = (value: string) => setFilters((current) => ({ ...current, status: value, featured: false }));
+  const featuredToggle = isOwner ? (
+    <button
+      type="button"
+      aria-pressed={filters.featured}
+      title={t('ui.products.featuredToggleHint')}
+      onClick={() => setFilters((current) => ({ ...current, featured: !current.featured, status: '' }))}
+      className={`inline-flex min-h-12 shrink-0 items-center gap-1.5 px-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${filters.featured ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+    >
+      <Star size={14} aria-hidden="true" className={filters.featured ? 'fill-amber-500 text-amber-500' : ''} />
+      <span className="tabular-nums">{t('ui.products.featuredTab', { count: featuredIds.length })}</span>
+    </button>
+  ) : null;
 
   useEffect(() => {
     if (searchParams.get('create') !== '1' || !user) return;
@@ -237,14 +254,19 @@ export default function VendorProductsPage() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadProducts(1); }, [filters, vendorId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Realtime `in` filters accept at most 100 values, matching the outlet fetch above.
+  const outletFilter = useMemo(() => outlets.slice(0, 100).map((outlet) => outlet.id).join(','), [outlets]);
+
   useEffect(() => {
-    if (!vendorId) return;
+    if (!vendorId || !outletFilter) return;
+    // Scoped to this vendor's outlets: an unfiltered inventory subscription
+    // reloaded this page for every stock change on the platform.
     const channel = supabase
       .channel(`vendor-inventory-${vendorId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => { void loadProducts(pagination.page); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory', filter: `outlet_id=in.(${outletFilter})` }, () => { void loadProducts(pagination.page); })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [vendorId, supabase, loadProducts, pagination.page]);
+  }, [vendorId, supabase, loadProducts, pagination.page, outletFilter]);
 
   async function handleDelete(productId: string) {
     if (!vendorId || !(await confirm(t('ui.products.archiveConfirm')))) return;
@@ -343,147 +365,96 @@ export default function VendorProductsPage() {
         onEdit={() => { setEditingProduct(selectedProduct); setShowForm(true); }}
         onUpdate={() => { setSelectedProduct(null); loadProducts(pagination.page); }}
       /> : <>
-      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            <Utensils size={15} /> {t('ui.products.catalogueManagement')}
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground">{t('ui.products.title')}</h1>
-          {isOwner && (
-            <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
-              <span className="font-semibold uppercase tracking-[0.1em] text-amber-800 dark:text-amber-200 shrink-0">{t('ui.products.catalogueManagement')}</span>
-              <span className="text-amber-400">·</span>
-              <span className="text-amber-900 dark:text-amber-200">{t('ui.products.vendorReadOnlyNotice')}</span>
-            </div>
-          )}
-          {!isOwner && (
-            <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-xl border border-primary/10 bg-secondary px-3 py-2 text-xs text-primary">
-              <span className="font-semibold uppercase tracking-[0.12em] text-primary">{t('ui.products.assignedOutlet')}</span>
-              <span className="truncate font-semibold">{outletShortName(user?.activeOutletName || scopedOutlet?.name)}</span>
-              <span className="shrink-0 font-mono text-[10px] text-primary">{outletIdLabel(user?.activeOutletIds?.[0] || scopedOutlet?.id)}</span>
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
+      <VendorPageHeader
+        eyebrow={t('ui.products.catalogueManagement')}
+        title={t('ui.products.title')}
+        description={isOwner ? t('ui.products.vendorReadOnlyNotice') : (
+          <span className="inline-flex flex-wrap items-center gap-2">
+            {t('ui.products.assignedOutlet')}
+            <span className="font-medium text-foreground">{outletShortName(user?.activeOutletName || scopedOutlet?.name)}</span>
+            <span className="font-mono text-xs">{outletIdLabel(user?.activeOutletIds?.[0] || scopedOutlet?.id)}</span>
+          </span>
+        )}
+        actions={<>
           <button
             type="button"
             onClick={handleExportProducts}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <Download size={16} /> {t('ui.common.exportCsv')}
+            <Download size={16} aria-hidden="true" /> {t('ui.common.exportCsv')}
           </button>
           {canManageOutlet && (
             <button
               type="button"
               onClick={() => { setEditingProduct(null); setShowForm(true); }}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <CirclePlus size={17} /> {t('ui.products.addListing')}
+              <CirclePlus size={17} aria-hidden="true" /> {t('ui.products.addListing')}
             </button>
           )}
-        </div>
-      </header>
+        </>}
+      />
 
-      {/* Top 4 KPI Summary Cards */}
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-muted-foreground">
-            {t('ui.status.active')}
-          </p>
-          <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-foreground">{stats.active}</p>
-        </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-muted-foreground">
-            {t('ui.products.attentionNeeded')}
-          </p>
-          <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-300">{stats.lowStockOrBooking}</p>
-        </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-muted-foreground">
-            {t('ui.status.archived')}
-          </p>
-          <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-foreground">{stats.archived}</p>
-        </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-muted-foreground">
-            {t('ui.products.outletsManaged')}
-          </p>
-          <p className="mt-1 text-2xl font-bold text-primary">{stats.outletCount}</p>
-        </div>
+      {/* Same neutral card as every Vendor summary row; only attention carries colour. */}
+      <section className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+        <VendorMetricCard label={t('ui.status.active')} value={stats.active} />
+        <VendorMetricCard label={t('ui.products.attentionNeeded')} value={stats.lowStockOrBooking} tone={stats.lowStockOrBooking > 0 ? 'attention' : 'default'} />
+        <VendorMetricCard label={t('ui.status.archived')} value={stats.archived} />
+        <VendorMetricCard label={t('ui.products.outletsManaged')} value={stats.outletCount} />
       </section>
 
-      {/* Quick Status & Featured Tabs */}
-      <div className="flex max-w-full flex-nowrap items-center gap-1.5 overflow-x-auto border-b border-gray-200 dark:border-border pb-2">
-        {[
-          { key: 'all', label: t('ui.products.allStatuses'), active: !filters.status && !filters.featured, onClick: () => setFilters((curr) => ({ ...curr, status: '', featured: false })) },
-          ...(isOwner ? [{
-            key: 'featured',
-            label: t('ui.products.featuredTab', { count: featuredIds.length }),
-            active: filters.featured,
-            onClick: () => setFilters((curr) => ({ ...curr, status: '', featured: true })),
-          }] : []),
-          { key: 'active', label: t('ui.status.active'), active: filters.status === 'active' && !filters.featured, onClick: () => setFilters((curr) => ({ ...curr, status: 'active', featured: false })) },
-          { key: 'archived', label: t('ui.status.archived'), active: filters.status === 'archived' && !filters.featured, onClick: () => setFilters((curr) => ({ ...curr, status: 'archived', featured: false })) },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={tab.onClick}
-            className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
-              tab.active
-                ? 'bg-primary text-white shadow-sm'
-                : 'text-gray-600 dark:text-muted-foreground hover:bg-gray-100 dark:hover:bg-muted'
-            }`}
-          >
-            {tab.key === 'featured' && <Star size={12} className={tab.active ? 'fill-white text-white' : 'fill-amber-500 text-amber-500'} />}
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Featured Selection Banner for Vendor Owner */}
-      {isOwner && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-amber-200/80 dark:border-amber-500/30 bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-amber-50/70 p-4 sm:flex-row sm:items-center sm:justify-between shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-sm">
-              <Star size={20} className="fill-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-foreground">{t('ui.products.featuredBannerTitle', { count: featuredIds.length })}</h3>
-                <span className="rounded-full bg-amber-100 dark:bg-amber-500/15 border border-amber-300 dark:border-amber-500/30 px-2 py-0.5 text-[10px] font-bold text-amber-900 dark:text-amber-200">
-                  {featuredIds.length} / 4
-                </span>
-              </div>
-              <p className="mt-0.5 text-xs text-gray-600 dark:text-muted-foreground">{t('ui.products.featuredBannerDesc')}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setFilters((curr) => ({ ...curr, featured: !curr.featured, status: '' }))}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
-                filters.featured
-                  ? 'bg-amber-600 text-white shadow-sm hover:bg-amber-700'
-                  : 'border border-amber-300 dark:border-amber-500/30 bg-white dark:bg-card text-amber-900 dark:text-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10'
-              }`}
-            >
-              {filters.featured ? t('ui.products.allStatuses') : t('ui.products.featuredTab', { count: featuredIds.length })}
-            </button>
+      <VendorListFilters
+        query={filters.q}
+        onQueryChange={(value) => setFilters((current) => ({ ...current, q: value }))}
+        placeholder={t('ui.products.searchPlaceholder')}
+        sort={filters.sort}
+        defaultSort="newest"
+        sortOptions={SORT_OPTIONS.map((option) => ({ value: option.value, label: t(option.label) }))}
+        onSortChange={(sort) => setFilters((current) => ({ ...current, sort }))}
+        chips={[
+          ...(filters.status ? [{ key: 'status', label: t(`ui.status.${filters.status}`), onRemove: () => selectStatusTab('') }] : []),
+          ...(filters.productType ? [{ key: 'type', label: typeLabel(filters.productType, t), onRemove: () => setFilters((current) => ({ ...current, productType: '' })) }] : []),
+          ...(filters.outletId ? [{ key: 'outlet', label: outlets.find((outlet) => outlet.id === filters.outletId)?.name ?? filters.outletId, onRemove: () => setFilters((current) => ({ ...current, outletId: '' })) }] : []),
+          ...(filters.featured ? [{ key: 'featured', label: t('ui.products.featuredTab', { count: featuredIds.length }), onRemove: () => setFilters((current) => ({ ...current, featured: false })) }] : []),
+        ]}
+        onClearAll={clearFilters}
+        drawerTitle={t('ui.listFilters.drawerTitle')}
+        trailing={featuredToggle}
+      >
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-foreground">{t('ui.products.statusFilter')}</p>
+          <div className="flex flex-wrap gap-2">
+            {statusTabs.map((option) => (
+              <button key={option.value || 'all'} type="button" aria-pressed={filters.status === option.value} onClick={() => selectStatusTab(option.value)} className={`min-h-10 rounded-xl px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${filters.status === option.value ? 'bg-secondary text-primary' : 'bg-muted/50 text-muted-foreground hover:text-primary'}`}>{option.label}</button>
+            ))}
           </div>
         </div>
-      )}
-
-      <CompactFilterBar search={filters.q} onSearchChange={(value) => setFilters((current) => ({ ...current, q: value }))} placeholder={t('ui.products.searchPlaceholder')} selects={filterSelects} onClear={clearFilters} collapsibleOnMobile />
+        <label className="block space-y-2 text-sm font-semibold text-foreground">
+          <span>{t('ui.products.allTypes')}</span>
+          <select value={filters.productType} onChange={(event) => setFilters((current) => ({ ...current, productType: event.target.value }))} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/15">
+            <option value="">{t('ui.products.allTypes')}</option>
+            {TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
+          </select>
+        </label>
+        {isOwner && (
+          <label className="block space-y-2 text-sm font-semibold text-foreground">
+            <span>{t('ui.products.allOutlets')}</span>
+            <select value={filters.outletId} onChange={(event) => setFilters((current) => ({ ...current, outletId: event.target.value }))} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/15">
+              <option value="">{t('ui.products.allOutlets')}</option>
+              {outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outletShortName(outlet.name)} · {outlet.city || outlet.state || 'Malaysia'}</option>)}
+            </select>
+          </label>
+        )}
+      </VendorListFilters>
 
       {canManageOutlet && <BatchActionBar selectedCount={selectedIds.length} total={pagination.total} allFilteredSelected={allFilteredSelected} onSelectAllFiltered={() => { setAllFilteredSelected(true); setSelectedIds(products.map((product) => product.id)); }} onClear={() => { setSelectedIds([]); setAllFilteredSelected(false); setBatchMessage(''); }} onApply={applyBatch} actions={[{ value: 'archive', label: t('ui.products.archiveSelected') }, { value: 'restore', label: t('ui.products.restoreSelected') }]} busy={batchBusy} message={batchMessage} />}
       <div className="flex items-center justify-between text-xs text-gray-500 dark:text-muted-foreground"><span>{t('ui.products.resultCount', { count: pagination.total.toLocaleString() })}</span><span className="inline-flex items-center gap-1"><SlidersHorizontal size={14} /> {t('ui.products.perPage', { count: 10 })}</span></div>
       {error && <div className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">{error}</div>}
       <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
         {loading ? <div className="space-y-3 p-5">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-xl bg-gray-100 dark:bg-muted" />)}</div> : products.length === 0 ? <div className="px-6 py-16 text-center text-gray-400 dark:text-muted-foreground"><PackageCheck className="mx-auto mb-3 opacity-30" size={34} /><p className="text-sm">{t('ui.products.noMatches')}</p><button type="button" onClick={clearFilters} className="mt-3 text-sm font-semibold text-primary hover:underline">{t('ui.common.clearFilters')}</button></div> : <>
-          {canManageOutlet && <div className="border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-5 py-3 text-xs text-gray-500 dark:text-muted-foreground"><label className="inline-flex items-center gap-2 font-semibold"><input type="checkbox" checked={products.length > 0 && products.every((product) => selectedIds.includes(product.id))} onChange={(event) => setSelectedIds(event.target.checked ? products.map((product) => product.id) : [])} /> {t('ui.products.selectCurrentPage')}</label></div>}
+          {canManageOutlet && <SelectPageBar pageIds={products.map((product) => product.id)} selectedIds={selectedIds} onChange={setSelectedIds} label={t('ui.products.selectCurrentPage')} />}
           <div className="overflow-x-auto">
-            <div className={`hidden ${tableGridClass} gap-4 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground xl:grid`}>
+            <div className={`hidden ${tableGridClass} gap-4 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-5 py-3 text-xs font-semibold text-gray-500 dark:text-muted-foreground xl:grid`}>
               {canManageOutlet && <span></span>}
               <span>{t('ui.products.listingColumn')}</span>
               <span>{isOwner ? t('ui.products.outletColumn') : t('ui.products.assignedOutlet')}</span>
@@ -645,7 +616,7 @@ export default function VendorProductsPage() {
                             <RotateCcw size={16} />
                           </button>
                         ) : (
-                          <button type="button" onClick={() => handleDelete(product.id)} title={t('ui.products.archiveListing')} aria-label={t('ui.products.archiveListing')} className="rounded-xl p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition">
+                          <button type="button" onClick={() => handleDelete(product.id)} title={t('ui.products.archiveListing')} aria-label={t('ui.products.archiveListing')} className="rounded-xl p-2 text-gray-500 dark:text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
                             <Archive size={16} />
                           </button>
                         )}

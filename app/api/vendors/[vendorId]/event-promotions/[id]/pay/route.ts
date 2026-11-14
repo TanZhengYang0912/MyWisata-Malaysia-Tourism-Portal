@@ -4,6 +4,7 @@ import { authorizeVendor } from '@/lib/vendor-authorization';
 import { computeEventPromotionAmountSen, payEventPromotionFromWallet } from '@/lib/vendor/event-promotions';
 import { getEventPromotionCostPerDaySen } from '@/lib/admin/event-promotions';
 import { stripe } from '@/lib/stripe';
+import { expireCheckoutFailure, expirePendingPromotionCheckout, recordPendingPromotionCheckout } from '@/lib/vendor/event-promotion-checkout';
 
 interface Props { params: Promise<{ vendorId: string; id: string }> }
 
@@ -16,6 +17,14 @@ export async function POST(request: Request, { params }: Props) {
   const { vendorId, id } = await params;
   const access = await authorizeVendor(vendorId);
   if (!access.ok) return access.response;
+
+  // An earlier Checkout tab must not stay payable once the vendor pays again
+  // (wallet or a fresh Checkout); otherwise the fee could be charged twice.
+  const expired = await expirePendingPromotionCheckout(access.access.serviceDb, vendorId, id);
+  if (!expired.ok) {
+    const failure = expireCheckoutFailure(expired.reason);
+    return apiFail(failure.code, failure.message, failure.status);
+  }
 
   const walletResult = await payEventPromotionFromWallet(access.access.authDb, id);
   if (walletResult.ok) {
@@ -77,6 +86,15 @@ export async function POST(request: Request, { params }: Props) {
     success_url: `${origin}/vendor/event-promotions?payment=success`,
     cancel_url: `${origin}/vendor/event-promotions`,
   });
+
+  // Only the recorded session may mark the promotion paid; the webhook refunds any other.
+  const recorded = await recordPendingPromotionCheckout(access.access.serviceDb, vendorId, id, session.id, amountSen);
+  if (!recorded.ok) {
+    await stripe.checkout.sessions.expire(session.id).catch(() => undefined);
+    return recorded.reason === 'not_payable'
+      ? apiFail('INVALID_STATE', 'This promotion is not awaiting payment', 409)
+      : apiFail('DB_ERROR', 'Could not start the card payment', 500);
+  }
 
   return NextResponse.json({ data: { paid: false, method: 'stripe', checkoutUrl: session.url }, error: null });
 }

@@ -51,6 +51,15 @@
     }
   },
   "hotelProfile": {
+    "sections": {
+      "stay": "入住与退房"
+    },
+    "selectedCount": "已选 {{count}} / {{total}}",
+    "malaysiaTime": "时间以马来西亚时间（UTC+8）为准。",
+    "coverPhoto": "封面",
+    "sectionsNav": "酒店资料分区",
+    "unsaved": "有未提交的修改",
+    "noChanges": "没有需要提交的修改",
     "eyebrow": "酒店资料",
     "description": "酒店页使用固定版面，请在这里编辑内容。修改经管理员审核后才会上线，审核期间酒店照常显示。",
     "loading": "正在加载酒店资料…",
@@ -458,6 +467,31 @@
     "ifAvailable": "如有请填写"
   },
   "ui": {
+    "dataFreshness": {
+      "updatedAt": "更新于 {{time}}",
+      "refresh": "刷新数据"
+    },
+    "listFilters": {
+      "datePresets": "日期快捷选项",
+      "presets": {
+        "today": "今天",
+        "last7Days": "最近 7 天",
+        "last30Days": "最近 30 天",
+        "thisMonth": "本月"
+      },
+      "fromDate": "开始",
+      "toDate": "结束",
+      "invalidRange": "结束日期早于开始日期。",
+      "clearDates": "清除日期",
+      "filters": "筛选",
+      "sortBy": "排序方式",
+      "drawerTitle": "筛选",
+      "showResults": "查看结果",
+      "clear": "清除筛选",
+      "removeFilter": "移除筛选：{{label}}",
+      "kind": "类型",
+      "quickStatus": "快捷状态"
+    },
     "common": {
       "yes": "是",
       "no": "否",
@@ -814,7 +848,10 @@
       "pageSummary_one": "{{count}} 个预约 · 每页 {{perPage}} 个",
       "pageSummary_other": "{{count}} 个预约 · 每页 {{perPage}} 个",
       "onThisPage_one": "本页 {{count}} 个",
-      "onThisPage_other": "本页 {{count}} 个"
+      "onThisPage_other": "本页 {{count}} 个",
+      "allBookings": "全部预约",
+      "workspaceTabs": "预约工作区",
+      "statusFilter": "预约状态"
     },
     "inbox": {
       "filter": {
@@ -909,7 +946,12 @@
       "confirm": "确认兑换",
       "confirmFoodOrder": "确认餐食订单",
       "cancel": "取消",
-      "stationStatus": "核销站点状态",
+      "countersLabel": "扫码站统计",
+      "scopeToday": "今天",
+      "scopeAllTime": "累计",
+      "scansUnit_one": "次扫码",
+      "scansUnit_other": "次扫码",
+      "stationStatus": "扫码地点",
       "cameraTab": "摄像头扫码",
       "manualTab": "扫码枪 / 手动输入",
       "historyTab": "近期核销流水",
@@ -921,9 +963,9 @@
       "exitFullscreen": "退出全屏",
       "quickInputHint": "支持 USB / 蓝牙扫码枪，扫码后自动提交。",
       "pressEnter": "按 Enter 快速确认",
-      "todayScans": "今日核销总量",
-      "ticketsAdmitted": "门票入场数",
-      "vouchersUsed": "优惠券核销数",
+      "todayScans": "今日扫码",
+      "ticketsAdmitted": "已入场门票",
+      "vouchersUsed": "已核销优惠券",
       "stationActive": "准备就绪",
       "viewHistory": "查看完整记录",
       "eventPickupCollected": "已记录领取，请交付商品。",
@@ -938,13 +980,18 @@
       "retailPickupCollected": "已成功交付 {{quantity}} 件商品。",
       "retailPickupQuantity": "请一次交付此订单行的全部 {{quantity}} 件商品。",
       "confirmRetailPickup": "确认交付",
-      "orderReference": "订单 #{{order}}"
+      "orderReference": "订单 #{{order}}",
+      "eventPickups": "活动取货",
+      "foodOrders": "餐食订单扫码",
+      "allTimeNote": "累计",
+      "counterPending": "暂未提供",
+      "statsFailed": "计数刷新失败，下方数字可能不是最新。"
     },
     "redemptions": {
-      "eyebrow": "门店核销记录",
+      "eyebrow": "门店核销",
       "title": "核销与扫码记录",
       "loadFailed": "无法加载核销记录。",
-      "totalRedemptions": "总核销次数",
+      "totalRedemptions": "扫码总数",
       "allTime": "所有记录的扫码次数",
       "todayScans": "今日扫码",
       "redeemedToday": "今日已核销",
@@ -958,7 +1005,7 @@
       "filteredCount_other": "{{count}} 条记录",
       "vouchersUsed": "已核销优惠券",
       "storePromos": "门店优惠券",
-      "ticketsAdmitted": "已签到门票",
+      "ticketsAdmitted": "已入场门票",
       "checkedInGuests": "已记录入场次数",
       "allOutlets": "所有分店",
       "searchPlaceholder": "搜索券码、项目、员工...",
@@ -969,11 +1016,12 @@
       "kindTicket": "门票凭证",
       "selfService": "柜台收银核销",
       "filters": {
-        "all": "全部动态",
+        "all": "全部记录",
         "vouchers": "优惠券",
         "tickets": "门票",
         "retail": "零售商品领取",
-        "foodOrders": "餐食扫码"
+        "foodOrders": "餐食扫码",
+        "eventPickups": "活动取货"
       },
       "table": {
         "type": "类型",
@@ -982,7 +1030,11 @@
         "customer": "顾客",
         "verifiedBy": "核销人",
         "time": "时间"
-      }
+      },
+      "eventPickups": "活动取货",
+      "eventPickupsNote": "已取货预订",
+      "foodOrders": "餐食订单扫码",
+      "foodOrdersNote": "堂食与外带"
     },
     "listings": {
       "title": "产品目录",
@@ -1103,7 +1155,9 @@
       "pageSummary_one": "{{count}} 个订单 · 每页 {{perPage}} 个",
       "pageSummary_other": "{{count}} 个订单 · 每页 {{perPage}} 个",
       "itemCount_one": "{{count}} 个项目",
-      "itemCount_other": "{{count}} 个项目"
+      "itemCount_other": "{{count}} 个项目",
+      "readyCount": "待取货",
+      "pageOrderTotal": "订单总额"
     },
     "outlets": {
       "loadingShop": "正在加载您的店铺页面…",
@@ -1162,7 +1216,35 @@
       "resultCount_one": "马来西亚共有 {{count}} 个门店",
       "resultCount_other": "马来西亚共有 {{count}} 个门店",
       "perPage_one": "每页 {{count}} 个",
-      "perPage_other": "每页 {{count}} 个"
+      "perPage_other": "每页 {{count}} 个",
+      "columnOutlet": "门店",
+      "columnManager": "经理",
+      "columnListings": "上架商品",
+      "columnStatus": "状态",
+      "noManager": "未指派经理",
+      "invitePending": "已邀请 {{email}}",
+      "inReview": "审核中",
+      "sectionDetails": "基本信息",
+      "sectionTeam": "团队与权限",
+      "sectionStatus": "门店状态",
+      "addressLabel": "地址",
+      "phoneLabel": "电话",
+      "emailLabel": "邮箱",
+      "notProvided": "未填写",
+      "statusSummaryActive": "营业中。顾客可以看到此门店并在此取货。",
+      "statusSummaryClosed": "已关闭。顾客不可见。订单、预约、商品和经理均保留。",
+      "statusSummaryReview": "下线中，待管理员审核最新修改。",
+      "statusSummaryInactive": "未启用。顾客不可见。",
+      "closeConfirmTitle": "关闭 {{name}}？",
+      "closeConsequences": "顾客将无法看到此门店，也无法在此取货。订单、预约、商品和经理权限都会保留，之后可以重新开放。",
+      "reopenOutlet": "重新开放门店",
+      "reopenConfirmTitle": "重新开放 {{name}}？",
+      "reopenConsequences": "顾客将可以再次看到此门店。商品和经理权限不变。",
+      "reopened": "门店已重新开放。",
+      "reopenFailed": "无法重新开放门店。",
+      "unsavedTitle": "放弃未保存的修改？",
+      "unsavedBody": "你对此门店的修改尚未保存。",
+      "discardChanges": "放弃修改"
     },
     "products": {
       "loadFailed": "无法加载产品",
@@ -1237,7 +1319,7 @@
       "clickToViewAllOutlets_other": "点击查看全部 {{count}} 间分店",
       "closeOutletsModal": "关闭分店清单",
       "vendorReadOnlyNotice": "品牌方（Vendor）具备商品只读浏览权限。商品价格、规格与库存由各分店经理（Outlet Manager）负责维护。",
-      "featuredTab": "店面精选 ({{count}}/4)",
+      "featuredTab": "店铺精选（{{count}}/4）",
       "featuredTab_one": "店面精选 ({{count}}/4)",
       "featuredTab_other": "店面精选 ({{count}}/4)",
       "featuredLimitReached": "最多只能选择4个精选产品在您的店面展示。请先取消勾选其他产品。",
@@ -1266,7 +1348,9 @@
       "featuredBannerTitle": "店面精选推荐 ({{count}}/4)",
       "featuredBannerTitle_one": "店面精选推荐 ({{count}}/4)",
       "featuredBannerTitle_other": "店面精选推荐 ({{count}}/4)",
-      "featuredBannerDesc": "挑选最多4款标志性产品，在您的公开主页上优先展示给顾客。"
+      "featuredBannerDesc": "挑选最多4款标志性产品，在您的公开主页上优先展示给顾客。",
+      "featuredToggleHint": "最多 4 件商品会显示在你的公开商家页面。点商品上的星标即可添加或移除。",
+      "statusFilter": "商品状态"
     },
     "profile": {
       "loading": "正在加载商家资料…",
@@ -1495,7 +1579,9 @@
       "batchDeactivated_one": "已停用 {{count}} 张优惠券。",
       "batchDeactivated_other": "已停用 {{count}} 张优惠券。",
       "usesCount_one": "使用 {{count}} 次",
-      "usesCount_other": "使用 {{count}} 次"
+      "usesCount_other": "使用 {{count}} 次",
+      "otherStatuses": "其他状态",
+      "statusFilter": "优惠券状态"
     },
     "settlement": {
       "simulated": "测试付款 · 不可提现",
@@ -1618,8 +1704,38 @@
     },
     "eventPromotions": {
       "title": "推广你的活动",
+      "eventHeading": "活动",
+      "datesHeading": "日期",
+      "posterHeading": "海报",
+      "sectionDone": "已完成",
+      "sectionAdded": "已添加",
+      "dayCount_one": "{{count}} 天",
+      "dayCount_other": "{{count}} 天",
+      "startDate": "开始",
+      "endDate": "结束",
+      "pickDate": "选择日期",
+      "availabilityNote": "名额以审核时为准。",
+      "dropPoster": "拖入海报或点击选择",
+      "posterFormats": "4:3 · JPG、PNG 或 WebP",
+      "replaceImage": "更换",
+      "uploading": "正在上传…",
+      "previewTag": "活动推广",
+      "previewCaption": "顾客看到的样子",
+      "checkEvent": "活动名称和详情",
+      "checkDates": "开始和结束日期",
+      "days": "天数",
+      "charCount": "{{count}} / {{max}}",
+      "titlePlaceholder": "例如：Heritage Walk 夜市",
+      "detailsPlaceholder": "活动内容、地点，以及访客能获得什么",
       "newHeading": "提交新活动",
       "editHeading": "修改并重新提交",
+      "summaryHeading": "提交摘要",
+      "draft": "草稿",
+      "rate": "费率",
+      "ratePerDay": "{{rate}} / 天",
+      "previewImage": "预览推广图片",
+      "estimatedTotal": "预估总额",
+      "finalAmountNote": "最终金额将在审核后确认。",
       "loading": "加载中…",
       "myPromotions": "我的提交",
       "empty": "您尚未提交任何活动推广。",
@@ -1627,6 +1743,14 @@
       "uploadError": "无法上传图片。",
       "imageRequired": "请先上传图片再提交。",
       "submitError": "无法提交活动推广。",
+      "errors": {
+        "titleTooShort": "至少输入 {{min}} 个字符。",
+        "detailsTooShort": "活动说明至少 {{min}} 个字符。",
+        "datesRequired": "请选择开始和结束日期。",
+        "endBeforeStart": "结束日期不能早于开始日期。",
+        "fieldRejected": "请检查此字段后重试。",
+        "fixFields": "请先修正标出的字段再提交。"
+      },
       "submitSuccess": "活动推广已提交审核。",
       "resubmitSuccess": "活动推广已重新提交审核。",
       "noVendor": "此会话未找到商家账户。",
@@ -1641,17 +1765,14 @@
       },
       "calendar": {
         "today": "今天",
-        "hint": "红色日期不可选——已过去或已满。在管理员审核您的提交之前，可用情况仍可能变化。"
+        "legendSelected": "已选",
+        "legendFull": "已满",
+        "blockedRange": "{{date}} 已满，请选择不包含这一天的日期范围。"
       },
       "fields": {
         "title": "活动名称",
         "details": "详情",
-        "duration": "推广时长",
-        "selectedSingleDay": "已选择：{{date}}",
-        "selectedRange": "已选择：{{start}} – {{end}}",
         "costPreview": "{{days}} 天 · {{cost}}",
-        "image": "图片",
-        "chooseImage": "选择图片",
         "removeImage": "移除图片"
       },
       "actions": {
@@ -1700,6 +1821,17 @@
       }
     },
     "events": {
+      "phase": {
+        "upcoming": "即将开始",
+        "live": "进行中",
+        "ended": "已结束"
+      },
+      "facts": {
+        "dates": "活动日期",
+        "yourStalls": "你的摊位"
+      },
+      "readMore": "展开全文",
+      "showLess": "收起",
       "title": "活动",
       "loading": "加载中…",
       "empty": "目前没有开放注册的活动。",
@@ -1720,6 +1852,7 @@
       "rejectionNote": "已拒绝：{{note}}",
       "changesRequestedNote": "需要修改：{{note}}",
       "draftFound": "您有一份此注册的未保存草稿。",
+      "draftSubmissionClosed": "此地点已停止接收申请。您仍可查看草稿，但目前无法提交。",
       "fields": {
         "stallNumber": "摊位号",
         "stallDescription": "摊位说明",
@@ -1737,7 +1870,7 @@
         "preferredStallNumber": "希望的摊位号（选填）"
       },
       "actions": {
-        "register": "注册",
+        "register": "申请摊位",
         "editAndResubmit": "修改并重新提交",
         "submitRegistration": "提交注册",
         "resubmit": "重新提交审核",
@@ -1759,6 +1892,10 @@
         "count_one": "{{count}} 个地点",
         "count_other": "{{count}} 个地点",
         "joined": "已参加 {{joined}}/{{total}}"
+      },
+      "registrationStatus": {
+        "withdrawn": "已退出",
+        "removed": "已移除"
       },
       "listing": {
         "price": "活动价格 (RM)",
@@ -1846,7 +1983,13 @@
       "status": "状态",
       "free": "免费",
       "collected": "已领取",
-      "toCollect": "待领取"
+      "toCollect": "待领取",
+      "progress": "已取 {{collected}} / 共 {{total}}",
+      "showToCollect": "只看待取货",
+      "showAll": "全部预订",
+      "viewFilter": "预订视图",
+      "allCollected": "这里的预订都已取货。",
+      "retry": "重试"
     }
   },
   "address": {
@@ -1870,6 +2013,8 @@
     "unavailable": "AI 写作暂不可用。"
   },
   "builder": {
+    "tools": "编辑工具",
+    "closeTools": "关闭面板",
     "autosaved": "草稿已自动保存。",
     "blockTypes": {
       "intro": "门店介绍",
@@ -1925,6 +2070,7 @@
     "down": "下移",
     "font": "字体",
     "inspector": {
+      "aiNoChanges": "建议与当前内容相同。",
       "backgroundColour": "背景颜色",
       "sizeOnPage": "页面中的尺寸",
       "notSetOnOutlet": "此门店尚未设置",
@@ -1956,6 +2102,7 @@
       "outletMedia": "门店媒体",
       "photoLayout": "照片布局",
       "productsFromOutlet": "此门店的商品",
+      "uncategorized": "其他商品",
       "removeImage": "移除图片",
       "reuseMedia": "重复使用已上传到此页面的图片。",
       "right": "右侧",
@@ -2123,7 +2270,10 @@
     "welcomeMessage": "聊天欢迎语",
     "welcomePlaceholder": "欢迎！感谢您的关注。有什么问题吗？（留空则使用默认问候语）",
     "wheelchair": "无障碍轮椅通行",
-    "yes": "是"
+    "yes": "是",
+    "noChanges": "没有需要保存的修改。",
+    "reviewNotice": "营业资料的修改需经管理员审核后生效。",
+    "savedPendingReview": "已保存。门店将下线，直至管理员审核通过。"
   },
   "outletManager": {
     "copyLink": "复制链接",
@@ -2143,7 +2293,11 @@
     "removeConfirm": "要移除此门店经理吗？移除后，该经理将无法访问此门店。",
     "removeFailed": "无法移除门店经理。",
     "removed": "门店经理已移除。",
-    "title": "门店经理"
+    "title": "门店经理",
+    "removeAccess": "移除权限",
+    "removeConfirmTitle": "将 {{name}} 从 {{outlet}} 移除？",
+    "removeConsequences": "仅移除其对此门店的权限。其账号、历史订单与扫码记录都会保留，其他门店的权限不受影响。",
+    "inviteTitle": "邀请经理"
   },
   "pricing": {
     "add": "添加定价规则",
@@ -2215,6 +2369,7 @@
   "productForm": {
     "addTitle": "添加商品",
     "aiDeferred": "AI 建议已延后。",
+    "aiCategoryUnavailable": "不是目录中的类别，请手动选择。",
     "aiNoSuggestion": "AI 未返回可用建议。",
     "aiUnavailable": "AI 建议暂不可用。",
     "availability": "可用情况",
@@ -2298,6 +2453,11 @@
     "customerPreview": "客户预览",
     "draftVersion": "草稿版本",
     "editShopPage": "编辑店铺页面",
+    "hotelProfileStatus": {
+      "live": "已上线",
+      "pending": "待审核",
+      "rejected": "需要修改"
+    },
     "liveSince": "上线时间：{{date}}",
     "liveVersion": "线上版本",
     "loadPageFailed": "无法加载店铺页面",
@@ -2704,7 +2864,14 @@
       "totalUses_one": "总共使用 {{count}} 次",
       "totalUses_other": "总共使用 {{count}} 次",
       "perCustomer_one": "每位顾客 {{count}} 次",
-      "perCustomer_other": "每位顾客 {{count}} 次"
+      "perCustomer_other": "每位顾客 {{count}} 次",
+      "sections": {
+        "basics": "基本信息",
+        "discount": "优惠内容",
+        "limits": "使用限制",
+        "validity": "有效期",
+        "where": "适用门店"
+      }
     },
     "csv": {
       "addAnotherRow": "再添加一行优惠券",

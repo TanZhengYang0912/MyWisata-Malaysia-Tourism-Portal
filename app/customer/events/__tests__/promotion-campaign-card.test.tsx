@@ -79,12 +79,20 @@ describe("promotion campaign card variants", () => {
   it("keeps map results compact while linking to the same event detail", () => {
     const markup = renderToStaticMarkup(createElement(PromotionCampaignCard, { campaign, variant: "compact" }));
 
+    expect(markup).toContain('data-slot="campaign-card-compact"');
+    expect(markup).toContain("aspect-[4/3]");
+    expect(markup).toContain("rounded-2xl border border-border bg-card");
+    expect(markup).toContain("motion-reduce:transition-none");
+    expect(markup).not.toContain("repeating-linear-gradient");
+    expect(markup).not.toContain("border-dashed");
     expect(markup).toContain("Heritage Walk KL");
     expect(markup).toContain('data-slot="campaign-poster"');
     expect(markup).toContain('src="https://example.test/event-poster.jpg"');
     expect(markup).toContain("object-contain");
-    expect(markup).toContain("grid-cols-1 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]");
     expect(markup).toContain("ui.promotionCampaigns.endsAt");
+    expect(markup).toContain("ui.promotionCampaigns.viewAllVendors");
+    expect(markup).not.toContain("ui.promotionCampaigns.vendorCount");
+    expect(markup.indexOf("Heritage Walk KL")).toBeLessThan(markup.indexOf("ui.promotionCampaigns.endsAt"));
     expect(markup).not.toContain(campaign.summary);
     expect(markup).not.toContain("Vendor 0");
     expect(markup.match(/href="\/customer\/events\/heritage-walk"/g)).toHaveLength(1);

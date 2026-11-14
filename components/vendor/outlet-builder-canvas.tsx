@@ -305,8 +305,10 @@ export default function OutletBuilderCanvas({
                 onEditEnd={onEndInlineEdit}
               />
               {selectedBlockId === document.hero.id && (
+                // Below lg the inspector is a separate tab, so the canvas keeps a
+                // quick upload; on lg the same uploader is already in the inspector.
                 <div
-                  className="border-x border-b border-primary/10 bg-white px-4 py-3"
+                  className="border-x border-b border-primary/10 bg-white px-4 py-3 lg:hidden"
                   onClick={(event) => event.stopPropagation()}
                 >
                   <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-primary/70">
@@ -352,11 +354,13 @@ export default function OutletBuilderCanvas({
                     ref={(element) => { blockRefs.current[block.id] = element; }}
                     onPointerDown={(event) => beginMove(event, block)}
                     aria-grabbed={pointerInteractionId === block.id}
-                    className={`group relative z-10 m-1 min-h-0 rounded-[18px] transition ${sizeMenuId === block.id ? 'z-40' : selected ? 'z-20 ring-2 ring-amber-400' : ''} ${dragId === block.id || pointerInteractionId === block.id ? 'opacity-30' : ''}`}
+                    className={`group relative z-10 m-1 min-h-0 rounded-[18px] transition ${sizeMenuId === block.id ? 'z-40' : selected ? 'z-20 ring-2 ring-amber-400' : 'hover:ring-1 hover:ring-primary/30'} ${dragId === block.id || pointerInteractionId === block.id ? 'opacity-30' : ''}`}
                     style={{ gridColumn: `${block.x + 1} / span ${block.w}`, gridRow: `${block.y + 1} / span ${block.h}` }}
                   >
+                    {/* Short type name (not the editable title) so it never collides with the toolbar on narrow blocks. */}
+                    {selected && <span aria-hidden="true" className="pointer-events-none absolute -top-3 left-3 z-30 max-w-[40%] truncate rounded-md bg-amber-400 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-primary shadow-sm">{t(`builder.blockTypes.${block.type}`)}</span>}
                     <div
-                      className={`absolute right-2 top-2 z-30 flex items-center gap-1 rounded-xl border border-primary/10 bg-white/95 p-1 text-gray-500 shadow-lg backdrop-blur transition ${selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
+                      className={`absolute -top-4 right-3 z-30 flex items-center gap-0.5 rounded-xl border border-primary/10 bg-white p-0.5 text-gray-500 shadow-md transition ${selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
                       onClick={(event) => event.stopPropagation()}
                     >
                       <div
@@ -443,18 +447,20 @@ export default function OutletBuilderCanvas({
               <div className="flex flex-col gap-3 p-4">
                 {readingOrder(document.blocks).map((block) => {
                   const selected = selectedBlockId === block.id;
-                  const blockLabel = block.title || block.type.replace('_', ' ');
+                  const blockLabel = block.title || t(`builder.blockTypes.${block.type}`);
                   return <div
                     key={block.id}
-                    className={`group relative rounded-[18px] transition ${sizeMenuId === block.id ? 'z-40' : selected ? 'z-20 ring-2 ring-amber-400' : ''}`}
+                    className={`group relative rounded-[18px] transition ${sizeMenuId === block.id ? 'z-40' : selected ? 'z-20 ring-2 ring-amber-400' : 'hover:ring-1 hover:ring-primary/30'}`}
                   >
+                    {/* Short type name (not the editable title) so it never collides with the toolbar on narrow blocks. */}
+                    {selected && <span aria-hidden="true" className="pointer-events-none absolute -top-3 left-3 z-30 max-w-[40%] truncate rounded-md bg-amber-400 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-primary shadow-sm">{t(`builder.blockTypes.${block.type}`)}</span>}
                     <div
-                      className={`absolute right-2 top-2 z-30 flex items-center gap-1 rounded-xl border border-primary/10 bg-white/95 p-1 text-gray-500 shadow-lg backdrop-blur transition ${selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
+                      className={`absolute -top-4 right-3 z-30 flex items-center gap-0.5 rounded-xl border border-primary/10 bg-white p-0.5 text-gray-500 shadow-md transition ${selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
                       onClick={(event) => event.stopPropagation()}
                     >
-                      <button type="button" onClick={() => setSizeMenuId((current) => (current === block.id ? null : block.id))} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={`Resize ${blockLabel}`} title={t("builder.resize")}><Maximize2 size={14} /></button>
-                      <button type="button" onClick={() => onDuplicate(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={`Duplicate ${blockLabel}`} title={t("builder.duplicate")}><Copy size={14} /></button>
-                      <button type="button" onClick={() => onDelete(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 text-red-600 hover:bg-red-50" aria-label={`Delete ${blockLabel}`} title={t("builder.delete")}><Trash2 size={14} /></button>
+                      <button type="button" onClick={() => setSizeMenuId((current) => (current === block.id ? null : block.id))} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={t('builder.resizeLabel', { label: blockLabel })} title={t("builder.resize")}><Maximize2 size={14} /></button>
+                      <button type="button" onClick={() => onDuplicate(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 hover:bg-secondary" aria-label={t('builder.duplicateLabel', { label: blockLabel })} title={t("builder.duplicate")}><Copy size={14} /></button>
+                      <button type="button" onClick={() => onDelete(block.id)} className="inline-flex h-8 items-center rounded-lg px-2 text-red-600 hover:bg-red-50" aria-label={t('builder.deleteLabel', { label: blockLabel })} title={t("builder.delete")}><Trash2 size={14} /></button>
                     </div>
 
                     {sizeMenuId === block.id && <>

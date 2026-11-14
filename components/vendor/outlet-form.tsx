@@ -1,7 +1,7 @@
 'use client';
 // P2 — Member 2: Outlet creation/edit form (B2)
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { outletCreateSchema, type OutletCreate } from '@/lib/validation/vendor-schemas';
@@ -21,18 +21,21 @@ interface Props {
   showAccommodationTypes?: boolean;
   onSuccess?: () => void;
   onClose?: () => void;
+  /** Lets the host dialog guard Escape / close against losing edits. */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export default function OutletForm({ vendorId, initialData, showAccommodationTypes = false, onSuccess, onClose }: Props) {
+export default function OutletForm({ vendorId, initialData, showAccommodationTypes = false, onSuccess, onClose, onDirtyChange }: Props) {
   const { t } = useTranslation('vendor');
   const { t: tCommon } = useTranslation('common');
   const { showFeedback } = useActionFeedback();
   const [serverError, setServerError] = useState<string | null>(null);
 
-  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting, dirtyFields } } = useForm<z.input<typeof outletCreateSchema>, unknown, OutletCreate>({
+  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting, isDirty, dirtyFields } } = useForm<z.input<typeof outletCreateSchema>, unknown, OutletCreate>({
     resolver: zodResolver(outletCreateSchema),
     defaultValues: { country: 'Malaysia', welcomeEnabled: true, ...initialData },
   });
+  useEffect(() => { onDirtyChange?.(isDirty); }, [isDirty, onDirtyChange]);
   // eslint-disable-next-line react-hooks/incompatible-library
   const address = watch('address');
   const foodServiceModes = watch('foodServiceModes') ?? [];
@@ -53,6 +56,13 @@ export default function OutletForm({ vendorId, initialData, showAccommodationTyp
     setServerError(null);
     try {
       const isEdit = !!initialData?.id;
+      // An unchanged owner save would still re-send every field and take a
+      // non-hotel outlet offline for review, so nothing is sent.
+      if (isEdit && Object.keys(dirtyFields).length === 0) {
+        showFeedback('info', t('outletForm.noChanges'));
+        onClose?.();
+        return;
+      }
       const url = isEdit 
         ? `/api/vendors/${vendorId}/outlets/${initialData.id}` 
         : `/api/vendors/${vendorId}/outlets`;
@@ -75,7 +85,8 @@ export default function OutletForm({ vendorId, initialData, showAccommodationTyp
         showFeedback('error', result.error?.message ?? t('outletForm.saveFailed'));
         return;
       }
-      showFeedback('success', res.status === 202 ? t('outletForm.hotelPendingReview') : initialData?.id ? t('outletForm.updated') : t('outletForm.created'));
+      const wentOfflineForReview = res.status === 200 && isEdit && result.data?.review_status === 'pending_review' && result.data?.status === 'inactive';
+      showFeedback('success', res.status === 202 ? t('outletForm.hotelPendingReview') : wentOfflineForReview ? t('outletForm.savedPendingReview') : initialData?.id ? t('outletForm.updated') : t('outletForm.created'));
       onSuccess?.();
     } catch {
       setServerError(tCommon('errors.network'));
@@ -86,6 +97,9 @@ export default function OutletForm({ vendorId, initialData, showAccommodationTyp
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
       <div data-outlet-form-scroll-region className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5">
+        {initialData?.id && (
+          <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">{t('outletForm.reviewNotice')}</p>
+        )}
         {serverError && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
             {serverError}
@@ -93,7 +107,7 @@ export default function OutletForm({ vendorId, initialData, showAccommodationTyp
         )}
 
         <section className="space-y-4" aria-labelledby="outlet-business-details">
-          <h3 id="outlet-business-details" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t('outletForm.sections.businessDetails')}</h3>
+          <h3 id="outlet-business-details" className="text-sm font-semibold text-foreground">{t('outletForm.sections.businessDetails')}</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.nameRequired')}</label>
@@ -125,7 +139,7 @@ export default function OutletForm({ vendorId, initialData, showAccommodationTyp
         </section>
 
         <section className="space-y-4 border-t border-border pt-5" aria-labelledby="outlet-contact-map">
-          <h3 id="outlet-contact-map" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t('outletForm.sections.contactAndMap')}</h3>
+          <h3 id="outlet-contact-map" className="text-sm font-semibold text-foreground">{t('outletForm.sections.contactAndMap')}</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.phone')}</label>
@@ -147,7 +161,7 @@ export default function OutletForm({ vendorId, initialData, showAccommodationTyp
         </section>
 
         <section className="space-y-4 border-t border-border pt-5" aria-labelledby="outlet-visitor-options">
-          <h3 id="outlet-visitor-options" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t('outletForm.sections.visitorOptions')}</h3>
+          <h3 id="outlet-visitor-options" className="text-sm font-semibold text-foreground">{t('outletForm.sections.visitorOptions')}</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.wheelchair')}</label>
@@ -186,7 +200,7 @@ export default function OutletForm({ vendorId, initialData, showAccommodationTyp
         </section>
 
         <section className="space-y-4 border-t border-border pt-5" aria-labelledby="outlet-categories">
-          <h3 id="outlet-categories" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t('outletForm.sections.outletCategories')}</h3>
+          <h3 id="outlet-categories" className="text-sm font-semibold text-foreground">{t('outletForm.sections.outletCategories')}</h3>
           <div className={showAccommodationTypes ? 'grid gap-4 sm:grid-cols-2' : ''}>
             <fieldset className="rounded-xl border border-border bg-card p-4">
               <legend className="px-1 text-sm font-semibold text-foreground">{t('taxonomy.outletBadges.title')}</legend>
@@ -221,7 +235,7 @@ export default function OutletForm({ vendorId, initialData, showAccommodationTyp
         </section>
 
         <section className="space-y-4 border-t border-border pt-5" aria-labelledby="outlet-welcome-message">
-          <h3 id="outlet-welcome-message" className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t('outletForm.sections.welcomeMessage')}</h3>
+          <h3 id="outlet-welcome-message" className="text-sm font-semibold text-foreground">{t('outletForm.sections.welcomeMessage')}</h3>
           <div>
             <div className="mb-1 flex items-center justify-between gap-3">
               <label className="block text-sm font-medium text-gray-700 dark:text-foreground">{t('outletForm.welcomeMessage')}</label>

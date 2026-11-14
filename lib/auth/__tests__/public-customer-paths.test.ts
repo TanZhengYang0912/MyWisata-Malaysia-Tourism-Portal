@@ -26,7 +26,7 @@ describe("isPublicCustomerPath", () => {
   });
 
   it("exposes guest commerce without exposing history or malformed order paths", () => {
-    for (const path of ["/customer/cart", "/customer/checkout", "/customer/orders/access", "/customer/orders/1d4057cf-c821-4b05-a454-61dbdc42d32c", "/customer/checkout/simulator/1d4057cf-c821-4b05-a454-61dbdc42d32c"]) expect(isPublicCustomerPath(path)).toBe(true);
+    for (const path of ["/customer/cart", "/customer/checkout", "/customer/checkout/success", "/customer/orders/access", "/customer/orders/1d4057cf-c821-4b05-a454-61dbdc42d32c", "/customer/checkout/simulator/1d4057cf-c821-4b05-a454-61dbdc42d32c"]) expect(isPublicCustomerPath(path)).toBe(true);
     for (const path of ["/customer/orders", "/customer/orders/order-1", "/customer/orders/access/extra", "/customer/checkout/extra"]) expect(isPublicCustomerPath(path)).toBe(false);
   });
 

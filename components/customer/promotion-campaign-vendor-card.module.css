@@ -1,0 +1,68 @@
+.vendorCard {
+  position: relative;
+  gap: 0;
+  overflow: hidden;
+  color: var(--foreground);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 10px 28px rgb(1 0 102 / 9%);
+  transition: transform 180ms ease-out, box-shadow 180ms ease-out;
+}
+
+.photoFrame {
+  isolation: isolate;
+  border-radius: 16px 16px 0 0;
+  background: color-mix(in srgb, var(--primary) 7%, var(--card));
+}
+
+.photoFrame > img {
+  transition: transform 400ms cubic-bezier(0.2, 0.65, 0.3, 1);
+}
+
+.stallBadge {
+  color: var(--highlight-yellow-foreground);
+  background: var(--highlight-yellow);
+}
+
+.vendorTitle {
+  color: var(--foreground);
+  text-wrap: pretty;
+}
+
+.viewButton {
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+  background: transparent;
+  transition: color 160ms ease-out, background-color 160ms ease-out, border-color 160ms ease-out;
+}
+
+.viewButton:hover {
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.viewButton:focus-visible {
+  outline: 3px solid var(--highlight-yellow);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .vendorCard:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 34px rgb(1 0 102 / 15%);
+  }
+
+  .vendorCard:hover .photoFrame > img {
+    transform: scale(1.035);
+    transition-duration: 600ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vendorCard,
+  .photoFrame > img,
+  .viewButton {
+    transition: none;
+  }
+}

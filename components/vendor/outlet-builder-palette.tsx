@@ -70,8 +70,9 @@ export default function OutletBuilderPalette({ onAddBlock, onBeginDrag }: Props)
     Object.fromEntries(BUILDER_PALETTE_GROUPS.map((group) => [group.id, Boolean(group.defaultOpen)])),
   );
 
-  return <aside className="border-b border-primary/10 bg-white p-4 lg:border-b-0 lg:border-r">
-    <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{t('builder.palette.title')}</p>
+  return <aside className="border-b border-primary/10 bg-white p-4 lg:border-b-0">
+    {/* On lg the Studio tool drawer header already names this panel. */}
+    <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary lg:hidden">{t('builder.palette.title')}</p>
     <p className="mt-1 text-xs leading-5 text-gray-500">{t('builder.palette.hint')}</p>
     <div className="mt-4 space-y-3">
       {BUILDER_PALETTE_GROUPS.map((group) => {

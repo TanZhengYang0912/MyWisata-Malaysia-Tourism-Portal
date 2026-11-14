@@ -7,8 +7,8 @@ import {
   CirclePlus,
   Copy,
   Eye,
-  Landmark,
   MapPinned,
+  Navigation,
   Pencil,
   Store,
 } from 'lucide-react';
@@ -16,7 +16,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { StatusBadge } from '@/components/ui/badge';
 import OutletForm from '@/components/vendor/outlet-form';
-import CompactFilterBar from '@/components/vendor/compact-filter-bar';
+import { VendorListFilters } from '@/components/vendor/vendor-list-filters';
 import CompactThumbnail from '@/components/vendor/compact-thumbnail';
 import { Pagination as SharedPagination } from '@/components/shared/pagination';
 import BatchActionBar from '@/components/vendor/batch-action-bar';
@@ -103,6 +103,11 @@ export default function VendorOutletsPage() {
   const [pendingCloseOutlet, setPendingCloseOutlet] =
     useState<OutletData | null>(null);
   const [closeBusy, setCloseBusy] = useState(false);
+  const [pendingReopenOutlet, setPendingReopenOutlet] =
+    useState<OutletData | null>(null);
+  const [reopenBusy, setReopenBusy] = useState(false);
+  const [formDirty, setFormDirty] = useState(false);
+  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
   const vendorId = user?.activeVendorId;
   const isOwner = user?.roles.includes('vendor_owner') ?? false;
   const isOutletManager = user?.roles.includes('outlet_manager') ?? false;
@@ -182,7 +187,7 @@ export default function VendorOutletsPage() {
   if (managerShopMode && vendorId && outlets[0] && managerShopEditMode)
     return (
       <HotelProfileEditor vendorId={vendorId} outletId={outlets[0].id} outletName={outletShortName(outlets[0].name)} onClose={() => router.push('/vendor/outlets?mode=shop')}>
-        <OutletPageBuilder
+        {(builderOnClose) => <OutletPageBuilder
           vendorId={vendorId}
           outletId={outlets[0].id}
           outletName={outletShortName(outlets[0].name)}
@@ -190,8 +195,8 @@ export default function VendorOutletsPage() {
           outletCity={outlets[0].city}
           outletState={outlets[0].state}
           outletPhone={outlets[0].phone}
-          onClose={() => router.push('/vendor/outlets?mode=shop')}
-        />
+          onClose={builderOnClose}
+        />}
       </HotelProfileEditor>
     );
   if (managerShopMode && vendorId && outlets[0])
@@ -205,6 +210,7 @@ export default function VendorOutletsPage() {
           city: outlets[0].city,
           state: outlets[0].state,
           operating_hours: outlets[0].operating_hours,
+          isAccommodationOutlet: outlets[0].isAccommodationOutlet,
         }}
         onEdit={() => router.push(getOutletManagerEditorDestination(true))}
       />
@@ -235,6 +241,105 @@ export default function VendorOutletsPage() {
     } finally {
       setCloseBusy(false);
     }
+  }
+
+  async function reopenOutlet() {
+    if (!vendorId || !pendingReopenOutlet || reopenBusy) return;
+    setReopenBusy(true);
+    try {
+      // Reuses the owner-only, vendor-scoped batch "activate" transition.
+      const response = await fetch(`/api/vendors/${vendorId}/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entity: 'outlets', action: 'activate', ids: [pendingReopenOutlet.id], selectAllFiltered: false, filters: {} }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.data?.updated) {
+        const message = payload.error?.message || t('ui.outlets.reopenFailed');
+        setError(message);
+        showFeedback('error', message);
+        return;
+      }
+      showFeedback('success', t('ui.outlets.reopened'));
+      setSelectedOutlet(null);
+      setPendingReopenOutlet(null);
+      loadOutlets(pagination.page);
+    } catch {
+      setError(t('ui.outlets.reopenFailed'));
+      showFeedback('error', t('ui.outlets.reopenFailed'));
+    } finally {
+      setReopenBusy(false);
+    }
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    setEditingOutlet(null);
+    setFormDirty(false);
+    setConfirmDiscardOpen(false);
+  }
+
+  function requestCloseForm() {
+    if (formDirty) setConfirmDiscardOpen(true);
+    else closeForm();
+  }
+
+  function openDetails(outlet: OutletData) {
+    setSelectedOutlet(outlet);
+  }
+
+  function openEdit(outlet: OutletData | null) {
+    setFormDirty(false);
+    setEditingOutlet(outlet);
+    setShowForm(true);
+  }
+
+  function statusSummary(outlet: OutletData) {
+    if (outlet.status === 'active') return t('ui.outlets.statusSummaryActive');
+    if (outlet.status === 'closed') return t('ui.outlets.statusSummaryClosed');
+    if (outlet.review_status === 'pending_review') return t('ui.outlets.statusSummaryReview');
+    return t('ui.outlets.statusSummaryInactive');
+  }
+
+  function statusLabel(status: string) {
+    return t(`ui.status.${status}`, status.replace(/_/g, ' '));
+  }
+
+  function managerSummary(outlet: OutletData) {
+    if (outlet.manager) return <span className="truncate text-foreground">{outlet.manager.fullName}</span>;
+    if (outlet.pendingInvitation) return <span className="truncate text-muted-foreground">{t('ui.outlets.invitePending', { email: outlet.pendingInvitation.email })}</span>;
+    return <span className="text-muted-foreground">{t('ui.outlets.noManager')}</span>;
+  }
+
+  function listingSummary(outlet: OutletData) {
+    return outlet.productsCount > 0 ? (
+      <span className="tabular-nums text-foreground">{outlet.productsCount} <span className="text-muted-foreground">{t('ui.outlets.listings')}</span></span>
+    ) : (
+      <span className="text-muted-foreground">{t('ui.outlets.noListings')}</span>
+    );
+  }
+
+  function rowActions(outlet: OutletData) {
+    return [
+      {
+        id: 'view-details',
+        label: t('ui.outlets.viewDetails'),
+        onSelect: () => openDetails(outlet),
+        variant: 'secondary' as const,
+        icon: Eye,
+        ariaLabel: t('ui.outlets.viewDetailsFor', { name: outletShortName(outlet.name) }),
+      },
+      ...(isOwner
+        ? [{
+            id: 'edit-outlet',
+            label: t('ui.outlets.editOutlet'),
+            onSelect: () => openEdit(outlet),
+            variant: 'tertiary' as const,
+            icon: Pencil,
+            ariaLabel: t('ui.outlets.editOutletNamed', { name: outletShortName(outlet.name) }),
+          }]
+        : []),
+    ];
   }
 
   function clearFilters() {
@@ -293,46 +398,40 @@ export default function VendorOutletsPage() {
         actions={isOwner && (
           <button
             type="button"
-            onClick={() => {
-              setEditingOutlet(null);
-              setShowForm(true);
-            }}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
+            onClick={() => openEdit(null)}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <CirclePlus size={17} /> {t('ui.outlets.add')}
+            <CirclePlus size={17} aria-hidden="true" /> {t('ui.outlets.add')}
           </button>
         )}
       />
 
-      <CompactFilterBar
-        search={filters.q}
-        onSearchChange={(value) =>
-          setFilters((current) => ({ ...current, q: value }))
-        }
+      <VendorListFilters
+        query={filters.q}
+        onQueryChange={(value) => setFilters((current) => ({ ...current, q: value }))}
         placeholder={t('ui.outlets.searchPlaceholder')}
-        selects={[
-          {
-            value: filters.state,
-            placeholder: t('ui.outlets.allStates'),
-            options: states.map((state) => ({ value: state, label: state })),
-            onChange: (value) =>
-              setFilters((current) => ({ ...current, state: value })),
-          },
-          {
-            value: filters.status,
-            placeholder: t('ui.outlets.allStatuses'),
-            options: [
-              { value: 'active', label: t('ui.status.active') },
-              { value: 'inactive', label: t('ui.status.inactive') },
-              { value: 'closed', label: t('ui.status.closed') },
-            ],
-            onChange: (value) =>
-              setFilters((current) => ({ ...current, status: value })),
-          },
+        chips={[
+          ...(filters.state ? [{ key: 'state', label: filters.state, onRemove: () => setFilters((current) => ({ ...current, state: '' })) }] : []),
+          ...(filters.status ? [{ key: 'status', label: t(`ui.status.${filters.status}`), onRemove: () => setFilters((current) => ({ ...current, status: '' })) }] : []),
         ]}
-        onClear={clearFilters}
-        collapsibleOnMobile
-      />
+        onClearAll={clearFilters}
+        drawerTitle={t('ui.listFilters.drawerTitle')}
+      >
+        <label className="block space-y-2 text-sm font-semibold text-foreground">
+          <span>{t('ui.outlets.allStates')}</span>
+          <select value={filters.state} onChange={(event) => setFilters((current) => ({ ...current, state: event.target.value }))} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/15">
+            <option value="">{t('ui.outlets.allStates')}</option>
+            {states.map((state) => <option key={state} value={state}>{state}</option>)}
+          </select>
+        </label>
+        <label className="block space-y-2 text-sm font-semibold text-foreground">
+          <span>{t('ui.outlets.allStatuses')}</span>
+          <select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/15">
+            <option value="">{t('ui.outlets.allStatuses')}</option>
+            {['active', 'inactive', 'closed'].map((status) => <option key={status} value={status}>{t(`ui.status.${status}`)}</option>)}
+          </select>
+        </label>
+      </VendorListFilters>
       {isOwner && (
         <BatchActionBar
           selectedCount={selectedIds.length}
@@ -357,22 +456,25 @@ export default function VendorOutletsPage() {
         />
       )}
       {error && (
-        <div className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+        <div role="alert" className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
           {error}
         </div>
       )}
       {loading ? (
-        <div className="grid gap-3 md:grid-cols-2">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-28 animate-pulse rounded-2xl bg-gray-100 dark:bg-muted"
-            />
+        <div role="status" aria-live="polite" aria-label={t('ui.outlets.loading', 'Loading outlets')} className="overflow-hidden rounded-2xl border border-border bg-card">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="flex items-center gap-3 border-b border-border px-4 py-3 last:border-0">
+              <div className="h-12 w-12 shrink-0 rounded-xl bg-muted" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3.5 w-40 rounded bg-muted" />
+                <div className="h-3 w-24 rounded bg-muted" />
+              </div>
+            </div>
           ))}
         </div>
       ) : outlets.length === 0 ? (
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card px-6 py-16 text-center text-gray-400 dark:text-muted-foreground shadow-sm">
-          <Store className="mx-auto mb-3 opacity-30" size={34} />
+        <div className="rounded-2xl border border-border bg-card px-6 py-16 text-center text-muted-foreground">
+          <Store className="mx-auto mb-3 opacity-30" size={34} aria-hidden="true" />
           <p className="text-sm">{t('ui.outlets.noMatches')}</p>
           <button
             type="button"
@@ -384,41 +486,90 @@ export default function VendorOutletsPage() {
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500 dark:text-muted-foreground">
-            <span>
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+            <span className="tabular-nums">
               {t('ui.outlets.resultCount', {
                 count: pagination.total.toLocaleString(),
               })}
             </span>
-            <div className="flex flex-wrap items-center gap-3">
-              <span>{t('ui.outlets.perPage', { count: 10 })}</span>
-              {isOwner && (
-                <label className="inline-flex items-center gap-2 font-semibold text-gray-700 dark:text-foreground">
+            {isOwner && (
+              <label className="inline-flex min-h-10 items-center gap-2 font-medium text-foreground">
+                <input
+                  type="checkbox"
+                  aria-label={t('ui.outlets.selectCurrentPage')}
+                  checked={
+                    outlets.length > 0 &&
+                    outlets.every((outlet) => selectedIds.includes(outlet.id))
+                  }
+                  onChange={(event) =>
+                    setSelectedIds(
+                      event.target.checked
+                        ? outlets.map((outlet) => outlet.id)
+                        : [],
+                    )
+                  }
+                />{' '}
+                {t('ui.outlets.selectCurrentPage')}
+              </label>
+            )}
+          </div>
+
+          {/* Desktop: one scannable list. Name, place, status, manager and listings are visible without opening anything. */}
+          <section aria-label={t('ui.outlets.title')} className="hidden overflow-hidden rounded-2xl border border-border bg-card xl:block">
+            <div role="row" className={`grid items-center gap-4 border-b border-border bg-muted/40 px-4 py-2.5 text-xs font-medium text-muted-foreground ${isOwner ? 'grid-cols-[1.25rem_minmax(0,2.2fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto]' : 'grid-cols-[minmax(0,2.2fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto]'}`}>
+              {isOwner && <span aria-hidden="true" />}
+              <span role="columnheader">{t('ui.outlets.columnOutlet')}</span>
+              <span role="columnheader">{t('ui.outlets.columnManager')}</span>
+              <span role="columnheader">{t('ui.outlets.columnListings')}</span>
+              <span role="columnheader">{t('ui.outlets.columnStatus')}</span>
+              <span className="sr-only">{t('ui.outlets.actions')}</span>
+            </div>
+            {outlets.map((outlet) => (
+              <div
+                key={outlet.id}
+                role="row"
+                className={`grid items-center gap-4 border-b border-border px-4 py-3 text-sm transition-colors last:border-0 hover:bg-muted/30 ${selectedIds.includes(outlet.id) ? 'bg-secondary/50' : ''} ${isOwner ? 'grid-cols-[1.25rem_minmax(0,2.2fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto]' : 'grid-cols-[minmax(0,2.2fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto]'}`}
+              >
+                {isOwner && (
                   <input
                     type="checkbox"
-                    aria-label={t('ui.outlets.selectCurrentPage')}
-                    checked={
-                      outlets.length > 0 &&
-                      outlets.every((outlet) => selectedIds.includes(outlet.id))
-                    }
-                    onChange={(event) =>
-                      setSelectedIds(
-                        event.target.checked
-                          ? outlets.map((outlet) => outlet.id)
-                          : [],
-                      )
-                    }
-                  />{' '}
-                  {t('ui.outlets.selectCurrentPage')}
-                </label>
-              )}
-            </div>
-          </div>
-          <section className="grid gap-3 md:grid-cols-2">
+                    checked={selectedIds.includes(outlet.id)}
+                    onChange={() => toggleSelected(outlet.id)}
+                    aria-label={t('ui.outlets.selectOutlet', { name: outlet.name })}
+                  />
+                )}
+                <div className="flex min-w-0 items-center gap-3">
+                  <CompactThumbnail src={outlet.coverUrl} alt={outlet.name} kind="outlet" size="md" />
+                  <div className="min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => openDetails(outlet)}
+                      className="block max-w-full truncate text-left font-semibold text-foreground hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                    >
+                      {outletShortName(outlet.name)}
+                    </button>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {outletLocation(outlet.city, outlet.state)}
+                      <span className="font-mono"> · {outlet.display_id || outletIdLabel(outlet.id)}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="min-w-0 truncate">{managerSummary(outlet)}</div>
+                <div className="min-w-0">{listingSummary(outlet)}</div>
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <StatusBadge status={outlet.status} label={statusLabel(outlet.status)} />
+                  {outlet.review_status === 'pending_review' && <span className="text-xs text-muted-foreground">{t('ui.outlets.inReview')}</span>}
+                </div>
+                <OutletActionGroup ariaLabel={t('ui.outlets.outletActions', 'Outlet actions')} actions={rowActions(outlet)} />
+              </div>
+            ))}
+          </section>
+
+          {/* Below xl: one compact card per outlet, same information order. */}
+          <section aria-label={t('ui.outlets.title')} className="grid gap-3 sm:grid-cols-2 xl:hidden">
             {outlets.map((outlet) => (
               <VendorMobileRecordCard
                 key={outlet.id}
-                className="group rounded-2xl border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm"
                 header={
                   <div className="flex min-w-0 flex-1 items-start gap-3">
                     {isOwner && (
@@ -427,98 +578,41 @@ export default function VendorOutletsPage() {
                           type="checkbox"
                           checked={selectedIds.includes(outlet.id)}
                           onChange={() => toggleSelected(outlet.id)}
-                          aria-label={t('ui.outlets.selectOutlet', {
-                            name: outlet.name,
-                          })}
+                          aria-label={t('ui.outlets.selectOutlet', { name: outlet.name })}
                         />
                       </div>
                     )}
-                    <CompactThumbnail
-                      src={outlet.coverUrl}
-                      alt={outlet.name}
-                      kind="outlet"
-                      size="md"
-                    />
-                    <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedOutlet(outlet)}
-                          className="block max-w-full break-words text-left font-semibold text-gray-900 dark:text-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                        >
-                          {outletShortName(outlet.name)}
-                        </button>
-                        <p className="mt-1 flex items-start gap-1 break-words text-xs text-gray-500 dark:text-muted-foreground">
-                          <MapPinned size={12} aria-hidden="true" />{' '}
-                          {outletLocation(outlet.city, outlet.state)}
-                        </p>
-                        <p className="mt-1 break-all font-mono text-[11px] text-gray-400 dark:text-muted-foreground">
-                          {outlet.display_id || outletIdLabel(outlet.id)}
-                        </p>
-                      </div>
-                      <div className="shrink-0 pt-1">
-                        <StatusBadge status={outlet.status} />
-                      </div>
+                    <CompactThumbnail src={outlet.coverUrl} alt={outlet.name} kind="outlet" size="md" />
+                    <div className="min-w-0 flex-1">
+                      <button
+                        type="button"
+                        onClick={() => openDetails(outlet)}
+                        className="block max-w-full break-words text-left font-semibold text-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                      >
+                        {outletShortName(outlet.name)}
+                      </button>
+                      <p className="mt-0.5 break-words text-xs text-muted-foreground">{outletLocation(outlet.city, outlet.state)}</p>
                     </div>
+                    <StatusBadge status={outlet.status} label={statusLabel(outlet.status)} />
                   </div>
                 }
-                footer={
-                  <OutletActionGroup
-                    ariaLabel={t(
-                      'ui.outlets.outletActions',
-                      'Outlet actions',
-                    )}
-                    actions={[
-                      {
-                        id: 'view-details',
-                        label: t('ui.outlets.viewDetails'),
-                        onSelect: () => setSelectedOutlet(outlet),
-                        variant: 'secondary' as const,
-                        icon: Eye,
-                        ariaLabel: t('ui.outlets.viewDetailsFor', {
-                          name: outletShortName(outlet.name),
-                        }),
-                      },
-                      ...(isOwner
-                        ? [
-                            {
-                              id: 'edit-outlet',
-                              label: t('ui.outlets.editOutlet'),
-                              onSelect: () => {
-                                setEditingOutlet(outlet);
-                                setShowForm(true);
-                              },
-                              variant: 'tertiary' as const,
-                              icon: Pencil,
-                              ariaLabel: t('ui.outlets.editOutletNamed', {
-                                name: outletShortName(outlet.name),
-                              }),
-                            },
-                          ]
-                        : []),
-                    ]}
-                  />
-                }
+                footer={<OutletActionGroup ariaLabel={t('ui.outlets.outletActions', 'Outlet actions')} actions={rowActions(outlet)} />}
               >
-                <span className="text-xs text-gray-500 dark:text-muted-foreground">
-                  {outlet.productsCount > 0 ? (
-                    <>
-                      <strong className="text-gray-800 dark:text-foreground">
-                        {outlet.productsCount}
-                      </strong>{' '}
-                      {t('ui.outlets.listings')}
-                    </>
-                  ) : (
-                    <span className="font-medium text-gray-600 dark:text-muted-foreground">
-                      {t('ui.outlets.noListings')}
-                    </span>
-                  )}
-                </span>
+                <dl className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="min-w-0">
+                    <dt className="text-muted-foreground">{t('ui.outlets.columnManager')}</dt>
+                    <dd className="mt-0.5 truncate text-sm">{managerSummary(outlet)}</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-muted-foreground">{t('ui.outlets.columnListings')}</dt>
+                    <dd className="mt-0.5 text-sm">{listingSummary(outlet)}</dd>
+                  </div>
+                </dl>
               </VendorMobileRecordCard>
             ))}
           </section>
           {pagination.totalPages > 1 && (
-            <div className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+            <div className="overflow-hidden rounded-2xl border border-border bg-card">
               <SharedPagination
                 currentPage={pagination.page}
                 totalPages={pagination.totalPages}
@@ -536,11 +630,9 @@ export default function VendorOutletsPage() {
       {isOwner && (showForm || editingOutlet) && vendorId && (
         <CenteredDetailModal
           title={t(editingOutlet ? 'outletForm.editTitle' : 'outletForm.addTitle')}
+          subtitle={editingOutlet ? outletShortName(editingOutlet.name) : undefined}
           closeLabel={t('ui.outlets.close')}
-          onClose={() => {
-            setShowForm(false);
-            setEditingOutlet(null);
-          }}
+          onClose={requestCloseForm}
           size="xl"
           layout="fixed"
           headerClassName="shrink-0 border-b border-border px-4 pb-3 pt-4 sm:px-6 sm:pt-5"
@@ -550,6 +642,7 @@ export default function VendorOutletsPage() {
           <OutletForm
             vendorId={vendorId}
             showAccommodationTypes={editingOutlet?.isAccommodationOutlet}
+            onDirtyChange={setFormDirty}
             initialData={
               editingOutlet
                 ? {
@@ -574,17 +667,22 @@ export default function VendorOutletsPage() {
                 : undefined
             }
             onSuccess={() => {
-              setShowForm(false);
-              setEditingOutlet(null);
+              closeForm();
               loadOutlets(pagination.page);
             }}
-            onClose={() => {
-              setShowForm(false);
-              setEditingOutlet(null);
-            }}
+            onClose={requestCloseForm}
           />
         </CenteredDetailModal>
       )}
+      <ActionConfirmationDialog
+        open={confirmDiscardOpen}
+        title={t('ui.outlets.unsavedTitle')}
+        description={t('ui.outlets.unsavedBody')}
+        confirmLabel={t('ui.outlets.discardChanges')}
+        tone="danger"
+        onCancel={() => setConfirmDiscardOpen(false)}
+        onConfirm={closeForm}
+      />
 
       {selectedOutlet && (
         <CenteredDetailModal
@@ -594,37 +692,24 @@ export default function VendorOutletsPage() {
           onClose={() => setSelectedOutlet(null)}
           size="lg"
         >
-          <div className="mt-4 grid gap-3 rounded-2xl border border-primary/10 bg-secondary/35 p-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:p-4">
+          {/* Summary: who/where/what state, read at a glance. */}
+          <div className="mt-4 flex items-start gap-3">
             <CompactThumbnail
               src={selectedOutlet.coverUrl}
               alt={selectedOutlet.name}
               kind="outlet"
               size="md"
             />
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
-                  {t('ui.outlets.status')}
-                </p>
-                <StatusBadge status={selectedOutlet.status} />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge status={selectedOutlet.status} label={statusLabel(selectedOutlet.status)} />
+                {selectedOutlet.review_status === 'pending_review' && <span className="text-xs text-muted-foreground">{t('ui.outlets.inReview')}</span>}
               </div>
-              <p className="mt-2 text-base font-semibold text-gray-950 dark:text-foreground">
+              <p className="mt-1.5 text-sm font-medium text-foreground">
                 {outletLocation(selectedOutlet.city, selectedOutlet.state)}
               </p>
-              <p className="mt-1 break-words text-sm text-gray-500 dark:text-muted-foreground">
-                {selectedOutlet.address || t('ui.outlets.noAddress')}
-              </p>
-            </div>
-          </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div className="min-w-0 rounded-xl bg-gray-50 dark:bg-muted/50 p-3 sm:p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground">
-                {t('ui.outlets.outletId')}
-              </p>
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <p className="break-all font-mono text-sm font-semibold text-gray-900 dark:text-foreground">
-                  {selectedOutlet.display_id || selectedOutlet.id}
-                </p>
+              <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                <span className="break-all font-mono">{selectedOutlet.display_id || selectedOutlet.id}</span>
                 <button
                   type="button"
                   aria-label={t('ui.outlets.copyOutletId')}
@@ -632,79 +717,54 @@ export default function VendorOutletsPage() {
                     copyOutletId(selectedOutlet.display_id || selectedOutlet.id)
                   }
                   title={t('ui.outlets.copyOutletId')}
-                  className="shrink-0 rounded-lg p-2 text-gray-500 dark:text-muted-foreground hover:bg-white dark:hover:bg-card hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <Copy size={15} aria-hidden="true" />
+                  <Copy size={14} aria-hidden="true" />
                 </button>
               </div>
             </div>
-            <div className="rounded-xl bg-gray-50 dark:bg-muted/50 p-3 sm:p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground">
-                {t('ui.outlets.listedProducts')}
-              </p>
-              <p className="mt-2 text-xl font-bold text-gray-950 dark:text-foreground">
-                {selectedOutlet.productsCount}
-              </p>
-            </div>
           </div>
-          {isOwner && vendorId && (
-            <div className="mt-3">
-              <OutletManagerPanel
-                vendorId={vendorId}
-                outletId={selectedOutlet.id}
-                manager={selectedOutlet.manager}
-                pendingInvitation={selectedOutlet.pendingInvitation}
-                onChanged={() => {
-                  setSelectedOutlet(null);
-                  loadOutlets(pagination.page);
-                }}
-              />
-            </div>
-          )}
-          {(selectedOutlet.phone || selectedOutlet.email || (selectedOutlet.lat && selectedOutlet.lng)) && (
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              {(selectedOutlet.phone || selectedOutlet.email) && (
-                <div className="min-w-0 rounded-xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 sm:p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground">
-                    {t('ui.outlets.contactDetails')}
-                  </p>
-                  <div className="mt-2 space-y-1 break-words text-sm text-gray-700 dark:text-foreground">
-                    {selectedOutlet.phone && (
-                      <p>{t('ui.outlets.phone', { value: selectedOutlet.phone })}</p>
-                    )}
-                    {selectedOutlet.email && (
-                      <p className="break-all">
-                        {t('ui.outlets.email', { value: selectedOutlet.email })}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-              {selectedOutlet.lat && selectedOutlet.lng && (
-                <a
-                  className="inline-flex min-h-14 items-center justify-between gap-2 rounded-xl border border-gray-100 dark:border-border px-4 py-3 font-semibold text-primary hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                  href={
-                    'https://www.google.com/maps/dir/?api=1&destination=' +
-                    selectedOutlet.lat +
-                    ',' +
-                    selectedOutlet.lng
-                  }
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <Landmark size={15} aria-hidden="true" />
-                    {t('ui.outlets.getDirections')}
-                  </span>
-                  <ArrowUpRight size={15} aria-hidden="true" />
-                </a>
-              )}
-            </div>
-          )}
-          <div className="mt-5 border-t border-gray-100 dark:border-border pt-4">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-muted-foreground">
-              {t('ui.outlets.actions')}
-            </p>
+
+          <section aria-labelledby="outlet-details-heading" className="mt-5">
+            <h3 id="outlet-details-heading" className="text-sm font-semibold text-foreground">{t('ui.outlets.sectionDetails')}</h3>
+            <dl className="mt-2 divide-y divide-border rounded-xl border border-border text-sm">
+              <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-3 px-3 py-2.5">
+                <dt className="text-muted-foreground">{t('ui.outlets.addressLabel')}</dt>
+                <dd className="break-words text-foreground">{selectedOutlet.address || <span className="text-muted-foreground">{t('ui.outlets.noAddress')}</span>}</dd>
+              </div>
+              <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-3 px-3 py-2.5">
+                <dt className="text-muted-foreground">{t('ui.outlets.listedProducts')}</dt>
+                <dd className="tabular-nums text-foreground">{selectedOutlet.productsCount}</dd>
+              </div>
+              <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-3 px-3 py-2.5" aria-label={t('ui.outlets.contactDetails')}>
+                <dt className="text-muted-foreground">{t('ui.outlets.phoneLabel')}</dt>
+                <dd className="break-words text-foreground">{selectedOutlet.phone ? <a className="hover:text-primary hover:underline" href={`tel:${selectedOutlet.phone}`}>{selectedOutlet.phone}</a> : <span className="text-muted-foreground">{t('ui.outlets.notProvided')}</span>}</dd>
+              </div>
+              <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-3 px-3 py-2.5">
+                <dt className="text-muted-foreground">{t('ui.outlets.emailLabel')}</dt>
+                <dd className="break-all text-foreground">{selectedOutlet.email ? <a className="hover:text-primary hover:underline" href={`mailto:${selectedOutlet.email}`}>{selectedOutlet.email}</a> : <span className="text-muted-foreground">{t('ui.outlets.notProvided')}</span>}</dd>
+              </div>
+            </dl>
+            {selectedOutlet.lat && selectedOutlet.lng && (
+              <a
+                className="mt-2 inline-flex min-h-10 items-center gap-2 rounded-lg px-1 text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                href={
+                  'https://www.google.com/maps/dir/?api=1&destination=' +
+                  selectedOutlet.lat +
+                  ',' +
+                  selectedOutlet.lng
+                }
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Navigation size={15} aria-hidden="true" />
+                {t('ui.outlets.getDirections')}
+                <ArrowUpRight size={14} aria-hidden="true" />
+              </a>
+            )}
+          </section>
+
+          <div className="mt-4">
             <OutletActionGroup
               ariaLabel={t('ui.outlets.outletActions', 'Outlet actions')}
               layout="detail"
@@ -715,9 +775,9 @@ export default function VendorOutletsPage() {
                         id: 'edit-outlet',
                         label: t('ui.outlets.editOutletDetails'),
                         onSelect: () => {
-                          setEditingOutlet(selectedOutlet);
+                          const outlet = selectedOutlet;
                           setSelectedOutlet(null);
-                          setShowForm(true);
+                          openEdit(outlet);
                         },
                         variant: 'primary' as const,
                         icon: Pencil,
@@ -736,25 +796,61 @@ export default function VendorOutletsPage() {
                         },
                       ]
                     : []),
-                ...(isOwner && selectedOutlet.status === 'active'
-                  ? [
-                      {
+              ]}
+            />
+          </div>
+
+          {isOwner && vendorId && (
+            <section aria-labelledby="outlet-team-heading" className="mt-6">
+              <h3 id="outlet-team-heading" className="text-sm font-semibold text-foreground">{t('ui.outlets.sectionTeam')}</h3>
+              <div className="mt-2">
+                <OutletManagerPanel
+                  vendorId={vendorId}
+                  outletId={selectedOutlet.id}
+                  outletName={outletShortName(selectedOutlet.name)}
+                  manager={selectedOutlet.manager}
+                  pendingInvitation={selectedOutlet.pendingInvitation}
+                  onChanged={() => {
+                    setSelectedOutlet(null);
+                    loadOutlets(pagination.page);
+                  }}
+                />
+              </div>
+            </section>
+          )}
+
+          {/* Operational state lives apart from editing so closing is never one mis-tap from "Edit". */}
+          <section aria-labelledby="outlet-status-heading" className="mt-6 border-t border-border pt-4">
+            <h3 id="outlet-status-heading" className="text-sm font-semibold text-foreground">{t('ui.outlets.sectionStatus')}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{statusSummary(selectedOutlet)}</p>
+            {isOwner && (selectedOutlet.status === 'active' || (selectedOutlet.status === 'closed' && selectedOutlet.review_status !== 'pending_review')) && (
+              <div className="mt-3">
+                <OutletActionGroup
+                  ariaLabel={t('ui.outlets.sectionStatus')}
+                  layout="detail"
+                  actions={selectedOutlet.status === 'active'
+                    ? [{
                         id: 'close-outlet',
                         label: t('ui.outlets.closeOutlet'),
                         onSelect: () => setPendingCloseOutlet(selectedOutlet),
                         variant: 'destructive' as const,
-                      },
-                    ]
-                  : []),
-              ]}
-            />
-          </div>
+                      }]
+                    : [{
+                        id: 'reopen-outlet',
+                        label: t('ui.outlets.reopenOutlet'),
+                        onSelect: () => setPendingReopenOutlet(selectedOutlet),
+                        variant: 'secondary' as const,
+                      }]}
+                />
+              </div>
+            )}
+          </section>
         </CenteredDetailModal>
       )}
       <ActionConfirmationDialog
         open={Boolean(pendingCloseOutlet)}
-        title={t('ui.outlets.closeOutlet')}
-        description={t('ui.outlets.closeConfirm')}
+        title={pendingCloseOutlet ? t('ui.outlets.closeConfirmTitle', { name: outletShortName(pendingCloseOutlet.name) }) : t('ui.outlets.closeOutlet')}
+        description={t('ui.outlets.closeConsequences')}
         confirmLabel={t('ui.outlets.closeOutlet')}
         tone="danger"
         busy={closeBusy}
@@ -763,9 +859,20 @@ export default function VendorOutletsPage() {
         }}
         onConfirm={() => void closeOutlet()}
       />
+      <ActionConfirmationDialog
+        open={Boolean(pendingReopenOutlet)}
+        title={pendingReopenOutlet ? t('ui.outlets.reopenConfirmTitle', { name: outletShortName(pendingReopenOutlet.name) }) : t('ui.outlets.reopenOutlet')}
+        description={t('ui.outlets.reopenConsequences')}
+        confirmLabel={t('ui.outlets.reopenOutlet')}
+        busy={reopenBusy}
+        onCancel={() => {
+          if (!reopenBusy) setPendingReopenOutlet(null);
+        }}
+        onConfirm={() => void reopenOutlet()}
+      />
       {builderOutlet && vendorId && isOutletManager && (
         <HotelProfileEditor vendorId={vendorId} outletId={builderOutlet.id} outletName={outletShortName(builderOutlet.name)} onClose={() => setBuilderOutlet(null)}>
-          <OutletPageBuilder
+          {(builderOnClose) => <OutletPageBuilder
             vendorId={vendorId}
             outletId={builderOutlet.id}
             outletName={outletShortName(builderOutlet.name)}
@@ -773,8 +880,8 @@ export default function VendorOutletsPage() {
             outletCity={builderOutlet.city}
             outletState={builderOutlet.state}
             outletPhone={builderOutlet.phone}
-            onClose={() => setBuilderOutlet(null)}
-          />
+            onClose={builderOnClose}
+          />}
         </HotelProfileEditor>
       )}
     </div>

@@ -128,7 +128,13 @@ async function postFeedback(payload: Record<string, unknown>) {
   }
 }
 
-export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOnMobile?: boolean }) {
+export function ChatbotWidget(props: { hideLauncherOnMobile?: boolean }) {
+  const { currentUser } = useAuth();
+  if (currentUser && currentUser.role !== "customer") return null;
+  return <CustomerChatbotWidget {...props} />;
+}
+
+function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOnMobile?: boolean }) {
   // Lifted to context (CLAUDE-SUPPORT-MUTE-REPORT.md Feature 1) so other
   // entry points — the profile page's "Contact Support" button, outlet and
   // activity page "Message vendor" buttons — can open this same widget

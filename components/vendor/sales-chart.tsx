@@ -29,7 +29,7 @@ export default function SalesChart({ data, salesMode = 'live' }: { data: SalesPo
     <div className="flex min-h-[380px] flex-col">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+          <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-primary">
             <LineChartIcon size={15} /> {t(scopeLabel)}
           </div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-foreground">{t('charts.sales.performance')}</h2>

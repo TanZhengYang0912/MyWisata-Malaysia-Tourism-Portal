@@ -17,6 +17,7 @@ import { InternationalPhoneInput } from "@/components/profile/international-phon
 import { Button } from "@/components/ui/button";
 import { getCheckoutErrorCode, getCheckoutErrorRecovery, getCheckoutErrorTranslationKey, type CheckoutErrorCode, type CheckoutErrorPayload } from "@/lib/checkout/errors";
 import { checkoutContactSchema } from "@/lib/checkout/contact";
+import { attributeCheckout } from "@/lib/checkout/attribute-checkout";
 import type { BookingSlot, Outlet, Voucher } from "@/backend/core/types";
 import { formatMYRFromSen } from "@/lib/i18n/format";
 import { formatStayRange } from "@/lib/customer/booking-view";
@@ -26,16 +27,6 @@ import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import {getSelectedOutletStock} from "@/lib/customer/outlet-shop";
 import {getCartLineAvailability,resolveBookingSlotLookupStatus,type BookingSlotLookupState} from "@/lib/customer/cart-availability";
 import { PAYMENT_CHOICES as METHODS, TOYYIBPAY_SANDBOX } from "@/lib/checkout/payment-choices";
-
-// Affiliate attribution remains fire-and-forget and never blocks checkout.
-function attributeCheckout(orderId: string) {
-  fetch("/api/checkout/attribute", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ orderId }),
-  }).catch(() => {});
-}
-
 
 type WalletSummary = {
   topupSen: number;
@@ -133,37 +124,12 @@ export default function CheckoutPage() {
   }, [checkoutAllowed, currentUser]);
 
   useEffect(() => {
-    // Live-found gap: `?stripe_session_id=` on its own already proves we're
-    // returning from a real Stripe checkout for an order that /api/checkout/prepare
-    // already created (its prepare_checkout RPC consumes the selected cart
-    // items server-side as part of creating that order). By the time the
-    // browser reloads fresh here, the cart is CORRECTLY empty — that's not
-    // a reason to skip confirmation, it's proof the order was already made.
-    // The old `selectedItems.length === 0` guard treated stale/empty cart
-    // state as "nothing to confirm," so this effect silently never called
-    // confirm-stripe (and therefore never attributed the affiliate referral
-    // or generated a receipt) for exactly the common case: a single-item,
-    // straight-to-checkout purchase, where the cart has nothing left over
-    // once that one item is consumed.
+    // Stripe sessions created before the success route was added still return
+    // here. Forward them before the empty cart state can replace the result.
     const sessionId = new URLSearchParams(window.location.search).get("stripe_session_id");
-    if (!sessionId || !checkoutAllowed || paying) return;
-    // Prevent duplicate confirmation while this one-time Stripe return is being verified.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPaying(true);
-    fetch("/api/checkout/confirm-stripe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stripeSessionId: sessionId }) })
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error("stripe_confirmation_failed")))
-      .then((body: { data?: { order_id?: string; status?: string } }) => {
-        const orderId = body.data?.order_id;
-        if (!orderId) throw new Error("stripe_order_missing");
-        if (body.data?.status === 'payment_exception') { router.push(`/customer/orders/${orderId}`); return; }
-        attributeCheckout(orderId);
-        router.push(`/customer/orders/${orderId}`);
-      })
-      .catch(() => {
-        setCheckoutError('PAYMENT_STATUS_UNCERTAIN');
-        setPaying(false);
-      });
-  }, [checkoutAllowed, currentUser, paying, router]);
+    if (!sessionId) return;
+    router.replace(`/customer/checkout/success?stripe_session_id=${encodeURIComponent(sessionId)}`);
+  }, [router]);
 
   const slotPrices=new Map([...slotsById.values()].flatMap(slot=>slot.priceOverride === undefined ? [] : [[slot.id,slot.priceOverride]]));
   const pricingReady=bookingSlotsStatus === "loaded" && selectedItems.every(item=>{

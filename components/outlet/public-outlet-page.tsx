@@ -236,6 +236,7 @@ export async function renderPublicOutletPage({ params, searchParams }: PublicOut
         description: product.description,
         base_price: getOutletVariantPrice(outletPrice, purchaseVariant?.price_offset),
         category: relationOne(product.categories)?.name ?? null,
+        category_slug: relationOne(product.categories)?.slug ?? null,
         ...(stayByProduct.has(product.id) && {
           stay: {
             total: stayByProduct.get(product.id)!.overrides.reduce<number>((sum, o) => sum + (o ?? getOutletVariantPrice(outletPrice, purchaseVariant?.price_offset)), 0),
