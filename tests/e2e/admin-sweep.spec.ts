@@ -1,7 +1,7 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
-import { chromium, expect, test, type Page } from "@playwright/test";
+import { chromium, expect, test, type BrowserContext, type Page, type Route } from "@playwright/test";
 import { localEnv } from "./helpers/demo";
 
 // Admin sweep: opens every admin page as a signed-in admin and records console
@@ -14,6 +14,16 @@ import { localEnv } from "./helpers/demo";
 // The CAPTCHA can refuse a browser Playwright launched. In that case start Chrome
 // yourself with --remote-debugging-port=9222 (and its own --user-data-dir), sign in
 // there, and run with ADMIN_SWEEP_CDP=http://127.0.0.1:9222 so the sweep attaches.
+// SWEEP_AREA=vendor sweeps /vendor/* instead, signed in as a vendor owner. In that mode every
+// non-GET request to /api is stubbed in the browser (nothing can be written) and the stubbed
+// attempts are listed as findings; reads stay real, and the vendor GET API is probed for 5xx.
+// SWEEP_AREA=customer signs in as the seeded demo customer inside a fresh browser context (or
+// continues as a guest with SWEEP_GUEST=1) and sweeps /customer/* plus the public pages. Options:
+//   SWEEP_VIEWPORT=mobile (390x844 touch)   SWEEP_LOCALE=ms|zh-CN   SWEEP_DEEP=1 (click every control)
+//   SWEEP_WRITES=fail (stubbed writes answer 500, to find actions that fail silently)
+//   SWEEP_ONLY=/customer,/customer/cart (just these routes)
+// In vendor and customer modes writes to the API, to Supabase REST/storage/auth and to server actions
+// are stubbed (see installStubs); only reads reach the database.
 // Writes use only E2E-prefixed rows, deleted at the end. Nothing here sends an
 // announcement, changes system settings, or touches money, KYC, roles or users.
 
@@ -25,7 +35,7 @@ test.setTimeout(2_700_000);
 const BASE = "http://localhost:3000";
 const OUT = process.env.ADMIN_SWEEP_OUT ?? "test-results/admin-sweep";
 const RUN = Date.now().toString(36);
-const STATIC_ROUTES = [
+const ADMIN_ROUTES = [
   "/admin/dashboard", "/admin/access-control", "/admin/affiliate", "/admin/ai-assistant", "/admin/announcements",
   "/admin/catalogue", "/admin/catalogue/hotel-amenities", "/admin/chat-reports", "/admin/chatbot",
   "/admin/event-promotions", "/admin/event-registrations", "/admin/help", "/admin/kyc",
@@ -36,10 +46,40 @@ const STATIC_ROUTES = [
   "/admin/wallet/approvers", "/admin/wallet/settings", "/admin/withdrawals",
 ];
 // Not visited: /admin/security and /admin/kyc/mfa (the 2FA screens themselves).
-const DETAIL_PATTERNS = [
+const ADMIN_DETAIL_PATTERNS = [
   /^\/admin\/orders\/[^/]+$/, /^\/admin\/kyc\/[^/]+$/, /^\/admin\/withdrawals\/[^/]+$/, /^\/admin\/event-promotions\/[^/]+$/,
   /^\/admin\/event-registrations\/[^/]+$/, /^\/admin\/recommendations\/[^/]+$/, /^\/admin\/help\/[^/]+$/, /^\/admin\/help\/flows\/[^/]+$/,
 ];
+// Not visited: /vendor/scanner (needs the camera). /vendor/register only shows its form.
+const VENDOR_ROUTES = [
+  "/vendor/dashboard", "/vendor/analytics", "/vendor/announcements", "/vendor/bookings", "/vendor/event-orders",
+  "/vendor/event-promotions", "/vendor/events", "/vendor/inbox", "/vendor/listings", "/vendor/orders", "/vendor/outlets",
+  "/vendor/products", "/vendor/profile", "/vendor/redemptions", "/vendor/vouchers", "/vendor/wallet", "/vendor/register",
+];
+const VENDOR_DETAIL_PATTERNS = [/^\/vendor\/announcements\/[^/]+$/, /^\/vendor\/events\/[^/]+$/];
+// Not visited: /customer/checkout/simulator/[sessionId] (needs a live payment session).
+const CUSTOMER_ROUTES = [
+  "/", "/help", "/reset-password", "/customer", "/customer/explore", "/customer/search", "/customer/events", "/customer/for-you",
+  "/customer/map", "/customer/vendors", "/customer/partners", "/customer/recommendations", "/customer/calendar", "/customer/trip",
+  "/customer/cart", "/customer/checkout", "/customer/wishlist", "/customer/saved", "/customer/orders", "/customer/orders/access",
+  "/customer/vouchers", "/customer/wallet", "/customer/notifications", "/customer/support", "/customer/profile",
+  "/customer/preferences", "/customer/profile/register-vendor", "/customer/affiliate", "/customer/affiliate/earnings",
+  "/customer/activity", "/customer/kyc", "/customer/phone", "/customer/verification",
+];
+const AREA: "admin" | "vendor" | "customer" = process.env.SWEEP_AREA === "vendor" ? "vendor" : process.env.SWEEP_AREA === "customer" ? "customer" : "admin";
+const only = (process.env.SWEEP_ONLY ?? "").split(",").map((route) => route.trim()).filter(Boolean);
+const ALL_ROUTES = AREA === "vendor" ? VENDOR_ROUTES : AREA === "customer" ? CUSTOMER_ROUTES : ADMIN_ROUTES;
+const STATIC_ROUTES = only.length ? ALL_ROUTES.filter((route) => only.includes(route)) : ALL_ROUTES;
+const DETAIL_PATTERNS = AREA === "vendor" ? VENDOR_DETAIL_PATTERNS : ADMIN_DETAIL_PATTERNS;
+const MOBILE = process.env.SWEEP_VIEWPORT === "mobile";
+const LOCALE = process.env.SWEEP_LOCALE === "ms" || process.env.SWEEP_LOCALE === "zh-CN" ? process.env.SWEEP_LOCALE : "en";
+const GUEST = process.env.SWEEP_GUEST === "1";
+const DEEP = process.env.SWEEP_DEEP === "1";
+const WRITES_FAIL = process.env.SWEEP_WRITES === "fail";
+// Money screens: nothing is opened or clicked there beyond tabs and search.
+const NO_OPENERS = ["/vendor/wallet"];
+// Never clicked: these would end or switch the signed-in session.
+const NEVER_CLICK = /sign ?out|log ?out|logout|switch account|account menu|delete account|deactivate|close account|keluar|退出|登出/i;
 
 type Finding = { page: string; kind: string; detail: string };
 const findings: Finding[] = [];
@@ -60,6 +100,22 @@ function note(kind: string, detail: string, page = where) {
 
 const slug = (value: string) => value.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "").slice(0, 80) || "root";
 const stripQuery = (url: string) => url.replace(/[?#].*$/, "").replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, ":id");
+
+/** GET routes under app/api/vendors/[vendorId] that take no other id, minus anything that could start a payment, link or export. */
+function vendorGetRoutes(): string[] {
+  const root = join(process.cwd(), "app/api/vendors/[vendorId]");
+  const found: string[] = [];
+  const walk = (dir: string, rel: string) => {
+    for (const name of readdirSync(dir)) {
+      const full = join(dir, name);
+      if (statSync(full).isDirectory()) {
+        if (!name.startsWith("[") && !/stripe|connect|onboard|payout|withdraw|oauth|checkout|download|export|redirect/i.test(name)) walk(full, `${rel}/${name}`);
+      } else if (name === "route.ts" && /export\s+async\s+function\s+GET/.test(readFileSync(full, "utf8"))) found.push(rel);
+    }
+  };
+  walk(root, "");
+  return found;
+}
 
 function listen(page: Page) {
   page.on("console", (message) => {
@@ -87,10 +143,16 @@ function listen(page: Page) {
 async function settle(page: Page) {
   await page.waitForLoadState("domcontentloaded");
   await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
+  // Vendor pages fetch only after the signed-in user has loaded, so the first idle can be the gap
+  // between two waves of requests; give the second wave time to start, then wait for it too.
+  if (AREA !== "admin") {
+    await page.waitForTimeout(3_000);
+    await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
+  }
   const deadline = Date.now() + 12_000;
   while (Date.now() < deadline) {
     const busy = await page.evaluate(() => {
-      const spinner = [...document.querySelectorAll(".animate-spin")].some((el) => (el as HTMLElement).offsetParent !== null);
+      const spinner = [...document.querySelectorAll(".animate-spin, [class*='animate-pulse'], [data-slot='skeleton']")].some((el) => (el as HTMLElement).offsetParent !== null);
       return spinner || /^\s*(Loading|Restoring)[^\n]{0,40}…?\s*$/m.test(document.body.innerText);
     });
     if (!busy) return;
@@ -100,7 +162,7 @@ async function settle(page: Page) {
 }
 
 async function audit(page: Page) {
-  const issues = await page.evaluate(() => {
+  const issues = await page.evaluate((opts: { mobile: boolean; locale: string }) => {
     const out: { kind: string; detail: string }[] = [];
     const vw = document.documentElement.clientWidth;
     const root = document.documentElement;
@@ -144,8 +206,29 @@ async function audit(page: Page) {
     if (!main || main.innerText.trim().length < 15) out.push({ kind: "empty-page", detail: "main content is empty" });
     const h1 = document.querySelectorAll("h1").length;
     if (h1 !== 1) out.push({ kind: "h1-count", detail: `${h1} h1 elements` });
+    const lang = document.documentElement.lang;
+    const wantLang = opts.locale === "zh-CN" ? "zh" : opts.locale;
+    if (!lang.toLowerCase().startsWith(wantLang)) out.push({ kind: "html-lang", detail: `<html lang="${lang}"> while the app language is ${opts.locale}` });
+    if (opts.mobile) {
+      // Touch targets under 32 px are hard to hit on a phone.
+      const small = [...document.querySelectorAll("button, a[href], [role=button], [role=tab], input:not([type=hidden]), select")].filter((el) => {
+        const r = el.getBoundingClientRect();
+        const style = getComputedStyle(el);
+        return r.width > 0 && r.height > 0 && style.visibility !== "hidden" && !el.closest(".sr-only") && (r.width < 32 || r.height < 32) && !(el.tagName === "A" && el.closest("p, li, span, td") && el.textContent && el.textContent.trim().split(" ").length < 10 && r.width >= 32);
+      });
+      for (const el of small.slice(0, 5)) {
+        const r = el.getBoundingClientRect();
+        out.push({ kind: "small-tap-target", detail: `${Math.round(r.width)}x${Math.round(r.height)} ${describe(el)}` });
+      }
+    }
+    if (opts.locale !== "en") {
+      // Interface text (not content written by vendors or customers) still in English.
+      const english = /(add|cart|view|your|save|cancel|search|sign|submit|next|back|more|orders?|profile|help|continue|apply|filter|clear|close|open|edit|delete|remove|book|pay|buy|login|register|explore|events|wallet|support|settings|loading|select|choose|upload|download|confirm|reset|forgot|password|email|phone|address)/i;
+      const chrome = [...document.querySelectorAll("button, label, th, h1, h2, h3, nav a, [role=tab]")].map((el) => (el.textContent ?? "").trim().replace(/\s+/g, " ")).filter((t) => /^[A-Za-z' ,.!?&-]+$/.test(t) && t.split(" ").length >= 2 && t.length <= 60 && english.test(t));
+      for (const t of [...new Set(chrome)].slice(0, 5)) out.push({ kind: "possibly-untranslated", detail: t });
+    }
     return out;
-  });
+  }, { mobile: MOBILE, locale: LOCALE });
   for (const issue of issues) note(issue.kind, issue.detail);
 }
 
@@ -158,7 +241,7 @@ async function visit(page: Page, path: string): Promise<boolean> {
   });
   if (!response) return false;
   const final = new URL(page.url()).pathname;
-  if (/^\/(login|admin\/security)/.test(final)) throw new Error(`Session lost: ${path} redirected to ${final}`);
+  if (/^\/(login|admin\/security)/.test(final) && !(GUEST || path === "/login" || (AREA === "customer" && !path.startsWith("/customer")))) throw new Error(`Session lost: ${path} redirected to ${final}`);
   if (final !== path) note("redirected", `${path} -> ${final}`);
   if (response.status() >= 400) note("http-error", `page ${path} -> ${response.status()}`);
   await settle(page);
@@ -203,7 +286,7 @@ async function exercise(page: Page, path: string) {
     await step("clear search", async () => { await search.fill(""); await page.waitForTimeout(700); await settle(page); });
   }
 
-  const selects = page.locator('section[class*="max-w-full"][class*="rounded-xl"] select');
+  const selects = AREA === "admin" ? page.locator('section[class*="max-w-full"][class*="rounded-xl"] select') : page.locator("select.sweep-none");
   const selectCount = await selects.count();
   for (let i = 0; i < Math.min(selectCount, 4); i += 1) {
     const select = selects.nth(i);
@@ -222,7 +305,7 @@ async function exercise(page: Page, path: string) {
 
   // Dialog openers by name only; anything that submits (type=submit) or is not on this list is left alone.
   const openers = page.locator("main button:not([type=submit]):visible").filter({ hasText: /^(view|details?|preview|filters?|edit|add|new|create)\b/i });
-  const openerCount = await openers.count();
+  const openerCount = NO_OPENERS.includes(path) ? 0 : await openers.count();
   for (let i = 0; i < Math.min(openerCount, 3); i += 1) {
     const opener = openers.nth(i);
     const name = ((await opener.textContent()) ?? "").trim().slice(0, 30);
@@ -243,23 +326,218 @@ async function exercise(page: Page, path: string) {
 }
 
 async function detailLinks(page: Page): Promise<string[]> {
-  const hrefs = await page.locator('main a[href^="/admin/"]').evaluateAll((els) => els.map((el) => (el as HTMLAnchorElement).getAttribute("href") ?? ""));
+  if (AREA === "customer") {
+    const all = await page.locator('a[href^="/customer/"]').evaluateAll((els) => els.map((el) => (el as HTMLAnchorElement).getAttribute("href") ?? ""));
+    const perKind = new Map<string, string[]>();
+    for (const href of new Set(all.map((h) => h.split("?")[0].split("#")[0]))) {
+      const parts = href.split("/").filter(Boolean);
+      // /customer/<kind>/<id...>: a detail page; the bare kind pages are already in the static list.
+      if (parts.length < 3 || STATIC_ROUTES.includes(href)) continue;
+      const list = perKind.get(parts[1]) ?? [];
+      if (list.length < 2) list.push(href);
+      perKind.set(parts[1], list);
+    }
+    return [...perKind.values()].flat();
+  }
+  const hrefs = await page.locator(`main a[href^="/${AREA}/"]`).evaluateAll((els) => els.map((el) => (el as HTMLAnchorElement).getAttribute("href") ?? ""));
   return [...new Set(hrefs.map((h) => h.split("?")[0]).filter((h) => DETAIL_PATTERNS.some((p) => p.test(h))))];
+}
+
+let writesSent = 0;
+let lastWrite = "";
+
+/**
+ * Stubs every write, so only reads reach the database: API writes, server actions, and direct
+ * Supabase REST (tables), storage, edge-function and auth calls. Session refresh and RPC calls
+ * pass through (RPCs are mostly reads here; they are listed as findings so none go unnoticed).
+ */
+async function installStubs(context: BrowserContext) {
+  const isRead = (method: string) => method === "GET" || method === "HEAD" || method === "OPTIONS";
+  const respond = (route: Route, label: string, supabase: boolean) => {
+    writesSent += 1;
+    lastWrite = label;
+    note("stubbed-write", label);
+    if (WRITES_FAIL) {
+      return route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify(supabase ? { message: "Sweep injected failure", code: "SWEEP" } : { data: null, error: { code: "SWEEP_INJECTED_FAILURE", message: "Sweep injected failure" } }) });
+    }
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(supabase ? [] : { data: {}, error: null }) });
+  };
+  await context.route(/^http:\/\/localhost:3000\//, (route) => {
+    const request = route.request();
+    if (isRead(request.method())) return route.continue();
+    const url = new URL(request.url());
+    if (url.pathname.startsWith("/api/") || request.headers()["next-action"]) return respond(route, `${request.method()} ${stripQuery(url.pathname)}`, false);
+    return route.continue();
+  });
+  await context.route(/^https:\/\/[a-z0-9]+\.supabase\.co\/(rest\/v1|storage\/v1|functions\/v1|auth\/v1)\//, (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (isRead(request.method()) || url.pathname.startsWith("/auth/v1/token")) return route.continue();
+    const label = `${request.method()} supabase ${url.pathname.replace(/\/[0-9a-f-]{36}/g, "/:id")}`;
+    if (url.pathname.startsWith("/rest/v1/rpc/")) {
+      note("unstubbed-rpc", label);
+      return route.continue();
+    }
+    return respond(route, label, true);
+  });
+}
+
+/** The seeded demo customer (public demo credentials), or a guest, in the given page's fresh context. */
+async function loginCustomer(page: Page) {
+  await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded", timeout: 120_000 });
+  await page.waitForTimeout(5_000);
+  if (GUEST) {
+    await page.getByRole("button", { name: /guest mode/i }).click();
+    await page.waitForURL((url) => url.pathname.startsWith("/customer"), { timeout: 60_000 });
+    return;
+  }
+  await page.locator('input[type="email"]').fill("customer@demo.local");
+  await page.locator('input[type="password"]').fill("demo123456");
+  await page.waitForTimeout(8_000);
+  await page.locator("form").getByRole("button", { name: /^sign in$/i }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 90_000 });
+  await page.waitForURL((url) => !url.pathname.startsWith("/auth/"), { timeout: 30_000 });
+}
+
+/** Toasts and alerts on screen, plus how many error-sounding words the page shows. */
+async function feedbackSnapshot(page: Page) {
+  return page.evaluate(() => {
+    const shown = (el: Element) => (el as HTMLElement).offsetParent !== null || getComputedStyle(el).position === "fixed";
+    const alerts = [...document.querySelectorAll("[role=alert], [role=status], [data-sonner-toast], [class*=toast i]")].filter(shown).map((el) => (el.textContent ?? "").trim()).filter(Boolean);
+    const words = (document.body.innerText.match(/injected|fail|error|unable|couldn.?t|could not|try again|went wrong|gagal|ralat|tidak dapat|失败|错误|无法/gi) ?? []).length;
+    return { alerts, words };
+  });
+}
+
+/**
+ * Clicks every distinct control on the page (never sign-out or account switching) and reports clicks that
+ * leave the page, dialogs that will not close, and, with SWEEP_WRITES=fail, actions whose failure shows no message.
+ */
+async function clickThrough(page: Page, path: string) {
+  where = `${path} (click-through)`;
+  const base = page.url();
+  const selector = "main button:visible, main [role=tab]:visible, main [role=switch]:visible, main [role=checkbox]:visible, main [role=radio]:visible, main summary:visible";
+  const seen = new Set<string>();
+  const total = Math.min(await page.locator(selector).count(), 70);
+  let clicked = 0;
+  let failedInARow = 0;
+  for (let i = 0; i < total && clicked < 30; i += 1) {
+    const control = page.locator(selector).nth(i);
+    const label = (((await control.getAttribute("aria-label", { timeout: 1_000 }).catch(() => null)) || (await control.innerText({ timeout: 1_000 }).catch(() => ""))) ?? "").trim().replace(/\s+/g, " ").slice(0, 50);
+    const key = `${await control.evaluate((el) => el.tagName).catch(() => "?")}|${label}`;
+    if (!label || NEVER_CLICK.test(label) || seen.has(key)) continue;
+    seen.add(key);
+    // The header's sign-out button is labelled with the user's name and shows only a door icon.
+    const endsSession = await control.evaluate((el) => Boolean(el.querySelector("svg[class*='log-out'], svg[class*='power']")) || /sign.?out|log.?out|account menu/i.test(el.getAttribute("aria-label") ?? "")).catch(() => false);
+    if (endsSession) continue;
+    const writesBefore = writesSent;
+    // An earlier click can leave a menu or panel open over the page; Escape closes those.
+    await page.keyboard.press("Escape").catch(() => {});
+    const before = await feedbackSnapshot(page);
+    try {
+      await control.click({ timeout: 3_000 });
+      failedInARow = 0;
+    } catch (error) {
+      await page.keyboard.press("Escape").catch(() => {});
+      const retried = await control.click({ timeout: 3_000 }).then(() => true, () => false);
+      if (!retried) {
+        note("click-failed", `"${label}": ${String((error as Error).message).split("\n")[0].slice(0, 120)}`);
+        failedInARow += 1;
+        // Two failures in a row mean something is covering the page: start again from a clean copy of it.
+        if (failedInARow >= 2) {
+          await page.goto(base, { waitUntil: "domcontentloaded" }).catch(() => {});
+          await settle(page);
+          failedInARow = 0;
+        }
+        continue;
+      }
+      failedInARow = 0;
+    }
+    clicked += 1;
+    await page.waitForTimeout(900);
+    if (!page.url().startsWith(BASE) || new URL(page.url()).pathname !== new URL(base).pathname) {
+      note("click-navigated", `"${label}" went to ${page.url().startsWith(BASE) ? new URL(page.url()).pathname : "another site"}`);
+      await page.goto(base, { waitUntil: "domcontentloaded" }).catch(() => {});
+      await settle(page);
+      continue;
+    }
+    if (WRITES_FAIL && writesSent > writesBefore) {
+      const after = await feedbackSnapshot(page);
+      const newAlert = after.alerts.some((text) => !before.alerts.includes(text));
+      if (!newAlert && after.words <= before.words) note("silent-write-failure", `"${label}" sent ${lastWrite} and the failure showed no message`);
+    }
+    const dialog = page.getByRole("dialog");
+    if (await dialog.count()) {
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(400);
+      if (await dialog.count()) {
+        const close = dialog.getByRole("button", { name: /^(cancel|close|batal|tutup|取消|关闭)$/i }).first();
+        if (await close.count()) await close.click().catch(() => {});
+        else note("dialog-not-closable", `the dialog opened by "${label}" ignores Escape and has no Cancel/Close`);
+        await page.waitForTimeout(300);
+        if (await dialog.count()) await page.goto(base, { waitUntil: "domcontentloaded" }).catch(() => {});
+      }
+    }
+    await audit(page);
+  }
+  steps.push(`clicked ${clicked} controls on ${path}`);
+}
+
+/** A customer's way through the site: search, open a result, add it, look at the cart and checkout. */
+async function customerJourney(page: Page) {
+  where = "journey: search, product, cart, checkout";
+  const log = (text: string) => steps.push(`journey: ${text}`);
+  await page.goto(`${BASE}/customer/search`, { waitUntil: "domcontentloaded" });
+  await settle(page);
+  const box = page.locator('input[type="search"], input[placeholder*="earch" i]').first();
+  if (!(await box.isVisible().catch(() => false))) {
+    note("journey-step-failed", "no search box on /customer/search");
+  } else {
+    await box.fill("food");
+    await box.press("Enter");
+    await settle(page);
+    const links = page.locator('a[href*="/customer/products/"], a[href*="/customer/outlets/"], a[href*="/customer/outlet/"], a[href*="/customer/place/"]');
+    const count = await links.count();
+    log(`search "food" shows ${count} result links`);
+    if (count === 0) note("journey-step-failed", 'searching "food" shows no results');
+    else {
+      await links.first().click();
+      await settle(page);
+      await audit(page);
+      log(`opened ${new URL(page.url()).pathname}`);
+      const add = page.getByRole("button", { name: /add to (cart|basket|trip|itinerary)|book now|reserve|tambah ke|加入/i }).first();
+      if (await add.isVisible().catch(() => false)) {
+        const before = await feedbackSnapshot(page);
+        await add.click().catch((error) => note("journey-step-failed", `add to cart: ${String(error.message).split("\n")[0].slice(0, 100)}`));
+        await page.waitForTimeout(1_200);
+        const after = await feedbackSnapshot(page);
+        const feedback = after.alerts.some((text) => !before.alerts.includes(text));
+        log(`add to cart clicked; feedback shown: ${feedback}`);
+        if (!feedback) note("journey-no-feedback", "adding an item from its page showed no confirmation or error message");
+      } else {
+        note("journey-step-failed", `no add-to-cart or book button on ${new URL(page.url()).pathname}`);
+      }
+    }
+  }
+  for (const route of ["/customer/cart", "/customer/checkout"]) {
+    await visit(page, route);
+    log(`${route} loaded`);
+  }
 }
 
 async function waitForHumanLogin(page: Page) {
   // Leave a page the human already has open (possibly mid-sign-in) alone.
   // An error page or about:blank goes to the dashboard: a valid session lands there, otherwise the app redirects to /login.
-  if (!page.url().startsWith(BASE)) await page.goto(new URL("/admin/dashboard", BASE).toString()).catch(() => {});
+  if (!page.url().startsWith(BASE)) await page.goto(new URL(`/${AREA}/dashboard`, BASE).toString()).catch(() => {});
   console.log("ADMIN_SWEEP_WAITING_FOR_HUMAN: sign in as an admin in the open browser window (CAPTCHA + 2FA). The sweep continues by itself.");
   const deadline = Date.now() + Number(process.env.ADMIN_SWEEP_LOGIN_WAIT_MIN ?? 15) * 60_000;
   let lastJump = 0;
   while (Date.now() < deadline) {
     const path = new URL(page.url()).pathname;
-    if (path.startsWith("/admin") && !/^\/admin\/(security|kyc\/mfa)/.test(path)) return;
-    if (!/^\/(login|admin|auth)/.test(path) && Date.now() - lastJump > 20_000) {
+    if (path.startsWith(`/${AREA}`) && !/^\/admin\/(security|kyc\/mfa)/.test(path)) return;
+    if (!/^\/(login|admin|vendor|auth)/.test(path) && Date.now() - lastJump > 20_000) {
       lastJump = Date.now();
-      await page.goto(new URL("/admin/dashboard", BASE).toString()).catch(() => {});
+      await page.goto(new URL(`/${AREA}/dashboard`, BASE).toString()).catch(() => {});
     }
     await page.waitForTimeout(1_500);
   }
@@ -268,11 +546,19 @@ async function waitForHumanLogin(page: Page) {
 
 test("admin sweep", async ({ page: launchedPage }) => {
   let page = launchedPage;
+  let customerContext: BrowserContext | null = null;
+  const phone = { width: 390, height: 844 };
   if (process.env.ADMIN_SWEEP_CDP) {
     const browser = await chromium.connectOverCDP(process.env.ADMIN_SWEEP_CDP);
-    const context = browser.contexts()[0];
-    page = context.pages()[0] ?? (await context.newPage());
-    await page.setViewportSize({ width: 1440, height: 900 });
+    if (AREA === "customer") {
+      // A fresh context, so the vendor or admin session in the same Chrome is never touched.
+      customerContext = await browser.newContext({ viewport: MOBILE ? phone : { width: 1280, height: 900 }, isMobile: MOBILE, hasTouch: MOBILE, deviceScaleFactor: MOBILE ? 2 : 1 });
+      page = await customerContext.newPage();
+    } else {
+      const context = browser.contexts()[0];
+      page = context.pages()[0] ?? (await context.newPage());
+      await page.setViewportSize(MOBILE ? phone : { width: 1440, height: 900 });
+    }
   }
   mkdirSync(OUT, { recursive: true });
   listen(page);
@@ -283,8 +569,12 @@ test("admin sweep", async ({ page: launchedPage }) => {
   const wordTerm = `e2esweep${RUN}`;
 
   try {
-    await waitForHumanLogin(page);
-    steps.push("signed in");
+    if (AREA === "customer") await loginCustomer(page);
+    else await waitForHumanLogin(page);
+    steps.push(GUEST ? "continued as guest" : "signed in");
+    if (AREA !== "admin") await installStubs(page.context());
+    // The language is chosen after sign-in, because the login screen's own labels are English.
+    if (LOCALE !== "en") await page.context().addCookies([{ name: "NEXT_LOCALE", value: LOCALE, url: BASE }]);
 
     // 1. Every static page: load, audit, screenshot, then safe interactions.
     const details = new Set<string>();
@@ -298,9 +588,10 @@ test("admin sweep", async ({ page: launchedPage }) => {
       steps.push(`visited ${path}`);
       for (const href of (await detailLinks(page)).slice(0, 2)) details.add(href);
       await exercise(page, path);
+      if (DEEP && AREA !== "admin") await clickThrough(page, path);
       // The sidebar is part of every page: its links must resolve.
-      if (path === "/admin/dashboard") {
-        const nav = await page.locator('a[href^="/admin/"]').evaluateAll((els) => [...new Set(els.map((el) => (el as HTMLAnchorElement).getAttribute("href")!.split("?")[0]))]);
+      if (AREA !== "customer" && path === STATIC_ROUTES[0]) {
+        const nav = await page.locator(`a[href^="/${AREA}/"]`).evaluateAll((els) => [...new Set(els.map((el) => (el as HTMLAnchorElement).getAttribute("href")!.split("?")[0]))]);
         for (const href of nav) {
           if (!STATIC_ROUTES.includes(href) && !DETAIL_PATTERNS.some((p) => p.test(href)) && !/^\/admin\/(security|kyc\/mfa)/.test(href)) note("nav-link-not-swept", href, "sidebar");
         }
@@ -312,7 +603,23 @@ test("admin sweep", async ({ page: launchedPage }) => {
       if (await visit(page, path)) steps.push(`visited ${path}`);
     }
 
-    if (end > first) return;
+    if (AREA === "vendor") {
+      // Read-only probe of the vendor API: a 5xx here is a server bug whatever the page does with it.
+      where = "vendor API probe";
+      const vendorId = await page.evaluate(async () => (await (await fetch("/api/auth/me")).json()).user?.activeVendorId as string | undefined).catch(() => undefined);
+      if (!vendorId) note("probe-skipped", "the signed-in user has no active vendor id");
+      else {
+        for (const rel of vendorGetRoutes()) {
+          const url = `${BASE}/api/vendors/${vendorId}${rel}`;
+          const status = await page.evaluate(async (u) => (await fetch(u, { cache: "no-store" })).status, url).catch(() => -1);
+          if (status >= 500 || status === -1) note("api-5xx", `GET /api/vendors/:id${rel} -> ${status}`);
+          else if (status === 401 || status === 403) note("api-forbidden", `GET /api/vendors/:id${rel} -> ${status}`);
+          steps.push(`probed GET ${rel || "/"} -> ${status}`);
+        }
+      }
+    }
+    if (AREA === "customer" && DEEP) await customerJourney(page);
+    if (AREA !== "admin" || end > first) return;
 
     // 3. Hotel amenity: add, turn off, and ask the AI assistant for the ones that are off.
     try {
@@ -400,6 +707,10 @@ test("admin sweep", async ({ page: launchedPage }) => {
       await page.screenshot({ path: join(OUT, "flow_word_failed.png") }).catch(() => {});
     }
   } finally {
+    if (AREA !== "admin") await page.context().unrouteAll({ behavior: "ignoreErrors" }).catch(() => {});
+    // The vendor/admin Chrome is the user's own: put its language back.
+    if (!customerContext && LOCALE !== "en") await page.context().addCookies([{ name: "NEXT_LOCALE", value: "en", url: BASE }]).catch(() => {});
+    await customerContext?.close().catch(() => {});
     // Remove every row this run created, even after a failure.
     if (service) {
       await service.from("hotel_amenities").delete().eq("code", amenityCode);
