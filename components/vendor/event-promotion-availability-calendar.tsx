@@ -7,12 +7,16 @@ import interactionPlugin from "@fullcalendar/interaction";
 import type { DateClickArg } from "@fullcalendar/interaction";
 import type { DatesSetArg, DayCellContentArg } from "@fullcalendar/core";
 import { useTranslation } from "react-i18next";
+import { AlertCircle } from "lucide-react";
+import { formatDate } from "@/lib/i18n/format";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 
 interface Props {
   vendorId: string;
   startDate: string;
   endDate: string;
   onChange: (range: { startDate: string; endDate: string }) => void;
+  onCostPerDayChange?: (costPerDaySen: number) => void;
 }
 
 // Local-date arithmetic throughout — these are calendar dates the vendor
@@ -50,11 +54,14 @@ export function addDaysISO(iso: string, days: number): string {
  * shown as open here can still fill before an admin acts. Past dates are
  * shown (not hidden) but unselectable, styled distinctly from full days.
  */
-export function EventPromotionAvailabilityCalendar({ vendorId, startDate, endDate, onChange }: Props) {
-  const { t } = useTranslation("vendor");
+export function EventPromotionAvailabilityCalendar({ vendorId, startDate, endDate, onChange, onCostPerDayChange }: Props) {
+  const { t, i18n } = useTranslation("vendor");
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [availability, setAvailability] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [pendingStart, setPendingStart] = useState<string | null>(null);
+  // First blocked day inside a rejected range, so the restart is explained instead of silent.
+  const [blockedDay, setBlockedDay] = useState<string | null>(null);
   const lastRangeRef = useRef<string | null>(null);
 
   const loadAvailability = useCallback(async (start: Date, end: Date) => {
@@ -68,15 +75,16 @@ export function EventPromotionAvailabilityCalendar({ vendorId, startDate, endDat
     try {
       const params = new URLSearchParams({ from, to });
       const response = await fetch(`/api/vendors/${vendorId}/event-promotions/availability?${params.toString()}`, { cache: "no-store" });
-      const body = await response.json() as { data?: { availability?: { day: string; available: boolean }[] } };
+      const body = await response.json() as { data?: { availability?: { day: string; available: boolean }[]; costPerDaySen?: number } };
       if (!response.ok) return;
+      if (typeof body.data?.costPerDaySen === "number") onCostPerDayChange?.(body.data.costPerDaySen);
       const next: Record<string, boolean> = {};
       for (const row of body.data?.availability ?? []) next[row.day] = row.available;
       setAvailability((prev) => ({ ...prev, ...next }));
     } finally {
       setLoading(false);
     }
-  }, [vendorId]);
+  }, [vendorId, onCostPerDayChange]);
 
   function handleDatesSet(arg: DatesSetArg) {
     void loadAvailability(arg.start, arg.end);
@@ -89,6 +97,7 @@ export function EventPromotionAvailabilityCalendar({ vendorId, startDate, endDat
   function handleDateClick(arg: DateClickArg) {
     const iso = arg.dateStr;
     if (isBlocked(iso)) return;
+    setBlockedDay(null);
 
     // No pending start yet, or clicking before it: (re)start the selection here.
     if (!pendingStart || iso < pendingStart) {
@@ -102,6 +111,7 @@ export function EventPromotionAvailabilityCalendar({ vendorId, startDate, endDat
     let day = pendingStart;
     while (day <= iso) {
       if (isBlocked(day)) {
+        setBlockedDay(day);
         setPendingStart(iso);
         onChange({ startDate: iso, endDate: iso });
         return;
@@ -117,7 +127,12 @@ export function EventPromotionAvailabilityCalendar({ vendorId, startDate, endDat
     const iso = toISODate(arg.date);
     if (arg.isPast) return ["mw-calendar-day--past"];
     if (availability[iso] === false) return ["mw-calendar-day--blocked"];
-    if (startDate && endDate && iso >= startDate && iso <= endDate) return ["mw-calendar-day--selected"];
+    if (startDate && endDate && iso >= startDate && iso <= endDate) {
+      const classes = ["mw-calendar-day--selected"];
+      if (iso === startDate) classes.push("mw-calendar-day--range-start");
+      if (iso === endDate) classes.push("mw-calendar-day--range-end");
+      return classes;
+    }
     return [];
   }
 
@@ -131,10 +146,21 @@ export function EventPromotionAvailabilityCalendar({ vendorId, startDate, endDat
         dayCellClassNames={dayCellClassNames}
         height="auto"
         contentHeight="auto"
-        headerToolbar={{ left: "prev,next today", center: "title", right: "" }}
-        buttonText={{ today: t("ui.eventPromotions.calendar.today") }}
+        showNonCurrentDates={false}
+        fixedWeekCount={false}
+        headerToolbar={{ left: "title", center: "", right: "prev,next" }}
       />
-      <p className="mt-2 text-xs text-muted-foreground">{t("ui.eventPromotions.calendar.hint")}</p>
+      <div className="mw-calendar-legend">
+        <span><i data-swatch="selected" aria-hidden="true" />{t("ui.eventPromotions.calendar.legendSelected")}</span>
+        <span><i data-swatch="full" aria-hidden="true" />{t("ui.eventPromotions.calendar.legendFull")}</span>
+        <span><i data-swatch="today" aria-hidden="true" />{t("ui.eventPromotions.calendar.today")}</span>
+      </div>
+      {blockedDay && (
+        <p role="alert" className="mt-3 flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+          {t("ui.eventPromotions.calendar.blockedRange", { date: formatDate(`${blockedDay}T00:00:00Z`, locale, { timeZone: "UTC", day: "numeric", month: "short" }) })}
+        </p>
+      )}
     </div>
   );
 }

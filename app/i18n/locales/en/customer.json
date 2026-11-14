@@ -126,6 +126,7 @@
     "activity": "Activity",
     "accommodation": "Accommodation",
     "retail": "Retail",
+    "other": "Other",
     "hiddenGem": "Hidden Gem",
     "hidden_gem": "Hidden Gem"
   },
@@ -533,6 +534,13 @@
       "toyyibpayAwaitingTitle": "Awaiting provider confirmation",
       "toyyibpayAwaitingDescription": "Your order will update after ToyyibPay confirms the payment. Returning to this page does not mark it as paid.",
       "viewOrders": "View orders",
+      "successTitle": "Payment successful",
+      "successDescription": "Your order is confirmed.",
+      "checkingPayment": "Confirming payment…",
+      "paymentNotConfirmed": "Payment not confirmed",
+      "paymentStatusUnavailable": "Payment status unavailable",
+      "viewOrder": "View order",
+      "retryPaymentCheck": "Check again",
       "walletInsufficient": "Wallet payment is unavailable for this order because your spendable balance is too low. Pending rewards and withdrawal reserves cannot be used for checkout.",
       "continueSimulator": "Continue to payment simulator",
       "payWallet": "Pay with MYLawatan Wallet",
@@ -2184,6 +2192,7 @@
       "details": "Order details"
     },
     "outletMenu": {
+      "moreFromOutlet": "More from this outlet",
       "adding": "Adding…",
       "chooseTime": "Choose a time to book →",
       "viewDetails": "View details →",

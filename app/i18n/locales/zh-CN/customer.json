@@ -126,6 +126,7 @@
     "activity": "活动",
     "accommodation": "住宿",
     "retail": "零售",
+    "other": "其他",
     "hiddenGem": "隐藏宝藏",
     "hidden_gem": "隐藏宝藏"
   },
@@ -538,6 +539,13 @@
       "toyyibpayAwaitingTitle": "正在等待支付服务商确认",
       "toyyibpayAwaitingDescription": "ToyyibPay 确认付款后，订单会自动更新。返回此页面不会把订单标记为已付款。",
       "viewOrders": "查看订单",
+      "successTitle": "付款成功",
+      "successDescription": "订单已确认。",
+      "checkingPayment": "正在确认付款…",
+      "paymentNotConfirmed": "付款尚未确认",
+      "paymentStatusUnavailable": "无法查看付款状态",
+      "viewOrder": "查看订单",
+      "retryPaymentCheck": "重新确认",
       "walletInsufficient": "钱包可用余额不足，无法使用钱包付款。待结算奖励和提现保留金额不能用于结账。",
       "continueSimulator": "继续使用付款模拟器",
       "payWallet": "使用 MYLawatan 钱包付款",
@@ -2189,6 +2197,7 @@
       "details": "订单详情"
     },
     "outletMenu": {
+      "moreFromOutlet": "门店更多商品",
       "adding": "正在添加…",
       "chooseTime": "选择时间预订 →",
       "viewDetails": "查看详情 →",

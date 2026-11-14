@@ -33,15 +33,16 @@ describe("vendor order actions UI contract", () => {
     expect(source).toContain('itemAction && selectedOrderAction === "review"');
   });
 
-  it("keeps action controls centered and protects the desktop table from clipping", () => {
-    expect(source).toContain('className="text-center"');
-    expect(source).toContain("flex-col items-stretch");
+  it("keeps one primary row action beside a details icon and protects the desktop table from clipping", () => {
+    expect(source).toContain('<span className="text-right">');
+    expect(source).toContain('flex items-center justify-end gap-2');
+    expect(source).toContain('aria-label={`${t("ui.orders.viewDetails")} ${displayOrderId}`}');
     expect(source).toContain("overflow-x-auto");
     expect(source).toContain("xl:min-w-[1000px]");
-    expect(source).toContain("xl:grid-cols-[32px_minmax(120px,1.2fr)");
-    expect(source).toContain("_230px]");
-    // Desktop keeps the narrow centred action column; phones use the full row width.
-    expect(source).toContain("xl:max-w-[14rem] xl:justify-self-center");
+    expect(source).toContain("xl:grid-cols-[32px_minmax(140px,1.2fr)");
+    expect(source).toContain("_170px]");
+    // The two stacked full-width buttons per row are gone.
+    expect(source).not.toContain("xl:max-w-[14rem] xl:justify-self-center");
     expect(source).not.toContain("pl-[4.25rem]");
     expect(source).toContain("whitespace-nowrap");
   });

@@ -11,3 +11,15 @@ describe('customer calendar accommodation dates', () => {
     expect(source.match(/group\.bookings\[0\]\?\.categorySlug === "accommodation"/g)).toHaveLength(2);
   });
 });
+
+describe('customer calendar live updates', () => {
+  it('listens only to the signed-in customer rows', () => {
+    const subscriptions = source.match(/"postgres_changes", \{[^}]*\}/g) || [];
+
+    expect(subscriptions.length).toBeGreaterThan(0);
+    expect(source).not.toContain('table: "booking_slots"');
+    for (const subscription of subscriptions) {
+      expect(subscription).toMatch(/filter: `(customer_id|user_id)=eq\.\$\{currentUser\.id/);
+    }
+  });
+});

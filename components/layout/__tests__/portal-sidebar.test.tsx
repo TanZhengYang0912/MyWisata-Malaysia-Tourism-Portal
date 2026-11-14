@@ -44,12 +44,11 @@ describe("PortalSidebar", () => {
     expect(markup).toContain('aria-current="page"');
     expect(markup).toContain('aria-label="3 pending orders"');
     expect(markup).toContain("focus-visible:ring-2");
-    expect(markup).toContain("text-slate-200");
-    expect(markup).toContain("bg-indigo-300/20");
-    expect(markup).toContain("ring-1 ring-inset ring-indigo-200/35");
+    expect(markup).toContain("text-foreground/80");
+    expect(markup).toContain("bg-secondary font-semibold text-secondary-foreground");
   });
 
-  it("gives every category a consistent non-button heading and divider", () => {
+  it("gives every category a consistent non-button heading separated by space, not rules", () => {
     const categoryLabels = ["Communication", "Workspace", "Operations", "Finance", "Insights", "Promotion"];
     const markup = renderToStaticMarkup(
       <PortalSidebar
@@ -68,7 +67,7 @@ describe("PortalSidebar", () => {
 
     expect(headingClassNames).toHaveLength(categoryLabels.length);
     expect(new Set(headingClassNames).size).toBe(1);
-    expect(markup.match(/data-sidebar-category-divider="true"/g)).toHaveLength(categoryLabels.length);
+    expect(markup).not.toContain("data-sidebar-category-divider");
     expect(markup.match(/<h2/g)).toHaveLength(categoryLabels.length);
     expect(headingClassNames.every((className) => !className.includes("rounded-lg"))).toBe(true);
   });
@@ -85,6 +84,6 @@ describe("PortalSidebar", () => {
       />,
     );
 
-    expect(markup).toContain('class="mt-0.5 whitespace-normal break-words text-xs text-slate-300">Heritage Hotel Cameron Highlands</p>');
+    expect(markup).toContain('class="mt-0.5 whitespace-normal break-words text-xs text-foreground/70">Heritage Hotel Cameron Highlands</p>');
   });
 });

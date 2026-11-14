@@ -2,6 +2,7 @@
 // See Docs/plans/2026-09-28-0237-vendor-side-event-promotion.md.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { getMalaysiaDateInputValue } from '@/lib/datetime/date-input';
 
 export interface FeaturedEventPromotion {
   id: string;
@@ -38,7 +39,8 @@ function vendorName(vendors: FeaturedEventPromotionRow['vendors']): string {
  * already over.
  */
 export async function getFeaturedEventPromotions(db: SupabaseClient, limit = 8): Promise<FeaturedEventPromotion[]> {
-  const today = new Date().toISOString().slice(0, 10);
+  // ends_on is a Malaysia calendar date; a UTC "today" kept ended promotions listed until 08:00 MYT.
+  const today = getMalaysiaDateInputValue();
   const { data, error } = await db
     .from('vendor_event_promotions')
     .select('id,vendor_id,title,details,starts_on,ends_on,poster_url,vendors(name)')

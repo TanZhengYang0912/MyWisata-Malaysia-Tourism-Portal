@@ -49,6 +49,14 @@ const VENDOR_OWNER_SECTIONS: VendorNavigationSection[] = [
     ],
   },
   {
+    labelKey: "promotion",
+    items: [
+      { href: "/vendor/event-promotions", label: "Promotions", icon: Megaphone },
+      { href: "/vendor/events", label: "Events", icon: PartyPopper },
+      { href: "/vendor/event-orders", label: "Reservations", icon: ClipboardList },
+    ],
+  },
+  {
     labelKey: "operations",
     items: [
       { href: "/vendor/products", label: "Products", icon: UtensilsCrossed },
@@ -65,14 +73,6 @@ const VENDOR_OWNER_SECTIONS: VendorNavigationSection[] = [
   {
     labelKey: "insights",
     items: [{ href: "/vendor/analytics", label: "Analytics", icon: ChartNoAxesCombined }],
-  },
-  {
-    labelKey: "promotion",
-    items: [
-      { href: "/vendor/event-promotions", label: "Promotions", icon: Megaphone },
-      { href: "/vendor/events", label: "Events", icon: PartyPopper },
-      { href: "/vendor/event-orders", label: "Reservations", icon: ClipboardList },
-    ],
   },
 ];
 

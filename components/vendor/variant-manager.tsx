@@ -124,7 +124,7 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-900 dark:text-foreground">{v.name}</span>
-                    {v.is_default && <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">{t('variants.default')}</span>}
+                    {v.is_default && <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-primary">{t('variants.default')}</span>}
                   </div>
                 </td>
                 <td className="px-4 py-3 text-right text-gray-700 dark:text-foreground">{formatMYR(Math.abs(v.price_offset))}</td>

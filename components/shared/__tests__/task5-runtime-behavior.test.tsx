@@ -2,6 +2,7 @@ import React, { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { TestElement, TestEvent, findElements, findOne, installTestDom, type TestDocument } from "./render-test-dom";
+import type { Role } from "@/backend/core/types";
 
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
@@ -277,7 +278,7 @@ describe("Task 5 shared runtime behavior", () => {
     }));
     // Support conversations require an authenticated customer. Guest-specific
     // coverage sets currentUser to null explicitly and checks the sign-in gate.
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" }, loading: false });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" }, loading: false });
     vi.stubGlobal("fetch", mocks.fetch);
     Object.defineProperty(window, "location", { configurable: true, value: { pathname: "/customer/support", search: "?from=chat" } });
     container = document.createElement("div");
@@ -669,6 +670,21 @@ describe("Task 5 shared runtime behavior", () => {
     expect(container.textContent).toContain("Glad I could help.");
   });
 
+  it.each<Role>(["vendor_owner", "outlet_manager", "event_vendor", "admin", "approver", "staff", "super_admin"])(
+    "hides the customer chat launcher for %s",
+    async (role) => {
+      mocks.useAuth.mockReturnValue({ currentUser: { id: "non-customer", role } });
+      await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+      expect(findElements(container, (element) => element.getAttribute("aria-label") === "Open translated chat")).toHaveLength(0);
+    },
+  );
+
+  it("keeps the customer chat launcher visible", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    expect(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat")).toBeTruthy();
+  });
+
   it("uses translated known status labels and safely falls back for arbitrary/prototype statuses", () => {
     const known = renderToStaticMarkup(<StatusBadge status="completed" />);
     const unknown = renderToStaticMarkup(<StatusBadge status="not-a-status" />);
@@ -734,7 +750,7 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("hides the previous user's notifications immediately after an account switch", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-a" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-a", role: "customer" } });
     mocks.fetch.mockResolvedValueOnce(response({ data: {
       items: [{ id: "a-notice", title: "Private A notice", body: "A", link: null, category: "wallet", readAt: null, createdAt: "2026-03-05T14:06:00.000Z" }],
       page: 1, pageSize: 15, total: 1, totalPages: 1,
@@ -742,7 +758,7 @@ describe("Task 5 shared runtime behavior", () => {
     await render(<NotificationCenter />);
     expect(container.textContent).toContain("Private A notice");
 
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-b" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-b", role: "customer" } });
     mocks.fetch.mockResolvedValueOnce(response({ data: {
       items: [{ id: "b-notice", title: "Private B notice", body: "B", link: null, category: "wallet", readAt: null, createdAt: "2026-03-05T14:06:00.000Z" }],
       page: 1, pageSize: 15, total: 1, totalPages: 1,
@@ -763,7 +779,8 @@ describe("Task 5 shared runtime behavior", () => {
     await render(<NotificationBell />);
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "accessibility.notifications"));
 
-    const panel = findOne(container, (element) => element.className.includes("w-[min(26rem"));
+    // The panel is portalled out of the header (see notification-bell.tsx).
+    const panel = findOne(document.body, (element) => element.className.includes("w-[min(26rem"));
     expect(panel.style.position).toBe("fixed");
     expect(panel.style.left).toBe("24px");
     expect(panel.style.top).toBe("62px");
@@ -786,12 +803,12 @@ describe("Task 5 shared runtime behavior", () => {
     await render(<NotificationBell scope="vendor" vendorId="vendor-1" />);
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "accessibility.notifications"));
 
-    expect(container.textContent).toContain("Vendor notice 15");
-    expect(container.textContent).not.toContain("Vendor notice 16");
-    expect(container.textContent).not.toContain("View all notifications");
-    await click(findButton("Load more translated"));
+    expect(document.body.textContent).toContain("Vendor notice 15");
+    expect(document.body.textContent).not.toContain("Vendor notice 16");
+    expect(document.body.textContent).not.toContain("View all notifications");
+    await click(findOne(document.body, (element) => element.tagName === "BUTTON" && element.textContent.includes("Load more translated")));
 
-    expect(container.textContent).toContain("Vendor notice 20");
+    expect(document.body.textContent).toContain("Vendor notice 20");
     expect(mocks.fetch.mock.calls.some(([url]) => String(url).includes("page=2") && String(url).includes("scope=vendor"))).toBe(true);
   });
 
@@ -882,7 +899,7 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("keeps a saved handoff draft recoverable when draft loading fails", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
     let draftReads = 0;
     let previewCalls = 0;
     let draftWrite: { subject?: string; body?: string; expectedVersion?: number } | undefined;
@@ -937,7 +954,7 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("offers sign-in instead of falling back to a default handoff after draft authentication expires", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
     let previewCalls = 0;
     mocks.fetch.mockImplementation(async (url: string) => {
       if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
@@ -972,7 +989,7 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("preserves handoff edits and offers sign-in when saving the draft returns 401", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
     let draftWrites = 0;
     let savedPayload: { subject?: string; body?: string; expectedVersion?: number } | undefined;
     mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
@@ -1019,7 +1036,7 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("locks duplicate draft saves and keeps edits made while a save is pending", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
     const draftWrites: { subject?: string; body?: string; expectedVersion?: number }[] = [];
     let settleFirstWrite: ((result: Response) => void) | undefined;
     mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
@@ -1078,7 +1095,7 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("keeps confirmed handoff content fixed until draft save and ticket creation finish", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
     let settleDraftWrite: ((result: Response) => void) | undefined;
     let previewPayload: { subject?: string; summary?: string } | undefined;
     let ticketPayload: { subject?: string; body?: string } | undefined;
@@ -1133,7 +1150,7 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("lets a signed-in user hand off an unavailable status query using the operation draft target", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
     const question = "Has my booking been confirmed?";
     const reviewedSubject = "Please check my booking";
     const reviewedSummary = "I need help confirming my booking.";
@@ -1313,7 +1330,7 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("drives the real chatbot send and ticket handlers without translating API answers or ticket subjects", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
     const question = "I need help understanding wallet withdrawals.";
     const reviewedSubject = "Please check withdrawal status";
     const answer = "API answer [zh]: withdrawals can take two business days.";
@@ -1409,7 +1426,7 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("retries an unavailable account status in place without resending the question to Gemini", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
     const question = "Has my withdrawal been paid?";
     let statusRequests = 0;
     let askRequests = 0;
@@ -1451,7 +1468,7 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("shows KB source titles without exposing internal provenance metadata", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
     mocks.fetch.mockImplementation(async (url: string) => {
       if (url === "/api/unread-count") return response({ data: { count: 0 } });
       if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
@@ -1475,7 +1492,7 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("keeps the question and offers a retry when the auth service is temporarily unavailable", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
     const question = "How do I change my profile?";
     let askRequests = 0;
     mocks.fetch.mockImplementation(async (url: string) => {
@@ -1511,7 +1528,7 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("recovers a refreshed ask when its stored operation belongs to a different question", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
     const sessionKey = "70c130d1-9db6-4f98-8cc7-7bbf8c51f989";
     const staleOperationId = "af331f47-46b1-4db7-9318-bfc4cc4c86d0";
     const question = "How do I update my profile?";
@@ -1551,7 +1568,7 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("refreshes bounded support history when the chat is reopened", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
     document.defaultView?.localStorage.setItem(chatbotSessionStorageKey("customer-1"), "199f9fac-8427-45c9-8096-0ece82d6cb54");
     let historyRequests = 0;
     mocks.fetch.mockImplementation(async (url: string) => {
@@ -1619,7 +1636,7 @@ describe("Task 5 shared runtime behavior", () => {
     expect(container.textContent).not.toContain(userQuestion.text);
     expect(historyRequests).toBe(0);
 
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
     await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
     expect(container.textContent).toContain("Continue guest conversation translated");
@@ -1634,7 +1651,7 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("opens a vendor thread from the merged widget's left pane", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: { id: "cust-1" } });
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "cust-1", role: "customer" } });
     const apiThread = {
       id: "thread-1",
       customer_id: "cust-1",

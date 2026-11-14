@@ -19,6 +19,12 @@ vi.mock("@/lib/vendor-authorization", () => ({
   })),
 }));
 vi.mock("@/lib/customer/hotel-outlet", () => ({ isHotelOutlet: vi.fn(async () => true) }));
+const media = vi.hoisted(() => ({ reserve: vi.fn(), markStored: vi.fn() }));
+vi.mock("@/lib/vendor/media-objects", () => ({
+  reserveVendorMediaObject: media.reserve,
+  markVendorMediaObjectStored: media.markStored,
+  MEDIA_RESERVE_FAILED: { code: "UPLOAD_UNAVAILABLE", message: "Uploads are temporarily unavailable. Please try again.", status: 503 },
+}));
 
 const route = await import("../route");
 const params = { params: Promise.resolve({ vendorId: "v1", outletId: "o1" }) };
@@ -31,7 +37,24 @@ function upload(file: File) {
 }
 
 describe("hotel profile photo upload", () => {
-  beforeEach(() => { state.uploads = []; });
+  beforeEach(() => {
+    state.uploads = [];
+    media.reserve.mockReset().mockResolvedValue({ ok: true, objectId: "media-object-1" });
+    media.markStored.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("registers the photo for cleanup before writing it, and marks it stored after", async () => {
+    await upload(new File([PNG], "room.png", { type: "image/png" }));
+    expect(media.reserve).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ bucket: "vendor-products", vendorId: "v1", userId: "u1", purpose: "hotel_photo", path: state.uploads[0].path }));
+    expect(media.markStored).toHaveBeenCalledWith(expect.anything(), "media-object-1");
+  });
+
+  it("uploads nothing when the photo cannot be registered", async () => {
+    media.reserve.mockResolvedValue({ ok: false });
+    const response = await upload(new File([PNG], "room.png", { type: "image/png" }));
+    expect(response.status).toBe(503);
+    expect(state.uploads).toHaveLength(0);
+  });
 
   it("stores a real image under the hotel's own folder and returns its URL", async () => {
     const response = await upload(new File([PNG], "room.png", { type: "image/png" }));

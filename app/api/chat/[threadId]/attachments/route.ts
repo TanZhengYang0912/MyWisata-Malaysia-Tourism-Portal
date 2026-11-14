@@ -60,6 +60,8 @@ export async function POST(request: Request, { params }: Props) {
     await service.storage.from('chat-attachments').remove([path]);
     return apiFail('DB_ERROR', insertError.message, 500);
   }
+  // Invariant: every message insert must touch its thread — the unread badges'
+  // Realtime subscriptions listen to filtered chat_threads UPDATEs, not inserts.
   await service.from('chat_threads').update({ last_message_at: message.created_at }).eq('id', threadId);
   await notifyNewChatMessage(service, {
     threadId,

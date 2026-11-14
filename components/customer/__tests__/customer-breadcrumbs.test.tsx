@@ -17,7 +17,7 @@ describe("CustomerBreadcrumbs", () => {
   });
 
   it("does not add a trail to page-owned detail or checkout routes", () => {
-    for (const pathname of ["/customer/vendor/v1", "/customer/checkout", "/customer/trip/t1"]) {
+    for (const pathname of ["/customer/vendor/v1", "/customer/checkout", "/customer/checkout/success", "/customer/trip/t1"]) {
       state.pathname = pathname;
       expect(renderToStaticMarkup(<CustomerBreadcrumbs />)).toBe("");
     }

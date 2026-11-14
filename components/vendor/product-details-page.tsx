@@ -189,7 +189,7 @@ export default function ProductDetailsPage({ product, vendorId, canManageOutlet,
             <ProductImage product={product} kind={productImageKind} />
           </div>
           <div className={`${layout.heroContent} p-6 sm:p-8`}>
-            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-primary">
               <Eye size={14} />
               {t('productDetails.overview')}
             </div>
@@ -205,7 +205,7 @@ export default function ProductDetailsPage({ product, vendorId, canManageOutlet,
         {isMultiOutlet && (
           <div className="border-t border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 px-5 py-3.5">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-muted-foreground mr-1 shrink-0">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 dark:text-muted-foreground mr-1 shrink-0">
                 <Store size={12} className="text-emerald-600 dark:text-emerald-300" />
                 {t('productDetails.viewingOutlet')}
               </div>
@@ -278,7 +278,7 @@ export default function ProductDetailsPage({ product, vendorId, canManageOutlet,
         <section id="customer-content" className={layout.section}>
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{t('productDetails.customerContent')}</p>
+              <p className="text-xs font-bold text-primary">{t('productDetails.customerContent')}</p>
               <h2 className="mt-1 text-xl font-bold text-gray-950 dark:text-foreground">{t('productDetails.description')}</h2>
             </div>
             <span className="text-xs text-gray-400 dark:text-muted-foreground">{t('productDetails.shownOnListing')}</span>
@@ -300,7 +300,7 @@ export default function ProductDetailsPage({ product, vendorId, canManageOutlet,
 
         <section id="inventory" className={layout.section}>
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{t('productDetails.catalogueSetup')}</p>
+            <p className="text-xs font-bold text-primary">{t('productDetails.catalogueSetup')}</p>
             <h2 className="mt-1 text-xl font-bold text-gray-950 dark:text-foreground">{t('productDetails.variantsInventory')}</h2>
           </div>
           {canViewDetails ? <VariantManager vendorId={vendorId} productId={product.id} variants={product.variants || []} selectedOutletId={selectedOutlet?.id} requiresBooking={product.requires_booking} readOnly={!canManageOutlet} onUpdate={onUpdate} /> : <div className="mt-5 rounded-xl border border-dashed border-gray-200 dark:border-border bg-gray-50 dark:bg-muted/50 p-5 text-sm text-gray-500 dark:text-muted-foreground">{t('productDetails.viewOnlyVariants')}</div>}
@@ -308,7 +308,7 @@ export default function ProductDetailsPage({ product, vendorId, canManageOutlet,
 
         <section id="pricing" className={layout.section}>
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{t('productDetails.revenueControls')}</p>
+            <p className="text-xs font-bold text-primary">{t('productDetails.revenueControls')}</p>
             <h2 className="mt-1 text-xl font-bold text-gray-950 dark:text-foreground">{t('productDetails.pricingRules')}</h2>
           </div>
           {canViewDetails ? <PriceRuleManager vendorId={vendorId} productId={product.id} productOptions={productOptions} readOnly={!canManageOutlet} /> : <div className="mt-5 rounded-xl border border-dashed border-gray-200 dark:border-border bg-gray-50 dark:bg-muted/50 p-5 text-sm text-gray-500 dark:text-muted-foreground">{t('productDetails.viewOnlyPricing')}</div>}

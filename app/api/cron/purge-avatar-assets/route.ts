@@ -22,3 +22,6 @@ export async function POST(request: Request) {
   if (failed) console.error('profile_avatar_cleanup_partial_failure', { claimed: data.length, deleted, failed });
   return apiOk({ claimed: data.length, deleted, failed });
 }
+
+// Vercel Cron invokes GET; POST stays for manual runs.
+export const GET = POST;

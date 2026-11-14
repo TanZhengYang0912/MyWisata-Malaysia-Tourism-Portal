@@ -51,6 +51,15 @@
     }
   },
   "hotelProfile": {
+    "sections": {
+      "stay": "Daftar masuk & daftar keluar"
+    },
+    "selectedCount": "{{selected}} daripada {{total}} dipilih",
+    "malaysiaTime": "Masa mengikut waktu Malaysia (UTC+8).",
+    "coverPhoto": "Muka depan",
+    "sectionsNav": "Bahagian profil hotel",
+    "unsaved": "Perubahan belum dihantar",
+    "noChanges": "Tiada perubahan untuk dihantar",
     "eyebrow": "Profil hotel",
     "description": "Halaman hotel anda menggunakan susun atur tetap. Sunting kandungannya di sini; perubahan disiarkan selepas semakan admin, dan hotel anda kekal dipaparkan sementara itu.",
     "loading": "Memuatkan profil hotel…",
@@ -458,6 +467,31 @@
     "ifAvailable": "Jika ada"
   },
   "ui": {
+    "dataFreshness": {
+      "updatedAt": "Dikemas kini {{time}}",
+      "refresh": "Muat semula angka"
+    },
+    "listFilters": {
+      "datePresets": "Pratetap tarikh",
+      "presets": {
+        "today": "Hari ini",
+        "last7Days": "7 hari lepas",
+        "last30Days": "30 hari lepas",
+        "thisMonth": "Bulan ini"
+      },
+      "fromDate": "Dari",
+      "toDate": "Hingga",
+      "invalidRange": "Tarikh tamat sebelum tarikh mula.",
+      "clearDates": "Kosongkan tarikh",
+      "filters": "Penapis",
+      "sortBy": "Susun mengikut",
+      "drawerTitle": "Penapis",
+      "showResults": "Tunjukkan hasil",
+      "clear": "Kosongkan penapis",
+      "removeFilter": "Buang penapis: {{label}}",
+      "kind": "Jenis",
+      "quickStatus": "Status pantas"
+    },
     "common": {
       "yes": "Ya",
       "no": "Tidak",
@@ -814,7 +848,10 @@
       "pageSummary_one": "{{count}} tempahan · {{perPage}} setiap halaman",
       "pageSummary_other": "{{count}} tempahan · {{perPage}} setiap halaman",
       "onThisPage_one": "{{count}} pada halaman ini",
-      "onThisPage_other": "{{count}} pada halaman ini"
+      "onThisPage_other": "{{count}} pada halaman ini",
+      "allBookings": "Semua tempahan",
+      "workspaceTabs": "Ruang kerja tempahan",
+      "statusFilter": "Status tempahan"
     },
     "inbox": {
       "filter": {
@@ -909,7 +946,12 @@
       "confirm": "Sahkan penebusan",
       "confirmFoodOrder": "Sahkan pesanan makanan",
       "cancel": "Batal",
-      "stationStatus": "Status Stesen",
+      "countersLabel": "Pembilang stesen",
+      "scopeToday": "Hari ini",
+      "scopeAllTime": "Sepanjang masa",
+      "scansUnit_one": "imbasan",
+      "scansUnit_other": "imbasan",
+      "stationStatus": "Mengimbas di",
       "cameraTab": "Pengimbas Kamera",
       "manualTab": "Manual / Pengimbas Kod Bar",
       "historyTab": "Imbasan Terkini",
@@ -921,9 +963,9 @@
       "exitFullscreen": "Keluar Skrin Penuh",
       "quickInputHint": "Pengimbas kod bar menghantar kod secara automatik selepas imbasan.",
       "pressEnter": "Tekan Enter untuk sahkan",
-      "todayScans": "Jumlah Imbasan Hari Ini",
-      "ticketsAdmitted": "Tiket Diterima",
-      "vouchersUsed": "Baucar Ditebus",
+      "todayScans": "Imbasan hari ini",
+      "ticketsAdmitted": "Tiket diterima masuk",
+      "vouchersUsed": "Baucar ditebus",
       "stationActive": "Sedia untuk imbas",
       "viewHistory": "Lihat log penuh",
       "eventPickupCollected": "Pengambilan direkodkan — serahkan item.",
@@ -938,15 +980,20 @@
       "retailPickupCollected": "{{quantity}} item berjaya diserahkan.",
       "retailPickupQuantity": "Serahkan kesemua {{quantity}} item dalam baris pesanan ini.",
       "confirmRetailPickup": "Sahkan serahan",
-      "orderReference": "Pesanan #{{order}}"
+      "orderReference": "Pesanan #{{order}}",
+      "eventPickups": "Ambilan acara",
+      "foodOrders": "Imbasan pesanan makanan",
+      "allTimeNote": "Sepanjang masa",
+      "counterPending": "Belum dilaporkan",
+      "statsFailed": "Kiraan tidak dapat dikemas kini. Angka di bawah mungkin tidak terkini."
     },
     "redemptions": {
-      "eyebrow": "Penebusan Cawangan",
+      "eyebrow": "Penebusan kedai",
       "title": "Log Penebusan & Imbasan",
       "loadFailed": "Tidak dapat memuatkan rekod penebusan.",
-      "totalRedemptions": "Jumlah Penebusan",
+      "totalRedemptions": "Jumlah imbasan",
       "allTime": "Semua imbasan direkodkan",
-      "todayScans": "Imbasan Hari Ini",
+      "todayScans": "Imbasan hari ini",
       "redeemedToday": "Ditebus hari ini",
       "retailPickups": "Pengambilan runcit",
       "retailItemsHandedOver": "Baris pesanan diserahkan",
@@ -956,9 +1003,9 @@
       "staffNotRecorded": "Tidak direkodkan",
       "filteredCount_one": "{{count}} rekod",
       "filteredCount_other": "{{count}} rekod",
-      "vouchersUsed": "Baucar Ditebus",
+      "vouchersUsed": "Baucar ditebus",
       "storePromos": "Baucar cawangan",
-      "ticketsAdmitted": "Tiket Diterima",
+      "ticketsAdmitted": "Tiket diterima masuk",
       "checkedInGuests": "Jumlah kemasukan direkodkan",
       "allOutlets": "Semua Cawangan",
       "searchPlaceholder": "Cari kod, item, staf...",
@@ -969,11 +1016,12 @@
       "kindTicket": "Pas Tiket",
       "selfService": "Pembayaran di kaunter",
       "filters": {
-        "all": "Semua Aktiviti",
+        "all": "Semua aktiviti",
         "vouchers": "Baucar",
         "tickets": "Tiket",
         "retail": "Pengambilan runcit",
-        "foodOrders": "Imbasan makanan"
+        "foodOrders": "Imbasan makanan",
+        "eventPickups": "Ambilan acara"
       },
       "table": {
         "type": "Jenis",
@@ -982,7 +1030,11 @@
         "customer": "Pelanggan",
         "verifiedBy": "Disahkan Oleh",
         "time": "Masa"
-      }
+      },
+      "eventPickups": "Ambilan acara",
+      "eventPickupsNote": "Tempahan diambil",
+      "foodOrders": "Imbasan pesanan makanan",
+      "foodOrdersNote": "Makan di sini dan bungkus"
     },
     "listings": {
       "title": "Katalog produk",
@@ -1103,9 +1155,12 @@
       "pageSummary_one": "{{count}} pesanan · {{perPage}} setiap halaman",
       "pageSummary_other": "{{count}} pesanan · {{perPage}} setiap halaman",
       "itemCount_one": "{{count}} item",
-      "itemCount_other": "{{count}} item"
+      "itemCount_other": "{{count}} item",
+      "readyCount": "Sedia",
+      "pageOrderTotal": "Jumlah pesanan"
     },
     "outlets": {
+      "loading": "Memuatkan outlet",
       "loadingShop": "Memuatkan halaman kedai anda…",
       "loadFailed": "Outlet tidak dapat dimuatkan",
       "shopUnavailable": "Halaman kedai tidak tersedia",
@@ -1162,7 +1217,35 @@
       "resultCount_one": "{{count}} cawangan di seluruh Malaysia",
       "resultCount_other": "{{count}} cawangan di seluruh Malaysia",
       "perPage_one": "{{count}} setiap halaman",
-      "perPage_other": "{{count}} setiap halaman"
+      "perPage_other": "{{count}} setiap halaman",
+      "columnOutlet": "Cawangan",
+      "columnManager": "Pengurus",
+      "columnListings": "Senarai",
+      "columnStatus": "Status",
+      "noManager": "Tiada pengurus",
+      "invitePending": "Jemputan dihantar kepada {{email}}",
+      "inReview": "Dalam semakan",
+      "sectionDetails": "Butiran",
+      "sectionTeam": "Pasukan & akses",
+      "sectionStatus": "Status cawangan",
+      "addressLabel": "Alamat",
+      "phoneLabel": "Telefon",
+      "emailLabel": "E-mel",
+      "notProvided": "Tidak diberikan",
+      "statusSummaryActive": "Dibuka. Pelanggan boleh mencari cawangan ini dan mengambil pesanan di sini.",
+      "statusSummaryClosed": "Ditutup. Disembunyikan daripada pelanggan. Pesanan, tempahan, produk dan pengurus dikekalkan.",
+      "statusSummaryReview": "Luar talian sehingga admin meluluskan perubahan terkini.",
+      "statusSummaryInactive": "Tidak aktif. Disembunyikan daripada pelanggan.",
+      "closeConfirmTitle": "Tutup {{name}}?",
+      "closeConsequences": "Pelanggan tidak lagi dapat melihat cawangan ini atau mengambil pesanan di sini. Pesanan, tempahan, produk dan akses pengurus dikekalkan, dan anda boleh membukanya semula kemudian.",
+      "reopenOutlet": "Buka semula cawangan",
+      "reopenConfirmTitle": "Buka semula {{name}}?",
+      "reopenConsequences": "Pelanggan boleh mencari cawangan ini semula. Produk dan akses pengurus tidak berubah.",
+      "reopened": "Cawangan dibuka semula.",
+      "reopenFailed": "Tidak dapat membuka semula cawangan.",
+      "unsavedTitle": "Buang perubahan yang belum disimpan?",
+      "unsavedBody": "Suntingan anda pada cawangan ini belum disimpan.",
+      "discardChanges": "Buang perubahan"
     },
     "products": {
       "loadFailed": "Produk tidak dapat dimuatkan",
@@ -1237,7 +1320,7 @@
       "clickToViewAllOutlets_other": "Klik untuk lihat semua {{count}} cawangan",
       "closeOutletsModal": "Tutup senarai cawangan",
       "vendorReadOnlyNotice": "Pemilik vendor mempunyai akses katalog baca sahaja. Harga dan stok produk diuruskan oleh Pengurus Cawangan yang ditetapkan.",
-      "featuredTab": "Pilihan Utama ({{count}}/4)",
+      "featuredTab": "Ditampilkan di kedai ({{count}}/4)",
       "featuredTab_one": "Pilihan Utama ({{count}}/4)",
       "featuredTab_other": "Pilihan Utama ({{count}}/4)",
       "featuredLimitReached": "Maksimum 4 produk pilihan utama boleh dipaparkan di profil anda. Sila nyahpilih produk lain terlebih dahulu.",
@@ -1266,7 +1349,9 @@
       "featuredBannerTitle": "Pilihan Utama Profil ({{count}}/4)",
       "featuredBannerTitle_one": "Pilihan Utama Profil ({{count}}/4)",
       "featuredBannerTitle_other": "Pilihan Utama Profil ({{count}}/4)",
-      "featuredBannerDesc": "Pilih sehingga 4 produk utama untuk dipaparkan secara menonjol di profil vendor anda."
+      "featuredBannerDesc": "Pilih sehingga 4 produk utama untuk dipaparkan secara menonjol di profil vendor anda.",
+      "featuredToggleHint": "Sehingga 4 produk dipaparkan di profil vendor awam anda. Gunakan bintang pada produk untuk menambah atau membuangnya.",
+      "statusFilter": "Status produk"
     },
     "profile": {
       "loading": "Memuatkan profil perniagaan…",
@@ -1495,7 +1580,9 @@
       "batchDeactivated_one": "{{count}} baucar dinyahaktifkan.",
       "batchDeactivated_other": "{{count}} baucar dinyahaktifkan.",
       "usesCount_one": "{{count}} penggunaan",
-      "usesCount_other": "{{count}} penggunaan"
+      "usesCount_other": "{{count}} penggunaan",
+      "otherStatuses": "Status lain",
+      "statusFilter": "Status baucar"
     },
     "settlement": {
       "simulated": "Bayaran ujian · tidak boleh dikeluarkan",
@@ -1618,8 +1705,38 @@
     },
     "eventPromotions": {
       "title": "Promosikan Acara",
+      "eventHeading": "Acara",
+      "datesHeading": "Tarikh",
+      "posterHeading": "Poster",
+      "sectionDone": "Selesai",
+      "sectionAdded": "Ditambah",
+      "dayCount_one": "{{count}} hari",
+      "dayCount_other": "{{count}} hari",
+      "startDate": "Mula",
+      "endDate": "Tamat",
+      "pickDate": "Pilih tarikh",
+      "availabilityNote": "Ketersediaan disahkan semasa semakan.",
+      "dropPoster": "Lepaskan poster atau klik untuk memilih",
+      "posterFormats": "4:3 · JPG, PNG atau WebP",
+      "replaceImage": "Ganti",
+      "uploading": "Memuat naik…",
+      "previewTag": "Promosi acara",
+      "previewCaption": "Paparan kepada pelanggan",
+      "checkEvent": "Nama dan butiran acara",
+      "checkDates": "Tarikh mula dan tamat",
+      "days": "Hari",
+      "charCount": "{{current}} / {{max}}",
+      "titlePlaceholder": "cth. Pasar Malam Heritage Walk",
+      "detailsPlaceholder": "Apa yang berlaku, di mana, dan apa yang pengunjung dapat",
       "newHeading": "Hantar acara baharu",
       "editHeading": "Sunting dan hantar semula",
+      "summaryHeading": "Ringkasan penyerahan",
+      "draft": "Draf",
+      "rate": "Kadar",
+      "ratePerDay": "{{rate}} / hari",
+      "previewImage": "Pratonton imej promosi",
+      "estimatedTotal": "Jumlah anggaran",
+      "finalAmountNote": "Jumlah akhir disahkan selepas semakan.",
       "loading": "Memuatkan…",
       "myPromotions": "Penyerahan saya",
       "empty": "Anda belum menghantar sebarang promosi acara.",
@@ -1633,6 +1750,9 @@
         "datesOrder": "Hari terakhir tidak boleh sebelum hari pertama."
       },
       "submitError": "Tidak dapat menghantar promosi acara.",
+      "errors": {
+        "fixFields": "Betulkan medan yang ditanda sebelum menghantar."
+      },
       "submitSuccess": "Promosi acara dihantar untuk semakan.",
       "resubmitSuccess": "Promosi acara dihantar semula untuk semakan.",
       "noVendor": "Tiada akaun vendor dijumpai untuk sesi ini.",
@@ -1647,17 +1767,14 @@
       },
       "calendar": {
         "today": "Hari ini",
-        "hint": "Hari berwarna merah tidak tersedia — sudah berlalu atau sudah penuh. Ketersediaan masih boleh berubah sebelum admin menyemak penyerahan anda."
+        "legendSelected": "Dipilih",
+        "legendFull": "Penuh",
+        "blockedRange": "{{date}} sudah penuh. Pilih julat yang tidak termasuk tarikh itu."
       },
       "fields": {
         "title": "Nama acara",
         "details": "Butiran",
-        "duration": "Tempoh promosi",
-        "selectedSingleDay": "Dipilih: {{date}}",
-        "selectedRange": "Dipilih: {{start}} – {{end}}",
         "costPreview": "{{days}} hari · {{cost}}",
-        "image": "Imej",
-        "chooseImage": "Pilih imej",
         "removeImage": "Buang imej"
       },
       "actions": {
@@ -1706,6 +1823,17 @@
       }
     },
     "events": {
+      "phase": {
+        "upcoming": "Akan datang",
+        "live": "Sedang berlangsung",
+        "ended": "Tamat"
+      },
+      "facts": {
+        "dates": "Tarikh acara",
+        "yourStalls": "Gerai anda"
+      },
+      "readMore": "Baca lagi",
+      "showLess": "Tunjuk kurang",
       "title": "Acara",
       "loading": "Memuatkan…",
       "empty": "Tiada acara dibuka untuk pendaftaran sekarang.",
@@ -1726,6 +1854,7 @@
       "rejectionNote": "Ditolak: {{note}}",
       "changesRequestedNote": "Perubahan diminta: {{note}}",
       "draftFound": "Anda mempunyai draf belum disimpan untuk pendaftaran ini.",
+      "draftSubmissionClosed": "Permohonan di lokasi ini telah ditutup. Anda boleh menyemak draf ini, tetapi tidak boleh menghantarnya sekarang.",
       "fields": {
         "stallNumber": "Nombor gerai",
         "stallDescription": "Penerangan gerai",
@@ -1743,7 +1872,7 @@
         "preferredStallNumber": "Nombor gerai pilihan (opsyenal)"
       },
       "actions": {
-        "register": "Daftar",
+        "register": "Mohon gerai",
         "editAndResubmit": "Sunting & hantar semula",
         "submitRegistration": "Hantar pendaftaran",
         "resubmit": "Hantar semula untuk semakan",
@@ -1765,6 +1894,10 @@
         "count_one": "{{count}} lokasi",
         "count_other": "{{count}} lokasi",
         "joined": "Menyertai {{joined}} daripada {{total}}"
+      },
+      "registrationStatus": {
+        "withdrawn": "Menarik diri",
+        "removed": "Dikeluarkan"
       },
       "listing": {
         "price": "Harga acara (RM)",
@@ -1866,7 +1999,13 @@
       "status": "Status",
       "free": "Percuma",
       "collected": "Telah diambil",
-      "toCollect": "Belum diambil"
+      "toCollect": "Belum diambil",
+      "progress": "{{collected}} daripada {{total}} diambil",
+      "showToCollect": "Belum diambil sahaja",
+      "showAll": "Semua tempahan",
+      "viewFilter": "Paparan tempahan",
+      "allCollected": "Semua di sini telah diambil.",
+      "retry": "Cuba lagi"
     },
     "eventStaff": {
       "join": {
@@ -1915,6 +2054,8 @@
     "unavailable": "Penulisan AI tidak tersedia."
   },
   "builder": {
+    "tools": "Alat studio",
+    "closeTools": "Tutup panel",
     "autosaved": "Draf disimpan secara automatik.",
     "blockTypes": {
       "intro": "Pengenalan outlet",
@@ -1970,6 +2111,7 @@
     "down": "Bawah",
     "font": "Fon",
     "inspector": {
+      "aiNoChanges": "Cadangan sama dengan teks semasa anda.",
       "backgroundColour": "Warna latar",
       "sizeOnPage": "Saiz pada halaman",
       "notSetOnOutlet": "Belum ditetapkan pada cawangan ini",
@@ -2001,6 +2143,7 @@
       "outletMedia": "Media outlet",
       "photoLayout": "Susun atur foto",
       "productsFromOutlet": "Produk daripada outlet ini",
+      "uncategorized": "Produk lain",
       "removeImage": "Buang imej",
       "reuseMedia": "Gunakan semula imej yang telah dimuat naik ke halaman ini.",
       "right": "Kanan",
@@ -2168,7 +2311,10 @@
     "welcomeMessage": "Mesej alu-aluan sembang",
     "welcomePlaceholder": "Selamat datang! Terima kasih atas minat anda. Ada soalan? (biarkan kosong untuk menggunakan ucapan lalai)",
     "wheelchair": "Boleh diakses kerusi roda",
-    "yes": "Ya"
+    "yes": "Ya",
+    "noChanges": "Tiada perubahan untuk disimpan.",
+    "reviewNotice": "Perubahan butiran perniagaan disemak oleh admin sebelum disiarkan.",
+    "savedPendingReview": "Disimpan. Cawangan luar talian sehingga admin meluluskan perubahan."
   },
   "outletManager": {
     "copyLink": "Salin pautan",
@@ -2188,7 +2334,11 @@
     "removeConfirm": "Buang pengurus outlet ini? Akses mereka kepada outlet ini akan ditarik balik.",
     "removeFailed": "Tidak dapat membuang pengurus outlet.",
     "removed": "Pengurus outlet dibuang.",
-    "title": "Pengurus Outlet"
+    "title": "Pengurus Outlet",
+    "removeAccess": "Buang akses",
+    "removeConfirmTitle": "Buang {{name}} daripada {{outlet}}?",
+    "removeConsequences": "Mereka hanya kehilangan akses ke cawangan ini. Akaun, pesanan lalu dan sejarah imbasan dikekalkan, dan akses ke cawangan lain tidak berubah.",
+    "inviteTitle": "Jemput pengurus"
   },
   "pricing": {
     "add": "Tambah peraturan harga",
@@ -2260,6 +2410,7 @@
   "productForm": {
     "addTitle": "Tambah Produk",
     "aiDeferred": "Cadangan AI ditangguhkan.",
+    "aiCategoryUnavailable": "Bukan kategori katalog — pilih secara manual.",
     "aiNoSuggestion": "AI tidak mengembalikan cadangan yang boleh digunakan.",
     "aiUnavailable": "Cadangan AI belum tersedia.",
     "availability": "Ketersediaan",
@@ -2343,6 +2494,11 @@
     "customerPreview": "Pratonton pelanggan",
     "draftVersion": "Versi draf",
     "editShopPage": "Edit halaman kedai",
+    "hotelProfileStatus": {
+      "live": "Profil hotel: Langsung",
+      "pending": "Profil hotel: Menunggu semakan",
+      "rejected": "Profil hotel: Perubahan diminta"
+    },
     "liveSince": "Langsung sejak {{date}}",
     "liveVersion": "Versi langsung",
     "loadPageFailed": "Tidak dapat memuatkan halaman kedai",
@@ -2749,7 +2905,14 @@
       "totalUses_one": "{{count}} jumlah penggunaan",
       "totalUses_other": "{{count}} jumlah penggunaan",
       "perCustomer_one": "{{count}} setiap pelanggan",
-      "perCustomer_other": "{{count}} setiap pelanggan"
+      "perCustomer_other": "{{count}} setiap pelanggan",
+      "sections": {
+        "basics": "Asas",
+        "discount": "Diskaun",
+        "limits": "Had",
+        "validity": "Tempoh sah",
+        "where": "Tempat digunakan"
+      }
     },
     "csv": {
       "addAnotherRow": "Tambah baris baucar lain",

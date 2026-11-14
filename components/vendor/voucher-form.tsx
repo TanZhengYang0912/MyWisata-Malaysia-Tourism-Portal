@@ -1,7 +1,8 @@
 'use client';
 // P2 — Member 2: Voucher creation form (B3)
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
+import { X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -26,6 +27,13 @@ interface Props {
 
 type VoucherFormInput = z.input<typeof voucherCreateSchema>;
 type VoucherFormData = z.output<typeof voucherCreateSchema>;
+
+// Native selects share the Input control look; aria-invalid carries the error border.
+const selectClassName = "h-9 w-full rounded-md border border-input bg-input-background px-3 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive dark:bg-input/30";
+
+function SectionTitle({ children }: { children: ReactNode }) {
+  return <h3 className="text-sm font-semibold text-foreground">{children}</h3>;
+}
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
@@ -161,7 +169,7 @@ export default function VoucherForm({ vendorId, initialOutletId, isOutletManager
     <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">{t('voucher.form.create')}</h2>
-        {onClose && <button type="button" onClick={onClose} aria-label={t('actions.close')} className="text-gray-400 dark:text-muted-foreground hover:text-gray-600 dark:hover:text-muted-foreground">✕</button>}
+        {onClose && <button type="button" onClick={onClose} aria-label={t('actions.close')} className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><X size={18} aria-hidden="true" /></button>}
       </div>
 
       {serverError && (
@@ -170,8 +178,9 @@ export default function VoucherForm({ vendorId, initialOutletId, isOutletManager
         </div>
       )}
 
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-5">
+        <SectionTitle>{t('voucher.form.sections.basics')}</SectionTitle>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('voucher.form.code')} *</label>
             <div className="flex gap-2">
@@ -189,7 +198,7 @@ export default function VoucherForm({ vendorId, initialOutletId, isOutletManager
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('strictMigration.redemptionModeRequired')}</label>
-          <select {...register('redemptionMode')} aria-invalid={Boolean(fieldError('redemptionMode'))} className="w-full rounded-lg border border-gray-300 dark:border-border px-3 py-2 text-sm">
+          <select {...register('redemptionMode')} aria-invalid={Boolean(fieldError('redemptionMode'))} className={selectClassName}>
             <option value="online">{t("voucher.form.onlineCheckout")}</option>
             <option value="both">{t("voucher.form.onlineOrInStore")}</option>
             <option value="in_store">{t("voucher.form.inStoreOnly")}</option>
@@ -197,10 +206,11 @@ export default function VoucherForm({ vendorId, initialOutletId, isOutletManager
           <FieldError message={fieldError('redemptionMode')} />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="border-t border-border pt-5"><SectionTitle>{t('voucher.form.sections.discount')}</SectionTitle></div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('voucher.form.type')} *</label>
-            <select {...register('voucherType')} aria-invalid={Boolean(fieldError('voucherType'))} className="w-full rounded-lg border border-gray-300 dark:border-border px-3 py-2 text-sm">
+            <select {...register('voucherType')} aria-invalid={Boolean(fieldError('voucherType'))} className={selectClassName}>
               <option value="fixed">{t('voucher.form.fixedAmount')}</option>
               <option value="percent">{t('voucher.form.percentage')}</option>
               <option value="bogo">{t('voucher.form.buyXGetY')}</option>
@@ -217,20 +227,21 @@ export default function VoucherForm({ vendorId, initialOutletId, isOutletManager
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('voucher.form.applicableProduct')} {voucherType === 'bogo' ? '*' : t('voucher.form.optional')}</label>
-          <select {...register('productId', { setValueAs: optionalSelect })} aria-invalid={Boolean(fieldError('productId'))} className={`w-full rounded-lg border border-gray-300 dark:border-border px-3 py-2 text-sm ${fieldError('productId') ? 'border-red-400' : ''}`}>
+          <select {...register('productId', { setValueAs: optionalSelect })} aria-invalid={Boolean(fieldError('productId'))} className={selectClassName}>
             <option value="">{t('voucher.form.allProducts')}</option>
             {products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
           </select>
           <FieldError message={fieldError('productId')} />
         </div>
 
-        {voucherType === 'bogo' && <div className="grid grid-cols-2 gap-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3">
+        {voucherType === 'bogo' && <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-muted/40 p-3">
           <div><label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('voucher.form.buyQuantity')} *</label><Input {...register('buyQuantity', { setValueAs: optionalNumber })} aria-invalid={Boolean(fieldError('buyQuantity'))} className={inputClass('buyQuantity')} type="number" min="1" /><FieldError message={fieldError('buyQuantity')} /></div>
           <div><label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('voucher.form.freeQuantity')} *</label><Input {...register('freeQuantity', { setValueAs: optionalNumber })} aria-invalid={Boolean(fieldError('freeQuantity'))} className={inputClass('freeQuantity')} type="number" min="1" /><FieldError message={fieldError('freeQuantity')} /></div>
-          <p className="col-span-2 text-xs text-amber-800 dark:text-amber-200">{t('voucher.form.bogoExample')}</p>
+          <p className="col-span-2 text-xs text-muted-foreground">{t('voucher.form.bogoExample')}</p>
         </div>}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="border-t border-border pt-5"><SectionTitle>{t('voucher.form.sections.limits')}</SectionTitle></div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('voucher.form.minSpend')}</label>
             <Input {...register('minSpend', { setValueAs: optionalNumber })} aria-invalid={Boolean(fieldError('minSpend'))} className={inputClass('minSpend')} type="number" step="0.01" placeholder={t('voucher.form.noMinimum')} />
@@ -248,7 +259,8 @@ export default function VoucherForm({ vendorId, initialOutletId, isOutletManager
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="border-t border-border pt-5"><SectionTitle>{t('voucher.form.sections.validity')}</SectionTitle></div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('voucher.form.validFrom')}</label>
             <Input {...register('validFrom', { setValueAs: localDateTimeToIso })} aria-invalid={Boolean(fieldError('validFrom'))} className={inputClass('validFrom')} type="datetime-local" />
@@ -261,6 +273,7 @@ export default function VoucherForm({ vendorId, initialOutletId, isOutletManager
           </div>
         </div>
 
+        <div className="border-t border-border pt-5"><SectionTitle>{t('voucher.form.sections.where')}</SectionTitle></div>
         {isOutletManager ? <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('voucher.form.assignedOutlet')}</label>
           <input type="hidden" {...register('outletId')} value={initialOutletId ?? ''} readOnly />
@@ -270,7 +283,7 @@ export default function VoucherForm({ vendorId, initialOutletId, isOutletManager
           <FieldError message={fieldError('outletId')} />
         </div> : <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-foreground mb-1">{t('strictMigration.specificOutletOptional')}</label>
-          <select {...register('outletId', { setValueAs: optionalSelect })} aria-invalid={Boolean(fieldError('outletId'))} className={`w-full rounded-lg border border-gray-300 dark:border-border px-3 py-2 text-sm ${fieldError('outletId') ? 'border-red-400' : ''}`}>
+          <select {...register('outletId', { setValueAs: optionalSelect })} aria-invalid={Boolean(fieldError('outletId'))} className={selectClassName}>
             <option value="">{t('voucher.form.allOutlets')}</option>
             {outlets.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
           </select>

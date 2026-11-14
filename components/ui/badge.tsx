@@ -97,8 +97,8 @@ const COLOURS: Record<string, string> = {
     "bg-red-100 text-red-700 border-transparent dark:bg-red-900/30 dark:text-red-400",
 };
 
-export function StatusBadge({ status }: { status: string }) {
-  const label = status.replace(/_/g, " ");
+export function StatusBadge({ status, label: translatedLabel }: { status: string; label?: string }) {
+  const label = translatedLabel ?? status.replace(/_/g, " ");
   const colorClass =
     COLOURS[status] ??
     "bg-gray-100 text-gray-700 border-transparent dark:bg-gray-800 dark:text-gray-400";

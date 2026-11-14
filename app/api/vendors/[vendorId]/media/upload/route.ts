@@ -3,6 +3,7 @@ import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { validateMagicBytes } from '@/lib/kyc/magic-bytes';
 import { DIGITAL_ASSET_BUCKET, digitalAssetUrl } from '@/lib/vendor/digital-assets';
+import { MEDIA_RESERVE_FAILED, markVendorMediaObjectStored, reserveVendorMediaObject } from '@/lib/vendor/media-objects';
 
 const BUCKET = 'vendor-products';
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -53,12 +54,20 @@ export async function POST(request: Request, { params }: Props) {
   const path = [vendorId, productId || ('draft-' + access.access.userId), crypto.randomUUID() + '-' + safeName(file.name)].join('/');
   // Paid downloads go to the private bucket; only the paid-order download route can read them.
   const bucket = kind === 'digital' ? DIGITAL_ASSET_BUCKET : BUCKET;
+  // Register public images before writing them, so the cleanup sweep knows every new object.
+  let mediaObjectId: string | null = null;
+  if (kind !== 'digital') {
+    const reserved = await reserveVendorMediaObject(access.access.serviceDb, { bucket: BUCKET, path, vendorId, userId: access.access.userId, purpose: 'product_media' });
+    if (!reserved.ok) return apiFail(MEDIA_RESERVE_FAILED.code, MEDIA_RESERVE_FAILED.message, MEDIA_RESERVE_FAILED.status);
+    mediaObjectId = reserved.objectId;
+  }
   const { error } = await access.access.serviceDb.storage.from(bucket).upload(path, bytes, {
     contentType: file.type,
     cacheControl: '3600',
     upsert: false,
   });
   if (error) return apiFail('UPLOAD_FAILED', error.message, 500);
+  if (mediaObjectId) await markVendorMediaObjectStored(access.access.serviceDb, mediaObjectId);
 
   const url = kind === 'digital'
     ? digitalAssetUrl(process.env.NEXT_PUBLIC_SUPABASE_URL!, path)

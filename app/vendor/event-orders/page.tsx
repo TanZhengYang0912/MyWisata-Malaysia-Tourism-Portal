@@ -12,6 +12,8 @@ import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
 import { formatEventDate } from '@/lib/promotion-campaigns/locations';
 import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
 import { VendorMobileRecordCard } from '@/components/vendor/mobile-record-card';
+import { StatusBadge } from '@/components/ui/badge';
+import { FilterSegmented } from '@/components/vendor/compact-filter-bar';
 
 type Reservation = {
   id: string;
@@ -36,6 +38,8 @@ export default function VendorEventOrdersPage() {
   const [date, setDate] = useState('');
   const [items, setItems] = useState<Reservation[] | null>(null);
   const [error, setError] = useState(false);
+  // On-site view: hide handed-over reservations without another request.
+  const [view, setView] = useState<'all' | 'to_collect'>('all');
 
   const load = useCallback(async () => {
     if (!vendorId) return;
@@ -60,7 +64,9 @@ export default function VendorEventOrdersPage() {
     pickupDate: string;
     items: Reservation[];
   }>();
-  for (const item of items ?? []) {
+  const visibleItems = (items ?? []).filter((item) => view === 'all' || item.status !== 'fulfilled');
+  const collectedCount = (items ?? []).filter((item) => item.status === 'fulfilled').length;
+  for (const item of visibleItems) {
     const key = `${item.locationId}:${item.pickupDate}`;
     const group = groupsByContext.get(key) ?? {
       locationId: item.locationId,
@@ -73,32 +79,71 @@ export default function VendorEventOrdersPage() {
   }
   const reservationGroups = [...groupsByContext.values()];
 
+  // The group header already names the location; show only the pickup window in each row.
+  function pickupWindow(item: Reservation) {
+    const label = item.pickupLabel?.trim();
+    if (!label) return '—';
+    const prefix = `${item.locationName} · `;
+    return label.startsWith(prefix) ? label.slice(prefix.length) : label;
+  }
+
   return (
     <div className="w-full space-y-5 pb-0 lg:pb-24">
       <VendorPageHeader
         eyebrow={<><ClipboardList size={15} aria-hidden="true" /> {t('navigationSections.promotion')}</>}
         title={t('ui.eventOrders.title')}
-        actions={<>
-          <label className="text-xs font-semibold text-muted-foreground">
-            {t('ui.eventOrders.date')}
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1 h-11 sm:h-9" />
-          </label>
-          {date && <Button type="button" variant="outline" size="sm" onClick={() => setDate('')} className="min-h-11">{t('ui.eventOrders.upcoming')}</Button>}
-        </>}
       />
 
+      {/* One toolbar: what to show (status view) on the left, which day on the right. */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        {items && items.length > 0 ? (
+          <FilterSegmented
+            ariaLabel={t('ui.eventOrders.viewFilter')}
+            options={[
+              { value: 'all', label: <span className="tabular-nums">{t('ui.eventOrders.showAll')} · {items.length}</span> },
+              { value: 'to_collect', label: <span className="tabular-nums">{t('ui.eventOrders.showToCollect')} · {items.length - collectedCount}</span> },
+            ]}
+            value={view}
+            onChange={(value) => setView(value as 'all' | 'to_collect')}
+          />
+        ) : <span />}
+        <div className="flex items-end gap-2">
+          <label className="min-w-0 flex-1 text-xs font-semibold text-muted-foreground sm:flex-none">
+            {t('ui.eventOrders.date')}
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1 h-10 tabular-nums" />
+          </label>
+          {date && <Button type="button" variant="outline" size="sm" onClick={() => setDate('')} className="h-10">{t('ui.eventOrders.upcoming')}</Button>}
+        </div>
+      </div>
       {items === null ? (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 size={16} className="animate-spin" aria-hidden="true" /> {t('ui.eventOrders.loading')}</p>
+        <p role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 size={16} className="animate-spin" aria-hidden="true" /> {t('ui.eventOrders.loading')}</p>
       ) : error ? (
-        <p role="alert" className="text-sm text-destructive">{t('ui.eventOrders.loadError')}</p>
+        <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">{t('ui.eventOrders.loadError')} <Button type="button" variant="outline" size="sm" onClick={() => void load()}>{t('ui.eventOrders.retry')}</Button></p>
       ) : items.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">{t('ui.eventOrders.empty')}</p>
+      ) : reservationGroups.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">{t('ui.eventOrders.allCollected')}</p>
       ) : reservationGroups.map((group) => {
         const scanHref = `/vendor/scanner?mode=event-pickup&locationId=${encodeURIComponent(group.locationId)}&date=${encodeURIComponent(group.pickupDate)}&locationName=${encodeURIComponent(group.locationName)}`;
+        const groupItems = (items ?? []).filter((item) => item.locationId === group.locationId && item.pickupDate === group.pickupDate);
+        const groupCollected = groupItems.filter((item) => item.status === 'fulfilled').length;
+        const groupProgress = groupItems.length ? Math.round((groupCollected / groupItems.length) * 100) : 0;
         return (
-        <section key={`${group.locationId}:${group.pickupDate}`} className="space-y-3">
-          <header className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-secondary/40 px-4 py-2.5">
-            <h2 className="text-sm font-bold text-foreground">{group.locationName} · {formatEventDate(group.pickupDate, locale)}</h2>
+        <section key={`${group.locationId}:${group.pickupDate}`} aria-labelledby={`event-group-${group.locationId}-${group.pickupDate}`} className="space-y-3 md:space-y-0 md:overflow-hidden md:rounded-2xl md:border md:border-border md:bg-card md:shadow-sm">
+          {/* Context first (where + which day + how far along), then the one on-site action. */}
+          <header className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 md:rounded-none md:border-0 md:border-b md:px-5">
+            <div className="min-w-0 flex-1">
+              <h2 id={`event-group-${group.locationId}-${group.pickupDate}`} className="flex flex-wrap items-baseline gap-x-2 text-sm font-semibold text-foreground">
+                <span className="break-words">{group.locationName}</span>
+                <span className="text-xs font-medium text-muted-foreground tabular-nums">{formatEventDate(group.pickupDate, locale)}</span>
+              </h2>
+              <div className="mt-2 flex items-center gap-3">
+                <div className="h-1.5 w-full max-w-48 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={groupItems.length} aria-valuenow={groupCollected} aria-label={t('ui.eventOrders.progress', { collected: groupCollected, total: groupItems.length })}>
+                  <div className="h-full rounded-full bg-emerald-600 transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${groupProgress}%` }} />
+                </div>
+                <p className="shrink-0 text-xs tabular-nums text-muted-foreground">{t('ui.eventOrders.progress', { collected: groupCollected, total: groupItems.length })}</p>
+              </div>
+            </div>
             <Button asChild size="sm" className="min-h-11"><Link href={scanHref}><ScanLine size={15} aria-hidden="true" /> {t('ui.eventOrders.scan')}</Link></Button>
           </header>
           <div className="space-y-3 md:hidden">
@@ -111,9 +156,7 @@ export default function VendorEventOrdersPage() {
                       <p className="break-all font-mono text-xs font-semibold text-muted-foreground">
                         {item.displayId}
                       </p>
-                      <span className={`shrink-0 rounded-full px-2 py-1 text-right text-xs font-bold ${item.status === 'fulfilled' ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200' : 'bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200'}`}>
-                        {item.status === 'fulfilled' ? t('ui.eventOrders.collected') : t('ui.eventOrders.toCollect')}
-                      </span>
+                      <StatusBadge status={item.status === 'fulfilled' ? 'completed' : 'pending'} label={item.status === 'fulfilled' ? t('ui.eventOrders.collected') : t('ui.eventOrders.toCollect')} />
                     </>
                   }
                 >
@@ -123,7 +166,7 @@ export default function VendorEventOrdersPage() {
                   <dl className="grid grid-cols-2 gap-3 border-t border-border pt-3 text-xs">
                     <div className="min-w-0">
                       <dt className="font-semibold text-muted-foreground">{t('ui.eventOrders.pickup')}</dt>
-                      <dd className="mt-1 break-words text-foreground">{item.pickupLabel || '—'}</dd>
+                      <dd className="mt-1 break-words text-foreground">{pickupWindow(item)}</dd>
                     </div>
                     <div className="min-w-0 text-right">
                       <dt className="font-semibold text-muted-foreground">{t('ui.eventOrders.total')}</dt>
@@ -134,12 +177,12 @@ export default function VendorEventOrdersPage() {
               ))}
             </div>
           </div>
-          <div className="hidden md:block overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="hidden md:block">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] text-left text-sm">
-                <thead className="text-xs uppercase tracking-wide text-muted-foreground">
+                <thead className="border-b border-border bg-muted/40 text-xs font-medium text-muted-foreground">
                   <tr>
-                    <th scope="col" className="px-4 py-2">{t('ui.eventOrders.order')}</th>
+                    <th scope="col" className="px-5 py-2">{t('ui.eventOrders.order')}</th>
                     <th scope="col" className="px-4 py-2">{t('ui.eventOrders.pickup')}</th>
                     <th scope="col" className="px-4 py-2">{t('ui.eventOrders.item')}</th>
                     <th scope="col" className="px-4 py-2 text-right">{t('ui.eventOrders.total')}</th>
@@ -149,14 +192,12 @@ export default function VendorEventOrdersPage() {
                 <tbody className="divide-y divide-border">
                   {group.items.map((item) => (
                     <tr key={item.id}>
-                      <td className="px-4 py-2.5 font-mono text-xs">{item.displayId}</td>
-                      <td className="px-4 py-2.5 text-muted-foreground">{item.pickupLabel}</td>
+                      <td className="px-5 py-2.5 font-mono text-xs">{item.displayId}</td>
+                      <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{pickupWindow(item)}</td>
                       <td className="px-4 py-2.5 text-foreground">{item.quantity} × {item.itemName}</td>
-                      <td className="px-4 py-2.5 text-right">{item.lineTotal === 0 ? t('ui.eventOrders.free') : formatMYR(item.lineTotal)}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">{item.lineTotal === 0 ? t('ui.eventOrders.free') : formatMYR(item.lineTotal)}</td>
                       <td className="px-4 py-2.5">
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${item.status === 'fulfilled' ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200' : 'bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200'}`}>
-                          {item.status === 'fulfilled' ? t('ui.eventOrders.collected') : t('ui.eventOrders.toCollect')}
-                        </span>
+                        <StatusBadge status={item.status === 'fulfilled' ? 'completed' : 'pending'} label={item.status === 'fulfilled' ? t('ui.eventOrders.collected') : t('ui.eventOrders.toCollect')} />
                       </td>
                     </tr>
                   ))}

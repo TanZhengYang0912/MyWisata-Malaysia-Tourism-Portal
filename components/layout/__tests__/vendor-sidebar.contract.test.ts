@@ -16,6 +16,9 @@ describe("Outlet Manager navigation", () => {
       "/vendor/dashboard",
       "/vendor/outlets",
       "/vendor/profile",
+      "/vendor/event-promotions",
+      "/vendor/events",
+      "/vendor/event-orders",
       "/vendor/products",
       "/vendor/bookings",
       "/vendor/redemptions",
@@ -23,9 +26,6 @@ describe("Outlet Manager navigation", () => {
       "/vendor/orders",
       "/vendor/wallet",
       "/vendor/analytics",
-      "/vendor/event-promotions",
-      "/vendor/events",
-      "/vendor/event-orders",
     ]);
     expect(getVendorNavigationSections(true).flatMap((section) => section.items.map((item) => item.href))).toEqual([
       "/vendor/announcements",

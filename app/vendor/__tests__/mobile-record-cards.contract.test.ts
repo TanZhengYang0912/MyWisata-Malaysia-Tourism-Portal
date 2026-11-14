@@ -38,12 +38,13 @@ describe('vendor mobile record lists and outlet cards', () => {
     expect(source.includes('data-mobile-order-list')).toBe(true);
     expect(source.includes('xl:hidden')).toBe(true);
     expect(source.includes('hidden overflow-x-auto xl:block')).toBe(true);
-    expect(source.includes('xl:grid-cols-[32px_minmax(120px,1.2fr)_minmax(170px,1.5fr)')).toBe(true);
+    expect(source.includes('xl:grid-cols-[32px_minmax(140px,1.2fr)_minmax(190px,1.6fr)')).toBe(true);
   });
 
-  it('uses shared mobile safe area and tops it up from the lg breakpoint', () => {
+  it('uses normal mobile bottom spacing without the floating chat launcher', () => {
     const layout = read('app/vendor/layout.tsx');
-    expect(layout.includes('pb-24')).toBe(true);
+    expect(layout.includes('pb-8')).toBe(true);
+    expect(layout.includes('pb-24')).toBe(false);
 
     for (const routePath of [
       'app/vendor/orders/page.tsx',

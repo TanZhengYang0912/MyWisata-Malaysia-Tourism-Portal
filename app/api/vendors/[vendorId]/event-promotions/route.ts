@@ -32,6 +32,12 @@ export async function POST(request: Request, { params }: Props) {
   const parsed = await parseBody(request, eventPromotionSubmitSchema);
   if (!parsed.ok) return parsed.response;
 
-  const promotion = await submitEventPromotion(access.access.serviceDb, vendorId, access.access.userId, parsed.data);
-  return apiOk({ promotion }, { status: 201 });
+  // A failed insert must come back as the API's JSON error shape; an uncaught
+  // throw returns an HTML 500 the form cannot read.
+  try {
+    const promotion = await submitEventPromotion(access.access.serviceDb, vendorId, access.access.userId, parsed.data);
+    return apiOk({ promotion }, { status: 201 });
+  } catch (error) {
+    return apiFail('DB_ERROR', error instanceof Error ? error.message : 'Failed to submit event promotion', 500);
+  }
 }

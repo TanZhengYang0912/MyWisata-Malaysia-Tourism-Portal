@@ -20,6 +20,7 @@ export const CUSTOMER_I18N_FILES = [
   "app/customer/calendar/page.tsx",
   "app/customer/cart/page.tsx",
   "app/customer/checkout/page.tsx",
+  "app/customer/checkout/success/page.tsx",
   "app/customer/checkout/simulator/[sessionId]/page.tsx",
   "app/customer/customer-home-client.tsx",
   "app/customer/design-demo/design-demo-client.tsx",

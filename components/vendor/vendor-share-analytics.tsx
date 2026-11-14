@@ -102,7 +102,7 @@ export function VendorShareAnalytics({ vendorId }: VendorShareAnalyticsProps) {
       <div className="rounded-2xl border border-gray-100 dark:border-border bg-card shadow-sm">
         <div className="flex items-center justify-between border-b border-gray-100 dark:border-border px-6 py-4">
           <div>
-            <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+            <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-primary">
               <Share2 size={14} /> {t('share.performance')}
             </div>
             <h3 className="text-lg font-bold text-gray-950 dark:text-foreground">{t('share.byListing')}</h3>

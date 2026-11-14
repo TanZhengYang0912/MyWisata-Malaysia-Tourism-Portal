@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
+import { MEDIA_RESERVE_FAILED, markVendorMediaObjectStored, reserveVendorMediaObject } from '@/lib/vendor/media-objects';
 import { authorizeVendor, type VendorAccess } from '@/lib/vendor-authorization';
 import { validateAvatarBytes, validateAvatarFileMetadata } from '@/lib/profile/avatar-validation';
 import { validateVendorGalleryFiles } from '@/lib/vendor/gallery-files';
@@ -137,6 +138,13 @@ export async function PUT(request: Request, { params }: Props) {
   const photos: Array<{ id: string; url: string; altText: string; sortOrder: number }> = [];
   for (const [index, file] of prepared.files.entries()) {
     const path = `${vendorId}/gallery/${crypto.randomUUID()}-gallery-${index}.${file.extension}`;
+    const reserved = await reserveVendorMediaObject(result.access.serviceDb, { bucket: BUCKET, path, vendorId, userId: result.access.userId, purpose: 'vendor_gallery' });
+    if (!reserved.ok) {
+      const cleaned = await removeObjects(result.access.serviceDb, uploadedPaths);
+      return cleaned
+        ? apiFail(MEDIA_RESERVE_FAILED.code, MEDIA_RESERVE_FAILED.message, MEDIA_RESERVE_FAILED.status)
+        : apiFail('IMAGE_CLEANUP_FAILED', 'The gallery upload could not be safely cleaned up.', 500);
+    }
     let uploadError: { message: string } | null = null;
     try {
       const upload = await result.access.serviceDb.storage.from(BUCKET).upload(path, file.bytes, {
@@ -156,6 +164,7 @@ export async function PUT(request: Request, { params }: Props) {
         : apiFail('IMAGE_CLEANUP_FAILED', 'The gallery upload could not be safely cleaned up.', 500);
     }
     uploadedPaths.push(path);
+    await markVendorMediaObjectStored(result.access.serviceDb, reserved.objectId);
     const url = result.access.serviceDb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
     photos.push({ id: path, url, altText: `Business gallery image ${index + 1}`, sortOrder: index });
   }

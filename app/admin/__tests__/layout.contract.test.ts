@@ -83,9 +83,9 @@ describe('admin navigation shell', () => {
   });
 
   it('keeps the sidebar separators subtle and leaves the toolbar visually open', () => {
-    expect(sharedSidebarSource).toContain('border-b border-white/10 px-4 py-4');
     expect(sharedSidebarSource).toContain('data-portal-sidebar="true"');
-    expect(sharedSidebarSource).toContain('bg-slate-800');
+    expect(sharedSidebarSource).toContain('border-r border-border bg-card');
+    expect(sharedSidebarSource).not.toContain('border-white/');
     expect(layoutSource).toContain('className="sticky top-0 z-40 flex h-16 items-center justify-end gap-2 bg-background/95 pl-16 pr-4 backdrop-blur-md sm:pr-6 lg:pl-6"');
     expect(layoutSource).not.toContain('border-b-2 border-gray-200');
   });
