@@ -62,6 +62,8 @@ export async function POST(request: Request, { params }: Props) {
     context_snapshot: context,
   }).select().single();
   if (error) return apiFail('DB_ERROR', error.message, 500);
+  // Invariant: every message insert must touch its thread — the unread badges'
+  // Realtime subscriptions listen to filtered chat_threads UPDATEs, not inserts.
   await access.service.from('chat_threads').update({ last_message_at: new Date().toISOString() }).eq('id', thread.id);
   // Reopen an archived thread on new activity; never override a manually 'closed' one.
   await access.service.from('chat_threads').update({ status: 'open' }).eq('id', thread.id).eq('status', 'archived');

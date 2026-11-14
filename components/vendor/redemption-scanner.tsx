@@ -27,7 +27,8 @@ import {
   VolumeX,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { mapRedemptionStationStats, type RedemptionStationStats, type RedemptionApiStats } from "@/lib/vendor/redemption-station-stats";
+import { EMPTY_REDEMPTION_STATION_STATS, mapRedemptionStationStats, type RedemptionStationStats, type RedemptionApiStats } from "@/lib/vendor/redemption-station-stats";
+import { VendorPageHeader } from "@/components/vendor/vendor-page-header";
 import { VendorMobileRecordCard } from "@/components/vendor/mobile-record-card";
 
 type OutletOption = { id: string; name: string };
@@ -110,12 +111,8 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
-  const [stats, setStats] = useState<RedemptionStationStats>({
-    todayScans: 0,
-    ticketAdmissions: 0,
-    voucherRedemptions: 0,
-    retailPickups: 0,
-  });
+  const [stats, setStats] = useState<RedemptionStationStats>(EMPTY_REDEMPTION_STATION_STATS);
+  const [statsFailed, setStatsFailed] = useState(false);
   const [recentLogs, setRecentLogs] = useState<RecentScanItem[]>([]);
 
   useEffect(() => {
@@ -147,12 +144,13 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
       else if (outletId) params.set("outletId", outletId);
       const response = await fetch(`/api/vendors/${vendorId}/redemptions?${params.toString()}`, { cache: "no-store" });
       const payload = await response.json() as { data?: { stats?: RedemptionApiStats; items?: RecentScanItem[] } };
-      if (response.ok && payload.data) {
-        setStats(mapRedemptionStationStats(payload.data.stats));
-        setRecentLogs(payload.data.items ?? []);
-      }
+      if (!response.ok || !payload.data) throw new Error("redemption_stats_unavailable");
+      setStats(mapRedemptionStationStats(payload.data.stats));
+      setRecentLogs(payload.data.items ?? []);
+      setStatsFailed(false);
     } catch {
-      // Ignore silent stats fetch error
+      // Keep the last figures but say they may be stale instead of failing silently.
+      setStatsFailed(true);
     } finally {
       setLoadingStats(false);
     }
@@ -332,24 +330,17 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
   }
 
   const assignedOutlet = outlets.find((o) => o.id === outletId);
-  const assignedOutletName = eventContext?.locationName ?? assignedOutlet?.name ?? t("ui.scanner.selectOutlet", "Select an outlet");
   const ticketRemaining = result?.kind === "ticket"
     ? result.pass?.remaining ?? Math.max(0, (result.pass?.entry_limit ?? result.quantity) - (result.pass?.entries_used ?? 0))
     : null;
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* 1. Header (Matching Fig 2 Layout) */}
-      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            <ScanLine size={15} />
-            <span>{t("ui.scanner.eyebrow")}</span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground">{t("ui.scanner.title")}</h1>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
+      <VendorPageHeader
+        eyebrow={t("ui.scanner.eyebrow")}
+        title={t("ui.scanner.title")}
+        actions={
+        <div className="flex flex-wrap items-center gap-2 [&>button]:flex-1 sm:[&>button]:flex-none">
           <button
             type="button"
             onClick={() => setSoundEnabled((prev) => !prev)}
@@ -381,39 +372,58 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
             <span>{t("actions.refresh", "Refresh")}</span>
           </button>
         </div>
-      </header>
+        }
+      />
 
-      {/* 2. KPI Summary Cards Row (Matching Fig 2) */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-5">
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-3 shadow-sm sm:p-4">
-          <p className="text-[11px] leading-tight text-gray-500 dark:text-muted-foreground sm:text-xs">{t("ui.scanner.todayScans", "Today's Scans")}</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-primary">{stats.todayScans}</p>
+      {/* Counters are scoped to this station: the selected outlet, or the event location in pickup mode. */}
+      {statsFailed && (
+        <p role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+          {t("ui.scanner.statsFailed")}
+          <button type="button" onClick={() => void loadStationData()} className="font-semibold underline underline-offset-2">{t("actions.refresh", "Refresh")}</button>
+        </p>
+      )}
+      {/*
+        Two scopes, two groups: "Today" counts every scan at this station today;
+        the type counters are all-time totals. They used to sit in one row of
+        identical cards, which made the time scope unreadable. The station name
+        lives in the outlet control in the toolbar below.
+      */}
+      <section
+        aria-label={t("ui.scanner.countersLabel")}
+        aria-busy={loadingStats}
+        data-scanner-counters
+        className="flex flex-col gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:gap-6 sm:px-5"
+      >
+        <div className="flex items-baseline gap-2 sm:block">
+          <p className="text-xs font-semibold text-muted-foreground">{t("ui.scanner.scopeToday")}</p>
+          <p className="text-2xl font-bold leading-tight tabular-nums text-foreground">
+            {stats.todayScans}
+            <span className="ml-1.5 text-sm font-medium text-muted-foreground">{t("ui.scanner.scansUnit", { count: stats.todayScans })}</span>
+          </p>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-3 shadow-sm sm:p-4">
-          <p className="text-[11px] leading-tight text-gray-500 dark:text-muted-foreground sm:text-xs">{t("ui.scanner.ticketsAdmitted", "Tickets Admitted")}</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-gray-950 dark:text-foreground">{stats.ticketAdmissions}</p>
+        <div aria-hidden="true" className="hidden h-10 w-px bg-border sm:block" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-muted-foreground">{t("ui.scanner.scopeAllTime")}</p>
+          <dl className="mt-1 grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:flex sm:flex-wrap">
+            {(eventContext
+              ? [{ key: "eventPickups", label: t("ui.scanner.eventPickups"), value: stats.eventPickups }]
+              : [
+                { key: "tickets", label: t("ui.scanner.ticketsAdmitted"), value: stats.ticketAdmissions },
+                { key: "vouchers", label: t("ui.scanner.vouchersUsed"), value: stats.voucherRedemptions },
+                { key: "retail", label: t("ui.redemptions.retailPickups"), value: stats.retailPickups },
+                { key: "food", label: t("ui.scanner.foodOrders"), value: stats.foodOrders },
+              ]).map((counter) => (
+              <div key={counter.key} className="flex min-w-0 items-baseline justify-between gap-2 sm:justify-start">
+                <dt className="truncate text-muted-foreground">{counter.label}</dt>
+                {/* null = the server does not report this counter yet; never shown as 0. */}
+                <dd className="font-semibold tabular-nums text-foreground" title={counter.value === null && !loadingStats ? t("ui.scanner.counterPending") : undefined}>
+                  {counter.value ?? "—"}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-3 shadow-sm sm:p-4">
-          <p className="text-[11px] leading-tight text-gray-500 dark:text-muted-foreground sm:text-xs">{t("ui.scanner.vouchersUsed", "Vouchers Redeemed")}</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-gray-950 dark:text-foreground">{stats.voucherRedemptions}</p>
-        </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-3 shadow-sm sm:p-4">
-          <p className="text-[11px] leading-tight text-gray-500 dark:text-muted-foreground sm:text-xs">{t("ui.redemptions.retailPickups", "Retail pickups")}</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-gray-950 dark:text-foreground">{stats.retailPickups}</p>
-        </div>
-        <div className="col-span-2 rounded-2xl border border-gray-100 dark:border-border bg-card p-3 shadow-sm sm:col-span-1 sm:p-4">
-          <p className="text-[11px] leading-tight text-gray-500 dark:text-muted-foreground sm:text-xs">{t("ui.scanner.stationStatus", "Station Status")}</p>
-          <div className="mt-1.5 flex items-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-            </span>
-            <span className="truncate text-sm font-bold text-gray-900 dark:text-foreground" title={assignedOutletName}>
-              {assignedOutletName}
-            </span>
-          </div>
-        </div>
-      </div>
+      </section>
 
       {/* 3. Toolbar Row (Tabs + Outlet Selector - Matching Fig 2) */}
       <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-card p-3 shadow-sm md:flex-row md:items-center md:justify-between">
@@ -514,7 +524,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                       <Camera size={14} className="text-[#ffcc00]" />
                       <span>{t("ui.scanner.supportsQrAndBarcode")}</span>
                     </span>
-                    <span className="rounded-full bg-white/10 dark:bg-card/10 px-2.5 py-0.5 text-[11px] font-medium text-white/70">
+                    <span className="rounded-full bg-card/10 px-2.5 py-0.5 text-[11px] font-medium text-white/70">
                       {cameraOn ? t("ui.scanner.stationActive", "Ready to scan") : t("ui.scanner.cameraOff")}
                     </span>
                   </div>
@@ -619,7 +629,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                   {activeTab === "scanner" && (
                     <div className="rounded-2xl border border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 p-4">
                       <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-gray-700 dark:text-foreground">
+                        <div className="flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-foreground">
                           <Clock size={14} className="text-primary" />
                           <span>{t("ui.scanner.recentRedemptions", "Recent Redemptions")}</span>
                         </div>
@@ -678,7 +688,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                   {result && (
                     <div className="rounded-2xl border border-primary/20 bg-secondary/35 p-5 shadow-sm">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">
+                        <p className="text-xs font-bold text-primary">
                           {t("ui.scanner.reviewBeforeConfirm")}
                         </p>
                         <span className="rounded-md bg-card px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
@@ -884,7 +894,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                 </div>
                 <div className="hidden overflow-x-auto rounded-xl border border-gray-100 dark:border-border md:block">
                   <table className="w-full text-left text-xs">
-                    <thead className="border-b border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 font-semibold uppercase tracking-[0.1em] text-gray-500 dark:text-muted-foreground">
+                    <thead className="border-b border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 font-semibold text-gray-500 dark:text-muted-foreground">
                       <tr>
                         <th className="px-4 py-3">{t("ui.redemptions.table.time")}</th>
                         <th className="px-4 py-3">{t("ui.redemptions.table.type")}</th>

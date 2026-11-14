@@ -147,6 +147,7 @@ export function OutletHeroRenderer({ hero, outlet, brandColour = '#0f172a', mode
     </div>}
     <div className={`relative mx-auto max-w-7xl px-5 text-white sm:px-6 ${mode === 'public' ? 'flex min-h-[240px] flex-col justify-end py-10 sm:min-h-[320px] sm:py-14 lg:min-h-[360px] lg:py-16' : 'py-24'}`} style={{ textAlign: hero.textAlign || 'left' }}>
       <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-80">{t('ui.outlet.verifiedMyLawatan')}</p>
+      {/* Inline fields read as page text; a dashed outline on hover and a solid one on focus show they are editable. */}
       {mode === 'editor' && onEditHero ? (
         <input
           aria-label={t('ui.outlet.editHeroTitle')}
@@ -154,7 +155,7 @@ export function OutletHeroRenderer({ hero, outlet, brandColour = '#0f172a', mode
           onChange={(event) => onEditHero({ title: event.target.value })}
           onBlur={onEditEnd}
           onClick={(event) => event.stopPropagation()}
-          className="mt-3 block w-full max-w-3xl rounded-lg border border-white/30 bg-black/10 px-2 py-1 text-4xl font-black tracking-tight text-white outline-none ring-amber-300 placeholder:text-white/60 focus:ring-2 sm:text-6xl"
+          className="mt-3 block w-full max-w-3xl rounded-lg border border-dashed border-transparent bg-transparent px-2 py-1 text-4xl font-black tracking-tight text-white outline-none ring-amber-300 transition-colors placeholder:text-white/60 hover:border-white/40 focus:border-solid focus:border-white/40 focus:bg-black/15 focus:ring-2 sm:text-6xl"
         />
       ) : (
         <h1 className="mt-3 max-w-3xl break-words text-3xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl">{hero.title}</h1>
@@ -167,7 +168,7 @@ export function OutletHeroRenderer({ hero, outlet, brandColour = '#0f172a', mode
           onBlur={onEditEnd}
           onClick={(event) => event.stopPropagation()}
           rows={2}
-          className="mt-4 block w-full max-w-2xl resize-none rounded-lg border border-white/25 bg-black/10 px-2 py-1 text-sm text-white outline-none ring-amber-300 placeholder:text-white/60 focus:ring-2"
+          className="mt-4 block w-full max-w-2xl resize-none rounded-lg border border-dashed border-transparent bg-transparent px-2 py-1 text-sm text-white outline-none ring-amber-300 transition-colors placeholder:text-white/60 hover:border-white/40 focus:border-solid focus:border-white/40 focus:bg-black/15 focus:ring-2"
         />
       ) : (
         hero.body && <p className="mt-3 max-w-2xl break-words text-sm leading-6 opacity-90 sm:mt-4 sm:text-base">{hero.body}</p>
@@ -214,7 +215,7 @@ export function OutletBlockRenderer({ block, outlet, products = [], gallery = []
           onChange={(event) => onEditBlock?.({ title: event.target.value })}
           onBlur={onEditEnd}
           onClick={(event) => event.stopPropagation()}
-          className="mt-2 block w-full rounded-lg border border-primary/10 bg-background px-2 py-1 text-xl font-bold outline-none ring-primary/50 focus:ring-2"
+          className="mt-2 block w-full rounded-lg border border-dashed border-transparent bg-transparent px-2 py-1 text-xl font-bold outline-none ring-primary/50 transition-colors hover:border-primary/25 focus:border-solid focus:border-primary/20 focus:bg-background focus:ring-2"
         />
       ) : (!isPhoto || isPhotoStory) ? (
         <h2 className="mt-2 text-xl font-bold">{model.title}</h2>
@@ -228,7 +229,7 @@ export function OutletBlockRenderer({ block, outlet, products = [], gallery = []
           onClick={(event) => event.stopPropagation()}
           rows={2}
           placeholder={t('ui.outlet.addSupportingCopy')}
-          className="mt-2 block w-full resize-none rounded-lg border border-primary/10 bg-background px-2 py-1 text-sm leading-6 text-muted-foreground outline-none ring-primary/50 focus:ring-2"
+          className="mt-2 block w-full resize-none rounded-lg border border-dashed border-transparent bg-transparent px-2 py-1 text-sm leading-6 text-muted-foreground outline-none ring-primary/50 transition-colors hover:border-primary/25 focus:border-solid focus:border-primary/20 focus:bg-background focus:ring-2"
         />
       ) : (!isPhoto || isPhotoStory) ? (
         model.body && <p className="mt-2 text-sm leading-6 text-muted-foreground">{model.body}</p>

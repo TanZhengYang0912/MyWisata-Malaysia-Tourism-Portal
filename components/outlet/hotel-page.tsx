@@ -8,6 +8,7 @@ import type { GalleryItem, OutletRendererOutlet, OutletRendererProduct } from "@
 import type { StayBookingDetails } from "@/backend/core/types";
 import type { ReviewRatingBucket, ScopedReviewItem } from "@/backend/domains/vendor-reviews";
 import { RoomDetailsDialog } from "@/components/outlet/room-details-dialog";
+import { OutletMenu, OutletProductCard } from "@/components/outlet/outlet-menu";
 import { StayGuestDetailsDialog } from "@/components/customer/stay-guest-details-dialog";
 import { MediaGallery } from "@/components/customer/media-gallery";
 import { FeedbackCollection, type FeedbackReviewItem } from "@/components/customer/feedback/feedback-collection";
@@ -113,13 +114,21 @@ function RoomCard({ outlet, room, adults, rooms, availabilityStale, onSetRoomCou
   );
 }
 
+function HotelWishlistAction({ outlet, saved, onToggleSaved }: { outlet: OutletRendererOutlet; saved: boolean; onToggleSaved(): void }) {
+  const { t } = useTranslation("customer");
+  const gate = useCustomerCapabilityGate();
+  return <SaveToggleButton saved={saved} aria-label={saved ? t("ui.activity.removeSaved", { name: outlet.name }) : t("ui.activity.save", { name: outlet.name })}
+    onClick={() => { if (gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) void onToggleSaved(); }}>
+    {saved ? t("ui.activity.removeSavedShort") : t("ui.activity.saveShort")}
+  </SaveToggleButton>;
+}
+
 const HOTEL_REVIEW_PAGE_SIZE = 6;
 
 /** Fixed hotel layout (D1): every accommodation outlet looks the same; only its profile content differs. */
-export function HotelPage({ outlet, rooms, gallery, reviews = [], reviewRatingBuckets = [], reviewTotal }: { outlet: OutletRendererOutlet; rooms: OutletRendererProduct[]; gallery: GalleryItem[]; reviews?: ScopedReviewItem[]; reviewRatingBuckets?: ReviewRatingBucket[]; reviewTotal?: number }) {
+export function HotelPage({ outlet, rooms, previewProducts = [], additionalProducts = [], embeddedInShop = false, previewOnly = false, gallery, reviews = [], reviewRatingBuckets = [], reviewTotal }: { outlet: OutletRendererOutlet; rooms: OutletRendererProduct[]; previewProducts?: OutletRendererProduct[]; additionalProducts?: OutletRendererProduct[]; embeddedInShop?: boolean; previewOnly?: boolean; gallery: GalleryItem[]; reviews?: ScopedReviewItem[]; reviewRatingBuckets?: ReviewRatingBucket[]; reviewTotal?: number }) {
   const { t, i18n } = useTranslation("customer");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
-  const gate = useCustomerCapabilityGate();
   // Null in the vendor shop preview, which has no customer wishlist; the save button is hidden there.
   const wishlist = useOptionalWishlist();
   const saved = wishlist?.savedOutletIds.has(outlet.id) ?? false;
@@ -166,15 +175,19 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [], reviewRatingBu
   const address = outlet.address || [outlet.city, outlet.state].filter(Boolean).join(", ");
   const taxonomyLabels = getOutletTaxonomyLabels(outlet, t);
   const mapHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([outlet.name, outlet.address, outlet.city, outlet.state].filter(Boolean).join(", "))}`;
-  const lowestRoomPrice = rooms.length ? Math.min(...rooms.map((room) => Number(room.base_price)).filter(Number.isFinite)) : null;
-  const hasOverview = Boolean(stay.about || stay.amenities.length || stay.checkInTime || stay.checkOutTime);
+  const displayedRooms = previewOnly ? previewProducts : rooms;
+  const lowestRoomPrice = displayedRooms.length ? Math.min(...displayedRooms.map((room) => Number(room.base_price)).filter(Number.isFinite)) : null;
+  const hasRooms = displayedRooms.length > 0;
+  const hasAdditionalProducts = additionalProducts.length > 0;
+  const hasOverview = Boolean(stay.about || stay.amenities.length);
   const hasReviews = stay.reviews > 0 || reviews.length > 0;
   const sections = [
-    ["rooms", t("ui.property.rooms")],
+    ...(hasRooms ? [["rooms", t("ui.property.rooms")]] : []),
+    ...(hasAdditionalProducts ? [["full-menu", t("ui.outletMenu.moreFromOutlet")]] : []),
     ...(hasOverview ? [["overview", t("ui.hotel.overview")]] : []),
     ...(hasReviews ? [["reviews", t("ui.hotel.reviews")]] : []),
     ...(stay.policies || stay.checkInTime || stay.checkOutTime ? [["policies", t("ui.property.policies")]] : []),
-    ...(address ? [["location", t("ui.hotel.location")]] : []),
+    ...(!embeddedInShop && address ? [["location", t("ui.hotel.location")]] : []),
   ];
 
   function updateSearchValues(update: Partial<Omit<typeof serverSearch, "serverSearchKey">>) {
@@ -278,29 +291,26 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [], reviewRatingBu
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 pb-12 pt-6 sm:px-6 sm:pb-16 lg:px-8">
-      <header className="mb-4 flex flex-wrap items-start justify-between gap-4">
+    <div className={embeddedInShop ? "mx-0 max-w-none px-0 pb-0 pt-0" : "mx-auto max-w-7xl px-3 pb-10 pt-4 sm:px-6 sm:pb-16 sm:pt-6 lg:px-8"}>
+      <header className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:gap-4">
         <div className="min-w-0">
-          <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold text-foreground">{outlet.name}</h1>
+          {!embeddedInShop && <h1 className="break-words font-[family-name:var(--font-display)] text-2xl font-bold text-foreground sm:text-3xl">{outlet.name}</h1>}
           {taxonomyLabels.length > 0 && <div className="mt-3 flex flex-wrap gap-2" aria-label={t("ui.outlet.goodToKnow")}>
             {taxonomyLabels.map((item) => <Badge key={item.slug} variant="secondary">{item.label}</Badge>)}
           </div>}
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
             {stay.reviews > 0 && <span className="inline-flex items-center gap-1 font-semibold text-foreground"><Star size={14} fill="var(--highlight-yellow)" stroke="none" aria-hidden="true" />{stay.rating.toFixed(1)}<span className="font-normal text-muted-foreground">{t("ui.hotel.reviewCount", { count: stay.reviews })}</span></span>}
-            {address && <span className="inline-flex items-center gap-1"><MapPin size={14} aria-hidden="true" />{address}</span>}
+            {!embeddedInShop && address && <span className="inline-flex items-center gap-1"><MapPin size={14} aria-hidden="true" />{address}</span>}
           </div>
         </div>
-        {wishlist && <SaveToggleButton saved={saved} aria-label={saved ? t("ui.activity.removeSaved", { name: outlet.name }) : t("ui.activity.save", { name: outlet.name })}
-          onClick={() => { if (gate(CUSTOMER_CAPABILITY.ACCOUNT_MUTATION)) void wishlist.toggleSavedOutlet(outlet.id); }}>
-          {saved ? t("ui.activity.removeSavedShort") : t("ui.activity.saveShort")}
-        </SaveToggleButton>}
+        {!previewOnly && wishlist && <HotelWishlistAction outlet={outlet} saved={saved} onToggleSaved={() => wishlist.toggleSavedOutlet(outlet.id)} />}
       </header>
-      <form method="get" onSubmit={handleSearchSubmit} aria-label={t("ui.hotel.yourStay")} className="mb-6 grid gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm lg:grid-cols-[minmax(12rem,1.1fr)_minmax(18rem,1.5fr)_minmax(16rem,1.2fr)_auto] lg:items-end">
-        <div className="min-w-0">
+      {!previewOnly && <form method="get" onSubmit={handleSearchSubmit} aria-label={t("ui.hotel.yourStay")} className={`mb-6 grid gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm ${embeddedInShop ? "lg:grid-cols-[minmax(18rem,1.5fr)_minmax(16rem,1.2fr)_auto]" : "lg:grid-cols-[minmax(12rem,1.1fr)_minmax(18rem,1.5fr)_minmax(16rem,1.2fr)_auto]"} lg:items-end`}>
+        {!embeddedInShop && <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("ui.hotel.property")}</p>
           <p className="mt-1 truncate font-semibold text-foreground">{outlet.name}</p>
           <p className="truncate text-sm text-muted-foreground">{address}</p>
-        </div>
+        </div>}
         <div className="grid grid-cols-2 gap-3">
           <label className="text-xs font-semibold text-muted-foreground">{t("ui.property.checkIn")}<Input type="date" name="checkin" value={checkIn} onChange={(event) => updateSearchValues({ checkIn: event.target.value })} required className="mt-1" /></label>
           <label className="text-xs font-semibold text-muted-foreground">{t("ui.property.checkOut")}<Input type="date" name="checkout" min={minimumCheckOut} max={maximumCheckOut} value={checkOut} onChange={(event) => updateSearchValues({ checkOut: event.target.value })} required className="mt-1" /></label>
@@ -327,12 +337,12 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [], reviewRatingBu
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3 lg:flex-col lg:items-stretch">
-          <Button type="submit" disabled={nightCount === null || stayExceedsNightLimit}>{t("ui.hotel.checkAvailability")}</Button>
-          {nightCount !== null && <p className="text-xs text-muted-foreground">{t("ui.property.nightsSummary", { count: nightCount })}</p>}
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center lg:flex-col lg:items-stretch">
+          <Button type="submit" disabled={nightCount === null || stayExceedsNightLimit} className="w-full sm:w-auto lg:w-full">{t("ui.hotel.checkAvailability")}</Button>
+          {nightCount !== null && <p className="text-center text-xs text-muted-foreground sm:text-left lg:text-center">{t("ui.property.nightsSummary", { count: nightCount })}</p>}
         </div>
-      </form>
-      {availabilityStale && nightCount !== null && !stayExceedsNightLimit && <p role="status" aria-live="polite" className="-mt-3 mb-6 rounded-xl border border-border bg-secondary/50 p-3 text-sm text-foreground">{t("ui.hotel.availabilityNeedsRefresh")}</p>}
+      </form>}
+      {!previewOnly && availabilityStale && nightCount !== null && !stayExceedsNightLimit && <p role="status" aria-live="polite" className="-mt-3 mb-6 rounded-xl border border-border bg-secondary/50 p-3 text-sm text-foreground">{t("ui.hotel.availabilityNeedsRefresh")}</p>}
 
       {gallery.length > 0 && (
         <div className="mb-6">
@@ -340,27 +350,34 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [], reviewRatingBu
         </div>
       )}
 
-      <nav aria-label={t("ui.property.sections")} className="sticky top-0 z-20 -mx-4 mb-6 flex items-center gap-5 overflow-x-auto border-b border-border bg-background/95 px-4 py-3 text-sm font-semibold backdrop-blur sm:-mx-6 sm:px-6">
+      <nav aria-label={t("ui.property.sections")} className="sticky top-0 z-20 -mx-3 mb-5 flex items-center gap-4 overflow-x-auto border-b border-border bg-background/95 px-3 py-3 text-sm font-semibold backdrop-blur sm:-mx-6 sm:mb-6 sm:gap-5 sm:px-6">
         {sections.map(([id, label]) => <a key={id} href={`#${id}`} className="whitespace-nowrap text-primary hover:underline">{label}</a>)}
         {lowestRoomPrice !== null && Number.isFinite(lowestRoomPrice) && <div className="ml-auto hidden shrink-0 items-center gap-3 sm:flex"><span><span className="mr-1 text-xs font-normal text-muted-foreground">{t("ui.hotel.from")}</span><ReferencePrice amountMYR={lowestRoomPrice} className="font-semibold text-foreground" /></span><Button asChild size="sm"><a href="#rooms">{t("ui.hotel.selectRoom")}</a></Button></div>}
       </nav>
 
-      <section id="rooms" className="scroll-mt-16">
-        <h2 className="mb-4 text-2xl font-bold tracking-tight text-foreground">{t("ui.property.rooms")}</h2>
-        <div className="space-y-4">{rooms.map((room) => <RoomCard key={room.id} outlet={outlet} room={room} adults={adultCount} rooms={roomCount} availabilityStale={availabilityStale || nightCount === null || stayExceedsNightLimit} onSetRoomCount={setMinimumRoomCount} />)}</div>
-      </section>
+      {hasRooms && <section id="rooms" className="scroll-mt-16">
+        <h2 className="mb-4 text-xl font-bold tracking-tight text-foreground sm:text-2xl">{t("ui.property.rooms")}</h2>
+        {previewOnly ? (
+          <div className="grid gap-4 sm:grid-cols-2">{previewProducts.map((product) => <OutletProductCard key={product.id} outlet={outlet} product={product} />)}</div>
+        ) : (
+          <div className="space-y-4">{rooms.map((room) => <RoomCard key={room.id} outlet={outlet} room={room} adults={adultCount} rooms={roomCount} availabilityStale={availabilityStale || nightCount === null || stayExceedsNightLimit} onSetRoomCount={setMinimumRoomCount} />)}</div>
+        )}
+      </section>}
+
+      {hasAdditionalProducts && <div className="mt-8 scroll-mt-16 sm:mt-10">
+        <OutletMenu outlet={outlet} products={additionalProducts} groupByCategory />
+      </div>}
 
       {hasOverview && (
-        <section id="overview" className="mt-10 scroll-mt-16 rounded-2xl border border-border bg-card p-5">
+        <section id="overview" className="mt-8 scroll-mt-16 rounded-2xl border border-border bg-card p-4 sm:mt-10 sm:p-5">
           <h2 className="text-xl font-bold text-foreground">{t("ui.hotel.overview")}</h2>
           {stay.about && <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">{stay.about}</p>}
-          {(stay.checkInTime || stay.checkOutTime) && <p className="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-sm text-muted-foreground">{stay.checkInTime && <span><strong className="text-foreground">{t("ui.property.checkIn")}:</strong> {stay.checkInTime}</span>}{stay.checkOutTime && <span><strong className="text-foreground">{t("ui.property.checkOut")}:</strong> {stay.checkOutTime}</span>}</p>}
           {stay.amenities.length > 0 && <div className="mt-4"><h3 className="text-sm font-semibold text-foreground">{t("ui.hotel.amenities")}</h3><div className="mt-2 flex flex-wrap gap-2">{stay.amenities.map((amenity) => <Badge key={amenity.code} variant="secondary" className="gap-1"><Check size={12} aria-hidden="true" />{amenity.label}</Badge>)}</div></div>}
         </section>
       )}
 
       {hasReviews && (
-        <section id="reviews" className="mt-6 scroll-mt-16 rounded-2xl border border-border bg-card p-5">
+        <section id="reviews" className="mt-5 scroll-mt-16 rounded-2xl border border-border bg-card p-4 sm:mt-6 sm:p-5">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div><h2 className="text-xl font-bold text-foreground">{t("ui.hotel.reviews")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("ui.hotel.reviewCount", { count: initialReviewTotal })}</p></div>
             {stay.rating > 0 && <p className="inline-flex items-center gap-1 font-semibold text-foreground"><Star size={15} fill="var(--highlight-yellow)" stroke="none" aria-hidden="true" />{stay.rating.toFixed(1)} / 5</p>}
@@ -377,13 +394,13 @@ export function HotelPage({ outlet, rooms, gallery, reviews = [], reviewRatingBu
         </section>
       )}
 
-      {(stay.policies || stay.checkInTime || stay.checkOutTime) && <section id="policies" className="mt-6 scroll-mt-16 rounded-2xl border border-border bg-card p-5">
+      {(stay.policies || stay.checkInTime || stay.checkOutTime) && <section id="policies" className="mt-5 scroll-mt-16 rounded-2xl border border-border bg-card p-4 sm:mt-6 sm:p-5">
         <h2 className="text-xl font-bold text-foreground">{t("ui.property.policies")}</h2>
         {(stay.checkInTime || stay.checkOutTime) && <p className="mt-2 text-sm text-muted-foreground">{t("ui.property.times", { checkIn: stay.checkInTime ?? "—", checkOut: stay.checkOutTime ?? "—" })}</p>}
         {stay.policies && <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">{stay.policies}</p>}
       </section>}
 
-      {address && <section id="location" className="mt-6 scroll-mt-16 rounded-2xl border border-border bg-card p-5">
+      {!embeddedInShop && address && <section id="location" className="mt-5 scroll-mt-16 rounded-2xl border border-border bg-card p-4 sm:mt-6 sm:p-5">
         <h2 className="text-xl font-bold text-foreground">{t("ui.hotel.location")}</h2>
         {address && <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground"><MapPin size={16} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />{address}</p>}
         <Button asChild variant="outline" className="mt-3">

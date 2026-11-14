@@ -2,6 +2,7 @@ const PUBLIC_CUSTOMER_ROOTS = [
   "/customer",
   "/customer/cart",
   "/customer/checkout",
+  "/customer/checkout/success",
   "/customer/orders/access",
   "/customer/recommendations",
   "/customer/wallet",

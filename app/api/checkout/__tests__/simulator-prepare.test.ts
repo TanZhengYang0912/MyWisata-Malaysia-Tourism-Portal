@@ -224,7 +224,7 @@ describe('POST /api/checkout/prepare simulator provider', () => {
     expect(mocks.stripeCreate).toHaveBeenCalledWith(expect.objectContaining({
       line_items: [expect.objectContaining({ price_data: expect.objectContaining({ currency: 'myr', unit_amount: 5000 }) })],
       metadata: expect.objectContaining({ checkout_session_id: CHECKOUT_ID, order_id: ORDER_ID, payment_kind: 'order' }),
-      success_url: 'http://localhost:3000/customer/checkout?stripe_session_id={CHECKOUT_SESSION_ID}',
+      success_url: 'http://localhost:3000/customer/checkout/success?stripe_session_id={CHECKOUT_SESSION_ID}',
     }));
     expect(mocks.serviceFrom).toHaveBeenCalledWith('payments');
     expect(mocks.serviceFrom).toHaveBeenCalledWith('checkout_sessions');

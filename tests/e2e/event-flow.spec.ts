@@ -35,7 +35,10 @@ const errorCode = (r: { json: unknown }) => (r.json as { error?: { code?: string
 
 async function openStall(page: Page) {
   await page.goto(`/vendor/events/${CAMPAIGN_ID}`, { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /main location/i }).click();
+  const mainLocation = page.getByRole('region', { name: 'Locations' }).getByText('Main location', { exact: true });
+  await expect(mainLocation).toBeVisible({ timeout: 60_000 });
+  const selectMainLocation = page.getByRole('button', { name: 'Main location', exact: true });
+  if (await selectMainLocation.isVisible()) await selectMainLocation.click();
   await expect(page.getByText('Pickup times').first()).toBeVisible({ timeout: 60_000 });
 }
 

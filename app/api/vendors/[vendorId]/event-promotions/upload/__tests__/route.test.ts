@@ -2,6 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ authorizeVendor: vi.fn() }));
 vi.mock('@/lib/vendor-authorization', () => ({ authorizeVendor: mocks.authorizeVendor }));
+const mediaMocks = vi.hoisted(() => ({ reserve: vi.fn(), markStored: vi.fn() }));
+vi.mock('@/lib/vendor/media-objects', () => ({
+  reserveVendorMediaObject: mediaMocks.reserve,
+  markVendorMediaObjectStored: mediaMocks.markStored,
+  MEDIA_RESERVE_FAILED: { code: 'UPLOAD_UNAVAILABLE', message: 'Uploads are temporarily unavailable. Please try again.', status: 503 },
+}));
+
 
 import { POST } from '../route';
 
@@ -21,6 +28,8 @@ describe('/api/vendors/[vendorId]/event-promotions/upload', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     upload = vi.fn().mockResolvedValue({ error: null });
+    mediaMocks.reserve.mockResolvedValue({ ok: true, objectId: 'media-object-1' });
+    mediaMocks.markStored.mockResolvedValue(undefined);
     const bucket = {
       upload,
       getPublicUrl: vi.fn((path: string) => ({ data: { publicUrl: `https://storage.example/event-posters/${path}` } })),
@@ -67,6 +76,23 @@ describe('/api/vendors/[vendorId]/event-promotions/upload', () => {
     const file = new File([pngBytes], 'poster.png', { type: 'image/png' });
     const response = await POST(requestWithFile(file), params());
     expect(response.status).toBe(403);
+    expect(upload).not.toHaveBeenCalled();
+  });
+
+  it('registers the poster before writing it and marks it stored after', async () => {
+    const file = new File([pngBytes], 'poster.png', { type: 'image/png' });
+    await POST(requestWithFile(file), params());
+    const path = upload.mock.calls[0][0];
+    expect(mediaMocks.reserve).toHaveBeenCalledWith(expect.anything(), { bucket: 'event-posters', path, vendorId, userId: 'user-1', purpose: 'event_poster' });
+    expect(mediaMocks.reserve.mock.invocationCallOrder[0]).toBeLessThan(upload.mock.invocationCallOrder[0]);
+    expect(mediaMocks.markStored).toHaveBeenCalledWith(expect.anything(), 'media-object-1');
+  });
+
+  it('uploads nothing when the poster cannot be registered', async () => {
+    mediaMocks.reserve.mockResolvedValue({ ok: false });
+    const file = new File([pngBytes], 'poster.png', { type: 'image/png' });
+    const response = await POST(requestWithFile(file), params());
+    expect(response.status).toBe(503);
     expect(upload).not.toHaveBeenCalled();
   });
 });

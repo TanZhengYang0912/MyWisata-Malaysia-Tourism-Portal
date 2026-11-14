@@ -5,8 +5,12 @@ import en from '@/app/i18n/locales/en/customer.json';
 import zh from '@/app/i18n/locales/zh-CN/customer.json';
 import ms from '@/app/i18n/locales/ms/customer.json';
 
-const mocks = vi.hoisted(() => ({ fetch: vi.fn(), push: vi.fn(), locale: 'zh-CN' as 'en' | 'zh-CN' | 'ms', failure: { code: 'INVENTORY_UNAVAILABLE', message: 'private database detail' } }));
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
+const mocks = vi.hoisted(() => {
+  const push = vi.fn();
+  const replace = vi.fn();
+  return { fetch: vi.fn(), push, replace, router: { push, replace }, locale: 'zh-CN' as 'en' | 'zh-CN' | 'ms', failure: { code: 'INVENTORY_UNAVAILABLE', message: 'private database detail' } };
+});
+vi.mock('next/navigation', () => ({ useRouter: () => mocks.router }));
 vi.mock('next/link', () => ({ default: ({ children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => <a {...props}>{children}</a> }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => {
   const messages = { en, 'zh-CN': zh, ms }[mocks.locale];
@@ -58,7 +62,12 @@ beforeEach(() => {
   document.body.appendChild(container);
   root = createRoot(container as unknown as Element);
 });
-afterEach(async () => { await act(async () => root.unmount()); document.body.removeChild(container); vi.unstubAllGlobals(); });
+afterEach(async () => {
+  await act(async () => root.unmount());
+  document.body.removeChild(container);
+  vi.unstubAllGlobals();
+  mocks.fetch.mockReset();
+});
 
 describe('actionable checkout errors', () => {
   it.each(['', 'not-an-email'])('identifies an empty or invalid email before creating a Guest session or order: %s', async email => {
@@ -114,5 +123,18 @@ describe('actionable checkout errors', () => {
       await render();
       expect(container.textContent).toContain(dictionary.checkoutErrors.INVENTORY_UNAVAILABLE);
     }
+  });
+});
+
+describe('legacy Stripe success returns', () => {
+  it('forwards existing Stripe sessions to the dedicated success page', async () => {
+    Object.assign(window, { location: { search: '?stripe_session_id=cs_test_return' } });
+    mocks.fetch.mockImplementationOnce(() => new Promise<Response>(() => {}));
+
+    await render();
+
+    expect(mocks.replace).toHaveBeenCalledWith('/customer/checkout/success?stripe_session_id=cs_test_return');
+    expect(mocks.fetch).not.toHaveBeenCalledWith('/api/checkout/confirm-stripe', expect.anything());
+    Object.assign(window, { location: { search: '' } });
   });
 });

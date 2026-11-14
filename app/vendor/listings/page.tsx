@@ -125,7 +125,7 @@ export default function VendorListingsPage() {
             <thead>
               <tr className="bg-muted">
                 {[t("ui.listings.listing"), t("ui.listings.outlet"), t("ui.listings.category"), t("ui.listings.bookingRequired"), t("ui.listings.price")].map((heading) => (
-                  <th key={heading} className="px-6 py-3.5 text-left text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{heading}</th>
+                  <th key={heading} className="px-6 py-3.5 text-left text-[10px] font-bold text-muted-foreground">{heading}</th>
                 ))}
               </tr>
             </thead>

@@ -55,6 +55,8 @@ export async function POST(request: Request, { params }: Props) {
     .single();
   if (messageError) return apiFail('DB_ERROR', messageError.message, 500);
 
+  // Invariant: every message insert must touch its thread — the unread badges'
+  // Realtime subscriptions listen to filtered chat_threads UPDATEs, not inserts.
   await service.from('chat_threads').update({ last_message_at: message.created_at, status: 'open' }).eq('id', thread.id);
   await notifyNewChatMessage(service, {
     threadId: thread.id, senderId: user.id, senderRole: 'customer',

@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { Menu, ShieldCheck, type LucideIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Menu, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { cn } from "@/components/utils";
@@ -29,6 +29,7 @@ export type PortalSidebarProps = {
   portalName: ReactNode;
   brandName: ReactNode;
   navigationLabel: string;
+  /** Primary workspace line: who or what this session is working as (e.g. the vendor name, or the staff role). */
   contextLabel: ReactNode;
   contextDetail?: ReactNode;
   sections: PortalSidebarSection[];
@@ -62,82 +63,79 @@ function SidebarBody({
   onNavigate,
 }: Omit<PortalSidebarProps, "fixed" | "menuLabel" | "className"> & { inDrawer?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
+  const activeLinkRef = useRef<HTMLAnchorElement>(null);
   const visibleSections = sections.filter((section) => section.items.length > 0);
+  // Session data arrives after the first paint and can swap the menu or grow the context block above it,
+  // so the "keep the current page in view" pass also reruns when either changes, not only on navigation.
+  const menuShapeKey = `${visibleSections.map((section) => section.items.map((item) => item.href).join(",")).join("|")}#${contextDetail ? 1 : 0}`;
+
+  // Long menus (admin) can push the current page below the fold; keep it in view so the rail answers "where am I".
+  useEffect(() => {
+    const activeLink = activeLinkRef.current;
+    if (activeLink && typeof activeLink.scrollIntoView === "function") activeLink.scrollIntoView({ block: "nearest" });
+  }, [pathname, menuShapeKey]);
 
   return (
     <>
       {/* The drawer's close button sits top-right, so leave room for it beside the brand. */}
-      <div className={cn("border-b border-white/10 px-4 py-4", inDrawer && "pr-14")}>
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white p-1 shadow-sm">
-            <MyLawatanMark size={24} />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-[0.625rem] font-semibold uppercase tracking-[0.18em] text-slate-300">{portalName}</p>
-            <p className="truncate text-sm font-bold text-white">{brandName}</p>
-          </div>
+      <div className={cn("flex items-center gap-2.5 px-5 pb-4 pt-5", inDrawer && "pr-14")}>
+        {/* The navy mark disappears on the dark card, so it gets a white backing in dark mode only. */}
+        <span className="flex shrink-0 items-center justify-center dark:rounded-md dark:bg-white dark:p-1">
+          <MyLawatanMark size={26} />
+        </span>
+        <div className="min-w-0 leading-tight">
+          <p className="truncate text-[0.9375rem] font-bold tracking-tight text-foreground">{brandName}</p>
+          <p className="truncate text-xs text-muted-foreground">{portalName}</p>
         </div>
       </div>
 
-      <div className="border-b border-white/10 px-4 py-4">
-        <div className="flex items-start gap-2.5">
-          <ShieldCheck size={16} className="mt-0.5 shrink-0 text-slate-300" aria-hidden="true" />
-          <div className="min-w-0">
-            <p className="whitespace-normal break-words text-sm font-semibold text-white">{contextLabel}</p>
-            {contextDetail && <p className="mt-0.5 whitespace-normal break-words text-xs text-slate-300">{contextDetail}</p>}
-          </div>
-        </div>
+      <div data-portal-sidebar-context className="mx-3 rounded-lg bg-muted px-3 py-2.5">
+        <p className="whitespace-normal break-words text-sm font-semibold leading-snug text-foreground">{contextLabel}</p>
+        {contextDetail && <p className="mt-0.5 whitespace-normal break-words text-xs text-foreground/70">{contextDetail}</p>}
       </div>
 
-      <nav aria-label={navigationLabel} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 pb-8">
+      <nav
+        aria-label={navigationLabel}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-py-3 px-3 pb-6 pt-4 [scrollbar-color:var(--border)_transparent] [scrollbar-width:thin]"
+      >
         {visibleSections.map((section, sectionIndex) => (
-          <div key={sectionIndex} data-sidebar-section={sectionIndex === 0 ? "first" : "group"}>
-            <div
-              className={cn(
-                "mb-2 flex items-center gap-2.5 px-3",
-                sectionIndex > 0 && "mt-3 border-t border-white/15 pt-3",
-              )}
+          <div key={sectionIndex} data-sidebar-section={sectionIndex === 0 ? "first" : "group"} className={cn(sectionIndex > 0 && "mt-5")}>
+            <h2
+              data-sidebar-category-heading="true"
+              className="px-3 pb-1.5 text-xs font-medium text-muted-foreground"
             >
-              <span className="h-3.5 w-0.5 shrink-0 rounded-full bg-sky-300" aria-hidden="true" />
-              <h2
-                data-sidebar-category-heading="true"
-                className="text-[0.6875rem] font-extrabold uppercase tracking-[0.16em] text-slate-200"
-              >
-                {section.label}
-              </h2>
-              <span
-                data-sidebar-category-divider="true"
-                className="h-px min-w-3 flex-1 bg-white/15"
-                aria-hidden="true"
-              />
-            </div>
-            <div className="space-y-1">
+              {section.label}
+            </h2>
+            <div className="space-y-0.5">
               {section.items.map((item) => {
                 const active = isActive(pathname, item);
                 return (
                   <Link
                     key={item.href}
+                    ref={active ? activeLinkRef : undefined}
                     href={item.href}
                     onClick={onNavigate}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "group relative flex min-h-9 items-center gap-3 rounded-xl px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950",
+                      "group flex min-h-9 items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card",
                       inDrawer && "min-h-11",
-                      active ? "bg-indigo-300/20 text-white ring-1 ring-inset ring-indigo-200/35" : "text-slate-200 hover:bg-white/[0.08] hover:text-white",
+                      active
+                        ? "bg-secondary font-semibold text-secondary-foreground"
+                        : "font-medium text-foreground/80 hover:bg-muted hover:text-foreground",
                     )}
                   >
-                    <span
-                      aria-hidden="true"
+                    <item.icon
+                      size={17}
                       className={cn(
-                        "absolute inset-y-2 left-0 w-0.5 rounded-full transition-colors",
-                        active ? "bg-sky-200" : "bg-transparent group-hover:bg-white/30",
+                        "shrink-0 transition-colors duration-150",
+                        active ? "text-primary" : "text-muted-foreground group-hover:text-foreground",
                       )}
+                      aria-hidden="true"
                     />
-                    <item.icon size={17} className="shrink-0" aria-hidden="true" />
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
                     {item.count != null && item.count > 0 && (
                       <span
-                        className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1 text-[0.625rem] font-bold text-white"
+                        className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[0.6875rem] font-semibold tabular-nums text-primary-foreground"
                         aria-label={item.countLabel ?? String(item.count)}
                       >
                         {item.count}
@@ -152,9 +150,15 @@ function SidebarBody({
       </nav>
 
       {footerLinks && footerLinks.length > 0 && (
-        <div data-portal-sidebar-footer className="flex flex-wrap gap-x-3 gap-y-1 border-t border-white/10 px-4 py-3 text-[0.6875rem]">
+        <div data-portal-sidebar-footer className="flex flex-wrap gap-x-4 gap-y-1.5 border-t border-border px-5 py-3.5 text-xs">
           {footerLinks.map((link) => (
-            <Link key={link.href} href={link.href} target="_blank" rel="noopener" className="text-slate-300 transition-colors hover:text-white">
+            <Link
+              key={link.href}
+              href={link.href}
+              target="_blank"
+              rel="noopener"
+              className="rounded text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
               {link.label}
             </Link>
           ))}
@@ -172,7 +176,7 @@ export function PortalSidebar({ fixed = false, menuLabel = "Menu", className, ..
       <aside
         data-portal-sidebar="true"
         className={cn(
-          "flex h-screen w-60 shrink-0 flex-col bg-slate-800 text-slate-200",
+          "flex h-screen w-60 shrink-0 flex-col border-r border-border bg-card text-foreground",
           fixed && "fixed inset-y-0 left-0 z-40 max-lg:hidden",
           className,
         )}
@@ -197,7 +201,7 @@ export function PortalSidebar({ fixed = false, menuLabel = "Menu", className, ..
             <DialogContent
               data-portal-drawer
               aria-describedby={undefined}
-              className="left-0 top-0 flex h-dvh w-72 max-w-[85vw] translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 border-r border-white/10 bg-slate-800 p-0 text-slate-200 sm:max-w-[85vw] lg:hidden"
+              className="left-0 top-0 flex h-dvh w-72 max-w-[85vw] translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 border-r border-border bg-card p-0 text-foreground sm:max-w-[85vw] lg:hidden"
             >
               <DialogTitle className="sr-only">{body.navigationLabel}</DialogTitle>
               <SidebarBody {...body} inDrawer onNavigate={() => setOpen(false)} />

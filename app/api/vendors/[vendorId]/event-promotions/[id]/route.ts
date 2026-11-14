@@ -2,6 +2,7 @@ import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { eventPromotionResubmitSchema } from '@/lib/validation/vendor-schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { resubmitEventPromotion } from '@/lib/vendor/event-promotions';
+import { expireCheckoutFailure, expirePendingPromotionCheckout } from '@/lib/vendor/event-promotion-checkout';
 
 interface Props { params: Promise<{ vendorId: string; id: string }> }
 
@@ -16,6 +17,14 @@ export async function PATCH(request: Request, { params }: Props) {
 
   const parsed = await parseBody(request, eventPromotionResubmitSchema);
   if (!parsed.ok) return parsed.response;
+
+  // Resubmitting can change the dates and so the fee: close any open Checkout
+  // first. A late payment on it is refunded by the webhook ("superseded").
+  const expired = await expirePendingPromotionCheckout(access.access.serviceDb, vendorId, id);
+  if (!expired.ok) {
+    const failure = expireCheckoutFailure(expired.reason);
+    return apiFail(failure.code, failure.message, failure.status);
+  }
 
   const result = await resubmitEventPromotion(access.access.authDb, id, parsed.data);
   if (!result.ok) {

@@ -29,6 +29,7 @@ export interface OutletRendererOutlet {
     checkOutTime: string | null;
     policies: string | null;
     about: string | null;
+    photos?: GalleryItem[];
     amenities: { code: string; label: string; icon: string }[];
     /** Review-weighted average of the hotel's room ratings; 0 when there are no reviews. */
     rating: number;
@@ -53,6 +54,7 @@ export interface OutletRendererProduct {
   rating?: number;
   reviews?: number;
   ratingKnown?: boolean;
+  category_slug?: string | null;
   featured?: boolean;
   stay?: {
     /** Per-room price for every night of the searched stay. */
@@ -75,6 +77,7 @@ export interface OutletPageRendererProps {
   reviewRatingBuckets?: ReviewRatingBucket[];
   reviewTotal?: number;
   mode?: 'editor' | 'public';
+  previewOnly?: boolean;
   selectedBlockId?: string | null;
   onSelect?: (blockId: string) => void;
 }

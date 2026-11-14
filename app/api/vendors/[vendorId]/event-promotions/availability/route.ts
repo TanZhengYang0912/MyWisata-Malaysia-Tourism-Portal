@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { getEventPromotionDateAvailability } from '@/lib/vendor/event-promotions';
+import { getEventPromotionCostPerDaySen } from '@/lib/admin/event-promotions';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -27,6 +28,9 @@ export async function GET(request: Request, { params }: Props) {
   const days = Math.round((to.getTime() - from.getTime()) / 86_400_000);
   if (days > 180) return apiFail('VALIDATION_FAILED', 'Date range may not exceed 180 days', 422);
 
-  const availability = await getEventPromotionDateAvailability(access.access.authDb, parsed.data.from, parsed.data.to);
-  return apiOk({ availability });
+  const [availability, costPerDaySen] = await Promise.all([
+    getEventPromotionDateAvailability(access.access.authDb, parsed.data.from, parsed.data.to),
+    getEventPromotionCostPerDaySen(access.access.serviceDb),
+  ]);
+  return apiOk({ availability, costPerDaySen });
 }

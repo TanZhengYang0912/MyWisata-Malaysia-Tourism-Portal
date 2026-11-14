@@ -126,6 +126,7 @@
     "activity": "Aktiviti",
     "accommodation": "Penginapan",
     "retail": "Runcit",
+    "other": "Lain-lain",
     "hiddenGem": "Permata Tersembunyi",
     "hidden_gem": "Permata Tersembunyi"
   },
@@ -526,6 +527,13 @@
       "toyyibpayAwaitingTitle": "Menunggu pengesahan penyedia",
       "toyyibpayAwaitingDescription": "Pesanan anda akan dikemas kini selepas ToyyibPay mengesahkan pembayaran. Kembali ke halaman ini tidak menandakannya sebagai dibayar.",
       "viewOrders": "Lihat pesanan",
+      "successTitle": "Pembayaran berjaya",
+      "successDescription": "Pesanan anda telah disahkan.",
+      "checkingPayment": "Mengesahkan pembayaran…",
+      "paymentNotConfirmed": "Pembayaran belum disahkan",
+      "paymentStatusUnavailable": "Status pembayaran tidak tersedia",
+      "viewOrder": "Lihat pesanan",
+      "retryPaymentCheck": "Semak semula",
       "walletInsufficient": "Bayaran dompet tidak tersedia kerana baki boleh belanja anda terlalu rendah. Ganjaran tertunda dan rizab pengeluaran tidak boleh digunakan untuk pembayaran.",
       "continueSimulator": "Terus ke simulator pembayaran",
       "payWallet": "Bayar dengan Dompet MYLawatan",
@@ -2168,6 +2176,7 @@
       "details": "Butiran pesanan"
     },
     "outletMenu": {
+      "moreFromOutlet": "Lagi daripada cawangan ini",
       "adding": "Menambah…",
       "chooseTime": "Pilih masa untuk menempah →",
       "viewDetails": "Lihat butiran →",

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ authorizeVendor: vi.fn(), rpc: vi.fn() }));
+const mocks = vi.hoisted(() => ({ authorizeVendor: vi.fn(), rpc: vi.fn(), getCost: vi.fn() }));
 vi.mock('@/lib/vendor-authorization', () => ({ authorizeVendor: mocks.authorizeVendor }));
+vi.mock('@/lib/admin/event-promotions', () => ({ getEventPromotionCostPerDaySen: mocks.getCost }));
 
 import { GET } from '../route';
 
@@ -14,6 +15,7 @@ function request(query: string) {
 describe('/api/vendors/[vendorId]/event-promotions/availability', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getCost.mockResolvedValue(12_500);
     mocks.rpc.mockResolvedValue({
       data: [
         { day: '2027-01-15', occupied_count: 4, available: false },
@@ -23,7 +25,7 @@ describe('/api/vendors/[vendorId]/event-promotions/availability', () => {
     });
     mocks.authorizeVendor.mockResolvedValue({
       ok: true,
-      access: { userId: 'user-1', vendorId, authDb: { rpc: mocks.rpc } },
+      access: { userId: 'user-1', vendorId, authDb: { rpc: mocks.rpc }, serviceDb: {} },
     });
   });
 
@@ -39,6 +41,7 @@ describe('/api/vendors/[vendorId]/event-promotions/availability', () => {
       { day: '2027-01-15', occupiedCount: 4, available: false },
       { day: '2027-01-16', occupiedCount: 1, available: true },
     ]);
+    expect(body.data.costPerDaySen).toBe(12_500);
   });
 
   it('rejects a malformed date', async () => {

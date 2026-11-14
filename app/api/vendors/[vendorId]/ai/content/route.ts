@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
+import { apiFail, apiOk, databaseUuidSchema, parseBody } from '@/lib/validation/schemas';
 import { authorizeOutlet, authorizeVendor } from '@/lib/vendor-authorization';
 import { generateContentDraft } from '@/lib/ai/content-assistant';
 
@@ -14,17 +14,26 @@ const contentSchema = z.discriminatedUnion('surface', [
   }).strict(),
   z.object({
     surface: z.literal('outlet_page'),
-    outletId: z.string().uuid(),
-    outletName: z.string().trim().min(1).max(255),
+    outletId: databaseUuidSchema,
+    // The unsaved hero and SEO text currently in the editor. Outlet facts and
+    // products are read on the server from the authorized outlet instead.
     heroTitle: z.string().trim().max(255).optional(),
     heroBody: z.string().trim().max(2000).optional(),
-    productNames: z.array(z.string().trim().max(255)).max(24).optional(),
+    seoDescription: z.string().trim().max(500).optional(),
   }).strict(),
   z.object({
     surface: z.literal('inbox_reply'),
-    threadId: z.string().uuid(),
+    threadId: databaseUuidSchema,
   }).strict(),
 ]);
+
+type OutletFactsRow = { name: string | null; city: string | null; state: string | null; hotel_about: string | null; amenity_codes: string[] | null };
+type OutletProductRow = { name: string | null; product_type: string | null; categories: { name: string | null } | { name: string | null }[] | null };
+
+function categoryName(value: OutletProductRow['categories']): string | undefined {
+  const row = Array.isArray(value) ? value[0] : value;
+  return row?.name?.trim() || undefined;
+}
 
 function providerError(reason: 'not_configured' | 'authentication_failed' | 'rate_limited' | 'sensitive_input' | 'unavailable') {
   if (reason === 'sensitive_input') return apiFail('AI_PERSONAL_DATA_WITHHELD', 'Your content was not sent to AI because it may contain personal details. Remove phone, email, identity, bank, or private-address details and try again, or write the content manually.', 422);
@@ -49,11 +58,40 @@ export async function POST(request: Request, { params }: Props) {
   if (parsed.data.surface === 'business_profile') {
     context = { name: parsed.data.name, businessType: parsed.data.businessType || undefined, description: parsed.data.description || undefined };
   } else if (parsed.data.surface === 'outlet_page') {
+    const outletId = parsed.data.outletId;
+    // authorizeOutlet above proved this outlet is in the caller's scope; the
+    // vendor_id filter keeps the service-role read inside the same vendor.
+    const [{ data: outlet, error: outletError }, { data: productRows, error: productError }] = await Promise.all([
+      access.access.serviceDb
+        .from('outlets')
+        .select('name,city,state,hotel_about,amenity_codes')
+        .eq('id', outletId)
+        .eq('vendor_id', vendorId)
+        .maybeSingle(),
+      access.access.serviceDb
+        .from('products')
+        .select('name,product_type,categories(name)')
+        .eq('outlet_id', outletId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(24),
+    ]);
+    if (outletError) return apiFail('DB_ERROR', outletError.message, 500);
+    if (productError) return apiFail('DB_ERROR', productError.message, 500);
+    if (!outlet) return apiFail('NOT_FOUND', 'Outlet not found in your assigned scope', 404);
+    const facts = outlet as OutletFactsRow;
+    const products = ((productRows ?? []) as OutletProductRow[])
+      .filter((product) => product.name?.trim())
+      .map((product) => ({ name: product.name!.trim(), type: product.product_type || undefined, category: categoryName(product.categories) }));
     context = {
-      outletName: parsed.data.outletName,
-      heroTitle: parsed.data.heroTitle || undefined,
-      heroBody: parsed.data.heroBody || undefined,
-      productNames: parsed.data.productNames || [],
+      outletName: facts.name?.trim() || undefined,
+      location: [facts.city, facts.state].filter(Boolean).join(', ') || undefined,
+      about: facts.hotel_about?.trim() || undefined,
+      amenities: facts.amenity_codes?.length ? facts.amenity_codes : undefined,
+      products,
+      currentHeroTitle: parsed.data.heroTitle || undefined,
+      currentHeroBody: parsed.data.heroBody || undefined,
+      currentSeoDescription: parsed.data.seoDescription || undefined,
     };
   } else {
     const { data: thread, error: threadError } = await access.access.serviceDb

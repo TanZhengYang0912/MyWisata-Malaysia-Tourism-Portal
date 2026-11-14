@@ -31,7 +31,7 @@ vi.mock("@/components/customer/promotion-campaign-vendor-card", () => ({
 }));
 
 vi.mock("@/components/customer/customer-page-shell", () => ({
-  CustomerPageHeader: ({ title, actions }: { title: string; actions?: ReactNode }) => <header><h1>{title}</h1>{actions}</header>,
+  CustomerPageHeader: ({ title, actions, eyebrow, className }: { title: ReactNode; actions?: ReactNode; eyebrow?: ReactNode; className?: string }) => <header className={className}>{eyebrow && <p>{eyebrow}</p>}<h1>{title}</h1>{actions}</header>,
   CustomerPageShell: ({ children }: { children: ReactNode }) => <main>{children}</main>,
 }));
 
@@ -150,13 +150,36 @@ const twentyVendorCampaign: PromotionCampaignPublic = {
 };
 
 describe("PromotionCampaignDetailClient", () => {
-  it("uses a neutral card surface for the campaign hero", () => {
+  it("separates the campaign heading from a date-first venue program", () => {
     const markup = renderToStaticMarkup(
       <PromotionCampaignDetailClient slug={campaign.slug} initialCampaign={campaign} initialError={null} />,
     );
 
-    expect(markup).toContain("border border-primary/10 bg-card sm:mb-6");
-    expect(markup).not.toContain("bg-gradient-to-br from-primary/[0.07] via-card to-highlight-yellow/10");
+    expect(markup).toContain('data-slot="campaign-page-heading"');
+    expect(markup).toContain('data-slot="campaign-overview"');
+    expect(markup).toContain('data-slot="event-program"');
+    expect(markup).toContain('data-slot="event-program-row"');
+    expect(markup.indexOf("data-slot=\"campaign-page-heading\"")).toBeLessThan(
+      markup.indexOf("data-slot=\"campaign-overview\""),
+    );
+    expect(markup.indexOf("data-slot=\"event-location-date\"")).toBeLessThan(
+      markup.indexOf("data-slot=\"event-location-name\""),
+    );
+    expect(markup).toContain(campaign.title);
+    expect(markup).toContain(campaign.locations[0].name);
+    expect(markup).not.toContain("heroSignal");
+  });
+
+  it("reveals the real campaign poster once and disables motion when requested", () => {
+    const css = readFileSync(resolve(process.cwd(), "app/customer/events/[slug]/promotion-campaign-detail.module.css"), "utf8");
+    const reducedMotion = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
+
+    expect(css).toContain(".posterImage");
+    expect(css).toMatch(/animation:\s*poster-reveal [^;]*both/);
+    expect(css).not.toMatch(/animation:[^;]*infinite/);
+    expect(reducedMotion).toContain(".posterImage");
+    expect(reducedMotion).toContain("animation: none");
+    expect(css).not.toContain("signal-draw");
   });
 
   it("reduces repeated campaign copy while keeping the full description and vendor cards available", () => {
@@ -187,10 +210,21 @@ describe("PromotionCampaignDetailClient", () => {
     );
 
     expect(markup).toContain('src="https://example.test/event-poster.jpg"');
-    expect(markup).toContain("object-contain");
+    expect(markup).toMatch(/class="[^"]*posterImage[^"]*"/);
     expect(markup.indexOf("ui.promotionCampaigns.campaignDetails")).toBeLessThan(
       markup.indexOf("ui.promotionCampaigns.vendorsSection"),
     );
+  });
+
+  it("keeps campaign facts balanced when the optional poster is absent", () => {
+    const markup = renderToStaticMarkup(
+      <PromotionCampaignDetailClient slug={campaign.slug} initialCampaign={campaign} initialError={null} />,
+    );
+
+    expect(markup).toContain('data-slot="campaign-overview"');
+    expect(markup).not.toMatch(/class="[^"]*posterFrame[^"]*"/);
+    expect(markup).toContain(campaign.title);
+    expect(markup).toContain("ui.promotionCampaigns.locationsSection");
   });
 
   it("uses a featured vendor card when exactly one vendor participates", () => {
@@ -201,7 +235,7 @@ describe("PromotionCampaignDetailClient", () => {
     expect(markup).toContain('data-layout="featured"');
   });
 
-  it("keeps the regular vendor grid when several vendors participate", () => {
+  it("fills two vendor cards across two columns", () => {
     const secondVendor = { ...vendor, vendorId: "another-vendor", vendorName: "Another vendor" };
     const markup = renderToStaticMarkup(
       <PromotionCampaignDetailClient
@@ -211,8 +245,41 @@ describe("PromotionCampaignDetailClient", () => {
       />,
     );
 
-    expect(markup).toContain("md:grid-cols-2 xl:grid-cols-3");
+    expect(markup).toContain("md:grid-cols-2");
+    expect(markup).not.toContain("xl:grid-cols-3");
     expect(markup.match(/data-layout="grid"/g)).toHaveLength(2);
+  });
+
+  it("uses three columns once the vendor directory has more than two cards", () => {
+    const secondVendor = { ...vendor, vendorId: "another-vendor", vendorName: "Another vendor" };
+    const thirdVendor = { ...vendor, vendorId: "third-vendor", vendorName: "Third vendor" };
+    const markup = renderToStaticMarkup(
+      <PromotionCampaignDetailClient
+        slug={campaign.slug}
+        initialCampaign={{ ...campaign, vendors: [vendor, secondVendor, thirdVendor] }}
+        initialError={null}
+      />,
+    );
+
+    expect(markup).toContain("md:grid-cols-2 xl:grid-cols-3");
+    expect(markup.match(/data-layout="grid"/g)).toHaveLength(3);
+  });
+
+  it("keeps four visible vendors together in one balanced desktop row", () => {
+    const secondVendor = { ...vendor, vendorId: "another-vendor", vendorName: "Another vendor" };
+    const thirdVendor = { ...vendor, vendorId: "third-vendor", vendorName: "Third vendor" };
+    const fourthVendor = { ...vendor, vendorId: "fourth-vendor", vendorName: "Fourth vendor" };
+    const markup = renderToStaticMarkup(
+      <PromotionCampaignDetailClient
+        slug={campaign.slug}
+        initialCampaign={{ ...campaign, vendors: [vendor, secondVendor, thirdVendor, fourthVendor] }}
+        initialError={null}
+      />,
+    );
+
+    expect(markup).toContain("md:grid-cols-2 xl:grid-cols-4");
+    expect(markup).not.toContain("xl:grid-cols-3");
+    expect(markup.match(/data-layout="grid"/g)).toHaveLength(4);
   });
 });
 

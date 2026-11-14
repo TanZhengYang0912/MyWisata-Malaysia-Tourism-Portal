@@ -203,7 +203,9 @@ export async function submitCampaignRegistration(
   if (!error) return { ok: true, id: data as string };
   if (error.message.includes('forbidden')) return { ok: false, code: 'forbidden' };
   if (error.message.includes('campaign_not_open') || error.message.includes('location_cancelled') || error.message.includes('location_ended') || error.message.includes('event_applications_closed')) return { ok: false, code: 'campaign_not_open' };
-  if (error.message.includes('already_registered')) return { ok: false, code: 'already_registered' };
+  // Two simultaneous submits can both pass the RPC's EXISTS check; the second
+  // then hits UNIQUE (event_location_id, vendor_id). It is the same outcome.
+  if (error.message.includes('already_registered') || error.code === '23505' || error.message.includes('promotion_campaign_vendors_location_vendor_unique')) return { ok: false, code: 'already_registered' };
   if (error.message.includes('invalid') || error.message.includes('required') || error.message.includes('not_owned')) return { ok: false, code: 'invalid' };
   return { ok: false, code: 'unknown' };
 }

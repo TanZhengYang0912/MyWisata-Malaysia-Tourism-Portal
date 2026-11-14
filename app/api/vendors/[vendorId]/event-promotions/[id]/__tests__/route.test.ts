@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ authorizeVendor: vi.fn() }));
+const mocks = vi.hoisted(() => ({ authorizeVendor: vi.fn(), expirePendingPromotionCheckout: vi.fn() }));
 vi.mock('@/lib/vendor-authorization', () => ({ authorizeVendor: mocks.authorizeVendor }));
+vi.mock('server-only', () => ({}));
+vi.mock('@/lib/stripe', () => ({ stripe: {} }));
+vi.mock('@/lib/vendor/event-promotion-checkout', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/vendor/event-promotion-checkout')>();
+  return { ...actual, expirePendingPromotionCheckout: mocks.expirePendingPromotionCheckout };
+});
 
 import { PATCH } from '../route';
 
@@ -33,8 +39,23 @@ describe('/api/vendors/[vendorId]/event-promotions/[id]', () => {
     rpc = vi.fn().mockResolvedValue({ error: null });
     mocks.authorizeVendor.mockResolvedValue({
       ok: true,
-      access: { userId: 'user-1', vendorId, authDb: { rpc } },
+      access: { userId: 'user-1', vendorId, authDb: { rpc }, serviceDb: {} },
     });
+    mocks.expirePendingPromotionCheckout.mockResolvedValue({ ok: true });
+  });
+
+  it('closes an open Checkout before resubmitting, so the old price cannot be paid', async () => {
+    const response = await PATCH(patchRequest(), params());
+    expect(response.status).toBe(200);
+    expect(mocks.expirePendingPromotionCheckout).toHaveBeenCalledWith({}, vendorId, promotionId);
+    expect(mocks.expirePendingPromotionCheckout.mock.invocationCallOrder[0]).toBeLessThan(rpc.mock.invocationCallOrder[0]);
+  });
+
+  it('does not resubmit while a card payment for the old details is completing', async () => {
+    mocks.expirePendingPromotionCheckout.mockResolvedValue({ ok: false, reason: 'completed' });
+    const response = await PATCH(patchRequest(), params());
+    expect(response.status).toBe(409);
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it('resubmits via the auth-bound client, not a service client', async () => {

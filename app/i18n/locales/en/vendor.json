@@ -51,6 +51,15 @@
     }
   },
   "hotelProfile": {
+    "sections": {
+      "stay": "Check-in & check-out"
+    },
+    "selectedCount": "{{selected}} of {{total}} selected",
+    "malaysiaTime": "Times are Malaysia time (UTC+8).",
+    "coverPhoto": "Cover",
+    "sectionsNav": "Hotel profile sections",
+    "unsaved": "Unsaved changes",
+    "noChanges": "No changes to submit",
     "eyebrow": "Hotel profile",
     "description": "Your hotel page uses a fixed layout. Edit its content here; changes go live after admin review, and your hotel stays live meanwhile.",
     "loading": "Loading hotel profile…",
@@ -458,6 +467,31 @@
     "ifAvailable": "If available"
   },
   "ui": {
+    "dataFreshness": {
+      "updatedAt": "Updated {{time}}",
+      "refresh": "Refresh figures"
+    },
+    "listFilters": {
+      "datePresets": "Date presets",
+      "presets": {
+        "today": "Today",
+        "last7Days": "Last 7 days",
+        "last30Days": "Last 30 days",
+        "thisMonth": "This month"
+      },
+      "fromDate": "From",
+      "toDate": "To",
+      "invalidRange": "End date is before the start date.",
+      "clearDates": "Clear dates",
+      "filters": "Filters",
+      "sortBy": "Sort by",
+      "drawerTitle": "Filters",
+      "showResults": "Show results",
+      "clear": "Clear filters",
+      "removeFilter": "Remove filter: {{label}}",
+      "kind": "Type",
+      "quickStatus": "Quick status"
+    },
     "common": {
       "yes": "Yes",
       "no": "No",
@@ -814,7 +848,10 @@
       "pageSummary_one": "{{count}} reservation · {{perPage}} per page",
       "pageSummary_other": "{{count}} reservations · {{perPage}} per page",
       "onThisPage_one": "{{count}} on this page",
-      "onThisPage_other": "{{count}} on this page"
+      "onThisPage_other": "{{count}} on this page",
+      "allBookings": "All bookings",
+      "workspaceTabs": "Bookings workspace",
+      "statusFilter": "Booking status"
     },
     "inbox": {
       "filter": {
@@ -909,7 +946,12 @@
       "confirm": "Confirm redemption",
       "confirmFoodOrder": "Confirm food order",
       "cancel": "Cancel",
-      "stationStatus": "Station Status",
+      "countersLabel": "Station counters",
+      "scopeToday": "Today",
+      "scopeAllTime": "All time",
+      "scansUnit_one": "scan",
+      "scansUnit_other": "scans",
+      "stationStatus": "Scanning at",
       "cameraTab": "Live Camera",
       "manualTab": "Barcode Gun / Manual",
       "historyTab": "Recent Scans",
@@ -921,9 +963,9 @@
       "exitFullscreen": "Exit Fullscreen",
       "quickInputHint": "Barcode scanners automatically submit upon scanning.",
       "pressEnter": "Press Enter to confirm",
-      "todayScans": "Today's Scans",
-      "ticketsAdmitted": "Tickets Admitted",
-      "vouchersUsed": "Vouchers Redeemed",
+      "todayScans": "Today's scans",
+      "ticketsAdmitted": "Tickets admitted",
+      "vouchersUsed": "Vouchers redeemed",
       "stationActive": "Ready to scan",
       "viewHistory": "View full logs",
       "eventPickupCollected": "Pickup recorded — hand over the items.",
@@ -938,15 +980,20 @@
       "retailPickupCollected": "{{quantity}} item(s) handed over successfully.",
       "retailPickupQuantity": "Hand over all {{quantity}} item(s) in this order line.",
       "confirmRetailPickup": "Confirm handover",
-      "orderReference": "Order #{{order}}"
+      "orderReference": "Order #{{order}}",
+      "eventPickups": "Event pickups",
+      "foodOrders": "Food order scans",
+      "allTimeNote": "All time",
+      "counterPending": "Not reported yet",
+      "statsFailed": "Counts could not refresh. The figures below may be out of date."
     },
     "redemptions": {
-      "eyebrow": "Store Redemptions",
+      "eyebrow": "Store redemptions",
       "title": "Redemptions & Scan Logs",
       "loadFailed": "Unable to load redemption records.",
-      "totalRedemptions": "Total Redemptions",
+      "totalRedemptions": "Total scans",
       "allTime": "All recorded scans",
-      "todayScans": "Today's Scans",
+      "todayScans": "Today's scans",
       "redeemedToday": "Redeemed today",
       "retailPickups": "Retail pickups",
       "retailItemsHandedOver": "Order lines handed over",
@@ -956,9 +1003,9 @@
       "staffNotRecorded": "Not recorded",
       "filteredCount_one": "{{count}} record",
       "filteredCount_other": "{{count}} records",
-      "vouchersUsed": "Vouchers Redeemed",
+      "vouchersUsed": "Vouchers redeemed",
       "storePromos": "Store vouchers",
-      "ticketsAdmitted": "Tickets Admitted",
+      "ticketsAdmitted": "Tickets admitted",
       "checkedInGuests": "Admissions recorded",
       "allOutlets": "All Outlets",
       "searchPlaceholder": "Search code, item, staff...",
@@ -969,11 +1016,12 @@
       "kindTicket": "Ticket Pass",
       "selfService": "Counter checkout",
       "filters": {
-        "all": "All Activity",
+        "all": "All activity",
         "vouchers": "Vouchers",
         "retail": "Retail pickups",
         "tickets": "Tickets",
-        "foodOrders": "Food scans"
+        "foodOrders": "Food scans",
+        "eventPickups": "Event pickups"
       },
       "table": {
         "type": "Type",
@@ -982,7 +1030,11 @@
         "customer": "Customer",
         "verifiedBy": "Verified By",
         "time": "Time"
-      }
+      },
+      "eventPickups": "Event pickups",
+      "eventPickupsNote": "Reservations collected",
+      "foodOrders": "Food order scans",
+      "foodOrdersNote": "Dine-in and takeaway"
     },
     "listings": {
       "title": "Product Catalogue",
@@ -1103,9 +1155,12 @@
       "pageSummary_one": "{{count}} orders · {{perPage}} per page",
       "pageSummary_other": "{{count}} orders · {{perPage}} per page",
       "itemCount_one": "{{count}} item(s)",
-      "itemCount_other": "{{count}} item(s)"
+      "itemCount_other": "{{count}} item(s)",
+      "readyCount": "Ready",
+      "pageOrderTotal": "Order total"
     },
     "outlets": {
+      "loading": "Loading outlets",
       "loadingShop": "Loading your shop page…",
       "loadFailed": "Could not load outlets",
       "shopUnavailable": "Shop page unavailable",
@@ -1162,7 +1217,35 @@
       "resultCount_one": "{{count}} outlets across Malaysia",
       "resultCount_other": "{{count}} outlets across Malaysia",
       "perPage_one": "{{count}} per page",
-      "perPage_other": "{{count}} per page"
+      "perPage_other": "{{count}} per page",
+      "columnOutlet": "Outlet",
+      "columnManager": "Manager",
+      "columnListings": "Listings",
+      "columnStatus": "Status",
+      "noManager": "No manager",
+      "invitePending": "Invite sent to {{email}}",
+      "inReview": "In review",
+      "sectionDetails": "Details",
+      "sectionTeam": "Team & access",
+      "sectionStatus": "Outlet status",
+      "addressLabel": "Address",
+      "phoneLabel": "Phone",
+      "emailLabel": "Email",
+      "notProvided": "Not provided",
+      "statusSummaryActive": "Open. Customers can find this outlet and collect pickups here.",
+      "statusSummaryClosed": "Closed. Hidden from customers. Orders, bookings, products and managers are kept.",
+      "statusSummaryReview": "Offline until an admin approves the latest changes.",
+      "statusSummaryInactive": "Inactive. Hidden from customers.",
+      "closeConfirmTitle": "Close {{name}}?",
+      "closeConsequences": "Customers will no longer see this outlet or collect pickups here. Orders, bookings, products and manager access are kept, and you can reopen it later.",
+      "reopenOutlet": "Reopen outlet",
+      "reopenConfirmTitle": "Reopen {{name}}?",
+      "reopenConsequences": "Customers can find this outlet again. Products and manager access are unchanged.",
+      "reopened": "Outlet reopened.",
+      "reopenFailed": "Could not reopen the outlet.",
+      "unsavedTitle": "Discard unsaved changes?",
+      "unsavedBody": "Your edits to this outlet have not been saved.",
+      "discardChanges": "Discard changes"
     },
     "products": {
       "loadFailed": "Could not load products",
@@ -1237,7 +1320,7 @@
       "clickToViewAllOutlets_other": "Click to view all {{count}} outlets",
       "closeOutletsModal": "Close outlet list",
       "vendorReadOnlyNotice": "Vendor owners have read-only catalogue access. Product prices and stock are managed by assigned Outlet Managers.",
-      "featuredTab": "Featured on Storefront ({{count}}/4)",
+      "featuredTab": "Featured on storefront ({{count}}/4)",
       "featuredTab_one": "Featured on Storefront ({{count}}/4)",
       "featuredTab_other": "Featured on Storefront ({{count}}/4)",
       "featuredLimitReached": "Maximum 4 featured products can be highlighted on your storefront. Deselect one first.",
@@ -1266,7 +1349,9 @@
       "featuredBannerTitle": "Storefront Featured Selection ({{count}}/4)",
       "featuredBannerTitle_one": "Storefront Featured Selection ({{count}}/4)",
       "featuredBannerTitle_other": "Storefront Featured Selection ({{count}}/4)",
-      "featuredBannerDesc": "Select up to 4 signature products to showcase prominently on your public customer vendor profile."
+      "featuredBannerDesc": "Select up to 4 signature products to showcase prominently on your public customer vendor profile.",
+      "featuredToggleHint": "Up to 4 products appear on your public vendor profile. Use the star on a product to add or remove it.",
+      "statusFilter": "Product status"
     },
     "profile": {
       "loading": "Loading business profile…",
@@ -1495,7 +1580,9 @@
       "batchDeactivated_one": "{{count}} vouchers deactivated.",
       "batchDeactivated_other": "{{count}} vouchers deactivated.",
       "usesCount_one": "{{count}} uses",
-      "usesCount_other": "{{count}} uses"
+      "usesCount_other": "{{count}} uses",
+      "otherStatuses": "Other statuses",
+      "statusFilter": "Voucher status"
     },
     "settlement": {
       "simulated": "Test payment · not withdrawable",
@@ -1617,9 +1704,39 @@
       "save": "Save"
     },
     "eventPromotions": {
-      "title": "Promote an Event",
+      "title": "Promote Event",
+      "eventHeading": "Event",
+      "datesHeading": "Dates",
+      "posterHeading": "Poster",
+      "sectionDone": "Done",
+      "sectionAdded": "Added",
+      "dayCount_one": "{{count}} day",
+      "dayCount_other": "{{count}} days",
+      "startDate": "Start",
+      "endDate": "End",
+      "pickDate": "Pick a date",
+      "availabilityNote": "Availability is confirmed at review.",
+      "dropPoster": "Drop a poster or click to choose",
+      "posterFormats": "4:3 · JPG, PNG or WebP",
+      "replaceImage": "Replace",
+      "uploading": "Uploading…",
+      "previewTag": "Event promotion",
+      "previewCaption": "How customers see it",
+      "checkEvent": "Event name and details",
+      "checkDates": "Start and end date",
+      "days": "Days",
+      "charCount": "{{current}} / {{max}}",
+      "titlePlaceholder": "e.g. Heritage Walk Night Market",
+      "detailsPlaceholder": "What's happening, where, and what visitors get",
       "newHeading": "Submit a new event",
       "editHeading": "Edit and resubmit",
+      "summaryHeading": "Submission summary",
+      "draft": "Draft",
+      "rate": "Rate",
+      "ratePerDay": "{{rate}} / day",
+      "previewImage": "Preview promotion image",
+      "estimatedTotal": "Estimated total",
+      "finalAmountNote": "Final amount is confirmed after review.",
       "loading": "Loading…",
       "myPromotions": "My submissions",
       "empty": "You haven't submitted any event promotions yet.",
@@ -1633,6 +1750,9 @@
         "datesOrder": "The last day can't be before the first day."
       },
       "submitError": "Unable to submit the event promotion.",
+      "errors": {
+        "fixFields": "Fix the highlighted fields before submitting."
+      },
       "submitSuccess": "Event promotion submitted for review.",
       "resubmitSuccess": "Event promotion resubmitted for review.",
       "noVendor": "No vendor account found for this session.",
@@ -1647,17 +1767,14 @@
       },
       "calendar": {
         "today": "Today",
-        "hint": "Red days are unavailable — already passed or already full. Availability can still change before an admin reviews your submission."
+        "legendSelected": "Selected",
+        "legendFull": "Full",
+        "blockedRange": "{{date}} is full. Pick a range that doesn't include it."
       },
       "fields": {
         "title": "Event name",
         "details": "Details",
-        "duration": "Promotion duration",
-        "selectedSingleDay": "Selected: {{date}}",
-        "selectedRange": "Selected: {{start}} – {{end}}",
         "costPreview": "{{days}} day(s) · {{cost}}",
-        "image": "Image",
-        "chooseImage": "Choose image",
         "removeImage": "Remove image"
       },
       "actions": {
@@ -1706,6 +1823,17 @@
       }
     },
     "events": {
+      "phase": {
+        "upcoming": "Upcoming",
+        "live": "Happening now",
+        "ended": "Ended"
+      },
+      "facts": {
+        "dates": "Event dates",
+        "yourStalls": "Your stalls"
+      },
+      "readMore": "Read more",
+      "showLess": "Show less",
       "title": "Events",
       "loading": "Loading…",
       "empty": "No events are open for registration right now.",
@@ -1726,6 +1854,7 @@
       "rejectionNote": "Rejected: {{note}}",
       "changesRequestedNote": "Changes requested: {{note}}",
       "draftFound": "You have an unsaved draft for this registration.",
+      "draftSubmissionClosed": "This location is closed to submissions. You can review the draft, but you can't submit it now.",
       "fields": {
         "stallNumber": "Stall number",
         "stallDescription": "Stall description",
@@ -1743,7 +1872,7 @@
         "preferredStallNumber": "Preferred booth number (optional)"
       },
       "actions": {
-        "register": "Register",
+        "register": "Apply for a stall",
         "editAndResubmit": "Edit & resubmit",
         "submitRegistration": "Submit registration",
         "resubmit": "Resubmit for review",
@@ -1765,6 +1894,10 @@
         "count_one": "{{count}} location",
         "count_other": "{{count}} locations",
         "joined": "Joined {{joined}} of {{total}}"
+      },
+      "registrationStatus": {
+        "withdrawn": "Withdrawn",
+        "removed": "Removed"
       },
       "listing": {
         "price": "Event price (RM)",
@@ -1866,7 +1999,13 @@
       "status": "Status",
       "free": "Free",
       "collected": "Collected",
-      "toCollect": "To collect"
+      "toCollect": "To collect",
+      "progress": "{{collected}} of {{total}} collected",
+      "showToCollect": "To collect only",
+      "showAll": "All reservations",
+      "viewFilter": "Reservation view",
+      "allCollected": "Everything here has been collected.",
+      "retry": "Retry"
     },
     "eventStaff": {
       "join": {
@@ -1915,6 +2054,8 @@
     "unavailable": "AI writing is unavailable."
   },
   "builder": {
+    "tools": "Studio tools",
+    "closeTools": "Close panel",
     "autosaved": "Draft autosaved.",
     "blockTypes": {
       "intro": "Outlet introduction",
@@ -1970,6 +2111,7 @@
     "down": "Down",
     "font": "Font",
     "inspector": {
+      "aiNoChanges": "The suggestion matches your current text.",
       "backgroundColour": "Background colour",
       "sizeOnPage": "Size on the page",
       "notSetOnOutlet": "Not set on this outlet",
@@ -2001,6 +2143,7 @@
       "outletMedia": "Outlet media",
       "photoLayout": "Photo layout",
       "productsFromOutlet": "Products from this outlet",
+      "uncategorized": "Other products",
       "removeImage": "Remove image",
       "reuseMedia": "Reuse an image already uploaded to this page.",
       "right": "Right",
@@ -2168,7 +2311,10 @@
     "welcomeMessage": "Chat welcome message",
     "welcomePlaceholder": "Welcome! Thanks for your interest. Any questions? (leave blank to use the default greeting)",
     "wheelchair": "Wheelchair accessible",
-    "yes": "Yes"
+    "yes": "Yes",
+    "noChanges": "No changes to save.",
+    "reviewNotice": "Changes to business details are reviewed by an admin before they go live.",
+    "savedPendingReview": "Saved. The outlet is offline until an admin approves the changes."
   },
   "outletManager": {
     "copyLink": "Copy link",
@@ -2188,7 +2334,11 @@
     "removeConfirm": "Remove this outlet manager? They will lose access to this outlet.",
     "removeFailed": "Could not remove outlet manager.",
     "removed": "Outlet manager removed.",
-    "title": "Outlet Manager"
+    "title": "Outlet Manager",
+    "removeAccess": "Remove access",
+    "removeConfirmTitle": "Remove {{name}} from {{outlet}}?",
+    "removeConsequences": "They lose access to this outlet only. Their account, past orders and scan history are kept, and access to other outlets is unchanged.",
+    "inviteTitle": "Invite a manager"
   },
   "pricing": {
     "add": "Add pricing rule",
@@ -2260,6 +2410,7 @@
   "productForm": {
     "addTitle": "Add Product",
     "aiDeferred": "AI suggestions are deferred.",
+    "aiCategoryUnavailable": "Not a catalogue category — choose one manually.",
     "aiNoSuggestion": "AI did not return a usable suggestion.",
     "aiUnavailable": "AI suggestions are not available yet.",
     "availability": "Availability",
@@ -2343,6 +2494,11 @@
     "customerPreview": "Customer preview",
     "draftVersion": "Draft version",
     "editShopPage": "Edit shop page",
+    "hotelProfileStatus": {
+      "live": "Hotel profile: Live",
+      "pending": "Hotel profile: Pending review",
+      "rejected": "Hotel profile: Changes requested"
+    },
     "liveSince": "Live since {{date}}",
     "liveVersion": "Live version",
     "loadPageFailed": "Could not load shop page",
@@ -2749,7 +2905,14 @@
       "totalUses_one": "{{count}} total uses",
       "totalUses_other": "{{count}} total uses",
       "perCustomer_one": "{{count}} per customer",
-      "perCustomer_other": "{{count}} per customer"
+      "perCustomer_other": "{{count}} per customer",
+      "sections": {
+        "basics": "Basics",
+        "discount": "Discount",
+        "limits": "Limits",
+        "validity": "Validity",
+        "where": "Where it applies"
+      }
     },
     "csv": {
       "addAnotherRow": "Add another voucher row",

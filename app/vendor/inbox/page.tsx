@@ -233,53 +233,77 @@ export default function VendorInboxPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threads.length, user?.id]);
 
+  // Thread list: every send path updates chat_threads.last_message_at, so a
+  // vendor-filtered thread UPDATE stands in for platform-wide message inserts,
+  // which made Realtime check chat RLS for every inbox tab on every message.
+  // The summary reload refreshes the preview and unread count; a reload that
+  // collides with one in flight is caught by the reconcile poll.
   useEffect(() => {
-    if (!user?.activeVendorId) return;
+    if (!vendorId) return;
+    let refreshTimer: number | null = null;
     const channel = supabase
-      .channel(`vendor-inbox-${user.activeVendorId}`)
+      .channel(`vendor-inbox-${vendorId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-        ({ new: row }: { new: RawMessage & { thread_id: string } }) => {
-          const message: RawMessage = { id: row.id, sender_id: row.sender_id, body: row.body, created_at: row.created_at, attachment_url: row.attachment_url, reply_to_message_id: row.reply_to_message_id, context_product_id: row.context_product_id, context_snapshot: row.context_snapshot };
-          const isOpen = activeRef.current === row.thread_id;
-          setThreads((previous) => previous.map((thread) => {
-            if (thread.id !== row.thread_id || thread.latest_message?.id === row.id) return thread;
-            const fromCustomer = row.sender_id === thread.customer_id;
-            return {
-              ...thread,
-              last_message_at: row.created_at,
-              latest_message: message,
-              unread_count: fromCustomer && !isOpen ? (thread.unread_count ?? 0) + 1 : thread.unread_count,
-            };
-          }));
-          if (isOpen) {
-            setActiveMessages((previous) => previous.some((m) => m.id === row.id) ? previous : [...previous, message]);
-            if (row.sender_id !== user?.id) void fetch(`/api/chat/${row.thread_id}/read`, { method: 'POST' });
-          }
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_message_reads' },
-        ({ new: row }: { new: { message_id: string; user_id: string } }) => {
-          if (row.user_id === user?.id) return;
-          setReadByOthersIds((previous) => new Set(previous).add(row.message_id));
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_message_deliveries' },
-        ({ new: row }: { new: { message_id: string; user_id: string } }) => {
-          if (row.user_id === user?.id) return;
-          setDeliveredByOthersIds((previous) => new Set(previous).add(row.message_id));
+        { event: 'UPDATE', schema: 'public', table: 'chat_threads', filter: `vendor_id=eq.${vendorId}` },
+        () => {
+          if (refreshTimer !== null) window.clearTimeout(refreshTimer);
+          refreshTimer = window.setTimeout(() => {
+            refreshTimer = null;
+            void loadThreads(false);
+          }, 250);
         },
       )
       .subscribe();
-    return () => { void supabase.removeChannel(channel); };
-  }, [supabase, user?.activeVendorId, user?.id]);
+    return () => {
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer);
+      void supabase.removeChannel(channel);
+    };
+  }, [supabase, vendorId, loadThreads]);
 
   const selected = useMemo(() => threads.find((thread) => thread.id === active) || null, [active, threads]);
+  const activeCustomerId = selected?.customer_id ?? null;
+
+  // Open conversation: messages arrive live for this thread only. Receipts are
+  // the customer's reads/deliveries, filtered by reader so the channel stays
+  // stable while the vendor keeps sending.
+  useEffect(() => {
+    if (!active) return;
+    let channel = supabase
+      .channel(`vendor-inbox-thread-${active}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `thread_id=eq.${active}` },
+        ({ new: row }: { new: RawMessage & { thread_id: string } }) => {
+          const message: RawMessage = { id: row.id, sender_id: row.sender_id, body: row.body, created_at: row.created_at, attachment_url: row.attachment_url, reply_to_message_id: row.reply_to_message_id, context_product_id: row.context_product_id, context_snapshot: row.context_snapshot };
+          setThreads((previous) => previous.map((thread) => thread.id === row.thread_id && thread.latest_message?.id !== row.id
+            ? { ...thread, last_message_at: row.created_at, latest_message: message }
+            : thread));
+          if (activeRef.current !== row.thread_id) return;
+          setActiveMessages((previous) => previous.some((m) => m.id === row.id) ? previous : [...previous, message]);
+          if (row.sender_id !== user?.id) void fetch(`/api/chat/${row.thread_id}/read`, { method: 'POST' });
+        },
+      );
+    if (activeCustomerId) {
+      channel = channel
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'chat_message_reads', filter: `user_id=eq.${activeCustomerId}` },
+          ({ new: row }: { new: { message_id: string } }) => {
+            setReadByOthersIds((previous) => new Set(previous).add(row.message_id));
+          },
+        )
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'chat_message_deliveries', filter: `user_id=eq.${activeCustomerId}` },
+          ({ new: row }: { new: { message_id: string } }) => {
+            setDeliveredByOthersIds((previous) => new Set(previous).add(row.message_id));
+          },
+        );
+    }
+    channel.subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [supabase, active, activeCustomerId, user?.id]);
 
   // The open thread loads its newest 50 messages; older pages on request.
   const fetchThreadMessages = useCallback(async (threadId: string, cursor?: { before?: string; after?: string }, signal?: AbortSignal) => {
@@ -493,7 +517,7 @@ export default function VendorInboxPage() {
                       <span className="mt-0.5 flex items-center gap-1.5">
                         <span className="block truncate text-xs text-gray-500 dark:text-muted-foreground">{thread.outlets?.name || t('ui.inbox.malaysiaOutlet')}</span>
                         {thread.status !== 'open' && (
-                          <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${STATUS_CHIP_STYLES[thread.status] ?? 'bg-gray-100 dark:bg-muted text-gray-500 dark:text-muted-foreground'}`}>
+                          <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${STATUS_CHIP_STYLES[thread.status] ?? 'bg-gray-100 dark:bg-muted text-gray-500 dark:text-muted-foreground'}`}>
                             {thread.status}
                           </span>
                         )}

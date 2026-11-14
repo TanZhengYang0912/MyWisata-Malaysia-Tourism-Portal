@@ -200,7 +200,10 @@ export async function getVendorDashboardData(filter: DashboardFilter = '7d', cus
     outletIds.length
       ? db.from('order_items').select('order_id,orders!inner(status)').in('outlet_id', outletIds).in('fulfil_status', ['pending', 'ready']).eq('orders.status', 'paid')
       : Promise.resolve({ data: [], error: null }),
-    db.from('inventory').select('variant_id,outlet_id,quantity,reserved,low_stock_threshold,product_variants!inner(id,name,product_id,is_active,products!inner(id,name,status,outlet_id,cover_url,outlet_offers(outlet_id,status)))'),
+    // Scoped in the database: the service client must never scan every vendor's stock rows.
+    outletIds.length
+      ? db.from('inventory').select('variant_id,outlet_id,quantity,reserved,low_stock_threshold,product_variants!inner(id,name,product_id,is_active,products!inner(id,name,status,outlet_id,cover_url,outlet_offers(outlet_id,status)))').in('outlet_id', outletIds)
+      : Promise.resolve({ data: [], error: null }),
   ]);
   if (itemsResult.error) throw itemsResult.error;
   if (productsResult.error) throw productsResult.error;

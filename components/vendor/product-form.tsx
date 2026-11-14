@@ -28,6 +28,10 @@ interface Props {
   onClose?: () => void;
 }
 
+type SuggestionField = 'name' | 'description' | 'tags' | 'category';
+const SUGGESTION_FIELDS: SuggestionField[] = ['name', 'description', 'tags', 'category'];
+const ALL_SUGGESTION_PICKS: Record<SuggestionField, boolean> = { name: true, description: true, tags: true, category: true };
+
 export default function ProductForm({ vendorId, outletIds, initialData, onSuccess, onClose }: Props) {
   const { t } = useTranslation('vendor');
   const { t: tCommon } = useTranslation('common');
@@ -38,6 +42,9 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
   const [suggesting, setSuggesting] = useState(false);
   const [suggestionMessage, setSuggestionMessage] = useState<string | null>(null);
   const [suggestionDraft, setSuggestionDraft] = useState<ListingSuggestion | null>(null);
+  const [suggestionError, setSuggestionError] = useState<string | null>(null);
+  // Which suggested fields the vendor chose to apply; nothing is written until Apply.
+  const [suggestionPicks, setSuggestionPicks] = useState<Record<SuggestionField, boolean>>(ALL_SUGGESTION_PICKS);
   const [submitIntent, setSubmitIntent] = useState<'draft' | 'review'>('review');
   const supabase = createClient();
   const validationSchema = initialData?.id ? productUpdateSchema : productCreateSchema;
@@ -83,6 +90,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
     const outlet = outlets.find((item) => item.id === values.outletId);
     setSuggesting(true);
     setSuggestionMessage(null);
+    setSuggestionError(null);
     try {
       const response = await fetch(`/api/vendors/${vendorId}/products/suggestions`, {
         method: 'POST',
@@ -94,6 +102,8 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
           description: values.description,
           keywords: String(values.tags || '').split(',').map((tag) => tag.trim()).filter(Boolean),
           priceRange: values.basePrice ? `RM${formatMYRNumber(Number(values.basePrice))}` : undefined,
+          // The server resolves the outlet's real name and location from this id within the caller's scope.
+          outletId: values.outletId || undefined,
         }),
       });
       const payload = await response.json();
@@ -101,21 +111,27 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
       const suggestion = payload.data?.suggestion;
       if (!suggestion) throw new Error(t('productForm.aiNoSuggestion'));
       setSuggestionDraft(suggestion);
+      setSuggestionPicks(ALL_SUGGESTION_PICKS);
       setSuggestionMessage(t('productForm.draftReady'));
     } catch (error) {
-      setSuggestionMessage(error instanceof Error ? error.message : t('productForm.aiDeferred'));
+      setSuggestionError(error instanceof Error ? error.message : t('productForm.aiDeferred'));
     } finally {
       setSuggesting(false);
     }
   }
 
+  function matchSuggestedCategory(suggestion: ListingSuggestion) {
+    const suggestedSlug = canonicalCategorySlug(suggestion.category);
+    return categories.find((category) => category.slug === suggestedSlug || category.name.toLowerCase() === suggestion.category.toLowerCase());
+  }
+
   function applySuggestion() {
     if (!suggestionDraft) return;
-    setValue('name', suggestionDraft.title, { shouldDirty: true });
-    setValue('description', suggestionDraft.description, { shouldDirty: true });
-    setValue('tags', suggestionDraft.tags.join(', '), { shouldDirty: true });
-    const suggestedSlug = canonicalCategorySlug(suggestionDraft.category);
-    const matchedCategory = categories.find((category) => category.slug === suggestedSlug || category.name.toLowerCase() === suggestionDraft.category.toLowerCase());
+    // Only the fields the vendor ticked change; saving still goes through the normal product form submit.
+    if (suggestionPicks.name) setValue('name', suggestionDraft.title, { shouldDirty: true, shouldValidate: true });
+    if (suggestionPicks.description) setValue('description', suggestionDraft.description, { shouldDirty: true });
+    if (suggestionPicks.tags) setValue('tags', suggestionDraft.tags.join(', '), { shouldDirty: true });
+    const matchedCategory = suggestionPicks.category ? matchSuggestedCategory(suggestionDraft) : undefined;
     if (matchedCategory) {
       setValue('categoryId', matchedCategory.id, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
       setValue('typeSlugs', [], { shouldDirty: true, shouldValidate: true });
@@ -239,12 +255,47 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
         label={t('assistant.listingLabel')}
         buttonLabel={t('assistant.suggestListing')}
         busy={suggesting}
-        draft={suggestionDraft && <div><p className="font-semibold">{suggestionDraft.title}</p><p className="mt-1">{suggestionDraft.description}</p><p className="mt-2 text-xs text-gray-500 dark:text-muted-foreground">{t('productForm.tags')}: {suggestionDraft.tags.join(', ')}</p></div>}
+        error={suggestionError}
+        draft={suggestionDraft && (() => {
+          const current = getValues();
+          const matchedCategory = matchSuggestedCategory(suggestionDraft);
+          const currentCategory = categories.find((category) => category.id === current.categoryId)?.name ?? '';
+          const rows: { field: SuggestionField; label: string; before: string; after: string; disabled?: boolean }[] = [
+            { field: 'name', label: t('productForm.nameRequired').replace(/\s*\*$/, ''), before: String(current.name || ''), after: suggestionDraft.title },
+            { field: 'description', label: t('productForm.description'), before: String(current.description || ''), after: suggestionDraft.description },
+            { field: 'tags', label: t('productForm.tags'), before: String(current.tags || ''), after: suggestionDraft.tags.join(', ') },
+            // A category the catalogue does not offer cannot be applied, so it is shown but not selectable.
+            { field: 'category', label: t('productForm.category'), before: currentCategory, after: matchedCategory?.name ?? suggestionDraft.category, disabled: !matchedCategory },
+          ];
+          return (
+            <ul className="divide-y divide-violet-100 dark:divide-violet-500/20">
+              {rows.filter((row) => row.after.trim() && row.after.trim() !== row.before.trim()).map((row) => (
+                <li key={row.field} className="py-2 first:pt-0 last:pb-0">
+                  <label className={`flex items-start gap-2.5 ${row.disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+                    <input
+                      type="checkbox"
+                      className="mt-1 size-4 shrink-0 accent-primary"
+                      checked={!row.disabled && suggestionPicks[row.field]}
+                      disabled={row.disabled}
+                      onChange={(event) => setSuggestionPicks((prev) => ({ ...prev, [row.field]: event.target.checked }))}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs font-semibold text-gray-500 dark:text-muted-foreground">{row.label}</span>
+                      {row.before && <span className="block break-words text-xs text-gray-500 line-through decoration-gray-400/70 dark:text-muted-foreground">{row.before}</span>}
+                      <span className="block break-words text-sm text-gray-900 dark:text-foreground">{row.after}</span>
+                      {row.disabled && <span className="block text-xs text-amber-700 dark:text-amber-300">{t('productForm.aiCategoryUnavailable')}</span>}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          );
+        })()}
         onGenerate={() => void suggestListing()}
-        onApply={suggestionDraft ? applySuggestion : undefined}
+        onApply={suggestionDraft && SUGGESTION_FIELDS.some((field) => suggestionPicks[field]) ? applySuggestion : undefined}
         onDiscard={suggestionDraft ? () => setSuggestionDraft(null) : undefined}
       />
-      {suggestionMessage && <p className="text-xs text-violet-800 dark:text-violet-200">{suggestionMessage}</p>}
+      {suggestionMessage && <p className="text-xs text-violet-800 dark:text-violet-200" role="status">{suggestionMessage}</p>}
 
       <div className="space-y-4">
         <div>
@@ -343,7 +394,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
           {watch('coverUrl') && <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-200 dark:border-border bg-card p-2"><img src={watch('coverUrl')} alt={t('productForm.coverPreview')} className="h-14 w-20 rounded-md object-cover" /><span className="truncate text-xs text-gray-500 dark:text-muted-foreground">{watch('coverUrl')}</span></div>}
           <div className="mt-4 border-t border-gray-200 dark:border-border pt-3">
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-muted-foreground">{t('productForm.gallery')}</p>
+              <p className="text-xs font-semibold text-gray-500 dark:text-muted-foreground">{t('productForm.gallery')}</p>
               <span className="text-[11px] text-gray-400 dark:text-muted-foreground">{gallery.length}/8 {t('productForm.images')}</span>
             </div>
             {gallery.length < 8 && (
@@ -428,7 +479,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
             <div>
               <p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('productForm.availability')}</p>
             </div>
-            <span className="rounded-full bg-gray-100 dark:bg-muted px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-muted-foreground">{productType}</span>
+            <span className="rounded-full bg-gray-100 dark:bg-muted px-2.5 py-1 text-[11px] font-semibold text-gray-500 dark:text-muted-foreground">{productType}</span>
           </div>
           {['product', 'food'].includes(productType) && !requiresBooking && (
             initialData?.id && initialData.inventorySetupSingleEntry === false

@@ -80,8 +80,9 @@ export default function CustomerCalendarPage() {
     const channel = supabase
       .channel(`customer-calendar-${currentUser.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings", filter: `customer_id=eq.${currentUser.id}` }, () => { void load(); })
+      // No booking_slots subscription: its public rows changed with every booking
+      // on the platform. A rescheduled slot appears on the next load.
       .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `user_id=eq.${currentUser.id}` }, () => { void load(); })
-      .on("postgres_changes", { event: "*", schema: "public", table: "booking_slots" }, () => { void load(); })
       .subscribe();
     return () => { active = false; void supabase.removeChannel(channel); };
   }, [currentUser, tCustomer]);

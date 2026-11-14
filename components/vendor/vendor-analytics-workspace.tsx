@@ -18,6 +18,7 @@ import { VendorShareAnalytics } from '@/components/vendor/vendor-share-analytics
 import { useAuth } from '@/hooks/use-auth';
 import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
 import { MobileFilterToggle } from '@/components/vendor/compact-filter-bar';
+import { DataFreshness } from '@/components/vendor/data-freshness';
 
 const NAVY = '#10164a';
 const ORANGE = '#e89224';
@@ -26,7 +27,7 @@ const MUTED = '#94a3b8';
 
 type TrendMetric = 'revenue' | 'averageOrderValue' | 'orders';
 
-export function VendorAnalyticsWorkspace({ data }: { data: VendorAnalyticsSnapshot }) {
+export function VendorAnalyticsWorkspace({ data, generatedAt }: { data: VendorAnalyticsSnapshot; generatedAt?: string }) {
   const { t, i18n } = useTranslation('vendor');
   const { isVendorOwner } = useAuth();
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
@@ -59,6 +60,7 @@ export function VendorAnalyticsWorkspace({ data }: { data: VendorAnalyticsSnapsh
         eyebrow={<><ChartNoAxesCombined size={15} aria-hidden="true" /> {t('ui.analytics.eyebrow')}</>}
         title={t('ui.analytics.title')}
         className="md:!flex-col xl:!flex-row xl:!items-end"
+        actions={generatedAt ? <DataFreshness generatedAt={generatedAt} /> : undefined}
       />
 
       <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
@@ -190,7 +192,7 @@ export function VendorAnalyticsWorkspace({ data }: { data: VendorAnalyticsSnapsh
         </Panel>
 
         <Panel eyebrow={t('ui.analytics.actionQueue.eyebrow')} title={t('ui.analytics.actionQueue.title')} icon={CircleAlert}>
-          <div className="grid gap-3 sm:grid-cols-3">{data.insights.map((insight, index) => <div key={insight.kind} className="rounded-2xl border border-gray-100 dark:border-border bg-gradient-to-br from-white dark:from-card to-gray-50 dark:to-muted p-4"><div className="flex items-center justify-between"><span className={`flex h-9 w-9 items-center justify-center rounded-xl ${index === 0 ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-200' : index === 1 ? 'bg-secondary text-primary' : 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-200'}`}>{index === 0 ? <ArrowUpRight size={17} /> : index === 1 ? <Clock3 size={17} /> : <Store size={17} />}</span><span className="text-xs font-bold text-gray-400 dark:text-muted-foreground">{insight.value}</span></div><p className="mt-4 text-sm font-bold text-gray-900 dark:text-foreground">{t(insight.titleKey)}</p></div>)}{!data.insights.length && <EmptyState text={t('ui.analytics.empty.insights')} />}</div>
+          <div className="grid gap-3 sm:grid-cols-3">{data.insights.map((insight, index) => <div key={insight.kind} className="rounded-2xl border border-gray-100 dark:border-border bg-card p-4"><div className="flex items-center justify-between"><span className={`flex h-9 w-9 items-center justify-center rounded-xl ${index === 0 ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-200' : index === 1 ? 'bg-secondary text-primary' : 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-200'}`}>{index === 0 ? <ArrowUpRight size={17} /> : index === 1 ? <Clock3 size={17} /> : <Store size={17} />}</span><span className="text-xs font-bold text-gray-400 dark:text-muted-foreground">{insight.value}</span></div><p className="mt-4 text-sm font-bold text-gray-900 dark:text-foreground">{t(insight.titleKey)}</p></div>)}{!data.insights.length && <EmptyState text={t('ui.analytics.empty.insights')} />}</div>
         </Panel>
       </section>
 
@@ -207,7 +209,7 @@ export function VendorAnalyticsWorkspace({ data }: { data: VendorAnalyticsSnapsh
 }
 
 function Panel({ eyebrow, title, icon: Icon, children }: { eyebrow: string; title: string; icon: typeof BarChart3; children: React.ReactNode }) {
-  return <section className="rounded-2xl border border-gray-100 dark:border-border bg-card p-5 shadow-sm sm:p-6"><div className="mb-5 flex items-start justify-between gap-4"><div><div className="mb-1 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-primary"><Icon size={14} /> {eyebrow}</div><h2 className="text-lg font-bold text-gray-950 dark:text-foreground">{title}</h2></div></div>{children}</section>;
+  return <section className="rounded-2xl border border-gray-100 dark:border-border bg-card p-5 shadow-sm sm:p-6"><div className="mb-5 flex items-start justify-between gap-4"><div><div className="mb-1 flex items-center gap-2 text-[11px] font-bold text-primary"><Icon size={14} /> {eyebrow}</div><h2 className="text-lg font-bold text-gray-950 dark:text-foreground">{title}</h2></div></div>{children}</section>;
 }
 
 function MetricCard({ icon: Icon, label, value, note, tone }: { icon: typeof Activity; label: string; value: string; note: string; tone: 'navy' | 'teal' | 'orange' | 'slate' }) {

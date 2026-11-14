@@ -62,6 +62,7 @@ export const VENDOR_I18N_FILES = [
   'components/vendor/sales-chart.tsx',
   'components/vendor/slot-form.tsx',
   'components/vendor/variant-manager.tsx',
+  'components/vendor/vendor-list-filters.tsx',
   'components/vendor/vendor-claim-form.tsx',
   'components/vendor/vendor-share-analytics.tsx',
   'components/vendor/vendor-analytics-workspace.tsx',
@@ -76,6 +77,7 @@ export const VENDOR_I18N_FILES = [
 
 const priorTaskFiles = new Set([
   'components/vendor/voucher-metric-card.tsx',
+  'components/vendor/vendor-metric-card.tsx',
   'components/vendor/vendor-profile-gallery-manager.tsx',
   'components/vendor/vendor-registration-gallery-field.tsx',
   'components/vendor/vendor-registration-image-field.tsx',
@@ -121,6 +123,9 @@ const priorTaskFiles = new Set([
   'components/shared/human-verification.tsx',
   'components/shared/use-viewport-clamped-popover-position.ts',
   'components/vendor/mobile-record-card.tsx',
+  'components/vendor/data-freshness.tsx',
+  // Receives its translated label and summary from each record page.
+  'components/vendor/select-page-bar.tsx',
   'components/shared/image-crop-dialog.tsx',
   // Shared OTP countdown helper; its consumer owns the visible copy.
   'components/shared/use-otp-resend.ts',

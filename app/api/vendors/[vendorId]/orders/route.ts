@@ -6,11 +6,20 @@ import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { outletShortName } from '@/lib/outlet-display';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { postgrestSearchTerm } from '@/lib/validation/postgrest-filter';
+import { malaysiaCalendarDateToIso } from '@/lib/datetime/malaysia';
 import type { StayBookingDetails } from '@/backend/core/types';
 
 interface Props { params: Promise<{ vendorId: string }> }
 
 const SEARCH_ID_LIMIT = 200;
+
+/** null = not supplied; undefined = supplied but not a valid calendar date. */
+function calendarDateParam(value: string | null): string | null | undefined {
+  if (!value) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value ? value : undefined;
+}
 
 export async function GET(request: Request, { params }: Props) {
   const { vendorId } = await params;
@@ -21,8 +30,15 @@ export async function GET(request: Request, { params }: Props) {
   const q = postgrestSearchTerm(rawQ);
   const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
   const pageSize = Math.min(50, Math.max(1, Number.parseInt(url.searchParams.get('pageSize') || '10', 10) || 10));
-  const from = url.searchParams.get('from');
-  const to = url.searchParams.get('to');
+  // The filter sends Malaysia calendar dates (YYYY-MM-DD). Compare against the
+  // whole Malaysia day so orders placed on the "to" date are included, instead
+  // of letting Postgres read a bare date as UTC midnight.
+  const fromDate = calendarDateParam(url.searchParams.get('from'));
+  const toDate = calendarDateParam(url.searchParams.get('to'));
+  if (fromDate === undefined || toDate === undefined) return apiFail('INVALID_DATE', 'Use YYYY-MM-DD dates for the order date range', 422);
+  if (fromDate && toDate && toDate < fromDate) return apiFail('INVALID_DATE_RANGE', 'The end date must be on or after the start date', 422);
+  const from = fromDate ? malaysiaCalendarDateToIso(fromDate, 'start') : null;
+  const to = toDate ? malaysiaCalendarDateToIso(toDate, 'end') : null;
   const linkedOrderId = url.searchParams.get('orderId');
 
   const access = await authorizeVendor(vendorId, undefined, { requireApproved: true });

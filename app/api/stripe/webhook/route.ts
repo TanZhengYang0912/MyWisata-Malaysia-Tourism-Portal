@@ -12,6 +12,9 @@ import { getRequestId } from '@/lib/request-id';
 
 export const dynamic = 'force-dynamic';
 
+/** confirm_vendor_event_promotion_stripe_payment outcomes where the charge must be returned. */
+const EVENT_PROMOTION_REFUND_OUTCOMES = new Set(['already_paid', 'not_payable', 'superseded', 'amount_mismatch', 'not_found']);
+
 export async function POST(req: Request) {
   const requestId = getRequestId(req);
   const body = await req.text();
@@ -101,11 +104,16 @@ export async function POST(req: Request) {
     }
 
     if (session.metadata?.payment_kind === 'event_promotion' && session.metadata.promotion_id) {
-      if (session.payment_status !== 'paid' || !session.amount_total) {
+      // Same trust checks as wallet top-ups: only a paid MYR session from the
+      // Stripe mode this deployment runs in can mark a promotion as paid.
+      if (session.payment_status !== 'paid' || !session.amount_total
+          || session.currency?.toUpperCase() !== 'MYR'
+          || session.livemode !== Boolean(process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_'))) {
         return NextResponse.json({ error: 'Event promotion payment is not confirmed as paid' }, { status: 409 });
       }
-      const { error: confirmError } = await db.rpc('confirm_vendor_event_promotion_stripe_payment', {
-        p_promotion_id: session.metadata.promotion_id,
+      const promotionId = session.metadata.promotion_id;
+      const { data: confirmOutcome, error: confirmError } = await db.rpc('confirm_vendor_event_promotion_stripe_payment', {
+        p_promotion_id: promotionId,
         p_checkout_session_id: session.id,
         p_amount_sen: session.amount_total,
       });
@@ -113,7 +121,52 @@ export async function POST(req: Request) {
         log('error', '[stripe-webhook] event promotion payment confirm RPC failed', { requestId, error: confirmError.message });
         return NextResponse.json({ error: 'Failed to confirm event promotion payment', requestId }, { status: 500 });
       }
-      return NextResponse.json({ received: true });
+      if (confirmOutcome === 'confirmed' || confirmOutcome === 'already_confirmed') {
+        return NextResponse.json({ received: true });
+      }
+      // Only a known "cannot apply" outcome triggers a refund. Anything else
+      // (for example the pre-migration RPC returning null) is retried, never refunded.
+      if (typeof confirmOutcome !== 'string' || !EVENT_PROMOTION_REFUND_OUTCOMES.has(confirmOutcome)) {
+        log('error', '[stripe-webhook] unexpected event promotion confirm outcome', { requestId, sessionId: session.id, outcome: String(confirmOutcome) });
+        return NextResponse.json({ error: 'Unexpected event promotion payment outcome', requestId }, { status: 500 });
+      }
+
+      // The money arrived but cannot be applied (already paid another way,
+      // edited since, superseded by a newer Checkout, wrong amount, or gone):
+      // refund it in full. The idempotency key makes Stripe retries return the
+      // same refund instead of a second one. The platform absorbs Stripe's fee.
+      const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
+      if (!paymentIntentId) {
+        log('error', '[stripe-webhook] event promotion refund has no payment intent', { requestId, sessionId: session.id });
+        return NextResponse.json({ error: 'Cannot refund event promotion payment', requestId }, { status: 500 });
+      }
+      let refund: Stripe.Refund;
+      try {
+        refund = await stripe.refunds.create(
+          {
+            payment_intent: paymentIntentId,
+            reason: 'duplicate',
+            metadata: { payment_kind: 'event_promotion_refund', promotion_id: promotionId, checkout_session_id: session.id, outcome: confirmOutcome },
+          },
+          { idempotencyKey: `event-promotion-refund:${session.id}` },
+        );
+      } catch (refundError) {
+        log('error', '[stripe-webhook] event promotion refund failed', { requestId, sessionId: session.id, error: refundError instanceof Error ? refundError.message : String(refundError) });
+        return NextResponse.json({ error: 'Failed to refund event promotion payment', requestId }, { status: 500 });
+      }
+      const { error: auditError } = await db.rpc('record_vendor_event_promotion_stripe_refund', {
+        p_promotion_id: promotionId,
+        p_checkout_session_id: session.id,
+        p_provider_refund_id: refund.id,
+        p_amount_sen: refund.amount,
+        p_reason: confirmOutcome,
+      });
+      if (auditError) {
+        log('error', '[stripe-webhook] event promotion refund audit failed', { requestId, sessionId: session.id, error: auditError.message });
+        return NextResponse.json({ error: 'Failed to record event promotion refund', requestId }, { status: 500 });
+      }
+      log('warn', '[stripe-webhook] event promotion payment refunded', { requestId, sessionId: session.id, outcome: confirmOutcome });
+      return NextResponse.json({ received: true, refunded: true });
     }
     if (session.metadata?.payment_kind !== 'topup') {
       log('warn', '[stripe-webhook] Ignoring unsupported Checkout payment kind', { requestId, sessionId: session.id });
@@ -196,6 +249,27 @@ export async function POST(req: Request) {
 
   if (event.type === 'refund.created' || event.type === 'refund.updated' || event.type === 'refund.failed') {
     const providerRefund = event.data.object as Stripe.Refund;
+    // Automatic event promotion refunds (see the checkout.session.completed branch):
+    // record the final status, and alert Super Admins when Stripe could not pay it back.
+    if (providerRefund.metadata?.payment_kind === 'event_promotion_refund' && providerRefund.metadata.promotion_id) {
+      const db = createServiceClient();
+      const { error } = await db.rpc('record_vendor_event_promotion_refund_outcome', {
+        p_promotion_id: providerRefund.metadata.promotion_id,
+        p_checkout_session_id: providerRefund.metadata.checkout_session_id ?? '',
+        p_provider_refund_id: providerRefund.id,
+        p_status: providerRefund.status ?? 'pending',
+        p_failure_reason: providerRefund.failure_reason ?? null,
+        p_amount_sen: providerRefund.amount,
+      });
+      if (error) {
+        log('error', '[stripe-webhook] event promotion refund outcome RPC failed', { requestId, error: error.message, providerRefundId: providerRefund.id });
+        return NextResponse.json({ error: 'Failed to record event promotion refund outcome', requestId }, { status: 500 });
+      }
+      if (providerRefund.status === 'failed' || providerRefund.status === 'canceled') {
+        log('error', '[stripe-webhook] event promotion refund did not complete', { requestId, providerRefundId: providerRefund.id, status: providerRefund.status });
+      }
+      return NextResponse.json({ received: true });
+    }
     const refundId = providerRefund.metadata?.mylawatan_refund_id ?? providerRefund.metadata?.mywisata_refund_id;
     // Ignore Stripe refunds created outside this order refund flow.
     if (refundId) {

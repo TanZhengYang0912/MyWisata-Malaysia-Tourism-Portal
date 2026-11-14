@@ -4,7 +4,10 @@ import type { PromotionCampaignPublic, PromotionCampaignPublicVendor } from "@/l
 
 const mocks = vi.hoisted(() => ({ getPublicPromotionCampaigns: vi.fn(), notFound: vi.fn() }));
 
-vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { resolvedLanguage: "en" } }) }));
+vi.mock("react-i18next", () => ({ useTranslation: () => ({
+  t: (key: string, values?: Record<string, unknown>) => values?.date ? `${key} ${String(values.date)}` : key,
+  i18n: { resolvedLanguage: "en" },
+}) }));
 vi.mock("@/lib/i18n/server", () => ({ getServerTranslation: vi.fn(async () => ({ t: (key: string) => key })) }));
 vi.mock("@/components/customer/use-customer-capability-gate", () => ({
   useCustomerCapabilityGate: () => Object.assign(() => true, { handleResponse: vi.fn(async () => false) }),

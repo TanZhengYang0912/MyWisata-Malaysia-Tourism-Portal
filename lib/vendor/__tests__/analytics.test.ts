@@ -31,6 +31,16 @@ const input: AnalyticsInput = {
 };
 
 describe('vendor analytics aggregation', () => {
+  it('uses the Dashboard sales definition: paid orders without a succeeded payment are not revenue', () => {
+    const verified = buildAnalyticsSnapshot({ ...input, items: input.items.map((item) => ({ ...item, sale_class: 'verified' as const })) });
+    const withUnverified = buildAnalyticsSnapshot({
+      ...input,
+      items: input.items.map((item) => ({ ...item, sale_class: item.order_id === 'order-3' ? 'unverified' as const : 'verified' as const })),
+    });
+    expect(withUnverified.metrics.revenue).toBe(verified.metrics.revenue - 120);
+    expect(withUnverified.metrics.orders).toBe(verified.metrics.orders - 1);
+  });
+
   it('formats machine trend buckets by display locale while preserving Malaysia bucket boundaries', () => {
     expect(formatAnalyticsTrendBucket('2026-10-26', 'week', 'zh-CN')).not.toBe('26 Oct');
     expect(formatAnalyticsTrendBucket('2026-10', 'month', 'ms')).toMatch(/2026|26/);

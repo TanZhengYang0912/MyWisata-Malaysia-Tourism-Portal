@@ -144,7 +144,7 @@ export default function VendorAnnouncementsPage() {
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card">
           <table className="w-full text-sm">
-            <thead className="border-b border-border bg-secondary/40 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <thead className="border-b border-border bg-secondary/40 text-left text-xs font-semibold text-muted-foreground">
               <tr>
                 <th aria-hidden="true" className="w-12 px-4 py-3"></th>
                 <th className="px-4 py-3">{t('ui.announcements.columns.title')}</th>

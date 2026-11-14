@@ -21,6 +21,8 @@ describe("vendor voucher management workspace", () => {
   it("uses the reusable compact metric treatment rather than oversized cards", () => {
     expect(source).toContain('density="compact"');
     expect(metricSource).toContain('density?: "comfortable" | "compact"');
-    expect(metricSource).toContain('density === "compact"');
+    // The voucher card delegates its compact treatment to the shared Vendor metric card.
+    expect(metricSource).toContain("VendorMetricCard");
+    expect(readFileSync(resolve(process.cwd(), "components/vendor/vendor-metric-card.tsx"), "utf8")).toContain('density === "compact"');
   });
 });

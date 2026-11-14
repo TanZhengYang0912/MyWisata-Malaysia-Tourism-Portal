@@ -45,12 +45,7 @@ interface SupportChatContextValue {
 
 const SupportChatContext = createContext<SupportChatContextValue | null>(null);
 
-/**
- * `countUnread={false}` keeps the bubble badge off. The vendor portal uses it:
- * the badge counts messages in threads the user manages as an outlet, but the
- * widget only lists threads they opened as a customer, so those messages would
- * badge an empty panel. They live in the vendor Inbox instead.
- */
+/** `countUnread={false}` disables the widget's unread badge for callers without customer chat. */
 export function SupportChatProvider({ children, countUnread = true }: { children: ReactNode; countUnread?: boolean }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<SelectedChat | null>(null);
@@ -127,9 +122,12 @@ export function SupportChatProvider({ children, countUnread = true }: { children
       }
     }
     void load();
+    // Every send path updates chat_threads.last_message_at, so a filtered
+    // thread UPDATE signals a new message without making Realtime check
+    // chat_messages RLS for every customer tab on every message platform-wide.
     const channel = supabase
       .channel(`nav-chat-unread-${currentUser.id}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages" }, scheduleLoad)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chat_threads", filter: `customer_id=eq.${currentUser.id}` }, scheduleLoad)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_message_reads", filter: `user_id=eq.${currentUser.id}` }, scheduleLoad)
       .subscribe();
     document.addEventListener("visibilitychange", refreshWhenVisible);

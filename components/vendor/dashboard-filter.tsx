@@ -96,7 +96,7 @@ export default function DashboardFilter() {
           <span className="sr-only">{t('filters.custom')}</span>
         </summary>
         <form id="dashboard-custom-date-filter" className="absolute right-0 top-full z-20 mt-2 w-64 rounded-xl border border-gray-200 dark:border-border bg-card p-3 shadow-xl" onSubmit={(event) => { event.preventDefault(); if (!from) return; router.push(filterHref({ filter: 'custom', from, to: to || null })); }}>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-muted-foreground">{t('filters.dateRange')}</p>
+          <p className="mb-2 text-xs font-semibold text-gray-500 dark:text-muted-foreground">{t('filters.dateRange')}</p>
           <label className="mb-2 block text-xs text-gray-600 dark:text-muted-foreground">{t('filters.from')}<input type="date" value={from} onFocus={primeDateRange} onChange={(event) => setFrom(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-gray-200 dark:border-border px-2 text-sm" required /></label>
           <label className="block text-xs text-gray-600 dark:text-muted-foreground">{t('filters.to')}<input type="date" value={to} min={from || undefined} onFocus={primeDateRange} onChange={(event) => setTo(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-gray-200 dark:border-border px-2 text-sm" /></label>
           <Button type="submit" className="mt-3 min-h-11 w-full rounded-lg bg-gray-900 text-xs font-semibold text-white hover:bg-gray-800">{t('filters.applyRange')}</Button>

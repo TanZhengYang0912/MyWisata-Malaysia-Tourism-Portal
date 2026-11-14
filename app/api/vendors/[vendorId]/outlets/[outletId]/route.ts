@@ -121,15 +121,20 @@ export async function DELETE(_request: Request, { params }: Props) {
   const { vendorId, outletId } = await params;
   const access = await authorizeVendor(vendorId, ['vendor_owner']);
   if (!access.ok) return access.response;
+  if (!access.access.outletIds.includes(outletId)) return apiFail('NOT_FOUND', 'Outlet not found', 404);
   const supabase = access.access.serviceDb;
 
-  // Soft delete — set status to 'closed'
-  const { error } = await supabase
+  // Soft close: only the status changes. Orders, bookings, products and
+  // manager assignments are left untouched; reopening sets it back to active.
+  const { data, error } = await supabase
     .from('outlets')
     .update({ status: 'closed' })
     .eq('id', outletId)
-    .eq('vendor_id', vendorId);
+    .eq('vendor_id', vendorId)
+    .select('id,status')
+    .maybeSingle();
 
   if (error) return apiFail('DB_ERROR', error.message, 500);
-  return apiOk({ id: outletId, status: 'closed' });
+  if (!data) return apiFail('NOT_FOUND', 'Outlet not found', 404);
+  return apiOk({ id: data.id, status: data.status });
 }

@@ -53,7 +53,7 @@ function providerConfig(provider?: 'gemini'): ProviderConfig | null {
 export async function generateAiText(
   systemPrompt: string,
   userPrompt: string,
-  options: { provider?: 'gemini'; temperature?: number; maxTokens?: number; signal?: AbortSignal; maxProviderAttempts?: number } = {},
+  options: { provider?: 'gemini'; temperature?: number; maxTokens?: number; signal?: AbortSignal; maxProviderAttempts?: number; json?: boolean } = {},
 ): Promise<AiTextResult> {
   const preparedPrompt = prepareExternalText(userPrompt);
   if (!preparedPrompt.allowed) return { available: false, reason: 'sensitive_input' };
@@ -81,7 +81,11 @@ export async function generateAiText(
             ? {
                 systemInstruction: { parts: [{ text: systemPrompt }] },
                 contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-                generationConfig: { temperature: options.temperature ?? 0.35, maxOutputTokens: maxTokens },
+                generationConfig: {
+                  temperature: options.temperature ?? 0.35,
+                  maxOutputTokens: maxTokens,
+                  ...(options.json ? { responseMimeType: 'application/json' } : {}),
+                },
               }
             : {
                 model,

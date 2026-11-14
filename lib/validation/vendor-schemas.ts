@@ -386,9 +386,14 @@ export const contentReviewSchema = z.object({
 
 // ── Vendor event promotions ─────────────────────────────────
 
+// Mirrors the vendor_event_promotions title/details CHECK constraints
+// (20260928030000). The Promote Event form reads these so the client blocks
+// the same inputs the server rejects.
+export const EVENT_PROMOTION_LIMITS = { titleMin: 3, titleMax: 120, detailsMin: 10, detailsMax: 2000 } as const;
+
 export const eventPromotionSubmitSchema = z.object({
-  title: z.string().trim().min(3).max(120),
-  details: z.string().trim().min(10).max(2000),
+  title: z.string().trim().min(EVENT_PROMOTION_LIMITS.titleMin).max(EVENT_PROMOTION_LIMITS.titleMax),
+  details: z.string().trim().min(EVENT_PROMOTION_LIMITS.detailsMin).max(EVENT_PROMOTION_LIMITS.detailsMax),
   startDate: z.string().date(),
   endDate: z.string().date(),
   posterUrl: z.string().url().max(2000),

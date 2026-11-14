@@ -8,6 +8,10 @@ export type ListingSuggestionInput = {
   description?: string;
   keywords?: string[];
   priceRange?: string;
+  /** Outlet the listing belongs to, resolved server-side from the caller's scope. */
+  outletName?: string;
+  /** Active catalogue categories; the suggestion should pick one of these. */
+  allowedCategories?: string[];
 };
 
 export type ListingSuggestion = {
@@ -39,7 +43,7 @@ function parseSuggestion(content: string): ListingSuggestion | null {
 
 export async function generateListingSuggestion(input: ListingSuggestionInput): Promise<ListingSuggestionResult> {
   const result = await generateAiText(
-    'You help Malaysian tourism vendors prepare concise marketplace listings. Return only valid JSON with title, description, category, and tags. Do not invent unavailable facts, prices, opening hours, awards, or guarantees.',
+    'You help Malaysian tourism vendors improve an existing marketplace listing. Use only the facts in the input (name, type, outlet, location, current description, tags, price). Return only valid JSON with title, description, category, and tags. When allowedCategories is provided, category must be exactly one of them. Keep the vendor\'s meaning; do not invent prices, stock, amenities, opening hours, awards, or guarantees.',
     JSON.stringify(input),
     { provider: 'gemini', temperature: 0.35, maxTokens: Number.parseInt(process.env.QWEN_MAX_OUTPUT_TOKENS || '500', 10) || 500 },
   );

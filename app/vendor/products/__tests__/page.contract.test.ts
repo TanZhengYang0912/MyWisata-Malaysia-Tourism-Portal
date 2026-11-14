@@ -14,6 +14,13 @@ describe('vendor products save contract', () => {
     expect(successCallback).toContain('loadProducts(pagination.page)');
   });
 
+  it('limits live inventory updates to the vendor outlets', () => {
+    const inventorySubscriptions = pageSource.match(/table: 'inventory'[^}]*\}/g) || [];
+
+    expect(inventorySubscriptions).toHaveLength(1);
+    expect(inventorySubscriptions[0]).toContain('filter: `outlet_id=in.(${');
+  });
+
   it('uses locale keys instead of inline translation defaults', () => {
     expect(pageSource).not.toContain('defaultValue');
   });

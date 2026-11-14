@@ -430,9 +430,9 @@ export default function OrderDetailPage() {
                     return (
                       <article
                         key={index}
-                        className="grid grid-cols-[4rem_minmax(0,1fr)] items-start gap-x-3 gap-y-3 p-4 transition hover:bg-secondary/20 sm:flex sm:items-center sm:gap-5 sm:p-5"
+                        className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2 p-3 transition hover:bg-secondary/20 sm:flex sm:items-center sm:gap-5 sm:p-5"
                       >
-                        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-secondary text-primary shadow-sm sm:h-24 sm:w-24">
+                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-secondary text-primary shadow-sm sm:h-24 sm:w-24">
                           {item.imageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -479,7 +479,7 @@ export default function OrderDetailPage() {
                           )}
                         </div>
 
-                        <div className="col-span-2 text-left sm:text-right">
+                        <div className="col-start-2 flex min-w-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-left sm:ml-auto sm:block sm:text-right">
                           <span className="tabular-nums text-base font-bold text-foreground sm:text-lg">
                             {formatMYR(item.unitPrice * item.qty)}
                           </span>

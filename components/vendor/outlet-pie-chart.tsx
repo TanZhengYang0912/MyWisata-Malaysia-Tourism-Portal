@@ -40,7 +40,7 @@ export default function OutletPieChart({ data, total, salesMode = 'live' }: { da
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+          <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-primary">
             {t('charts.product.topProducts')}
           </div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-foreground">{t('charts.product.salesByProduct')}</h2>
@@ -102,7 +102,7 @@ export default function OutletPieChart({ data, total, salesMode = 'live' }: { da
                 </>
               ) : (
                 <>
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-muted-foreground">
+                  <span className="text-[10px] font-semibold text-gray-400 dark:text-muted-foreground">
                     {formatNumber(data.length, locale)} {data.length === 1 ? t('charts.product.product') : t('charts.product.products')}
                   </span>
                   <span className="mt-0.5 text-sm font-bold text-gray-900 dark:text-foreground leading-tight">

@@ -25,6 +25,15 @@ describe('content assistant contracts', () => {
     expect(parseContentDraft('outlet_page', 'not json')).toBeNull();
   });
 
+  it('recovers hero JSON wrapped in prose and keeps the SEO description', () => {
+    expect(parseContentDraft('outlet_page', 'Here is your copy: {"title":"Ghee Hiang at Jalan Burma","body":"Sesame oil and biscuits from George Town.","cta":"Shop now","seoDescription":"Ghee Hiang sesame oil and Penang biscuits."} Hope it helps!')).toEqual({
+      title: 'Ghee Hiang at Jalan Burma',
+      body: 'Sesame oil and biscuits from George Town.',
+      cta: 'Shop now',
+      seoDescription: 'Ghee Hiang sesame oil and Penang biscuits.',
+    });
+  });
+
   it('keeps plain-text drafts bounded for profile and reply surfaces', () => {
     expect(parseContentDraft('business_profile', '  A polished description.  ')).toBe('A polished description.');
     expect(parseContentDraft('inbox_reply', '   Thanks for reaching out.   ')).toBe('Thanks for reaching out.');
