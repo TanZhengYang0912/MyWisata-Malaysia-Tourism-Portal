@@ -419,7 +419,7 @@ export default function CheckoutPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="break-words whitespace-normal text-sm font-bold text-foreground">{activity?.name ?? tCustomer("ui.states.loading")}</h3>
-                        <span className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)] shrink-0">
+                        <span className="text-sm font-bold text-foreground tabular-nums shrink-0">
                           {!resolved?.available || (item.slotId && bookingSlotsStatus !== "loaded") ? tCustomer("ui.cart.checkingAvailability") : <ReferencePrice amountMYR={lineTotal} />}
                         </span>
                       </div>
@@ -496,7 +496,7 @@ export default function CheckoutPage() {
                       <m.icon size={16} className="text-teal shrink-0" />
                       <span className="text-sm font-medium text-foreground flex-1">{tCustomer(m.labelKey)}</span>
                       {m.id === "wallet" && walletSummaryLoaded && (
-                        <span className="text-xs text-muted-foreground font-[family-name:var(--font-mono)]">
+                        <span className="text-xs text-muted-foreground tabular-nums">
                           {formatMYRFromSen(walletSpendableSen)}
                         </span>
                       )}
@@ -552,18 +552,18 @@ export default function CheckoutPage() {
             <div className="space-y-2 border-b border-border pb-4 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{tCustomer("ui.checkout.subtotal")}</span>
-                <ReferencePrice amountMYR={subtotal} className="font-semibold text-foreground font-[family-name:var(--font-mono)]" />
+                <ReferencePrice amountMYR={subtotal} className="font-semibold text-foreground tabular-nums" />
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{tCustomer("strictMigration.checkout.discountWithCode", { code: voucherCode })}</span>
-                  <span className="font-semibold text-primary font-[family-name:var(--font-mono)]">−<ReferencePrice amountMYR={discount} /></span>
+                  <span className="font-semibold text-primary tabular-nums">−<ReferencePrice amountMYR={discount} /></span>
                 </div>
               )}
             </div>
             <div className="flex justify-between text-lg font-bold">
               <span className="text-foreground">{tCustomer("ui.checkout.total")}</span>
-              <ReferencePrice amountMYR={total} showSettlementMYR className="text-primary font-[family-name:var(--font-mono)]" />
+              <ReferencePrice amountMYR={total} showSettlementMYR className="text-primary tabular-nums" />
             </div>
 
             {!isFreeReservation && (

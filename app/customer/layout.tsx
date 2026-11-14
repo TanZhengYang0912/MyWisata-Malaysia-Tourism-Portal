@@ -181,7 +181,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
 
   const guestPublic = !currentUser && isPublicCustomerPath(pathname);
   if (loading || (!currentUser && !guestPublic)) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis")}</div>;
+    return <div className="customer-portal min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis")}</div>;
   }
 
   const customerDisplayName = currentUser
@@ -202,7 +202,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }} onClickCapture={confirmGuestNavigation} onAuxClickCapture={confirmGuestNavigation}>
+    <div className="customer-portal min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }} onClickCapture={confirmGuestNavigation} onAuxClickCapture={confirmGuestNavigation}>
       {/* One row only when it fits, else the phone's two rows: useCustomerHeaderLayout sets data-layout on this nav. */}
       <nav ref={headerRef} className="group/header sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden">
         <div className={`max-w-7xl mx-auto px-2 sm:px-6 flex items-center gap-1 sm:gap-8 ${isTripRoute ? "h-14 md:h-17" : "h-17"}`}>

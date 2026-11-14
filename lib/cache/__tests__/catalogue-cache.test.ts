@@ -167,3 +167,29 @@ describe("getCachedComputedActivities cache boundaries", () => {
     expect(cachedRelatedData.outlets).toContainEqual(expect.objectContaining({ id: "outlet-0" }));
   });
 });
+
+describe("public Home reads", () => {
+  it("throws a failed read so the cache does not keep it, and returns the rows otherwise", async () => {
+    const { getCachedPublicPromotionCampaigns } = await import("@/lib/cache/catalogue-cache");
+    cacheState.db = { rpc: async () => ({ data: null, error: { message: "boom" } }) };
+    await expect(getCachedPublicPromotionCampaigns()).rejects.toMatchObject({ message: "boom" });
+
+    cacheState.db = { rpc: async (name: string, args: unknown) => ({ data: [{ name, args }], error: null }) };
+    await expect(getCachedPublicPromotionCampaigns()).resolves.toEqual([{ name: "get_public_promotion_campaigns", args: { p_slug: null } }]);
+  });
+
+  it("stores vendor ratings as plain entries that survive cache serialisation", async () => {
+    const { getCachedVendorRatings } = await import("@/lib/cache/catalogue-cache");
+    const rows = [{ scope_id: "v1", rating: 4, review_count: 2 }];
+    const builder: Record<string, unknown> = {
+      select: () => builder, eq: () => builder, in: () => builder,
+      then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: rows, error: null }).then(resolve),
+    };
+    cacheState.db = { from: () => builder };
+
+    const entries = await getCachedVendorRatings(["v1"]);
+
+    expect(JSON.parse(JSON.stringify(entries))).toEqual(entries);
+    expect(new Map(entries).get("v1")).toMatchObject({ count: expect.any(Number) });
+  });
+});

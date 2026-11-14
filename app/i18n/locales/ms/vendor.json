@@ -54,7 +54,7 @@
     "sections": {
       "stay": "Daftar masuk & daftar keluar"
     },
-    "selectedCount": "{{count}} daripada {{total}} dipilih",
+    "selectedCount": "{{selected}} daripada {{total}} dipilih",
     "malaysiaTime": "Masa mengikut waktu Malaysia (UTC+8).",
     "coverPhoto": "Muka depan",
     "sectionsNav": "Bahagian profil hotel",
@@ -1160,6 +1160,7 @@
       "pageOrderTotal": "Jumlah pesanan"
     },
     "outlets": {
+      "loading": "Memuatkan outlet",
       "loadingShop": "Memuatkan halaman kedai anda…",
       "loadFailed": "Outlet tidak dapat dimuatkan",
       "shopUnavailable": "Halaman kedai tidak tersedia",
@@ -1724,7 +1725,7 @@
       "checkEvent": "Nama dan butiran acara",
       "checkDates": "Tarikh mula dan tamat",
       "days": "Hari",
-      "charCount": "{{count}} / {{max}}",
+      "charCount": "{{current}} / {{max}}",
       "titlePlaceholder": "cth. Pasar Malam Heritage Walk",
       "detailsPlaceholder": "Apa yang berlaku, di mana, dan apa yang pengunjung dapat",
       "newHeading": "Hantar acara baharu",
@@ -1742,13 +1743,14 @@
       "loadError": "Tidak dapat memuatkan promosi acara anda.",
       "uploadError": "Tidak dapat memuat naik imej.",
       "imageRequired": "Muat naik imej sebelum menghantar.",
+      "validation": {
+        "title": "Masukkan nama acara sekurang-kurangnya 3 aksara.",
+        "details": "Huraikan acara dengan sekurang-kurangnya 10 aksara.",
+        "datesRequired": "Pilih hari pertama dan terakhir promosi pada kalendar.",
+        "datesOrder": "Hari terakhir tidak boleh sebelum hari pertama."
+      },
       "submitError": "Tidak dapat menghantar promosi acara.",
       "errors": {
-        "titleTooShort": "Gunakan sekurang-kurangnya {{min}} aksara.",
-        "detailsTooShort": "Terangkan acara dalam sekurang-kurangnya {{min}} aksara.",
-        "datesRequired": "Pilih tarikh mula dan tamat.",
-        "endBeforeStart": "Tarikh tamat mesti pada atau selepas tarikh mula.",
-        "fieldRejected": "Semak medan ini dan cuba lagi.",
         "fixFields": "Betulkan medan yang ditanda sebelum menghantar."
       },
       "submitSuccess": "Promosi acara dihantar untuk semakan.",
@@ -1966,7 +1968,21 @@
       "applicationDeadline": "Permohonan ditutup (waktu Malaysia)",
       "approvalDeadline": "Kelulusan ditutup (waktu Malaysia)",
       "setupStarts": "Persediaan bermula (waktu Malaysia)",
-      "approvalWindowClosed": "Tempoh kelulusan telah ditutup. Hubungi penganjur mengenai permohonan ini."
+      "approvalWindowClosed": "Tempoh kelulusan telah ditutup. Hubungi penganjur mengenai permohonan ini.",
+      "staff": {
+        "title": "Kakitangan di lokasi",
+        "createLink": "Cipta pautan kakitangan",
+        "copyLink": "Salin pautan",
+        "copied": "Pautan disalin",
+        "resetLink": "Tetapkan semula pautan",
+        "resetConfirm": "Tetapkan semula pautan? Pautan semasa tidak lagi boleh digunakan untuk menyertai; kakitangan sedia ada kekal mempunyai akses.",
+        "validUntil": "Sah sehingga {{date}}",
+        "membersEmpty": "Belum ada kakitangan",
+        "joinedAt": "Menyertai {{date}}",
+        "remove": "Keluarkan",
+        "removeConfirm": "Keluarkan {{name}}? Mereka tidak lagi boleh mengimbas untuk acara ini, walaupun dengan pautan.",
+        "loadError": "Tidak dapat memuatkan kakitangan"
+      }
     },
     "eventOrders": {
       "title": "Tempahan acara",
@@ -1990,6 +2006,31 @@
       "viewFilter": "Paparan tempahan",
       "allCollected": "Semua di sini telah diambil.",
       "retry": "Cuba lagi"
+    },
+    "eventStaff": {
+      "join": {
+        "title": "Sertai sebagai kakitangan acara",
+        "nameLabel": "Nama anda",
+        "emailLabel": "E-mel",
+        "sendCode": "Hantar kod",
+        "resendCode": "Hantar kod baharu",
+        "codeLabel": "Kod 6 digit",
+        "verifyAndJoin": "Sahkan dan sertai",
+        "join": "Sertai",
+        "signedInAs": "Log masuk sebagai {{email}}",
+        "useAnotherEmail": "Guna e-mel lain",
+        "invalidLink": "Pautan ini tidak sah atau telah tamat tempoh.",
+        "removed": "Anda telah dikeluarkan daripada kakitangan acara ini."
+      },
+      "home": {
+        "title": "Imbasan acara",
+        "empty": "Tiada acara aktif",
+        "scan": "Imbas",
+        "notToday": "Bukan hari ini"
+      },
+      "scan": {
+        "back": "Kembali ke acara"
+      }
     }
   },
   "address": {
@@ -2454,9 +2495,9 @@
     "draftVersion": "Versi draf",
     "editShopPage": "Edit halaman kedai",
     "hotelProfileStatus": {
-      "live": "Langsung",
-      "pending": "Menunggu semakan",
-      "rejected": "Perubahan diminta"
+      "live": "Profil hotel: Langsung",
+      "pending": "Profil hotel: Menunggu semakan",
+      "rejected": "Profil hotel: Perubahan diminta"
     },
     "liveSince": "Langsung sejak {{date}}",
     "liveVersion": "Versi langsung",

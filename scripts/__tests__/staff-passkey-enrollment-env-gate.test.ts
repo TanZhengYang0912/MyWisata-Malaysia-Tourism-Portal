@@ -10,7 +10,8 @@ function run(url: string, extraArgs: string[] = []) {
     process.execPath,
     [script, "--user", userId, "--confirm-user", userId, "--reason", "Identity verified; ref TEST-0001", ...extraArgs],
     {
-      env: { PATH: process.env.PATH, NEXT_PUBLIC_SUPABASE_URL: url, SUPABASE_SERVICE_ROLE_KEY: "test-key" },
+      // NODE_ENV is required by the ProcessEnv type Next.js declares; the script does not read it.
+      env: { PATH: process.env.PATH, NODE_ENV: "test", NEXT_PUBLIC_SUPABASE_URL: url, SUPABASE_SERVICE_ROLE_KEY: "test-key" },
       encoding: "utf8",
       timeout: 20_000,
     },

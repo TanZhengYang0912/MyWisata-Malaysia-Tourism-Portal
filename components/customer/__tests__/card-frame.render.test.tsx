@@ -187,3 +187,15 @@ it("gives See More the same yellow hover and press feedback as the paging arrows
   expect(markup).toContain("hover:text-accent");
   expect(markup).toContain("active:text-accent");
 });
+
+it("drops the See more arrow", () => {
+  expect(renderToStaticMarkup(<SeeMoreLink href="/customer/explore" />)).not.toContain("lucide-arrow-right");
+});
+
+it("grows a title underline on hover only for cards that link, with no motion when reduced", () => {
+  const linked = linkOf(renderToStaticMarkup(<ProductCard vendorListing={product} returnTo="/customer/vendor/v1" />));
+  expect(linked).toContain("hover:bg-[length:100%_2px]");
+  expect(linked).toContain("motion-reduce:transition-none");
+  const unlinked = renderToStaticMarkup(<PlaceActivityCard imageUrl={null} imageAlt="Trail" imageFallback={null} title="Trail" footer="Free entry" />);
+  expect(unlinked).not.toContain("hover:bg-[length:100%_2px]");
+});

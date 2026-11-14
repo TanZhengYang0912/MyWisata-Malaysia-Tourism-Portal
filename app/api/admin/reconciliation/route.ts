@@ -44,7 +44,9 @@ export async function GET(request: Request) {
   try {
     const [report, eventOperations] = await Promise.all([getOrderMoneyReconciliation(service, range), getEventReservationOperations(service, { actorId: user.id, filters: query.data })]);
     return apiOk({ ...report, eventOperations });
-  } catch {
+  } catch (error) {
+    // The cause was being discarded, which left a 500 with nothing to diagnose.
+    console.error('[reconciliation] report failed', error instanceof Error ? error.message : error);
     return apiFail('DB_ERROR', 'Unable to load event obligations', 500);
   }
 }

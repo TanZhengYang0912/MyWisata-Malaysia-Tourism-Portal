@@ -347,7 +347,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
             className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-3.5 text-sm font-semibold transition sm:h-10 ${
               soundEnabled
                 ? "border-primary/20 bg-secondary text-primary hover:bg-secondary/80"
-                : "border-gray-200 dark:border-border bg-white dark:bg-card text-gray-600 dark:text-muted-foreground hover:bg-gray-50 dark:hover:bg-muted/50"
+                : "border-gray-200 dark:border-border bg-card text-gray-600 dark:text-muted-foreground hover:bg-gray-50 dark:hover:bg-muted/50"
             }`}
             title={soundEnabled ? t("ui.scanner.soundOn", "Sound on") : t("ui.scanner.soundOff", "Sound muted")}
           >
@@ -357,7 +357,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50 sm:h-10"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50 sm:h-10"
           >
             {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             <span className="hidden sm:inline">{isFullscreen ? t("ui.scanner.exitFullscreen", "Exit") : t("ui.scanner.fullscreen", "Fullscreen")}</span>
@@ -366,7 +366,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
             type="button"
             onClick={() => void loadStationData()}
             disabled={loadingStats}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-50 sm:h-10"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-50 sm:h-10"
           >
             <RefreshCw size={15} className={loadingStats ? "animate-spin" : ""} />
             <span>{t("actions.refresh", "Refresh")}</span>
@@ -426,14 +426,14 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
       </section>
 
       {/* 3. Toolbar Row (Tabs + Outlet Selector - Matching Fig 2) */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-card p-3 shadow-sm md:flex-row md:items-center md:justify-between">
         <div className="grid w-full min-w-0 grid-cols-3 gap-1 rounded-xl bg-gray-100 dark:bg-muted p-1 md:flex md:w-auto md:overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab("scanner")}
             aria-pressed={activeTab === "scanner"}
             className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 whitespace-normal break-words rounded-lg px-1 py-2 text-center text-[11px] leading-tight font-semibold transition md:min-h-0 md:shrink-0 md:flex-row md:gap-2 md:whitespace-nowrap md:px-3.5 md:text-left md:text-xs ${
-              activeTab === "scanner" ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"
+              activeTab === "scanner" ? "bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"
             }`}
           >
             <Camera size={14} />
@@ -444,7 +444,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
             onClick={() => setActiveTab("manual")}
             aria-pressed={activeTab === "manual"}
             className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 whitespace-normal break-words rounded-lg px-1 py-2 text-center text-[11px] leading-tight font-semibold transition md:min-h-0 md:shrink-0 md:flex-row md:gap-2 md:whitespace-nowrap md:px-3.5 md:text-left md:text-xs ${
-              activeTab === "manual" ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"
+              activeTab === "manual" ? "bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"
             }`}
           >
             <Keyboard size={14} />
@@ -455,7 +455,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
             onClick={() => setActiveTab("history")}
             aria-pressed={activeTab === "history"}
             className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 whitespace-normal break-words rounded-lg px-1 py-2 text-center text-[11px] leading-tight font-semibold transition md:min-h-0 md:shrink-0 md:flex-row md:gap-2 md:whitespace-nowrap md:px-3.5 md:text-left md:text-xs ${
-              activeTab === "history" ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"
+              activeTab === "history" ? "bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"
             }`}
           >
             <History size={14} />
@@ -490,7 +490,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                 setResult(null);
                 setScanError("");
               }}
-              className="h-9 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-2.5 text-xs font-medium text-gray-800 dark:text-foreground outline-none focus:border-primary"
+              className="h-9 rounded-xl border border-gray-200 dark:border-border bg-card px-2.5 text-xs font-medium text-gray-800 dark:text-foreground outline-none focus:border-primary"
               disabled={cameraOn || busy}
             >
               <option value="" disabled>{t("ui.scanner.selectOutlet", "Select an outlet")}</option>
@@ -512,7 +512,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
       </div>
 
       {/* 4. Main Workstation Card (Matching Fig 2 unified white card container) */}
-      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm sm:p-6">
+      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-card p-3 shadow-sm sm:p-6">
         {activeTab !== "history" ? (
           <div className="space-y-4 sm:space-y-6">
             <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)]">
@@ -524,7 +524,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                       <Camera size={14} className="text-[#ffcc00]" />
                       <span>{t("ui.scanner.supportsQrAndBarcode")}</span>
                     </span>
-                    <span className="rounded-full bg-white/10 dark:bg-card/10 px-2.5 py-0.5 text-[11px] font-medium text-white/70">
+                    <span className="rounded-full bg-card/10 px-2.5 py-0.5 text-[11px] font-medium text-white/70">
                       {cameraOn ? t("ui.scanner.stationActive", "Ready to scan") : t("ui.scanner.cameraOff")}
                     </span>
                   </div>
@@ -605,7 +605,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                           if (event.key === "Enter") void resolveManual();
                         }}
                         placeholder={t("ui.scanner.manualPlaceholder")}
-                        className="h-12 w-full rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-4 font-mono text-base uppercase shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        className="h-12 w-full rounded-xl border border-gray-200 dark:border-border bg-card px-4 font-mono text-base uppercase shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                       />
                     </div>
                     <button
@@ -651,7 +651,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                           {recentLogs.slice(0, 4).map((item) => (
                             <div
                               key={item.id}
-                              className="flex min-w-0 items-start gap-2 rounded-xl border border-gray-100 dark:border-border bg-white dark:bg-card p-2.5 text-xs shadow-sm"
+                              className="flex min-w-0 items-start gap-2 rounded-xl border border-gray-100 dark:border-border bg-card p-2.5 text-xs shadow-sm"
                             >
                               <div className="mt-0.5 rounded-lg bg-secondary p-1.5 text-primary">
                                 {item.kind === "voucher" ? <Tag size={13} /> : item.kind === "food_order" ? <TicketCheck size={13} /> : item.kind === "event_pickup" ? <Clock size={13} /> : item.kind === "retail_pickup" ? <ClipboardCheck size={13} /> : <Ticket size={13} />}
@@ -691,7 +691,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                         <p className="text-xs font-bold text-primary">
                           {t("ui.scanner.reviewBeforeConfirm")}
                         </p>
-                        <span className="rounded-md bg-white dark:bg-card px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
+                        <span className="rounded-md bg-card px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
                           {result.kind === "voucher" ? t("ui.scanner.voucherKind") : result.kind === "food_order" ? t("ui.scanner.foodOrderKind") : result.kind === "event_pickup" ? t("ui.scanner.eventPickupKind") : result.kind === "retail_pickup" ? t("ui.scanner.retailPickupKind") : t("ui.scanner.ticketKind")}
                         </span>
                       </div>
@@ -728,7 +728,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                         <div className="mt-3">
                           <h2 className="text-lg font-bold text-gray-950 dark:text-foreground">{result.name}</h2>
                           <div className="mt-1 flex items-center gap-2">
-                            <span className="rounded-md bg-white dark:bg-card px-2 py-0.5 font-mono text-xs font-bold text-primary shadow-xs">
+                            <span className="rounded-md bg-card px-2 py-0.5 font-mono text-xs font-bold text-primary shadow-xs">
                               {result.code}
                             </span>
                           </div>
@@ -772,7 +772,7 @@ export function RedemptionScanner({ vendorId, outlets }: RedemptionScannerProps)
                                   max={ticketRemaining ?? 1}
                                   value={entriesToAdmit}
                                   onChange={(event) => setEntriesToAdmit(Math.min(ticketRemaining ?? 1, Math.max(1, Number(event.target.value) || 1)))}
-                                  className="mt-1 h-9 w-full rounded-lg border border-gray-200 dark:border-border bg-white dark:bg-card px-2 font-semibold text-gray-900 dark:text-foreground"
+                                  className="mt-1 h-9 w-full rounded-lg border border-gray-200 dark:border-border bg-card px-2 font-semibold text-gray-900 dark:text-foreground"
                                 />
                               </label>
                             ) : (

@@ -10,7 +10,9 @@ const CARD_GRIDS: Array<[file: string, grids: string[]]> = [
   ["app/customer/explore/explore-client.tsx", ["grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4"]],
   ["app/customer/activity/[id]/activity-detail-client.tsx", ["mt-5 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4"]],
   ["app/customer/search/search-client.tsx", ["grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4"]],
-  ["components/customer/event-partners-section.tsx", ["grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4"]],
+  // The Home event-partner row is a card carousel, which pages two cards at a time on phones (.mw-card-carousel).
+  ["components/customer/event-partners-section.tsx", ["<CardCarousel "]],
+  ["app/customer/events/promotion-campaigns-client.tsx", ["grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4"]],
 ];
 
 describe("mobile card grids", () => {

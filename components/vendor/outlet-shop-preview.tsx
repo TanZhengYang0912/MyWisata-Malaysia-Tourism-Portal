@@ -220,7 +220,7 @@ export default function OutletShopPreview({ vendorId, outlet, onEdit }: Props) {
 
   return (
     <div className="space-y-3 sm:space-y-5">
-      <header className="flex flex-col gap-4 rounded-2xl border border-primary/10 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6 lg:flex-row lg:items-end lg:justify-between">
+      <header className="flex flex-col gap-4 rounded-2xl border border-primary/10 bg-card p-4 shadow-sm sm:rounded-3xl sm:p-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             <Store size={15} /> {t("shopPreview.title")}
@@ -235,7 +235,8 @@ export default function OutletShopPreview({ vendorId, outlet, onEdit }: Props) {
               {preview.isPublished ? t("shopPreview.published") : t("shopPreview.previewOnly")}
             </span>
             {hotelProfile && <span className={`inline-flex items-center rounded-full px-2.5 py-1 font-semibold ${hotelProfile.state === "pending" ? "bg-amber-100 text-amber-800" : hotelProfile.state === "rejected" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"}`}>
-              {t("hotelProfile.eyebrow")}: {t(`shopPreview.hotelProfileStatus.${hotelProfile.state}`, { note: hotelProfile.rejectionNote ?? "" })}
+              {/* One translated phrase per state, so languages can place the label and status naturally. */}
+              {t(`shopPreview.hotelProfileStatus.${hotelProfile.state}`)}
             </span>}
             {preview.publishedAt && (
               <span>
@@ -275,7 +276,7 @@ export default function OutletShopPreview({ vendorId, outlet, onEdit }: Props) {
         </div>
       )}
 
-      <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm sm:rounded-3xl">
+      <section className="overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm sm:rounded-3xl">
         <div className="flex flex-col gap-1 border-b border-gray-100 bg-gray-50/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
@@ -286,8 +287,8 @@ export default function OutletShopPreview({ vendorId, outlet, onEdit }: Props) {
             {preview.isPublished ? t("shopPreview.liveVersion") : t("shopPreview.draftVersion")}
           </span>
         </div>
-        <div className="bg-[#f8fafc] p-0 sm:p-6">
-          <div className="mx-auto max-w-7xl overflow-hidden rounded-none border-0 bg-white shadow-none sm:rounded-3xl sm:border sm:border-gray-100 sm:shadow-sm">
+        <div className="bg-background p-0 sm:p-6">
+          <div className="mx-auto max-w-7xl overflow-hidden rounded-none border-0 bg-card shadow-none sm:rounded-3xl sm:border sm:border-gray-100 sm:shadow-sm">
             <OutletPageRenderer
               document={preview.document}
               outlet={rendererOutlet}

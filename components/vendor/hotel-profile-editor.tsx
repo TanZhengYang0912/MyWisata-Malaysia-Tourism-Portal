@@ -98,7 +98,7 @@ export function HotelProfileForm({ data, saving, uploading, onSubmit, onUpload }
           </section>
 
           <fieldset aria-labelledby="hotel-amenities" className={SECTION_CARD}>
-            <SectionHeading id="hotel-amenities" icon={Sparkles} title={t("hotelProfile.fields.amenities")} meta={t("hotelProfile.selectedCount", { count: profile.amenityCodes.length, total: data.amenities.length })} />
+            <SectionHeading id="hotel-amenities" icon={Sparkles} title={t("hotelProfile.fields.amenities")} meta={t("hotelProfile.selectedCount", { selected: profile.amenityCodes.length, total: data.amenities.length })} />
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {data.amenities.map((amenity) => (
                 // Selected amenities change border and fill too, so the state never relies on the small tick alone.

@@ -3001,11 +3001,19 @@
       "views": {
         "label": "选择活动查看方式",
         "list": "列表",
-        "calendar": "日历",
         "map": "地图与活动",
-        "calendarEmpty": "此期间没有活动地点。",
         "unpinned_one": "{{count}} 个地点尚未设置地图标记，请在列表视图中查看地址。",
         "unpinned_other": "{{count}} 个地点尚未设置地图标记，请在列表视图中查看地址。"
+      },
+      "dateEmpty": "这一天没有活动。",
+      "datePicker": {
+        "openCalendar": "打开日历",
+        "chooseDate": "选择日期",
+        "previousDay": "前一天",
+        "nextDay": "后一天",
+        "previousMonth": "上个月",
+        "nextMonth": "下个月",
+        "backToToday": "回到今天"
       }
     },
     "recommendationReasons": {

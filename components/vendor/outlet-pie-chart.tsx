@@ -36,7 +36,7 @@ export default function OutletPieChart({ data, total, salesMode = 'live' }: { da
   ];
 
   return (
-    <div className="flex min-h-[380px] h-full flex-col rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-6 shadow-sm">
+    <div className="flex min-h-[380px] h-full flex-col rounded-2xl border border-gray-100 dark:border-border bg-card p-6 shadow-sm">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>

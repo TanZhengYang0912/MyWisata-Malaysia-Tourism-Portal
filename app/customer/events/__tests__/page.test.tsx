@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PromotionCampaignPublic, PromotionCampaignPublicVendor } from "@/lib/promotion-campaigns/types";
 
 const mocks = vi.hoisted(() => ({ getPublicPromotionCampaigns: vi.fn() }));
@@ -41,71 +41,77 @@ const campaign: PromotionCampaignPublic = {
   visibility: "live",
   locations: [{
     id: "33333333-3333-4333-8333-333333333333", name: "Petaling Street", address: "Jalan Petaling, Kuala Lumpur",
-    lat: 3.1439, lng: 101.6977, startsOn: "2026-09-25", endsOn: "2026-12-25", opensAt: "10:00", closesAt: "18:00",
+    lat: 3.1439, lng: 101.6977, startsOn: "2026-11-12", endsOn: "2026-11-15", opensAt: "10:00", closesAt: "18:00",
   }],
   vendors: [vendor],
+};
+
+const laterCampaign: PromotionCampaignPublic = {
+  ...campaign,
+  id: "44444444-4444-4444-8444-444444444444",
+  slug: "december-bazaar",
+  title: "December Bazaar",
+  locations: [{ ...campaign.locations[0], id: "55555555-5555-4555-8555-555555555555", startsOn: "2026-12-01", endsOn: "2026-12-03" }],
 };
 
 describe("customer promotion campaign listing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getPublicPromotionCampaigns.mockResolvedValue({ campaigns: [campaign], error: false });
+    // 14:30 on Friday 13 November 2026 in Malaysia.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-13T06:30:00Z"));
+    mocks.getPublicPromotionCampaigns.mockResolvedValue({ campaigns: [campaign, laterCampaign], error: false });
   });
+  afterEach(() => vi.useRealTimers());
 
-  it("renders live Supabase campaign data in the initial server response", async () => {
+  it("opens on today: the date as the heading and five days with today in the middle", async () => {
     const markup = renderToStaticMarkup(await CustomerEventsPage());
 
-    expect(markup).toContain("ui.promotionCampaigns.pageTitle");
-    expect(markup).not.toContain("ui.promotionCampaigns.pageDescription");
-    expect(markup).toContain(campaign.title);
-    expect(markup).toContain("Heritage Walk KL");
-    expect(markup).not.toContain("ui.promotionCampaigns.loading");
-    expect(markup).toContain('href="/customer/events/heritage-walk-kl-current-offers"');
+    expect(markup).toMatch(/<h1 [^>]*>Friday 13 Nov<\/h1>/);
+    expect(markup).not.toContain("ui.promotionCampaigns.pageTitle");
+    const strip = [...markup.matchAll(/aria-pressed="(true|false)" aria-label="[A-Za-z]+, November \d+"/g)].map((match) => match[1]);
+    expect(strip).toEqual(["false", "false", "true", "false", "false"]);
     expect(mocks.getPublicPromotionCampaigns).toHaveBeenCalledOnce();
   });
 
-  it("defaults to the combined Malaysia map and state-filtered event list", async () => {
+  it("offers only List and Map, and shows the List of event cards by default", async () => {
     const markup = renderToStaticMarkup(await CustomerEventsPage());
-    const pageHeader = markup.match(/<header\b[\s\S]*?<\/header>/)?.[0] ?? "";
+    const views = markup.match(/<div role="group" aria-label="ui\.promotionCampaigns\.views\.label"[\s\S]*?<\/div>/)?.[0] ?? "";
 
-    expect(markup).toContain("ui.promotionCampaigns.map.stateCountsTitle");
-    expect(markup).toContain("ui.promotionCampaigns.map.eventsInMalaysia");
-    expect(markup).toContain("ui.promotionCampaigns.map.stateCountLabel");
-    expect(markup.match(/ui\.promotionCampaigns\.map\.stateCountLabel/g)).toHaveLength(16);
-    expect(pageHeader).toContain('role="group"');
-    expect(pageHeader).toContain("ui.promotionCampaigns.views.map");
-    expect(pageHeader).toContain("ui.promotionCampaigns.views.list");
-    expect(pageHeader).toContain("ui.promotionCampaigns.views.calendar");
-    expect(markup).not.toContain('href="/customer"');
-    expect(markup).toContain("ui.promotionCampaigns.endsAt");
-    expect(markup).toContain("ui.promotionCampaigns.viewAllVendors");
-    expect(markup.match(/href="\/customer\/events\/heritage-walk-kl-current-offers"/g)).toHaveLength(1);
+    expect(views).toContain("ui.promotionCampaigns.views.list");
+    expect(views).toContain("ui.promotionCampaigns.views.map");
+    expect(markup).not.toContain("ui.promotionCampaigns.views.calendar");
+    expect(markup).not.toContain("ui.promotionCampaigns.map.stateCountsTitle");
+    expect(markup).toContain('href="/customer/events/heritage-walk-kl-current-offers"');
+    expect(markup).toContain("lucide-tent");
+    expect(markup).toContain("Petaling Street");
   });
 
-  it("labels the start date for an upcoming campaign", async () => {
-    mocks.getPublicPromotionCampaigns.mockResolvedValueOnce({
-      campaigns: [{ ...campaign, visibility: "upcoming", startsAt: "2026-11-25T12:00:00.000Z" }],
-      error: false,
-    });
+  it("lists only the events running on the chosen day", async () => {
+    const markup = renderToStaticMarkup(await CustomerEventsPage());
+
+    expect(markup).toContain(campaign.title);
+    expect(markup).not.toContain(laterCampaign.title);
+    expect(markup).not.toContain("ui.promotionCampaigns.dateEmpty");
+  });
+
+  it("says when nothing runs on the chosen day", async () => {
+    mocks.getPublicPromotionCampaigns.mockResolvedValueOnce({ campaigns: [laterCampaign], error: false });
 
     const markup = renderToStaticMarkup(await CustomerEventsPage());
 
-    expect(markup).toContain("ui.promotionCampaigns.startsAt");
-    expect(markup).not.toContain("ui.promotionCampaigns.endsAt");
+    expect(markup).toContain("ui.promotionCampaigns.dateEmpty");
+    // Already on today, so there is no Back to today.
+    expect(markup).not.toContain("ui.promotionCampaigns.datePicker.backToToday");
   });
 
-  it("lists full-day events by date while retaining legacy event times", async () => {
-    mocks.getPublicPromotionCampaigns.mockResolvedValueOnce({ campaigns: [{
-      ...campaign,
-      startsAt: "2026-09-30T16:00:00.000Z",
-      endsAt: "2026-12-08T15:59:59.999Z",
-    }], error: false });
-    const fullDayMarkup = renderToStaticMarkup(await CustomerEventsPage());
-    expect(fullDayMarkup).toContain("Dec 8, 2026");
-    expect(fullDayMarkup).not.toContain("11:59 PM");
+  it("keeps the page title when there are no events at all", async () => {
+    mocks.getPublicPromotionCampaigns.mockResolvedValueOnce({ campaigns: [], error: false });
 
-    const legacyMarkup = renderToStaticMarkup(await CustomerEventsPage());
-    expect(legacyMarkup).toContain("8:00 PM");
+    const markup = renderToStaticMarkup(await CustomerEventsPage());
+
+    expect(markup).toContain("ui.promotionCampaigns.pageTitle");
+    expect(markup).toContain("ui.promotionCampaigns.emptyTitle");
   });
 
   it("shows a recoverable error when the server projection is unavailable", async () => {
@@ -113,6 +119,7 @@ describe("customer promotion campaign listing", () => {
 
     const markup = renderToStaticMarkup(await CustomerEventsPage());
 
+    expect(markup).toContain("ui.promotionCampaigns.pageTitle");
     expect(markup).toContain("ui.promotionCampaigns.loadError");
     expect(markup).not.toContain("ui.promotionCampaigns.loading");
   });

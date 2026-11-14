@@ -97,11 +97,11 @@ export default function VariantManager({ vendorId, productId, variants, onUpdate
         <div className="grid gap-3 rounded-xl border border-gray-200 dark:border-border bg-gray-50 dark:bg-muted/50 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] sm:items-end">
           <label htmlFor="variant-name" className="grid gap-1 text-xs font-medium text-gray-600 dark:text-muted-foreground">
             {t('variants.name')}
-            <Input id="variant-name" placeholder={t('variants.namePlaceholder')} value={newName} onChange={e => setNewName(e.target.value)} className="h-9 bg-white dark:bg-card text-sm" />
+            <Input id="variant-name" placeholder={t('variants.namePlaceholder')} value={newName} onChange={e => setNewName(e.target.value)} className="h-9 bg-card text-sm" />
           </label>
           <label htmlFor="variant-price-offset" className="grid gap-1 text-xs font-medium text-gray-600 dark:text-muted-foreground">
             {t('variants.priceOffset')}
-            <Input id="variant-price-offset" placeholder={t('variants.priceOffsetPlaceholder')} type="number" step="0.01" value={newPriceOffset} onChange={e => setNewPriceOffset(e.target.value)} className="h-9 bg-white dark:bg-card text-sm" />
+            <Input id="variant-price-offset" placeholder={t('variants.priceOffsetPlaceholder')} type="number" step="0.01" value={newPriceOffset} onChange={e => setNewPriceOffset(e.target.value)} className="h-9 bg-card text-sm" />
           </label>
           <Button size="sm" onClick={handleAdd}>{tCommon('actions.save')}</Button>
           <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>{tCommon('actions.cancel')}</Button>

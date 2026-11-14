@@ -30,13 +30,16 @@ type DiscoveryCardProps = { activity: ActivityCardItem; returnTo?: string; outle
 type VendorListingProps = { vendorListing: VendorProductCardData; returnTo: string; vendorName?: string };
 type CatalogueProductCardProps = { listing: ProductCatalogueCardData; returnTo: string; source?: "home" | "vendor"; onSponsoredClick?: () => void };
 
-/** "From" (only when several outlets sell it) and the price; hotels add "/ night". No "/ person". */
-function CardPrice({ amount, from, perNight }: { amount: number; from?: boolean; perNight?: boolean }) {
+/** Card price type: the body font with tabular numerals (a plain 0, unlike Plex Mono's dotted zero). Hotel room prices reuse it. */
+export const CARD_PRICE_CLASS = "text-[22px] font-extrabold leading-[1.3] tracking-[-0.5px] tabular-nums text-primary max-sm:text-lg";
+
+/** Right-aligned "From" (only when several outlets sell it) and the price; hotels add "/ night". No "/ person". */
+export function CardPrice({ amount, from, perNight }: { amount: number; from?: boolean; perNight?: boolean }) {
   const { t } = useTranslation("customer");
   return (
-    <p className="flex items-baseline gap-1 text-[10px] text-muted-foreground">
+    <p className="flex items-baseline justify-end gap-1 text-[10px] text-muted-foreground">
       {from && <span>{t("ui.vendor.from")}</span>}
-      <ReferencePrice amountMYR={amount} className="font-[family-name:var(--font-mono)] text-[22px] font-extrabold leading-[1.3] tracking-[-1px] text-primary max-sm:text-lg" />
+      <ReferencePrice amountMYR={amount} className={CARD_PRICE_CLASS} />
       {perNight && <span>/ {t("ui.activityDetail.priceUnits.perNight")}</span>}
     </p>
   );

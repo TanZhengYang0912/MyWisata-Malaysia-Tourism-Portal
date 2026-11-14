@@ -37,10 +37,10 @@ export default function SalesChart({ data, salesMode = 'live' }: { data: SalesPo
         </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg bg-gray-100 dark:bg-muted p-1">
-            <button type="button" onClick={() => setView('timeline')} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${view === 'timeline' ? 'bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm' : 'text-gray-500 dark:text-muted-foreground'}`}>
+            <button type="button" onClick={() => setView('timeline')} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${view === 'timeline' ? 'bg-card text-gray-900 dark:text-foreground shadow-sm' : 'text-gray-500 dark:text-muted-foreground'}`}>
               {t('charts.sales.timeline')}
             </button>
-            <button type="button" onClick={() => setView('list')} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${view === 'list' ? 'bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm' : 'text-gray-500 dark:text-muted-foreground'}`}>
+            <button type="button" onClick={() => setView('list')} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${view === 'list' ? 'bg-card text-gray-900 dark:text-foreground shadow-sm' : 'text-gray-500 dark:text-muted-foreground'}`}>
               <List size={14} className="mr-1 inline" /> {t('charts.sales.list')}
             </button>
           </div>

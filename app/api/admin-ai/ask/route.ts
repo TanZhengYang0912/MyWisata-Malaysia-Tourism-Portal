@@ -131,5 +131,5 @@ export async function POST(request: Request) {
     .insert({ session_id: session.id, role: 'bot', body: result.answer, kb_matched: result.queryUsed !== null });
   if (botMsgErr) return apiFail('DB_ERROR', botMsgErr.message, 500);
 
-  return apiOk({ sessionKey: session.session_key, answer: result.answer, actions: result.actions ?? [] });
+  return apiOk({ sessionKey: session.session_key, answer: result.answer, actions: result.actions ?? [], choices: result.choices ?? [] });
 }

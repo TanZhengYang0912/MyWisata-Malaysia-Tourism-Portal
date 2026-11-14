@@ -1033,6 +1033,7 @@
       "clear": "Kosongkan sembang",
       "empty": "cth. “Berapa banyak pengeluaran yang belum selesai?”, “Bagaimana saya meluluskan bayaran balik?” atau “Tandakan tiket pembayaran terbuka sebagai sedang diproses”. Tiada apa-apa berubah sehingga anda menekan Sahkan pada kad.",
       "placeholder": "Tanya soalan…",
+      "send": "Hantar",
       "restoring": "Memulihkan perbualan…",
       "title": "Tanya pembantu"
     },
@@ -1104,6 +1105,12 @@
       "on": "Hidup",
       "off": "Mati",
       "open": "Buka halaman"
+    },
+    "choices": {
+      "name": "Nama",
+      "active": "Keadaan",
+      "save_one": "Simpan {{count}} perubahan",
+      "save_other": "Simpan {{count}} perubahan"
     }
   },
   "catalogue": {
@@ -1506,6 +1513,7 @@
     "openItems_other": "{{count}} item terbuka",
     "walletPending_one": "{{count}} permintaan memerlukan keputusan, dengan {{amount}} dalam semakan.",
     "walletPending_other": "{{count}} permintaan memerlukan keputusan, dengan {{amount}} dalam semakan.",
+    "someSourcesUnavailable": "Sesetengah sumber tidak tersedia",
     "queueUnavailable": "Data barisan tidak tersedia buat sementara waktu",
     "staleData": "Muat semula gagal. Memaparkan hasil terakhir yang berjaya."
   },

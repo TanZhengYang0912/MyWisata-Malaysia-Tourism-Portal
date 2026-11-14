@@ -625,11 +625,11 @@ export default function VendorOrdersPage() {
           type="button"
           onClick={handleExportOrders}
           disabled={loading || items.length === 0}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
         >
           <Download size={16} aria-hidden="true" /> {t("actions.exportCsv")}
         </button>
-        <button type="button" onClick={handleExportReadableOrders} disabled={loading || items.length === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
+        <button type="button" onClick={handleExportReadableOrders} disabled={loading || items.length === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
           <Download size={16} aria-hidden="true" /> {t("actions.exportReadableCsv")}
         </button>
         </div>}
@@ -645,10 +645,10 @@ export default function VendorOrdersPage() {
 
       <div className="flex justify-end md:hidden">
         <details className="group relative">
-          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 [&::-webkit-details-marker]:hidden">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 [&::-webkit-details-marker]:hidden">
             <MoreHorizontal size={17} aria-hidden="true" /> {t("actions.moreActions")}
           </summary>
-          <div className="absolute right-0 z-20 mt-2 flex w-60 flex-col gap-1 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card p-2 shadow-xl">
+          <div className="absolute right-0 z-20 mt-2 flex w-60 flex-col gap-1 rounded-xl border border-gray-200 dark:border-border bg-card p-2 shadow-xl">
             <button type="button" onClick={handleExportOrders} disabled={loading || items.length === 0} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
               <Download size={16} aria-hidden="true" /> {t("actions.exportCsv")}
             </button>
@@ -777,7 +777,7 @@ export default function VendorOrdersPage() {
           {error}
         </div>
       )}
-      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-card shadow-sm">
         {loading ? (
           <div className="space-y-3 p-5">
             {Array.from({ length: 6 }).map((_, index) => (

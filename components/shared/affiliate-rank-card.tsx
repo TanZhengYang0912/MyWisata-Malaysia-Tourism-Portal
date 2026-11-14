@@ -48,7 +48,7 @@ export function AffiliateRankCard() {
         <p className="text-sm text-muted-foreground">{t("affiliate.rank.empty")}</p>
       ) : (
         <>
-          <p className="text-2xl font-bold text-foreground font-[family-name:var(--font-mono)]">
+          <p className="text-2xl font-bold text-foreground tabular-nums">
             {t("affiliate.rank.position", { rank: formatNumber(rank.rank, locale), total: formatNumber(rank.totalAffiliates, locale) })}
           </p>
           <p className="text-xs text-muted-foreground mt-1">{t("affiliate.rank.earnings", { amount: formatMYR(rank.commission, locale, { minimumFractionDigits: 2 }) })}</p>
@@ -62,7 +62,7 @@ export function AffiliateRankCard() {
               <span className="text-muted-foreground">
                 #{p.rank} <span className="font-[family-name:var(--font-mono)] text-foreground">{p.affiliateCode}</span>
               </span>
-              <span className="font-[family-name:var(--font-mono)] text-foreground">{formatMYR(p.commission, locale, { minimumFractionDigits: 2 })}</span>
+              <span className="tabular-nums text-foreground">{formatMYR(p.commission, locale, { minimumFractionDigits: 2 })}</span>
             </div>
           ))}
         </div>

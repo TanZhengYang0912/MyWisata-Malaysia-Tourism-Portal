@@ -163,7 +163,7 @@ export default function VendorOutletsPage() {
 
   if (managerShopMode && loading)
     return (
-      <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-8 text-sm text-gray-500 dark:text-muted-foreground">
+      <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-8 text-sm text-gray-500 dark:text-muted-foreground">
         {t('ui.outlets.loadingShop')}
       </div>
     );

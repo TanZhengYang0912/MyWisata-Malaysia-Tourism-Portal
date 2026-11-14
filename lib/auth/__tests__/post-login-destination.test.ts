@@ -56,6 +56,13 @@ describe("post-login destination", () => {
       .toBe("/outlet-manager-invitations/invite-token");
   });
 
+  it("brings event staff back to their scanning pages", () => {
+    expect(postLoginDestination("customer", "/event-staff")).toBe("/event-staff");
+    expect(postLoginDestination("vendor_owner", "/event-staff/scan?locationId=a&date=2026-11-13"))
+      .toBe("/event-staff/scan?locationId=a&date=2026-11-13");
+    expect(postLoginDestination("customer", "/event-staffing")).toBe("/customer");
+  });
+
   it.each([
     "/customer/../admin/dashboard",
     "/%2e%2e/admin/dashboard",

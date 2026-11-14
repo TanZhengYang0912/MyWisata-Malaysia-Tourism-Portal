@@ -36,7 +36,7 @@ interface Props {
 }
 interface MobileFilterToggleProps { controlId: string; isOpen: boolean; selectedFilterCount?: number; onToggle: () => void; mobileOnly?: boolean }
 
-const filterControlBaseClassName = 'h-11 min-w-0 rounded-xl border bg-white dark:bg-card px-3 text-sm outline-none transition-colors focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/20';
+const filterControlBaseClassName = 'h-11 min-w-0 rounded-xl border bg-card px-3 text-sm outline-none transition-colors focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/20';
 const filterControlIdleClassName = 'border-gray-200 dark:border-border text-gray-600 dark:text-muted-foreground hover:border-gray-300 dark:hover:border-muted-foreground/40';
 const filterControlActiveClassName = 'border-primary/50 dark:border-primary/60 font-medium text-gray-900 dark:text-foreground';
 
@@ -56,7 +56,7 @@ export function MobileFilterToggle({ controlId, isOpen, selectedFilterCount = 0,
       aria-controls={controlId}
       aria-expanded={isOpen}
       onClick={onToggle}
-      className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${isOpen || selectedFilterCount > 0 ? 'border-primary bg-secondary text-primary' : 'border-gray-200 dark:border-border bg-white dark:bg-card text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50'} ${mobileOnly ? 'lg:hidden' : ''}`}
+      className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${isOpen || selectedFilterCount > 0 ? 'border-primary bg-secondary text-primary' : 'border-gray-200 dark:border-border bg-card text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50'} ${mobileOnly ? 'lg:hidden' : ''}`}
     >
       <SlidersHorizontal size={16} aria-hidden="true" />
       {t('filters.label')}
@@ -86,7 +86,7 @@ export function FilterSegmented<T extends string>({ options, value, onChange, ar
             type="button"
             aria-pressed={isActive}
             onClick={() => onChange(option.value)}
-            className={`inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${isActive ? 'bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm' : 'text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground'}`}
+            className={`inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${isActive ? 'bg-card text-gray-900 dark:text-foreground shadow-sm' : 'text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground'}`}
           >
             {option.icon}
             {option.label}
@@ -248,7 +248,7 @@ export default function CompactFilterBar({
     : 'hidden lg:flex lg:flex-row lg:flex-wrap lg:items-center';
 
   return (
-    <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm">
+    <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-card p-3 shadow-sm">
       {(tabs || tabsEnd) && (
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           {tabs ? <FilterSegmented {...tabs} /> : <span />}
@@ -260,7 +260,7 @@ export default function CompactFilterBar({
         <div className="flex min-w-0 items-center gap-2 lg:min-w-72 lg:flex-1">
           <label className="relative min-w-0 flex-1">
             <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-muted-foreground" />
-            <input type="search" enterKeyHint="search" name="search" value={search} onChange={(event) => onSearchChange(event.target.value)} aria-label={searchLabel} placeholder={searchLabel} className="h-11 w-full rounded-xl border border-gray-200 dark:border-border bg-gray-50 dark:bg-muted/50 pl-9 pr-3 text-sm text-gray-900 dark:text-foreground outline-none transition-colors placeholder:text-gray-400 dark:placeholder:text-muted-foreground hover:border-gray-300 dark:hover:border-muted-foreground/40 focus:border-primary focus:bg-white dark:focus:bg-card focus-visible:ring-2 focus-visible:ring-primary/20" />
+            <input type="search" enterKeyHint="search" name="search" value={search} onChange={(event) => onSearchChange(event.target.value)} aria-label={searchLabel} placeholder={searchLabel} className="h-11 w-full rounded-xl border border-gray-200 dark:border-border bg-gray-50 dark:bg-muted/50 pl-9 pr-3 text-sm text-gray-900 dark:text-foreground outline-none transition-colors placeholder:text-gray-400 dark:placeholder:text-muted-foreground hover:border-gray-300 dark:hover:border-muted-foreground/40 focus:border-primary focus:bg-card focus-visible:ring-2 focus-visible:ring-primary/20" />
           </label>
           {showToggle && (
             <MobileFilterToggle

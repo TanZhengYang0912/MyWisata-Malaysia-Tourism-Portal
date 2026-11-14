@@ -27,4 +27,8 @@ describe("home destination pager hook", () => {
     expect(hook).not.toContain('addEventListener("pointerup"');
     expect(hook).not.toContain("setPointerCapture");
   });
+
+  it("can leave up/down wheels to the page (card carousels)", () => {
+    expect(hook).toContain("if (!verticalWheel && Math.abs(event.deltaY) >= Math.abs(event.deltaX)) return;");
+  });
 });

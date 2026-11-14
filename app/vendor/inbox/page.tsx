@@ -453,7 +453,7 @@ export default function VendorInboxPage() {
   return (
     <div className="space-y-4">
       <VendorPageHeader eyebrow={<><MessageCircle size={15} aria-hidden="true" /> {t('ui.inbox.travellerConversations')}</>} title={t('ui.inbox.title')} />
-      <div className="flex h-[calc(100dvh-15rem)] min-h-[480px] overflow-hidden rounded-2xl border border-gray-200 dark:border-border bg-white dark:bg-card shadow-sm">
+      <div className="flex h-[calc(100dvh-15rem)] min-h-[480px] overflow-hidden rounded-2xl border border-gray-200 dark:border-border bg-card shadow-sm">
         {/* Phones show the list or the open conversation, one at a time; md and up show both. */}
         <div className={`flex shrink-0 flex-col border-r border-gray-200 dark:border-border md:w-80 ${selected ? 'max-md:hidden' : 'max-md:w-full max-md:border-r-0'}`}>
           <div className="shrink-0 border-b border-gray-100 dark:border-border p-4">

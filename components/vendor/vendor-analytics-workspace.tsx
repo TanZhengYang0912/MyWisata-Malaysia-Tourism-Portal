@@ -71,7 +71,7 @@ export function VendorAnalyticsWorkspace({ data, generatedAt }: { data: VendorAn
       </section>
 
       <div className="hidden justify-end md:flex">
-        <form action="/vendor/analytics" method="get" className="grid w-full grid-cols-1 gap-2 rounded-2xl border border-gray-200 dark:border-border bg-white dark:bg-card p-2 shadow-sm md:w-auto md:grid-cols-[auto_auto_auto] md:items-center">
+        <form action="/vendor/analytics" method="get" className="grid w-full grid-cols-1 gap-2 rounded-2xl border border-gray-200 dark:border-border bg-card p-2 shadow-sm md:w-auto md:grid-cols-[auto_auto_auto] md:items-center">
           <label className="sr-only" htmlFor="analytics-filter-desktop">{t('ui.analytics.controls.period')}</label>
           <select id="analytics-filter-desktop" name="filter" defaultValue={data.filter} className="h-11 rounded-xl border-0 bg-gray-50 dark:bg-muted/50 px-3 text-sm font-semibold text-gray-700 dark:text-foreground outline-none ring-1 ring-gray-200 focus:ring-2 focus:ring-primary">
             <option value="7d">{t('ui.analytics.controls.last7Days')}</option>
@@ -94,7 +94,7 @@ export function VendorAnalyticsWorkspace({ data, generatedAt }: { data: VendorAn
           selectedFilterCount={selectedFilterCount}
           onToggle={() => setFiltersOpen((open) => !open)}
         />
-        <form action="/vendor/analytics" method="get" id="analytics-mobile-filters" className={`${filtersOpen ? 'grid' : 'hidden'} mt-2 w-full gap-2 rounded-2xl border border-gray-200 dark:border-border bg-white dark:bg-card p-3 shadow-sm`}>
+        <form action="/vendor/analytics" method="get" id="analytics-mobile-filters" className={`${filtersOpen ? 'grid' : 'hidden'} mt-2 w-full gap-2 rounded-2xl border border-gray-200 dark:border-border bg-card p-3 shadow-sm`}>
           <label className="sr-only" htmlFor="analytics-filter-mobile">{t('ui.analytics.controls.period')}</label>
           <select id="analytics-filter-mobile" name="filter" defaultValue={data.filter} className="h-11 w-full rounded-xl border border-gray-200 dark:border-border bg-gray-50 dark:bg-muted/50 px-3 text-sm font-semibold text-gray-700 dark:text-foreground outline-none focus:ring-2 focus:ring-primary">
             <option value="7d">{t('ui.analytics.controls.last7Days')}</option>
@@ -114,7 +114,7 @@ export function VendorAnalyticsWorkspace({ data, generatedAt }: { data: VendorAn
         <Panel eyebrow={t('ui.analytics.revenueQuality.eyebrow')} title={t('ui.analytics.revenueQuality.title')} icon={BarChart3}>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex rounded-xl bg-gray-100 dark:bg-muted p-1">
-              {(['revenue', 'averageOrderValue', 'orders'] as TrendMetric[]).map((metric) => <button key={metric} type="button" onClick={() => setTrendMetric(metric)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${trendMetric === metric ? 'bg-white dark:bg-card text-primary shadow-sm' : 'text-gray-500 dark:text-muted-foreground'}`}>{t(`ui.analytics.revenueQuality.metrics.${metric}`)}</button>)}
+              {(['revenue', 'averageOrderValue', 'orders'] as TrendMetric[]).map((metric) => <button key={metric} type="button" onClick={() => setTrendMetric(metric)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${trendMetric === metric ? 'bg-card text-primary shadow-sm' : 'text-gray-500 dark:text-muted-foreground'}`}>{t(`ui.analytics.revenueQuality.metrics.${metric}`)}</button>)}
             </div>
           </div>
           <div className="h-[280px] w-full">
@@ -131,7 +131,7 @@ export function VendorAnalyticsWorkspace({ data, generatedAt }: { data: VendorAn
         <Panel eyebrow={t('ui.analytics.bookingMix.eyebrow')} title={t('ui.analytics.bookingMix.title')} icon={CalendarClock}>
           <div className="flex h-[280px] flex-col justify-center">
             <div className="relative mx-auto flex h-44 w-44 items-center justify-center rounded-full" style={{ background: `conic-gradient(${ORANGE} ${data.bookingMix.bookingShare}%, #e2e8f0 0)` }}>
-              <div className="flex h-32 w-32 flex-col items-center justify-center rounded-full bg-white dark:bg-card text-center"><span className="text-3xl font-bold text-gray-950 dark:text-foreground">{data.bookingMix.bookingShare}%</span><span className="text-xs text-gray-500 dark:text-muted-foreground">{t('ui.analytics.bookingMix.booked')}</span></div>
+              <div className="flex h-32 w-32 flex-col items-center justify-center rounded-full bg-card text-center"><span className="text-3xl font-bold text-gray-950 dark:text-foreground">{data.bookingMix.bookingShare}%</span><span className="text-xs text-gray-500 dark:text-muted-foreground">{t('ui.analytics.bookingMix.booked')}</span></div>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3 text-center text-xs">
               <div className="rounded-xl bg-orange-50 dark:bg-orange-500/10 px-3 py-2"><p className="font-bold text-orange-800 dark:text-orange-200">{data.bookingMix.bookedOrders}</p><p className="mt-1 text-orange-700 dark:text-orange-200">{t('ui.analytics.bookingMix.booked')}</p></div>
@@ -153,7 +153,7 @@ export function VendorAnalyticsWorkspace({ data, generatedAt }: { data: VendorAn
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Panel eyebrow={t('ui.analytics.productPortfolio.eyebrow')} title={t('ui.analytics.productPortfolio.title')} icon={PackageSearch}>
-          <div className="mb-4 flex items-center justify-between gap-3"><span className="text-xs text-gray-400 dark:text-muted-foreground">{t('ui.analytics.productPortfolio.axisHint')}</span><div className="flex rounded-lg bg-gray-100 dark:bg-muted p-1">{(['revenue', 'units'] as const).map((mode) => <button key={mode} type="button" onClick={() => setProductMode(mode)} className={`rounded-md px-2.5 py-1 text-xs font-semibold ${productMode === mode ? 'bg-white dark:bg-card text-primary shadow-sm' : 'text-gray-500 dark:text-muted-foreground'}`}>{t(`ui.analytics.productPortfolio.${mode}`)}</button>)}</div></div>
+          <div className="mb-4 flex items-center justify-between gap-3"><span className="text-xs text-gray-400 dark:text-muted-foreground">{t('ui.analytics.productPortfolio.axisHint')}</span><div className="flex rounded-lg bg-gray-100 dark:bg-muted p-1">{(['revenue', 'units'] as const).map((mode) => <button key={mode} type="button" onClick={() => setProductMode(mode)} className={`rounded-md px-2.5 py-1 text-xs font-semibold ${productMode === mode ? 'bg-card text-primary shadow-sm' : 'text-gray-500 dark:text-muted-foreground'}`}>{t(`ui.analytics.productPortfolio.${mode}`)}</button>)}</div></div>
           <div className="h-[270px]">
             {productScatter.length ? <ResponsiveContainer width="100%" height="100%"><ScatterChart margin={{ top: 10, right: 16, bottom: 10, left: 0 }}>
               <CartesianGrid stroke="#e2e8f0" strokeDasharray="4 4" />
@@ -209,12 +209,12 @@ export function VendorAnalyticsWorkspace({ data, generatedAt }: { data: VendorAn
 }
 
 function Panel({ eyebrow, title, icon: Icon, children }: { eyebrow: string; title: string; icon: typeof BarChart3; children: React.ReactNode }) {
-  return <section className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-5 shadow-sm sm:p-6"><div className="mb-5 flex items-start justify-between gap-4"><div><div className="mb-1 flex items-center gap-2 text-[11px] font-bold text-primary"><Icon size={14} /> {eyebrow}</div><h2 className="text-lg font-bold text-gray-950 dark:text-foreground">{title}</h2></div></div>{children}</section>;
+  return <section className="rounded-2xl border border-gray-100 dark:border-border bg-card p-5 shadow-sm sm:p-6"><div className="mb-5 flex items-start justify-between gap-4"><div><div className="mb-1 flex items-center gap-2 text-[11px] font-bold text-primary"><Icon size={14} /> {eyebrow}</div><h2 className="text-lg font-bold text-gray-950 dark:text-foreground">{title}</h2></div></div>{children}</section>;
 }
 
 function MetricCard({ icon: Icon, label, value, note, tone }: { icon: typeof Activity; label: string; value: string; note: string; tone: 'navy' | 'teal' | 'orange' | 'slate' }) {
   const tones = { navy: 'bg-indigo-50 dark:bg-indigo-500/10 text-primary', teal: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-200', orange: 'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-200', slate: 'bg-slate-100 dark:bg-muted text-slate-600 dark:text-muted-foreground' };
-  return <article className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-5 shadow-sm"><div className="flex items-center gap-3"><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${tones[tone]}`}><Icon size={18} /></span><span className="text-sm font-semibold text-gray-600 dark:text-muted-foreground">{label}</span></div><p className="mt-5 text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground">{value}</p><p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{note}</p></article>;
+  return <article className="rounded-2xl border border-gray-100 dark:border-border bg-card p-5 shadow-sm"><div className="flex items-center gap-3"><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${tones[tone]}`}><Icon size={18} /></span><span className="text-sm font-semibold text-gray-600 dark:text-muted-foreground">{label}</span></div><p className="mt-5 text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground">{value}</p><p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{note}</p></article>;
 }
 
 function EmptyState({ text }: { text: string }) {

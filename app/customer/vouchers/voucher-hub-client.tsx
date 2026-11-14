@@ -12,8 +12,11 @@ import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/cus
 import { DiscoverySearchField } from "@/components/customer/discovery-filters";
 import { VoucherTicket } from "@/components/vouchers/voucher-ticket";
 import { VoucherRedeemDialog } from "@/components/customer/voucher-redeem-dialog";
+import { Pagination } from "@/components/shared/pagination";
 import { buildVoucherUseHref, isClaimUsable, type CustomerVoucher, type CustomerVoucherTab } from "@/lib/customer/voucher-claims";
 import { outletShortName } from "@/lib/outlet-display";
+
+const VOUCHER_PAGE_SIZE = 8;
 
 type VoucherFilter = "all" | CustomerVoucher["voucherType"];
 
@@ -236,6 +239,14 @@ export default function VoucherHubClient() {
     });
   }, [filter, search, vouchers]);
 
+  // A new tab, filter or search starts at page 1; a claim refresh keeps the page (clamped below).
+  const listKey = `${tab}|${filter}|${search}`;
+  const [pageState, setPageState] = useState({ key: listKey, page: 1 });
+  const page = pageState.key === listKey ? pageState.page : 1;
+  const totalPages = Math.max(1, Math.ceil(visibleVouchers.length / VOUCHER_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageStart = (safePage - 1) * VOUCHER_PAGE_SIZE;
+
   const activeFilterLabel = tCustomer(FILTERS.find((item) => item.value === filter)?.labelKey ?? FILTERS[0].labelKey);
   const renderFilterButtons = (mobile: boolean) => FILTERS.map((item) => (
     <button
@@ -310,7 +321,7 @@ export default function VoucherHubClient() {
         </div>
       </div>
 
-        {loading ? <div className="space-y-5">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-64 animate-pulse rounded-[1.75rem] bg-secondary/50" />)}</div> : error ? <div className="rounded-3xl border border-destructive/20 bg-card p-8 text-center"><Gift className="mx-auto text-destructive" /><p className="mt-3 text-sm font-semibold text-destructive">{error}</p><button type="button" onClick={() => window.location.reload()} className="mt-4 text-sm font-bold text-primary hover:underline">{tCustomer("ui.voucherHub.tryAgain")}</button></div> : visibleVouchers.length === 0 ? <div className="rounded-3xl border border-border bg-card p-10 text-center"><Gift className="mx-auto text-primary" /><h2 className="mt-3 text-lg font-bold text-foreground">{tCustomer(tab === "mine" ? "ui.voucherHub.emptyMineTitle" : "ui.voucherHub.emptyDealsTitle")}</h2><p className="mt-2 text-sm text-muted-foreground">{tCustomer(tab === "mine" ? "ui.voucherHub.emptyMineDescription" : "ui.voucherHub.emptyDealsDescription")}</p>{tab === "mine" && <button type="button" onClick={() => setTab("deals")} className="mt-4 text-sm font-bold text-primary hover:underline">{tCustomer("ui.voucherHub.browseDeals")}</button>}</div> : <div className="space-y-5">{visibleVouchers.map((voucher) => <VoucherCard key={voucher.id} voucher={voucher} onClaim={claim} claiming={claimingId === voucher.id} onShowInStore={setRedeemVoucher} />)}</div>}
+        {loading ? <div className="space-y-5">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-64 animate-pulse rounded-[1.75rem] bg-secondary/50" />)}</div> : error ? <div className="rounded-3xl border border-destructive/20 bg-card p-8 text-center"><Gift className="mx-auto text-destructive" /><p className="mt-3 text-sm font-semibold text-destructive">{error}</p><button type="button" onClick={() => window.location.reload()} className="mt-4 text-sm font-bold text-primary hover:underline">{tCustomer("ui.voucherHub.tryAgain")}</button></div> : visibleVouchers.length === 0 ? <div className="rounded-3xl border border-border bg-card p-10 text-center"><Gift className="mx-auto text-primary" /><h2 className="mt-3 text-lg font-bold text-foreground">{tCustomer(tab === "mine" ? "ui.voucherHub.emptyMineTitle" : "ui.voucherHub.emptyDealsTitle")}</h2><p className="mt-2 text-sm text-muted-foreground">{tCustomer(tab === "mine" ? "ui.voucherHub.emptyMineDescription" : "ui.voucherHub.emptyDealsDescription")}</p>{tab === "mine" && <button type="button" onClick={() => setTab("deals")} className="mt-4 text-sm font-bold text-primary hover:underline">{tCustomer("ui.voucherHub.browseDeals")}</button>}</div> : <><div className="space-y-5">{visibleVouchers.slice(pageStart, pageStart + VOUCHER_PAGE_SIZE).map((voucher) => <VoucherCard key={voucher.id} voucher={voucher} onClaim={claim} claiming={claimingId === voucher.id} onShowInStore={setRedeemVoucher} />)}</div><Pagination currentPage={safePage} onPageChange={(next) => setPageState({ key: listKey, page: next })} pageSize={VOUCHER_PAGE_SIZE} totalItems={visibleVouchers.length} totalPages={totalPages} /></>}
         <VoucherRedeemDialog open={Boolean(redeemVoucher)} onOpenChange={(open) => { if (!open) setRedeemVoucher(null); }} voucher={redeemVoucher} />
     </CustomerPageShell>
   );

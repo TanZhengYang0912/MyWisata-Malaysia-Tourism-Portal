@@ -28,7 +28,7 @@ export function postLoginDestination(role: Role, next?: string | null, staffVeri
   const pathname = parsedNext.pathname;
 
   // Preserve only essential post-auth completion flows (password reset or invitation tokens)
-  if (pathname === "/reset-password" || pathname === "/vendor-invite" || pathname.startsWith("/outlet-manager-invitations/") || pathname.startsWith("/staff-invitations/")) {
+  if (pathname === "/reset-password" || pathname === "/vendor-invite" || pathname.startsWith("/outlet-manager-invitations/") || pathname.startsWith("/staff-invitations/") || pathname === "/event-staff" || pathname.startsWith("/event-staff/")) {
     return `${pathname}${parsedNext.search}${parsedNext.hash}`;
   }
 

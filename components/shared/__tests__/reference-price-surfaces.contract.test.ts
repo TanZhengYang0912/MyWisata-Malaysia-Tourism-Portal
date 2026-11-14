@@ -18,7 +18,8 @@ describe("reference price discovery surfaces", () => {
   it.each(priceSurfaces)("uses the shared selected-currency price in %s", (file) => {
     const source = readFileSync(resolve(process.cwd(), file), "utf8");
 
-    expect(source).toContain('from "@/components/shared/reference-price"');
-    expect(source).toContain("<ReferencePrice");
+    // CardPrice (components/customer/product-card.tsx) renders ReferencePrice, so either counts.
+    expect(source).toMatch(/from "@\/components\/(?:shared\/reference-price|customer\/product-card)"/);
+    expect(source).toMatch(/<(?:ReferencePrice|CardPrice)\b/);
   });
 });

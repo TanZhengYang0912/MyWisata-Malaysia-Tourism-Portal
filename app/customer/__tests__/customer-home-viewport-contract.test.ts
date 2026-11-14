@@ -18,6 +18,7 @@ const vendorCardSource = readFileSync(
   resolve(process.cwd(), "components/customer/vendor-card.tsx"),
   "utf8",
 );
+const eventPartnersSource = readFileSync(resolve(process.cwd(), "components/customer/event-partners-section.tsx"), "utf8");
 const nextConfigSource = readFileSync(resolve(process.cwd(), "next.config.ts"), "utf8");
 
 describe("customer home first viewport", () => {
@@ -237,20 +238,23 @@ describe("customer home first viewport", () => {
     expect(eventPartnersIndex).toBeGreaterThan(forYouIndex);
     expect(nearbyPartnersIndex).toBeGreaterThan(eventPartnersIndex);
     expect(featuredPartnersIndex).toBeGreaterThan(nearbyPartnersIndex);
-    expect(homeSource).toContain("eventPartners.slice(0, 4)");
-    expect(homeSource).toContain("vendors.slice(0, 4)");
-    expect(homeSource).toContain("visibleHighlights.map((activity)");
+    expect(homeSource).toContain("eventPartners.slice(0, HOME_HIGHLIGHT_LIMIT)");
+    expect(homeSource).toContain("vendors.slice(0, HOME_HIGHLIGHT_LIMIT)");
+    expect(homeSource).toContain("featuredHighlights.map((activity)");
     expect(homeSource).toContain("forYouItems.map((activity)");
     expect(homePageSource).toContain("campaign.vendors.map((vendor) => vendor.vendorId)");
     expect(homePageSource).toContain("eventVendorIds");
-    expect(homePageSource).toContain('.in("id", eventVendorIds)');
+    expect(homePageSource).toContain("getCachedEventPartnerVendors(vendorIds)");
+    expect(readFileSync(resolve(process.cwd(), "lib/cache/catalogue-cache.ts"), "utf8")).toContain(".in('id', vendorIds)");
     expect(homePageSource).toContain("nextVendorEvent");
   });
 
   it("only requests device location after the nearby-partner action and caps results at four", () => {
     expect(homeSource).toContain('fetch("/api/customer/nearby-partners"');
     expect(homeSource).toContain("navigator.geolocation.getCurrentPosition");
-    expect(homeSource).toContain("nearbyPartners.slice(0, 4)");
+    // The API returns four; the carousel shows up to the shared Home limit.
+    expect(homeSource).toContain("body.data.partners.slice(0, 4)");
+    expect(homeSource).toContain("nearbyPartners.slice(0, HOME_HIGHLIGHT_LIMIT)");
     expect(homeSource).toContain('href="/customer/vendors"');
     expect(homeSource).not.toContain("detailsRevealStyle");
   });
@@ -271,8 +275,8 @@ describe("customer home first viewport", () => {
     const highlightsStart = homeSource.indexOf('aria-labelledby="featured-highlights-heading"');
     const highlightsEnd = homeSource.indexOf("</section>", highlightsStart);
     const highlightsSection = homeSource.slice(highlightsStart, highlightsEnd);
-    const featuredVendorStart = homeSource.indexOf("vendors.slice(0, 4).map");
-    const featuredVendorEnd = homeSource.indexOf("/>)}", featuredVendorStart);
+    const featuredVendorStart = homeSource.indexOf("vendors.slice(0, HOME_HIGHLIGHT_LIMIT).map");
+    const featuredVendorEnd = homeSource.indexOf("</CardCarousel>", featuredVendorStart);
     const featuredVendorCall = homeSource.slice(featuredVendorStart, featuredVendorEnd);
 
     expect(forYouSection).toContain("forYouItems.map((activity)");
@@ -288,15 +292,22 @@ describe("customer home first viewport", () => {
     expect(homeSource).toContain('text-2xl font-bold font-[family-name:var(--font-display)]');
   });
 
-  it("pages Featured Highlights 4 at a time and records impressions only for the shown page", () => {
-    expect(homeSource).toContain("pageHomeHighlights(highlightItems, highlightPage)");
-    expect(homeSource).toContain("for (const activity of visibleHighlights)");
-    expect(homeSource).toContain("highlights.pageCount > 1 &&");
-    expect(homeSource).toContain("disabled={atEdge}");
-    expect(homeSource).not.toMatch(/highlights\.page \+ 1\} \//);
+  it("pages Featured Highlights in a card carousel and records impressions only for the page it settles on", () => {
+    expect(homeSource).toContain('<CardCarousel label={t("ui.home.featuredHighlights")} onPageView={recordHighlightImpressions}>');
+    expect(homeSource).toContain("featuredHighlights.slice(first, first + perPage)");
+    expect(homeSource).not.toContain("pageHomeHighlights");
     for (const href of ["/customer/explore", "/customer/for-you", "/customer/vendors"]) {
       expect(homeSource).toContain(`<SeeMoreLink href="${href}" />`);
     }
+  });
+
+  it("puts a line under every card-carousel section header, with See more centred on the title", () => {
+    const header = "flex items-center justify-between gap-4 border-b border-border/70 pb-4";
+    expect(homeSource.split(header).length - 1).toBe(2);
+    expect(homeSource).toContain(`flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-4`);
+    expect(eventPartnersSource).toContain(header);
+    expect(homeSource.match(/<CardCarousel /g)).toHaveLength(3);
+    expect(eventPartnersSource).toContain("<CardCarousel ");
   });
 
   it("keeps generic marketing copy and the event calendar card out of the customer home", () => {

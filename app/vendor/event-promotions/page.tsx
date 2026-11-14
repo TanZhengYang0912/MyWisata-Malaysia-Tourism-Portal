@@ -14,7 +14,8 @@ import { EventPromotionAvailabilityCalendar } from '@/components/vendor/event-pr
 import { formatDate, formatMYR } from '@/lib/i18n/format';
 import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
 import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
-import { EVENT_PROMOTION_LIMITS } from '@/lib/validation/vendor-schemas';
+import { EVENT_PROMOTION_LIMITS, eventPromotionSubmitSchema } from '@/lib/validation/vendor-schemas';
+import { eventPromotionFormErrors, type EventPromotionFormField } from '@/lib/vendor/event-promotion-form-errors';
 import styles from './page.module.css';
 
 interface EventPromotion {
@@ -32,18 +33,15 @@ interface EventPromotion {
 }
 
 type FormState = { title: string; details: string; startDate: string; endDate: string; posterUrl: string };
-type FormField = keyof FormState;
-type FieldErrors = Partial<Record<FormField, string>>;
+// Values are translation keys from eventPromotionFormErrors (one per form field).
+type FieldErrors = Partial<Record<EventPromotionFormField, string>>;
 
 const EMPTY_FORM: FormState = { title: '', details: '', startDate: '', endDate: '', posterUrl: '' };
 const FORM_ID = 'event-promotion-form';
 const TITLE_MAX = EVENT_PROMOTION_LIMITS.titleMax;
 const DETAILS_MAX = EVENT_PROMOTION_LIMITS.detailsMax;
-const FORM_FIELDS: FormField[] = ['title', 'details', 'startDate', 'endDate', 'posterUrl'];
-
-function isFormField(value: string): value is FormField {
-  return (FORM_FIELDS as string[]).includes(value);
-}
+// Focus order for the first invalid field after a blocked submit.
+const FIELD_INPUT_IDS: Array<[EventPromotionFormField, string | null]> = [['title', 'event-title'], ['details', 'event-details'], ['dates', null], ['posterUrl', 'event-image']];
 const POSTER_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 function dayCount(startDate: string, endDate: string): number {
@@ -111,29 +109,13 @@ export default function VendorEventPromotionsPage() {
     setHasTriedSubmit(false);
   }
 
-  // Same rules as eventPromotionSubmitSchema, so a submit the server would
-  // reject with 422 is stopped here with a message on the field itself.
-  function validateForm(values: FormState): FieldErrors {
-    const errors: FieldErrors = {};
-    const title = values.title.trim();
-    const details = values.details.trim();
-    if (title.length < EVENT_PROMOTION_LIMITS.titleMin) errors.title = t('ui.eventPromotions.errors.titleTooShort', { min: EVENT_PROMOTION_LIMITS.titleMin });
-    if (details.length < EVENT_PROMOTION_LIMITS.detailsMin) errors.details = t('ui.eventPromotions.errors.detailsTooShort', { min: EVENT_PROMOTION_LIMITS.detailsMin });
-    if (!values.startDate) errors.startDate = t('ui.eventPromotions.errors.datesRequired');
-    else if (!values.endDate) errors.endDate = t('ui.eventPromotions.errors.datesRequired');
-    else if (values.endDate < values.startDate) errors.endDate = t('ui.eventPromotions.errors.endBeforeStart');
-    if (!values.posterUrl) errors.posterUrl = t('ui.eventPromotions.imageRequired');
-    return errors;
+  function clearFieldError(field: EventPromotionFormField) {
+    setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
   }
 
-  function updateField(field: FormField, value: string) {
+  function updateField(field: 'title' | 'details' | 'posterUrl', value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
-    setFieldErrors((prev) => {
-      if (!prev[field]) return prev;
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
+    clearFieldError(field);
   }
 
   // Click-to-choose and drag-and-drop share this single upload request.
@@ -177,41 +159,30 @@ export default function VendorEventPromotionsPage() {
     setForm((prev) => ({ ...prev, posterUrl: '' }));
   }
 
-  // The API returns zod's flatten() shape on 422: { fieldErrors: { title: [...] } }.
-  function readServerFieldErrors(details: unknown): FieldErrors {
-    if (!details || typeof details !== 'object' || !('fieldErrors' in details)) return {};
-    const raw = (details as { fieldErrors?: unknown }).fieldErrors;
-    if (!raw || typeof raw !== 'object') return {};
-    const errors: FieldErrors = {};
-    for (const [key, messages] of Object.entries(raw as Record<string, unknown>)) {
-      if (!isFormField(key) || !Array.isArray(messages) || messages.length === 0) continue;
-      errors[key] = t('ui.eventPromotions.errors.fieldRejected');
-    }
-    return errors;
-  }
-
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!vendorId || submitting) return;
     setHasTriedSubmit(true);
-    const clientErrors = validateForm(form);
-    setFieldErrors(clientErrors);
-    if (Object.keys(clientErrors).length > 0) {
-      const firstField = FORM_FIELDS.find((field) => clientErrors[field]);
-      const targetId = firstField === 'title' ? 'event-title' : firstField === 'details' ? 'event-details' : firstField === 'posterUrl' ? 'event-image' : null;
-      if (targetId) document.getElementById(targetId)?.focus();
+    const payload = {
+      title: form.title.trim(),
+      details: form.details.trim(),
+      startDate: form.startDate,
+      endDate: form.endDate,
+      posterUrl: form.posterUrl,
+    };
+    // The same schema the API applies, so the vendor is told which field to fix before anything is sent.
+    const check = eventPromotionSubmitSchema.safeParse(payload);
+    if (!check.success) {
+      const clientErrors = eventPromotionFormErrors(check.error.flatten().fieldErrors, Boolean(form.startDate && form.endDate));
+      setFieldErrors(clientErrors);
+      const target = FIELD_INPUT_IDS.find(([field]) => clientErrors[field])?.[1];
+      if (target) document.getElementById(target)?.focus();
       showFeedback('error', t('ui.eventPromotions.errors.fixFields'));
       return;
     }
+    setFieldErrors({});
     setSubmitting(true);
     try {
-      const payload = {
-        title: form.title.trim(),
-        details: form.details.trim(),
-        startDate: form.startDate,
-        endDate: form.endDate,
-        posterUrl: form.posterUrl,
-      };
       const response = editingId
         ? await fetch(`/api/vendors/${vendorId}/event-promotions/${editingId}`, {
           method: 'PATCH',
@@ -226,8 +197,10 @@ export default function VendorEventPromotionsPage() {
       // A proxy or crash page can return HTML; treat an unreadable body as a generic failure.
       const body = await response.json().catch(() => ({})) as { error?: { code?: string; message?: string; details?: unknown } };
       if (!response.ok) {
-        if (response.status === 422) {
-          const serverErrors = readServerFieldErrors(body.error?.details);
+        if (body.error?.code === 'VALIDATION_FAILED') {
+          // A 422 that slipped past the browser check still names its fields; show them in place.
+          const details = body.error.details as { fieldErrors?: Record<string, string[]> } | undefined;
+          const serverErrors = eventPromotionFormErrors(details?.fieldErrors ?? {}, Boolean(payload.startDate && payload.endDate));
           if (Object.keys(serverErrors).length > 0) {
             setFieldErrors(serverErrors);
             showFeedback('error', t('ui.eventPromotions.errors.fixFields'));
@@ -283,8 +256,8 @@ export default function VendorEventPromotionsPage() {
   // Keep Submit enabled until the first attempt so the vendor gets field-level
   // reasons instead of a silently disabled button.
   const isSubmitDisabled = submitting || uploading || (hasTriedSubmit && !isReady);
-  const fieldError = (field: FormField) => fieldErrors[field] ?? null;
-  const dateError = fieldError('startDate') ?? fieldError('endDate');
+  const fieldError = (field: EventPromotionFormField) => (fieldErrors[field] ? t(fieldErrors[field]!) : null);
+  const dateError = fieldError('dates');
   const submitLabel = submitting ? t('ui.eventPromotions.loading') : editingId ? t('ui.eventPromotions.actions.resubmit') : t('ui.eventPromotions.actions.submit');
   const dayCountLabel = t('ui.eventPromotions.dayCount', { count: days });
 
@@ -329,7 +302,7 @@ export default function VendorEventPromotionsPage() {
               <div>
                 <div className="mb-1.5 flex items-baseline justify-between gap-3">
                   <label htmlFor="event-title" className="text-sm font-semibold text-foreground">{t('ui.eventPromotions.fields.title')}</label>
-                  <span className={`text-xs tabular-nums ${form.title.length > TITLE_MAX - 20 ? 'text-amber-700 dark:text-amber-300' : 'text-muted-foreground'}`}>{t('ui.eventPromotions.charCount', { count: form.title.length, max: TITLE_MAX })}</span>
+                  <span className={`text-xs tabular-nums ${form.title.length > TITLE_MAX - 20 ? 'text-amber-700 dark:text-amber-300' : 'text-muted-foreground'}`}>{t('ui.eventPromotions.charCount', { current: form.title.length, max: TITLE_MAX })}</span>
                 </div>
                 <Input id="event-title" className="h-12 rounded-xl border-primary/20 bg-card hover:border-primary/40" placeholder={t('ui.eventPromotions.titlePlaceholder')} value={form.title} onChange={(e) => updateField('title', e.target.value)} maxLength={TITLE_MAX} minLength={EVENT_PROMOTION_LIMITS.titleMin} aria-invalid={Boolean(fieldError('title'))} aria-describedby={fieldError('title') ? 'event-title-error' : undefined} required />
                 {fieldError('title') && <p id="event-title-error" role="alert" className="mt-1.5 text-xs font-medium text-destructive">{fieldError('title')}</p>}
@@ -337,7 +310,7 @@ export default function VendorEventPromotionsPage() {
               <div>
                 <div className="mb-1.5 flex items-baseline justify-between gap-3">
                   <label htmlFor="event-details" className="text-sm font-semibold text-foreground">{t('ui.eventPromotions.fields.details')}</label>
-                  <span className={`text-xs tabular-nums ${form.details.length > DETAILS_MAX - 200 ? 'text-amber-700 dark:text-amber-300' : 'text-muted-foreground'}`}>{t('ui.eventPromotions.charCount', { count: form.details.length, max: DETAILS_MAX })}</span>
+                  <span className={`text-xs tabular-nums ${form.details.length > DETAILS_MAX - 200 ? 'text-amber-700 dark:text-amber-300' : 'text-muted-foreground'}`}>{t('ui.eventPromotions.charCount', { current: form.details.length, max: DETAILS_MAX })}</span>
                 </div>
                 <Textarea id="event-details" className="min-h-28 rounded-xl border-primary/20 bg-card hover:border-primary/40" placeholder={t('ui.eventPromotions.detailsPlaceholder')} value={form.details} onChange={(e) => updateField('details', e.target.value)} maxLength={DETAILS_MAX} minLength={EVENT_PROMOTION_LIMITS.detailsMin} aria-invalid={Boolean(fieldError('details'))} aria-describedby={fieldError('details') ? 'event-details-error' : undefined} rows={4} required />
                 {fieldError('details') && <p id="event-details-error" role="alert" className="mt-1.5 text-xs font-medium text-destructive">{fieldError('details')}</p>}
@@ -358,7 +331,7 @@ export default function VendorEventPromotionsPage() {
                   endDate={form.endDate}
                   onChange={(range) => {
                     setForm((prev) => ({ ...prev, startDate: range.startDate, endDate: range.endDate }));
-                    setFieldErrors((prev) => ({ ...prev, startDate: undefined, endDate: undefined }));
+                    clearFieldError('dates');
                   }}
                   onCostPerDayChange={setCostPerDaySen}
                 />

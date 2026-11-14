@@ -12,6 +12,7 @@ import { signRetailPickupToken } from "@/lib/orders/retail-pickup-token";
 import { normalizeRetailPickupCode } from "@/lib/orders/retail-pickup-code";
 import { normalizePickupCode } from "@/lib/pickup-code";
 import { getMalaysiaDateInputValue } from "@/lib/datetime/date-input";
+import { isEventLocationInCampaigns } from "@/lib/events/event-staff";
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -80,7 +81,8 @@ export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
   // Event vendors have no outlets: they can only resolve event pickups below;
   // every other code still requires one of the caller's outlets.
-  const access = await authorizeVendor(vendorId, undefined, { allowEventVendor: true });
+  // Event staff come in here too, limited below to their event's locations.
+  const access = await authorizeVendor(vendorId, undefined, { allowEventVendor: true, allowEventStaff: true });
   if (!access.ok) return access.response;
 
   const { data: authorizedVendor, error: authorizedVendorError } = await access.access.serviceDb.from("vendors")
@@ -90,6 +92,18 @@ export async function POST(request: Request, { params }: Props) {
 
   const parsed = await parseBody(request, scanSchema);
   if (!parsed.ok) return parsed.response;
+
+  // Event staff only ever scan from one of their event's locations. With an
+  // event context set, every non-event code already stops at EVENT_CODE_REQUIRED
+  // below, and staff have no outlets for the other branches.
+  if (access.access.role === "event_staff") {
+    if (!parsed.data.eventLocationId || !parsed.data.pickupDate) {
+      return apiFail("EVENT_CONTEXT_REQUIRED", "Open event scanning from a reservation at the selected location and date", 409);
+    }
+    const scope = await isEventLocationInCampaigns(access.access.serviceDb, parsed.data.eventLocationId, access.access.eventCampaignIds);
+    if (scope.error) return apiFail("DB_ERROR", "Unable to verify your event access", 500);
+    if (!scope.inScope) return apiFail("FORBIDDEN", "This location is outside your event", 403);
+  }
 
   let eventPickup = parseEventPickupPayload(parsed.data.rawValue);
   if (!eventPickup) {
@@ -164,6 +178,16 @@ export async function POST(request: Request, { params }: Props) {
     if (openItems.some((item) => new Date(item.slot_starts_at as string).getTime() > Date.now())) {
       return apiFail("EVENT_PICKUP_NOT_YET", "This reservation cannot be collected before its booked time", 409);
     }
+    // Every successful lookup is recorded against whoever scanned it. Fail
+    // closed: an unrecorded scan does not show the reservation.
+    const { error: auditError } = await access.access.serviceDb.from("audit_logs").insert({
+      actor_id: access.access.userId,
+      action: "event_pickup.scanned",
+      entity_type: "order",
+      entity_id: claims.orderId,
+      after_data: { vendor_id: vendorId, location_id: claims.locationId, pickup_date: claims.pickupDate, role: access.access.role },
+    });
+    if (auditError) return apiFail("SCAN_NOT_RECORDED", "This scan could not be recorded. Try again.", 500);
     return apiOk({
       kind: "event_pickup",
       orderId: claims.orderId,

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { selectPublicDocument } from "@/lib/vendor/outlet-page-persistence";
@@ -9,6 +8,7 @@ import { addDays, buildPublicOutletProfile, resolveStaySearch, stayNightStartsAt
 import { OutletPageRenderer } from "@/components/outlet/outlet-page-renderer";
 import { ShareButton } from "@/components/shared/share-button";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
+import { SeeMoreLink } from "@/components/customer/see-more-link";
 import { OutletChatButton } from "@/components/customer/outlet-chat-button";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { productImageUrl } from "@/lib/storage/product-image";
@@ -322,7 +322,7 @@ export async function renderPublicOutletPage({ params, searchParams }: PublicOut
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t("ui.outlet.exploreOutlet")}</p>
             <p className="mt-1 text-sm font-semibold text-foreground">{t("strictMigration.outletNavigation.position", { current: outletNavigation.currentPosition, total: outletNavigation.total, outlet: outlet.name })}</p>
           </div>
-          <a href={`/customer/vendors/${vendorId}#locations`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">{t("strictMigration.outletNavigation.viewAll", { count: t("ui.vendor.activeOutletCount", { count: outletNavigation.total }) })} <ArrowRight size={15} /></a>
+          <SeeMoreLink href={`/customer/vendors/${vendorId}#locations`} ariaLabel={t("ui.vendor.activeOutletCount", { count: outletNavigation.total })} />
         </div>
       </div>}
       <OutletPageRenderer

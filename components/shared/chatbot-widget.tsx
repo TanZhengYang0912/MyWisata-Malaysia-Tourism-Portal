@@ -40,6 +40,8 @@ import { useSupportChat } from "@/components/providers/support-chat";
 import { useSpeechInput, resolveRecognitionLang, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
 import { ChatWidgetInbox } from "@/components/shared/chat-widget/chat-widget-inbox";
 import { ChatWidgetVendorThread } from "@/components/shared/chat-widget/chat-widget-vendor-thread";
+import { ChatbotComparisonTable, ChatbotListingLinks, ChatbotRefundCard } from "@/components/shared/chat-widget/chatbot-agent-results";
+import type { ChatListing, RefundProposal } from "@/lib/chatbot/agent";
 
 // CLAUDE-VOICE-INPUT.md Part 2. Friendly copy per error kind — never a raw
 // error/exception reaching this UI (the hook itself already guarantees
@@ -90,11 +92,15 @@ interface ChatMessage {
   /** The original question was withheld from AI; the reply used local FAQ matching. */
   privacyBlocked?: boolean;
   feedbackStage?: FeedbackStage;
+  /** Agent replies only; not restored with history. */
+  listings?: ChatListing[];
+  comparison?: ChatListing[] | null;
+  refunds?: RefundProposal[];
   ticketId?: string;
   ticketError?: string;
 }
 
-type ChatbotAnswerData = Pick<ChatMessage, "text" | "messageId" | "language" | "privacyBlocked"> & {
+type ChatbotAnswerData = Pick<ChatMessage, "text" | "messageId" | "language" | "privacyBlocked" | "listings" | "comparison" | "refunds"> & {
   botAnswered: boolean;
 };
 
@@ -106,6 +112,9 @@ export function createBotMessage(data: ChatbotAnswerData, question: string): Cha
     question,
     language: data.language,
     privacyBlocked: data.privacyBlocked,
+    listings: data.listings,
+    comparison: data.comparison,
+    refunds: data.refunds,
     feedbackStage: data.botAnswered ? "awaiting_helpful" : "awaiting_ticket",
   };
 }
@@ -266,14 +275,17 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
         body: JSON.stringify({ sessionKey: sessionKey ?? undefined, question }),
       });
       const body = (await res.json()) as {
-        data: { sessionKey: string; answer: string; botAnswered: boolean; messageId: string; language: ChatLanguage; privacyBlocked: boolean } | null;
+        data: {
+          sessionKey: string; answer: string; botAnswered: boolean; messageId: string; language: ChatLanguage; privacyBlocked: boolean;
+          listings?: ChatListing[]; comparison?: ChatListing[] | null; refunds?: RefundProposal[];
+        } | null;
         error: { message: string } | null;
       };
       if (!res.ok || !body.data) {
         setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
         return;
       }
-      const { answer, botAnswered, messageId, language, privacyBlocked } = body.data;
+      const { answer, botAnswered, messageId, language, privacyBlocked, listings, comparison, refunds } = body.data;
       let effectiveSessionKey = sessionKey;
       if (body.data.sessionKey && body.data.sessionKey !== sessionKey) {
         effectiveSessionKey = body.data.sessionKey;
@@ -281,7 +293,7 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
         window.localStorage.setItem(SESSION_STORAGE_KEY, body.data.sessionKey);
       }
 
-      setMessages((m) => [...m, createBotMessage({ text: answer, messageId, language, privacyBlocked, botAnswered }, question)]);
+      setMessages((m) => [...m, createBotMessage({ text: answer, messageId, language, privacyBlocked, botAnswered, listings, comparison, refunds }, question)]);
 
       // Flow 2: the bot already knows it didn't help — there's no yes/no
       // helpfulness question to ask, so this is recorded automatically
@@ -414,6 +426,9 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
                       >
                         {m.text}
                       </div>
+                      {m.listings && m.listings.length > 0 && <ChatbotListingLinks listings={m.listings} />}
+                      {m.comparison && <ChatbotComparisonTable rows={m.comparison} />}
+                      {m.refunds?.map((refund) => <ChatbotRefundCard key={refund.id} refund={refund} />)}
                       {m.role === "bot" && m.privacyBlocked && (
                         <p role="status" className="mt-1 max-w-[85%] rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-2 text-xs leading-5 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
                           {t("chatbot.privacyBlocked")}

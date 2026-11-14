@@ -25,7 +25,7 @@ export function GuestAccountEmptyState({
   return (
     <section className="rounded-3xl border border-border bg-card shadow-sm">
       {value && (
-        <p className="border-b border-border px-6 py-5 text-center font-[family-name:var(--font-mono)] text-2xl font-bold text-primary">
+        <p className="border-b border-border px-6 py-5 text-center tabular-nums text-2xl font-bold text-primary">
           {value}
         </p>
       )}

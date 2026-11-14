@@ -18,6 +18,8 @@ const OPENING_TIME_SEGMENTS = [
   { key: "night", from: "20:00", to: "23:00" },
 ] as const;
 
+// When the caller passes its own labels nothing is translated here, so no namespace is loaded.
+// The explicit `ns` on each fallback t() lets the static i18n check resolve the namespace.
 const NO_TRANSLATION_NAMESPACES: string[] = [];
 
 interface DiscoverySearchFieldProps {
@@ -30,7 +32,7 @@ interface DiscoverySearchFieldProps {
 
 export function DiscoverySearchField({ value, onChange, placeholder, ariaLabel, autoFocus }: DiscoverySearchFieldProps) {
   const { t } = useTranslation(ariaLabel !== undefined && placeholder !== undefined ? NO_TRANSLATION_NAMESPACES : "customer");
-  const searchLabel = ariaLabel ?? t("ui.discovery.searchLabel");
+  const searchLabel = ariaLabel ?? t("ui.discovery.searchLabel", { ns: "customer" });
   return (
     <label data-active={value.trim() ? "true" : undefined} className="flex min-h-12 min-w-0 flex-1 items-center gap-2.5 border-b-2 border-primary/15 px-1 transition-colors hover:border-primary/40 focus-within:border-primary data-[active=true]:border-primary">
       <SearchIcon size={18} className="shrink-0 text-primary" aria-hidden="true" />
@@ -39,7 +41,7 @@ export function DiscoverySearchField({ value, onChange, placeholder, ariaLabel, 
         value={value}
         onChange={(event) => onChange(event.target.value)}
         autoFocus={autoFocus}
-        placeholder={placeholder ?? t("ui.discovery.searchPlaceholder")}
+        placeholder={placeholder ?? t("ui.discovery.searchPlaceholder", { ns: "customer" })}
         aria-label={searchLabel}
         className="min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
       />
@@ -59,7 +61,7 @@ function DiscoveryFilterButton({ count = 0, active = count > 0, label, className
       className={`inline-flex min-h-12 items-center gap-2.5 border-b-2 px-1 text-[15px] font-bold text-primary transition-colors focus-visible:border-primary focus-visible:outline-none ${editorialLine(active)} ${className}`}
     >
       <SlidersHorizontal size={18} aria-hidden="true" />
-      {label ?? t("ui.explore.filters")}
+      {label ?? t("ui.explore.filters", { ns: "customer" })}
       {count > 0 && (
         <span className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full border-[1.5px] border-primary/30 px-1.5 text-xs font-extrabold text-primary">
           {count}
@@ -84,7 +86,7 @@ function DiscoverySortSelect<T extends string>({
     <label {...props} className={`relative inline-flex min-h-12 min-w-0 flex-1 items-center gap-2.5 border-b-2 px-1 text-primary transition-colors focus-within:border-primary sm:w-[220px] sm:flex-none ${editorialLine(value !== defaultValue)} ${className}`}>
       <ArrowUpDown size={18} aria-hidden="true" className="shrink-0" />
       <select
-        aria-label={label ?? t("ui.explore.sortBy")}
+        aria-label={label ?? t("ui.explore.sortBy", { ns: "customer" })}
         value={value}
         onChange={(event) => onChange(event.target.value as T)}
         className="min-w-0 flex-1 cursor-pointer appearance-none bg-transparent pr-6 text-[15px] font-bold text-primary outline-none"

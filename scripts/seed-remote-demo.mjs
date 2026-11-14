@@ -631,6 +631,8 @@ async function main() {
   // not from the array position, so skipping the clones does not renumber the
   // variants of the products that survive.
   const productSeedIndex = [];
+  // One offer per (product, outlet) for repeats of a name; the first row's own outlet gets its offer from the insert trigger.
+  const cloneOffers = new Map();
   for (let i = 0; i < 100; i += 1) {
     const seed = PRODUCT_SEEDS[i % PRODUCT_SEEDS.length];
     const [baseName, productType, basePrice, requiresBooking, categoryIndex, baseDescription, typeSlug] = seed;
@@ -641,6 +643,21 @@ async function main() {
     const themedVendor = typeSlug ? TYPE_TO_THEMED_VENDOR[typeSlug] : undefined;
     const outlet = themedVendor ? themedOutletRows[themedVendor.slug][i % outletRows.length] : outletRows[i % outletRows.length];
     const name = placeBound ? placeBound[0] : baseName;
+    // PRODUCT_SEEDS repeats every 17 indexes. A repeat of a name this vendor already
+    // sells is the same product at another outlet: add an outlet_offer to the first
+    // row instead of a second product, so the vendor page and Explore show one card
+    // with "N locations" and "From RM" (repaired live by
+    // scripts/data/2026-11-14-merge-demo-duplicate-products.sql).
+    const productVendorId = themedVendor ? themedVendor.id : vendorId;
+    const sameProduct = placeBound ? undefined : productRows.find((row) => row.vendor_id === productVendorId && row.name === name);
+    if (sameProduct) {
+      const price = basePrice + ((i % 5) * 2);
+      const existing = cloneOffers.get(`${sameProduct.id}:${outlet.id}`);
+      if (sameProduct.outlet_id !== outlet.id && (!existing || price < existing.price)) {
+        cloneOffers.set(`${sameProduct.id}:${outlet.id}`, { product_id: sameProduct.id, outlet_id: outlet.id, price, status: 'active' });
+      }
+      continue;
+    }
     const slug = placeBound ? placeBound[1] : `demo-${String(i + 1).padStart(3, '0')}-${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`.slice(0, 95);
     const isPublicPlace = Boolean(placeBound && PUBLIC_PLACE_SLUGS.has(slug));
     const productTypeSlugs = placeBound ? [placeBound[2]] : typeSlug ? [typeSlug] : [];
@@ -664,6 +681,8 @@ async function main() {
     }));
   }
   await upsert('products', productRows);
+  // Keyed on (product, outlet) so a database repaired by the merge script keeps its existing offer rows.
+  await upsert('outlet_offers', [...cloneOffers.values()], 'product_id,outlet_id');
 
   // The one genuine multi-outlet case: each Serenity treatment is also sold at
   // the other two branches, at its own price. Until this existed, outlet_offers

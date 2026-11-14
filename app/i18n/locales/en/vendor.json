@@ -54,7 +54,7 @@
     "sections": {
       "stay": "Check-in & check-out"
     },
-    "selectedCount": "{{count}} of {{total}} selected",
+    "selectedCount": "{{selected}} of {{total}} selected",
     "malaysiaTime": "Times are Malaysia time (UTC+8).",
     "coverPhoto": "Cover",
     "sectionsNav": "Hotel profile sections",
@@ -1160,6 +1160,7 @@
       "pageOrderTotal": "Order total"
     },
     "outlets": {
+      "loading": "Loading outlets",
       "loadingShop": "Loading your shop page…",
       "loadFailed": "Could not load outlets",
       "shopUnavailable": "Shop page unavailable",
@@ -1724,7 +1725,7 @@
       "checkEvent": "Event name and details",
       "checkDates": "Start and end date",
       "days": "Days",
-      "charCount": "{{count}} / {{max}}",
+      "charCount": "{{current}} / {{max}}",
       "titlePlaceholder": "e.g. Heritage Walk Night Market",
       "detailsPlaceholder": "What's happening, where, and what visitors get",
       "newHeading": "Submit a new event",
@@ -1742,13 +1743,14 @@
       "loadError": "Unable to load your event promotions.",
       "uploadError": "Unable to upload the image.",
       "imageRequired": "Upload an image before submitting.",
+      "validation": {
+        "title": "Enter an event name of at least 3 characters.",
+        "details": "Describe the event in at least 10 characters.",
+        "datesRequired": "Pick the first and last day of the promotion on the calendar.",
+        "datesOrder": "The last day can't be before the first day."
+      },
       "submitError": "Unable to submit the event promotion.",
       "errors": {
-        "titleTooShort": "Use at least {{min}} characters.",
-        "detailsTooShort": "Describe the event in at least {{min}} characters.",
-        "datesRequired": "Choose a start and end date.",
-        "endBeforeStart": "End date must be on or after the start date.",
-        "fieldRejected": "Check this field and try again.",
         "fixFields": "Fix the highlighted fields before submitting."
       },
       "submitSuccess": "Event promotion submitted for review.",
@@ -1966,7 +1968,21 @@
       "applicationDeadline": "Applications close (Malaysia time)",
       "approvalDeadline": "Approvals close (Malaysia time)",
       "setupStarts": "Setup starts (Malaysia time)",
-      "approvalWindowClosed": "The approval window has closed. Contact the organiser about this application."
+      "approvalWindowClosed": "The approval window has closed. Contact the organiser about this application.",
+      "staff": {
+        "title": "On-site staff",
+        "createLink": "Create staff link",
+        "copyLink": "Copy link",
+        "copied": "Link copied",
+        "resetLink": "Reset link",
+        "resetConfirm": "Reset the link? The current link stops working for new staff; staff who already joined keep access.",
+        "validUntil": "Valid until {{date}}",
+        "membersEmpty": "No staff yet",
+        "joinedAt": "Joined {{date}}",
+        "remove": "Remove",
+        "removeConfirm": "Remove {{name}}? They can no longer scan for this event, even with the link.",
+        "loadError": "Unable to load staff"
+      }
     },
     "eventOrders": {
       "title": "Event reservations",
@@ -1990,6 +2006,31 @@
       "viewFilter": "Reservation view",
       "allCollected": "Everything here has been collected.",
       "retry": "Retry"
+    },
+    "eventStaff": {
+      "join": {
+        "title": "Join as event staff",
+        "nameLabel": "Your name",
+        "emailLabel": "Email",
+        "sendCode": "Send code",
+        "resendCode": "Send a new code",
+        "codeLabel": "6-digit code",
+        "verifyAndJoin": "Verify and join",
+        "join": "Join",
+        "signedInAs": "Signed in as {{email}}",
+        "useAnotherEmail": "Use another email",
+        "invalidLink": "This link is invalid or has expired.",
+        "removed": "You were removed from this event's staff."
+      },
+      "home": {
+        "title": "Event scanning",
+        "empty": "No active events",
+        "scan": "Scan",
+        "notToday": "Not today"
+      },
+      "scan": {
+        "back": "Back to events"
+      }
     }
   },
   "address": {
@@ -2454,9 +2495,9 @@
     "draftVersion": "Draft version",
     "editShopPage": "Edit shop page",
     "hotelProfileStatus": {
-      "live": "Live",
-      "pending": "Pending review",
-      "rejected": "Changes requested"
+      "live": "Hotel profile: Live",
+      "pending": "Hotel profile: Pending review",
+      "rejected": "Hotel profile: Changes requested"
     },
     "liveSince": "Live since {{date}}",
     "liveVersion": "Live version",

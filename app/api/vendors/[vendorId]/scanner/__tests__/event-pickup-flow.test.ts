@@ -71,6 +71,8 @@ function from(table: string) {
   builder.not = vi.fn(() => builder);
   builder.order = vi.fn(() => builder);
   builder.maybeSingle = vi.fn(async () => ({ data: result()[0] ?? null, error: null }));
+  // resolve records every successful event-pickup lookup in audit_logs.
+  builder.insert = vi.fn(async () => ({ data: null, error: null }));
   builder.then = (resolve: (value: { data: Record<string, unknown>[]; error: null }) => unknown) => Promise.resolve({ data: result(), error: null }).then(resolve);
   return builder;
 }

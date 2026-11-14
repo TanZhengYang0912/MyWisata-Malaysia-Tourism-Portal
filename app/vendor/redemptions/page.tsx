@@ -183,7 +183,7 @@ export default function VendorRedemptionsPage() {
             type="button"
             onClick={() => loadRedemptions(page)}
             disabled={loading}
-            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
+            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-gray-200 dark:border-border bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             <span>{t('actions.refresh', 'Refresh')}</span>
@@ -213,10 +213,10 @@ export default function VendorRedemptionsPage() {
 
       <div className="flex justify-end md:hidden">
         <details className="group relative">
-          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 [&::-webkit-details-marker]:hidden">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 [&::-webkit-details-marker]:hidden">
             <MoreHorizontal size={17} aria-hidden="true" /> {t('actions.moreActions')}
           </summary>
-          <div className="absolute right-0 z-20 mt-2 flex w-52 flex-col gap-1 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card p-2 shadow-xl">
+          <div className="absolute right-0 z-20 mt-2 flex w-52 flex-col gap-1 rounded-xl border border-gray-200 dark:border-border bg-card p-2 shadow-xl">
             <button type="button" onClick={() => loadRedemptions(page)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
               <RefreshCw size={15} aria-hidden="true" className={loading ? 'animate-spin' : ''} /> {t('actions.refresh')}
             </button>
@@ -265,7 +265,7 @@ export default function VendorRedemptionsPage() {
       <div className="text-sm text-muted-foreground">{t('ui.redemptions.filteredCount', { count: totalRecords })}</div>
 
       {/* Main Table */}
-      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-card shadow-sm">
         {loading ? (
           <div className="p-8 text-center text-sm text-gray-500 dark:text-muted-foreground">
             <RefreshCw size={24} className="mx-auto mb-2 animate-spin text-primary" />
