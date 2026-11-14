@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { croppedFileName, croppedOutputSize, croppedOutputType, needsCrop } from "@/lib/media/image-aspect";
+import { croppedFileName, croppedOutputSize, croppedOutputType, isValidNonOverlappingCropPair, needsCrop } from "@/lib/media/image-aspect";
 
 describe("needsCrop", () => {
   it("passes photos that already match the shape, within 2%", () => {
@@ -36,5 +36,24 @@ describe("cropped output", () => {
     expect(croppedFileName("IMG_1234.HEIC", "image/jpeg")).toBe("IMG_1234.jpg");
     expect(croppedFileName("logo.png", "image/png")).toBe("logo.png");
     expect(croppedFileName(".jpg", "image/jpeg")).toBe("photo.jpg");
+  });
+});
+
+describe("two-sided document crop regions", () => {
+  it("accepts separate crop areas fully inside the source image", () => {
+    expect(isValidNonOverlappingCropPair(
+      { x: 20, y: 10, width: 300, height: 190 },
+      { x: 20, y: 220, width: 300, height: 190 },
+      400,
+      500,
+    )).toBe(true);
+  });
+
+  it("rejects overlap, out-of-bounds, empty and invalid crop areas", () => {
+    const front = { x: 20, y: 10, width: 300, height: 190 };
+    expect(isValidNonOverlappingCropPair(front, { x: 20, y: 180, width: 300, height: 190 }, 400, 500)).toBe(false);
+    expect(isValidNonOverlappingCropPair(front, { x: 350, y: 220, width: 100, height: 190 }, 400, 500)).toBe(false);
+    expect(isValidNonOverlappingCropPair(front, { x: 20, y: 220, width: 0, height: 190 }, 400, 500)).toBe(false);
+    expect(isValidNonOverlappingCropPair(front, { x: Number.NaN, y: 220, width: 300, height: 190 }, 400, 500)).toBe(false);
   });
 });

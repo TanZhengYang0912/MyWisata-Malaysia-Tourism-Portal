@@ -308,7 +308,7 @@
     "title": "Chats",
     "myTickets": "My Tickets",
     "closeChat": "Close chat",
-    "emptyPrompt": "Ask about rewards, affiliate links, withdrawals, booking, or verification.",
+    "emptyPrompt": "Ask where to find something, compare listings, get recommendations, check your orders or request a refund.",
     "inputPlaceholder": "Ask a question…",
     "send": "Send message",
     "openChat": "Chat with us",
@@ -344,7 +344,29 @@
     },
     "expandChat": "Expand to full screen",
     "collapseChat": "Exit full screen",
-    "resizeSidebar": "Resize the conversation list"
+    "resizeSidebar": "Resize the conversation list",
+    "agent": {
+      "compare": {
+        "price": "Price from",
+        "rating": "Rating",
+        "shop": "Shop",
+        "area": "Area",
+        "hours": "Hours"
+      },
+      "refund": {
+        "title": "Refund request",
+        "order": "Order",
+        "items": "Items",
+        "total": "Total",
+        "reason": "Reason",
+        "confirm": "Confirm refund",
+        "cancel": "Cancel",
+        "running": "Sending…",
+        "done": "Refund requested. Track it on the order page.",
+        "cancelled": "Cancelled",
+        "failed": "Failed"
+      }
+    }
   },
   "account": {
     "menu": "Account menu",
@@ -442,6 +464,19 @@
     "zoom": "Zoom",
     "confirm": "Use this crop",
     "failed": "This photo could not be cropped. Try another photo.",
-    "hint": "Recommended shape {{shape}} (for example {{size}} px). Photos of another shape can be cropped after you choose them."
+    "hint": "Recommended shape {{shape}} (for example {{size}} px). Photos of another shape can be cropped after you choose them.",
+    "selectFront": "Crop the front of the MyKad",
+    "selectBack": "Crop the back of the MyKad",
+    "reviewSides": "Review both sides",
+    "twoSidesDescription": "Select each complete card separately. Keep all four edges and text inside the frame.",
+    "front": "Front",
+    "back": "Back",
+    "nextToBack": "Crop back",
+    "previewBoth": "Review both sides",
+    "confirmBoth": "Use both crops",
+    "editFront": "Adjust front",
+    "editBack": "Adjust back",
+    "swapSides": "Swap front and back",
+    "twoSidesFailed": "The two crops overlap, exceed the photo, or could not be prepared. Adjust them or choose two separate photos."
   }
 }

@@ -111,6 +111,7 @@ const priorTaskFiles = new Set([
   'components/shared/breadcrumbs.tsx',
   'components/shared/chat-widget/chat-widget-inbox.tsx',
   'components/shared/chat-widget/chat-widget-vendor-thread.tsx',
+  'components/shared/chat-widget/chatbot-agent-results.tsx',
   'components/shared/chatbot-widget.tsx',
   'components/shared/command-shortcut.ts',
   'components/shared/currency-switcher.tsx',

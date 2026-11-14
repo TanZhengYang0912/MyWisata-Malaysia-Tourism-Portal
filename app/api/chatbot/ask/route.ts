@@ -61,7 +61,16 @@ export async function POST(request: Request) {
   const cleaned = await cleanUserContent(question, service);
   const privacyBlocked = !prepareExternalText(question).allowed;
   const useAi = !privacyBlocked && await reserveAiQuota(request, 'chatbot', user?.id ?? null);
-  const result = await answerQuestion(cleaned.display, useAi);
+  // The agent's memory (AI only): this session's latest messages, oldest first.
+  let result: Awaited<ReturnType<typeof answerQuestion>>;
+  if (useAi) {
+    const { data: recent } = await service.from('chatbot_messages').select('role, body')
+      .eq('session_id', session.id).order('created_at', { ascending: false }).limit(6);
+    const history = (recent ?? []).reverse().map((m) => ({ role: m.role === 'bot' ? 'bot' as const : 'user' as const, text: String(m.body ?? '') }));
+    result = await answerQuestion(cleaned.display, true, { userDb: user ? authClient : null, userId: user?.id ?? null, history });
+  } else {
+    result = await answerQuestion(cleaned.display, false);
+  }
 
   const { data: userMsg, error: userMsgErr } = await service
     .from('chatbot_messages')
@@ -108,5 +117,8 @@ export async function POST(request: Request) {
   // lets the widget attach feedback/ticket state to this specific reply.
   // CLAUDE-P4-EXTRAS.md Extra 1: language lets the widget localize that
   // feedback-flow chrome (see lib/chatbot/strings.ts) to match this reply.
-  return apiOk({ sessionKey: session.session_key, answer: result.answer, botAnswered: result.kbMatched, messageId: botMsg.id, language: result.language, privacyBlocked });
+  return apiOk({
+    sessionKey: session.session_key, answer: result.answer, botAnswered: result.kbMatched, messageId: botMsg.id, language: result.language, privacyBlocked,
+    listings: result.listings ?? [], comparison: result.comparison ?? null, refunds: result.refunds ?? [],
+  });
 }

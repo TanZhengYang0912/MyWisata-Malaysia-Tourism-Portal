@@ -3,13 +3,80 @@ import { fork, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { mkdtemp, mkdir, copyFile, symlink, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, copyFile, symlink, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import sharp from 'sharp';
 import { extractKycFieldsInNode, parseNodeKycOcrOutcome } from '../node-ocr-engine';
+import { bridgeTesseractWorkerEvents, classifyTesseractFailure, createTesseractInitializationReporter, initializationStageForTesseractStatus } from '../runtime/tesseract-diagnostics.cjs';
+import { EventEmitter } from 'node:events';
 
 const image = { mimeType: 'image/png', bytes: new Uint8Array([1, 2]) };
 afterEach(() => vi.unstubAllEnvs());
+it('maps only known Tesseract initialization statuses to fixed safe phases', () => {
+  expect(initializationStageForTesseractStatus('loading tesseract core')).toBe('worker_core_load');
+  expect(initializationStageForTesseractStatus('initializing tesseract')).toBe('worker_wasm_initialize');
+  expect(initializationStageForTesseractStatus('loading language traineddata')).toBe('worker_language_load');
+  expect(initializationStageForTesseractStatus('initializing api')).toBe('worker_api_initialize');
+  expect(initializationStageForTesseractStatus('/private/path/private-document-name')).toBeUndefined();
+  expect(initializationStageForTesseractStatus({ status: 'loading language traineddata', error: 'private OCR text' })).toBeUndefined();
+});
+it('maps Tesseract errors to fixed safe failure reasons without exposing their text', () => {
+  expect(classifyTesseractFailure(new Error("Cannot find module '/private/app/tesseract-worker.js'"))).toBe('module_not_found');
+  expect(classifyTesseractFailure('ERR_WORKER_PATH: /private/worker.js')).toBe('invalid_worker_path');
+  expect(classifyTesseractFailure('initialization failed: /private/model path')).toBe('tesseract_rejected');
+  expect(classifyTesseractFailure(new Error('private raw exception'))).toBe('unknown');
+});
+it('preserves the last specific initialization phase and ignores private callback data', () => {
+  const phases: string[] = [];
+  const reporter = createTesseractInitializationReporter((stage) => phases.push(stage));
+  const privateEvent = { status: 'loading language traineddata', progress: 0.5, path: '/private/model/path', text: 'private OCR text' };
+  reporter.onProgress(privateEvent);
+  reporter.begin();
+  reporter.onProgress(privateEvent);
+  reporter.onProgress(privateEvent);
+  reporter.onError({ message: 'private filesystem error' });
+  reporter.finish();
+  reporter.onProgress({ status: 'initializing api', text: 'private OCR text' });
+  reporter.onError({ message: 'private filesystem error' });
+
+  expect(phases).toEqual(['worker_language_load']);
+  expect(JSON.stringify(phases)).not.toMatch(/private|path|0\.5/);
+});
+it('reports an error callback only when no Tesseract initialization phase was observed', () => {
+  const phases: string[] = [];
+  const reporter = createTesseractInitializationReporter((stage) => phases.push(stage));
+  reporter.begin();
+  reporter.onError({ message: 'private filesystem error' });
+  expect(phases).toEqual(['worker_error_callback']);
+});
+it('bridges Node worker error and abnormal exit events into Tesseract initialization failure handling', () => {
+  const phases: string[] = [];
+  const worker = new EventEmitter() as EventEmitter & { onerror?: (error: Error) => void };
+  const onerror = vi.fn();
+  bridgeTesseractWorkerEvents(worker, (stage) => phases.push(stage));
+  worker.onerror = onerror;
+
+  worker.emit('error', new Error('private worker startup details'));
+  worker.emit('exit', 1);
+
+  expect(onerror).toHaveBeenCalledTimes(1);
+  expect(onerror.mock.calls[0]?.[0]).toBeInstanceOf(Error);
+  expect(phases).toEqual(['worker_error_callback']);
+  expect(JSON.stringify(phases)).not.toMatch(/private|startup details/);
+});
+it('converts a nonzero Node worker exit without an error event into a bounded failure callback', () => {
+  const phases: string[] = [];
+  const worker = new EventEmitter() as EventEmitter & { onerror?: (error: Error) => void };
+  const onerror = vi.fn();
+  bridgeTesseractWorkerEvents(worker, (stage) => phases.push(stage));
+  worker.onerror = onerror;
+
+  worker.emit('exit', 1);
+
+  expect(onerror).toHaveBeenCalledTimes(1);
+  expect(onerror.mock.calls[0]?.[0]).toMatchObject({ message: 'worker_thread_exit' });
+  expect(phases).toEqual(['worker_error_callback']);
+});
 it('rejects malformed evidence without reflecting bytes or environment', async () => {
   vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'sentinel-never-in-child');
   const result = await extractKycFieldsInNode({ documentType: 'national_id', front: image, back: image }, 2000);
@@ -28,6 +95,235 @@ it('rejects local reentry while the first child is owned', async () => {
     .toMatchObject({ failureCode: 'service_unavailable' });
   await first;
 });
+it('logs only process status when the OCR child is terminated before replying', async () => {
+  const root = await mkdtemp(resolve(tmpdir(), 'kyc-child-exit-'));
+  const runtime = resolve(root, 'lib/kyc/runtime');
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    await mkdir(runtime, { recursive: true });
+    await writeFile(resolve(runtime, 'tesseract-process.cjs'),
+      "process.once('message', () => process.kill(process.pid, 'SIGTERM'));");
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(root);
+    let pending: ReturnType<typeof extractKycFieldsInNode>;
+    try {
+      pending = extractKycFieldsInNode({ documentType: 'national_id', front: image, back: image }, 2000);
+    } finally { cwd.mockRestore(); }
+
+    expect(await pending).toEqual({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'child_bootstrap' });
+    expect(warning.mock.calls[0]?.[0]).toBe('kyc_node_ocr_failed');
+    expect(warning.mock.calls[0]?.[1]).toMatchObject({ failureCode: 'service_unavailable', failureStage: 'child_bootstrap',
+      received: false, spawned: true, childStartedAck: false, exitCode: null, signal: 'SIGTERM' });
+  } finally {
+    warning.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 5000);
+it('distinguishes a child that acknowledged startup but exited before returning OCR fields', async () => {
+  const root = await mkdtemp(resolve(tmpdir(), 'kyc-child-no-result-'));
+  const runtime = resolve(root, 'lib/kyc/runtime');
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    await mkdir(runtime, { recursive: true });
+    await writeFile(resolve(runtime, 'tesseract-process.cjs'),
+      "process.once('message', () => process.send({kind:'started'}, () => process.exit(1)));");
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(root);
+    let pending: ReturnType<typeof extractKycFieldsInNode>;
+    try {
+      pending = extractKycFieldsInNode({ documentType: 'national_id', front: image, back: image }, 2000);
+    } finally { cwd.mockRestore(); }
+
+    const result = await pending;
+    expect(result).toEqual({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'child_no_response' });
+    expect(warning.mock.calls[0]?.[0]).toBe('kyc_node_ocr_failed');
+    expect(warning.mock.calls[0]?.[1]).toMatchObject({ failureCode: 'service_unavailable', failureStage: 'child_no_response',
+      received: false, spawned: true, childStartedAck: true, exitCode: 1, signal: null });
+  } finally {
+    warning.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 5000);
+it('preserves the last allowlisted child phase when the process exits before OCR output', async () => {
+  const root = await mkdtemp(resolve(tmpdir(), 'kyc-child-phase-exit-'));
+  const runtime = resolve(root, 'lib/kyc/runtime');
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    await mkdir(runtime, { recursive: true });
+    await writeFile(resolve(runtime, 'tesseract-process.cjs'),
+      "process.once('message', () => process.send({kind:'started'}, () => process.send({kind:'phase',stage:'worker_language_load'}, () => process.exit(1))));");
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(root);
+    let pending: ReturnType<typeof extractKycFieldsInNode>;
+    try { pending = extractKycFieldsInNode({ documentType: 'national_id', front: image, back: image }, 2000); }
+    finally { cwd.mockRestore(); }
+
+    expect(await pending).toEqual({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'worker_language_load' });
+    expect(warning.mock.calls[0]?.[1]).toMatchObject({ failureStage: 'worker_language_load', received: false,
+      spawned: true, childStartedAck: true, exitCode: 1, signal: null });
+  } finally {
+    warning.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 5000);
+it('ignores unknown child phase messages without reflecting their contents', async () => {
+  const root = await mkdtemp(resolve(tmpdir(), 'kyc-child-phase-unknown-'));
+  const runtime = resolve(root, 'lib/kyc/runtime');
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    await mkdir(runtime, { recursive: true });
+    await writeFile(resolve(runtime, 'tesseract-process.cjs'),
+      "process.once('message', () => process.send({kind:'started'}, () => process.send({kind:'phase',stage:'private_text',rawText:'private sentinel'}, () => process.exit(1))));");
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(root);
+    let pending: ReturnType<typeof extractKycFieldsInNode>;
+    try { pending = extractKycFieldsInNode({ documentType: 'national_id', front: image, back: image }, 2000); }
+    finally { cwd.mockRestore(); }
+
+    expect(await pending).toEqual({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'child_no_response' });
+    expect(JSON.stringify(warning.mock.calls)).not.toContain('private sentinel');
+    expect(warning.mock.calls[0]?.[1]).toMatchObject({ received: false, childStartedAck: true, exitCode: 1 });
+  } finally {
+    warning.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 5000);
+it('records the parent timeout as the SIGTERM source', async () => {
+  const root = await mkdtemp(resolve(tmpdir(), 'kyc-child-phase-timeout-'));
+  const runtime = resolve(root, 'lib/kyc/runtime');
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    await mkdir(runtime, { recursive: true });
+    await writeFile(resolve(runtime, 'tesseract-process.cjs'),
+      "process.once('message', () => process.send({kind:'started'}, () => process.send({kind:'phase',stage:'recognition_front'}))); setInterval(() => {}, 1000);");
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(root);
+    let pending: ReturnType<typeof extractKycFieldsInNode>;
+    try { pending = extractKycFieldsInNode({ documentType: 'national_id', front: image, back: image }, 50); }
+    finally { cwd.mockRestore(); }
+
+    expect(await pending).toMatchObject({ ok: false, failureCode: 'timeout', retryable: true });
+    expect(warning.mock.calls[0]?.[1]).toMatchObject({ parentStopReason: 'parent_timeout', parentTimedOut: true });
+  } finally { warning.mockRestore(); await rm(root, { recursive: true, force: true }); }
+}, 5000);
+it('logs the allowlisted OCR stage returned by the child without error text', async () => {
+  const root = await mkdtemp(resolve(tmpdir(), 'kyc-child-stage-'));
+  const runtime = resolve(root, 'lib/kyc/runtime');
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    await mkdir(runtime, { recursive: true });
+    await writeFile(resolve(runtime, 'tesseract-process.cjs'),
+      "process.once('message', () => process.send({kind:'started'}, () => process.send({ok:false,failureCode:'service_unavailable',retryable:true,failureStage:'recognition_front'}, () => process.exit(0))));");
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(root);
+    let pending: ReturnType<typeof extractKycFieldsInNode>;
+    try {
+      pending = extractKycFieldsInNode({ documentType: 'national_id', front: image, back: image }, 2000);
+    } finally { cwd.mockRestore(); }
+
+    expect(await pending).toEqual({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'recognition_front' });
+    expect(warning.mock.calls[0]?.[0]).toBe('kyc_node_ocr_failed');
+    expect(warning.mock.calls[0]?.[1]).toMatchObject({ failureCode: 'service_unavailable', failureStage: 'recognition_front', received: true,
+      spawned: true, childStartedAck: true, exitCode: 0, signal: null });
+  } finally {
+    warning.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 5000);
+it('preserves a structured child failure stage when the child exits nonzero afterward', async () => {
+  const root = await mkdtemp(resolve(tmpdir(), 'kyc-child-stage-exit-'));
+  const runtime = resolve(root, 'lib/kyc/runtime');
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    await mkdir(runtime, { recursive: true });
+    await writeFile(resolve(runtime, 'tesseract-process.cjs'),
+      "process.once('message', () => process.send({kind:'started'}, () => process.send({ok:false,failureCode:'service_unavailable',retryable:true,failureStage:'worker_initialize'}, () => process.exit(1))));");
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(root);
+    let pending: ReturnType<typeof extractKycFieldsInNode>;
+    try {
+      pending = extractKycFieldsInNode({ documentType: 'national_id', front: image, back: image }, 2000);
+    } finally { cwd.mockRestore(); }
+
+    expect(await pending).toEqual({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'worker_initialize' });
+    expect(warning.mock.calls[0]?.[1]).toMatchObject({ failureStage: 'worker_initialize', received: true,
+      childStartedAck: true, exitCode: 1, signal: null });
+  } finally {
+    warning.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 5000);
+it('returns the current safe stage when the OCR child has an unhandled rejection', async () => {
+  const root = await mkdtemp(resolve(tmpdir(), 'kyc-child-fatal-'));
+  const runtime = resolve(root, 'lib/kyc/runtime');
+  const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    await mkdir(runtime, { recursive: true });
+    const source = await readFile(resolve('lib/kyc/runtime/tesseract-process.cjs'), 'utf8');
+    const fatalSource = source.replace("reportPhase('runtime_load');", "reportPhase('worker_initialize'); Promise.reject(new Error('private raw error')); await new Promise(() => {});");
+    expect(fatalSource).not.toBe(source);
+    await writeFile(resolve(runtime, 'tesseract-process.cjs'), fatalSource);
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(root);
+    let pending: ReturnType<typeof extractKycFieldsInNode>;
+    try { pending = extractKycFieldsInNode({ documentType: 'national_id', front: image, back: image }, 2000); }
+    finally { cwd.mockRestore(); }
+
+    expect(await pending).toEqual({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'worker_initialize', failureReason: 'unknown' });
+    expect(JSON.stringify(warning.mock.calls)).not.toContain('private raw error');
+    expect(warning.mock.calls[0]?.[0]).toBe('kyc_node_ocr_failed');
+    expect(warning.mock.calls[0]?.[1]).toMatchObject({ failureCode: 'service_unavailable', failureStage: 'worker_initialize', failureReason: 'unknown', received: true,
+      spawned: true, childStartedAck: true, sendStatus: 'sent', exitCode: 0, signal: null });
+  } finally {
+    warning.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 5000);
+it('does not send a success result after reporting a fatal child error', async () => {
+  const root = await mkdtemp(resolve(tmpdir(), 'kyc-child-fatal-race-'));
+  const runtime = resolve(root, 'lib/kyc/runtime');
+  let child: ReturnType<typeof fork> | undefined;
+  try {
+    await mkdir(runtime, { recursive: true });
+    const source = await readFile(resolve('lib/kyc/runtime/tesseract-process.cjs'), 'utf8');
+    const fatalSource = source.replace("reportPhase('runtime_load');", "reportPhase('worker_initialize'); reportFatalFailure(); send({ ok: true, fields: {}, metrics: {} }); return;");
+    expect(fatalSource).not.toBe(source);
+    const runtimePath = resolve(runtime, 'tesseract-process.cjs');
+    await writeFile(runtimePath, fatalSource);
+    child = fork(runtimePath, [], { env: { NODE_ENV: 'production' }, execArgv: [], serialization: 'advanced', stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+    const messages: unknown[] = [];
+    child.on('message', (message: unknown) => messages.push(message));
+    await once(child, 'spawn');
+    child.send({ documentType: 'national_id', front: image, back: image, timeoutMs: 2000 });
+    await once(child, 'close');
+
+    expect(messages).toEqual([{ kind: 'started' }, { kind: 'phase', stage: 'message_validation' },
+      { kind: 'phase', stage: 'worker_initialize' }, { ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'worker_initialize', failureReason: 'unknown' }]);
+  } finally {
+    if (child?.exitCode === null) child.kill('SIGKILL');
+    await rm(root, { recursive: true, force: true });
+  }
+}, 5000);
+it('bounds child lifetime if fatal IPC delivery never calls back', async () => {
+  const root = await mkdtemp(resolve(tmpdir(), 'kyc-child-fatal-stall-'));
+  const runtime = resolve(root, 'lib/kyc/runtime');
+  try {
+    await mkdir(runtime, { recursive: true });
+    const source = await readFile(resolve('lib/kyc/runtime/tesseract-process.cjs'), 'utf8');
+    const stalledSource = source.replace("reportPhase('runtime_load');", "reportPhase('worker_initialize'); process.send = () => true; reportFatalFailure(); return;");
+    expect(stalledSource).not.toBe(source);
+    await writeFile(resolve(runtime, 'tesseract-process.cjs'), stalledSource);
+    const cwd = vi.spyOn(process, 'cwd').mockReturnValue(root);
+    let pending: ReturnType<typeof extractKycFieldsInNode>;
+    try { pending = extractKycFieldsInNode({ documentType: 'national_id', front: image, back: image }, 4000); }
+    finally { cwd.mockRestore(); }
+
+    expect(await pending).toEqual({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'worker_initialize' });
+  } finally { await rm(root, { recursive: true, force: true }); }
+}, 5000);
+it('reports a safe termination reason when the real child receives SIGTERM', async () => {
+  const child = fork(resolve('lib/kyc/runtime/tesseract-process.cjs'), [], { env: { NODE_ENV: 'production' }, execArgv: [], stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+  const messages: unknown[] = [];
+  child.on('message', (message: unknown) => messages.push(message));
+  const closed = once(child, 'close');
+  await once(child, 'spawn');
+  await sleep(100);
+  child.kill('SIGTERM');
+  await closed;
+  expect(messages).toContainEqual({ ok: false, failureCode: 'service_unavailable', retryable: true, failureStage: 'child_terminated', failureReason: 'signal_termination' });
+}, 5000);
 it('child exits when the parent IPC connection disappears', async () => {
   const child = fork(resolve('lib/kyc/runtime/tesseract-process.cjs'), [], { env: { NODE_ENV: 'production' }, execArgv: [], stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
   const closed = once(child, 'exit');
@@ -70,10 +366,14 @@ it('fails closed for a missing packaged model without downloading a replacement'
     await writeFile(resolve(root, 'node_modules/@tesseract.js-data/eng/package.json'), '{"version":"1.0.0"}');
     const bytes = new Uint8Array(await sharp({ create: { width: 30, height: 20, channels: 3, background: '#fff' } }).png().toBuffer());
     child = fork(resolve(root, 'tesseract-process.cjs'), [], { env: { NODE_ENV: 'production' }, execArgv: [], serialization: 'advanced', stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
-    const response = once(child, 'message'), closed = once(child, 'close');
+    const messages: unknown[] = [];
+    child.on('message', (message: unknown) => messages.push(message));
+    const closed = once(child, 'close');
+    await once(child, 'spawn');
     child.send({ documentType: 'national_id', front: { mimeType: 'image/png', bytes }, back: { mimeType: 'image/png', bytes }, timeoutMs: 2000 });
-    expect((await response)[0]).toEqual({ ok: false, failureCode: 'configuration', retryable: false });
     await closed;
+    expect(messages).toContainEqual({ kind: 'started' });
+    expect(messages).toContainEqual({ ok: false, failureCode: 'configuration', retryable: false, failureStage: 'model_manifest' });
   } finally { if (child?.exitCode === null) child.kill('SIGKILL'); await rm(root, { recursive: true, force: true }); }
 }, 5000);
 it('rejects oversized, over-pixel and MIME-mismatched evidence before model initialization', async () => {

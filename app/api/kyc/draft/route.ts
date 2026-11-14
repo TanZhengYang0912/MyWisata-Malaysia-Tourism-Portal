@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { readBoundedFormData, RequestBodyError } from '@/lib/validation/request-body';
-import { validateKycUploadFile } from '@/lib/kyc/submission';
+import { hasDuplicateKycDocumentSides, validateKycUploadFile } from '@/lib/kyc/submission';
 import { prepareKycEvidenceImage } from '@/lib/kyc/evidence-image';
 import { randomUUID } from 'node:crypto';
 import { withPortalWorkload, WorkloadUnavailableError } from '@/lib/operations/workload';
@@ -89,8 +89,21 @@ export async function POST(request:Request) {
   if((reuseFront||!frontFile)&&!existingFrontPath
     ||(requiredSides.includes('back')&&(reuseBack||!backFile)&&!existingBackPath))
     return privateResponse(apiFail('CONFLICT','Saved evidence is unavailable; reload the draft',409));
-  const operationId=intent==='save_and_recognize'?String(operationIdEntry).toLowerCase():null;
   const prevalidated=new Map<'front'|'back',{buffer:ArrayBuffer;inputHash:string;mimeType:string}>();
+  try {
+    for(const side of requiredSides){
+      const file=side==='front'?frontFile:backFile;
+      if(!file)continue;
+      const checked=await validateKycUploadFile(file);
+      if(!checked.ok||!extension(file.type))return privateResponse(apiFail('INVALID_EVIDENCE','The selected document photo is invalid',422));
+      prevalidated.set(side,{buffer:checked.buffer,inputHash:createHash('sha256').update(Buffer.from(checked.buffer)).digest('hex'),mimeType:file.type});
+    }
+  } catch { return privateResponse(apiFail('INVALID_EVIDENCE','The selected document photo is invalid',422)); }
+  const frontInputHash=prevalidated.get('front')?.inputHash??(typeof previous?.front_input_sha256==='string'?previous.front_input_sha256:null);
+  const backInputHash=requiredSides.includes('back')?(prevalidated.get('back')?.inputHash??(typeof previous?.back_input_sha256==='string'?previous.back_input_sha256:null)):null;
+  if(documentType==='national_id'&&hasDuplicateKycDocumentSides(frontInputHash,backInputHash))
+    return privateResponse(apiFail('DUPLICATE_DOCUMENT_SIDES','The same photo cannot be used for both sides of a MyKad',422));
+  const operationId=intent==='save_and_recognize'?String(operationIdEntry).toLowerCase():null;
   let operationFingerprint:string|null=null,leaseToken:string|null=null;
   let operationSignal:AbortSignal=request.signal;
   let operationService=service;
@@ -98,10 +111,7 @@ export async function POST(request:Request) {
   if(intent==='save_and_recognize'&&operationId){
     try{
       for(const side of requiredSides){
-        const file=(side==='front'?frontFile:backFile)!;
-        const checked=await validateKycUploadFile(file);
-        if(!checked.ok||!extension(file.type))return privateResponse(apiFail('INVALID_EVIDENCE','The selected document photo is invalid',422));
-        prevalidated.set(side,{buffer:checked.buffer,inputHash:createHash('sha256').update(Buffer.from(checked.buffer)).digest('hex'),mimeType:file.type});
+        if(!prevalidated.has(side))return privateResponse(apiFail('SOURCE_REQUIRED','Re-select the original photo for each document side',409));
       }
       const operationKey=process.env.KYC_IC_HMAC_KEY;
       if(!operationKey)return privateResponse(apiFail('PREVIEW_DISABLED','Document recognition is not configured',503));
@@ -140,7 +150,18 @@ export async function POST(request:Request) {
     }
     const draft=Array.isArray(currentDraft)?currentDraft[0]:currentDraft;
     const referenced=new Set([draft?.front_storage_path,draft?.back_storage_path,...formalReferences.map((row:{storage_path:string})=>row.storage_path)]);
-    const safePaths=paths.filter((path)=>!referenced.has(path));
+    const unreferencedPaths:string[]=[];
+    const unresolvedPaths:string[]=[];
+    for(const path of paths){
+      if(referenced.has(path))continue;
+      const {data:isReferenced,error:referenceCheckError}=await service.rpc('is_kyc_draft_storage_path_referenced',{p_storage_path:path});
+      if(referenceCheckError||typeof isReferenced!=='boolean')unresolvedPaths.push(path);
+      else if(!isReferenced)unreferencedPaths.push(path);
+    }
+    await Promise.all(unresolvedPaths.map((path)=>Promise.resolve(service.rpc('record_kyc_draft_cleanup_orphan',{p_owner_user_id:user.id,p_storage_path:path}))
+      .then(({error})=>{if(error)console.error('kyc_draft_cleanup_orphan_record_failed',{draftId});})
+      .catch(()=>console.error('kyc_draft_cleanup_orphan_record_failed',{draftId}))));
+    const safePaths=unreferencedPaths;
     const removed=safePaths.length?await bucket.remove(safePaths).catch(()=>({error:{message:'remove_failed'}})):{error:null};
     if(removed.error)await Promise.all(safePaths.map((path)=>Promise.resolve(service.rpc('record_kyc_draft_cleanup_orphan',{p_owner_user_id:user.id,p_storage_path:path}))
       .then(({error})=>{if(error)console.error('kyc_draft_cleanup_orphan_record_failed',{draftId});})
@@ -216,9 +237,9 @@ export async function POST(request:Request) {
       }
       operationSignal.throwIfAborted();
     }else{
+      newlyUploaded.push(path);
       const uploaded=await bucket.upload(path,prepared.stored,{contentType:file.type,upsert:false});
       if(uploaded.error)throw new Error('draft_upload_failed');
-      newlyUploaded.push(path);
     }
     return {path,inputHash,evidenceHash,clean:intent==='save_and_recognize'?Buffer.from(prepared.ocr):null,
       cleanSha256:intent==='save_and_recognize'?createHash('sha256').update(prepared.ocr).digest('hex'):null,mimeType:file.type};
@@ -286,8 +307,14 @@ export async function POST(request:Request) {
       p_failure_code:result.failureCode??(result.visualComparisonStatus?`passport_visual_${result.visualComparisonStatus}`:null),
     }),operationSignal);
     if(completeError||completed?.status!=='succeeded')return privateResponse(apiFail('PREVIEW_UNAVAILABLE','Draft was saved; enter document details manually or check recognition status',503));
+    const evidence = documentType === 'passport' ? result.passportFieldEvidence : undefined;
+    const passportFieldEvidence = evidence ? {
+      ...(evidence.holderName && ['matched', 'missing', 'conflict'].includes(evidence.holderName) ? { holderName: evidence.holderName } : {}),
+      ...(evidence.documentNumber && ['matched', 'missing', 'conflict'].includes(evidence.documentNumber) ? { documentNumber: evidence.documentNumber } : {}),
+    } : undefined;
     return privateResponse(apiOk({draft,preview:{status:result.status,holderName:result.holderName,documentNumber:result.documentNumber,
-      expiryDate:result.expiryDate,mrzStatus:result.mrzStatus,visualComparisonStatus:result.visualComparisonStatus}}));
+      expiryDate:result.expiryDate,mrzStatus:result.mrzStatus,visualComparisonStatus:result.visualComparisonStatus,
+      passportFieldEvidence}}));
   }catch(error){
     if(error instanceof WorkloadUnavailableError){
       const status=error.code==='busy'?429:503;

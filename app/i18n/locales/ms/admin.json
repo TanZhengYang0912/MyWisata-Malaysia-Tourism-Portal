@@ -1031,16 +1031,87 @@
   "aiAssistant": {
     "ask": {
       "clear": "Kosongkan sembang",
-      "empty": "cth. “Berapa banyak cadangan yang menunggu minggu ini?” atau “Tunjukkan pengeluaran melebihi 500”. Jawapan hanya datang daripada pertanyaan agregat berdaftar — bukan data pelanggan mentah.",
+      "empty": "cth. “Berapa banyak pengeluaran yang belum selesai?”, “Bagaimana saya meluluskan bayaran balik?” atau “Tandakan tiket pembayaran terbuka sebagai sedang diproses”. Tiada apa-apa berubah sehingga anda menekan Sahkan pada kad.",
       "placeholder": "Tanya soalan…",
+      "send": "Hantar",
       "restoring": "Memulihkan perbualan…",
-      "title": "Tanya tentang metrik platform"
+      "title": "Tanya pembantu"
     },
     "errors": {
       "unavailable": "Pembantu tidak tersedia buat masa ini."
     },
     "restricted": "Pembantu AI terhad kepada pentadbir super.",
-    "title": "Pembantu AI"
+    "title": "Pembantu AI",
+    "actions": {
+      "create_kb_entry": "Tambah entri pangkalan pengetahuan (disimpan dimatikan)",
+      "set_kb_entry_active": "Hidupkan atau matikan entri pangkalan pengetahuan",
+      "reindex_kb": "Indeks semula pangkalan pengetahuan",
+      "update_ticket": "Kemas kini tiket sokongan",
+      "reply_to_ticket": "Balas kepada pelanggan",
+      "mark_notifications_read": "Tandakan semua pemberitahuan dibaca",
+      "claim_event_exception": "Tuntut kes pengecualian acara",
+      "add_hotel_amenity": "Tambah kemudahan hotel",
+      "set_hotel_amenity_active": "Hidupkan atau matikan kemudahan hotel",
+      "add_moderation_word": "Tambah perkataan moderasi",
+      "set_moderation_word_active": "Hidupkan atau matikan perkataan moderasi",
+      "send_vendor_announcement": "Hantar pengumuman kepada semua vendor",
+      "vendor_request_information": "Minta maklumat lanjut daripada pemohon vendor",
+      "recommendation_request_changes": "Minta perubahan pada cadangan",
+      "review_catalogue_item": "Semak item katalog",
+      "resolve_chat_report": "Tutup laporan sembang",
+      "set_event_ad_paused": "Jeda atau sambung iklan acara",
+      "pause_sponsored_ad": "Jeda iklan tajaan",
+      "change_stall_number": "Tukar nombor gerai"
+    },
+    "fields": {
+      "title": "Tajuk",
+      "body": "Kandungan",
+      "keywords": "Kata kunci",
+      "entry": "Entri",
+      "active": "Tetapkan",
+      "ticket": "Tiket",
+      "status": "Status tiket",
+      "category": "Kategori",
+      "message": "Mesej",
+      "case": "Kes",
+      "dueDate": "Tarikh akhir",
+      "code": "Kod",
+      "labelEn": "Label (Inggeris)",
+      "labelMs": "Label (Melayu)",
+      "labelZh": "Label (Cina)",
+      "icon": "Ikon",
+      "term": "Perkataan",
+      "language": "Bahasa",
+      "vendor": "Penjual",
+      "reason": "Sebab",
+      "recommendation": "Cadangan",
+      "note": "Nota dalaman",
+      "item": "Item katalog",
+      "decision": "Keputusan",
+      "report": "Laporan",
+      "outcome": "Hasil",
+      "ad": "Iklan",
+      "change": "Perubahan",
+      "stallNumber": "Gerai"
+    },
+    "card": {
+      "pending": "Menunggu pengesahan anda",
+      "confirm": "Sahkan",
+      "cancel": "Batal",
+      "running": "Sedang dijalankan…",
+      "done": "Selesai",
+      "cancelled": "Dibatalkan",
+      "failed": "Gagal",
+      "on": "Hidup",
+      "off": "Mati",
+      "open": "Buka halaman"
+    },
+    "choices": {
+      "name": "Nama",
+      "active": "Keadaan",
+      "save_one": "Simpan {{count}} perubahan",
+      "save_other": "Simpan {{count}} perubahan"
+    }
   },
   "catalogue": {
     "accessibility": {
@@ -1442,6 +1513,7 @@
     "openItems_other": "{{count}} item terbuka",
     "walletPending_one": "{{count}} permintaan memerlukan keputusan, dengan {{amount}} dalam semakan.",
     "walletPending_other": "{{count}} permintaan memerlukan keputusan, dengan {{amount}} dalam semakan.",
+    "someSourcesUnavailable": "Sesetengah sumber tidak tersedia",
     "queueUnavailable": "Data barisan tidak tersedia buat sementara waktu",
     "staleData": "Muat semula gagal. Memaparkan hasil terakhir yang berjaya."
   },

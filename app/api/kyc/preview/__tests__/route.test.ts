@@ -18,7 +18,7 @@ vi.mock('@/lib/operations/workload', () => ({
 }));
 vi.mock('@/lib/kyc/ocr', () => ({ extractKycPreviewFields: extract }));
 vi.mock('@/lib/kyc/evidence-image', () => ({ prepareKycEvidenceImage: prepare }));
-vi.mock('@/lib/kyc/submission', () => ({ validateKycUploadFile: validateFile }));
+vi.mock('@/lib/kyc/submission', () => ({ validateKycUploadFile: validateFile, hasDuplicateKycDocumentSides: (front: string | null, back: string | null) => Boolean(front && back && front === back) }));
 vi.mock('@/lib/kyc/hash', () => ({ hashICWithHmac: fingerprint, normalizeIC: (value: string) => value.replace(/[-\s]/g, '').toUpperCase() }));
 
 const { POST } = await import('../route');
@@ -73,6 +73,19 @@ describe('/api/kyc/preview', () => {
     expect(response.status).toBe(409);
     expect(extract).not.toHaveBeenCalled();
     expect(download).not.toHaveBeenCalled();
+  });
+
+  it('rejects an identical front and back before OCR or recording an observation', async () => {
+    const sameHash = createHash('sha256').update('same photo').digest('hex');
+    rpc.mockReset().mockResolvedValueOnce({ data: [{ id: draftId, version: 2, document_type: 'national_id', evidence_revision: 'a'.repeat(64), front_input_sha256: sameHash, back_input_sha256: sameHash }], error: null });
+    const form = new FormData(); form.set('draftId', draftId); form.set('version', '2');
+    form.set('frontFile', new File(['same photo'], 'front.jpg', { type: 'image/jpeg' }));
+    form.set('backFile', new File(['same photo'], 'different-name.jpg', { type: 'image/jpeg' }));
+    const response = await POST(formRequest(form));
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'DUPLICATE_DOCUMENT_SIDES' } });
+    expect(extract).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledTimes(1);
   });
 
   it('keeps full OCR output owner-only and stores only a server HMAC observation', async () => {

@@ -1031,16 +1031,87 @@
   "aiAssistant": {
     "ask": {
       "clear": "Clear chat",
-      "empty": "e.g. “How many recommendations are pending this week?” or “Show me withdrawals over 500”. Answers only come from registered aggregate queries — never raw customer data.",
+      "empty": "e.g. “How many withdrawals are pending?”, “How do I approve a refund?” or “Mark the open payment tickets in progress”. Nothing changes until you press Confirm on a card.",
       "placeholder": "Ask a question…",
+      "send": "Send",
       "restoring": "Restoring conversation…",
-      "title": "Ask about platform metrics"
+      "title": "Ask the assistant"
     },
     "errors": {
       "unavailable": "Assistant unavailable right now."
     },
     "restricted": "The AI assistant is limited to super admins.",
-    "title": "AI Assistant"
+    "title": "AI Assistant",
+    "actions": {
+      "create_kb_entry": "Add knowledge base entry (saved off)",
+      "set_kb_entry_active": "Turn knowledge base entry on or off",
+      "reindex_kb": "Reindex knowledge base",
+      "update_ticket": "Update support ticket",
+      "reply_to_ticket": "Reply to customer",
+      "mark_notifications_read": "Mark all notifications read",
+      "claim_event_exception": "Claim event exception case",
+      "add_hotel_amenity": "Add hotel amenity",
+      "set_hotel_amenity_active": "Turn hotel amenity on or off",
+      "add_moderation_word": "Add moderation word",
+      "set_moderation_word_active": "Turn moderation word on or off",
+      "send_vendor_announcement": "Send announcement to all vendors",
+      "vendor_request_information": "Ask vendor applicant for more information",
+      "recommendation_request_changes": "Request changes to recommendation",
+      "review_catalogue_item": "Review catalogue item",
+      "resolve_chat_report": "Close chat report",
+      "set_event_ad_paused": "Pause or resume event ad",
+      "pause_sponsored_ad": "Pause sponsored ad",
+      "change_stall_number": "Change booth number"
+    },
+    "fields": {
+      "title": "Title",
+      "body": "Content",
+      "keywords": "Keywords",
+      "entry": "Entry",
+      "active": "Set to",
+      "ticket": "Ticket",
+      "status": "Status",
+      "category": "Category",
+      "message": "Message",
+      "case": "Case",
+      "dueDate": "Due date",
+      "code": "Code",
+      "labelEn": "Label (English)",
+      "labelMs": "Label (Malay)",
+      "labelZh": "Label (Chinese)",
+      "icon": "Icon",
+      "term": "Word",
+      "language": "Language",
+      "vendor": "Vendor",
+      "reason": "Reason",
+      "recommendation": "Recommendation",
+      "note": "Internal note",
+      "item": "Item",
+      "decision": "Decision",
+      "report": "Report",
+      "outcome": "Outcome",
+      "ad": "Ad",
+      "change": "Change",
+      "stallNumber": "Booth"
+    },
+    "card": {
+      "pending": "Waiting for your confirmation",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "running": "Running…",
+      "done": "Done",
+      "cancelled": "Cancelled",
+      "failed": "Failed",
+      "on": "On",
+      "off": "Off",
+      "open": "Open page"
+    },
+    "choices": {
+      "name": "Name",
+      "active": "Status",
+      "save_one": "Save {{count}} change",
+      "save_other": "Save {{count}} changes"
+    }
   },
   "catalogue": {
     "accessibility": {
@@ -1442,6 +1513,7 @@
     "openItems_other": "{{count}} open items",
     "walletPending_one": "{{count}} requests need a decision, with {{amount}} in review.",
     "walletPending_other": "{{count}} requests need a decision, with {{amount}} in review.",
+    "someSourcesUnavailable": "Some sources unavailable",
     "queueUnavailable": "Queue data temporarily unavailable",
     "staleData": "Refresh failed. Showing the last successful results."
   },

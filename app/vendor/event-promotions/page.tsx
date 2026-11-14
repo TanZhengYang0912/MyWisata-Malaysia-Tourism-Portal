@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { eventPromotionSubmitSchema } from '@/lib/validation/vendor-schemas';
+import { eventPromotionFormErrors, type EventPromotionFormField } from '@/lib/vendor/event-promotion-form-errors';
 import { ImagePlus, Loader2, Megaphone, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
@@ -50,6 +52,7 @@ export default function VendorEventPromotionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<EventPromotionFormField, string>>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -104,6 +107,10 @@ export default function VendorEventPromotionsPage() {
     setForm(EMPTY_FORM);
   }
 
+  function clearFieldError(field: EventPromotionFormField) {
+    setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
+  }
+
   async function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file || !vendorId) return;
@@ -115,6 +122,7 @@ export default function VendorEventPromotionsPage() {
       const body = await response.json() as { data?: { url?: string }; error?: { message?: string } };
       if (!response.ok || !body.data?.url) throw new Error(body.error?.message ?? t('ui.eventPromotions.uploadError'));
       setForm((prev) => ({ ...prev, posterUrl: body.data!.url! }));
+      clearFieldError('posterUrl');
     } catch (err) {
       showFeedback('error', err instanceof Error ? err.message : t('ui.eventPromotions.uploadError'));
     } finally {
@@ -130,19 +138,22 @@ export default function VendorEventPromotionsPage() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!vendorId || submitting) return;
-    if (!form.posterUrl) {
-      showFeedback('error', t('ui.eventPromotions.imageRequired'));
+    const payload = {
+      title: form.title.trim(),
+      details: form.details.trim(),
+      startDate: form.startDate,
+      endDate: form.endDate,
+      posterUrl: form.posterUrl,
+    };
+    // The same schema the API applies, so the vendor is told which field to fix before anything is sent.
+    const check = eventPromotionSubmitSchema.safeParse(payload);
+    if (!check.success) {
+      setFieldErrors(eventPromotionFormErrors(check.error.flatten().fieldErrors, Boolean(form.startDate && form.endDate)));
       return;
     }
+    setFieldErrors({});
     setSubmitting(true);
     try {
-      const payload = {
-        title: form.title.trim(),
-        details: form.details.trim(),
-        startDate: form.startDate,
-        endDate: form.endDate,
-        posterUrl: form.posterUrl,
-      };
       const response = editingId
         ? await fetch(`/api/vendors/${vendorId}/event-promotions/${editingId}`, {
           method: 'PATCH',
@@ -154,8 +165,16 @@ export default function VendorEventPromotionsPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-      const body = await response.json() as { error?: { message?: string } };
-      if (!response.ok) throw new Error(body.error?.message ?? t('ui.eventPromotions.submitError'));
+      const body = await response.json() as { error?: { code?: string; message?: string; details?: { fieldErrors?: Record<string, string[]> } } };
+      if (!response.ok) {
+        // A 422 that slipped past the browser check still names its fields; show them in place.
+        const fields = body.error?.code === 'VALIDATION_FAILED' ? eventPromotionFormErrors(body.error.details?.fieldErrors ?? {}, Boolean(payload.startDate && payload.endDate)) : {};
+        if (Object.keys(fields).length > 0) {
+          setFieldErrors(fields);
+          return;
+        }
+        throw new Error(body.error?.message ?? t('ui.eventPromotions.submitError'));
+      }
       showFeedback('success', editingId ? t('ui.eventPromotions.resubmitSuccess') : t('ui.eventPromotions.submitSuccess'));
       cancelEdit();
       await load();
@@ -201,12 +220,14 @@ export default function VendorEventPromotionsPage() {
 
         <div>
           <label htmlFor="event-title" className="mb-1 block text-xs font-semibold text-muted-foreground">{t('ui.eventPromotions.fields.title')}</label>
-          <Input id="event-title" value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} maxLength={120} required />
+          <Input id="event-title" value={form.title} onChange={(e) => { setForm((prev) => ({ ...prev, title: e.target.value })); clearFieldError('title'); }} maxLength={120} aria-invalid={Boolean(fieldErrors.title)} aria-describedby={fieldErrors.title ? 'event-title-error' : undefined} />
+          {fieldErrors.title && <p id="event-title-error" role="alert" className="mt-1 text-xs text-destructive">{t(fieldErrors.title)}</p>}
         </div>
 
         <div>
           <label htmlFor="event-details" className="mb-1 block text-xs font-semibold text-muted-foreground">{t('ui.eventPromotions.fields.details')}</label>
-          <Textarea id="event-details" value={form.details} onChange={(e) => setForm((prev) => ({ ...prev, details: e.target.value }))} maxLength={2000} rows={4} required />
+          <Textarea id="event-details" value={form.details} onChange={(e) => { setForm((prev) => ({ ...prev, details: e.target.value })); clearFieldError('details'); }} maxLength={2000} rows={4} aria-invalid={Boolean(fieldErrors.details)} aria-describedby={fieldErrors.details ? 'event-details-error' : undefined} />
+          {fieldErrors.details && <p id="event-details-error" role="alert" className="mt-1 text-xs text-destructive">{t(fieldErrors.details)}</p>}
         </div>
 
         <div>
@@ -215,7 +236,7 @@ export default function VendorEventPromotionsPage() {
             vendorId={vendorId}
             startDate={form.startDate}
             endDate={form.endDate}
-            onChange={(range) => setForm((prev) => ({ ...prev, startDate: range.startDate, endDate: range.endDate }))}
+            onChange={(range) => { setForm((prev) => ({ ...prev, startDate: range.startDate, endDate: range.endDate })); clearFieldError('dates'); }}
           />
           {form.startDate && form.endDate && (
             <p className="mt-1.5 text-xs text-muted-foreground">
@@ -230,6 +251,7 @@ export default function VendorEventPromotionsPage() {
               )}
             </p>
           )}
+          {fieldErrors.dates && <p role="alert" className="mt-1.5 text-xs text-destructive">{t(fieldErrors.dates)}</p>}
         </div>
 
         <div>
@@ -256,6 +278,7 @@ export default function VendorEventPromotionsPage() {
               <input id="event-image" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => void handleImageChange(e)} disabled={uploading} />
             </label>
           )}
+          {fieldErrors.posterUrl && <p role="alert" className="mt-1.5 text-xs text-destructive">{t(fieldErrors.posterUrl)}</p>}
         </div>
 
         <div className="flex gap-2">
