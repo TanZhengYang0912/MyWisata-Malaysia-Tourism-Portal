@@ -88,7 +88,7 @@ export default function ProductMediaUploader({ vendorId, productId, kind = 'imag
             onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file); }}
             className="sr-only"
           />
-          <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-border bg-white dark:bg-card px-3 py-2 text-xs font-semibold text-gray-700 dark:text-foreground hover:border-primary/30 hover:text-primary disabled:opacity-50">
+          <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-border bg-card px-3 py-2 text-xs font-semibold text-gray-700 dark:text-foreground hover:border-primary/30 hover:text-primary disabled:opacity-50">
             {uploading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />}
             {value ? t('media.replaceFile') : t('media.uploadFile')}
           </button>

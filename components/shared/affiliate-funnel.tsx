@@ -46,16 +46,16 @@ export function AffiliateFunnelSection({ funnel, conversionLabel = "Bookings" }:
     <div>
       <div className="grid grid-cols-3 gap-2 mb-4">
         <div className="text-center">
-          <p className="text-2xl font-bold text-foreground font-[family-name:var(--font-mono)]">{funnel.shares}</p>
+          <p className="text-2xl font-bold text-foreground tabular-nums">{funnel.shares}</p>
           <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground font-semibold">{t("affiliate.shares")}</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-foreground font-[family-name:var(--font-mono)]">{funnel.clicks}</p>
+          <p className="text-2xl font-bold text-foreground tabular-nums">{funnel.clicks}</p>
           <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground font-semibold">{t("affiliate.clicks")}</p>
           <p className="text-[0.6875rem] text-primary font-semibold">{pct(funnel.shareToClickRate)}</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-foreground font-[family-name:var(--font-mono)]">{funnel.conversions}</p>
+          <p className="text-2xl font-bold text-foreground tabular-nums">{funnel.conversions}</p>
           <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground font-semibold">{resolvedConversionLabel}</p>
           <p className="text-[0.6875rem] text-primary font-semibold">{pct(funnel.clickToConversionRate)}</p>
         </div>
@@ -86,9 +86,9 @@ export function AffiliateFunnelSection({ funnel, conversionLabel = "Bookings" }:
               {funnel.byPlatform.map((row) => (
                 <tr key={row.platform} className="border-t border-border">
                   <td className="px-3 py-2 font-medium text-foreground">{platformLabel(row.platform)}</td>
-                  <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">{row.shares}</td>
-                  <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">{row.clicks ?? "—"}</td>
-                  <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">{row.conversions ?? "—"}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{row.shares}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{row.clicks ?? "—"}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{row.conversions ?? "—"}</td>
                 </tr>
               ))}
             </tbody>

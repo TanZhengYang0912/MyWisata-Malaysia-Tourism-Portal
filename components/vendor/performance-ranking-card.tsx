@@ -54,7 +54,7 @@ export default async function PerformanceRankingCard({ kind, periodLabel, items,
     : 5;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+    <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-card shadow-sm">
       <header className="border-b border-gray-100 dark:border-border p-6">
         <div className="flex items-start justify-between gap-4">
           <div>

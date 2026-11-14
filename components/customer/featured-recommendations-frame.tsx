@@ -132,11 +132,11 @@ export function FeaturedRecommendationsFrame({
                   aria-label={slideLabel(index + 1, slideCount)}
                   aria-current={isActive ? "true" : undefined}
                   onClick={() => selectSlide(index)}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="group flex h-6 w-6 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                   <span
                     aria-hidden="true"
-                    className={`block h-1.5 rounded-full transition-[width,background-color] duration-200 motion-reduce:transition-none ${isActive ? "w-3.5 bg-primary" : "w-1.5 bg-muted-foreground/35"}`}
+                    className={`block h-1.5 rounded-full transition-[width,background-color] duration-200 group-hover:bg-accent group-active:bg-accent motion-reduce:transition-none ${isActive ? "w-3.5 bg-primary" : "w-1.5 bg-muted-foreground/35"}`}
                   />
                 </button>
               );

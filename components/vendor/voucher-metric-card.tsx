@@ -29,7 +29,7 @@ export function VoucherMetricCard({
     <article
       data-voucher-metric
       className={cn(
-        "min-w-0 rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-border dark:bg-card",
+        "min-w-0 rounded-2xl border border-gray-100 bg-card shadow-sm dark:border-border dark:bg-card",
         density === "compact" ? "p-3" : "p-4",
         className,
       )}

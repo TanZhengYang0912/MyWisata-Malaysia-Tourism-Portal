@@ -74,7 +74,7 @@ function MediaLibrary({
             key={url}
             type="button"
             onClick={() => onUse(url)}
-            className="group overflow-hidden rounded-lg border border-white bg-white text-left shadow-sm hover:border-primary"
+            className="group overflow-hidden rounded-lg border border-white bg-card text-left shadow-sm hover:border-primary"
             title={t("builder.inspector.useImage")}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -149,7 +149,7 @@ export default function OutletBuilderInspector({
 }: Props) {
   const { t } = useTranslation(["vendor", "customer"]);
   const panelClassName =
-    "min-h-0 h-full overflow-y-auto border-t border-primary/10 bg-white p-4 sm:p-5 lg:sticky lg:top-0 lg:border-l lg:border-t-0";
+    "min-h-0 h-full overflow-y-auto border-t border-primary/10 bg-card p-4 sm:p-5 lg:sticky lg:top-0 lg:border-l lg:border-t-0";
 
   if (hero)
     return (
@@ -220,7 +220,7 @@ export default function OutletBuilderInspector({
                 onChange={(event) =>
                   onUpdateHero({ textAlign: event.target.value })
                 }
-                className="mt-1 h-10 w-full rounded-xl border border-gray-200 bg-white px-2 text-xs"
+                className="mt-1 h-10 w-full rounded-xl border border-gray-200 bg-card px-2 text-xs"
               >
                 <option value="left">{t("builder.inspector.left")}</option>
                 <option value="center">{t("builder.inspector.center")}</option>
@@ -234,7 +234,7 @@ export default function OutletBuilderInspector({
                 onChange={(event) =>
                   onUpdateHero({ imagePosition: event.target.value })
                 }
-                className="mt-1 h-10 w-full rounded-xl border border-gray-200 bg-white px-2 text-xs"
+                className="mt-1 h-10 w-full rounded-xl border border-gray-200 bg-card px-2 text-xs"
               >
                 <option value="center">{t("builder.inspector.center")}</option>
                 <option value="top">{t("builder.inspector.top")}</option>
@@ -299,7 +299,7 @@ export default function OutletBuilderInspector({
                 type: event.target.value as OutletPageBlock["type"],
               })
             }
-            className="mt-1 h-10 w-full rounded-xl border border-gray-200 bg-white px-2 text-sm"
+            className="mt-1 h-10 w-full rounded-xl border border-gray-200 bg-card px-2 text-sm"
           >
             <option value="image">{t("builder.inspector.imageOnly")}</option>
             <option value="image_text">{t("builder.inspector.imageStory")}</option>
@@ -532,7 +532,7 @@ export default function OutletBuilderInspector({
                 style: { ...block.style, backgroundColor: event.target.value },
               })
             }
-            className="mt-1 h-10 w-full rounded-xl border border-gray-200 bg-white p-1"
+            className="mt-1 h-10 w-full rounded-xl border border-gray-200 bg-card p-1"
           />,
         )}
       </div>

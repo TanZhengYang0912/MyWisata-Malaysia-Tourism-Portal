@@ -280,7 +280,7 @@ export default function OutletBuilderCanvas({
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">{t('builder.canvasTitle')}</p>
             <p className="mt-1 text-sm text-gray-500">{t('builder.canvasHint')}</p>
           </div>
-          <span className="shrink-0 rounded-full bg-white px-3 py-1 text-[11px] font-bold text-primary shadow-sm">
+          <span className="shrink-0 rounded-full bg-card px-3 py-1 text-[11px] font-bold text-primary shadow-sm">
             {t('builder.sectionCount', { count: document.blocks.length + 1 })}
           </span>
         </div>
@@ -306,7 +306,7 @@ export default function OutletBuilderCanvas({
               />
               {selectedBlockId === document.hero.id && (
                 <div
-                  className="border-x border-b border-primary/10 bg-white px-4 py-3"
+                  className="border-x border-b border-primary/10 bg-card px-4 py-3"
                   onClick={(event) => event.stopPropagation()}
                 >
                   <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-primary/70">
@@ -403,7 +403,7 @@ export default function OutletBuilderCanvas({
 
                     {sizeMenuId === block.id && <>
                       <div className="fixed inset-0 z-30" onClick={() => setSizeMenuId(null)} />
-                      <div className="absolute right-2 top-12 z-40 rounded-xl border border-primary/10 bg-white p-1.5 shadow-lg" onClick={(event) => event.stopPropagation()}>
+                      <div className="absolute right-2 top-12 z-40 rounded-xl border border-primary/10 bg-card p-1.5 shadow-lg" onClick={(event) => event.stopPropagation()}>
                         <div className="grid grid-cols-2 gap-1">
                           {GRID_SIZE_PRESETS.map(([w, h]) => {
                             const active = block.w === w && block.h === h;
@@ -459,7 +459,7 @@ export default function OutletBuilderCanvas({
 
                     {sizeMenuId === block.id && <>
                       <div className="fixed inset-0 z-30" onClick={() => setSizeMenuId(null)} />
-                      <div className="absolute right-2 top-12 z-40 rounded-xl border border-primary/10 bg-white p-1.5 shadow-lg" onClick={(event) => event.stopPropagation()}>
+                      <div className="absolute right-2 top-12 z-40 rounded-xl border border-primary/10 bg-card p-1.5 shadow-lg" onClick={(event) => event.stopPropagation()}>
                         <div className="grid grid-cols-2 gap-1">
                           {GRID_SIZE_PRESETS.map(([w, h]) => {
                             const active = block.w === w && block.h === h;

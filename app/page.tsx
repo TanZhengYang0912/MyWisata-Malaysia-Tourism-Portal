@@ -21,7 +21,7 @@ export default function RootEntry() {
 
   useEffect(() => {
     if (loading) return;
-    router.replace(currentUser ? HOME_BY_ROLE[currentUser.role] ?? "/login" : "/login");
+    router.replace(currentUser ? HOME_BY_ROLE[currentUser.role] ?? "/login" : "/customer");
   }, [loading, currentUser, router]);
 
   return null;

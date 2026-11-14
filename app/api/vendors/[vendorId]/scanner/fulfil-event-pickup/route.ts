@@ -2,6 +2,7 @@ import { z } from "zod";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 import { authorizeVendor } from "@/lib/vendor-authorization";
 import { verifyEventPickupToken } from "@/lib/events/event-pickup-token";
+import { isEventLocationInCampaigns } from "@/lib/events/event-staff";
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -14,7 +15,7 @@ const fulfilSchema = z.object({
 /** POST: mark an event reservation collected. Accepted only on its pickup date, by its vendor. */
 export async function POST(request: Request, { params }: Props) {
   const { vendorId } = await params;
-  const access = await authorizeVendor(vendorId, undefined, { allowEventVendor: true, requireApproved: true });
+  const access = await authorizeVendor(vendorId, undefined, { allowEventVendor: true, requireApproved: true, allowEventStaff: true });
   if (!access.ok) return access.response;
   const parsed = await parseBody(request, fulfilSchema);
   if (!parsed.ok) return parsed.response;
@@ -26,6 +27,12 @@ export async function POST(request: Request, { params }: Props) {
   if (claims.vendorId !== vendorId) return apiFail("FORBIDDEN", "This pickup belongs to another vendor", 403);
   if (claims.locationId !== parsed.data.eventLocationId || claims.pickupDate !== parsed.data.pickupDate) {
     return apiFail("EVENT_CONTEXT_MISMATCH", "This pickup code belongs to a different event location or date", 409);
+  }
+  if (access.access.role === "event_staff") {
+    // The signed location is mapped to its campaign; staff collect only for their own events.
+    const scope = await isEventLocationInCampaigns(access.access.serviceDb, claims.locationId, access.access.eventCampaignIds);
+    if (scope.error) return apiFail("DB_ERROR", "Unable to verify your event access", 500);
+    if (!scope.inScope) return apiFail("FORBIDDEN", "This location is outside your event", 403);
   }
 
   const { data, error } = await access.access.serviceDb.rpc("fulfil_event_pickup", {

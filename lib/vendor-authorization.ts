@@ -2,8 +2,9 @@ import { type SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail } from '@/lib/validation/schemas';
+import { activeEventStaffCampaignIds } from '@/lib/events/event-staff';
 
-export type VendorRole = 'vendor_owner' | 'outlet_manager';
+export type VendorRole = 'vendor_owner' | 'outlet_manager' | 'event_staff';
 
 export interface VendorAuthorizationOptions {
   /**
@@ -14,6 +15,12 @@ export interface VendorAuthorizationOptions {
   allowEventVendor?: boolean;
   /** Require an approved merchant before exposing operational data or mutations. */
   requireApproved?: boolean;
+  /**
+   * Event staff (event_staff_members) may scan one vendor's event pickups.
+   * Only the scanner resolve and fulfil-event-pickup routes opt in; the
+   * allowlist is pinned by app/api/__tests__/event-staff-access.contract.test.ts.
+   */
+  allowEventStaff?: boolean;
 }
 
 const EVENT_VENDOR_FORBIDDEN = () => apiFail('EVENT_VENDOR_FORBIDDEN', 'This feature is not available to event vendors', 403);
@@ -25,6 +32,8 @@ export interface VendorAccess {
   outletIds: string[];
   isOwner: boolean;
   isOutletManager: boolean;
+  /** Campaigns an event_staff caller may scan for; empty for owners and managers. */
+  eventCampaignIds: string[];
   authDb: SupabaseClient;
   serviceDb: SupabaseClient;
 }
@@ -48,6 +57,42 @@ async function getManagerOutletIds(authDb: SupabaseClient, userId: string, vendo
     .map((assignment) => String(assignment.outlet_id));
 
   return { outletIds: [...new Set(outletIds)], error: null };
+}
+
+/**
+ * Last resort for a caller who is neither owner nor assigned manager: a live
+ * event staff membership. Runs only after those stronger roles were ruled out,
+ * so an owner or manager never comes back as staff. Returns null when the
+ * caller is not staff, so the caller's original rejection stands.
+ */
+async function eventStaffAccess(
+  authDb: SupabaseClient,
+  userId: string,
+  vendorId: string,
+  options: VendorAuthorizationOptions,
+): Promise<AccessResult | null> {
+  const serviceDb = createServiceClient() as SupabaseClient;
+  const staff = await activeEventStaffCampaignIds(serviceDb, userId, vendorId);
+  if (staff.error) return { ok: false, response: apiFail('DB_ERROR', staff.error.message, 500) };
+  if (!staff.campaignIds.length) return null;
+  const { data: vendor, error } = await serviceDb.from('vendors').select('id,status,kind').eq('id', vendorId).maybeSingle();
+  if (error) return { ok: false, response: apiFail('DB_ERROR', error.message, 500) };
+  if (vendor?.kind === 'event' && !options.allowEventVendor) return { ok: false, response: EVENT_VENDOR_FORBIDDEN() };
+  if (!vendor || vendor.status !== 'approved') return { ok: false, response: apiFail('FORBIDDEN', 'Vendor is not available in your assigned scope', 403) };
+  return {
+    ok: true,
+    access: {
+      userId,
+      vendorId,
+      role: 'event_staff',
+      outletIds: [],
+      isOwner: false,
+      isOutletManager: false,
+      eventCampaignIds: staff.campaignIds,
+      authDb,
+      serviceDb,
+    },
+  };
 }
 
 /**
@@ -75,7 +120,10 @@ export async function authorizeVendor(
 
     const managerScope = await getManagerOutletIds(authDb, user.id, vendorId);
     if (managerScope.error) return { ok: false, response: apiFail('DB_ERROR', managerScope.error.message, 500) };
-    if (!managerScope.outletIds.length) return { ok: false, response: apiFail('FORBIDDEN', 'You are not assigned to an outlet in this vendor', 403) };
+    if (!managerScope.outletIds.length) {
+      const staffAccess = options.allowEventStaff ? await eventStaffAccess(authDb, user.id, vendorId, options) : null;
+      return staffAccess ?? { ok: false, response: apiFail('FORBIDDEN', 'You are not assigned to an outlet in this vendor', 403) };
+    }
 
     // RLS can hide a manager's vendor row. The assignment is the caller-side
     // proof of scope; use the service client only after that proof to verify
@@ -99,6 +147,7 @@ export async function authorizeVendor(
         outletIds: managerScope.outletIds,
         isOwner: false,
         isOutletManager: true,
+        eventCampaignIds: [],
         authDb,
         serviceDb,
       },
@@ -119,6 +168,7 @@ export async function authorizeVendor(
         outletIds: (outlets || []).map((outlet: { id: string }) => outlet.id),
         isOwner: true,
         isOutletManager: false,
+        eventCampaignIds: [],
         authDb,
         serviceDb: createServiceClient() as SupabaseClient,
       },
@@ -133,7 +183,10 @@ export async function authorizeVendor(
 
   const managerScope = await getManagerOutletIds(authDb, user.id, vendorId);
   if (managerScope.error) return { ok: false, response: apiFail('DB_ERROR', managerScope.error.message, 500) };
-  if (!managerScope.outletIds.length) return { ok: false, response: apiFail('FORBIDDEN', 'You are not assigned to an outlet in this vendor', 403) };
+  if (!managerScope.outletIds.length) {
+    const staffAccess = options.allowEventStaff ? await eventStaffAccess(authDb, user.id, vendorId, options) : null;
+    return staffAccess ?? { ok: false, response: apiFail('FORBIDDEN', 'You are not assigned to an outlet in this vendor', 403) };
+  }
 
   return {
     ok: true,
@@ -144,6 +197,7 @@ export async function authorizeVendor(
       outletIds: managerScope.outletIds,
       isOwner: false,
       isOutletManager: true,
+      eventCampaignIds: [],
       authDb,
       serviceDb: createServiceClient() as SupabaseClient,
     },

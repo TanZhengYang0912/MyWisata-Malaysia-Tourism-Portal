@@ -158,7 +158,7 @@ export default function VendorOutletsPage() {
 
   if (managerShopMode && loading)
     return (
-      <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-8 text-sm text-gray-500 dark:text-muted-foreground">
+      <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-8 text-sm text-gray-500 dark:text-muted-foreground">
         {t('ui.outlets.loadingShop')}
       </div>
     );
@@ -371,7 +371,7 @@ export default function VendorOutletsPage() {
           ))}
         </div>
       ) : outlets.length === 0 ? (
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card px-6 py-16 text-center text-gray-400 dark:text-muted-foreground shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card px-6 py-16 text-center text-gray-400 dark:text-muted-foreground shadow-sm">
           <Store className="mx-auto mb-3 opacity-30" size={34} />
           <p className="text-sm">{t('ui.outlets.noMatches')}</p>
           <button
@@ -418,7 +418,7 @@ export default function VendorOutletsPage() {
             {outlets.map((outlet) => (
               <VendorMobileRecordCard
                 key={outlet.id}
-                className="group rounded-2xl border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm"
+                className="group rounded-2xl border-gray-100 dark:border-border bg-card p-4 shadow-sm"
                 header={
                   <div className="flex min-w-0 flex-1 items-start gap-3">
                     {isOwner && (
@@ -518,7 +518,7 @@ export default function VendorOutletsPage() {
             ))}
           </section>
           {pagination.totalPages > 1 && (
-            <div className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+            <div className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-card shadow-sm">
               <SharedPagination
                 currentPage={pagination.page}
                 totalPages={pagination.totalPages}
@@ -632,7 +632,7 @@ export default function VendorOutletsPage() {
                     copyOutletId(selectedOutlet.display_id || selectedOutlet.id)
                   }
                   title={t('ui.outlets.copyOutletId')}
-                  className="shrink-0 rounded-lg p-2 text-gray-500 dark:text-muted-foreground hover:bg-white dark:hover:bg-card hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="shrink-0 rounded-lg p-2 text-gray-500 dark:text-muted-foreground hover:bg-card hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                   <Copy size={15} aria-hidden="true" />
                 </button>
@@ -664,7 +664,7 @@ export default function VendorOutletsPage() {
           {(selectedOutlet.phone || selectedOutlet.email || (selectedOutlet.lat && selectedOutlet.lng)) && (
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               {(selectedOutlet.phone || selectedOutlet.email) && (
-                <div className="min-w-0 rounded-xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 sm:p-4">
+                <div className="min-w-0 rounded-xl border border-gray-100 dark:border-border bg-card p-3 sm:p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-muted-foreground">
                     {t('ui.outlets.contactDetails')}
                   </p>

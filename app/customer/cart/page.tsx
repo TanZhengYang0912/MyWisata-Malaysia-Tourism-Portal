@@ -4,6 +4,7 @@ import { formatStayRange } from "@/lib/customer/booking-view";
 import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { SeeMoreLink } from "@/components/customer/see-more-link";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { CalendarClock, Check, ChevronDown, ImageOff, Info, Search, ShoppingCart, Tag, Trash2, X } from "lucide-react";
@@ -464,7 +465,7 @@ export default function CartPage() {
                 />
                 <span className="break-words whitespace-normal text-sm font-semibold text-foreground">{group.outlet?.name ?? tCustomer("ui.cart.unavailableOutlet")}</span>
               </label>
-              {group.outlet && <Link href={`/customer/outlets/${group.outletId}`} className="shrink-0 text-xs font-semibold text-primary hover:underline">{tCustomer("ui.cart.viewOutlet")}</Link>}
+              {group.outlet && <SeeMoreLink href={`/customer/outlets/${group.outletId}`} ariaLabel={tCustomer("ui.cart.viewOutlet")} />}
             </header>
             <div className="space-y-3 p-3">
         {group.rows.map(({ item, index }) => {
@@ -531,7 +532,7 @@ export default function CartPage() {
                 {item.slotId && !confirmedSlot && availability.status !== "available" && (
                   <p className="mt-0.5 text-xs text-muted-foreground">{availabilityLabel}</p>
                 )}
-                <p className="text-sm font-bold text-primary font-[family-name:var(--font-mono)] mt-1"><ReferencePrice amountMYR={price} /> × {item.qty}</p>
+                <p className="text-sm font-bold text-primary tabular-nums mt-1"><ReferencePrice amountMYR={price} /> × {item.qty}</p>
                 {isAccommodation && (
                   <div className="mt-2">
                     {missingStayDetails ? (
@@ -555,7 +556,7 @@ export default function CartPage() {
                 )}
               </div>
               <div className="flex flex-col items-end gap-2 shrink-0">
-                <ReferencePrice amountMYR={lineTotal} className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]" />
+                <ReferencePrice amountMYR={lineTotal} className="text-sm font-bold text-foreground tabular-nums" />
                 <div className="flex items-center gap-2">
                   <button type="button" aria-label={tCustomer("ui.activityDetail.decreaseQuantity")} onClick={() => void updateCartQuantity(index, item.qty - 1)} className="w-7 h-7 rounded-lg border border-border text-foreground">−</button>
                   <span className="w-6 text-center text-sm font-semibold text-foreground">{item.qty}</span>
@@ -579,7 +580,7 @@ export default function CartPage() {
             </div>
             <footer className="flex items-center justify-between gap-3 border-t border-border px-4 py-2.5">
               <span className="text-xs text-muted-foreground">{tCustomer("ui.cart.outletSubtotal")}</span>
-              <ReferencePrice amountMYR={group.groupSubtotal} className="text-sm font-bold text-foreground font-[family-name:var(--font-mono)]" />
+              <ReferencePrice amountMYR={group.groupSubtotal} className="text-sm font-bold text-foreground tabular-nums" />
             </footer>
           </section>
         ))}
@@ -697,17 +698,17 @@ export default function CartPage() {
       <div className="rounded-xl border border-border p-4 mb-6 space-y-2">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">{tCustomer("ui.cart.subtotalSelected", { count: selectedKeys.size })}</span>
-          <ReferencePrice amountMYR={subtotal} className="font-semibold text-foreground font-[family-name:var(--font-mono)]" />
+          <ReferencePrice amountMYR={subtotal} className="font-semibold text-foreground tabular-nums" />
         </div>
         {discount > 0 && (
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{tCustomer("ui.cart.discount")}</span>
-            <span className="font-semibold text-primary font-[family-name:var(--font-mono)]">−<ReferencePrice amountMYR={discount} /></span>
+            <span className="font-semibold text-primary tabular-nums">−<ReferencePrice amountMYR={discount} /></span>
           </div>
         )}
         <div className="flex justify-between text-base pt-2 border-t border-border">
           <span className="font-bold text-foreground">{tCustomer("ui.cart.total")}</span>
-          <ReferencePrice amountMYR={total} showSettlementMYR className="font-bold text-primary font-[family-name:var(--font-mono)]" />
+          <ReferencePrice amountMYR={total} showSettlementMYR className="font-bold text-primary tabular-nums" />
         </div>
       </div>
 

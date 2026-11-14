@@ -7,7 +7,7 @@ const ORDER_ID = '11111111-1111-4111-8111-111111111111';
 const LOCATION_ID = '33333333-3333-4333-8333-333333333333';
 const PICKUP_SLOT_ID = '66666666-6666-4666-8666-666666666666';
 
-const mocks = vi.hoisted(() => ({ authorizeVendor: vi.fn(), rpc: vi.fn() }));
+const mocks = vi.hoisted(() => ({ authorizeVendor: vi.fn(), rpc: vi.fn(), from: vi.fn() }));
 vi.mock('@/lib/vendor-authorization', () => ({ authorizeVendor: mocks.authorizeVendor }));
 
 import { POST } from '../route';
@@ -36,7 +36,7 @@ describe('POST fulfil-event-pickup', () => {
     const response = await POST(request(token), params);
 
     expect(response.status).toBe(200);
-    expect(mocks.authorizeVendor).toHaveBeenCalledWith(VENDOR_ID, undefined, { allowEventVendor: true, requireApproved: true });
+    expect(mocks.authorizeVendor).toHaveBeenCalledWith(VENDOR_ID, undefined, { allowEventVendor: true, requireApproved: true, allowEventStaff: true });
     expect(mocks.rpc).toHaveBeenCalledWith('fulfil_event_pickup', {
       p_order_id: ORDER_ID, p_vendor_id: VENDOR_ID, p_location_id: LOCATION_ID, p_pickup_date: futureDate, p_operator_id: 'operator-1', p_pickup_slot_id: PICKUP_SLOT_ID,
     });
@@ -113,5 +113,41 @@ describe('POST fulfil-event-pickup', () => {
     const response = await POST(request('evt1.e30.AAAA'), params);
     expect(response.status).toBe(400);
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  describe('event staff', () => {
+    const STAFF_CAMPAIGN = '77777777-7777-4777-8777-777777777777';
+    const token = () => signEventPickupToken({ orderId: ORDER_ID, vendorId: VENDOR_ID, locationId: LOCATION_ID, pickupDate: futureDate, issuedAt: 1 });
+
+    function asStaff(locationCampaignId: string) {
+      const builder: Record<string, unknown> = {};
+      builder.select = vi.fn(() => builder);
+      builder.eq = vi.fn(() => builder);
+      builder.maybeSingle = vi.fn(async () => ({ data: { campaign_id: locationCampaignId }, error: null }));
+      mocks.from.mockReturnValue(builder);
+      mocks.authorizeVendor.mockResolvedValue({
+        ok: true,
+        access: { userId: 'staff-1', role: 'event_staff', eventCampaignIds: [STAFF_CAMPAIGN], serviceDb: { rpc: mocks.rpc, from: mocks.from } },
+      });
+    }
+
+    it('records a collection by staff at a location of their event as that staff member', async () => {
+      asStaff(STAFF_CAMPAIGN);
+
+      const response = await POST(request(token()), params);
+
+      expect(response.status).toBe(200);
+      expect(mocks.from).toHaveBeenCalledWith('promotion_campaign_locations');
+      expect(mocks.rpc).toHaveBeenCalledWith('fulfil_event_pickup', expect.objectContaining({ p_operator_id: 'staff-1', p_location_id: LOCATION_ID }));
+    });
+
+    it('rejects staff at a location outside their event without calling the RPC', async () => {
+      asStaff('88888888-8888-4888-8888-888888888888');
+
+      const response = await POST(request(token()), params);
+
+      expect(response.status).toBe(403);
+      expect(mocks.rpc).not.toHaveBeenCalled();
+    });
   });
 });

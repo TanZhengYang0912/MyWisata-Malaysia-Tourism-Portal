@@ -571,7 +571,7 @@ export default function OutletPageBuilder({
       : null;
   if (loading)
     return (
-      <div className="rounded-2xl bg-white p-8 text-sm text-gray-500">
+      <div className="rounded-2xl bg-card p-8 text-sm text-gray-500">
         {t("builder.loading")}
       </div>
     );
@@ -593,7 +593,7 @@ export default function OutletPageBuilder({
       className={`fixed inset-0 z-[60] bg-primary/45 p-0 transition-opacity duration-200 ease-out motion-reduce:transition-none sm:p-4 lg:p-8 ${closing ? "pointer-events-none opacity-0" : "opacity-100"}`}
     >
       <div
-        className={`mx-auto flex h-full max-w-[1600px] flex-col overflow-hidden rounded-none bg-[#f8fafc] shadow-2xl transition-transform duration-200 ease-out motion-reduce:transition-none sm:rounded-[28px] ${closing ? "scale-[0.99]" : "scale-100"}`}
+        className={`mx-auto flex h-full max-w-[1600px] flex-col overflow-hidden rounded-none bg-background shadow-2xl transition-transform duration-200 ease-out motion-reduce:transition-none sm:rounded-[28px] ${closing ? "scale-[0.99]" : "scale-100"}`}
       >
         <header className="flex shrink-0 flex-col gap-2 border-b border-primary/10 bg-primary px-4 py-3 text-white sm:px-6 sm:py-4">
           <div className="flex items-start justify-between gap-4">
@@ -697,7 +697,7 @@ export default function OutletPageBuilder({
               role="dialog"
               aria-modal="true"
               aria-labelledby="outlet-builder-confirm-title"
-              className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl"
+              className="w-full max-w-md rounded-3xl bg-card p-6 shadow-2xl"
             >
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
                 {t("builder.studio")}
@@ -732,7 +732,7 @@ export default function OutletPageBuilder({
         )}
         {previewMode && (
           <div className="fixed inset-0 z-[80] bg-primary/60 p-3 sm:p-8">
-            <div className="mx-auto flex h-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="mx-auto flex h-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-card shadow-2xl">
               <div className="flex shrink-0 items-center justify-between gap-4 border-b border-primary/10 bg-primary px-5 py-4 text-white sm:px-7">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent">
@@ -747,7 +747,7 @@ export default function OutletPageBuilder({
                   {t("builder.closePreview")} <X size={15} />
                 </button>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto bg-[#f8fafc]">
+              <div className="min-h-0 flex-1 overflow-y-auto bg-background">
                 {previewMode === "published" && !publishedDocument ? (
                   <div className="p-8 text-center text-sm text-gray-500">
                     {t("builder.publishFirstHint")}
@@ -783,7 +783,7 @@ export default function OutletPageBuilder({
                   onAddBlock={(type) => addBlock(type)}
                   onBeginDrag={() => undefined}
                 />
-                <div className="border-t border-primary/10 bg-white p-4">
+                <div className="border-t border-primary/10 bg-card p-4">
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
                     {t("builder.pageSettings")}
                   </p>
@@ -817,7 +817,7 @@ export default function OutletPageBuilder({
                             fontFamily: event.target.value,
                           }))
                         }
-                        className="mt-1 h-9 w-full rounded-xl border border-gray-200 bg-white px-2 text-xs"
+                        className="mt-1 h-9 w-full rounded-xl border border-gray-200 bg-card px-2 text-xs"
                       >
                         <option>{FONT_FAMILY_LABELS.plusJakartaSans}</option>
                         <option>{FONT_FAMILY_LABELS.fraunces}</option>
@@ -858,7 +858,7 @@ export default function OutletPageBuilder({
             </TabsContent>
             <TabsContent value="preview" forceMount className="min-h-0 min-w-0 data-[state=inactive]:hidden data-[state=active]:flex md:flex md:data-[state=inactive]:flex">
               <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                <div className="flex shrink-0 flex-col gap-3 border-b border-primary/10 bg-white px-4 py-3 sm:px-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex shrink-0 flex-col gap-3 border-b border-primary/10 bg-card px-4 py-3 sm:px-5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-700">
                       {t("builder.livePreview")}
@@ -879,7 +879,7 @@ export default function OutletPageBuilder({
                       <button
                         type="button"
                         onClick={() => setView("desktop")}
-                        className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold ${view === "desktop" ? "bg-white text-primary shadow-sm" : "text-gray-400"}`}
+                        className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold ${view === "desktop" ? "bg-card text-primary shadow-sm" : "text-gray-400"}`}
                         aria-label={t("builder.desktopPreview")}
                       >
                         <Monitor size={15} /> <span className="hidden xl:inline">{t("builder.desktop")}</span>
@@ -887,7 +887,7 @@ export default function OutletPageBuilder({
                       <button
                         type="button"
                         onClick={() => setView("tablet")}
-                        className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold ${view === "tablet" ? "bg-white text-primary shadow-sm" : "text-gray-400"}`}
+                        className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold ${view === "tablet" ? "bg-card text-primary shadow-sm" : "text-gray-400"}`}
                         aria-label={t("builder.tabletPreview")}
                       >
                         <Tablet size={15} /> <span className="hidden xl:inline">{t("builder.tablet")}</span>
@@ -895,7 +895,7 @@ export default function OutletPageBuilder({
                       <button
                         type="button"
                         onClick={() => setView("mobile")}
-                        className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold ${view === "mobile" ? "bg-white text-primary shadow-sm" : "text-gray-400"}`}
+                        className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold ${view === "mobile" ? "bg-card text-primary shadow-sm" : "text-gray-400"}`}
                         aria-label={t("builder.mobilePreview")}
                       >
                         <Smartphone size={15} /> <span className="hidden xl:inline">{t("builder.mobile")}</span>

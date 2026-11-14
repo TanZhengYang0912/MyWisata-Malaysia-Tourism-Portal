@@ -9,11 +9,12 @@
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f8fafc;
+  /* Pages use a very light blue (2026-11-14); cards and popovers keep the warm off-white. No pure-white surfaces anywhere. */
+  --background: #f7faff;
   --foreground: #0f172a;
-  --card: #ffffff;
+  --card: #faf9f6;
   --card-foreground: #0f172a;
-  --popover: #ffffff;
+  --popover: #faf9f6;
   --popover-foreground: #0f172a;
   --primary: #010066;
   --primary-foreground: #f8fafc;
@@ -299,6 +300,49 @@ body {
   flex-direction: column;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+/* Home card carousels (components/customer/card-carousel.tsx). Same paging trick as the
+   Explore destinations rail: the trailing padding equals the gap, so one page of cards is
+   exactly the track's width and the pager's page step is clientWidth. */
+.mw-card-carousel {
+  --per-page: 2;
+  --gap: 0.75rem;
+  display: flex;
+  gap: var(--gap);
+  padding-right: var(--gap);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.mw-card-carousel::-webkit-scrollbar { display: none; }
+
+.mw-card-carousel:focus-visible { outline: 3px solid var(--primary); outline-offset: -3px; }
+
+.mw-card-carousel > * {
+  display: flex;
+  flex: 0 0 calc((100% - (var(--per-page) - 1) * var(--gap)) / var(--per-page));
+  min-width: 0;
+  scroll-snap-align: none;
+}
+
+.mw-card-carousel > * > * { flex: 1 1 auto; min-width: 0; }
+
+/* CardFrame draws its focus ring outside the card; inside the scroller that would be clipped. */
+.mw-card-carousel [data-card-frame]:has([data-card-link]:focus-visible) { outline-offset: -3px; }
+
+.mw-card-carousel > :nth-child(2n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
+
+@media (min-width: 640px) {
+  .mw-card-carousel { --gap: 1.25rem; }
+}
+
+@media (min-width: 1024px) {
+  .mw-card-carousel { --per-page: 4; }
+  .mw-card-carousel > :nth-child(2n + 1) { scroll-snap-align: none; scroll-snap-stop: normal; }
+  .mw-card-carousel > :nth-child(4n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
 }
 
 /* Home campaign envelope (components/customer/campaign-envelope.tsx). The front
@@ -689,198 +733,6 @@ body {
 
   .mw-customer-calendar .fc .fc-list-event-title .mw-calendar-event-outlet {
     max-width: 100%;
-  }
-}
-
-/* Events discovery calendar: retain the shared FullCalendar skin, then tune
-   this page's month and agenda hierarchy without affecting booking calendars. */
-.mw-events-calendar .fc .fc-toolbar {
-  align-items: center;
-  margin-block-end: 1.25rem;
-}
-
-.mw-events-calendar .fc .fc-toolbar-title {
-  font-size: clamp(1.2rem, 2vw, 1.55rem);
-  letter-spacing: -0.035em;
-  line-height: 1.2;
-}
-
-.mw-events-calendar .fc .fc-button {
-  min-height: 2.5rem;
-  border-color: var(--border);
-  background: var(--card);
-  color: var(--primary);
-  padding-inline: 0.85rem;
-}
-
-.mw-events-calendar .fc .fc-button:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
-  background: var(--secondary);
-  color: var(--primary);
-}
-
-.mw-events-calendar .fc .fc-button-primary:not(:disabled).fc-button-active,
-.mw-events-calendar .fc .fc-today-button:not(:disabled) {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-
-.mw-events-calendar .fc .fc-scrollgrid {
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--primary) 14%, var(--border));
-  border-radius: 1rem;
-}
-
-.mw-events-calendar .fc .fc-col-header-cell {
-  background: color-mix(in srgb, var(--primary) 4%, var(--card));
-}
-
-.mw-events-calendar .fc .fc-col-header-cell-cushion {
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.mw-events-calendar .fc .fc-daygrid-day-frame {
-  min-height: 7.1rem;
-  padding-bottom: 0.35rem;
-}
-
-.mw-events-calendar .fc .fc-daygrid-day-number {
-  display: inline-grid;
-  width: 2rem;
-  height: 2rem;
-  place-items: center;
-  margin: 0.3rem 0.35rem 0.15rem;
-  border-radius: 9999px;
-  padding: 0;
-}
-
-.mw-events-calendar .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-  background: var(--highlight-yellow);
-  color: var(--highlight-yellow-foreground);
-}
-
-.mw-events-calendar .fc .fc-daygrid-day-events {
-  margin-inline: 0.2rem;
-}
-
-.mw-events-calendar .fc .fc-event {
-  border-inline-start-width: 3px;
-  border-radius: 0.7rem;
-  margin-block: 0.18rem;
-  padding: 0.23rem 0.45rem;
-}
-
-.mw-events-calendar .fc .mw-events-calendar__event--live {
-  border-color: color-mix(in srgb, var(--nature-green) 68%, var(--border));
-  border-inline-start-color: var(--nature-green);
-  background: color-mix(in srgb, var(--nature-green) 12%, var(--card));
-}
-
-.mw-events-calendar .fc .mw-events-calendar__event--upcoming {
-  border-color: color-mix(in srgb, var(--highlight-yellow) 62%, var(--border));
-  border-inline-start-color: var(--highlight-yellow);
-  background: color-mix(in srgb, var(--highlight-yellow) 18%, var(--card));
-}
-
-.mw-events-calendar .fc .fc-list {
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--primary) 14%, var(--border));
-  border-radius: 1rem;
-}
-
-.mw-events-calendar .fc .fc-list-day-cushion {
-  background: color-mix(in srgb, var(--primary) 5%, var(--card));
-  color: var(--foreground);
-}
-
-.mw-events-calendar .fc .fc-list-event > td {
-  border-color: color-mix(in srgb, var(--primary) 10%, var(--border));
-  padding-block: 0.75rem;
-}
-
-.mw-events-calendar .fc .fc-list-event-title a {
-  overflow-wrap: anywhere;
-  font-weight: 700;
-}
-
-.mw-events-calendar .fc .fc-list-event-dot {
-  border-color: var(--primary);
-}
-
-.mw-events-calendar .fc .fc-list-event.mw-events-calendar__event--live > td {
-  background: color-mix(in srgb, var(--nature-green) 7%, var(--card));
-}
-
-.mw-events-calendar .fc .fc-list-event.mw-events-calendar__event--live .fc-list-event-dot {
-  border-color: var(--nature-green);
-}
-
-.mw-events-calendar .fc .fc-list-event.mw-events-calendar__event--upcoming > td {
-  background: color-mix(in srgb, var(--highlight-yellow) 10%, var(--card));
-}
-
-.mw-events-calendar .fc .fc-list-event.mw-events-calendar__event--upcoming .fc-list-event-dot {
-  border-color: var(--highlight-yellow);
-}
-
-@media (max-width: 640px) {
-  .mw-events-calendar .fc .fc-toolbar.fc-header-toolbar {
-    display: grid;
-    justify-items: center;
-    gap: 0.85rem;
-  }
-
-  .mw-events-calendar .fc .fc-toolbar-chunk {
-    width: auto;
-  }
-
-  .mw-events-calendar .fc .fc-daygrid-day-frame {
-    min-height: 5.25rem;
-  }
-
-  .mw-events-calendar .fc .fc-col-header-cell-cushion {
-    font-size: 0.58rem;
-    letter-spacing: 0.035em;
-  }
-
-  .mw-events-calendar .fc .fc-daygrid-day-number {
-    width: 1.65rem;
-    height: 1.65rem;
-    margin: 0.2rem 0.15rem 0.1rem;
-    font-size: 0.7rem;
-  }
-
-  .mw-events-calendar .fc .fc-event {
-    margin-inline: 0.05rem;
-    padding: 0.15rem 0.25rem;
-  }
-
-  .mw-events-calendar .fc .fc-list-event > td {
-    padding-block: 0.55rem;
-  }
-
-  .mw-events-calendar .fc .fc-list-table {
-    table-layout: auto;
-  }
-
-  .mw-events-calendar .fc .fc-list-table tr:first-child > :first-child,
-  .mw-events-calendar .fc .fc-list-table tr:first-child > :nth-child(2),
-  .mw-events-calendar .fc .fc-list-event-time,
-  .mw-events-calendar .fc .fc-list-event-graphic {
-    width: 1px;
-    white-space: nowrap;
-  }
-
-  .mw-events-calendar .fc .fc-list-event-title {
-    width: auto;
-    min-width: 0;
-  }
-
-  .mw-events-calendar .fc .fc-list-event-title a {
-    overflow-wrap: normal;
   }
 }
 

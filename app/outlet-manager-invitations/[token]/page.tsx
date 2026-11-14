@@ -114,11 +114,11 @@ export default function OutletManagerInvitationPage() {
   const isExpired = invitation?.status !== "pending";
   const isMatchingSession = !sessionEmail || sessionEmail === invitation?.email.toLowerCase();
 
-  if (loading) return <main className="flex min-h-screen items-center justify-center bg-[#f7f8fc] text-sm text-slate-500">{t("outletInvitation.loading")}</main>;
+  if (loading) return <main className="flex min-h-screen items-center justify-center bg-background text-sm text-slate-500">{t("outletInvitation.loading")}</main>;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f7f8fc] px-4 py-10">
-      <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_60px_rgba(1,0,102,0.12)]">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+      <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-card shadow-[0_18px_60px_rgba(1,0,102,0.12)]">
         <div className="bg-[#010066] px-6 py-8 text-white sm:px-9">
           <div className="flex items-center gap-2 text-sm font-bold"><span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15"><Globe size={16} /></span> {BRAND_NAME}</div>
           <p className="mt-8 text-xs font-bold uppercase tracking-[0.2em] text-[#FFCC00]">{t("outletInvitation.eyebrow")}</p>
@@ -148,7 +148,7 @@ export default function OutletManagerInvitationPage() {
           ) : (
             <form onSubmit={authenticate} className="space-y-3">
               <HumanVerification {...human} />
-              <div className="flex rounded-xl bg-slate-100 p-1 text-sm font-semibold"><button type="button" onClick={() => setMode("sign_in")} className={`flex-1 rounded-lg px-3 py-2 ${mode === "sign_in" ? "bg-white text-primary shadow-sm" : "text-slate-500"}`}>{t("outletInvitation.haveAccount")}</button><button type="button" onClick={() => setMode("register")} className={`flex-1 rounded-lg px-3 py-2 ${mode === "register" ? "bg-white text-primary shadow-sm" : "text-slate-500"}`}>{t("outletInvitation.createAccount")}</button></div>
+              <div className="flex rounded-xl bg-slate-100 p-1 text-sm font-semibold"><button type="button" onClick={() => setMode("sign_in")} className={`flex-1 rounded-lg px-3 py-2 ${mode === "sign_in" ? "bg-card text-primary shadow-sm" : "text-slate-500"}`}>{t("outletInvitation.haveAccount")}</button><button type="button" onClick={() => setMode("register")} className={`flex-1 rounded-lg px-3 py-2 ${mode === "register" ? "bg-card text-primary shadow-sm" : "text-slate-500"}`}>{t("outletInvitation.createAccount")}</button></div>
               {mode === "register" && <input required value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder={t("fields.fullName")} aria-label={t("fields.fullName")} className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-primary" />}
               <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3"><Mail size={15} className="text-slate-400" /><input readOnly value={invitation?.email || ""} aria-label={t("outletInvitation.emailLabel")} className="h-11 min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none" /></div>
               <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3"><LockKeyhole size={15} className="text-slate-400" /><input required type="password" minLength={mode === "register" ? 10 : undefined} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={t("outletInvitation.passwordHint")} aria-label={t("fields.password")} className="h-11 min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none" /></div>

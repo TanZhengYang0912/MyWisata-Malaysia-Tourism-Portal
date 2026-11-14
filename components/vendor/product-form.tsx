@@ -340,7 +340,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {errors.coverUrl && <p className="mt-1 text-xs text-red-600 dark:text-red-300">{(errors.coverUrl as any)?.message}</p>}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {watch('coverUrl') && <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-200 dark:border-border bg-white dark:bg-card p-2"><img src={watch('coverUrl')} alt={t('productForm.coverPreview')} className="h-14 w-20 rounded-md object-cover" /><span className="truncate text-xs text-gray-500 dark:text-muted-foreground">{watch('coverUrl')}</span></div>}
+          {watch('coverUrl') && <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-200 dark:border-border bg-card p-2"><img src={watch('coverUrl')} alt={t('productForm.coverPreview')} className="h-14 w-20 rounded-md object-cover" /><span className="truncate text-xs text-gray-500 dark:text-muted-foreground">{watch('coverUrl')}</span></div>}
           <div className="mt-4 border-t border-gray-200 dark:border-border pt-3">
             <div className="mb-2 flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-muted-foreground">{t('productForm.gallery')}</p>
@@ -397,7 +397,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-foreground">
                 {t('productForm.entryPolicy')}
-                <select {...register('ticketEntryPolicy')} className="mt-1 w-full rounded-lg border border-gray-300 dark:border-border bg-white dark:bg-card px-3 py-2 text-sm">
+                <select {...register('ticketEntryPolicy')} className="mt-1 w-full rounded-lg border border-gray-300 dark:border-border bg-card px-3 py-2 text-sm">
                   <option value="single_entry">{t('productForm.singleEntry')}</option>
                   <option value="group_entry">{t('productForm.groupEntry')}</option>
                   <option value="multi_entry">{t('productForm.multiEntry')}</option>
@@ -423,7 +423,7 @@ export default function ProductForm({ vendorId, outletIds, initialData, onSucces
           </section>
         )}
 
-        <div className="rounded-xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+        <div className="rounded-xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('productForm.availability')}</p>

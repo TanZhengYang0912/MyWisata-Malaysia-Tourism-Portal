@@ -142,8 +142,12 @@ describe("promotion campaign home spotlight", () => {
     expect(unavailable).toContain("ui.actions.retry");
     expect(empty).toContain("ui.promotionCampaigns.emptyTitle");
     expect(empty).not.toContain("ui.promotionCampaigns.unavailableTitle");
-    expect(getPanelActions(unavailable, ["ui.promotionCampaigns.allCampaigns"])).toContain("bg-highlight-yellow");
-    expect(getPanelActions(empty, ["ui.promotionCampaigns.allCampaigns"])).toContain("bg-highlight-yellow");
+    // "Browse all events" is the shared See more link; its old wording stays in the accessible name.
+    for (const markup of [unavailable, empty]) {
+      const actions = getPanelActions(markup, ["ui.actions.seeMore", "ui.promotionCampaigns.allCampaigns"]);
+      expect(actions).toContain('href="/customer/events"');
+      expect(actions).not.toContain("bg-highlight-yellow");
+    }
   });
 
   it("renders accessible slide indicators only when multiple campaigns are eligible", () => {
@@ -205,6 +209,16 @@ describe("promotion campaign home spotlight", () => {
       </FeaturedRecommendationsFrame>,
     );
     expect(markup.match(/<div(?=[^>]*data-testid="frame")[^>]*>/)?.[0]).toContain("overflow-hidden");
+  });
+
+  it("keeps the slide dots navy at rest and turns them yellow on hover or press", () => {
+    const markup = renderToStaticMarkup(
+      <FeaturedRecommendationsFrame headingId="h" eyebrow={null} title="t" description={null} carouselLabel="c" slideLabel={(page, total) => `${page}/${total}`} carouselTestId="frame" activeSlideIndex={0} slideCount={2} onSelectSlide={() => {}} onNext={() => {}}>
+        <div />
+      </FeaturedRecommendationsFrame>,
+    );
+    expect(markup).toContain("w-3.5 bg-primary");
+    expect(markup.match(/group-hover:bg-accent group-active:bg-accent/g)).toHaveLength(2);
   });
 });
 

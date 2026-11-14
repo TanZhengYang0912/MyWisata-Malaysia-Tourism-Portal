@@ -1835,7 +1835,21 @@
       "applicationDeadline": "报名截止（马来西亚时间）",
       "approvalDeadline": "审批截止（马来西亚时间）",
       "setupStarts": "布展开始（马来西亚时间）",
-      "approvalWindowClosed": "审批时间已截止，请联系主办方处理申请。"
+      "approvalWindowClosed": "审批时间已截止，请联系主办方处理申请。",
+      "staff": {
+        "title": "现场员工",
+        "createLink": "生成员工链接",
+        "copyLink": "复制链接",
+        "copied": "链接已复制",
+        "resetLink": "重置链接",
+        "resetConfirm": "重置链接?当前链接将不能再用来加入,已加入的员工不受影响。",
+        "validUntil": "有效期至 {{date}}",
+        "membersEmpty": "还没有员工加入",
+        "joinedAt": "加入于 {{date}}",
+        "remove": "移除",
+        "removeConfirm": "移除 {{name}}?此人将无法再扫这场活动的码,即使持有链接也不行。",
+        "loadError": "无法加载员工名单"
+      }
     },
     "eventOrders": {
       "title": "活动预订",
@@ -1853,6 +1867,31 @@
       "free": "免费",
       "collected": "已领取",
       "toCollect": "待领取"
+    },
+    "eventStaff": {
+      "join": {
+        "title": "加入活动员工",
+        "nameLabel": "你的名字",
+        "emailLabel": "邮箱",
+        "sendCode": "发送验证码",
+        "resendCode": "重新发送验证码",
+        "codeLabel": "6 位验证码",
+        "verifyAndJoin": "验证并加入",
+        "join": "加入",
+        "signedInAs": "当前账号 {{email}}",
+        "useAnotherEmail": "换一个邮箱",
+        "invalidLink": "此链接无效或已过期。",
+        "removed": "你已被移出这场活动的员工名单。"
+      },
+      "home": {
+        "title": "活动扫码",
+        "empty": "没有进行中的活动",
+        "scan": "扫码",
+        "notToday": "今天没有"
+      },
+      "scan": {
+        "back": "返回活动列表"
+      }
     }
   },
   "address": {

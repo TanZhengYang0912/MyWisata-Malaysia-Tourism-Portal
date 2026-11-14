@@ -7,7 +7,10 @@ const mocks = vi.hoisted(() => ({ fetch: vi.fn() }));
 
 vi.stubGlobal("fetch", mocks.fetch);
 vi.mock("next/link", () => ({ default: (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => <a {...props} /> }));
-vi.mock("lucide-react", () => ({ Sparkles: (props: Record<string, unknown>) => <svg {...props} /> }));
+vi.mock("lucide-react", () => {
+  const Icon = (props: Record<string, unknown>) => <svg {...props} />;
+  return { Sparkles: Icon, ChevronLeft: Icon, ChevronRight: Icon, ChevronsLeft: Icon, ChevronsRight: Icon };
+});
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, opts?: Record<string, unknown>) =>
@@ -105,13 +108,18 @@ describe("RecommendationEarningsPanel", () => {
     expect(String(mocks.fetch.mock.calls[0][0])).toContain("recommendationId=rec-2");
   });
 
-  it("requests the next stable keyset page", async () => {
+  it("requests the next stable keyset page from the step-only pager", async () => {
     const nextCursor = { createdAt: "2026-03-01T00:00:00.000Z", id: "b" };
     mocks.fetch
       .mockResolvedValueOnce({ ok: true, json: async () => ({ data: payload({ totalCount: 11, hasMore: true, nextCursor }) }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ data: payload({ totalCount: 11, hasMore: false, nextCursor: null }) }) });
     await render(<RecommendationEarningsPanel />);
-    const next = findElements(container, (el) => el.tagName === "BUTTON" && el.textContent === "ui.pagination.nextPage")[0];
+    const labels = findElements(container, (el) => el.tagName === "BUTTON").map((el) => el.getAttribute("aria-label"));
+    // Keyset pages cannot jump, so the pager has only ‹ › and no page field.
+    expect(labels).not.toContain("accessibility.firstPage");
+    expect(labels).not.toContain("accessibility.lastPage");
+    expect(findElements(container, (el) => el.tagName === "INPUT")).toHaveLength(0);
+    const next = findElements(container, (el) => el.tagName === "BUTTON" && el.getAttribute("aria-label") === "accessibility.nextPage")[0];
     await act(async () => {
       next.dispatchEvent(new TestEvent("click", { bubbles: true }));
       await Promise.resolve();

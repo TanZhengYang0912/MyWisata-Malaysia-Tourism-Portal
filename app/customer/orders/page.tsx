@@ -137,7 +137,7 @@ export default function OrdersPage() {
       />
       <CustomerPageShell wide className="pt-0 sm:pt-0">
 
-        {data && <p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-muted-foreground"><span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.total}</span> {tCustomer("ui.orders.summaryOrders")} <span className="text-muted-foreground/50">·</span> <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.paid}</span> {tCustomer("ui.orders.summaryPaid")} <span className="text-muted-foreground/50">·</span> <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground">{stats.bookings}</span> {tCustomer("ui.orders.summaryBookings")}</p>}
+        {data && <p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-muted-foreground"><span className="tabular-nums text-base font-bold text-foreground">{stats.total}</span> {tCustomer("ui.orders.summaryOrders")} <span className="text-muted-foreground/50">·</span> <span className="tabular-nums text-base font-bold text-foreground">{stats.paid}</span> {tCustomer("ui.orders.summaryPaid")} <span className="text-muted-foreground/50">·</span> <span className="tabular-nums text-base font-bold text-foreground">{stats.bookings}</span> {tCustomer("ui.orders.summaryBookings")}</p>}
 
         <section className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <div className="flex min-w-0 items-center gap-2 lg:gap-3">
@@ -215,7 +215,7 @@ export default function OrdersPage() {
                   <div className="col-span-2 flex shrink-0 items-center justify-between gap-4 border-t border-border pt-3 sm:border-0 sm:pt-0 lg:pl-4">
                     <div className="flex flex-col sm:items-end">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 sm:hidden">{tCustomer("ui.checkout.total")}</span>
-                      <span className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary lg:text-xl">
+                      <span className="tabular-nums text-lg font-bold text-primary lg:text-xl">
                         {formatMYR(order.total)}
                       </span>
                       <span className="mt-1 text-xs font-medium text-muted-foreground sm:hidden">

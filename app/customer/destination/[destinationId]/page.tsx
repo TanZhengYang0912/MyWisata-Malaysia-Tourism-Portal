@@ -3,13 +3,14 @@ import { cache } from "react";
 import Link from "next/link";
 import { BackLink } from "@/components/shared/back-link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, ArrowRight, MapPin, Search, ShieldCheck } from "lucide-react";
+import { ArrowLeft, MapPin, Search, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { getPlaceBySlug } from "@/backend/domains/places";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { ProductCard } from "@/components/customer/product-card";
+import { SeeMoreLink } from "@/components/customer/see-more-link";
 import { getDestinationProductCards } from "@/backend/domains/destination-products";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
@@ -169,12 +170,7 @@ export default async function DestinationPage({ params }: Props) {
                 {t("ui.destination.popularExperiences", { state: destination.state })}
               </h2>
             </div>
-            <Link
-              href={`/customer/explore`}
-              className="flex items-center gap-1 text-sm font-semibold text-primary shrink-0"
-            >
-              {t("ui.actions.viewAll")} <ArrowRight size={14} />
-            </Link>
+            <SeeMoreLink href="/customer/explore" />
           </div>
           {products.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
@@ -201,12 +197,7 @@ export default async function DestinationPage({ params }: Props) {
                 {t("ui.destination.vendorOutletsDescription")}
               </p>
             </div>
-            <Link
-              href={`/customer/vendors?state=${encodeURIComponent(destination.state)}`}
-              className="flex items-center gap-1 text-sm font-semibold text-primary shrink-0"
-            >
-              {t("ui.destination.allPartners")} <ArrowRight size={14} />
-            </Link>
+            <SeeMoreLink href={`/customer/vendors?state=${encodeURIComponent(destination.state)}`} ariaLabel={t("ui.destination.allPartners")} />
           </div>
           {outlets.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">

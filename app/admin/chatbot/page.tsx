@@ -54,7 +54,10 @@ const EMPTY_FORM: KbFormState = { title: "", body: "", keywords: "", category: "
 
 export default function AdminChatbotPage() {
   const { showFeedback } = useActionFeedback();
-  const { t } = useTranslation("admin");
+  const { t, i18n } = useTranslation("admin");
+  // Older seeded docs can carry categories outside the translated set; show those raw.
+  const categoryLabel = (category: string) =>
+    i18n.exists(`chatbot.categories.${category}`, { ns: "admin" }) ? t(`chatbot.categories.${category}`) : category;
   const [stats, setStats] = useState<ChatbotStats | null | undefined>(undefined);
   const [docs, setDocs] = useState<KbDoc[] | null | undefined>(undefined);
   const [reindexing, setReindexing] = useState(false);
@@ -457,7 +460,7 @@ export default function AdminChatbotPage() {
                 ...(form.category && !(TICKET_CATEGORIES as string[]).includes(form.category) ? [form.category] : []),
               ].map((c) => (
                 <option key={c} value={c}>
-                  {t(`chatbot.categories.${c}`, { defaultValue: c })}
+                  {categoryLabel(c)}
                 </option>
               ))}
             </select>
@@ -493,7 +496,7 @@ export default function AdminChatbotPage() {
                     {d.title} {!d.isActive && <span className="text-muted-foreground font-normal">({t("chatbot.inactive")})</span>}
                   </p>
                   <p className="break-words text-xs text-muted-foreground">
-                    {d.category ? t(`chatbot.categories.${d.category}`, { defaultValue: d.category }) : t("chatbot.uncategorized")} · {d.hasEmbedding ? t("chatbot.embedded") : t("chatbot.notEmbedded")}
+                    {d.category ? categoryLabel(d.category) : t("chatbot.uncategorized")} · {d.hasEmbedding ? t("chatbot.embedded") : t("chatbot.notEmbedded")}
                   </p>
                 </div>
                 <Button size="sm" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={() => startEdit(d)}>

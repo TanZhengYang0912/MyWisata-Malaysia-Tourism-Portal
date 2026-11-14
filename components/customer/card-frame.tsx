@@ -88,7 +88,7 @@ export function CardFrame({
             title={typeof title === "string" ? title : undefined}
           >
             {href ? (
-              <Link href={href} onClick={onNavigate} data-card-link="" className="after:absolute after:inset-0 after:z-[1] after:rounded-[6px] after:content-[''] focus-visible:outline-none">
+              <Link href={href} onClick={onNavigate} data-card-link="" className="bg-[linear-gradient(currentColor,currentColor)] bg-[length:0_2px] bg-[position:0_100%] bg-no-repeat transition-[background-size] duration-[250ms] after:absolute after:inset-0 after:z-[1] after:rounded-[6px] after:content-[''] hover:bg-[length:100%_2px] focus-visible:bg-[length:100%_2px] focus-visible:outline-none motion-reduce:transition-none">
                 {title}
               </Link>
             ) : title}

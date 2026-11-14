@@ -1835,7 +1835,21 @@
       "applicationDeadline": "Permohonan ditutup (waktu Malaysia)",
       "approvalDeadline": "Kelulusan ditutup (waktu Malaysia)",
       "setupStarts": "Persediaan bermula (waktu Malaysia)",
-      "approvalWindowClosed": "Tempoh kelulusan telah ditutup. Hubungi penganjur mengenai permohonan ini."
+      "approvalWindowClosed": "Tempoh kelulusan telah ditutup. Hubungi penganjur mengenai permohonan ini.",
+      "staff": {
+        "title": "Kakitangan di lokasi",
+        "createLink": "Cipta pautan kakitangan",
+        "copyLink": "Salin pautan",
+        "copied": "Pautan disalin",
+        "resetLink": "Tetapkan semula pautan",
+        "resetConfirm": "Tetapkan semula pautan? Pautan semasa tidak lagi boleh digunakan untuk menyertai; kakitangan sedia ada kekal mempunyai akses.",
+        "validUntil": "Sah sehingga {{date}}",
+        "membersEmpty": "Belum ada kakitangan",
+        "joinedAt": "Menyertai {{date}}",
+        "remove": "Keluarkan",
+        "removeConfirm": "Keluarkan {{name}}? Mereka tidak lagi boleh mengimbas untuk acara ini, walaupun dengan pautan.",
+        "loadError": "Tidak dapat memuatkan kakitangan"
+      }
     },
     "eventOrders": {
       "title": "Tempahan acara",
@@ -1853,6 +1867,31 @@
       "free": "Percuma",
       "collected": "Telah diambil",
       "toCollect": "Belum diambil"
+    },
+    "eventStaff": {
+      "join": {
+        "title": "Sertai sebagai kakitangan acara",
+        "nameLabel": "Nama anda",
+        "emailLabel": "E-mel",
+        "sendCode": "Hantar kod",
+        "resendCode": "Hantar kod baharu",
+        "codeLabel": "Kod 6 digit",
+        "verifyAndJoin": "Sahkan dan sertai",
+        "join": "Sertai",
+        "signedInAs": "Log masuk sebagai {{email}}",
+        "useAnotherEmail": "Guna e-mel lain",
+        "invalidLink": "Pautan ini tidak sah atau telah tamat tempoh.",
+        "removed": "Anda telah dikeluarkan daripada kakitangan acara ini."
+      },
+      "home": {
+        "title": "Imbasan acara",
+        "empty": "Tiada acara aktif",
+        "scan": "Imbas",
+        "notToday": "Bukan hari ini"
+      },
+      "scan": {
+        "back": "Kembali ke acara"
+      }
     }
   },
   "address": {

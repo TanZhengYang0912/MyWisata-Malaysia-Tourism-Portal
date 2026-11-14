@@ -41,6 +41,8 @@ describe("Home Featured Highlights sponsored analytics", () => {
     ({ createRoot } = await import("react-dom/client"));
   });
   beforeEach(() => {
+    // The carousel counts a page as seen once it has stayed put for 300ms.
+    vi.useFakeTimers();
     fetchMock.mockClear();
     vi.stubGlobal("fetch", fetchMock);
     container = document.createElement("div");
@@ -50,6 +52,7 @@ describe("Home Featured Highlights sponsored analytics", () => {
   afterEach(() => {
     act(() => root.unmount());
     document.body.removeChild(container);
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   });
@@ -63,7 +66,9 @@ describe("Home Featured Highlights sponsored analytics", () => {
     const { CustomerHomeClient } = await import("@/app/customer/customer-home-client");
     const items = [item("paid", "pl-1"), item("plain")];
     await act(async () => { root.render(<CustomerHomeClient highlightItems={items} forYouItems={[]} vendors={[]} campaign={null} />); });
+    await act(async () => { vi.advanceTimersByTime(300); });
     await act(async () => { root.render(<CustomerHomeClient highlightItems={[...items]} forYouItems={[]} vendors={[]} campaign={null} />); });
+    await act(async () => { vi.advanceTimersByTime(300); });
     expect(events()).toEqual([["/api/sponsored-placements/pl-1/events", "impression"]]);
 
     await act(async () => { findOne(container, (element) => element.getAttribute("data-testid") === "card-plain").dispatchEvent(new TestEvent("click", { bubbles: true })); });
@@ -71,6 +76,20 @@ describe("Home Featured Highlights sponsored analytics", () => {
     expect(events()).toEqual([
       ["/api/sponsored-placements/pl-1/events", "impression"],
       ["/api/sponsored-placements/pl-1/events", "click"],
+    ]);
+  });
+
+  it("records impressions only once the first page has stayed put for 300ms, and only for that page", async () => {
+    const { CustomerHomeClient } = await import("@/app/customer/customer-home-client");
+    // Without matchMedia (no desktop query) a page holds 2 cards, so pl-3 sits on page 2.
+    const items = [item("a", "pl-1"), item("b", "pl-2"), item("c", "pl-3")];
+    await act(async () => { root.render(<CustomerHomeClient highlightItems={items} forYouItems={[]} vendors={[]} campaign={null} />); });
+    await act(async () => { vi.advanceTimersByTime(299); });
+    expect(events()).toEqual([]);
+    await act(async () => { vi.advanceTimersByTime(1); });
+    expect(events()).toEqual([
+      ["/api/sponsored-placements/pl-1/events", "impression"],
+      ["/api/sponsored-placements/pl-2/events", "impression"],
     ]);
   });
 });

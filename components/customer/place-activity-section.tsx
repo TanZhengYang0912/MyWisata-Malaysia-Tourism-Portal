@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ReferencePrice } from "@/components/shared/reference-price";
+import { CardPrice } from "@/components/customer/product-card";
 import { Compass } from "lucide-react";
 import type { PlaceProduct } from "@/backend/core/types";
 import { PlaceActivityCard } from "@/components/customer/place-activity-card";
@@ -69,7 +69,7 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
         <div className="mt-6 rounded-2xl border border-dashed border-border bg-secondary/30 px-6 py-10 text-center">
           <p className="font-semibold text-foreground">{t("ui.placeActivity.empty")}</p>
           <button type="button" onClick={() => setFilter("all")} className="mt-2 text-sm font-bold text-primary hover:underline">
-            {t("ui.placeActivity.showAll")}
+            {t("ui.actions.clearFilters")}
           </button>
         </div>
       ) : (
@@ -94,10 +94,7 @@ export function PlaceActivitySection({ products, returnTo }: { products: PlacePr
                 translation={{ entityType: "product", entityId: product.id, titleField: "name" }}
                 footer={product.price === 0
                   ? <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{t("ui.placeActivity.free")}</span>
-                  : <p className="flex items-baseline gap-1 text-[10px] text-muted-foreground">
-                    {(product.offers?.length ?? 0) > 1 && <span>{t("ui.vendor.from")}</span>}
-                    <ReferencePrice amountMYR={product.price} className="font-[family-name:var(--font-mono)] text-[22px] font-extrabold leading-[1.3] tracking-[-1px] text-primary max-sm:text-lg" />
-                  </p>}
+                  : <CardPrice amount={product.price} from={(product.offers?.length ?? 0) > 1} />}
               />
             );
           })}

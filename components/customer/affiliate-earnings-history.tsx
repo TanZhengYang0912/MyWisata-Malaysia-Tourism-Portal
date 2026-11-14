@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { Download } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/shared/pagination";
 import { useActionFeedback } from "@/components/providers/action-feedback";
+import { SeeMoreLink } from "@/components/customer/see-more-link";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
 import { rangeCutoffIso, type EarningsExportRange } from "@/lib/affiliate/earnings-range";
 import type { AffiliateCommission } from "@/lib/affiliate/stats";
@@ -101,9 +102,7 @@ export function AffiliateEarningsHistory({
       <div className="px-4 py-2.5 bg-muted flex items-center justify-between flex-wrap gap-2">
         <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{tCustomer("strictMigration.affiliate.earningsHistory")}</p>
         {viewAllHref && (
-          <Button asChild size="sm" variant="outline" className="h-7 text-[0.6875rem] px-2">
-            <Link href={viewAllHref}>{tCustomer("strictMigration.affiliate.earnings.viewAll")}</Link>
-          </Button>
+          <SeeMoreLink href={viewAllHref} ariaLabel={tCustomer("strictMigration.affiliate.earningsHistory")} />
         )}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2">
@@ -134,23 +133,21 @@ export function AffiliateEarningsHistory({
         </div>
       </div>
       {!limit && historyPage && historyPage.totalCount > 0 && (
-        <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
-          <p className="text-[0.6875rem] text-muted-foreground">
-            {tCustomer("ui.pagination.showing", {
-              from: (cursorHistory.length - 1) * 10 + 1,
-              to: Math.min(cursorHistory.length * 10, historyPage.totalCount),
-              total: historyPage.totalCount,
-              items: tCustomer("strictMigration.affiliate.earningsHistory"),
-            })}
-          </p>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" disabled={cursorHistory.length <= 1 || historyLoading} onClick={() => { setHistoryLoading(true); setCursorHistory((history) => history.slice(0, -1)); }}>
-              {tCustomer("ui.pagination.previousPage")}
-            </Button>
-            <Button size="sm" variant="outline" disabled={!historyPage.hasMore || !historyPage.nextCursor || historyLoading} onClick={() => { if (historyPage.nextCursor) { setHistoryLoading(true); setCursorHistory((history) => [...history, historyPage.nextCursor]); } }}>
-              {tCustomer("ui.pagination.nextPage")}
-            </Button>
-          </div>
+        <div className="border-b border-border px-4 py-2">
+          <Pagination
+            stepOnly
+            className="mt-0"
+            ariaLabel={tCustomer("strictMigration.affiliate.earningsHistory")}
+            currentPage={cursorHistory.length}
+            totalPages={Math.ceil(historyPage.totalCount / 10)}
+            totalItems={historyPage.totalCount}
+            pageSize={10}
+            disabled={historyLoading}
+            onPageChange={(next) => {
+              if (next < cursorHistory.length) { setHistoryLoading(true); setCursorHistory((history) => history.slice(0, -1)); }
+              else if (historyPage.hasMore && historyPage.nextCursor) { const nextCursor = historyPage.nextCursor; setHistoryLoading(true); setCursorHistory((history) => [...history, nextCursor]); }
+            }}
+          />
         </div>
       )}
       {shown.some((commission) => commission.status === "pending") ? (
@@ -185,7 +182,7 @@ export function AffiliateEarningsHistory({
                 </p>
               </div>
               <p
-                className={`shrink-0 font-bold font-[family-name:var(--font-mono)] ${c.status === "reversed" || c.status === "rejected" ? "text-muted-foreground line-through" : "text-foreground"}`}
+                className={`shrink-0 font-bold tabular-nums ${c.status === "reversed" || c.status === "rejected" ? "text-muted-foreground line-through" : "text-foreground"}`}
               >
                 {formatMYR(c.amount)}
               </p>

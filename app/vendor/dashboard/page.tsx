@@ -72,7 +72,7 @@ export default async function VendorDashboard({ searchParams }: Props) {
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         {stats.map(({ label, value, note, icon: Icon, tone }) => (
-          <article key={label} className="relative min-w-0 overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm sm:p-6">
+          <article key={label} className="relative min-w-0 overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm sm:p-6">
             <div className="absolute -right-3 -top-3 opacity-[0.045]"><Icon size={104} /></div>
             <div className="mb-3 flex min-w-0 items-center gap-2 sm:mb-5 sm:gap-3"><div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full sm:h-10 sm:w-10 ${statTone(tone)}`}><Icon size={18} /></div><p className="min-w-0 text-sm font-medium leading-5 text-gray-600 dark:text-muted-foreground sm:text-base">{label}</p></div>
             <p className="break-words text-2xl font-bold tracking-tight text-gray-950 dark:text-foreground sm:text-3xl">{value}</p>
@@ -95,10 +95,10 @@ export default async function VendorDashboard({ searchParams }: Props) {
         </div>
       </section>}
 
-      {data.stats.totalOrders === 0 && <section className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-secondary/70 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-primary">{t('ui.dashboard.noOrdersPeriod')}</p><p className="mt-1 text-sm text-primary">{data.stats.activeProducts > 0 ? t('ui.dashboard.checkAnotherRange') : t('ui.dashboard.publishListing')}</p></div><div className="flex gap-2"><Link href="/vendor/products" className="rounded-lg bg-white dark:bg-card px-3 py-2 text-sm font-semibold text-primary ring-1 ring-primary/20">{t('ui.dashboard.manageListings')}</Link><Link href="/vendor/orders" className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white">{t('ui.dashboard.viewOrders')}</Link></div></section>}
+      {data.stats.totalOrders === 0 && <section className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-secondary/70 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-primary">{t('ui.dashboard.noOrdersPeriod')}</p><p className="mt-1 text-sm text-primary">{data.stats.activeProducts > 0 ? t('ui.dashboard.checkAnotherRange') : t('ui.dashboard.publishListing')}</p></div><div className="flex gap-2"><Link href="/vendor/products" className="rounded-lg bg-card px-3 py-2 text-sm font-semibold text-primary ring-1 ring-primary/20">{t('ui.dashboard.manageListings')}</Link><Link href="/vendor/orders" className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white">{t('ui.dashboard.viewOrders')}</Link></div></section>}
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-6 shadow-sm lg:col-span-2"><SalesChart key={salesMode} data={data.chart} salesMode={salesMode} /></div>
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-6 shadow-sm lg:col-span-2"><SalesChart key={salesMode} data={data.chart} salesMode={salesMode} /></div>
         <OutletPieChart key={salesMode} data={data.salesByProduct} total={data.totalProductSales} salesMode={salesMode} />
       </section>
 
@@ -107,23 +107,23 @@ export default async function VendorDashboard({ searchParams }: Props) {
         <PerformanceRankingCard kind="rated" periodLabel={t('ranking.rated.allTime')} items={data.topRated} href="/vendor/analytics" />
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-card shadow-sm">
         <div className="flex flex-col gap-3 border-b border-gray-100 dark:border-border bg-gray-50/60 dark:bg-muted/60 p-6 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold text-lg text-gray-900 dark:text-foreground">{t('ui.dashboard.recentTransactions')}</h2><p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">{isOutletManager ? t('ui.dashboard.latestAssignedOutletOrders') : t('ui.dashboard.latestMalaysiaOutletOrders')}</p></div><Link href="/vendor/orders" className="inline-flex items-center gap-1 self-start rounded-lg bg-secondary px-3 py-2 text-sm font-semibold text-primary transition hover:bg-secondary/80">{t('ui.dashboard.viewAll')} <ArrowRight size={15} /></Link></div>
         <RecentTransactions items={data.recentTransactions} />
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-amber-100 dark:border-amber-500/30 bg-white dark:bg-card shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-amber-100 dark:border-amber-500/30 bg-card shadow-sm">
         <div className="flex flex-col gap-2 border-b border-amber-100 dark:border-amber-500/30 bg-amber-50/60 dark:bg-amber-500/10 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div><div className="flex items-center gap-2"><AlertTriangle size={18} className="text-amber-700 dark:text-amber-200" /><h2 className="font-semibold text-lg text-gray-900 dark:text-foreground">{t('ui.dashboard.stockAlerts')}</h2></div><p className="mt-1 text-sm text-gray-600 dark:text-muted-foreground">{t('ui.dashboard.stockAlertsDescription')}</p></div>
-          <Link href="/vendor/products" className="inline-flex items-center gap-1 self-start rounded-lg bg-white dark:bg-card px-3 py-2 text-sm font-semibold text-amber-800 dark:text-amber-200 ring-1 ring-amber-200 transition hover:bg-amber-50 dark:hover:bg-amber-500/10">{t('ui.dashboard.reviewCatalogue')} <ArrowRight size={15} /></Link>
+          <Link href="/vendor/products" className="inline-flex items-center gap-1 self-start rounded-lg bg-card px-3 py-2 text-sm font-semibold text-amber-800 dark:text-amber-200 ring-1 ring-amber-200 transition hover:bg-amber-50 dark:hover:bg-amber-500/10">{t('ui.dashboard.reviewCatalogue')} <ArrowRight size={15} /></Link>
         </div>
         {data.stockAlerts.length ? <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">{data.stockAlerts.map((alert) => <div key={alert.variantId} className={`flex items-center gap-3 rounded-xl border p-3 ${alert.available === 0 ? 'border-red-200 dark:border-red-500/30 bg-red-50/60 dark:bg-red-500/10' : 'border-amber-200 dark:border-amber-500/30 bg-amber-50/40 dark:bg-amber-500/10'}`}><CompactThumbnail src={alert.coverUrl} alt={alert.productName} kind="product" size="sm" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900 dark:text-foreground">{alert.productName}</p><p className="mt-1 truncate text-xs text-gray-600 dark:text-muted-foreground">{alert.variantName} · {alert.available === 0 ? t('ui.dashboard.outOfStock') : t('ui.dashboard.availableCount', { count: alert.available })} · {t('ui.dashboard.alertAt', { threshold: alert.threshold })}</p></div></div>)}</div> : <div className="px-5 py-8 text-sm text-gray-500 dark:text-muted-foreground">{t('ui.dashboard.noLowStock')}</div>}
       </section>
 
-      {data.inventorySetupCount > 0 && <section className="overflow-hidden rounded-2xl border border-amber-100 dark:border-amber-500/30 bg-white dark:bg-card shadow-sm">
+      {data.inventorySetupCount > 0 && <section className="overflow-hidden rounded-2xl border border-amber-100 dark:border-amber-500/30 bg-card shadow-sm">
         <div className="flex flex-col gap-2 border-b border-amber-100 dark:border-amber-500/30 bg-amber-50/60 dark:bg-amber-500/10 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div><div className="flex items-center gap-2"><AlertTriangle size={18} className="text-amber-700 dark:text-amber-200" /><h2 className="font-semibold text-lg text-gray-900 dark:text-foreground">{t('ui.dashboard.inventorySetupTitle')}</h2></div><p className="mt-1 text-sm text-gray-600 dark:text-muted-foreground">{t('ui.dashboard.inventorySetupDescription', { count: data.inventorySetupCount })}</p></div>
-          <Link href="/vendor/products" className="inline-flex items-center gap-1 self-start rounded-lg bg-white dark:bg-card px-3 py-2 text-sm font-semibold text-amber-800 dark:text-amber-200 ring-1 ring-amber-200 transition hover:bg-amber-50 dark:hover:bg-amber-500/10">{t('ui.dashboard.reviewCatalogue')} <ArrowRight size={15} /></Link>
+          <Link href="/vendor/products" className="inline-flex items-center gap-1 self-start rounded-lg bg-card px-3 py-2 text-sm font-semibold text-amber-800 dark:text-amber-200 ring-1 ring-amber-200 transition hover:bg-amber-50 dark:hover:bg-amber-500/10">{t('ui.dashboard.reviewCatalogue')} <ArrowRight size={15} /></Link>
         </div>
         <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">{data.inventorySetupItems.map((item) => <div key={`${item.productId}:${item.outletId}`} className="flex items-center gap-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/40 dark:bg-amber-500/10 p-3"><CompactThumbnail src={item.coverUrl} alt={item.productName} kind="product" size="sm" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-gray-900 dark:text-foreground">{item.productName}</p><p className="mt-1 truncate text-xs text-gray-600 dark:text-muted-foreground">{item.outletName} · {t('ui.products.inventorySetupNeeded')}</p></div></div>)}</div>
       </section>}
@@ -131,9 +131,9 @@ export default async function VendorDashboard({ searchParams }: Props) {
       <VendorRevenueAssistantCard />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Link href="/vendor/bookings" className="flex items-center gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><CalendarDays className="text-primary" /><div><p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('ui.dashboard.bookingActivity')}</p><p className="text-xs text-gray-500 dark:text-muted-foreground">{t('ui.dashboard.itemsInPeriod', { count: data.stats.bookingItems })}</p></div></Link>
-        <Link href="/vendor/products" className="flex items-center gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><Compass className="text-primary" /><div><p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('ui.dashboard.manageListings')}</p></div></Link>
-        {!isOutletManager && <Link href="/vendor/vouchers" className="flex items-center gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><TicketPercent className="text-amber-700 dark:text-amber-200" /><div><p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('ui.dashboard.voucherCampaigns')}</p><p className="text-xs text-gray-500 dark:text-muted-foreground">{t('ui.dashboard.createOffers')}</p></div></Link>}
+        <Link href="/vendor/bookings" className="flex items-center gap-3 rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><CalendarDays className="text-primary" /><div><p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('ui.dashboard.bookingActivity')}</p><p className="text-xs text-gray-500 dark:text-muted-foreground">{t('ui.dashboard.itemsInPeriod', { count: data.stats.bookingItems })}</p></div></Link>
+        <Link href="/vendor/products" className="flex items-center gap-3 rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><Compass className="text-primary" /><div><p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('ui.dashboard.manageListings')}</p></div></Link>
+        {!isOutletManager && <Link href="/vendor/vouchers" className="flex items-center gap-3 rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm transition hover:border-primary/20 hover:shadow-md"><TicketPercent className="text-amber-700 dark:text-amber-200" /><div><p className="text-sm font-semibold text-gray-900 dark:text-foreground">{t('ui.dashboard.voucherCampaigns')}</p><p className="text-xs text-gray-500 dark:text-muted-foreground">{t('ui.dashboard.createOffers')}</p></div></Link>}
       </div>
     </div>
   );

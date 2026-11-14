@@ -93,7 +93,7 @@ export function BookingPanel({ activity, slots, slotId, onSlotChange, label }: D
             </button>
 
             {calendarOpen && (
-              <div id="booking-availability-calendar" role="dialog" aria-label={t("ui.booking.chooseDateTime")} className="absolute right-0 z-20 mt-2 w-[min(320px,calc(100vw-3rem))] rounded-2xl border border-border bg-white dark:bg-card p-4 shadow-xl">
+              <div id="booking-availability-calendar" role="dialog" aria-label={t("ui.booking.chooseDateTime")} className="absolute right-0 z-20 mt-2 w-[min(320px,calc(100vw-3rem))] rounded-2xl border border-border bg-card p-4 shadow-xl">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-bold text-foreground">{formatBookingCalendarMonth(displayedMonthKey, locale)}</p>
                   <div className="flex items-center gap-1">
