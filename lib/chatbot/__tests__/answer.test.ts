@@ -3,11 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   retrieve: vi.fn(),
   generateAnswer: vi.fn(),
+  runCustomerAgent: vi.fn(),
   kbRows: [] as { id: string; title: string; body: string; keywords: string[]; category: string | null }[],
 }));
 
 vi.mock('../retrieve', () => ({ retrieve: mocks.retrieve }));
 vi.mock('../generate', () => ({ generateAnswer: mocks.generateAnswer }));
+vi.mock('../agent', () => ({ runCustomerAgent: mocks.runCustomerAgent }));
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({
     from: () => ({ select: () => ({ eq: async () => ({ data: mocks.kbRows }) }) }),
@@ -27,6 +29,26 @@ describe('answerQuestion with several questions', () => {
   });
   afterEach(() => {
     delete process.env.LLM_API_KEY;
+  });
+
+  it('answers through the customer agent, and falls back to help articles if it fails', async () => {
+    const agent = { userDb: null, userId: null, history: [] };
+    mocks.runCustomerAgent.mockResolvedValueOnce({ answer: 'Durian Corner has it.', usedKb: [], listings: [{ id: 'p1' }], comparison: null, refunds: [] });
+    expect(await answerQuestion('where can I find durian?', true, agent)).toMatchObject({ answer: 'Durian Corner has it.', mode: 'agent', kbMatched: true, listings: [{ id: 'p1' }] });
+
+    mocks.runCustomerAgent.mockResolvedValueOnce({ answer: null, usedKb: [], listings: [], comparison: null, refunds: [] });
+    expect(await answerQuestion('what is the parking policy at events?', true, agent)).toMatchObject({ mode: 'agent', kbMatched: false, canEscalate: true });
+
+    mocks.runCustomerAgent.mockRejectedValueOnce(new Error('Gemini down'));
+    mocks.retrieve.mockResolvedValue([doc('wallet', 0.9)]);
+    mocks.generateAnswer.mockResolvedValue('Withdraw from Wallet.');
+    expect(await answerQuestion('How do I withdraw my earnings?', true, agent)).toMatchObject({ answer: 'Withdraw from Wallet.', mode: 'llm' });
+  });
+
+  it('lets a short follow-up reach the agent once there is conversation history', async () => {
+    mocks.runCustomerAgent.mockResolvedValueOnce({ answer: 'Prepared.', usedKb: [], listings: [], comparison: null, refunds: [] });
+    const result = await answerQuestion('yes', true, { userDb: null, userId: null, history: [{ role: 'bot', text: 'Shall I prepare the refund?' }] });
+    expect(result).toMatchObject({ answer: 'Prepared.', mode: 'agent' });
   });
 
   it('searches a single question once with three docs, as before', async () => {

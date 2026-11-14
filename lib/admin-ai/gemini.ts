@@ -19,6 +19,9 @@ import { prepareExternalText, prepareStaffQuestionText } from '@/lib/chatbot/pii
 
 const GENERATE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent';
 const GENERATE_TIMEOUT_MS = 15_000;
+/** One agent request normally takes 2-6 s; a stalled one is abandoned sooner and retried. */
+const AGENT_ATTEMPT_TIMEOUT_MS = 8_000;
+const AGENT_MAX_ATTEMPTS = 3;
 
 interface GeminiGenerateResponse {
   candidates?: { content?: { parts?: { text?: string }[] } }[];
@@ -152,33 +155,45 @@ export async function callGeminiAgent(
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) throw new Error('LLM_API_KEY not configured');
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
-  try {
-    const send = () => fetch(GENERATE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents,
-        tools: [{ functionDeclarations: tools }],
-        toolConfig: { functionCallingConfig: { mode: options.forceText ? 'NONE' : 'AUTO' } },
-        generationConfig: { temperature: 0.2, maxOutputTokens: options.maxOutputTokens ?? 600 },
-      }),
-      signal: controller.signal,
-    });
-    // The agent makes several calls per question; one retry absorbs a brief model overload.
-    let res = await send();
-    if (res.status === 503) res = await send();
-    if (!res.ok) throw new Error(`Gemini generateContent failed: HTTP ${res.status}`);
-    const body = (await res.json()) as { candidates?: { content?: GeminiContent }[] };
-    const content = body.candidates?.[0]?.content;
-    if (!content?.parts?.length) throw new Error('Gemini generateContent returned no content');
-    const calls = content.parts.flatMap((part) => (part.functionCall ? [part.functionCall] : []));
-    const text = content.parts.filter((part) => part.text && !part.thought).map((part) => part.text).join('').trim();
-    if (!text && !calls.length) throw new Error('Gemini generateContent returned no text');
-    return { content: { role: 'model', parts: content.parts }, text, calls };
-  } finally {
-    clearTimeout(timeout);
+  const requestBody = JSON.stringify({
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    contents,
+    tools: [{ functionDeclarations: tools }],
+    toolConfig: { functionCallingConfig: { mode: options.forceText ? 'NONE' : 'AUTO' } },
+    generationConfig: { temperature: 0.2, maxOutputTokens: options.maxOutputTokens ?? 600 },
+  });
+  // Each attempt has its own timer, so a retry after a stalled request is not starved of time.
+  const attempt = async (): Promise<{ status: number; body: { candidates?: { content?: GeminiContent }[] } | null }> => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), AGENT_ATTEMPT_TIMEOUT_MS);
+    try {
+      const res = await fetch(GENERATE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: requestBody,
+        signal: controller.signal,
+      });
+      return { status: res.status, body: res.ok ? ((await res.json()) as { candidates?: { content?: GeminiContent }[] }) : null };
+    } finally {
+      clearTimeout(timeout);
+    }
+  };
+  // The agent makes several calls per question; retries absorb a brief model overload (503)
+  // or a request that stalls until its timeout (seen in about half of compare runs).
+  let result: Awaited<ReturnType<typeof attempt>> | null = null;
+  for (let tries = 1; tries <= AGENT_MAX_ATTEMPTS && (!result || result.status === 503); tries += 1) {
+    try {
+      result = await attempt();
+    } catch (error) {
+      if (!(error instanceof Error && error.name === 'AbortError') || tries === AGENT_MAX_ATTEMPTS) throw error;
+      result = null;
+    }
   }
+  if (!result?.body) throw new Error(`Gemini generateContent failed: HTTP ${result?.status ?? 'no response'}`);
+  const content = result.body.candidates?.[0]?.content;
+  if (!content?.parts?.length) throw new Error('Gemini generateContent returned no content');
+  const calls = content.parts.flatMap((part) => (part.functionCall ? [part.functionCall] : []));
+  const text = content.parts.filter((part) => part.text && !part.thought).map((part) => part.text).join('').trim();
+  if (!text && !calls.length) throw new Error('Gemini generateContent returned no text');
+  return { content: { role: 'model', parts: content.parts }, text, calls };
 }

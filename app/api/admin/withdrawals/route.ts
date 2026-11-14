@@ -58,7 +58,10 @@ export async function GET(request: Request) {
     // PostgREST's `or` grammar treats commas and parentheses as operators;
     // strip them before interpolating the user-supplied search term.
     const safeSearch = postgrestSearchTerm(search);
-    if (safeSearch) query = query.or(`users.full_name.ilike.%${safeSearch}%,users.email.ilike.%${safeSearch}%`);
+    // The name/email columns belong to the joined (inner) users relation, so the filter must be scoped
+    // to it with referencedTable. Qualifying the columns as `users.full_name` inside or() cannot be
+    // parsed by PostgREST and made every search return 500.
+    if (safeSearch) query = query.or(`full_name.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`, { referencedTable: 'users' });
   }
 
   const { data, count, error } = await query;

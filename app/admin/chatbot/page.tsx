@@ -457,7 +457,7 @@ export default function AdminChatbotPage() {
                 ...(form.category && !(TICKET_CATEGORIES as string[]).includes(form.category) ? [form.category] : []),
               ].map((c) => (
                 <option key={c} value={c}>
-                  {t(`chatbot.categories.${c}`)}
+                  {t(`chatbot.categories.${c}`, { defaultValue: c })}
                 </option>
               ))}
             </select>
@@ -493,7 +493,7 @@ export default function AdminChatbotPage() {
                     {d.title} {!d.isActive && <span className="text-muted-foreground font-normal">({t("chatbot.inactive")})</span>}
                   </p>
                   <p className="break-words text-xs text-muted-foreground">
-                    {d.category ? t(`chatbot.categories.${d.category}`) : t("chatbot.uncategorized")} · {d.hasEmbedding ? t("chatbot.embedded") : t("chatbot.notEmbedded")}
+                    {d.category ? t(`chatbot.categories.${d.category}`, { defaultValue: d.category }) : t("chatbot.uncategorized")} · {d.hasEmbedding ? t("chatbot.embedded") : t("chatbot.notEmbedded")}
                   </p>
                 </div>
                 <Button size="sm" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={() => startEdit(d)}>

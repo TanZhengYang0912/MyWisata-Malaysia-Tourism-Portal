@@ -68,4 +68,30 @@ describe('callGeminiAgent', () => {
     await expect(callGeminiAgent('system', [leakingResult], [])).rejects.toThrow('sensitive_data_detected');
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it('retries a stalled request or a 503 up to three times, but not a real error', async () => {
+    process.env.LLM_API_KEY = 'test-key';
+    const ok = () => new Response(JSON.stringify({ candidates: [{ content: { role: 'model', parts: [{ text: 'hi' }] } }] }), { status: 200 });
+    const abort = () => Object.assign(new Error('This operation was aborted'), { name: 'AbortError' });
+    const messages = [{ role: 'user' as const, parts: [{ text: 'hello there' }] }];
+
+    const stalled = vi.fn().mockRejectedValueOnce(abort()).mockResolvedValueOnce(ok());
+    vi.stubGlobal('fetch', stalled);
+    expect((await callGeminiAgent('system', messages, [])).text).toBe('hi');
+    expect(stalled).toHaveBeenCalledTimes(2);
+
+    const overloaded = vi.fn().mockResolvedValueOnce(new Response('', { status: 503 })).mockResolvedValueOnce(ok());
+    vi.stubGlobal('fetch', overloaded);
+    expect((await callGeminiAgent('system', messages, [])).text).toBe('hi');
+
+    const stalledAlways = vi.fn().mockRejectedValue(abort());
+    vi.stubGlobal('fetch', stalledAlways);
+    await expect(callGeminiAgent('system', messages, [])).rejects.toThrow('aborted');
+    expect(stalledAlways).toHaveBeenCalledTimes(3);
+
+    const rejected = vi.fn(async () => new Response('', { status: 400 }));
+    vi.stubGlobal('fetch', rejected);
+    await expect(callGeminiAgent('system', messages, [])).rejects.toThrow('HTTP 400');
+    expect(rejected).toHaveBeenCalledTimes(1);
+  });
 });

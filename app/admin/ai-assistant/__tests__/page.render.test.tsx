@@ -11,6 +11,7 @@ vi.mock("react-i18next", () => ({
 
 import AdminAiAssistantPage from "@/app/admin/ai-assistant/page";
 import { AdminAiMessage } from "@/components/admin/admin-ai-message";
+import { AdminAiChoiceTable } from "@/components/admin/admin-ai-action-card";
 
 describe("Admin AI Assistant presentation", () => {
   it("fills the Admin content width while keeping readable chat columns", () => {
@@ -23,7 +24,8 @@ describe("Admin AI Assistant presentation", () => {
     // (max-w-xl) — a one-line question box that wide read as oversized.
     expect(markup.match(/max-w-3xl/g)).toHaveLength(1);
     expect(markup).toContain("max-w-xl");
-    expect(markup).toContain("height:min(640px, calc(100vh - 20rem))");
+    expect(markup).toContain("height:calc(100vh - 12rem)");
+    expect(markup).toContain("[&amp;:last-child]:pb-0");
   });
 
   it("only offers Clear chat once there's a conversation to clear", () => {
@@ -45,6 +47,20 @@ describe("Admin AI Assistant presentation", () => {
     expect(botMarkup).toContain("lg:max-w-3xl");
     expect(userMarkup).toContain("max-w-[85%]");
     expect(userMarkup).toContain("lg:max-w-3xl");
+  });
+
+  it("shows offered choices as a table of on/off switches with nothing saved yet", () => {
+    const request = { method: "PATCH" as const, url: "/api/admin/hotel-amenities", body: { code: "wifi" } };
+    const markup = renderToStaticMarkup(
+      <AdminAiChoiceTable choices={{ id: "t1", action: "set_hotel_amenity_active", rows: [{ key: "wifi", label: "Free Wi-Fi", active: false, request }] }} />,
+    );
+
+    expect(markup).toContain("<table");
+    expect(markup).toContain('role="switch"');
+    expect(markup).toContain("Free Wi-Fi");
+    expect(markup).not.toContain("checked");
+    // Save stays disabled until a switch is flipped.
+    expect(markup).toMatch(/<button[^>]*disabled/);
   });
 
   it("keeps the message renderer out of the App Router page exports", async () => {

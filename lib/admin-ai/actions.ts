@@ -46,7 +46,11 @@ function relatedName(relation: unknown, key = 'name'): string | null {
 export type RecordKind = (typeof RECORD_KINDS)[number];
 
 /** list_records: small, bounded lists the agent needs to pick a target. */
-export async function listRecords(service: SupabaseClient, kind: string, id?: string): Promise<Record<string, unknown>> {
+/**
+ * list_records: small, bounded lists the agent needs to pick a target.
+ * `active` narrows on/off lists to the items an on or off action applies to.
+ */
+export async function listRecords(service: SupabaseClient, kind: string, id?: string, active?: boolean): Promise<Record<string, unknown>> {
   if (kind === 'open_tickets') {
     const { data, error } = await service.from('support_tickets')
       .select('id, subject, category, status, created_at').in('status', ['open', 'in_progress'])
@@ -66,7 +70,9 @@ export async function listRecords(service: SupabaseClient, kind: string, id?: st
     };
   }
   if (kind === 'kb_entries') {
-    const { data, error } = await service.from('chatbot_kb_documents').select('id, title, is_active').order('updated_at', { ascending: false }).limit(100);
+    let query = service.from('chatbot_kb_documents').select('id, title, is_active');
+    if (active !== undefined) query = query.eq('is_active', active);
+    const { data, error } = await query.order('updated_at', { ascending: false }).limit(100);
     if (error) throw new Error(error.message);
     return { entries: (data ?? []).map((d) => ({ id: d.id, title: safe(d.title), active: d.is_active })) };
   }
@@ -78,12 +84,16 @@ export async function listRecords(service: SupabaseClient, kind: string, id?: st
     return { openCases: (data ?? []).map((c) => ({ id: c.id, kind: c.kind, reason: c.reason_code, claimed: Boolean(c.assigned_to), due: day(c.due_at), opened: day(c.created_at) })) };
   }
   if (kind === 'hotel_amenities') {
-    const { data, error } = await service.from('hotel_amenities').select('code, label_en, is_active').order('sort_order');
+    let query = service.from('hotel_amenities').select('code, label_en, is_active');
+    if (active !== undefined) query = query.eq('is_active', active);
+    const { data, error } = await query.order('sort_order');
     if (error) throw new Error(error.message);
     return { amenities: (data ?? []).map((a) => ({ code: a.code, label: a.label_en, active: a.is_active })) };
   }
   if (kind === 'moderation_words') {
-    const { data, error } = await service.from('moderation_custom_words').select('id, term, category, is_active').order('created_at', { ascending: false }).limit(100);
+    let query = service.from('moderation_custom_words').select('id, term, category, is_active');
+    if (active !== undefined) query = query.eq('is_active', active);
+    const { data, error } = await query.order('created_at', { ascending: false }).limit(100);
     if (error) throw new Error(error.message);
     return { words: (data ?? []).map((w) => ({ id: w.id, term: w.term, category: w.category, active: w.is_active })) };
   }
@@ -197,8 +207,9 @@ export const ACTION_SPECS = {
     description: 'Turn a knowledge base entry on or off. Args: {"id": entry id from list_records kb_entries, "active": boolean}.',
     args: activeSchema,
     async build(service, args: { id: string; active: boolean }) {
-      const entry = await exists(service, 'chatbot_kb_documents', 'id', args.id, 'id, title');
+      const entry = await exists(service, 'chatbot_kb_documents', 'id', args.id, 'id, title, is_active');
       if (!entry) return { error: 'entry not found' };
+      if (entry.is_active === args.active) return { error: `already ${yesNo(args.active)}` };
       return {
         details: [{ field: 'entry', value: String(entry.title) }, { field: 'active', value: yesNo(args.active) }],
         request: { method: 'PATCH', url: `/api/admin/chatbot/kb/${args.id}`, body: { isActive: args.active } },
@@ -278,8 +289,9 @@ export const ACTION_SPECS = {
     description: 'Turn a hotel amenity on or off. Args: {"code": amenity code, "active": boolean}.',
     args: z.object({ code: toggleHotelAmenitySchema.shape.code, active: z.boolean() }).strict(),
     async build(service, args: { code: string; active: boolean }) {
-      const amenity = await exists(service, 'hotel_amenities', 'code', args.code, 'code, label_en');
+      const amenity = await exists(service, 'hotel_amenities', 'code', args.code, 'code, label_en, is_active');
       if (!amenity) return { error: 'amenity not found' };
+      if (amenity.is_active === args.active) return { error: `already ${yesNo(args.active)}` };
       return {
         details: [{ field: 'code', value: `${amenity.label_en} (${args.code})` }, { field: 'active', value: yesNo(args.active) }],
         request: { method: 'PATCH', url: '/api/admin/hotel-amenities', body: { code: args.code, isActive: args.active } },
@@ -300,8 +312,9 @@ export const ACTION_SPECS = {
     description: 'Turn a moderation word on or off (deleting is not available here). Args: {"id": word id from list_records moderation_words, "active": boolean}.',
     args: activeSchema,
     async build(service, args: { id: string; active: boolean }) {
-      const word = await exists(service, 'moderation_custom_words', 'id', args.id, 'id, term');
+      const word = await exists(service, 'moderation_custom_words', 'id', args.id, 'id, term, is_active');
       if (!word) return { error: 'word not found' };
+      if (word.is_active === args.active) return { error: `already ${yesNo(args.active)}` };
       return {
         details: [{ field: 'term', value: String(word.term) }, { field: 'active', value: yesNo(args.active) }],
         request: { method: 'PATCH', url: `/api/admin/moderation-words/${args.id}`, body: { isActive: args.active } },
@@ -473,4 +486,44 @@ export async function proposeAction(service: SupabaseClient, name: string, argsJ
   const built = await spec.build(service, args.data as never);
   if ('error' in built) return built;
   return { id: crypto.randomUUID(), action: name as ActionName, ...built };
+}
+
+/** On/off lists the admin can switch in a table instead of one card per item. */
+const CHOICE_SPECS = {
+  kb_entries: { action: 'set_kb_entry_active', list: 'entries', key: 'id', label: 'title', request: (key: string) => ({ url: `/api/admin/chatbot/kb/${key}`, body: {} }) },
+  hotel_amenities: { action: 'set_hotel_amenity_active', list: 'amenities', key: 'code', label: 'label', request: (key: string) => ({ url: '/api/admin/hotel-amenities', body: { code: key } }) },
+  moderation_words: { action: 'set_moderation_word_active', list: 'words', key: 'id', label: 'term', request: (key: string) => ({ url: `/api/admin/moderation-words/${key}`, body: {} }) },
+} as const;
+
+export const CHOICE_KINDS = Object.keys(CHOICE_SPECS) as (keyof typeof CHOICE_SPECS)[];
+
+export interface ChoiceRow {
+  key: string;
+  label: string;
+  active: boolean;
+  /** PATCH for the existing route; the table adds `isActive` when the admin saves. */
+  request: { method: 'PATCH'; url: string; body: Record<string, unknown> };
+}
+
+export interface ChoiceList {
+  /** Random per table, for React keys. */
+  id: string;
+  action: ActionName;
+  rows: ChoiceRow[];
+}
+
+/** show_choices: the same filtered list as list_records, as switch rows. Never writes. */
+export async function buildChoiceList(service: SupabaseClient, kind: string, active?: boolean): Promise<ChoiceList | { error: string }> {
+  if (!(CHOICE_KINDS as string[]).includes(kind)) return { error: 'unknown kind' };
+  const spec = CHOICE_SPECS[kind as keyof typeof CHOICE_SPECS];
+  const listed = await listRecords(service, kind, undefined, active);
+  const items = (listed[spec.list] ?? []) as Record<string, unknown>[];
+  return {
+    id: crypto.randomUUID(),
+    action: spec.action,
+    rows: items.map((item) => {
+      const key = String(item[spec.key]);
+      return { key, label: String(item[spec.label] ?? key), active: Boolean(item.active), request: { method: 'PATCH', ...spec.request(key) } };
+    }),
+  };
 }

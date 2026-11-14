@@ -29,7 +29,7 @@ import {
   workflowRegistryDescription,
 } from './capabilities';
 import { STAFF_WORKFLOWS, findWorkflow } from './workflows';
-import { ACTION_NAMES, RECORD_KINDS, actionRegistryDescription, listRecords, proposeAction, type ProposedAction } from './actions';
+import { ACTION_NAMES, CHOICE_KINDS, RECORD_KINDS, actionRegistryDescription, buildChoiceList, listRecords, proposeAction, type ChoiceList, type ProposedAction } from './actions';
 
 const MAX_TOOL_ROUNDS = 4;
 const MAX_HISTORY_MESSAGES = 6;
@@ -65,6 +65,19 @@ const TOOLS: GeminiFunctionDeclaration[] = [
       properties: {
         kind: { type: 'STRING', enum: [...RECORD_KINDS] },
         id: { type: 'STRING', description: 'Ticket id, only for ticket_thread.' },
+        active: { type: 'BOOLEAN', description: 'For kb_entries, hotel_amenities and moderation_words: false lists only items that are off, true only items that are on. Use false before turning something on, true before turning it off.' },
+      },
+      required: ['kind'],
+    },
+  },
+  {
+    name: 'show_choices',
+    description: 'Show the admin a table of knowledge base entries, hotel amenities or moderation words with an on/off switch per row. They flip the switches and save it themselves. Use it instead of listing the items in text when they want to turn some on or off but have not named exactly which.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        kind: { type: 'STRING', enum: [...CHOICE_KINDS] },
+        active: { type: 'BOOLEAN', description: 'false shows only items that are off (to turn on), true only items that are on (to turn off). Omit to show all.' },
       },
       required: ['kind'],
     },
@@ -110,6 +123,12 @@ Rules:
 - You cannot change anything yourself. When the admin asks for one of the actions above, propose it;
   it appears as a card and runs only if they press Confirm. Say it is waiting for their confirmation,
   never that it is done. Propose one card per item, at most 5 per reply, all in the same turn.
+- When you offer the admin a choice, list only the items the action can apply to (to turn something on,
+  only items that are off). If none qualify, say so plainly, for example "All hotel amenities are
+  already on.", and do not ask them to choose. Show names, not codes or ids.
+- To offer knowledge base entries, hotel amenities or moderation words to turn on or off, call
+  show_choices rather than listing them. Then say in one short line to pick in the table below; do not
+  repeat the items. If it shows none, say none qualify.
 - For a decision (a catalogue review, a chat report outcome, a recommendation or vendor request),
   propose only the decision and reason the admin stated. If they did not state one, ask.
 - For anything not in the action list (for example approving or rejecting vendors or recommendations,
@@ -131,7 +150,7 @@ const NO_MATCH_ANSWER =
   "Sorry, I couldn't find that. Could you rephrase, or ask about vendors, products, KYC, orders, withdrawals, recommendations, tickets, or affiliates? You can also ask how to perform an admin task, for example \"how do I approve a withdrawal?\"";
 
 const ACTIONS_WAITING_ANSWER = 'The actions below are waiting for your confirmation.';
-const fallbackAnswer = (actions: ProposedAction[]) => (actions.length ? ACTIONS_WAITING_ANSWER : NO_MATCH_ANSWER);
+const fallbackAnswer = (actions: ProposedAction[], choices: ChoiceList[]) => (actions.length || choices.length ? ACTIONS_WAITING_ANSWER : NO_MATCH_ANSWER);
 
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
 
@@ -169,6 +188,8 @@ export interface AdminAskResult {
   capabilityUsed?: string | null;
   /** Confirm cards for the admin. Nothing in them has run. */
   actions?: ProposedAction[];
+  /** On/off tables for the admin. Nothing in them has run. */
+  choices?: ChoiceList[];
 }
 
 export interface AdminHistoryMessage {
@@ -213,11 +234,12 @@ export async function answerAdminQuestion(
   let queryUsed: string | null = null;
   let capabilityUsed: string | null = null;
   const actions: ProposedAction[] = [];
+  const choices: ChoiceList[] = [];
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round += 1) {
     const turn = await callGeminiAgent(AGENT_SYSTEM_PROMPT, contents, TOOLS, { forceText: round === MAX_TOOL_ROUNDS });
     if (!turn.calls.length) {
-      return { answer: turn.text || fallbackAnswer(actions), piiDetected, queryUsed, capabilityUsed, actions };
+      return { answer: turn.text || fallbackAnswer(actions, choices), piiDetected, queryUsed, capabilityUsed, actions, choices };
     }
     contents.push(turn.content);
     const parts = [];
@@ -237,9 +259,23 @@ export async function answerAdminQuestion(
         }
       } else if (call.name === 'list_records') {
         try {
-          response = await listRecords(service, String(args.kind ?? ''), args.id ? String(args.id) : undefined);
+          response = await listRecords(service, String(args.kind ?? ''), args.id ? String(args.id) : undefined, typeof args.active === 'boolean' ? args.active : undefined);
         } catch (error) {
           console.error('[admin-ai] list failed', error instanceof Error ? error.message : error);
+          response = { error: 'list_failed' };
+        }
+      } else if (call.name === 'show_choices') {
+        try {
+          const list = await buildChoiceList(service, String(args.kind ?? ''), typeof args.active === 'boolean' ? args.active : undefined);
+          if ('error' in list) {
+            response = list;
+          } else {
+            if (list.rows.length) choices.push(list);
+            // The model only learns the count; the admin sees the rows.
+            response = { shown: list.rows.length };
+          }
+        } catch (error) {
+          console.error('[admin-ai] choices failed', error instanceof Error ? error.message : error);
           response = { error: 'list_failed' };
         }
       } else if (call.name === 'propose_action') {
@@ -264,7 +300,7 @@ export async function answerAdminQuestion(
     }
     contents.push({ role: 'user', parts });
   }
-  return { answer: fallbackAnswer(actions), piiDetected, queryUsed, capabilityUsed, actions };
+  return { answer: fallbackAnswer(actions, choices), piiDetected, queryUsed, capabilityUsed, actions, choices };
 }
 
 export { QUERY_REGISTRY };

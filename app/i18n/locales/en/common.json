@@ -308,7 +308,7 @@
     "title": "Chats",
     "myTickets": "My Tickets",
     "closeChat": "Close chat",
-    "emptyPrompt": "Ask about rewards, affiliate links, withdrawals, booking, or verification.",
+    "emptyPrompt": "Ask where to find something, compare listings, get recommendations, check your orders or request a refund.",
     "inputPlaceholder": "Ask a question…",
     "send": "Send message",
     "openChat": "Chat with us",
@@ -344,7 +344,29 @@
     },
     "expandChat": "Expand to full screen",
     "collapseChat": "Exit full screen",
-    "resizeSidebar": "Resize the conversation list"
+    "resizeSidebar": "Resize the conversation list",
+    "agent": {
+      "compare": {
+        "price": "Price from",
+        "rating": "Rating",
+        "shop": "Shop",
+        "area": "Area",
+        "hours": "Hours"
+      },
+      "refund": {
+        "title": "Refund request",
+        "order": "Order",
+        "items": "Items",
+        "total": "Total",
+        "reason": "Reason",
+        "confirm": "Confirm refund",
+        "cancel": "Cancel",
+        "running": "Sending…",
+        "done": "Refund requested. Track it on the order page.",
+        "cancelled": "Cancelled",
+        "failed": "Failed"
+      }
+    }
   },
   "account": {
     "menu": "Account menu",

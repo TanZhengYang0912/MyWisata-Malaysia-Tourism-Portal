@@ -1033,6 +1033,7 @@
       "clear": "Clear chat",
       "empty": "e.g. “How many withdrawals are pending?”, “How do I approve a refund?” or “Mark the open payment tickets in progress”. Nothing changes until you press Confirm on a card.",
       "placeholder": "Ask a question…",
+      "send": "Send",
       "restoring": "Restoring conversation…",
       "title": "Ask the assistant"
     },
@@ -1104,6 +1105,12 @@
       "on": "On",
       "off": "Off",
       "open": "Open page"
+    },
+    "choices": {
+      "name": "Name",
+      "active": "Status",
+      "save_one": "Save {{count}} change",
+      "save_other": "Save {{count}} changes"
     }
   },
   "catalogue": {
@@ -1506,6 +1513,7 @@
     "openItems_other": "{{count}} open items",
     "walletPending_one": "{{count}} requests need a decision, with {{amount}} in review.",
     "walletPending_other": "{{count}} requests need a decision, with {{amount}} in review.",
+    "someSourcesUnavailable": "Some sources unavailable",
     "queueUnavailable": "Queue data temporarily unavailable",
     "staleData": "Refresh failed. Showing the last successful results."
   },
