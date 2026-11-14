@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getServerTranslation } from "@/lib/i18n/server";
-import { getVendors, searchActivities } from "@/backend/domains/catalogue";
+import { filterComputedActivities, getVendors } from "@/backend/domains/catalogue";
+import { getCachedComputedActivities, getCachedVendorRatings } from "@/lib/cache/catalogue-cache";
 import { getRecommendedFeed } from "@/backend/domains/recommend";
 import { rankFeaturedVendors, rankVendorsByPersonalizedFeed } from "@/backend/domains/vendor-recommend";
-import { getVendorRatingSummaries } from "@/backend/domains/vendor-reviews";
 import { popularVendorProducts } from "@/lib/customer/vendor-page";
 import { isOperatingHoursOpenNow } from "@/lib/customer/operating-hours";
-import type { SponsoredPlacement } from "@/backend/core/types";
+import type { SponsoredPlacement, VendorSummary } from "@/backend/core/types";
 import { attachSponsoredOutletGalleryCovers } from "@/lib/customer/partner-directory";
 import { SearchClient } from "../search/search-client";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
@@ -26,6 +26,11 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+/** Directory cards list approved shop vendors; event vendors appear only under "Event partners". */
+function isDirectoryVendor(vendor: VendorSummary) {
+  return vendor.status === "approved" && vendor.kind !== "event";
+}
+
 interface Props {
   searchParams: Promise<{ q?: string }>;
 }
@@ -34,7 +39,8 @@ export default async function PartnersPage({ searchParams }: Props) {
   const { q } = await searchParams;
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
-  const resultsPromise = searchActivities({ q: q || undefined }, db);
+  // Public catalogue from the shared 60 s cache (same as Home and Explore), filtered per request.
+  const resultsPromise = getCachedComputedActivities().then((activities) => filterComputedActivities({ q: q || undefined }, activities));
   const recommendationPromise = q
     ? Promise.resolve([])
     : resultsPromise.then((results) => getRecommendedFeed(
@@ -42,18 +48,22 @@ export default async function PartnersPage({ searchParams }: Props) {
       { limit: 12, candidates: results },
       db,
     ));
-  const [results, vendors, recommendationFeed, placementsResult, eventPromotions, publicEvents] = await Promise.all([
+  const vendorsPromise = getVendors(db);
+  const [results, vendors, recommendationFeed, placementsResult, eventPromotions, publicEvents, vendorRatings] = await Promise.all([
     resultsPromise,
-    getVendors(db),
+    vendorsPromise,
     recommendationPromise,
     db.rpc("list_active_sponsored_discovery_placements"),
     getFeaturedEventPromotions(createServiceClient()).catch(() => []),
     getPublicPromotionCampaigns(),
+    // Ratings start as soon as the vendor list is in, not after every other read.
+    vendorsPromise
+      .then((all) => getCachedVendorRatings(all.filter(isDirectoryVendor).map((vendor) => vendor.id).sort()))
+      .then((entries) => new Map(entries))
+      .catch(() => null),
   ]);
   // Event vendors never appear in the normal directory — only under "Event partners".
-  const directoryVendors = vendors.filter((vendor) => vendor.status === "approved" && vendor.kind !== "event");
-  // ponytail: one `in` query over every directory vendor; page it if the directory grows past a few hundred.
-  const vendorRatings = await getVendorRatingSummaries(directoryVendors.map((vendor) => vendor.id), createServiceClient()).catch(() => null);
+  const directoryVendors = vendors.filter(isDirectoryVendor);
   const approvedVendors = directoryVendors.map((vendor) => ({
     ...vendor,
     rating: vendorRatings ? vendorRatings.get(vendor.id) ?? null : undefined,

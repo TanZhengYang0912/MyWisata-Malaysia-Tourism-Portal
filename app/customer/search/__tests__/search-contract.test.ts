@@ -12,7 +12,8 @@ const filterSource = read("components/customer/discovery-filters.tsx");
 
 describe("customer vendor search contract", () => {
   it("reuses the directory catalogue for the no-query recommendation feed", () => {
-    expect(pageSource).toContain("const resultsPromise = searchActivities");
+    expect(pageSource).toContain("const resultsPromise = getCachedComputedActivities()");
+    expect(pageSource).toContain("filterComputedActivities({ q: q || undefined }");
     expect(pageSource).toContain("resultsPromise.then((results) => getRecommendedFeed");
     expect(pageSource).toContain("candidates: results");
   });
