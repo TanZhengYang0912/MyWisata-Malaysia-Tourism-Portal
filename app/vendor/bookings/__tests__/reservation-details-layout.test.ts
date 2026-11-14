@@ -17,7 +17,7 @@ describe('vendor reservation details layout', () => {
       /<div[\s\S]*className="fixed inset-0 z-40 flex items-center justify-center bg-gray-950\/20 p-4"/,
     );
     expect(source).toMatch(
-      /<aside[\s\S]*onClick=\{\(event\) => event\.stopPropagation\(\)\}[\s\S]*className="relative max-h-\[90vh\] w-full max-w-lg overflow-y-auto rounded-2xl bg-white(?: dark:bg-card)? p-6 shadow-2xl"/,
+      /<aside[\s\S]*onClick=\{\(event\) => event\.stopPropagation\(\)\}[\s\S]*className="relative max-h-\[90vh\] w-full max-w-lg overflow-y-auto rounded-2xl bg-card p-6 shadow-2xl"/,
     );
     expect(source).not.toContain(
       'className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto',

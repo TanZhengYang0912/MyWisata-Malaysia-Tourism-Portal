@@ -131,7 +131,7 @@ export function ChatbotRefundCard({ refund }: { refund: RefundProposal }) {
           </>
         ) : (
           <span className={`font-medium ${state === "failed" ? "text-destructive" : "text-muted-foreground"}`}>
-            {t(`chatbot.agent.refund.${state}`)}{error ? `: ${error}` : ""}
+            {t(`chatbot.agent.refund.${state as "done" | "cancelled" | "failed"}`)}{error ? `: ${error}` : ""}
           </span>
         )}
       </div>
