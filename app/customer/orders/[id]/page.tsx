@@ -480,7 +480,7 @@ export default function OrderDetailPage() {
                         </div>
 
                         <div className="col-span-2 text-left sm:text-right">
-                          <span className="font-[family-name:var(--font-mono)] text-base font-bold text-foreground sm:text-lg">
+                          <span className="tabular-nums text-base font-bold text-foreground sm:text-lg">
                             {formatMYR(item.unitPrice * item.qty)}
                           </span>
                           <span className="block text-[11px] text-muted-foreground">
@@ -558,7 +558,7 @@ export default function OrderDetailPage() {
                 <div className="mt-4 space-y-3 text-sm">
                   <div className="flex justify-between text-muted-foreground">
                     <span>{tCustomer("ui.checkout.subtotal")}</span>
-                    <span className="font-[family-name:var(--font-mono)] font-semibold text-foreground">
+                    <span className="tabular-nums font-semibold text-foreground">
                       {formatMYR(order.subtotal)}
                     </span>
                   </div>
@@ -573,7 +573,7 @@ export default function OrderDetailPage() {
                           </span>
                         )}
                       </span>
-                      <span className="font-[family-name:var(--font-mono)] font-semibold">
+                      <span className="tabular-nums font-semibold">
                         -{formatMYR(order.discount)}
                       </span>
                     </div>
@@ -582,7 +582,7 @@ export default function OrderDetailPage() {
                   <div className="border-t border-border pt-3">
                     <div className="flex items-baseline justify-between">
                       <span className="text-base font-bold text-foreground">{tCustomer("ui.checkout.total")}</span>
-                      <span className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary">
+                      <span className="tabular-nums text-2xl font-bold text-primary">
                         {formatMYR(order.total)}
                       </span>
                     </div>
@@ -800,7 +800,7 @@ export default function OrderDetailPage() {
             <tbody className="divide-y divide-gray-200 dark:divide-border">
               {order.items.map((item, idx) => (
                 <tr key={idx} className="break-inside-avoid">
-                  <td className="py-3 text-gray-400 dark:text-muted-foreground font-mono">{idx + 1}</td>
+                  <td className="py-3 text-gray-400 dark:text-muted-foreground tabular-nums">{idx + 1}</td>
                   <td className="py-3 pr-4">
                     <p className="font-bold text-gray-900 dark:text-foreground">{item.activityName}</p>
                     {item.variantLabel && <p className="text-gray-500 dark:text-muted-foreground text-[11px]">{item.variantLabel}</p>}
@@ -810,9 +810,9 @@ export default function OrderDetailPage() {
                       </p>
                     )}
                   </td>
-                  <td className="py-3 text-center font-mono">{item.qty}</td>
-                  <td className="py-3 text-right font-mono">{formatMYR(item.unitPrice)}</td>
-                  <td className="py-3 text-right font-mono font-bold">{formatMYR(item.unitPrice * item.qty)}</td>
+                  <td className="py-3 text-center tabular-nums">{item.qty}</td>
+                  <td className="py-3 text-right tabular-nums">{formatMYR(item.unitPrice)}</td>
+                  <td className="py-3 text-right tabular-nums font-bold">{formatMYR(item.unitPrice * item.qty)}</td>
                 </tr>
               ))}
             </tbody>
@@ -824,17 +824,17 @@ export default function OrderDetailPage() {
           <div className="w-64 space-y-2 text-xs">
             <div className="flex justify-between text-gray-600 dark:text-muted-foreground">
               <span>{tCustomer("ui.checkout.subtotal")}</span>
-              <span className="font-mono">{formatMYR(order.subtotal)}</span>
+              <span className="tabular-nums">{formatMYR(order.subtotal)}</span>
             </div>
             {order.discount > 0 && (
               <div className="flex justify-between text-emerald-700 dark:text-emerald-200 font-semibold">
                 <span>{tCustomer("ui.checkout.discount")} {order.voucherCode ? `(${order.voucherCode})` : ""}</span>
-                <span className="font-mono">-{formatMYR(order.discount)}</span>
+                <span className="tabular-nums">-{formatMYR(order.discount)}</span>
               </div>
             )}
             <div className="flex justify-between border-t-2 border-gray-900 pt-2 text-sm font-black text-gray-900 dark:text-foreground">
               <span>{tCustomer("ui.checkout.total")}</span>
-              <span className="font-mono">{formatMYR(order.total)}</span>
+              <span className="tabular-nums">{formatMYR(order.total)}</span>
             </div>
           </div>
         </div>

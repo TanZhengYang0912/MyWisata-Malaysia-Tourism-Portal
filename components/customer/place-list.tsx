@@ -4,10 +4,13 @@ import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { PlaceCard } from "@/components/customer/place-card";
+import { Pagination } from "@/components/shared/pagination";
 import type { Place } from "@/backend/core/types";
 import { filterPlaceListings, getPlaceListingCounts, parsePlaceAreaIds, serializePlaceAreaIds, type PlaceAvailabilityFilter } from "@/lib/customer/place-list";
 
 type Area = { id: string; name: string };
+
+const PAGE_SIZE = 8;
 
 function AreaPicker({ areas, selected, onChange }: { areas: Area[]; selected: ReadonlySet<string>; onChange: (next: Set<string>) => void }) {
   const { t } = useTranslation("customer");
@@ -69,6 +72,7 @@ export function PlaceList({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [availability, setAvailability] = useState<PlaceAvailabilityFilter>("all");
+  const [page, setPage] = useState(1);
   const supportedAreaIds = useMemo(() => new Set(regions.map((region) => region.id)), [regions]);
   const selectedRegions = useMemo(() => parsePlaceAreaIds(searchParams.getAll("area"), supportedAreaIds), [searchParams, supportedAreaIds]);
 
@@ -78,7 +82,13 @@ export function PlaceList({
     return filterPlaceListings(pois, productCounts, regionByPoi, availability, selectedRegions);
   }, [availability, pois, productCounts, regionByPoi, selectedRegions]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+
+  // Every filter change (availability and area both pass through here) starts again at page 1.
   function setSelectedRegions(next: Set<string>) {
+    setPage(1);
     const params = new URLSearchParams(searchParams.toString());
     params.delete("area");
     for (const areaId of serializePlaceAreaIds(next)) params.append("area", areaId);
@@ -153,11 +163,14 @@ export function PlaceList({
           </button>
         </div>
       ) : (
-        <div className="mt-6 grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((poi) => (
-            <PlaceCard key={poi.id} place={poi} productCount={productCounts[poi.id] ?? 0} />
-          ))}
-        </div>
+        <>
+          <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+            {filtered.slice(pageStart, pageStart + PAGE_SIZE).map((poi) => (
+              <PlaceCard key={poi.id} place={poi} productCount={productCounts[poi.id] ?? 0} />
+            ))}
+          </div>
+          <Pagination ariaLabel={t("ui.place.placesToVisit", { count: filtered.length })} currentPage={safePage} onPageChange={setPage} pageSize={PAGE_SIZE} totalItems={filtered.length} totalPages={totalPages} />
+        </>
       )}
     </section>
   );

@@ -31,18 +31,15 @@ export async function GET(request: Request) {
     const service = createServiceClient();
     const { page, filter, state, kyc } = parsed.data;
     const term = postgrestSearchTerm(parsed.data.search);
-    let ownerIdsForKyc: string[] | null = null;
     let ownerIdsForSearch: string[] = [];
 
-    if (kyc !== 'all' || term) {
+    if (term) {
       let ownerQuery = service.from('users').select('id');
-      if (kyc !== 'all') ownerQuery = ownerQuery.eq('kyc_status', kyc);
       if (term) ownerQuery = ownerQuery.or(`full_name.ilike.%${term}%,email.ilike.%${term}%`);
       const { data: matchedOwners, error: ownerError } = await ownerQuery.limit(100);
       if (ownerError) return apiFail('VENDORS_UNAVAILABLE', 'Unable to load vendors', 503);
       const ids = (matchedOwners ?? []).map((owner: { id: string }) => owner.id);
-      if (kyc !== 'all') ownerIdsForKyc = ids;
-      if (term) ownerIdsForSearch = ids;
+      ownerIdsForSearch = ids;
     }
 
     let matchingVendorIds: string[] | null = null;
@@ -55,16 +52,19 @@ export async function GET(request: Request) {
       matchingVendorIds = [...new Set((matchingOutlets ?? []).map((outlet: { vendor_id: string }) => outlet.vendor_id))];
     }
 
+    const ownerRelationship = kyc === 'all'
+      ? 'users!vendors_owner_id_fkey(full_name,email,kyc_status)'
+      : 'users!vendors_owner_id_fkey!inner(full_name,email,kyc_status)';
     let vendorQuery = service
       .from('vendors')
-      .select('id,name,slug,status,kind,created_at,description,business_type,logo_url,cover_url,approved_at,approval_email_sent_at,rejection_reason,users!vendors_owner_id_fkey(full_name,email,kyc_status),outlets(count),products(count),vendor_documents(count),vendor_onboarding_profiles(legal_business_name,registration_number,contact_name,contact_email,contact_phone,business_address,status,review_note)', { count: 'exact' })
+      .select(`id,name,slug,status,kind,created_at,description,business_type,logo_url,cover_url,approved_at,approval_email_sent_at,rejection_reason,${ownerRelationship},outlets(count),products(count),vendor_documents(count),vendor_onboarding_profiles(legal_business_name,registration_number,contact_name,contact_email,contact_phone,business_address,status,review_note)`, { count: 'exact' })
       .order('created_at', { ascending: false })
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
     if (filter === 'approved') vendorQuery = vendorQuery.eq('status', 'approved').is('approval_email_sent_at', null);
     else if (filter === 'welcomed') vendorQuery = vendorQuery.eq('status', 'approved').not('approval_email_sent_at', 'is', null);
     else if (filter !== 'all') vendorQuery = vendorQuery.eq('status', filter);
-    if (ownerIdsForKyc) vendorQuery = vendorQuery.in('owner_id', ownerIdsForKyc.length ? ownerIdsForKyc : [EMPTY_ID]);
+    if (kyc !== 'all') vendorQuery = vendorQuery.eq('users.kyc_status', kyc);
     if (matchingVendorIds) vendorQuery = vendorQuery.in('id', matchingVendorIds.length ? matchingVendorIds : [EMPTY_ID]);
     if (term) {
       const clauses = [`name.ilike.%${term}%`, `slug.ilike.%${term}%`];

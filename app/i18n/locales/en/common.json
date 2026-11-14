@@ -316,16 +316,39 @@
     "attachmentUnavailable": "This attachment is temporarily unavailable. You can try again."
   },
   "chatbot": {
+    "recommendation": {
+      "categories": { "food": "Food", "activity": "Activities", "accommodation": "Accommodation", "retail": "Shopping" },
+      "anyState": "All Malaysia",
+      "removeBudget": "No budget limit",
+      "seeProduct": "View product",
+      "matchReason": "Matches the category and filters you chose.",
+      "ratingReason": "Rated {{rating}} by {{reviews}} reviews.",
+      "locationUnknown": "Location not listed"
+    },
     "title": "Chats",
     "brand": "MYLawatan Bot",
     "myTickets": "My Tickets",
     "closeChat": "Close chat",
-    "emptyPrompt": "Ask about rewards, affiliate links, withdrawals, booking, or verification.",
+    "emptyPrompt": "Ask where to find something, compare listings, get recommendations, check your orders or request a refund.",
+    "greeting": "Hi, I'm MYLawatan Bot. I can check your order, booking, or refund status, answer common questions, and help you find products and catalogue prices. What would you like to do?",
+    "starters": {
+      "label": "Suggested questions",
+      "booking": "My booking",
+      "refund": "My refund",
+      "products": "Find products and prices",
+      "faq": "Browse common questions",
+      "retry": "Retry",
+      "questions": {
+        "booking": "Check my booking",
+        "refund": "Track my refund",
+        "products": "Recommend products and prices"
+      }
+    },
     "inputPlaceholder": "Ask a question…",
     "send": "Send message",
     "openChat": "Chat with MYLawatan Bot",
     "wasThisHelpful": "Was this helpful?",
-    "evidence": "Reference article: {{title}} · v{{version}} · checked {{checkedAt}}",
+    "evidence": "Source: {{title}}",
     "yes": "Yes",
     "no": "No",
     "gladToHelp": "Glad I could help.",
@@ -382,7 +405,9 @@
     },
     "history": {
       "loadEarlier": "Load earlier messages",
-      "unavailable": "Could not restore your saved conversation."
+      "unavailable": "Could not restore your saved conversation.",
+      "sessionGone": "This saved chat is no longer available. Start a new chat to continue.",
+      "signIn": "Your sign-in expired. Sign in to restore this conversation."
     },
     "statusQuery": {
       "signIn": "Sign in to check your account records.",
@@ -477,7 +502,8 @@
       "listFailed": "Your tickets could not be loaded.",
       "retry": "Try again",
       "loading": "Loading tickets…",
-      "ticketCount": "{{count}} tickets",
+      "ticketCount_one": "{{count}} ticket",
+      "ticketCount_other": "{{count}} tickets",
       "previousPage": "Previous ticket page",
       "nextPage": "Next ticket page",
       "checkFields": "Add a subject and describe the issue.",
@@ -493,7 +519,8 @@
         "open": "Open",
         "in_progress": "In progress",
         "resolved": "Resolved",
-        "closed": "Closed"
+        "closed": "Closed",
+        "unknown": "Status unavailable"
       }
     },
     "expandChat": "Expand to full screen",
@@ -524,6 +551,28 @@
       "paymentUncertain": "Payment status is not confirmed. Check your order or contact support; do not pay again yet.",
       "rateLimited": "This action is temporarily limited. Wait a moment or contact support.",
       "unavailable": "Something went wrong. Your text is still here. Try again or contact support."
+    },
+    "agent": {
+      "compare": {
+        "price": "Price from",
+        "rating": "Rating",
+        "shop": "Shop",
+        "area": "Area",
+        "hours": "Hours"
+      },
+      "refund": {
+        "title": "Refund request",
+        "order": "Order",
+        "items": "Items",
+        "total": "Total",
+        "reason": "Reason",
+        "confirm": "Confirm refund",
+        "cancel": "Cancel",
+        "running": "Sending…",
+        "done": "Refund requested. Track it on the order page.",
+        "cancelled": "Cancelled",
+        "failed": "Failed"
+      }
     }
   },
   "account": {

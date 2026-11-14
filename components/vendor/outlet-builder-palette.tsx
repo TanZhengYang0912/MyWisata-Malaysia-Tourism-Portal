@@ -70,7 +70,7 @@ export default function OutletBuilderPalette({ onAddBlock, onBeginDrag }: Props)
     Object.fromEntries(BUILDER_PALETTE_GROUPS.map((group) => [group.id, Boolean(group.defaultOpen)])),
   );
 
-  return <aside className="border-b border-primary/10 bg-white p-4 lg:border-b-0 lg:border-r">
+  return <aside className="border-b border-primary/10 bg-card p-4 lg:border-b-0 lg:border-r">
     <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{t('builder.palette.title')}</p>
     <p className="mt-1 text-xs leading-5 text-gray-500">{t('builder.palette.hint')}</p>
     <div className="mt-4 space-y-3">
@@ -81,17 +81,17 @@ export default function OutletBuilderPalette({ onAddBlock, onBeginDrag }: Props)
             type="button"
             aria-expanded={isOpen}
             onClick={() => setOpenGroups((current) => ({ ...current, [group.id]: !isOpen }))}
-            className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left hover:bg-white"
+            className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left hover:bg-card"
           >
             <span className="min-w-0 flex-1">
               <span className="block text-xs font-bold text-gray-900">{groupLabel(group.id, group.label)}</span>
             </span>
-            <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-gray-400">{group.items.length}</span>
+            <span className="rounded-full bg-card px-2 py-0.5 text-[10px] font-bold text-gray-400">{group.items.length}</span>
             <ChevronDown size={15} className={`shrink-0 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </button>
           {isOpen && <div className="mt-1 grid gap-1.5">
-            {group.items.map(({ type, label, icon: Icon }) => <button key={type} type="button" draggable onDragStart={(event) => { event.dataTransfer.setData('outlet-block-type', type); onBeginDrag(type); }} onClick={() => onAddBlock(type)} className="group flex items-center gap-3 rounded-xl border border-transparent bg-white px-2.5 py-2.5 text-left transition hover:border-primary/30 hover:bg-secondary">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary group-hover:bg-white"><Icon size={16} /></span>
+            {group.items.map(({ type, label, icon: Icon }) => <button key={type} type="button" draggable onDragStart={(event) => { event.dataTransfer.setData('outlet-block-type', type); onBeginDrag(type); }} onClick={() => onAddBlock(type)} className="group flex items-center gap-3 rounded-xl border border-transparent bg-card px-2.5 py-2.5 text-left transition hover:border-primary/30 hover:bg-secondary">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary group-hover:bg-card"><Icon size={16} /></span>
               <span className="min-w-0"><span className="block text-xs font-bold text-gray-900">{itemLabel(type, label)}</span></span>
               <Plus size={14} className="ml-auto shrink-0 text-gray-300 group-hover:text-primary" />
             </button>)}

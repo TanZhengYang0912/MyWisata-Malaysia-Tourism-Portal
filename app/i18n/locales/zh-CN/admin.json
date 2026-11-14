@@ -1031,16 +1031,87 @@
   "aiAssistant": {
     "ask": {
       "clear": "清空对话",
-      "empty": "例如：“本周有多少条推荐待处理？”或“显示金额超过 500 的提现”。答案仅来自已注册的聚合查询——绝不读取原始客户数据。",
+      "empty": "例如“有多少提现待处理？”、“如何批准退款？”或“把未处理的付款工单标为处理中”。在您点击卡片上的确认之前，不会有任何更改。",
       "placeholder": "提问…",
+      "send": "发送",
       "restoring": "正在恢复对话…",
-      "title": "询问平台指标"
+      "title": "询问助手"
     },
     "errors": {
       "unavailable": "助手目前不可用。"
     },
     "restricted": "AI 助手仅限超级管理员使用。",
-    "title": "AI 助手"
+    "title": "AI 助手",
+    "actions": {
+      "create_kb_entry": "添加知识库条目（保存为停用）",
+      "set_kb_entry_active": "启用或停用知识库条目",
+      "reindex_kb": "重新索引知识库",
+      "update_ticket": "更新客服工单",
+      "reply_to_ticket": "回复客户",
+      "mark_notifications_read": "将所有通知标为已读",
+      "claim_event_exception": "认领活动异常案例",
+      "add_hotel_amenity": "添加酒店设施",
+      "set_hotel_amenity_active": "启用或停用酒店设施",
+      "add_moderation_word": "添加审核词",
+      "set_moderation_word_active": "启用或停用审核词",
+      "send_vendor_announcement": "向所有商家发送公告",
+      "vendor_request_information": "要求商家申请人补充资料",
+      "recommendation_request_changes": "要求修改推荐",
+      "review_catalogue_item": "审核目录项目",
+      "resolve_chat_report": "关闭聊天举报",
+      "set_event_ad_paused": "暂停或恢复活动广告",
+      "pause_sponsored_ad": "暂停赞助广告",
+      "change_stall_number": "更改摊位号"
+    },
+    "fields": {
+      "title": "标题",
+      "body": "内容",
+      "keywords": "关键词",
+      "entry": "条目",
+      "active": "设为",
+      "ticket": "工单",
+      "status": "状态",
+      "category": "类别",
+      "message": "消息",
+      "case": "案例",
+      "dueDate": "截止日期",
+      "code": "代码",
+      "labelEn": "标签（英文）",
+      "labelMs": "标签（马来文）",
+      "labelZh": "标签（中文）",
+      "icon": "图标",
+      "term": "词语",
+      "language": "语言",
+      "vendor": "商家",
+      "reason": "原因",
+      "recommendation": "推荐",
+      "note": "内部备注",
+      "item": "项目",
+      "decision": "决定",
+      "report": "举报",
+      "outcome": "结果",
+      "ad": "广告",
+      "change": "更改",
+      "stallNumber": "摊位"
+    },
+    "card": {
+      "pending": "等待您的确认",
+      "confirm": "确认",
+      "cancel": "取消",
+      "running": "正在执行…",
+      "done": "已完成",
+      "cancelled": "已取消",
+      "failed": "失败",
+      "on": "启用",
+      "off": "停用",
+      "open": "打开页面"
+    },
+    "choices": {
+      "name": "名称",
+      "active": "状态",
+      "save_one": "保存 {{count}} 项更改",
+      "save_other": "保存 {{count}} 项更改"
+    }
   },
   "catalogue": {
     "accessibility": {
@@ -1477,6 +1548,7 @@
     "openItems_other": "{{count}} 个待处理项目",
     "walletPending_one": "{{count}} 个请求需要决定，{{amount}} 正在审核中。",
     "walletPending_other": "{{count}} 个请求需要决定，{{amount}} 正在审核中。",
+    "someSourcesUnavailable": "部分数据源不可用",
     "queueUnavailable": "待办数据暂时不可用",
     "staleData": "刷新失败，当前显示上次成功加载的数据。"
   },
@@ -1861,7 +1933,8 @@
   "reconciliation": {
     "eyebrow": "资金去向",
     "title": "订单资金明细",
-    "description": "逐单明细：客户付款额、商家净额、平台佣金，以及其中有多少用于支付推广佣金和推荐佣金。",
+    "description": "按平台结算、推广佣金和推荐佣金记录汇总的逐单内部资金分配。",
+    "scope": "内部资金分配报告；未与银行或 Stripe 结算记录核对。",
     "month": "月份",
     "reload": "重新加载",
     "loading": "加载中…",
@@ -1871,10 +1944,11 @@
     "negativeWarning_one": "有 {{count}} 笔订单支付的推荐佣金超过了平台在该订单上的收入——首单奖励属正常情况，此处列出以便查看。",
     "negativeWarning_other": "有 {{count}} 笔订单支付的推荐佣金超过了平台在该订单上的收入——首单奖励属正常情况，此处列出以便查看。",
     "errors": {
-      "load": "无法加载对账报告。"
+      "load": "无法加载对账报告。",
+      "exportLimit": "请缩小筛选范围，每次最多导出 10,000 笔订单。"
     },
     "metrics": {
-      "gross": "客户付款",
+      "gross": "记录的订单总额",
       "platformFee": "平台佣金",
       "vendorNet": "商家净额",
       "affiliate": "推广佣金支出",
@@ -1897,8 +1971,8 @@
       "unknownStatus": "其他状态",
       "orderWithoutNumber": "订单号未提供",
       "noMatches": "没有符合筛选条件的订单。",
-      "scope": "财务筛选同步作用于表格、金额汇总和 CSV；金额仅反映已载入的结算数据。",
-      "count": "显示 {{shown}} / {{total}} 笔已载入订单。",
+      "scope": "筛选条件会作用于服务器计算的表格、汇总金额和 CSV。",
+      "count": "显示 {{shown}} / {{total}} 笔符合条件的订单。",
       "net": {
         "all": "全部净额",
         "positive": "正数",
@@ -2276,6 +2350,7 @@
       "batch": {
         "confirm": "要对选中的 {{count}} 个用户账户执行“{{action}}”吗？",
         "failed": "一个或多个用户操作失败。",
+        "outcomes": "{{applied}} 项已完成，{{rejected}} 项被拒绝，{{unknown}} 项需要确认。列表已刷新。",
         "noCommonAction": "没有一项账户操作适用于所有选中的用户。",
         "processed": "已处理 {{count}} 个用户账户。",
         "reasonError": "理由必须至少 10 个字符。",

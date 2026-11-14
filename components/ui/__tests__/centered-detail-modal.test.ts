@@ -25,7 +25,7 @@ describe("CenteredDetailModal", () => {
   });
 
   it("keeps fixed long-form dialogs readable in dark mode", () => {
-    expect(source).toContain("bg-white dark:bg-card");
+    expect(source).toContain("bg-card");
     expect(source).toContain("dark:text-foreground");
   });
 });

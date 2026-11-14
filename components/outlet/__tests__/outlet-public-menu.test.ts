@@ -58,7 +58,7 @@ describe('public outlet menu', () => {
   it('shows the current outlet position when the vendor has multiple outlets', async () => {
     const source = await import('node:fs').then(({ readFileSync }) => readFileSync('components/outlet/public-outlet-page.tsx', 'utf8'));
     expect(source).toContain('t("strictMigration.outletNavigation.position"');
-    expect(source).toContain('t("strictMigration.outletNavigation.viewAll"');
+    expect(source).toContain('<SeeMoreLink href={`/customer/vendors/${vendorId}#locations`}');
   });
 
   it('scopes public inventory, variants, and booking slots to the current outlet', async () => {

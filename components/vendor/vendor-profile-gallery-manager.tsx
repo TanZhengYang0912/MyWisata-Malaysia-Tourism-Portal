@@ -137,7 +137,7 @@ export default function VendorProfileGalleryManager({ vendorId }: Props) {
   }
 
   return (
-    <section aria-labelledby="vendor-gallery-heading" aria-busy={saving || loading} className="space-y-5 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-5 shadow-sm sm:p-6">
+    <section aria-labelledby="vendor-gallery-heading" aria-busy={saving || loading} className="space-y-5 rounded-2xl border border-gray-100 dark:border-border bg-card p-5 shadow-sm sm:p-6">
       <div className="flex items-start gap-3 border-b border-gray-100 dark:border-border pb-5">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary"><Images size={19} /></div>
         <div className="min-w-0 flex-1">
@@ -186,7 +186,7 @@ export default function VendorProfileGalleryManager({ vendorId }: Props) {
             </div>
           ) : (
             <div className="flex min-h-24 items-center gap-3 rounded-xl border border-dashed border-gray-200 dark:border-border bg-gray-50/70 dark:bg-muted/70 p-4">
-              <span aria-hidden="true" className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-card text-primary"><Images size={20} /></span>
+              <span aria-hidden="true" className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-card text-primary"><Images size={20} /></span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-gray-800 dark:text-foreground">{t('ui.profile.galleryEmpty')}</p>
               </div>

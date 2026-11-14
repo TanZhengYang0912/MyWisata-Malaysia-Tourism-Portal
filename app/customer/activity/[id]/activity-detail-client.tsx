@@ -15,6 +15,7 @@ import { AiTag } from "@/components/customer/ai-tag";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ShareButton } from "@/components/shared/share-button";
 import { Button } from "@/components/ui/button";
+import { SeeMoreLink } from "@/components/customer/see-more-link";
 import { ActivityReviews } from "@/components/customer/activity-reviews";
 import { ProductCard } from "@/components/customer/product-card";
 import { toOutletCatalogueCard } from "@/lib/customer/product-catalogue";
@@ -260,9 +261,7 @@ export function ActivityDetailClient({
                   {namesOutlet && (
                     <>
                       {" — "}{outletShortName(selectedOutlet!.outletName, selectedOutlet!.vendorName)} {t("ui.map.outlet")}
-                      <Link href={getOutletShopHref(selectedOutlet!.outletId)} className="underline underline-offset-2 hover:no-underline">
-                        {t("ui.actions.visitOutlet")}
-                      </Link>
+                      <SeeMoreLink href={getOutletShopHref(selectedOutlet!.outletId)} ariaLabel={t("ui.actions.visitOutlet")} />
                     </>
                   )}
                 </p>
@@ -310,7 +309,7 @@ export function ActivityDetailClient({
               <h2 className="mt-1 text-lg font-bold text-foreground">{t(body.panelTitleKey(activity))}</h2>
             </div>
             <div className="text-right">
-              {publicPlace ? <><p className="text-lg font-bold text-primary">{t("ui.labels.freeToExplore")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.publicAccess")}</p></> : <><ReferencePrice amountMYR={price} className="font-[family-name:var(--font-mono)] text-2xl font-bold text-primary" /><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug, t)}</p></>}
+              {publicPlace ? <><p className="text-lg font-bold text-primary">{t("ui.labels.freeToExplore")}</p><p className="text-[11px] text-muted-foreground">{t("ui.labels.publicAccess")}</p></> : <><ReferencePrice amountMYR={price} className="tabular-nums text-2xl font-bold text-primary" /><p className="text-[11px] text-muted-foreground">{getPriceUnit(activity.categorySlug, t)}</p></>}
             </div>
           </div>
 
@@ -319,7 +318,7 @@ export function ActivityDetailClient({
                {placeBound ? <MapPin size={12} className="mr-1 inline align-[-1px]" /> : <Store size={12} className="mr-1 inline align-[-1px]" />}
                {publicPlace ? t("strictMigration.activityDetail.noVendorRequired") : placeBound ? t("strictMigration.activityDetail.placeDetails") : (selectedOutlet!.vendorName ?? t("strictMigration.activityDetail.localVendor"))}
              </span>
-             {!placeBound && <Link href={`/customer/vendors/${selectedOutlet!.vendorId}`} className="shrink-0 font-semibold text-primary hover:underline">{t("ui.actions.visitVendor")}</Link>}
+             {!placeBound && <SeeMoreLink href={`/customer/vendors/${selectedOutlet!.vendorId}`} ariaLabel={t("ui.actions.visitVendor")} />}
            </div>
 
           {publicPlace ? <div className="rounded-2xl border border-[#cbd7f2] bg-[#f3f5ff] p-4 text-sm text-muted-foreground">{t("ui.activity.publicPlaceAccess")}</div> : <>
@@ -349,7 +348,7 @@ export function ActivityDetailClient({
                           <OutletChoiceStatus choice={choice} status={outletStatus} />
                         </span>
                       </span>
-                      <span className="shrink-0 text-sm font-bold text-primary font-[family-name:var(--font-mono)]">
+                      <span className="shrink-0 text-sm font-bold text-primary tabular-nums">
                         <ReferencePrice amountMYR={choice.price} />
                       </span>
                     </button>
@@ -491,9 +490,9 @@ export function ActivityDetailClient({
               )}
             </div>
             {relatedScope === "vendor" ? (
-              <Link href={returnTo !== "/customer" ? returnTo : `/customer/vendors/${selectedOutlet.vendorId}`} className="text-sm font-bold text-primary hover:underline">{t("ui.actions.visitVendor")} →</Link>
+              <SeeMoreLink href={returnTo !== "/customer" ? returnTo : `/customer/vendors/${selectedOutlet.vendorId}`} ariaLabel={t("ui.actions.visitVendor")} />
             ) : (
-              <Link href={getOutletShopHref(selectedOutlet.outletId)} className="text-sm font-bold text-primary hover:underline">{t("ui.actions.visitOutlet")} →</Link>
+              <SeeMoreLink href={getOutletShopHref(selectedOutlet.outletId)} ariaLabel={t("ui.actions.visitOutlet")} />
             )}
           </div>
           <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
@@ -513,7 +512,7 @@ export function ActivityDetailClient({
         <div className="mx-auto flex max-w-7xl items-center gap-3">
           <div className="min-w-0">
             <p className="break-words whitespace-normal text-xs text-muted-foreground">{t(body.quantityLabelKey, { count: qty })}</p>
-            <ReferencePrice amountMYR={price * qty} className="font-[family-name:var(--font-mono)] text-lg font-bold text-primary" />
+            <ReferencePrice amountMYR={price * qty} className="tabular-nums text-lg font-bold text-primary" />
           </div>
           {added ? (
             <Link href="/customer/cart" className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-primary px-4 text-sm font-bold text-white">{t("ui.activityDetail.viewCart")}</Link>

@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowRight, ArrowUpRight, CalendarDays, RefreshCw } from "lucide-react";
+import { CalendarDays, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CampaignEnvelope } from "@/components/customer/campaign-envelope";
+import { SeeMoreLink } from "@/components/customer/see-more-link";
 import { FeaturedSplitCard } from "@/components/customer/featured-split-card";
 import { FeaturedRecommendationsFrame } from "@/components/customer/featured-recommendations-frame";
 import { Button } from "@/components/ui/button";
@@ -70,11 +70,7 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
       </Button>
     )}
     {!displayCampaign && (
-      <Button asChild className="min-h-11 rounded-full bg-highlight-yellow px-5 font-bold text-highlight-yellow-foreground hover:bg-highlight-yellow/85">
-        <Link href="/customer/events">
-          {t("ui.promotionCampaigns.allCampaigns")} <ArrowRight size={15} />
-        </Link>
-      </Button>
+      <SeeMoreLink href="/customer/events" ariaLabel={t("ui.promotionCampaigns.allCampaigns")} />
     )}
   </div>;
 
@@ -97,9 +93,7 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
         onNext={() => move(1)}
         clip={!displayCampaign}
         action={displayCampaign && (
-          <Link href="/customer/events" className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
-            {t("ui.promotionCampaigns.allCampaigns")} <ArrowUpRight size={15} aria-hidden="true" />
-          </Link>
+          <SeeMoreLink href="/customer/events" ariaLabel={t("ui.promotionCampaigns.allCampaigns")} />
         )}
       >
         {displayCampaign ? (

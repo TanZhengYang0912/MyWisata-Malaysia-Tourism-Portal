@@ -263,15 +263,15 @@ function AffiliateDashboardOwner() {
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">{tCustomer("ui.affiliate.clicks")}</p>
-          <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">{stats.totals.clicks}</p>
+          <p className="text-xl font-bold text-foreground tabular-nums">{stats.totals.clicks}</p>
         </div>
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">{tCustomer("strictMigration.affiliate.peopleOrdered")}</p>
-          <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">{stats.totals.referrals}</p>
+          <p className="text-xl font-bold text-foreground tabular-nums">{stats.totals.referrals}</p>
         </div>
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">{tCustomer("ui.wallet.destinationStatus.pending")}</p>
-          <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">
+          <p className="text-xl font-bold text-foreground tabular-nums">
             {formatMYR(stats.totals.pendingEarnings)}
           </p>
           {Number.isFinite(nearestClearsInDays) && (
@@ -282,7 +282,7 @@ function AffiliateDashboardOwner() {
         </div>
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">{tCustomer("ui.booking.available")}</p>
-          <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">
+          <p className="text-xl font-bold text-foreground tabular-nums">
             {formatMYR(stats.totals.availableToWithdraw)}
           </p>
           <p className="mb-1.5 text-[0.625rem] text-muted-foreground">{tCustomer("strictMigration.affiliate.withdrawableSpans")}</p>
@@ -298,7 +298,7 @@ function AffiliateDashboardOwner() {
         </div>
         <div className="flex min-h-[104px] flex-col rounded-2xl border border-border bg-card p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)]">
           <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground mb-1">{tCustomer("strictMigration.affiliate.totalEarnings")}</p>
-          <p className="text-xl font-bold text-foreground font-[family-name:var(--font-mono)]">
+          <p className="text-xl font-bold text-foreground tabular-nums">
             {formatMYR(stats.totals.totalEarnings)}
           </p>
         </div>
@@ -422,9 +422,9 @@ function AffiliateDashboardOwner() {
                   {stats.byCampaign.map((row) => (
                     <tr key={row.campaign ?? "untagged"} className="border-t border-border">
                       <td className="px-3 py-2 font-medium text-foreground">{row.campaign ?? tCustomer("ui.affiliate.campaigns.untagged")}</td>
-                      <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">{row.clicks}</td>
-                      <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">{row.referrals}</td>
-                      <td className="px-3 py-2 text-right font-[family-name:var(--font-mono)]">{formatMYR(row.earnings)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{row.clicks}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{row.referrals}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatMYR(row.earnings)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -478,7 +478,7 @@ function AffiliateDashboardOwner() {
                   <td className="px-4 py-2.5 text-right text-foreground">{p.shares}</td>
                   <td className="px-4 py-2.5 text-right text-foreground">{p.clicks}</td>
                   <td className="px-4 py-2.5 text-right text-foreground">{p.referrals}</td>
-                  <td className="px-4 py-2.5 text-right font-[family-name:var(--font-mono)] text-foreground">
+                  <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
                     {formatMYR(p.earnings)}
                   </td>
                 </tr>

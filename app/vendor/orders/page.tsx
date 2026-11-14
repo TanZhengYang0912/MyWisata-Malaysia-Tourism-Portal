@@ -640,28 +640,28 @@ export default function VendorOrdersPage() {
           type="button"
           onClick={handleExportOrders}
           disabled={loading || items.length === 0}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
         >
           <Download size={16} aria-hidden="true" /> {t("actions.exportCsv")}
         </button>
-        <button type="button" onClick={handleExportReadableOrders} disabled={loading || items.length === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
+        <button type="button" onClick={handleExportReadableOrders} disabled={loading || items.length === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
           <Download size={16} aria-hidden="true" /> {t("actions.exportReadableCsv")}
         </button>
         </div>}
       />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm">
           <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.orders.needsAttention")}</p>
           <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-300">{stats.attention}</p>
           <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t("ui.products.currentPage")}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm">
           <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.orders.markReady")}</p>
           <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">{stats.ready}</p>
           <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t("ui.products.currentPage")}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm">
           <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.orders.completed")}</p>
           <p className="mt-1 text-2xl font-bold text-primary">{stats.fulfilled}</p>
           <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t("ui.products.currentPage")}</p>
@@ -675,10 +675,10 @@ export default function VendorOrdersPage() {
 
       <div className="flex justify-end md:hidden">
         <details className="group relative">
-          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 [&::-webkit-details-marker]:hidden">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 [&::-webkit-details-marker]:hidden">
             <MoreHorizontal size={17} aria-hidden="true" /> {t("actions.moreActions")}
           </summary>
-          <div className="absolute right-0 z-20 mt-2 flex w-60 flex-col gap-1 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card p-2 shadow-xl">
+          <div className="absolute right-0 z-20 mt-2 flex w-60 flex-col gap-1 rounded-xl border border-gray-200 dark:border-border bg-card p-2 shadow-xl">
             <button type="button" onClick={handleExportOrders} disabled={loading || items.length === 0} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
               <Download size={16} aria-hidden="true" /> {t("actions.exportCsv")}
             </button>
@@ -689,7 +689,7 @@ export default function VendorOrdersPage() {
         </details>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm">
+      <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-card p-3 shadow-sm">
         <div className="flex max-w-full flex-nowrap gap-1 overflow-x-auto rounded-xl bg-gray-100 dark:bg-muted p-1">
           {[
             { value: "", label: t("ui.orders.allOrders") },
@@ -701,7 +701,7 @@ export default function VendorOrdersPage() {
               key={filter.value || "all"}
               type="button"
               onClick={() => applyQuickFilter(filter.value)}
-              className={`min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold ${quickFilter === filter.value ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"}`}
+              className={`min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold ${quickFilter === filter.value ? "bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"}`}
             >
               {filter.label}
             </button>
@@ -754,7 +754,7 @@ export default function VendorOrdersPage() {
                 type="button"
                 onClick={() => setFiltersOpen(false)}
                 aria-label={t("ui.orders.closeFilters")}
-                className="rounded-lg p-1.5 text-gray-400 dark:text-muted-foreground hover:bg-white dark:hover:bg-card hover:text-gray-700 dark:hover:text-foreground"
+                className="rounded-lg p-1.5 text-gray-400 dark:text-muted-foreground hover:bg-card hover:text-gray-700 dark:hover:text-foreground"
               >
                 <X size={15} aria-hidden="true" />
               </button>
@@ -771,7 +771,7 @@ export default function VendorOrdersPage() {
                       fulfilStatus: event.target.value,
                     }))
                   }
-                  className="h-10 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-normal text-gray-700 dark:text-foreground outline-none focus:border-primary"
+                  className="h-10 rounded-xl border border-gray-200 dark:border-border bg-card px-3 text-sm font-normal text-gray-700 dark:text-foreground outline-none focus:border-primary"
                 >
                   <option value="">{t("ui.orders.allItems")}</option>
                   <option value="attention">
@@ -794,7 +794,7 @@ export default function VendorOrdersPage() {
                       orderStatus: event.target.value,
                     }))
                   }
-                  className="h-10 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-normal text-gray-700 dark:text-foreground outline-none focus:border-primary"
+                  className="h-10 rounded-xl border border-gray-200 dark:border-border bg-card px-3 text-sm font-normal text-gray-700 dark:text-foreground outline-none focus:border-primary"
                 >
                   <option value="">{t("ui.orders.allOrderStates")}</option>
                   {ORDER_STATUS_OPTIONS.map((status) => (
@@ -809,7 +809,7 @@ export default function VendorOrdersPage() {
                   {t("ui.orders.dateRange")}
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <label className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3">
+                  <label className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-card px-3">
                     <span className="shrink-0 text-xs text-gray-400 dark:text-muted-foreground">
                       {t("ui.orders.fromDate")}
                     </span>
@@ -827,7 +827,7 @@ export default function VendorOrdersPage() {
                       className="h-10 min-w-0 flex-1 bg-transparent text-sm text-gray-700 dark:text-foreground outline-none"
                     />
                   </label>
-                  <label className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3">
+                  <label className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-card px-3">
                     <span className="shrink-0 text-xs text-gray-400 dark:text-muted-foreground">
                       {t("ui.orders.toDate")}
                     </span>
@@ -853,7 +853,7 @@ export default function VendorOrdersPage() {
               <button
                 type="button"
                 onClick={clearFilters}
-                className="rounded-lg px-3 py-2 text-xs font-semibold text-gray-500 dark:text-muted-foreground hover:bg-white dark:hover:bg-card hover:text-gray-900 dark:hover:text-foreground"
+                className="rounded-lg px-3 py-2 text-xs font-semibold text-gray-500 dark:text-muted-foreground hover:bg-card hover:text-gray-900 dark:hover:text-foreground"
               >
                 {t("ui.common.clearFilters")}
               </button>
@@ -959,7 +959,7 @@ export default function VendorOrdersPage() {
           {error}
         </div>
       )}
-      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-card shadow-sm">
         {loading ? (
           <div className="space-y-3 p-5">
             {Array.from({ length: 6 }).map((_, index) => (

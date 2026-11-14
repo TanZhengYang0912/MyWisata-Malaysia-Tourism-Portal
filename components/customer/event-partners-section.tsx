@@ -7,6 +7,7 @@ import { formatEventDateRange } from "@/lib/promotion-campaigns/locations";
 import { CardLocation } from "@/components/customer/card-frame";
 import { VendorCard } from "@/components/customer/vendor-card";
 import { SeeMoreLink } from "@/components/customer/see-more-link";
+import { CardCarousel } from "@/components/customer/card-carousel";
 
 export type EventPartner = {
   id: string;
@@ -23,7 +24,7 @@ export function EventPartnersSection({ partners, featured = false }: { partners:
   const { t, i18n } = useTranslation("customer");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   if (partners.length === 0) return null;
-  if (featured) return <FeaturedEventPartnersSection partners={partners.slice(0, 4)} />;
+  if (featured) return <FeaturedEventPartnersSection partners={partners} />;
 
   return (
     <section aria-labelledby="event-partners-heading" className="mx-auto max-w-7xl px-4 pt-12 sm:px-6 lg:px-8">
@@ -43,18 +44,18 @@ function FeaturedEventPartnersSection({ partners }: { partners: EventPartner[] }
 
   return (
     <section aria-labelledby="event-featured-partners-heading" className="mt-12">
-      <div className="mb-5 flex items-end justify-between gap-4">
+      <div className="mb-5 flex items-center justify-between gap-4 border-b border-border/70 pb-4">
         <h2 id="event-featured-partners-heading" className="flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl font-bold">
           <Sparkles size={19} className="text-primary" aria-hidden="true" />
           {t("ui.home.eventFeaturedPartners")}
         </h2>
         <SeeMoreLink href="/customer/vendors" />
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+      <CardCarousel label={t("ui.home.eventFeaturedPartners")}>
         {partners.map((partner) => (
           <EventPartnerCard key={partner.id} partner={partner} locale={locale} featured />
         ))}
-      </div>
+      </CardCarousel>
     </section>
   );
 }

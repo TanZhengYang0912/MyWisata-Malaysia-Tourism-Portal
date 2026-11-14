@@ -59,7 +59,7 @@ export function GlobalSearch() {
 
   return (
     <div className="relative w-full max-w-lg" ref={containerRef}>
-      <div className="flex items-center gap-2 rounded-full bg-slate-100/80 dark:bg-muted/80 px-4 py-2 ring-1 ring-slate-200 focus-within:bg-white dark:focus-within:bg-card focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+      <div className="flex items-center gap-2 rounded-full bg-slate-100/80 dark:bg-muted/80 px-4 py-2 ring-1 ring-slate-200 focus-within:bg-card focus-within:ring-2 focus-within:ring-primary/20 transition-all">
         <SearchIcon size={16} className="text-slate-400 dark:text-muted-foreground shrink-0" />
         <input
           type="text"
@@ -76,7 +76,7 @@ export function GlobalSearch() {
       </div>
 
       {isOpen && query.trim().length >= 2 && (
-        <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl bg-white dark:bg-card shadow-xl ring-1 ring-black/5 overflow-hidden z-50">
+        <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl bg-card shadow-xl ring-1 ring-black/5 overflow-hidden z-50">
           {!isLoading && !hasResults && (
             <div className="p-6 text-center text-sm text-slate-500 dark:text-muted-foreground">
               {t("strictMigration.search.noResultsFor", { query })}

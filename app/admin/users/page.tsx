@@ -40,6 +40,7 @@ export default function AdminUsersPage() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchBusy, setBatchBusy] = useState(false);
+  const [batchFeedback, setBatchFeedback] = useState("");
 
   async function load(nextFilters = filters) {
     setLoading(true); setError(null);
@@ -81,22 +82,28 @@ export default function AdminUsersPage() {
     }
     if (!(await confirm(t("ui.users.batch.confirm", { action: t(`ui.users.actions.${action}`), count: selectedUsers.length })))) return;
     setBatchBusy(true);
+    setBatchFeedback("");
+    const outcomes: { applied: number; rejected: number; unknown: number } = { applied: 0, rejected: 0, unknown: 0 };
     try {
-      const responses = await Promise.all(selectedUsers.map((user) => fetch(`/api/admin/users/${encodeURIComponent(user.id)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, reason }),
-      })));
-      const failed = responses.find((response) => !response.ok);
-      if (failed) {
-        const body = await failed.json().catch(() => ({}));
-        throw new Error(body?.error?.message ?? t("ui.users.batch.failed"));
+      for (let index = 0; index < selectedUsers.length; index += 5) {
+        const chunk = selectedUsers.slice(index, index + 5);
+        const results = await Promise.allSettled(chunk.map((user) => fetch(`/api/admin/users/${encodeURIComponent(user.id)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action, reason }),
+        })));
+        for (const result of results) {
+          if (result.status === "rejected") outcomes.unknown += 1;
+          else if (result.value.ok) outcomes.applied += 1;
+          else if (result.value.status < 500) outcomes.rejected += 1;
+          else outcomes.unknown += 1;
+        }
       }
       setSelectedIds(new Set());
-      showFeedback("success", t("ui.users.batch.processed", { count: selectedUsers.length }));
+      const message = t("ui.users.batch.outcomes", outcomes);
+      if (outcomes.rejected || outcomes.unknown) setBatchFeedback(message);
+      else showFeedback("success", message);
       await load();
-    } catch (error) {
-      setError(error instanceof Error ? error.message : t("ui.users.batch.failed"));
     } finally {
       setBatchBusy(false);
     }
@@ -128,7 +135,7 @@ export default function AdminUsersPage() {
           <Button type="submit" size="sm">{t("ui.actions.search")}</Button>
         </form>
         <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-4 xl:w-auto">
-          <select aria-label={t("ui.users.filters.roleLabel")} value={filters.role ?? ""} onChange={(event) => changeFilter("role", event.target.value ? event.target.value as UserManagementFilters["role"] : null)} className={adminFilterControlClassName}><option value="">{t("ui.users.filters.allRoles")}</option><option value={t("chatReports.roles.customer")}>{t("ui.users.roles.customer")}</option><option value="vendor_owner">{t("ui.users.roles.vendorOwner")}</option><option value="outlet_manager">{t("ui.users.roles.outletManager")}</option></select>
+          <select aria-label={t("ui.users.filters.roleLabel")} value={filters.role ?? ""} onChange={(event) => changeFilter("role", event.target.value ? event.target.value as UserManagementFilters["role"] : null)} className={adminFilterControlClassName}><option value="">{t("ui.users.filters.allRoles")}</option><option value="customer">{t("ui.users.roles.customer")}</option><option value="vendor_owner">{t("ui.users.roles.vendorOwner")}</option><option value="outlet_manager">{t("ui.users.roles.outletManager")}</option></select>
           <select aria-label={t("ui.users.filters.statusLabel")} value={filters.status ?? ""} onChange={(event) => changeFilter("status", event.target.value ? event.target.value as UserManagementFilters["status"] : null)} className={adminFilterControlClassName}><option value="">{t("ui.users.filters.allStatuses")}</option><option value="active">{t("ui.users.status.active")}</option><option value="suspended">{t("ui.users.status.suspended")}</option><option value="deleted">{t("ui.users.status.deleted")}</option></select>
           <select aria-label={t("ui.users.filters.kycLabel")} value={filters.kycStatus ?? ""} onChange={(event) => changeFilter("kycStatus", event.target.value ? event.target.value as UserManagementFilters["kycStatus"] : null)} className={adminFilterControlClassName}><option value="">{t("ui.users.filters.allKyc")}</option><option value="unverified">{t("ui.users.status.unverified")}</option><option value="pending">{t("ui.users.status.pending")}</option><option value="approved">{t("ui.users.status.approved")}</option><option value="rejected">{t("ui.users.status.rejected")}</option></select>
           <select aria-label={t("ui.users.filters.bioLabel")} value={filters.bioLocked === null ? "" : String(filters.bioLocked)} onChange={(event) => changeFilter("bioLocked", event.target.value === "" ? null : event.target.value === "true")} className={adminFilterControlClassName}><option value="">{t("ui.users.filters.allBioStates")}</option><option value="true">{t("ui.users.bio.locked")}</option><option value="false">{t("ui.users.bio.clear")}</option></select>
@@ -138,6 +145,7 @@ export default function AdminUsersPage() {
     </AdminFilterBar>
 
     {error && <p role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
+    {batchFeedback && <p role="status" className="mt-4 rounded-xl border border-border bg-muted p-3 text-sm">{batchFeedback}</p>}
     <section className="mt-5 overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"><p className="text-sm font-semibold text-foreground">{t("ui.users.directory.title")}</p><label className="flex items-center gap-2 text-xs text-muted-foreground">{t("ui.users.rows")}<select aria-label={t("ui.users.rowsPerPage")} value={filters.pageSize} onChange={(event) => changeFilter("pageSize", Number(event.target.value) as UserManagementFilters["pageSize"])} className={adminFilterControlClassName}><option value={15}>15</option><option value={25}>25</option><option value={50}>50</option><option value={100}>100</option></select></label></div>
       <div className="flex items-center gap-2 border-b border-border px-5 py-3 text-xs"><input type="checkbox" aria-label={t("ui.users.selectAllVisible")} checked={result.items.length > 0 && result.items.every((user) => selectedIds.has(user.id))} onChange={(event) => setSelectedIds(event.target.checked ? new Set(result.items.map((user) => user.id)) : new Set())} /><span className="text-muted-foreground">{t("ui.batch.selectAllOnPage")}</span></div>

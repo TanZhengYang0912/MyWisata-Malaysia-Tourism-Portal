@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { OperatingHours } from "@/backend/core/types";
 import { formatPeriods } from "@/components/customer/operating-hours-summary";
-import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/shared/pagination";
 import { getMalaysiaTodayKey, getNextOpening, isOperatingHoursOpenNow } from "@/lib/customer/operating-hours";
 import { OutletCard } from "@/components/customer/outlet-card";
 
@@ -22,7 +22,7 @@ export type VendorLocationRow = {
   href: string;
 };
 
-const FIRST_PAGE = 4;
+const PAGE_SIZE = 8;
 
 /** City-choice details reuse this status formatter; the location list stays compact. */
 export function useOutletOpenStatus() {
@@ -44,19 +44,21 @@ export function useOutletOpenStatus() {
   };
 }
 
-/** One OutletCard per outlet; four, then "Show all". Open now is worked out after mount, in the visitor's clock. */
+/** One OutletCard per outlet, eight a page. Open now is worked out after mount, in the visitor's clock. */
 export function VendorLocationList({ locations }: { locations: VendorLocationRow[] }) {
   const { t } = useTranslation("customer");
-  const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(1);
   const [now, setNow] = useState<Date | null>(null);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setNow(new Date()), []);
-  const shown = showAll ? locations : locations.slice(0, FIRST_PAGE);
+  const totalPages = Math.max(1, Math.ceil(locations.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
 
   return (
     <div className="mt-6">
       <div className="grid grid-cols-2 items-start gap-3 sm:gap-5 lg:grid-cols-4">
-        {shown.map((location) => (
+        {locations.slice(pageStart, pageStart + PAGE_SIZE).map((location) => (
           <OutletCard
             key={location.id}
             href={location.href}
@@ -69,13 +71,7 @@ export function VendorLocationList({ locations }: { locations: VendorLocationRow
           />
         ))}
       </div>
-      {shown.length < locations.length && (
-        <div className="mt-6 flex justify-center">
-          <Button type="button" variant="outline" className="rounded-full" onClick={() => setShowAll(true)}>
-            {t("ui.vendor.showAllLocations", { count: locations.length })}
-          </Button>
-        </div>
-      )}
+      <Pagination ariaLabel={t("ui.vendor.activeLocations")} currentPage={safePage} onPageChange={setPage} pageSize={PAGE_SIZE} totalItems={locations.length} totalPages={totalPages} />
     </div>
   );
 }

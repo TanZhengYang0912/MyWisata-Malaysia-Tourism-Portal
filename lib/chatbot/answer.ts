@@ -38,6 +38,7 @@ import { detectLanguage, type ChatLanguage } from './language';
 import { CHAT_STRINGS } from './strings';
 import { detectSensitiveSupportDomain, resolveSupportPolicy } from './policy';
 import { resolveCustomerSupportIntent } from './customer-intent';
+import { runCustomerAgent, type AgentContext, type ChatListing, type RefundProposal } from './agent';
 
 // CLAUDE-CHATBOT-FEEDBACK.md Flow 2: this line IS the ticket offer's lead-in
 // now — no separate "would you like our team to help?" phrasing needed here
@@ -64,7 +65,7 @@ export interface AnswerResult {
   kbMatched: boolean;
   canEscalate: boolean;
   usedKb: UsedKbRef[];
-  mode: 'llm' | 'keyword' | 'intent';
+  mode: 'agent' | 'llm' | 'keyword' | 'intent';
   /** Whether redactPII() found anything in the raw question — independent
    *  of mode, since this describes what the user typed, not how it was
    *  answered. CLAUDE-ADMIN-AI.md Part 1: logged on the message row. */
@@ -78,6 +79,10 @@ export interface AnswerResult {
    *  prompt — but the two should agree in practice since both start from
    *  the same question. */
   language: ChatLanguage;
+  /** Agent mode only: listings to show as links, a comparison table, refund confirm cards. */
+  listings?: ChatListing[];
+  comparison?: ChatListing[] | null;
+  refunds?: RefundProposal[];
 }
 
 /** Several questions: fewer docs each, so all of them fit in the context (max 6). */
@@ -160,6 +165,7 @@ export async function answerQuestion(
   useAi = true,
   beforeExternalCall?: () => Promise<void>,
   reserveProviderCall?: () => Promise<boolean>,
+  agent?: AgentContext,
 ): Promise<AnswerResult> {
   // Computed once from the raw question, independent of which mode ends up
   // answering it — a keyword-mode or intent-gated reply can still follow a
@@ -193,31 +199,41 @@ export async function answerQuestion(
   if (intent === 'chitchat') {
     return { answer: strings.chitchat, kbMatched: true, canEscalate: false, usedKb: [], mode: 'intent', piiDetected, language };
   }
-  if (intent === 'unclear') {
+  // A short follow-up ("yes", "that one") is clear to the agent, which sees the earlier messages.
+  const agentFollowUp = Boolean(useAi && agent?.history.length && process.env.LLM_API_KEY);
+  if (intent === 'unclear' && !agentFollowUp) {
     return { answer: strings.unclear, kbMatched: true, canEscalate: false, usedKb: [], mode: 'intent', piiDetected, language };
   }
 
   const service = createServiceClient();
   const questions = splitQuestions(question);
 
+  let externalCallMarker: Promise<void> | undefined;
+  const markBeforeExternalCall = beforeExternalCall
+    ? () => {
+      externalCallMarker ??= Promise.resolve().then(beforeExternalCall);
+      return externalCallMarker;
+    }
+    : undefined;
+  const prepareProviderCall = async () => {
+    if (reserveProviderCall && !(await reserveProviderCall())) throw new Error('AI_QUOTA_EXHAUSTED');
+    await markBeforeExternalCall?.();
+  };
+
+  if (useAi && process.env.LLM_API_KEY && agent) {
+    try {
+      const run = await runCustomerAgent(service, question, agent, prepareProviderCall);
+      const extras = { listings: run.listings, comparison: run.comparison, refunds: run.refunds };
+      return run.answer
+        ? { answer: run.answer, kbMatched: true, canEscalate: false, usedKb: run.usedKb, mode: 'agent', piiDetected, language, ...extras }
+        : { answer: strings.fallback, kbMatched: false, canEscalate: true, usedKb: run.usedKb, mode: 'agent', piiDetected, language, ...extras };
+    } catch (error) {
+      console.error('[chatbot] agent failed, falling back to help articles', error instanceof Error ? error.message : error);
+    }
+  }
+
   if (useAi && process.env.LLM_API_KEY) {
     try {
-      // Retrieval can issue several embeddings in parallel. Persist the
-      // operation's external-call boundary once before the first provider
-      // request, then share that result with later embeddings/generation.
-      let externalCallMarker: Promise<void> | undefined;
-      const markBeforeExternalCall = beforeExternalCall
-        ? () => {
-          externalCallMarker ??= Promise.resolve().then(beforeExternalCall);
-          return externalCallMarker;
-        }
-        : undefined;
-      const prepareProviderCall = async () => {
-        if (reserveProviderCall && !(await reserveProviderCall())) {
-          throw new Error('AI_QUOTA_EXHAUSTED');
-        }
-        await markBeforeExternalCall?.();
-      };
       // Each question clears the similarity threshold on its own, so one
       // off-topic question no longer sinks an on-topic one beside it.
       const k = retrievalCount(questions.length);

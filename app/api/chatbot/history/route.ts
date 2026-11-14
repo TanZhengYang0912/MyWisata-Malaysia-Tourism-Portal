@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   }
 
   let query = service.from('chatbot_messages')
-    .select('id, role, body, kb_matched, reply_to_message_id, created_at')
+    .select('id, role, body, kb_matched, reply_to_message_id, created_at, recommendation_data')
     .eq('session_id', session.id)
     .in('role', ['user', 'bot']);
   if (parsed.data.beforeCreatedAt && parsed.data.beforeId) {
@@ -110,6 +110,7 @@ export async function POST(request: Request) {
           : row.kb_matched ? 'awaiting_helpful' : 'awaiting_ticket',
         botAnswered: row.role === 'bot' ? Boolean(row.kb_matched) : undefined,
         evidence: row.role === 'bot' ? evidenceByMessage.get(row.id) ?? [] : undefined,
+        recommendationData: row.role === 'bot' ? row.recommendation_data ?? null : undefined,
       };
     }),
     nextCursor: messages.length === 30 && oldest ? { createdAt: oldest.created_at, id: oldest.id } : null,

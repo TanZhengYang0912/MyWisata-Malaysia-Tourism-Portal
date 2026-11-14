@@ -2226,6 +2226,7 @@
       "spotlight": "In the spotlight",
       "islandMood": "Island mood",
       "viewDestination": "View destination",
+      "destinationDoubleClick": "Double-Click to Visit {{state}}",
       "savedToAtlas": "Saved to your atlas",
       "saveFeeling": "Save this feeling",
       "destinationCarousel": "Destination carousel",
@@ -2397,7 +2398,11 @@
         "poi": "Place"
       },
       "noGate": "No gate",
-      "freeEntry": "Free entry",
+      "freeEntry": "Free Entry",
+      "referenceEntry": "Reference Entry",
+      "entryNotSpecified": "Entry Not Specified",
+      "experienceCount_one": "{{count}} Experience",
+      "experienceCount_other": "{{count}} Experiences",
       "entryFee": "RM{{price}} entry",
       "bookable": "Bookable",
       "vendorOptions": "{{count}} vendor option",
@@ -3003,11 +3008,19 @@
       "views": {
         "label": "Choose how to view events",
         "list": "List",
-        "calendar": "Calendar",
         "map": "Map & events",
-        "calendarEmpty": "No event locations in this period.",
         "unpinned_one": "{{count}} location has no map pin yet. See the List view for its address.",
         "unpinned_other": "{{count}} locations have no map pin yet. See the List view for their addresses."
+      },
+      "dateEmpty": "No events on this date.",
+      "datePicker": {
+        "openCalendar": "Open calendar",
+        "chooseDate": "Choose a date",
+        "previousDay": "Previous day",
+        "nextDay": "Next day",
+        "previousMonth": "Previous month",
+        "nextMonth": "Next month",
+        "backToToday": "Back to today"
       }
     },
     "recommendationReasons": {

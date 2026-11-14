@@ -10,6 +10,8 @@ describe('resolveCustomerSupportIntent', () => {
     ['退款处理到哪一步了？', 'refunds'],
     ['Ada balasan pada tiket sokongan saya?', 'tickets'],
     ['订单状态怎么样？', 'orders'],
+    ['我有什么订单吗', 'orders'],
+    ['我有哪些订单？', 'orders'],
     ['Has my withdrawal been paid?', 'withdrawals'],
     ['我的提现审核到哪里了？', 'withdrawals'],
     ['What is my KYC status?', 'kyc'],

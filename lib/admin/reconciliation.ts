@@ -1,13 +1,7 @@
-// P4 — per-order money reconciliation for admins.
-//
-// Shows that every paid order balances: customer paid = Σ vendor gross, and the
-// platform's commission funds the referral payouts on that order —
-//   platform_net = platform_fee - affiliate_payout - recommendation_payout
-// which can go negative on a small order that triggered the RM50 recommendation
-// first-sale bonus (an accepted acquisition cost; flagged, not blocked).
+// P4 — internal per-order allocation report for admins. This reads platform
+// settlement and commission records; it does not verify bank or provider payout.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { summarizeOrderReconciliationRows } from './reconciliation-filtering';
 import type { EventOperationsFilters } from './event-operations-filters';
 
 export interface OrderReconciliationRow {
@@ -27,6 +21,10 @@ export interface OrderReconciliationRow {
 
 export interface OrderReconciliation {
   rows: OrderReconciliationRow[];
+  total: number;
+  statusOptions: string[];
+  page: number;
+  pageSize: number;
   totals: {
     grossSen: number;
     platformFeeSen: number;
@@ -38,92 +36,38 @@ export interface OrderReconciliation {
   };
 }
 
-const toSen = (rm: number | string | null | undefined) => Math.round(Number(rm ?? 0) * 100);
-
 export async function getOrderMoneyReconciliation(
   service: SupabaseClient,
   range: { fromISO: string; toISO: string },
+  options: {
+    filters?: { search?: string; status?: string; net?: 'all' | 'positive' | 'zero' | 'negative' };
+    page?: number;
+    pageSize?: number;
+  } = {},
 ): Promise<OrderReconciliation> {
-  const empty: OrderReconciliation = {
-    rows: [],
-    totals: { grossSen: 0, platformFeeSen: 0, vendorNetSen: 0, affiliatePayoutSen: 0, recommendationPayoutSen: 0, platformNetSen: 0, negativeOrders: 0 },
-  };
-
-  const { data: settlements, error } = await service
-    .from('order_settlements')
-    .select('order_id, gross_sen, platform_fee_sen, vendor_net_sen, reversed_amount_sen, orders!inner(display_id, status, paid_at, created_at)')
-    .gte('orders.created_at', range.fromISO)
-    .lt('orders.created_at', range.toISO)
-    .limit(5000);
-  if (error || !settlements) return empty;
-
-  type SRow = {
-    order_id: string;
-    gross_sen: number | string;
-    platform_fee_sen: number | string;
-    vendor_net_sen: number | string;
-    reversed_amount_sen: number | string;
-    orders: { display_id: string | null; status: string; paid_at: string | null; created_at: string } | null;
-  };
-  const rows = settlements as unknown as SRow[];
-  if (rows.length === 0) return empty;
-
-  const orderIds = [...new Set(rows.map((r) => r.order_id))];
-
-  const [{ data: affRows }, { data: recRows }] = await Promise.all([
-    service.from('affiliate_attributions').select('order_id, commission_amount, status').in('order_id', orderIds),
-    service.from('recommendation_commissions').select('order_id, amount, status').in('order_id', orderIds),
-  ]);
-
-  const affByOrder = new Map<string, number>();
-  for (const a of (affRows ?? []) as { order_id: string; commission_amount: number | string; status: string }[]) {
-    if (a.status === 'reversed' || a.status === 'rejected') continue;
-    affByOrder.set(a.order_id, (affByOrder.get(a.order_id) ?? 0) + toSen(a.commission_amount));
+  const page = options.page ?? 1;
+  const pageSize = options.pageSize ?? 15;
+  if (!Number.isInteger(page) || page < 1 || ![15, 25, 50, 10001].includes(pageSize)) {
+    throw new Error('Invalid reconciliation pagination');
   }
-  const recByOrder = new Map<string, number>();
-  for (const r of (recRows ?? []) as { order_id: string | null; amount: number | string; status: string }[]) {
-    if (!r.order_id || r.status === 'reversed') continue;
-    recByOrder.set(r.order_id, (recByOrder.get(r.order_id) ?? 0) + toSen(r.amount));
-  }
-
-  const byOrder = new Map<string, OrderReconciliationRow>();
-  for (const r of rows) {
-    const existing = byOrder.get(r.order_id);
-    const grossSen = Number(r.gross_sen);
-    const platformFeeSen = Number(r.platform_fee_sen);
-    const vendorNetSen = Number(r.vendor_net_sen) - Number(r.reversed_amount_sen);
-    if (existing) {
-      existing.grossSen += grossSen;
-      existing.platformFeeSen += platformFeeSen;
-      existing.vendorNetSen += vendorNetSen;
-    } else {
-      byOrder.set(r.order_id, {
-        orderId: r.order_id,
-        orderDisplayId: r.orders?.display_id ?? null,
-        status: r.orders?.status ?? 'unknown',
-        paidAt: r.orders?.paid_at ?? null,
-        grossSen,
-        platformFeeSen,
-        vendorNetSen,
-        affiliatePayoutSen: affByOrder.get(r.order_id) ?? 0,
-        recommendationPayoutSen: recByOrder.get(r.order_id) ?? 0,
-        platformNetSen: 0,
-        platformNetNegative: false,
-      });
-    }
-  }
-
-  const out = [...byOrder.values()].map((row) => {
-    row.platformNetSen = row.platformFeeSen - row.affiliatePayoutSen - row.recommendationPayoutSen;
-    row.platformNetNegative = row.platformNetSen < 0;
-    return row;
+  const filters = options.filters ?? {};
+  const { data, error } = await service.rpc('get_admin_order_money_reconciliation', {
+    p_from: range.fromISO,
+    p_to: range.toISO,
+    p_search: filters.search?.trim() ?? '',
+    p_status: filters.status && filters.status !== 'all' ? filters.status : null,
+    p_net: filters.net ?? 'all',
+    p_page: page,
+    p_page_size: pageSize,
   });
-  out.sort((a, b) => (a.paidAt ?? '') < (b.paidAt ?? '') ? 1 : -1);
-
-  return {
-    rows: out,
-    totals: summarizeOrderReconciliationRows(out),
-  };
+  if (error) throw new Error('Unable to load order reconciliation', { cause: error });
+  if (!data || typeof data !== 'object') throw new Error('Order reconciliation returned no result');
+  const result = data as OrderReconciliation;
+  if (!Array.isArray(result.rows) || !result.totals || !Number.isInteger(result.total)
+    || !Array.isArray(result.statusOptions) || !Number.isInteger(result.page) || !Number.isInteger(result.pageSize)) {
+    throw new Error('Order reconciliation returned an invalid result');
+  }
+  return result;
 }
 
 export interface EventOperations {

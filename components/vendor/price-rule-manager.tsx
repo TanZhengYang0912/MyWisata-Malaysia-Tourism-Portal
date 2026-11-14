@@ -63,7 +63,7 @@ export default function PriceRuleManager({ vendorId, productId, productOptions =
       {!readOnly && <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label htmlFor="pricing-rule-type" className="grid gap-1 text-xs font-medium text-gray-700 dark:text-foreground">
           {t('pricing.title')}
-          <select id="pricing-rule-type" value={ruleType} onChange={(event) => setRuleType(event.target.value)} className="h-9 rounded-md border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-normal text-gray-900 dark:text-foreground outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10">
+          <select id="pricing-rule-type" value={ruleType} onChange={(event) => setRuleType(event.target.value)} className="h-9 rounded-md border border-gray-200 dark:border-border bg-card px-3 text-sm font-normal text-gray-900 dark:text-foreground outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10">
             <option value="peak">{t('pricing.peak')}</option>
             <option value="off_peak">{t('pricing.offPeak')}</option>
             <option value="group_size">{t('pricing.groupSize')}</option>
@@ -75,27 +75,27 @@ export default function PriceRuleManager({ vendorId, productId, productOptions =
         </label>
         <label htmlFor="pricing-rule-label" className="grid gap-1 text-xs font-medium text-gray-700 dark:text-foreground">
           {t('pricing.labelPlaceholder')}
-          <input id="pricing-rule-label" value={label} onChange={(event) => setLabel(event.target.value)} placeholder={t('pricing.labelPlaceholder')} className="h-9 rounded-md border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-normal text-gray-900 dark:text-foreground outline-none placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10" />
+          <input id="pricing-rule-label" value={label} onChange={(event) => setLabel(event.target.value)} placeholder={t('pricing.labelPlaceholder')} className="h-9 rounded-md border border-gray-200 dark:border-border bg-card px-3 text-sm font-normal text-gray-900 dark:text-foreground outline-none placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10" />
         </label>
         <label htmlFor="pricing-rule-multiplier" className="grid gap-1 text-xs font-medium text-gray-700 dark:text-foreground">
           {t('pricing.multiplier')}
-          <input id="pricing-rule-multiplier" value={multiplier} onChange={(event) => setMultiplier(event.target.value)} type="number" min="0.01" step="0.01" placeholder={t('pricing.multiplier')} className="h-9 rounded-md border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-normal text-gray-900 dark:text-foreground outline-none placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10" />
+          <input id="pricing-rule-multiplier" value={multiplier} onChange={(event) => setMultiplier(event.target.value)} type="number" min="0.01" step="0.01" placeholder={t('pricing.multiplier')} className="h-9 rounded-md border border-gray-200 dark:border-border bg-card px-3 text-sm font-normal text-gray-900 dark:text-foreground outline-none placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10" />
         </label>
         <label htmlFor="pricing-rule-fixed-amount" className="grid gap-1 text-xs font-medium text-gray-700 dark:text-foreground">
           {t('pricing.fixedAmount')}
-          <input id="pricing-rule-fixed-amount" value={fixedAmount} onChange={(event) => setFixedAmount(event.target.value)} type="number" min="0" step="0.01" placeholder={t('pricing.fixedAmount')} className="h-9 rounded-md border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-normal text-gray-900 dark:text-foreground outline-none placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10" />
+          <input id="pricing-rule-fixed-amount" value={fixedAmount} onChange={(event) => setFixedAmount(event.target.value)} type="number" min="0" step="0.01" placeholder={t('pricing.fixedAmount')} className="h-9 rounded-md border border-gray-200 dark:border-border bg-card px-3 text-sm font-normal text-gray-900 dark:text-foreground outline-none placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10" />
         </label>
         <label htmlFor="pricing-rule-minimum-quantity" className="grid gap-1 text-xs font-medium text-gray-700 dark:text-foreground">
           {t('pricing.minimumQuantity')}
-          <input id="pricing-rule-minimum-quantity" value={minQuantity} onChange={(event) => setMinQuantity(event.target.value)} type="number" min="1" placeholder={t('pricing.minimumQuantity')} className="h-9 rounded-md border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-normal text-gray-900 dark:text-foreground outline-none placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10" />
+          <input id="pricing-rule-minimum-quantity" value={minQuantity} onChange={(event) => setMinQuantity(event.target.value)} type="number" min="1" placeholder={t('pricing.minimumQuantity')} className="h-9 rounded-md border border-gray-200 dark:border-border bg-card px-3 text-sm font-normal text-gray-900 dark:text-foreground outline-none placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10" />
         </label>
         <label htmlFor="pricing-rule-priority" className="grid gap-1 text-xs font-medium text-gray-700 dark:text-foreground">
           {t('pricing.priority')}
-          <input id="pricing-rule-priority" value={priority} onChange={(event) => setPriority(event.target.value)} type="number" min="-1000" max="1000" placeholder={t('pricing.priority')} className="h-9 rounded-md border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-normal text-gray-900 dark:text-foreground outline-none placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10" />
+          <input id="pricing-rule-priority" value={priority} onChange={(event) => setPriority(event.target.value)} type="number" min="-1000" max="1000" placeholder={t('pricing.priority')} className="h-9 rounded-md border border-gray-200 dark:border-border bg-card px-3 text-sm font-normal text-gray-900 dark:text-foreground outline-none placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10" />
         </label>
 
         {ruleType === 'bundle' && (
-          <div className="rounded-lg border border-gray-200 dark:border-border bg-white dark:bg-card p-3 sm:col-span-2">
+          <div className="rounded-lg border border-gray-200 dark:border-border bg-card p-3 sm:col-span-2">
             <p className="text-xs font-semibold text-gray-700 dark:text-foreground">{t('pricing.bundleProducts')}</p>
             <p className="mt-1 text-[11px] text-gray-500 dark:text-muted-foreground">{t('pricing.bundleProductsHint')}</p>
             <div className="mt-2 grid max-h-28 gap-1 overflow-y-auto sm:grid-cols-2">
@@ -118,7 +118,7 @@ export default function PriceRuleManager({ vendorId, productId, productOptions =
       {rules.length > 0 && (
         <div className="mt-4 space-y-2">
           {rules.map((rule) => (
-            <div key={rule.id} className="flex flex-col gap-2 rounded-lg border border-gray-200 dark:border-border bg-white dark:bg-card px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between">
+            <div key={rule.id} className="flex flex-col gap-2 rounded-lg border border-gray-200 dark:border-border bg-card px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <span className="font-semibold text-gray-800 dark:text-foreground">{rule.label}</span>
                 <span className="ml-2 text-gray-500 dark:text-muted-foreground">{rule.rule_type} · {t('pricing.priorityValue', { value: rule.priority ?? 0 })} · {rule.multiplier ? `×${rule.multiplier}` : rule.fixed_amount ? formatMYR(rule.fixed_amount) : t('pricing.configured')}{rule.rule_type === 'bundle' && rule.bundle_product_ids?.length ? ` · ${t('pricing.bundleItems', { count: rule.bundle_product_ids.length })}` : ''}</span>

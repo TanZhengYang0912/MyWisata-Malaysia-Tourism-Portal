@@ -2231,6 +2231,7 @@
       "spotlight": "Dalam sorotan",
       "islandMood": "Suasana pulau",
       "viewDestination": "Lihat destinasi",
+      "destinationDoubleClick": "Klik Dua Kali untuk Melawat {{state}}",
       "savedToAtlas": "Disimpan ke atlas anda",
       "saveFeeling": "Simpan perasaan ini",
       "destinationCarousel": "Karusel destinasi",
@@ -2403,6 +2404,10 @@
       },
       "noGate": "Tiada pintu masuk",
       "freeEntry": "Masuk percuma",
+      "referenceEntry": "Anggaran Kemasukan",
+      "entryNotSpecified": "Maklumat Kemasukan Belum Dinyatakan",
+      "experienceCount_one": "{{count}} Pengalaman",
+      "experienceCount_other": "{{count}} Pengalaman",
       "entryFee": "RM{{price}} masuk",
       "bookable": "Boleh ditempah",
       "vendorOptions": "{{count}} pilihan vendor",
@@ -3008,11 +3013,19 @@
       "views": {
         "label": "Pilih cara melihat acara",
         "list": "Senarai",
-        "calendar": "Kalendar",
         "map": "Peta & acara",
-        "calendarEmpty": "Tiada lokasi acara dalam tempoh ini.",
         "unpinned_one": "{{count}} lokasi belum ada pin peta. Lihat paparan Senarai untuk alamatnya.",
         "unpinned_other": "{{count}} lokasi belum ada pin peta. Lihat paparan Senarai untuk alamatnya."
+      },
+      "dateEmpty": "Tiada acara pada tarikh ini.",
+      "datePicker": {
+        "openCalendar": "Buka kalendar",
+        "chooseDate": "Pilih tarikh",
+        "previousDay": "Hari sebelumnya",
+        "nextDay": "Hari seterusnya",
+        "previousMonth": "Bulan sebelumnya",
+        "nextMonth": "Bulan seterusnya",
+        "backToToday": "Kembali ke hari ini"
       }
     },
     "recommendationReasons": {

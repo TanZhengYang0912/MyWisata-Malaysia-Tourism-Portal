@@ -70,9 +70,30 @@ const translations: Record<string, string> = {
   "common:accessibility.openChat": "Open translated chat",
   "common:chatbot.closeChat": "Close translated chat",
   "common:chatbot.emptyPrompt": "Ask a translated question",
+  "common:chatbot.greeting": "Hi, I'm MYLawatan Bot. What can I help you with?",
+  "common:chatbot.starters.booking": "Check my booking translated",
+  "common:chatbot.starters.refund": "Track my refund translated",
+  "common:chatbot.starters.products": "Find products and prices translated",
+  "common:chatbot.starters.faq": "Browse common questions translated",
+  "common:chatbot.history.sessionGone": "This saved chat is no longer available. Start a new chat to continue.",
+  "common:chatbot.starters.label": "Suggested questions",
+  "common:chatbot.starters.questions.booking": "Check my booking",
+  "common:chatbot.starters.questions.refund": "Track my refund",
+  "common:chatbot.starters.questions.products": "Recommend products and prices",
+  "common:chatbot.starters.retry": "Retry",
+  "common:chatbot.retryQuestion": "Retry question translated",
+  "common:chatbot.history.signIn": "Your sign-in expired. Sign in to restore this conversation.",
   "common:chatbot.inputPlaceholder": "Translated question",
   "common:chatbot.askResultUnknown": "Translated outcome not ready",
-  "common:chatbot.evidence": "Reference article: {{title}} · v{{version}} · checked {{checkedAt}}",
+  "common:chatbot.evidence": "Source: {{title}}",
+  "common:chatbot.recommendation.categories.activity": "Activities translated",
+  "common:chatbot.recommendation.categories.food": "Food translated",
+  "common:chatbot.recommendation.categories.accommodation": "Accommodation translated",
+  "common:chatbot.recommendation.categories.retail": "Shopping translated",
+  "common:chatbot.recommendation.seeProduct": "View product translated",
+  "common:chatbot.recommendation.matchReason": "Matches your filters translated",
+  "common:chatbot.recommendation.ratingReason": "Rated {{rating}} by {{reviews}} reviews translated",
+  "common:chatbot.recommendation.locationUnknown": "Location not listed translated",
   "common:chatbot.statusQuery.unavailable": "Translated status unavailable. Retry or open your account page.",
   "common:chatbot.statusQuery.retry": "Translated status retry",
   "common:chatbot.statusQuery.refreshing": "Translated status checking",
@@ -276,6 +297,176 @@ describe("Task 5 shared runtime behavior", () => {
     document.defaultView.localStorage.clear();
   });
 
+  it("shows a welcome and useful starter actions before and after a greeting", async () => {
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/faq") return response({ data: { categories: [] } });
+      if (url === "/api/chatbot/ask") return response({ data: {
+        sessionKey: "greeting-session",
+        answer: "Hi, I'm MYLawatan Bot. What can I help you with?",
+        botAnswered: true,
+        messageId: "greeting-answer",
+        userMessageId: "greeting-question",
+        language: "en",
+        privacyBlocked: false,
+      } });
+      if (url === "/api/chatbot/feedback") return response({ data: null });
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+
+    expect(container.textContent).toContain("Hi, I'm MYLawatan Bot. What can I help you with?");
+    expect(container.textContent).toContain("Check my booking translated");
+    expect(container.textContent).toContain("Track my refund translated");
+    expect(container.textContent).toContain("Find products and prices translated");
+    expect(container.textContent).toContain("Browse common questions translated");
+
+    const input = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
+    setInputValue(input, "hi");
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+
+    expect(container.textContent).toContain("Hi, I'm MYLawatan Bot. What can I help you with?");
+    expect(container.textContent).toContain("Find products and prices translated");
+  });
+
+  it("lets an authenticated user replace an unavailable saved session without losing a new question", async () => {
+    const oldSessionKey = "199f9fac-8427-45c9-8096-0ece82d6cb54";
+    const question = "hi";
+    document.defaultView?.localStorage.setItem(chatbotSessionStorageKey("customer-1"), oldSessionKey);
+    let historyRequests = 0;
+    const askPayloads: { sessionKey?: string; question?: string }[] = [];
+    mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") {
+        historyRequests += 1;
+        return { ok: false, status: 404, json: async () => ({ data: null, error: { code: "NOT_FOUND" } }) } as Response;
+      }
+      if (url === "/api/chatbot/ask") {
+        askPayloads.push(JSON.parse(String(init?.body)) as { sessionKey?: string; question?: string });
+        return response({ data: {
+          sessionKey: askPayloads.at(-1)?.sessionKey,
+          answer: "Your booking is confirmed.",
+          botAnswered: true,
+          messageId: "booking-answer",
+          userMessageId: "booking-question",
+          language: "en",
+          privacyBlocked: false,
+        } });
+      }
+      if (url === "/api/chatbot/feedback") return response({ data: null });
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+
+    expect(container.textContent).toContain("This saved chat is no longer available. Start a new chat to continue.");
+    const input = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
+    setInputValue(input, question);
+    const startNewChat = findButton("Start new chat translated");
+    const localStorage = document.defaultView?.localStorage;
+    const setItemSpy = vi.spyOn(localStorage!, "setItem");
+    await act(async () => {
+      startNewChat.click();
+      startNewChat.click();
+    });
+    const newSessionKey = document.defaultView?.localStorage.getItem(chatbotSessionStorageKey("customer-1"));
+    expect(newSessionKey).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(newSessionKey).not.toBe(oldSessionKey);
+    expect(setItemSpy.mock.calls.filter(([key]) => key === chatbotSessionStorageKey("customer-1"))).toHaveLength(1);
+    expect(historyRequests).toBe(1);
+
+    expect((input as unknown as { value: string }).value).toBe(question);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+
+    expect(askPayloads).toHaveLength(1);
+    expect(askPayloads[0]).toEqual(expect.objectContaining({ sessionKey: newSessionKey, question }));
+    expect(container.textContent).toContain("Your booking is confirmed.");
+    document.defaultView?.localStorage.removeItem(chatbotSessionStorageKey("customer-1"));
+  });
+
+  it("gives expired history a sign-in action without replacing the saved session", async () => {
+    const sessionKey = "a2d57f06-8427-45c9-8096-0ece82d6cb54";
+    document.defaultView?.localStorage.setItem(chatbotSessionStorageKey("customer-1"), sessionKey);
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return { ok: false, status: 401, json: async () => ({ data: null, error: { code: "UNAUTHORIZED" } }) } as Response;
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+
+    expect(container.textContent).toContain("Your sign-in expired. Sign in to restore this conversation.");
+    expect(findOne(container, (element) => element.tagName === "A" && element.getAttribute("href") === "/login?next=%2Fcustomer%2Fsupport%3Ffrom%3Dchat")).toBeTruthy();
+    expect(document.defaultView?.localStorage.getItem(chatbotSessionStorageKey("customer-1"))).toBe(sessionKey);
+    document.defaultView?.localStorage.removeItem(chatbotSessionStorageKey("customer-1"));
+  });
+
+  it("starts a new owned session after the ask API rejects an old session and keeps the question for retry", async () => {
+    const oldSessionKey = "199f9fac-8427-45c9-8096-0ece82d6cb54";
+    const oldOperationId = "af331f47-46b1-4db7-9318-bfc4cc4c86d0";
+    const question = "hi";
+    document.defaultView?.localStorage.setItem(chatbotSessionStorageKey("customer-1"), oldSessionKey);
+    document.defaultView?.localStorage.setItem(`mw_chatbot_ask_operation:${oldSessionKey}`, oldOperationId);
+    const askPayloads: { sessionKey?: string; operationId?: string; question?: string }[] = [];
+    mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: { data: [] } });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/ask") {
+        askPayloads.push(JSON.parse(String(init?.body)) as { sessionKey?: string; operationId?: string; question?: string });
+        if (askPayloads.length === 1) return { ok: false, status: 403, json: async () => ({ data: null, error: { code: "FORBIDDEN" } }) } as Response;
+        return response({ data: {
+          sessionKey: askPayloads.at(-1)?.sessionKey,
+          answer: "Hi, I'm MYLawatan Bot. What can I help you with?",
+          botAnswered: true,
+          messageId: "greeting-answer",
+          userMessageId: "greeting-question",
+          language: "en",
+          privacyBlocked: false,
+        } });
+      }
+      if (url === "/api/chatbot/feedback") return response({ data: null });
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    const input = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
+    setInputValue(input, question);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+
+    expect(container.textContent).toContain("This saved chat is no longer available. Start a new chat to continue.");
+    expect(askPayloads).toHaveLength(1);
+    await click(findButton("Start new chat translated"));
+    const newSessionKey = document.defaultView?.localStorage.getItem(chatbotSessionStorageKey("customer-1"));
+    expect(newSessionKey).not.toBe(oldSessionKey);
+    expect((input as unknown as { value: string }).value).toBe(question);
+    expect(document.defaultView?.localStorage.getItem(`mw_chatbot_ask_operation:${oldSessionKey}`)).toBeNull();
+    expect(askPayloads).toHaveLength(1);
+
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+    expect(askPayloads).toHaveLength(2);
+    expect(askPayloads[1]).toEqual(expect.objectContaining({ sessionKey: newSessionKey, question }));
+    expect(askPayloads[1].operationId).not.toBe(oldOperationId);
+    expect(container.textContent).toContain("Hi, I'm MYLawatan Bot. What can I help you with?");
+    document.defaultView?.localStorage.removeItem(chatbotSessionStorageKey("customer-1"));
+  });
+
   it("shows feedback save failure and lets the user retry without losing the vote", async () => {
     let feedbackRequests = 0;
     mocks.fetch.mockImplementation(async (url: string) => {
@@ -316,6 +507,44 @@ describe("Task 5 shared runtime behavior", () => {
     expect(feedbackRequests).toBe(2);
     expect(container.textContent).toContain("Glad I could help.");
     expect(container.textContent).not.toContain("Feedback could not be saved translated");
+  });
+
+  it("lets the user choose a category and opens a real catalogue product recommendation", async () => {
+    let askCount = 0;
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/faq") return response({ data: { categories: [] } });
+      if (url === "/api/chatbot/ask") {
+        askCount += 1;
+        return response({ data: askCount === 1 ? {
+          sessionKey: "recommendation-session", answer: "What kind of product are you looking for?", botAnswered: true,
+          messageId: "clarification-1", userMessageId: "question-1", language: "en", privacyBlocked: false,
+          recommendationData: { kind: "clarification", question: "category", options: ["food", "activity", "accommodation", "retail"] },
+        } : {
+          sessionKey: "recommendation-session", answer: "Here are products that match your request.", botAnswered: true,
+          messageId: "recommendation-1", userMessageId: "question-2", language: "en", privacyBlocked: false,
+          recommendationData: { kind: "results", products: [{ id: "product-1", name: "Penang Family Park", category: "activity", price: 80, rating: 4.8, reviews: 40, city: "George Town", state: "Penang" }] },
+        } });
+      }
+      if (url === "/api/chatbot/feedback") return response({ data: null });
+      throw new Error(`Unexpected support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    setInputValue(findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question"), "可以推荐几个吗？");
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+    await click(findButton("Activities translated"));
+
+    expect(askCount).toBe(2);
+    expect(container.textContent).toContain("Penang Family Park");
+    expect(container.textContent).toContain("View product translated");
+    expect(findOne(container, (element) => element.tagName === "A" && element.textContent.includes("Penang Family Park")).getAttribute("href"))
+      .toBe("/customer/products/product-1");
   });
 
   it("offers sign-in and returns to the current page when feedback receives 401", async () => {
@@ -993,7 +1222,7 @@ describe("Task 5 shared runtime behavior", () => {
 
     expect(container.textContent).toContain("Sign in to use Support");
     expect(container.textContent).toContain("Translated human support label");
-    expect(findOne(container, (element) => element.tagName === "A" && element.getAttribute("href") === "/login?next=%2Fcustomer%2Fsupport")).toBeTruthy();
+    expect(findOne(container, (element) => element.tagName === "A" && element.getAttribute("href") === "/login?next=%2Fcustomer%2Fsupport%3Ffrom%3Dchat")).toBeTruthy();
     expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
@@ -1221,7 +1450,7 @@ describe("Task 5 shared runtime behavior", () => {
     expect(findOne(container, (element) => element.tagName === "A" && element.getAttribute("href") === "/customer/wallet/withdrawals/withdrawal-1")).toBeTruthy();
   });
 
-  it("shows versioned KB source titles without exposing internal document identifiers", async () => {
+  it("shows KB source titles without exposing internal provenance metadata", async () => {
     mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
     mocks.fetch.mockImplementation(async (url: string) => {
       if (url === "/api/unread-count") return response({ data: { count: 0 } });
@@ -1240,8 +1469,9 @@ describe("Task 5 shared runtime behavior", () => {
     setInputValue(input, "Where can I read about wallet settings?");
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
 
-    expect(container.textContent).toContain("Reference article: Wallet withdrawal policy · v3");
-    expect(container.textContent).not.toContain("internal-document-id");
+    expect(container.textContent).toContain("Source: Wallet withdrawal policy");
+    expect(container.textContent).not.toContain("v3");
+    expect(container.textContent).not.toContain("checked");
   });
 
   it("keeps the question and offers a retry when the auth service is temporarily unavailable", async () => {

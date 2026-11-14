@@ -258,7 +258,11 @@ export function ChatWidgetHumanSupport({ userId, onBack }: { userId: string; onB
     }
   }
 
-  const statusLabel = (status: string) => t(`chatbot.humanSupport.status.${status}`, { defaultValue: status });
+  const statusLabel = (status: string) => {
+    const supportedStatuses = ["open", "in_progress", "resolved", "closed"] as const;
+    const safeStatus = supportedStatuses.find((candidate) => candidate === status) ?? "unknown";
+    return t(`chatbot.humanSupport.status.${safeStatus}`);
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

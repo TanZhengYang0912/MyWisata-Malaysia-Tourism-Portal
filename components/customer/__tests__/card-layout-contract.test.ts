@@ -29,6 +29,9 @@ describe("shared card layout contract", () => {
     for (const file of ["components/customer/product-card.tsx", "components/customer/vendor-card.tsx", "components/customer/outlet-card.tsx", "components/customer/place-activity-card.tsx"]) {
       expect(read(file), file).toContain("<CardFrame");
     }
+    // A POI keeps its place semantics but reuses the place card look; it is not dressed up as a product.
+    expect(read("components/customer/place-card.tsx")).toContain("<PlaceActivityCard");
+    expect(read("components/customer/place-card.tsx")).not.toContain("ProductCard");
     expect(read("components/customer/vendor-listing-grid.tsx")).toContain("ProductCard");
     expect(read("app/customer/for-you/for-you-client.tsx")).toContain("ActivityCard");
     expect(read("app/customer/search/search-client.tsx")).toContain("items-stretch");

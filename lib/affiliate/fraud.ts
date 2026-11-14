@@ -150,19 +150,13 @@ export async function autoDisableLink(
   note: string,
   actorId: string | null,
 ): Promise<void> {
-  const { data: link } = await service.from('affiliate_links').select('id, is_active').eq('id', linkId).maybeSingle();
-  if (!link || !link.is_active) return;
-
-  await service.from('affiliate_links').update({ is_active: false }).eq('id', linkId);
-  await service.from('audit_logs').insert({
-    actor_id: actorId,
-    action: 'affiliate.link.disabled',
-    entity_type: 'affiliate_links',
-    entity_id: linkId,
-    before_data: { is_active: true },
-    after_data: { is_active: false },
-    note,
+  const { error } = await service.rpc('admin_set_affiliate_link_state', {
+    p_link_id: linkId,
+    p_actor_id: actorId,
+    p_is_active: false,
+    p_note: note,
   });
+  if (error) throw error;
 }
 
 /**
@@ -172,19 +166,13 @@ export async function autoDisableLink(
  * re-enable. No-op if already active.
  */
 export async function reactivateLink(service: SupabaseClient, linkId: string, actorId: string): Promise<void> {
-  const { data: link } = await service.from('affiliate_links').select('id, is_active').eq('id', linkId).maybeSingle();
-  if (!link || link.is_active) return;
-
-  await service.from('affiliate_links').update({ is_active: true }).eq('id', linkId);
-  await service.from('audit_logs').insert({
-    actor_id: actorId,
-    action: 'affiliate.link.reenabled',
-    entity_type: 'affiliate_links',
-    entity_id: linkId,
-    before_data: { is_active: false },
-    after_data: { is_active: true },
-    note: `admin re-enabled link ${linkId}`,
+  const { error } = await service.rpc('admin_set_affiliate_link_state', {
+    p_link_id: linkId,
+    p_actor_id: actorId,
+    p_is_active: true,
+    p_note: `admin re-enabled link ${linkId}`,
   });
+  if (error) throw error;
 }
 
 export interface DisabledLink {

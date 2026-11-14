@@ -35,7 +35,30 @@ function linkOf(markup: string) {
   return links[0];
 }
 
+/** Matches lucide's Map icon class but not MapPin's. */
+const MAP_ICON = /lucide-map(?!-)/;
+
 describe("ProductCard on the shared CardFrame", () => {
+  it("has no box, zooms only the photo on hover, and puts the price under a hairline", () => {
+    const markup = renderToStaticMarkup(<ProductCard vendorListing={{ ...product, imageUrl: "https://example.test/p1.jpg" }} returnTo="/customer/vendor/v1" />);
+    const article = markup.match(/<article [^>]*>/)?.[0] ?? "";
+    expect(article).not.toContain("border-border");
+    expect(article).not.toContain("bg-card");
+    expect(article).not.toContain("scale-[1.04]");
+    expect(markup).toContain("rounded-[6px] bg-secondary aspect-[1.3]");
+    expect(markup.match(/<img [^>]*>/)?.[0]).toContain("group-hover/card:scale-[1.04]");
+    expect(markup.indexOf("border-t border-border pt-3")).toBeLessThan(markup.indexOf("RM80"));
+    expect(markup.indexOf("border-t border-border pt-3")).toBeGreaterThan(markup.indexOf("Brinchang, Pahang"));
+  });
+
+  it("marks a count of locations with the Map icon, not the pin", () => {
+    const twoOutlets = { ...product, soldAt: [...product.soldAt, { id: "o2", name: "Outlet 2", price: 90, city: "Ipoh", state: "Perak", operatingHours: null }] };
+    const markup = renderToStaticMarkup(<ProductCard vendorListing={twoOutlets} returnTo="/customer/vendor/v1" />);
+    expect(markup).toContain("ui.vendor.locationCount:2");
+    expect(markup).toMatch(MAP_ICON);
+    expect(markup).not.toContain("lucide-map-pin");
+  });
+
   it("links the whole card through the title, with save and share above the link", () => {
     const markup = renderToStaticMarkup(<ProductCard vendorListing={product} vendorName="Highlands Guides" returnTo="/customer/vendor/v1" />);
     const link = linkOf(markup);
@@ -51,9 +74,12 @@ describe("ProductCard on the shared CardFrame", () => {
   it("shows Type · Vendor, a two-line title, the rating on the photo and the single outlet's place", () => {
     const markup = renderToStaticMarkup(<ProductCard vendorListing={product} vendorName="Highlands Guides" returnTo="/customer/vendor/v1" />);
     expect(markup).toContain("categories.activity · Highlands Guides");
-    expect(markup).toContain("line-clamp-2 h-[2.7em]");
+    expect(markup).toContain("line-clamp-2 h-[2.36em]");
+    expect(markup).toContain("font-[family-name:var(--font-display)]");
+    expect(markup).toContain("text-primary max-sm:text-base");
     expect(markup).toContain('data-slot="photo-rating-badge"');
     expect(markup).toContain("Brinchang, Pahang");
+    expect(markup).toContain("lucide-map-pin");
     expect(markup).toContain("outletId=o1");
   });
 
@@ -109,6 +135,10 @@ describe("VendorCard and OutletCard", () => {
     expect(markup).toContain('data-share="vendor"');
     expect(markup).not.toContain("data-save");
     expect(markup).toContain("/customer/vendors/v1");
+    expect(markup).toMatch(MAP_ICON);
+    expect(markup).not.toContain("lucide-map-pin");
+    expect(markup.indexOf("border-t border-border pt-3")).toBeLessThan(markup.indexOf("ui.vendor.locationCount:2"));
+    expect(markup).toContain("border-[3px] border-background");
   });
 
   it("leaves out the rating and open state when they are unknown", () => {
@@ -122,6 +152,7 @@ describe("VendorCard and OutletCard", () => {
     expect(markup).toContain('data-outlet-card="o1"');
     expect(markup).toContain("Kopi Kedai Lama</p>");
     expect(markup).toContain("George Town, Penang");
+    expect(markup).toContain("lucide-map-pin");
     expect(markup).toContain("ui.operatingHours.closedNow");
     expect(markup).toContain('data-share="outlet"');
   });
@@ -130,7 +161,7 @@ describe("VendorCard and OutletCard", () => {
 describe("PlaceActivityCard", () => {
   it("keeps the approved readable phone typography instead of compact product-card sizing", () => {
     const markup = renderToStaticMarkup(<PlaceActivityCard imageUrl={null} imageAlt="Trail" imageFallback={null} title="Trail" description="Full description" footer="Free Entry" />);
-    expect(markup).toContain("max-sm:p-4");
+    expect(markup).toContain("max-sm:pt-3.5");
     expect(markup).toContain("max-sm:text-base");
     expect(markup).toContain("max-sm:text-sm");
     expect(markup).not.toContain("max-sm:text-[11px]");
@@ -143,10 +174,28 @@ describe("PlaceActivityCard", () => {
     expect(markup).not.toContain("<a ");
     expect(markup).not.toContain("hover:scale-[1.04]");
   });
+  it("leaves the description out entirely when there is none, even with translation", () => {
+    for (const description of [undefined, "", "   "]) {
+      const markup = renderToStaticMarkup(<PlaceActivityCard href="/customer/place/a" imageUrl={null} imageAlt="A" imageFallback={null} title="A Famosa" description={description} translation={{ entityType: "place", entityId: "p", titleField: "name", descriptionField: "intro" }} footer="Free Entry" />);
+      expect(markup).not.toContain("leading-[1.65]");
+    }
+  });
 });
 
 it("gives See More the same yellow hover and press feedback as the paging arrows", () => {
   const markup = renderToStaticMarkup(<SeeMoreLink href="/customer/explore" />);
   expect(markup).toContain("hover:text-accent");
   expect(markup).toContain("active:text-accent");
+});
+
+it("drops the See more arrow", () => {
+  expect(renderToStaticMarkup(<SeeMoreLink href="/customer/explore" />)).not.toContain("lucide-arrow-right");
+});
+
+it("grows a title underline on hover only for cards that link, with no motion when reduced", () => {
+  const linked = linkOf(renderToStaticMarkup(<ProductCard vendorListing={product} returnTo="/customer/vendor/v1" />));
+  expect(linked).toContain("hover:bg-[length:100%_2px]");
+  expect(linked).toContain("motion-reduce:transition-none");
+  const unlinked = renderToStaticMarkup(<PlaceActivityCard imageUrl={null} imageAlt="Trail" imageFallback={null} title="Trail" footer="Free entry" />);
+  expect(unlinked).not.toContain("hover:bg-[length:100%_2px]");
 });

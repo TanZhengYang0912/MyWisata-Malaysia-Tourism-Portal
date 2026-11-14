@@ -1,17 +1,7 @@
-import { z } from 'zod';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 import { createServiceClient } from '@/lib/supabase/service';
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
-
-const label = z.string().trim().min(1).max(60);
-const createSchema = z.object({
-  code: z.string().regex(/^[a-z0-9_]{2,40}$/, 'Use lowercase letters, numbers and underscores'),
-  labelEn: label,
-  labelMs: label,
-  labelZh: label,
-  icon: z.string().trim().min(1).max(40),
-}).strict();
-const toggleSchema = z.object({ code: z.string().regex(/^[a-z0-9_]{2,40}$/), isActive: z.boolean() }).strict();
+import { createHotelAmenitySchema, toggleHotelAmenitySchema } from '@/lib/validation/hotel-amenity-schemas';
 
 // The amenity checklist is catalogue configuration, so catalogue reviewers manage it.
 async function requireAmenityAdmin(): Promise<{ error: Response } | { db: ReturnType<typeof createServiceClient> }> {
@@ -32,7 +22,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const auth = await requireAmenityAdmin();
   if ('error' in auth) return auth.error;
-  const parsed = await parseBody(request, createSchema);
+  const parsed = await parseBody(request, createHotelAmenitySchema);
   if (!parsed.ok) return parsed.response;
   const { code, labelEn, labelMs, labelZh, icon } = parsed.data;
   const { data, error } = await auth.db.from('hotel_amenities')
@@ -47,7 +37,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const auth = await requireAmenityAdmin();
   if ('error' in auth) return auth.error;
-  const parsed = await parseBody(request, toggleSchema);
+  const parsed = await parseBody(request, toggleHotelAmenitySchema);
   if (!parsed.ok) return parsed.response;
   const { data, error } = await auth.db.from('hotel_amenities')
     .update({ is_active: parsed.data.isActive })

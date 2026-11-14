@@ -53,10 +53,10 @@ describe("activity detail booking layout", () => {
     expect(source).toContain('aria-label={t("ui.activityDetail.increaseQuantity")}');
   });
 
-  it("keeps the review dialog scrollable without constraining the product page", () => {
+  it("pages reviews in place instead of opening a dialog", () => {
     expect(source).toContain("<ActivityReviews");
-    expect(reviewsSource).toContain('className="max-h-[88vh] w-full max-w-2xl overflow-y-auto');
-    expect(reviewsSource).toContain('role="dialog" aria-modal="true"');
+    expect(reviewsSource).toContain("<Pagination");
+    expect(reviewsSource).not.toContain('aria-modal="true"');
   });
 
   it("moves the Visit vendor action into the booking aside", () => {

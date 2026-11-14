@@ -52,7 +52,7 @@ describe('POST /api/chatbot/history', () => {
 
   it('returns only the owned customer session and bounded message batch', async () => {
     const messages = [
-      { id: '22222222-2222-4222-8222-222222222222', role: 'bot', body: 'Check your booking page.', kb_matched: true, reply_to_message_id: '11111111-1111-4111-8111-111111111111', created_at: '2026-11-11T00:00:01Z' },
+      { id: '22222222-2222-4222-8222-222222222222', role: 'bot', body: 'Check your booking page.', kb_matched: true, reply_to_message_id: '11111111-1111-4111-8111-111111111111', created_at: '2026-11-11T00:00:01Z', recommendation_data: { kind: 'results', products: [{ id: 'product-1' }] } },
       { id: '11111111-1111-4111-8111-111111111111', role: 'user', body: 'Where is my booking?', kb_matched: null, reply_to_message_id: null, created_at: '2026-11-11T00:00:00Z' },
     ];
     const session = makeBuilder({ data: { id: 'session-row-1' }, error: null }, 'maybeSingle');
@@ -70,6 +70,7 @@ describe('POST /api/chatbot/history', () => {
     expect(response.status).toBe(200);
     expect(payload.data.messages[1]).toMatchObject({ question: 'Where is my booking?', feedbackStage: 'awaiting_helpful' });
     expect(payload.data.messages[1].evidence).toEqual([{ title: 'Refund policy', contentVersion: 4, checkedAt: '2026-11-11T00:00:01Z' }]);
+    expect(payload.data.messages[1].recommendationData).toEqual({ kind: 'results', products: [{ id: 'product-1' }] });
     expect(evidence.limit).toHaveBeenCalledWith(180);
     expect(response.headers.get('Cache-Control')).toContain('no-store');
   });

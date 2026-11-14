@@ -3,7 +3,14 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { findOne, installTestDom, TestElement, TestEvent, type TestDocument } from '@/components/shared/__tests__/render-test-dom';
 
 const mocks = vi.hoisted(() => ({ statsFail: false, docsFail: false }));
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { resolvedLanguage: 'en' } }) }));
+vi.mock('react-i18next', () => ({ useTranslation: () => ({
+  t: (key: string) => key,
+  i18n: {
+    resolvedLanguage: 'en',
+    exists: (key: string) => ['account', 'affiliate', 'booking', 'general', 'payment', 'rewards', 'vendor', 'wallet', 'withdrawal']
+      .some((category) => key === `chatbot.categories.${category}`),
+  },
+}) }));
 vi.mock('@/components/providers/action-feedback', () => ({ useActionFeedback: () => ({ showFeedback: vi.fn() }) }));
 vi.mock('@/components/admin/admin-page-shell', () => ({
   AdminPageShell: ({ children }: PropsWithChildren) => <main>{children}</main>,

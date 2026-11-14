@@ -17,6 +17,8 @@ describe('chatbot evidence provenance migration', () => {
     expect(migration).toMatch(/GRANT EXECUTE ON FUNCTION public\.match_kb_documents_with_version\(extensions\.vector, integer, boolean\)[\s\S]*TO anon, authenticated, service_role/i);
     expect(migration).toMatch(/d\.is_active\s+IS\s+TRUE/i);
     expect(migration).toMatch(/d\.embedding_version\s*=\s*d\.content_version/i);
+    expect(migration).toMatch(/d\.embedding\s+OPERATOR\(extensions\.<=>\)\s+query_embedding/i);
+    expect(migration).toMatch(/ORDER BY d\.embedding\s+OPERATOR\(extensions\.<=>\)\s+query_embedding/i);
     expect(migration).toMatch(/CREATE OR REPLACE FUNCTION public\.complete_chatbot_ask_operation_with_evidence/i);
     expect(migration).toMatch(/jsonb_array_length\(p_kb_refs\)\s*>\s*6/i);
     expect(migration).toMatch(/INSERT INTO public\.chatbot_message_kb_refs/i);

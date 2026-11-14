@@ -86,7 +86,7 @@ export default function AddressAutocomplete({ value = '', onChange, onSelect, pl
       </div>
       {serviceError && <p className="mt-1 text-xs text-amber-700 dark:text-amber-200">{serviceError} {t('address.manualEntryHint')}</p>}
       {open && suggestions.length > 0 && (
-        <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card shadow-xl">
+        <div className="absolute z-30 mt-2 w-full overflow-hidden rounded-xl border border-gray-200 dark:border-border bg-card shadow-xl">
           {suggestions.map((suggestion) => (
             <button key={suggestion.providerId} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => chooseSuggestion(suggestion)} className="flex w-full items-start gap-3 border-b border-gray-100 dark:border-border px-3 py-3 text-left last:border-0 hover:bg-secondary">
               <MapPin className="mt-0.5 shrink-0 text-primary" size={15} />

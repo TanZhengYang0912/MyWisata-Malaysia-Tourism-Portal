@@ -48,6 +48,12 @@ import type { CustomerStatusItem } from "@/lib/chatbot/customer-tools";
 import type { CustomerStatusKind } from "@/lib/chatbot/policy";
 import type { SupportPolicyAction } from "@/lib/chatbot/policy";
 import { supportError } from "@/lib/support/errors";
+import { ChatbotComparisonTable, ChatbotListingLinks, ChatbotRefundCard } from "@/components/shared/chat-widget/chatbot-agent-results";
+import type { ChatListing, RefundProposal } from "@/lib/chatbot/agent";
+import { formatChatTimestamp } from "@/lib/customer/chat-view";
+import { buildProductPath } from "@/lib/customer/navigation-context";
+import { combineProductRecommendationFollowUp, type ProductRecommendationData } from "@/lib/chatbot/product-recommendations";
+import { classifyIntent } from "@/lib/chatbot/intent";
 
 // CLAUDE-VOICE-INPUT.md Part 2. Friendly copy per error kind — never a raw
 // error/exception reaching this UI (the hook itself already guarantees
@@ -61,6 +67,7 @@ type FeedbackStage =
   | "ticket_declined"; // collapsed after the ticket offer's No
 
 const LOCALIZED_FAQ_CATEGORIES = new Set(["account", "affiliate", "booking", "general", "payment", "rewards", "vendor", "wallet"]);
+const CHATBOT_STARTER_ACTIONS = ["booking", "refund", "products", "faq"] as const;
 
 function faqCategoryLabel(category: string, translate: (key: string) => string): string {
   if (LOCALIZED_FAQ_CATEGORIES.has(category)) return translate(`chatbot.faq.categories.${category}`);
@@ -70,6 +77,7 @@ function faqCategoryLabel(category: string, translate: (key: string) => string):
 interface ChatMessage {
   role: "user" | "bot";
   text: string;
+  createdAt?: string;
   persistedId?: string;
   localId?: string;
   /** Bot messages only — ties this reply to its chatbot_feedback row. */
@@ -86,6 +94,10 @@ interface ChatMessage {
   feedbackNeedsSignIn?: boolean;
   feedbackLoginHref?: string;
   feedbackVote?: boolean;
+  /** Agent replies only; not restored with history. */
+  listings?: ChatListing[];
+  comparison?: ChatListing[] | null;
+  refunds?: RefundProposal[];
   ticketId?: string;
   ticketError?: string;
   ticketErrorCode?: string;
@@ -94,6 +106,8 @@ interface ChatMessage {
   statusActions?: readonly SupportPolicyAction[];
   statusRetryAvailable?: boolean;
   evidence?: { title: string; contentVersion: number; checkedAt: string }[];
+  botAnswered?: boolean;
+  recommendationData?: ProductRecommendationData | null;
   statusActionHref?: string;
   statusActionLabel?: string;
   handoffSubject?: string;
@@ -110,6 +124,10 @@ interface ChatMessage {
   ticketOperationNotFound?: boolean;
   handoffDraftLoadFailed?: boolean;
   ticketNeedsSignIn?: boolean;
+  retryQuestion?: string;
+  sessionRecoveryQuestion?: string;
+  loginHref?: string;
+  retryForLocalId?: string;
 }
 
 interface ChatHistoryCursor {
@@ -117,20 +135,27 @@ interface ChatHistoryCursor {
   id: string;
 }
 
-type ChatbotAnswerData = Pick<ChatMessage, "text" | "messageId" | "language" | "privacyBlocked" | "evidence"> & {
+type ChatbotAnswerData = Pick<ChatMessage, "text" | "messageId" | "language" | "privacyBlocked" | "evidence" | "createdAt" | "listings" | "comparison" | "refunds" | "recommendationData"> & {
   botAnswered: boolean;
+  recommendationData?: ProductRecommendationData | null;
 };
 
 export function createBotMessage(data: ChatbotAnswerData, question: string): ChatMessage {
   return {
     role: "bot",
     text: data.text,
+    createdAt: data.createdAt ?? new Date().toISOString(),
     persistedId: data.messageId,
     messageId: data.messageId,
     question,
     language: data.language,
     privacyBlocked: data.privacyBlocked,
     evidence: data.evidence,
+    listings: data.listings,
+    comparison: data.comparison,
+    refunds: data.refunds,
+    botAnswered: data.botAnswered,
+    recommendationData: data.recommendationData,
     feedbackStage: data.botAnswered ? "awaiting_helpful" : "awaiting_ticket",
   };
 }
@@ -261,13 +286,19 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   });
   const [historyCursor, setHistoryCursor] = useState<ChatHistoryCursor | null>(null);
   const [historyError, setHistoryError] = useState(false);
+  const [historyRecovery, setHistoryRecovery] = useState<"not-found" | "unauthorized" | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const startingNewCustomerConversationRef = useRef(false);
   const historyLoadedRef = useRef<string | null>(null);
   const freshGuestSessionRef = useRef<string | null>(null);
   const historyAbortRef = useRef<AbortController | null>(null);
   const historyRequestKeyRef = useRef<string | null>(null);
   const historyRefreshAtRef = useRef(0);
   const supportPaneWasOpenRef = useRef(false);
+
+  useEffect(() => {
+    startingNewCustomerConversationRef.current = false;
+  }, [sessionKey]);
   const [inputState, setInputState] = useState<{ ownerId: string | null; value: string }>({ ownerId: identityKey, value: "" });
   const input = inputState.ownerId === identityKey ? inputState.value : "";
   const setInput = (update: string | ((current: string) => string)) => setInputState((previous) => {
@@ -396,6 +427,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       historyLoadedRef.current = null;
       setHistoryCursor(null);
       setHistoryError(false);
+      setHistoryRecovery(null);
       setMessageState({ ownerId: candidate.ownerId, value: [] });
       setStoredSession({ ownerId: candidate.ownerId, value: candidate.sessionKey });
       setGuestClaimCandidate(null);
@@ -412,19 +444,46 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     try {
       window.localStorage.setItem(chatbotSessionStorageKey(identityRef.current), nextSessionKey);
     } catch {
-      setMessages((current) => [...current, { role: 'bot', text: t('chatbot.somethingWrong') }]);
+      setMessages((current) => [...current, { role: 'bot', text: t('chatbot.somethingWrong'), createdAt: new Date().toISOString() }]);
       return;
     }
     historyAbortRef.current?.abort();
     historyLoadedRef.current = null;
     setHistoryCursor(null);
     setHistoryError(false);
+    setHistoryRecovery(null);
     setMessages([]);
     setInput('');
     setStoredSession({ ownerId: identityRef.current, value: nextSessionKey });
     freshGuestSessionRef.current = nextSessionKey;
     setGuestRecoverySessionKey(null);
     guestCookieReadyRef.current = false;
+  }
+
+  function startNewCustomerConversation(question?: string) {
+    const ownerId = identityRef.current;
+    if (!ownerId || !sessionKey || startingNewCustomerConversationRef.current) return;
+    startingNewCustomerConversationRef.current = true;
+    const nextSessionKey = crypto.randomUUID();
+    try {
+      window.localStorage.setItem(chatbotSessionStorageKey(ownerId), nextSessionKey);
+      storePendingAskOperation(sessionKey, null);
+    } catch {
+      startingNewCustomerConversationRef.current = false;
+      setMessages((current) => [...current, { role: "bot", text: t("chatbot.somethingWrong"), createdAt: new Date().toISOString() }]);
+      return;
+    }
+    historyAbortRef.current?.abort();
+    historyLoadedRef.current = `${ownerId}:${nextSessionKey}`;
+    historyRequestKeyRef.current = null;
+    setHistoryCursor(null);
+    setHistoryError(false);
+    setHistoryRecovery(null);
+    setMessages([]);
+    setInput(question ?? input);
+    setStoredSession({ ownerId, value: nextSessionKey });
+    pendingAskRef.current = null;
+    setGuestRecoverySessionKey(null);
   }
 
   async function loadChatHistory(targetSessionKey: string, cursor?: ChatHistoryCursor) {
@@ -447,7 +506,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       const result = await response.json().catch(() => ({})) as {
         error?: { code?: string } | null;
         data?: {
-          messages: Array<{ id: string; role: "user" | "bot"; text: string; question?: string; feedbackStage?: FeedbackStage; evidence?: ChatMessage["evidence"] }>;
+          messages: Array<{ id: string; role: "user" | "bot"; text: string; createdAt: string; question?: string; feedbackStage?: FeedbackStage; botAnswered?: boolean; evidence?: ChatMessage["evidence"]; recommendationData?: ProductRecommendationData | null }>;
           nextCursor: ChatHistoryCursor | null;
         };
       };
@@ -457,17 +516,27 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
               || result.error?.code === 'UNAUTHORIZED' || result.error?.code === 'GUEST_SESSION_REQUIRED')) {
           setGuestRecoverySessionKey(targetSessionKey);
         }
-        if (!controller.signal.aborted && identityRef.current === requestIdentity) setHistoryError(true);
+        if (!controller.signal.aborted && identityRef.current === requestIdentity) {
+          setHistoryError(true);
+          setHistoryRecovery(requestIdentity
+            ? response.status === 401 || result.error?.code === 'UNAUTHORIZED' ? 'unauthorized'
+              : response.status === 404 || result.error?.code === 'NOT_FOUND' ? 'not-found'
+                : null
+            : null);
+        }
         return;
       }
       const restored = result.data.messages.map((item): ChatMessage => ({
         role: item.role,
         text: item.text,
+        createdAt: item.createdAt,
         persistedId: item.id,
         messageId: item.role === "bot" ? item.id : undefined,
         question: item.question,
         feedbackStage: item.feedbackStage,
+        botAnswered: item.botAnswered,
         evidence: item.evidence,
+        recommendationData: item.recommendationData ?? null,
         handoffOperationId: item.role === "bot" ? readPendingSupportOperation(identityKey, item.id) ?? undefined : undefined,
         ticketOperationUnknown: item.role === "bot" ? Boolean(readPendingSupportOperation(identityKey, item.id)) : false,
       }));
@@ -487,10 +556,14 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       }
       setHistoryCursor(result.data.nextCursor);
       setHistoryError(false);
+      setHistoryRecovery(null);
       setGuestRecoverySessionKey(null);
       historyLoadedRef.current = `${requestIdentity ?? "guest"}:${targetSessionKey}`;
     } catch {
-      if (!controller.signal.aborted && identityRef.current === requestIdentity) setHistoryError(true);
+      if (!controller.signal.aborted && identityRef.current === requestIdentity) {
+        setHistoryError(true);
+        setHistoryRecovery(null);
+      }
     } finally {
       if (historyAbortRef.current === controller) {
         historyAbortRef.current = null;
@@ -607,6 +680,39 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     });
   }
 
+  function starterQuestion(action: (typeof CHATBOT_STARTER_ACTIONS)[number]) {
+    switch (action) {
+      case "booking": return t("chatbot.starters.questions.booking");
+      case "refund": return t("chatbot.starters.questions.refund");
+      case "products": return t("chatbot.starters.questions.products");
+      case "faq": return null;
+    }
+  }
+
+  function renderStarterActions() {
+    return (
+      <div className="flex max-w-[90%] flex-wrap justify-center gap-1.5" aria-label={t("chatbot.starters.label")}>
+        {CHATBOT_STARTER_ACTIONS.map((action) => (
+          <Button
+            key={action}
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 rounded-full px-2.5 text-xs"
+            disabled={sending}
+            onClick={() => {
+              const question = starterQuestion(action);
+              if (question) void sendMessage(question);
+              else toggleFaq();
+            }}
+          >
+            {t(`chatbot.starters.${action}`)}
+          </Button>
+        ))}
+      </div>
+    );
+  }
+
   useEffect(() => {
     // Also depends on `selected`: the message list div only exists in the DOM
     // while the Support pane is the one showing (conditionally rendered), so
@@ -661,6 +767,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     const pageHref = customerStatusPage(kind);
     const statusMessage: ChatMessage = {
       role: "bot",
+      createdAt: new Date().toISOString(),
       localId,
       text: message,
       statusKind: kind,
@@ -698,8 +805,20 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
    * the composer as before; a FAQ tap deliberately leaves whatever the user
    * had typed untouched, since it never came from the composer.
    */
-  async function sendMessage(explicitQuestion?: string) {
-    const question = (explicitQuestion ?? input).trim();
+  function sendRecommendationChoice(message: ChatMessage, choice: string) {
+    if (!message.question || sending) return;
+    void sendMessage(`${message.question} ${choice}`);
+  }
+
+  async function sendMessage(explicitQuestion?: string, isRetry = false) {
+    const typedQuestion = input.trim();
+    const latestMessage = messages[messages.length - 1];
+    const question = (explicitQuestion === undefined
+      && latestMessage?.role === "bot"
+      && latestMessage.recommendationData?.kind === "clarification"
+      && latestMessage.question
+      ? combineProductRecommendationFollowUp(latestMessage.question, typedQuestion)
+      : explicitQuestion ?? typedQuestion).trim();
     if (!question || sending || sendLockRef.current || guestClaimCandidate?.ownerId === identityRef.current) return;
     sendLockRef.current = true;
     const requestIdentity = identityRef.current;
@@ -709,7 +828,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       ? pendingAskRef.current
       : null;
     const localMessageId = retryingAsk?.localMessageId ?? crypto.randomUUID();
-    if (!retryingAsk) setMessages((m) => [...m, { role: "user", text: question, localId: localMessageId }]);
+    if (!retryingAsk) setMessages((m) => [...m, { role: "user", text: question, localId: localMessageId, createdAt: new Date().toISOString() }]);
 
     try {
       if (statusIntent) {
@@ -717,7 +836,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         const result = await fetchCustomerStatus(statusIntent);
         if (identityRef.current !== requestIdentity) return;
         presentCustomerStatus(statusLocalId, statusIntent, question, result, true);
-        if (explicitQuestion === undefined) setInput((current) => current === question ? "" : current);
+        if (explicitQuestion === undefined) setInput((current) => current === typedQuestion ? "" : current);
         return;
       }
 
@@ -728,7 +847,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         try {
           window.localStorage.setItem(chatbotSessionStorageKey(requestIdentity), targetSessionKey);
         } catch {
-          setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong"), createdAt: new Date().toISOString() }]);
           return;
         }
         setSessionKey(targetSessionKey);
@@ -744,7 +863,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         };
       }
       if (!storePendingAskOperation(targetSessionKey, pendingAsk.operationId)) {
-        setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
+        setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong"), createdAt: new Date().toISOString() }]);
         return;
       }
       pendingAskRef.current = pendingAsk;
@@ -760,13 +879,13 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
           if (cookieResult.error?.code === 'GUEST_SESSION_REQUIRED') {
             setHistoryError(true);
             setGuestRecoverySessionKey(targetSessionKey);
-            setMessages((m) => [...m, { role: 'bot', text: t('chatbot.guestSessionUnavailable') }]);
+            setMessages((m) => [...m, { role: 'bot', text: t('chatbot.guestSessionUnavailable'), createdAt: new Date().toISOString() }]);
           } else if (cookieResult.error?.code === 'READ_UNAVAILABLE') {
-            setMessages((m) => [...m, { role: 'bot', text: t('chatbot.sessionUnavailable') }]);
+            setMessages((m) => [...m, { role: 'bot', text: t('chatbot.sessionUnavailable'), createdAt: new Date().toISOString() }]);
           } else if (cookieResult.error?.code === 'AUTH_UNAVAILABLE') {
-            setMessages((m) => [...m, { role: 'bot', text: t('chatbot.authUnavailable') }]);
+            setMessages((m) => [...m, { role: 'bot', text: t('chatbot.authUnavailable'), createdAt: new Date().toISOString() }]);
           } else {
-            setMessages((m) => [...m, { role: 'bot', text: t('chatbot.somethingWrong') }]);
+            setMessages((m) => [...m, { role: 'bot', text: t('chatbot.somethingWrong'), createdAt: new Date().toISOString() }]);
           }
           return;
         }
@@ -779,7 +898,12 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       });
       let res = await createAskRequest(pendingAsk.operationId);
       let body = (await res.json()) as {
-        data: { sessionKey: string; answer: string; botAnswered: boolean; messageId: string; userMessageId: string; language: ChatLanguage; privacyBlocked: boolean; evidence?: ChatMessage["evidence"] } | null;
+        data: {
+          sessionKey: string; answer: string; botAnswered: boolean; messageId: string; userMessageId: string;
+          language: ChatLanguage; privacyBlocked: boolean; evidence?: ChatMessage["evidence"];
+          listings?: ChatListing[]; comparison?: ChatListing[] | null; refunds?: RefundProposal[];
+          recommendationData?: ProductRecommendationData | null;
+        } | null;
         error: { code?: string; message: string } | null;
       };
       if (!res.ok && body.error?.code === "OPERATION_CONFLICT") {
@@ -796,24 +920,35 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       if (identityRef.current !== requestIdentity) return;
       if (!res.ok || !body.data) {
         if (body.error?.code === "OPERATION_UNKNOWN") {
-          setMessages((m) => [...m, { role: "bot", text: t("chatbot.askResultUnknown") }]);
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.askResultUnknown"), createdAt: new Date().toISOString() }]);
+        } else if (body.error?.code === "UNAUTHORIZED") {
+          setMessages((m) => [...m, {
+            role: "bot",
+            createdAt: new Date().toISOString(),
+            text: t("chatbot.history.signIn"),
+            loginHref: `/login?next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`,
+          }]);
         } else if (body.error?.code === "AUTH_UNAVAILABLE") {
-          setMessages((m) => [...m, { role: "bot", text: t("chatbot.authUnavailable") }]);
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.authUnavailable"), retryQuestion: question, retryForLocalId: localMessageId, createdAt: new Date().toISOString() }]);
         } else if (body.error?.code === "SESSION_UNAVAILABLE") {
-          setMessages((m) => [...m, { role: "bot", text: t("chatbot.sessionUnavailable") }]);
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.sessionUnavailable"), retryQuestion: question, retryForLocalId: localMessageId, createdAt: new Date().toISOString() }]);
+        } else if (requestIdentity && (body.error?.code === "FORBIDDEN" || body.error?.code === "NOT_FOUND")) {
+          storePendingAskOperation(targetSessionKey, null);
+          pendingAskRef.current = null;
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.history.sessionGone"), sessionRecoveryQuestion: question, createdAt: new Date().toISOString() }]);
         } else if (body.error?.code === "OPERATION_CONFLICT") {
           storePendingAskOperation(targetSessionKey, null);
           pendingAskRef.current = null;
-          setMessages((m) => [...m, { role: "bot", text: t("chatbot.askOperationConflict") }]);
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.askOperationConflict"), createdAt: new Date().toISOString() }]);
         } else if (body.error?.code === "GUEST_SESSION_REQUIRED") {
           guestCookieReadyRef.current = false;
           if (!requestIdentity) {
             setHistoryError(true);
             setGuestRecoverySessionKey(targetSessionKey);
           }
-          setMessages((m) => [...m, { role: "bot", text: t("chatbot.guestCookieUnavailable") }]);
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.guestCookieUnavailable"), createdAt: new Date().toISOString() }]);
         } else {
-          setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong"), retryQuestion: question, retryForLocalId: localMessageId, createdAt: new Date().toISOString() }]);
         }
         return;
       }
@@ -825,8 +960,11 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
       }
       setHistoryError(false);
       setGuestRecoverySessionKey(null);
-      const { answer, botAnswered, messageId, userMessageId, language, privacyBlocked, evidence } = body.data;
-      if (explicitQuestion === undefined) setInput((current) => current === question ? "" : current);
+      const { answer, botAnswered, messageId, userMessageId, language, privacyBlocked, evidence, recommendationData } = body.data;
+      const { listings, comparison, refunds } = body.data;
+      if (explicitQuestion === undefined || (isRetry && input.trim() === question)) {
+        setInput((current) => current === typedQuestion || (isRetry && current.trim() === question) ? "" : current);
+      }
       let effectiveSessionKey = sessionKey;
       if (body.data.sessionKey && body.data.sessionKey !== sessionKey) {
         effectiveSessionKey = body.data.sessionKey;
@@ -838,7 +976,12 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         }
       }
 
-      setMessages((m) => [...m.map((message) => message.localId === localMessageId ? { ...message, localId: undefined, persistedId: userMessageId } : message), createBotMessage({ text: answer, messageId, language, privacyBlocked, evidence, botAnswered }, question)]);
+      setMessages((m) => [
+        ...m
+          .filter((message) => message.retryForLocalId !== localMessageId)
+          .map((message) => message.localId === localMessageId ? { ...message, localId: undefined, persistedId: userMessageId } : message),
+        createBotMessage({ text: answer, messageId, language, privacyBlocked, evidence, botAnswered, recommendationData, listings, comparison, refunds, createdAt: new Date().toISOString() }, question),
+      ]);
 
       // Flow 2: the bot already knows it didn't help — there's no yes/no
       // helpfulness question to ask, so this is recorded automatically
@@ -850,7 +993,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
         postFeedback({ sessionKey: effectiveSessionKey ?? undefined, messageId, question, botAnswered: false, helpful: null });
       }
     } catch {
-      if (identityRef.current === requestIdentity) setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
+      if (identityRef.current === requestIdentity) setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong"), retryQuestion: question, retryForLocalId: localMessageId, createdAt: new Date().toISOString() }]);
     } finally {
       if (identityRef.current === requestIdentity) {
         sendLockRef.current = false;
@@ -1229,7 +1372,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
               <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
                 <p className="text-sm font-semibold text-foreground">{t("chatbot.loginRequired.title")}</p>
                 <p className="max-w-xs text-xs text-muted-foreground">{t("chatbot.loginRequired.description")}</p>
-                <Button asChild size="sm"><Link href="/login?next=%2Fcustomer%2Fsupport">{t("chatbot.loginRequired.action")}</Link></Button>
+                <Button asChild size="sm"><Link href={`/login?next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`}>{t("chatbot.loginRequired.action")}</Link></Button>
               </div>
             ) : selected?.kind === "human-support" ? (
               <ChatWidgetHumanSupport key={currentUser.id} userId={currentUser.id} onBack={() => selectChat(null)} />
@@ -1266,25 +1409,22 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                   )}
                   {historyError && (
                     <div role="alert" className="flex flex-wrap items-center justify-center gap-2 text-xs text-destructive">
-                      <span>{guestRecoverySessionKey === sessionKey ? t("chatbot.guestSessionUnavailable") : t("chatbot.history.unavailable")}</span>
-                      {sessionKey && guestRecoverySessionKey !== sessionKey && <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => void loadChatHistory(sessionKey)} disabled={historyLoading}>{t("chatbot.faq.retry")}</Button>}
+                      <span>{guestRecoverySessionKey === sessionKey ? t("chatbot.guestSessionUnavailable")
+                        : historyRecovery === "unauthorized" ? t("chatbot.history.signIn")
+                          : historyRecovery === "not-found" ? t("chatbot.history.sessionGone")
+                            : t("chatbot.history.unavailable")}</span>
+                      {historyRecovery === "unauthorized" && <Link href={`/login?next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`} className="font-medium underline underline-offset-2">{t("chatbot.feedback.signInAction")}</Link>}
+                      {historyRecovery === "not-found" && <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => startNewCustomerConversation()} disabled={historyLoading}>{t("chatbot.newConversation")}</Button>}
+                      {sessionKey && historyRecovery === null && guestRecoverySessionKey !== sessionKey && <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => void loadChatHistory(sessionKey)} disabled={historyLoading}>{t("chatbot.faq.retry")}</Button>}
                       {guestRecoverySessionKey === sessionKey && <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={startNewGuestConversation}>{t("chatbot.newConversation")}</Button>}
                     </div>
                   )}
-                  {messages.length === 0 && (
+                  {messages.length === 0 && !faqOpen && (
                     <div className="mt-8 flex flex-col items-center gap-2.5">
-                      <p className="text-xs text-muted-foreground text-center">
-                        {t("chatbot.emptyPrompt")}
+                      <p className="max-w-[85%] rounded-xl bg-muted px-3 py-2 text-center text-sm text-foreground">
+                        {t("chatbot.greeting")}
                       </p>
-                      {!faqOpen && (
-                        <button
-                          type="button"
-                          onClick={toggleFaq}
-                          className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
-                        >
-                          <HelpCircle size={13} /> {t("chatbot.faq.browse")}
-                        </button>
-                      )}
+                      {renderStarterActions()}
                     </div>
                   )}
                   {messages.map((m, i) => {
@@ -1295,18 +1435,104 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
                       >
                         {m.text}
                       </div>
+                      {m.listings && m.listings.length > 0 && <ChatbotListingLinks listings={m.listings} />}
+                      {m.comparison && <ChatbotComparisonTable rows={m.comparison} />}
+                      {m.refunds?.map((refund) => <ChatbotRefundCard key={refund.id} refund={refund} />)}
+                      <div className={`flex max-w-[85%] items-center gap-1.5 px-1 text-[11px] text-muted-foreground ${m.role === "user" ? "ml-auto justify-end" : ""}`}>
+                        <span>{formatChatTimestamp(m.createdAt ?? new Date().toISOString())}</span>
+                      </div>
+                      {m.role === "bot" && m.question && classifyIntent(m.question) === "greeting" && renderStarterActions()}
+                      {m.role === "bot" && (m.retryQuestion || m.sessionRecoveryQuestion || m.loginHref) && (
+                        <div className="mt-1.5 flex max-w-[85%] flex-wrap gap-1.5">
+                          {m.retryQuestion && (
+                            <Button type="button" size="sm" variant="outline" className="h-7 rounded-full px-2.5 text-xs" disabled={sending} onClick={() => void sendMessage(m.retryQuestion, true)}>
+                              {t("chatbot.starters.retry")}
+                            </Button>
+                          )}
+                          {m.sessionRecoveryQuestion && (
+                            <Button type="button" size="sm" variant="outline" className="h-7 rounded-full px-2.5 text-xs" disabled={sending} onClick={() => startNewCustomerConversation(m.sessionRecoveryQuestion)}>
+                              {t("chatbot.newConversation")}
+                            </Button>
+                          )}
+                          {m.loginHref && <Link href={m.loginHref} className="inline-flex h-7 items-center rounded-full border border-border px-2.5 text-xs font-medium underline-offset-2 hover:underline">{t("chatbot.feedback.signInAction")}</Link>}
+                        </div>
+                      )}
+                      {m.role === "bot" && m.recommendationData?.kind === "clarification" && (
+                        <div className="mt-1.5 flex max-w-[85%] flex-wrap gap-1.5" aria-label={m.text}>
+                          {m.recommendationData.options.map((category) => (
+                            <Button
+                              key={category}
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-7 rounded-full px-2.5 text-xs"
+                              disabled={sending}
+                              onClick={() => sendRecommendationChoice(m, t(`chatbot.recommendation.categories.${category}`))}
+                            >
+                              {t(`chatbot.recommendation.categories.${category}`)}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                      {m.role === "bot" && m.recommendationData?.kind === "no-results" && (
+                        <div className="mt-1.5 flex max-w-[85%] flex-wrap gap-1.5">
+                          {m.recommendationData.options.map((option) => (
+                            <Button
+                              key={option}
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-7 rounded-full px-2.5 text-xs"
+                              disabled={sending}
+                              onClick={() => sendRecommendationChoice(m, t(`chatbot.recommendation.${option === "any-state" ? "anyState" : "removeBudget"}`))}
+                            >
+                              {t(`chatbot.recommendation.${option === "any-state" ? "anyState" : "removeBudget"}`)}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                      {m.role === "bot" && m.recommendationData?.kind === "unavailable" && (
+                        <div className="mt-1.5 max-w-[85%]">
+                          <Button type="button" size="sm" variant="outline" className="h-7 px-2.5 text-xs" disabled={sending} onClick={() => m.question && void sendMessage(m.question)}>
+                            {t("chatbot.faq.retry")}
+                          </Button>
+                        </div>
+                      )}
+                      {m.role === "bot" && m.recommendationData?.kind === "results" && (
+                        <div className="mt-1.5 grid max-w-[85%] gap-2">
+                          {m.recommendationData.products.map((product) => (
+                            <Link
+                              key={product.id}
+                              href={buildProductPath(product.id)}
+                              className="rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors hover:bg-secondary"
+                            >
+                              <span className="block text-xs font-semibold">{product.name}</span>
+                              <span className="mt-1 block text-[11px] text-muted-foreground">
+                                {t(`chatbot.recommendation.categories.${product.category}`)}
+                                {product.reviews > 0 && ` · ${product.rating.toFixed(1)} ★ (${product.reviews})`}
+                                {` · ${new Intl.NumberFormat(i18n.resolvedLanguage ?? i18n.language ?? "en", { style: "currency", currency: "MYR" }).format(product.price)}`}
+                              </span>
+                              <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                                {[product.city, product.state].filter(Boolean).join(", ") || t("chatbot.recommendation.locationUnknown")}
+                              </span>
+                              <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                                {product.reviews > 0
+                                  ? t("chatbot.recommendation.ratingReason", { rating: product.rating.toFixed(1), reviews: product.reviews })
+                                  : t("chatbot.recommendation.matchReason")}
+                              </span>
+                              <span className="mt-1 block text-[11px] text-primary underline underline-offset-2">{t("chatbot.recommendation.seeProduct")}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
                       {m.role === "bot" && m.privacyBlocked && (
                         <p role="status" className="mt-1 max-w-[85%] rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-2 text-xs leading-5 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
                           {t("chatbot.privacyBlocked")}
                         </p>
                       )}
-                      {m.role === "bot" && m.evidence?.map((source, sourceIndex) => (
+                      {m.role === "bot" && m.botAnswered && m.evidence?.map((source, sourceIndex) => (
                         <p key={`${source.title}-${source.contentVersion}-${sourceIndex}`} className="mt-1 max-w-[85%] px-1 text-[11px] text-muted-foreground">
-                          {t("chatbot.evidence", {
-                            title: source.title,
-                            version: source.contentVersion,
-                            checkedAt: new Intl.DateTimeFormat(i18n.resolvedLanguage ?? i18n.language ?? "en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(source.checkedAt)),
-                          })}
+                          {t("chatbot.evidence", { title: source.title })}
                         </p>
                       ))}
                       {m.role === "bot" && m.statusItems && m.statusItems.length > 0 && (

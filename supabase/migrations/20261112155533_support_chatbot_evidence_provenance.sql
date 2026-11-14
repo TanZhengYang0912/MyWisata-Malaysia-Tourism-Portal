@@ -33,7 +33,7 @@ AS $function$
          d.title,
          d.body,
          d.category,
-         1 - (d.embedding <=> query_embedding) AS similarity,
+         1 - (d.embedding OPERATOR(extensions.<=>) query_embedding) AS similarity,
          d.content_version,
          jsonb_array_length(d.published_source_refs) > 0 AS reviewed
     FROM public.chatbot_kb_documents AS d
@@ -41,7 +41,7 @@ AS $function$
      AND d.embedding IS NOT NULL
      AND d.embedding_version = d.content_version
      AND (NOT coalesce(require_reviewed, false) OR jsonb_array_length(d.published_source_refs) > 0)
-   ORDER BY d.embedding <=> query_embedding
+   ORDER BY d.embedding OPERATOR(extensions.<=>) query_embedding
    LIMIT greatest(1, least(coalesce(match_count, 3), 6));
 $function$;
 

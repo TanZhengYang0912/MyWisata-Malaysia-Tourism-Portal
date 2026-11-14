@@ -1,9 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
-import { createServiceClient } from "@/lib/supabase/service";
 import { getRecommendedFeed } from "@/backend/domains/recommend";
 import { rankFeaturedVendors } from "@/backend/domains/vendor-recommend";
-import { getVendorRatingSummaries } from "@/backend/domains/vendor-reviews";
-import { getCachedComputedActivities } from "@/lib/cache/catalogue-cache";
+import {
+  getCachedComputedActivities,
+  getCachedEventPartnerVendors,
+  getCachedHomeVendors,
+  getCachedPublicPromotionCampaigns,
+  getCachedSponsoredPlacements,
+  getCachedVendorMedia,
+  getCachedVendorRatings,
+} from "@/lib/cache/catalogue-cache";
 import { selectEntityGallery, selectEntityLogo, type EntityMediaRow } from "@/lib/customer/entity-media";
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
 import { popularVendorProducts } from "@/lib/customer/vendor-page";
@@ -30,21 +36,32 @@ const discoverTitleFont = Instrument_Serif({
 export default async function CustomerHomePage() {
   const db = await createClient();
   const requestedAt = new Date().toISOString();
-  const [{ data: { user } }, activities, vendorRows, campaignResult, placementsResult] = await Promise.all([
-    db.auth.getUser(),
-    // Cached for 60 s — same data for all visitors, no user-specific filtering
-    getCachedComputedActivities(),
-    db
-      .from("vendors")
-      .select("id,name,description,logo_url,cover_url,business_type,outlets(id,name,city,state,status,review_status,operating_hours)")
-      .eq("status", "approved")
-      .eq("kind", "shop")
-      .order("name")
-      .limit(24),
-    db.rpc("get_public_promotion_campaigns", { p_slug: null }),
-    db.rpc("list_active_sponsored_discovery_placements"),
+  // Each read waits only for the result it needs. Public reads are shared by
+  // every visitor and cached for up to 60 s; a failed read degrades its section.
+  const userPromise = db.auth.getUser();
+  // Cached for 60 s — same data for all visitors, no user-specific filtering
+  const activitiesPromise = getCachedComputedActivities();
+  const vendorRowsPromise = getCachedHomeVendors().catch(() => null);
+  const campaignsPromise = getCachedPublicPromotionCampaigns().then(
+    (data) => ({ campaigns: resolvePromotionCampaignImages(Array.isArray(data) ? data as unknown as PromotionCampaignPublic[] : []), error: false }),
+    () => ({ campaigns: [] as PromotionCampaignPublic[], error: true }),
+  );
+  const eventVendorIdsPromise = campaignsPromise.then(({ campaigns }) => Array.from(new Set(campaigns.flatMap((campaign) => campaign.vendors.map((vendor) => vendor.vendorId)))).sort());
+  const [activities, vendorRows, { campaigns: publicCampaigns, error: campaignUnavailable }, placementRows, feed, vendorMediaRows, eventPartnerVendors, vendorRatings] = await Promise.all([
+    activitiesPromise,
+    vendorRowsPromise,
+    campaignsPromise,
+    getCachedSponsoredPlacements().catch(() => null),
+    Promise.all([userPromise, activitiesPromise]).then(([{ data: { user } }, candidates]) => getRecommendedFeed(user?.id ?? null, { limit: 8, candidates }, db)),
+    Promise.all([vendorRowsPromise, eventVendorIdsPromise]).then(([rows, eventVendorIds]) => {
+      const vendorIds = Array.from(new Set([...(rows ?? []).map((vendor) => vendor.id), ...eventVendorIds])).sort();
+      return vendorIds.length ? getCachedVendorMedia(vendorIds).catch(() => null) : null;
+    }),
+    eventVendorIdsPromise.then((vendorIds) => vendorIds.length ? getCachedEventPartnerVendors(vendorIds).catch(() => null) : null),
+    // Ratings read the review metrics view with the service client, as the vendor page does; a failure (unknown rating) hides the badge, while no reviews shows "No reviews yet".
+    vendorRowsPromise.then((rows) => getCachedVendorRatings((rows ?? []).map((vendor) => vendor.id).sort()).then((entries) => new Map(entries), () => null)),
   ]);
-  const placements = placementsResult.error ? [] : ((placementsResult.data ?? []) as Array<{
+  const placements = ((placementRows ?? []) as Array<{
     id: string;
     product_id: string;
     state: string | null;
@@ -64,41 +81,17 @@ export default async function CustomerHomePage() {
     status: placement.status,
   }));
 
-  const publicCampaigns = resolvePromotionCampaignImages(Array.isArray(campaignResult.data) ? campaignResult.data as unknown as PromotionCampaignPublic[] : []);
-  const eventVendorIds = Array.from(new Set(publicCampaigns.flatMap((campaign) => campaign.vendors.map((vendor) => vendor.vendorId))));
-  const vendorIds = Array.from(new Set([...(vendorRows.data ?? []).map((vendor) => vendor.id), ...eventVendorIds]));
-  const [feed, vendorMediaRows, eventPartnerVendorResult] = await Promise.all([
-    getRecommendedFeed(user?.id ?? null, { limit: 8, candidates: activities }, db),
-    vendorIds.length
-      ? db
-        .from("media_assets")
-        .select("vendor_id,url,alt_text,media_type,sort_order")
-        .in("vendor_id", vendorIds)
-        .is("outlet_id", null)
-        .is("product_id", null)
-        .order("sort_order")
-        .then(({ data }) => data ?? [])
-      : Promise.resolve([]),
-    eventVendorIds.length
-      ? db
-        .from("vendors")
-        .select("id,name,description,logo_url,cover_url")
-        .eq("status", "approved")
-        .in("id", eventVendorIds)
-      : Promise.resolve({ data: [] }),
-  ]);
-
   const recommended = feed.map((item) => item.activity);
   const { highlightItems, forYouItems } = selectHomeDiscoverySections(activities, recommended, placements, requestedAt);
 
   const mediaByVendorId = new Map<string, EntityMediaRow[]>();
-  for (const row of vendorMediaRows) {
+  for (const row of vendorMediaRows ?? []) {
     const rows = mediaByVendorId.get(row.vendor_id) ?? [];
     rows.push({ url: row.url, altText: row.alt_text, mediaType: row.media_type, sortOrder: row.sort_order });
     mediaByVendorId.set(row.vendor_id, rows);
   }
 
-  const vendors = (vendorRows.data ?? [])
+  const vendors = (vendorRows ?? [])
     .map((vendor) => ({
       id: vendor.id,
       name: vendor.name,
@@ -116,12 +109,10 @@ export default async function CustomerHomePage() {
     .filter((vendor) => vendor.outlets.length > 0);
 
   const rankedVendors = rankFeaturedVendors(vendors, activities, 24);
-  // Ratings read the review metrics view with the service client, as the vendor page does; a failure (unknown rating) hides the badge, while no reviews shows "No reviews yet".
-  const vendorRatings = await getVendorRatingSummaries(rankedVendors.map((vendor) => vendor.id), createServiceClient()).catch(() => null);
   const featuredVendors = rankedVendors.map((vendor) => ({ ...vendor, rating: vendorRatings ? vendorRatings.get(vendor.id) ?? null : undefined, popularProducts: popularVendorProducts(activities, vendor.id) }));
   const featuredCampaigns = selectFeaturedPublicCampaigns(publicCampaigns);
   const today = getMalaysiaDateInputValue();
-  const featuredEventPartners: EventPartner[] = (eventPartnerVendorResult.data ?? [])
+  const featuredEventPartners: EventPartner[] = (eventPartnerVendors ?? [])
     .map((vendor) => {
       const mediaRows = mediaByVendorId.get(vendor.id) ?? [];
       const visual = getVendorVisual({ name: vendor.name, logoUrl: vendor.logo_url, coverUrl: vendor.cover_url });
@@ -143,5 +134,5 @@ export default async function CustomerHomePage() {
     .filter((partner) => partner.next)
     .sort((a, b) => (a.next?.startsOn ?? "9999").localeCompare(b.next?.startsOn ?? "9999") || a.name.localeCompare(b.name));
 
-  return <CustomerHomeClient titleFontClassName={discoverTitleFont.variable} highlightItems={highlightItems} forYouItems={forYouItems} vendors={featuredVendors} eventPartners={featuredEventPartners} campaign={featuredCampaigns[0] ?? null} campaigns={featuredCampaigns} campaignUnavailable={Boolean(campaignResult.error)} />;
+  return <CustomerHomeClient titleFontClassName={discoverTitleFont.variable} highlightItems={highlightItems} forYouItems={forYouItems} vendors={featuredVendors} eventPartners={featuredEventPartners} campaign={featuredCampaigns[0] ?? null} campaigns={featuredCampaigns} campaignUnavailable={campaignUnavailable} />;
 }

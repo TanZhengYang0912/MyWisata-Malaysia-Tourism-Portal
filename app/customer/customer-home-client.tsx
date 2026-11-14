@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, ChevronLeft, ChevronRight, MapPin, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ComputedActivity, DiscoveryPropertySummary, DiscoveryResult } from "@/backend/core/types";
 import { ActivityCard } from "@/components/customer/activity-card";
@@ -23,7 +23,9 @@ import { HomeDestinationWormIndicator } from "@/components/customer/home-destina
 import { useHomeDestinationPager } from "@/components/customer/use-home-destination-pager";
 import { Button } from "@/components/ui/button";
 import { SeeMoreLink } from "@/components/customer/see-more-link";
-import { pageHomeHighlights } from "@/lib/customer/discovery-ranking";
+import { CardCarousel } from "@/components/customer/card-carousel";
+import { HOME_HIGHLIGHT_LIMIT } from "@/lib/customer/discovery-ranking";
+import { useRouter } from "next/navigation";
 
 const HERO_CROSSFADE_DURATION_MS = 240;
 // Match the card widths from the responsive rail, including its outer and trailing padding.
@@ -85,6 +87,7 @@ export function CustomerHomeClient({
   titleFontClassName?: string;
 }) {
   const { t } = useTranslation("customer");
+  const router = useRouter();
   const { currentUser } = useAuth();
   const gate = useCustomerCapabilityGate();
   const { savedStates, toggleSaved } = useSavedDestinations();
@@ -100,23 +103,16 @@ export function CustomerHomeClient({
       keepalive: true,
     });
   }, []);
-  const [highlightPage, setHighlightPage] = useState(0);
-  const highlights = pageHomeHighlights(highlightItems, highlightPage);
-  const visibleHighlights = highlights.items;
-  // Impressions only for the highlight page actually shown.
-  useEffect(() => {
-    for (const activity of visibleHighlights) {
+  const featuredHighlights = highlightItems.slice(0, HOME_HIGHLIGHT_LIMIT);
+  // Impressions only for the highlight page the carousel settled on.
+  const recordHighlightImpressions = (first: number, perPage: number) => {
+    for (const activity of featuredHighlights.slice(first, first + perPage)) {
       const placementId = activity.sponsorship?.placementId;
       if (!placementId || impressedPlacementIds.current.has(placementId)) continue;
       impressedPlacementIds.current.add(placementId);
       recordSponsoredEvent(activity, "impression");
     }
-  }, [visibleHighlights, recordSponsoredEvent]);
-  const discoverTitleWords = t("ui.guest.discoverMalaysia").trim().split(/\s+/);
-  const discoverTitleLead = discoverTitleWords.length > 1
-    ? discoverTitleWords.slice(0, -1).join(" ")
-    : "";
-  const discoverTitleEnding = discoverTitleWords[discoverTitleWords.length - 1] ?? "";
+  };
   const [activeState, setActiveState] = useState(() => HOME_DESTINATIONS[0].state);
   const [outgoingHeroState, setOutgoingHeroState] = useState<string | null>(null);
   const [incomingHeroVisible, setIncomingHeroVisible] = useState(false);
@@ -178,6 +174,10 @@ export function CustomerHomeClient({
     setActiveState(destinationState);
   }
 
+  function navigateToDestination(destinationState: string) {
+    router.push(destinationHref(destinationState));
+  }
+
   useEffect(() => () => clearHeroCrossfadeTimeout(), []);
 
   async function loadNearbyPartners(coordinates?: { latitude: number; longitude: number }) {
@@ -227,7 +227,9 @@ export function CustomerHomeClient({
 
   return (
     <div className={`${titleFontClassName} bg-background min-h-screen text-foreground pb-20`}>
-      <section className="atlas-hero-section relative isolate min-h-[calc(100svh-var(--customer-header-h,6.3125rem))] overflow-hidden bg-[#061326] text-white xl:min-h-[calc(100svh-var(--customer-header-h,4.3125rem))]">
+      <section className="atlas-hero-section @container relative isolate bg-background text-white">
+        {/* Title and photo are one 16:9 picture sized in cqw, so every screen shows the same picture, only smaller. */}
+        <div className="relative aspect-video overflow-hidden bg-[#061326]">
         <div className="absolute inset-0 z-0 overflow-hidden bg-[#061326]">
           {outgoingHeroDestination && (
             <Image
@@ -239,7 +241,7 @@ export function CustomerHomeClient({
               loading="eager"
               quality={90}
               sizes="100vw"
-              className={`atlas-hero-photo atlas-hero-photo--outgoing object-contain md:object-cover ${outgoingHeroDestination.state === "Kuala Lumpur" ? "object-[60%_48%] md:object-center" : "object-[56%_48%]"}`}
+              className={`atlas-hero-photo atlas-hero-photo--outgoing object-cover ${outgoingHeroDestination.state === "Kuala Lumpur" ? "object-[60%_48%] md:object-center" : "object-[56%_48%]"}`}
             />
           )}
           <Image
@@ -252,21 +254,25 @@ export function CustomerHomeClient({
             sizes="100vw"
             onLoad={() => handleHeroPhotoLoaded(activeDestination.state)}
             onTransitionEnd={(event) => completeHeroPhotoTransition(event, activeDestination.state)}
-            className={`atlas-hero-photo object-contain md:object-cover ${outgoingHeroDestination ? `atlas-hero-photo--incoming${incomingHeroVisible ? " atlas-hero-photo--incoming-visible" : ""}` : ""} ${activeDestination.state === "Kuala Lumpur" ? "object-[60%_48%] md:object-center" : "object-[56%_48%]"}`}
+            className={`atlas-hero-photo object-cover ${outgoingHeroDestination ? `atlas-hero-photo--incoming${incomingHeroVisible ? " atlas-hero-photo--incoming-visible" : ""}` : ""} ${activeDestination.state === "Kuala Lumpur" ? "object-[60%_48%] md:object-center" : "object-[56%_48%]"}`}
           />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(4,15,36,0.27)_0%,rgba(4,15,36,0.16)_27%,rgba(4,15,36,0.04)_64%,rgba(4,15,36,0.01)_100%),linear-gradient(0deg,rgba(4,17,39,0.36)_0%,rgba(4,17,39,0.16)_22%,rgba(4,17,39,0.02)_59%),linear-gradient(180deg,rgba(4,17,39,0.05)_0%,rgba(4,17,39,0)_52%)]" />
         </div>
 
-        <div className="relative z-10 mx-auto flex min-h-[calc(100svh-var(--customer-header-h,6.3125rem))] w-full max-w-[1420px] flex-col px-5 pb-8 pt-[12svh] sm:px-9 xl:min-h-[calc(100svh-var(--customer-header-h,4.3125rem))] lg:px-0 lg:pb-9 lg:pt-[14.5svh]">
-          <header className="atlas-enter atlas-delay-1 mb-auto pl-0 sm:pl-4 lg:pl-[3.4%]">
-            <h1 className="atlas-discover-title max-w-[760px] font-[family-name:var(--font-discover-title)] text-[clamp(4.2rem,min(9vw,14svh),9.2rem)] font-normal leading-[1.05] tracking-[-0.025em]">
-              {discoverTitleLead && (
-                <span className="atlas-discover-title__lead block md:inline">{discoverTitleLead} </span>
-              )}
-              <span className="atlas-discover-title__ending block md:inline">{discoverTitleEnding}</span>
+          <header className="atlas-enter atlas-delay-1 absolute left-[6cqw] top-[7.5cqw] z-10">
+            <h1 className="atlas-discover-title max-w-[88cqw] font-[family-name:var(--font-discover-title)] text-[8.6cqw] font-normal leading-[1.05] tracking-[-0.025em]">
+              <span className="atlas-discover-title__ending">{activeDestination.state}</span>
             </h1>
+            {/* Screen readers and touch turn activation into a plain click, so double-click alone would strand them; this link is their way in, visible only on keyboard focus. */}
+            <Link
+              href={destinationHref(activeDestination.state)}
+              data-destination-entry=""
+              className="sr-only focus-visible:not-sr-only focus-visible:mt-3 focus-visible:inline-block focus-visible:rounded-full focus-visible:bg-white focus-visible:px-4 focus-visible:py-2 focus-visible:text-sm focus-visible:font-bold focus-visible:text-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/40"
+            >
+              {t("ui.home.viewDestination")}
+            </Link>
             <svg
-              className="atlas-title-accent ml-[63%] mt-4 block w-[clamp(100px,32vw,220px)] text-[#f4b900] md:ml-32 md:mt-9 md:w-[clamp(132px,16vw,250px)]"
+              className="atlas-title-accent ml-[8cqw] mt-[1.6cqw] block w-[16cqw] text-[#f4b900]"
               viewBox="0 0 228 24"
               aria-hidden="true"
               focusable="false"
@@ -282,23 +288,11 @@ export function CustomerHomeClient({
               />
             </svg>
           </header>
+        </div>
 
-          <nav aria-label={t("ui.home.destinationCarousel")} className="atlas-destination-rail atlas-enter atlas-delay-2 mt-10 w-full">
-            <div className="mb-3 flex items-center gap-3 sm:mb-1">
-              <div className="flex items-center gap-3">
-                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f4bd00] sm:text-xs">{t("ui.home.exploreDestinations")}</h2>
-                <Button asChild variant="outline" size="icon" className="rounded-full border-white/35 bg-white/10 text-white hover:bg-white/20 hover:text-white">
-                  <Link
-                    href={destinationHref(activeDestination.state)}
-                    aria-label={t("ui.home.viewDestination")}
-                    title={t("ui.home.viewDestination")}
-                  >
-                    <ArrowUpRight size={16} aria-hidden="true" />
-                  </Link>
-                </Button>
-              </div>
-            </div>
-            <div ref={destinationPagerRef} className="atlas-destination-pager pb-3">
+        {/* Below 1024px the cards would crowd the photo, so they take their own row under it. */}
+        <nav aria-label={t("ui.home.destinationCarousel")} className="atlas-destination-rail atlas-enter atlas-delay-2 relative z-10 px-5 pt-4 sm:px-9 lg:absolute lg:inset-x-[4.5cqw] lg:bottom-[1.6cqw] lg:p-0">
+            <div ref={destinationPagerRef} className="atlas-destination-pager pb-6">
               {HOME_DESTINATIONS.map((destination) => {
                 const isSelected = destination.state === activeState;
                 const isSaved = savedStates.has(destination.state);
@@ -308,12 +302,21 @@ export function CustomerHomeClient({
                     <button
                       type="button"
                       onClick={() => selectDestination(destination.state)}
+                      onDoubleClick={() => navigateToDestination(destination.state)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          // Holding Enter repeats keydown; only the first press navigates.
+                          if (!event.repeat) navigateToDestination(destination.state);
+                        }
+                      }}
                       aria-pressed={isSelected}
-                      className={`group relative block h-[clamp(108px,22svh,220px)] w-full overflow-hidden rounded-[14px] border text-left transition duration-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/40 ${isSelected ? "border-2 border-[#f4bd00]" : "border-white/70 hover:border-white"}`}
+                      title={t("ui.home.destinationDoubleClick", { state: destination.state })}
+                      className={`group relative block aspect-square w-full overflow-hidden rounded-[14px] border text-left transition duration-300 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4bd00]/40 sm:aspect-[4/3] lg:aspect-auto lg:h-[13cqw] ${isSelected ? "border-2 border-[#f4bd00]" : "border-border shadow-[0_4px_14px_rgb(27_35_51/0.12)] lg:border-white/70 lg:shadow-none lg:hover:border-white"}`}
                     >
-                      <Image src={destination.image} alt="" fill sizes={HOME_DESTINATION_IMAGE_SIZES} className="object-cover transition duration-700 group-hover:scale-[1.045]" />
+                      <Image src={destination.image} alt="" fill sizes={HOME_DESTINATION_IMAGE_SIZES} className="object-cover" />
                       <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
-                      <span className="absolute inset-x-3 bottom-2 truncate font-[family-name:var(--font-display)] text-[15px] font-semibold leading-tight text-white sm:inset-x-4 sm:bottom-3 sm:text-xl lg:text-[25px]">{destination.state}</span>
+                      <span className="absolute inset-x-3 bottom-2 truncate font-[family-name:var(--font-display)] text-[15px] font-semibold leading-tight text-white sm:inset-x-4 sm:bottom-3 sm:text-lg lg:text-[1.75cqw]">{destination.state}</span>
                     </button>
                     <SaveToggleButton
                       appearance="icon"
@@ -331,30 +334,39 @@ export function CustomerHomeClient({
                 );
               })}
             </div>
-            <div className="mt-2 lg:hidden">
-              <HomeDestinationWormIndicator
-                count={destinationPager.pageCount}
-                progress={destinationPager.progress}
-                current={destinationPager.page}
-                sizes={{ dot: 11, pill: 36, gap: 8 }}
-                label={t("ui.home.destinationCarouselControls")}
-                pageLabel={(page, count) => t("ui.home.destinationPage", { page, total: count })}
-                onSelect={destinationPager.goToPage}
-              />
+            <div className="flex items-center gap-3">
+              <div className="lg:hidden [&_button]:bg-foreground/20">
+                <HomeDestinationWormIndicator
+                  count={destinationPager.pageCount}
+                  progress={destinationPager.progress}
+                  current={destinationPager.page}
+                  sizes={{ dot: 11, pill: 36, gap: 8 }}
+                  label={t("ui.home.destinationCarouselControls")}
+                  pageLabel={(page, count) => t("ui.home.destinationPage", { page, total: count })}
+                  onSelect={destinationPager.goToPage}
+                />
+              </div>
+              <div className="hidden lg:block">
+                <HomeDestinationWormIndicator
+                  count={destinationPager.pageCount}
+                  progress={destinationPager.progress}
+                  current={destinationPager.page}
+                  sizes={{ dot: 14, pill: 50, gap: 10 }}
+                  label={t("ui.home.destinationCarouselControls")}
+                  pageLabel={(page, count) => t("ui.home.destinationPage", { page, total: count })}
+                  onSelect={destinationPager.goToPage}
+                />
+              </div>
+              <div className="ml-auto flex items-center">
+                <Button variant="ghost" size="icon" aria-label={t("ui.map.previous")} disabled={destinationPager.page <= 0} onClick={() => destinationPager.goToPage(destinationPager.page - 1)} className="text-foreground hover:bg-transparent hover:text-accent active:bg-transparent active:text-accent active:scale-[.94] disabled:text-foreground/30 disabled:opacity-100 dark:hover:bg-transparent lg:text-white lg:disabled:text-white/30">
+                  <ChevronLeft size={20} aria-hidden="true" />
+                </Button>
+                <Button variant="ghost" size="icon" aria-label={t("ui.map.next")} disabled={destinationPager.page >= destinationPager.pageCount - 1} onClick={() => destinationPager.goToPage(destinationPager.page + 1)} className="text-foreground hover:bg-transparent hover:text-accent active:bg-transparent active:text-accent active:scale-[.94] disabled:text-foreground/30 disabled:opacity-100 dark:hover:bg-transparent lg:text-white lg:disabled:text-white/30">
+                  <ChevronRight size={20} aria-hidden="true" />
+                </Button>
+              </div>
             </div>
-            <div className="mt-2 hidden lg:block">
-              <HomeDestinationWormIndicator
-                count={destinationPager.pageCount}
-                progress={destinationPager.progress}
-                current={destinationPager.page}
-                sizes={{ dot: 14, pill: 50, gap: 10 }}
-                label={t("ui.home.destinationCarouselControls")}
-                pageLabel={(page, count) => t("ui.home.destinationPage", { page, total: count })}
-                onSelect={destinationPager.goToPage}
-              />
-            </div>
-          </nav>
-        </div>
+        </nav>
       </section>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -362,40 +374,19 @@ export function CustomerHomeClient({
 
         {highlightItems.length > 0 && (
           <section aria-labelledby="featured-highlights-heading" className="mt-12">
-            <div className="mb-5 flex items-end justify-between gap-4 border-b border-border/70 pb-4">
-              <div>
-                <h2 id="featured-highlights-heading" className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
-                  {t("ui.home.featuredHighlights")}
-                </h2>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                {highlights.pageCount > 1 && (
-                  <div className="inline-flex items-center" data-testid="home-highlights-pager">
-                    {([[ChevronLeft, -1, "accessibility.previousPage", highlights.page <= 0], [ChevronRight, 1, "accessibility.nextPage", highlights.page >= highlights.pageCount - 1]] as const).map(([Icon, step, label, atEdge]) => (
-                      <button
-                        key={label}
-                        type="button"
-                        onClick={() => setHighlightPage(highlights.page + step)}
-                        disabled={atEdge}
-                        aria-label={t(label, { ns: "common" })}
-                        aria-controls="featured-highlights-grid"
-                        className="inline-flex h-10 w-7 items-center justify-center text-primary transition-[color,transform] duration-150 hover:text-accent focus-visible:text-accent focus-visible:outline-none active:scale-[0.85] active:text-accent disabled:cursor-not-allowed disabled:text-primary/20 disabled:active:scale-100"
-                      >
-                        <Icon size={16} aria-hidden="true" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <SeeMoreLink href="/customer/explore" />
-              </div>
+            <div className="mb-5 flex items-center justify-between gap-4 border-b border-border/70 pb-4">
+              <h2 id="featured-highlights-heading" className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
+                {t("ui.home.featuredHighlights")}
+              </h2>
+              <SeeMoreLink href="/customer/explore" />
             </div>
-            <div id="featured-highlights-grid" className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-              {visibleHighlights.map((activity) => (
+            <CardCarousel label={t("ui.home.featuredHighlights")} onPageView={recordHighlightImpressions}>
+              {featuredHighlights.map((activity) => (
                 activity.property
                   ? <ActivityCard key={activity.id} activity={activity} onSponsoredClick={activity.sponsorship ? () => recordSponsoredEvent(activity, "click") : undefined} />
                   : <ProductCard key={activity.id} listing={toDiscoveryCatalogueCard(activity)} returnTo="/customer" source="home" onSponsoredClick={activity.sponsorship ? () => recordSponsoredEvent(activity, "click") : undefined} />
               ))}
-            </div>
+            </CardCarousel>
           </section>
         )}
 
@@ -417,10 +408,10 @@ export function CustomerHomeClient({
           </section>
         )}
 
-        <EventPartnersSection partners={eventPartners.slice(0, 4)} featured />
+        <EventPartnersSection partners={eventPartners.slice(0, HOME_HIGHLIGHT_LIMIT)} featured />
 
         <section className="mt-12" aria-labelledby="nearby-partners-heading">
-          <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-4">
             <div>
               <h2 id="nearby-partners-heading" className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
                 {t("ui.home.nearbyPartners")}
@@ -448,26 +439,26 @@ export function CustomerHomeClient({
           {nearbyLoading ? (
             <p role="status" aria-live="polite" className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">{t("ui.states.loading")}</p>
           ) : nearbyPartners && nearbyPartners.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-              {nearbyPartners.slice(0, 4).map((partner, index) => <VendorCard key={partner.id} vendor={partner} index={index} />)}
-            </div>
+            <CardCarousel label={t("ui.home.nearbyPartners")}>
+              {nearbyPartners.slice(0, HOME_HIGHLIGHT_LIMIT).map((partner, index) => <VendorCard key={partner.id} vendor={partner} index={index} />)}
+            </CardCarousel>
           ) : nearbyPartners ? (
             <p className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
               {t(nearbyLocationSource === "none" ? "ui.home.nearbyNoLocation" : "ui.home.noNearbyPartners")} {" "}
-              <Link href="/customer/vendors" className="font-semibold text-primary underline-offset-4 hover:underline">{t("ui.home.viewPartners")}</Link>
+              <SeeMoreLink href="/customer/vendors" ariaLabel={t("ui.home.viewPartners")} />
             </p>
           ) : null}
         </section>
 
         {/* 5. Featured Partners */}
         <section className="mt-12">
-          <div className="flex items-center justify-between mb-5">
+          <div className="mb-5 flex items-center justify-between gap-4 border-b border-border/70 pb-4">
             <h2 className="text-2xl font-bold font-[family-name:var(--font-display)]">{t("ui.home.featuredPartners")}</h2>
             <SeeMoreLink href="/customer/vendors" />
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-            {vendors.slice(0, 4).map((vendor, index) => <VendorCard key={vendor.id} vendor={vendor} index={index} />)}
-          </div>
+          <CardCarousel label={t("ui.home.featuredPartners")}>
+            {vendors.slice(0, HOME_HIGHLIGHT_LIMIT).map((vendor, index) => <VendorCard key={vendor.id} vendor={vendor} index={index} />)}
+          </CardCarousel>
         </section>
       </div>
 
@@ -515,9 +506,7 @@ export function CustomerHomeClient({
           stroke-dashoffset: 1;
           animation: atlas-accent-draw 800ms var(--atlas-ease-out) 460ms both;
         }
-        /* Cards per page follow the rail's own width: about 220px minimum per card, 2 to 5 per page. */
-        .atlas-destination-rail { container: destination-rail / inline-size; }
-
+        /* Four destinations per page from 1024px, three on tablets, two on phones. */
         .atlas-destination-pager {
           --per-page: 2;
           --destination-gap: 0.75rem;
@@ -536,25 +525,33 @@ export function CustomerHomeClient({
           flex: 0 0 calc((100% - ((var(--per-page) - 1) * var(--destination-gap))) / var(--per-page));
           scroll-snap-align: none;
           animation: atlas-enter 480ms var(--atlas-ease-out) both;
+          /* scale, not transform: the entry animation keeps its transform after it ends. */
+          transform-origin: top center;
+          transition: scale 180ms var(--atlas-ease-out);
         }
 
-        @container destination-rail (width < 692px) {
+        @media (hover: hover) and (pointer: fine) {
+          .atlas-destination-card:hover { scale: 1.04; z-index: 2; }
+        }
+
+        @media (max-width: 639.98px) {
           .atlas-destination-card:nth-child(2n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
+          .atlas-destination-card:nth-child(2n + 1) { transform-origin: top left; }
+          .atlas-destination-card:nth-child(2n) { transform-origin: top right; }
         }
 
-        @container destination-rail (692px <= width < 928px) {
+        @media (min-width: 640px) and (max-width: 1023.98px) {
           .atlas-destination-pager { --per-page: 3; }
           .atlas-destination-card:nth-child(3n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
+          .atlas-destination-card:nth-child(3n + 1) { transform-origin: top left; }
+          .atlas-destination-card:nth-child(3n) { transform-origin: top right; }
         }
 
-        @container destination-rail (928px <= width < 1164px) {
+        @media (min-width: 1024px) {
           .atlas-destination-pager { --per-page: 4; --destination-gap: 1rem; }
           .atlas-destination-card:nth-child(4n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
-        }
-
-        @container destination-rail (width >= 1164px) {
-          .atlas-destination-pager { --per-page: 5; --destination-gap: 1rem; }
-          .atlas-destination-card:nth-child(5n + 1) { scroll-snap-align: start; scroll-snap-stop: always; }
+          .atlas-destination-card:nth-child(4n + 1) { transform-origin: top left; }
+          .atlas-destination-card:nth-child(4n) { transform-origin: top right; }
         }
 
         .atlas-discover-title {
@@ -565,7 +562,7 @@ export function CustomerHomeClient({
 
         .atlas-discover-title__lead,
         .atlas-discover-title__ending {
-          width: fit-content;
+          padding: 0 .12em .22em 0;
           background-image: linear-gradient(108deg, #fff8e9 0%, #fff1d2 28%, var(--malaysia-yellow) 78%, #f4b900 100%);
           background-clip: text;
           -webkit-background-clip: text;
@@ -577,15 +574,8 @@ export function CustomerHomeClient({
           font-style: normal;
           font-weight: 600;
           letter-spacing: -0.055em;
-          font-size: clamp(4.2rem, 9vw, 9.2rem);
         }
 
-        :global(html:lang(zh-CN)) .atlas-discover-title__lead,
-        :global(html:lang(zh-CN)) .atlas-discover-title__ending {
-          background-image: none;
-          color: #fff6df;
-          -webkit-text-fill-color: #fff6df;
-        }
 
         @keyframes atlas-enter {
           from { opacity: 0; transform: translateY(14px); }
@@ -613,6 +603,8 @@ export function CustomerHomeClient({
           :global(.atlas-hero-photo) {
             animation: none;
           }
+
+          .atlas-destination-card:hover { scale: none; }
 
           :global(.atlas-hero-photo--incoming) {
             transition-duration: 120ms;

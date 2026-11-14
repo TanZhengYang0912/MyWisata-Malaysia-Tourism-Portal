@@ -69,21 +69,33 @@ export async function GET(request: Request) {
   if (state) query = query.eq('state', state);
   if (searchTerm) query = query.ilike('vendor_name', `%${searchTerm}%`);
 
-  let countQuery = service
-    .from('vendor_recommendations')
-    .select('status,state,category_id');
-  if (categoryId) countQuery = countQuery.eq('category_id', categoryId);
-  if (state) countQuery = countQuery.eq('state', state);
-  if (searchTerm) countQuery = countQuery.ilike('vendor_name', `%${searchTerm}%`);
-
-  const [{ data, count, error }, { data: countRows, error: countError }, { data: categories }] = await Promise.all([
+  const [{ data, count, error }, { data: rawStats, error: statsError }, { data: categories }] = await Promise.all([
     query,
-    countQuery,
+    service.rpc('get_admin_recommendation_stats', {
+      p_category_id: categoryId ?? null,
+      p_state: state ?? null,
+      p_search: searchTerm || null,
+    }),
     service.from('categories').select('id,name').order('name', { ascending: true }),
   ]);
 
-  if (error || countError) {
-    console.error('[admin-recommendations-list]', error ?? countError);
+  if (error || statsError) {
+    console.error('[admin-recommendations-list]', error ?? statsError);
+    return apiFail('LIST_FAILED', 'Failed to load recommendations', 500);
+  }
+
+  const stats = rawStats as {
+    pending?: unknown;
+    reviewed?: unknown;
+    approved?: unknown;
+    rejected?: unknown;
+    states?: unknown;
+  } | null;
+  const isCount = (value: unknown): value is number => Number.isSafeInteger(value) && Number(value) >= 0;
+  if (!stats || !isCount(stats.pending) || !isCount(stats.reviewed)
+    || !isCount(stats.approved) || !isCount(stats.rejected)
+    || !Array.isArray(stats.states) || !stats.states.every((value) => typeof value === 'string')) {
+    console.error('[admin-recommendations-list] Invalid statistics response');
     return apiFail('LIST_FAILED', 'Failed to load recommendations', 500);
   }
 
@@ -161,11 +173,6 @@ export async function GET(request: Request) {
     };
   });
 
-  const allCountRows = (countRows ?? []) as Array<{ status: string; state: string | null }>;
-  const counts = allCountRows.reduce<Record<string, number>>((result, row) => {
-    result[row.status] = (result[row.status] ?? 0) + 1;
-    return result;
-  }, {});
   const total = count ?? 0;
 
   return apiOk({
@@ -175,16 +182,14 @@ export async function GET(request: Request) {
     pageSize,
     totalPages: Math.ceil(total / pageSize),
     counts: {
-      pending: counts.pending ?? 0,
-      reviewed: allCountRows.length - (counts.pending ?? 0),
-      approved: counts.approved ?? 0,
-      rejected: counts.rejected ?? 0,
+      pending: stats.pending,
+      reviewed: stats.reviewed,
+      approved: stats.approved,
+      rejected: stats.rejected,
     },
     facets: {
       categories: (categories ?? []).map((category) => ({ id: category.id, name: category.name })),
-      states: [...new Set(allCountRows.map((row) => row.state).filter(
-        (value): value is string => Boolean(value),
-      ))].sort(),
+      states: stats.states,
     },
   });
 }

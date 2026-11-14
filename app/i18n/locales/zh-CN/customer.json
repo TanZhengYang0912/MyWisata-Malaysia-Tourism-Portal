@@ -2231,6 +2231,7 @@
       "spotlight": "焦点推荐",
       "islandMood": "海岛氛围",
       "viewDestination": "查看目的地",
+      "destinationDoubleClick": "双击前往{{state}}",
       "savedToAtlas": "已保存到你的地图册",
       "saveFeeling": "保存这种感觉",
       "destinationCarousel": "目的地轮播",
@@ -2403,6 +2404,10 @@
       },
       "noGate": "无门票",
       "freeEntry": "免费入场",
+      "referenceEntry": "参考入场费",
+      "entryNotSpecified": "入场资料未提供",
+      "experienceCount_one": "{{count}} 项体验",
+      "experienceCount_other": "{{count}} 项体验",
       "entryFee": "RM{{price}} 入场",
       "bookable": "可预订",
       "vendorOptions": "{{count}} 个商家选项",
@@ -3008,11 +3013,19 @@
       "views": {
         "label": "选择活动查看方式",
         "list": "列表",
-        "calendar": "日历",
         "map": "地图与活动",
-        "calendarEmpty": "此期间没有活动地点。",
         "unpinned_one": "{{count}} 个地点尚未设置地图标记，请在列表视图中查看地址。",
         "unpinned_other": "{{count}} 个地点尚未设置地图标记，请在列表视图中查看地址。"
+      },
+      "dateEmpty": "这一天没有活动。",
+      "datePicker": {
+        "openCalendar": "打开日历",
+        "chooseDate": "选择日期",
+        "previousDay": "前一天",
+        "nextDay": "后一天",
+        "previousMonth": "上个月",
+        "nextMonth": "下个月",
+        "backToToday": "回到今天"
       }
     },
     "recommendationReasons": {

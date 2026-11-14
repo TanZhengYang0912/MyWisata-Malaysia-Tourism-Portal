@@ -316,16 +316,39 @@
     "attachmentUnavailable": "Lampiran ini tidak tersedia buat sementara. Anda boleh cuba lagi."
   },
   "chatbot": {
+    "recommendation": {
+      "categories": { "food": "Makanan", "activity": "Aktiviti", "accommodation": "Penginapan", "retail": "Membeli-belah" },
+      "anyState": "Seluruh Malaysia",
+      "removeBudget": "Tiada had bajet",
+      "seeProduct": "Lihat produk",
+      "matchReason": "Sesuai dengan kategori dan pilihan anda.",
+      "ratingReason": "Dinilai {{rating}} daripada {{reviews}} ulasan.",
+      "locationUnknown": "Lokasi tidak disenaraikan"
+    },
     "title": "Sembang",
     "brand": "MYLawatan Bot",
     "myTickets": "Tiket Saya",
     "closeChat": "Tutup sembang",
-    "emptyPrompt": "Tanya tentang ganjaran, pautan afiliasi, pengeluaran, tempahan atau pengesahan.",
+    "emptyPrompt": "Tanya di mana untuk mencari sesuatu, bandingkan senarai, dapatkan cadangan, semak pesanan anda atau minta bayaran balik.",
+    "greeting": "Hai, saya MYLawatan Bot. Saya boleh menyemak status pesanan, tempahan atau bayaran balik, menjawab soalan lazim, serta membantu anda mencari produk dan harga katalog. Apa yang anda ingin lakukan?",
+    "starters": {
+      "label": "Soalan cadangan",
+      "booking": "Tempahan saya",
+      "refund": "Bayaran balik saya",
+      "products": "Cari produk dan harga",
+      "faq": "Lihat soalan lazim",
+      "retry": "Cuba lagi",
+      "questions": {
+        "booking": "Semak status tempahan saya",
+        "refund": "Semak status bayaran balik saya",
+        "products": "Cadangkan produk dan harga"
+      }
+    },
     "inputPlaceholder": "Tanya soalan…",
     "send": "Hantar mesej",
     "openChat": "Sembang dengan MYLawatan Bot",
     "wasThisHelpful": "Adakah ini membantu?",
-    "evidence": "Artikel rujukan: {{title}} · v{{version}} · disemak {{checkedAt}}",
+    "evidence": "Sumber: {{title}}",
     "yes": "Ya",
     "no": "Tidak",
     "gladToHelp": "Gembira dapat membantu.",
@@ -382,7 +405,9 @@
     },
     "history": {
       "loadEarlier": "Muatkan mesej terdahulu",
-      "unavailable": "Perbualan yang disimpan tidak dapat dipulihkan."
+      "unavailable": "Perbualan yang disimpan tidak dapat dipulihkan.",
+      "sessionGone": "Sembang tersimpan ini tidak tersedia lagi. Mulakan sembang baharu untuk meneruskan.",
+      "signIn": "Sesi log masuk anda telah tamat. Log masuk untuk memulihkan perbualan ini."
     },
     "statusQuery": {
       "signIn": "Log masuk untuk menyemak rekod akaun anda.",
@@ -477,7 +502,8 @@
       "listFailed": "Tiket anda tidak dapat dimuatkan.",
       "retry": "Cuba lagi",
       "loading": "Memuatkan tiket…",
-      "ticketCount": "{{count}} tiket",
+      "ticketCount_one": "{{count}} tiket",
+      "ticketCount_other": "{{count}} tiket",
       "previousPage": "Halaman tiket sebelumnya",
       "nextPage": "Halaman tiket seterusnya",
       "checkFields": "Masukkan subjek dan terangkan masalah anda.",
@@ -493,7 +519,8 @@
         "open": "Dibuka",
         "in_progress": "Sedang diproses",
         "resolved": "Diselesaikan",
-        "closed": "Ditutup"
+        "closed": "Ditutup",
+        "unknown": "Status tidak tersedia"
       }
     },
     "expandChat": "Kembangkan ke skrin penuh",
@@ -524,6 +551,28 @@
       "paymentUncertain": "Status bayaran belum disahkan. Semak pesanan atau hubungi sokongan; jangan bayar lagi dahulu.",
       "rateLimited": "Tindakan ini dihadkan buat sementara. Tunggu sebentar atau hubungi sokongan.",
       "unavailable": "Ralat berlaku. Teks anda masih disimpan di sini. Cuba lagi atau hubungi sokongan."
+    },
+    "agent": {
+      "compare": {
+        "price": "Harga dari",
+        "rating": "Penilaian",
+        "shop": "Kedai",
+        "area": "Kawasan",
+        "hours": "Waktu"
+      },
+      "refund": {
+        "title": "Permintaan bayaran balik",
+        "order": "Pesanan",
+        "items": "Item",
+        "total": "Jumlah",
+        "reason": "Sebab",
+        "confirm": "Sahkan bayaran balik",
+        "cancel": "Batal",
+        "running": "Menghantar…",
+        "done": "Bayaran balik diminta. Jejakinya di halaman pesanan.",
+        "cancelled": "Dibatalkan",
+        "failed": "Gagal"
+      }
     }
   },
   "account": {

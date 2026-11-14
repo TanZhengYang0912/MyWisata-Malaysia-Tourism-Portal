@@ -6,6 +6,9 @@ const migrationsDirectory = resolve(process.cwd(), "supabase/migrations");
 const baselinePath = resolve(process.cwd(), "supabase/canonical-migration-baseline.json");
 // Keep post-baseline migrations explicit; this is separate from the canonical baseline.
 const approvedForwardMigrations = [
+  "20261114080708_admin_affiliate_fraud_transaction.sql",
+  "20261114081100_affiliate_link_state_audit_transaction.sql",
+  "20261114030000_restore_definer_support_unread_count.sql",
   "20261105095628_admin_support_ticket_atomic_transition.sql",
   "20261105094626_admin_campaign_noop_save.sql",
   "20261109062020_chinese_passport_single_page_evidence.sql",
@@ -47,6 +50,7 @@ const approvedForwardMigrations = [
   "20261112170000_support_chatbot_metrics_integrity.sql",
   "20261112171000_support_chatbot_kb_bounded_queries.sql",
   "20261112180000_support_kb_revision_noop_sources.sql",
+  "20261113155628_event_staff_scan_access.sql",
   "20261106014314_chat_thread_summaries.sql",
   "20261107120518_repair_tng_ewallet_destination_label.sql",
   "20261107124912_vendor_outlet_listing_summary.sql",
@@ -416,6 +420,10 @@ const approvedForwardMigrations = [
   "20261106093324_staff_jit_role_permissions.sql",
   "20261106113000_admin_support_queue_pagination.sql",
   "20261106115747_staff_jit_kyc_operation_tickets.sql",
+  "20261114051117_support_chatbot_recommendation_snapshots.sql",
+  "20261114071657_admin_recommendation_stats.sql",
+  "20261114071709_admin_withdrawal_filtered_summary.sql",
+  "20261114070939_admin_order_money_reconciliation.sql",
 ];
 
 function migrationFiles() {

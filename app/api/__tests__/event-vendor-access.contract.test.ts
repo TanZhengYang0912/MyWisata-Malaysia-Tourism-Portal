@@ -20,6 +20,8 @@ const EVENT_VENDOR_ALLOWED = [
   "app/api/vendors/[vendorId]/campaign-registrations/route.ts",
   "app/api/vendors/[vendorId]/event-orders/route.ts",
   "app/api/vendors/[vendorId]/event-promotions/upload/route.ts",
+  "app/api/vendors/[vendorId]/event-staff/[campaignId]/members/[memberId]/route.ts",
+  "app/api/vendors/[vendorId]/event-staff/[campaignId]/route.ts",
   "app/api/vendors/[vendorId]/pickup-slots/[slotId]/route.ts",
   "app/api/vendors/[vendorId]/pickup-slots/route.ts",
   "app/api/vendors/[vendorId]/redemptions/route.ts",

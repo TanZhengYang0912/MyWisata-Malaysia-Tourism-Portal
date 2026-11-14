@@ -121,7 +121,7 @@ export function VoucherRedeemDialog({
                   type="button"
                   onClick={() => setCodeType("qr")}
                   className={`max-sm:min-h-11 rounded-lg px-4 transition ${
-                    codeType === "qr" ? "bg-white dark:bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    codeType === "qr" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {tCustomer("ui.voucherHub.barcodeModal.qrCode")}
@@ -130,7 +130,7 @@ export function VoucherRedeemDialog({
                   type="button"
                   onClick={() => setCodeType("barcode")}
                   className={`max-sm:min-h-11 rounded-lg px-4 transition ${
-                    codeType === "barcode" ? "bg-white dark:bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    codeType === "barcode" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {tCustomer("ui.voucherHub.barcodeModal.barcode")}

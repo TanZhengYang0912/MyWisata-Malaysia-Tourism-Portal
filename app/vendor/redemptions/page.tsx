@@ -165,7 +165,7 @@ export default function VendorRedemptionsPage() {
             type="button"
             onClick={() => loadRedemptions(page)}
             disabled={loading}
-            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
+            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-gray-200 dark:border-border bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             <span>{t('actions.refresh', 'Refresh')}</span>
@@ -184,27 +184,27 @@ export default function VendorRedemptionsPage() {
 
       {/* KPI Cards */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.totalRedemptions', 'Total Redemptions')}</p>
           <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">{stats.totalCount}</p>
           <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.allTime', 'All recorded scans')}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.todayScans', "Today's Scans")}</p>
           <p className="mt-1 text-2xl font-bold text-primary">{stats.todayCount}</p>
           <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.redeemedToday', 'Redeemed today')}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.vouchersUsed', 'Vouchers Redeemed')}</p>
           <p className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-300">{stats.voucherCount}</p>
           <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.storePromos', 'Store vouchers')}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.ticketsAdmitted', 'Tickets Admitted')}</p>
           <p className="mt-1 text-2xl font-bold text-[#b45309]">{stats.ticketCount}</p>
           <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.checkedInGuests', 'Guest check-ins')}</p>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm">
           <p className="text-xs font-medium text-gray-500 dark:text-muted-foreground">{t('ui.redemptions.retailPickups', 'Retail pickups')}</p>
           <p className="mt-1 text-2xl font-bold text-primary">{stats.retailCount}</p>
           <p className="mt-1 text-xs text-gray-400 dark:text-muted-foreground">{t('ui.redemptions.retailItemsHandedOver', 'Order lines handed over')}</p>
@@ -213,10 +213,10 @@ export default function VendorRedemptionsPage() {
 
       <div className="flex justify-end md:hidden">
         <details className="group relative">
-          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 [&::-webkit-details-marker]:hidden">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 [&::-webkit-details-marker]:hidden">
             <MoreHorizontal size={17} aria-hidden="true" /> {t('actions.moreActions')}
           </summary>
-          <div className="absolute right-0 z-20 mt-2 flex w-52 flex-col gap-1 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card p-2 shadow-xl">
+          <div className="absolute right-0 z-20 mt-2 flex w-52 flex-col gap-1 rounded-xl border border-gray-200 dark:border-border bg-card p-2 shadow-xl">
             <button type="button" onClick={() => loadRedemptions(page)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
               <RefreshCw size={15} aria-hidden="true" className={loading ? 'animate-spin' : ''} /> {t('actions.refresh')}
             </button>
@@ -228,7 +228,7 @@ export default function VendorRedemptionsPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <section className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+      <section className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
           {/* Kind Filter Pills */}
           <div className="inline-flex max-w-full shrink-0 flex-nowrap overflow-x-auto rounded-xl bg-gray-100 dark:bg-muted p-1 text-xs font-semibold">
@@ -249,7 +249,7 @@ export default function VendorRedemptionsPage() {
                   setPage(1);
                 }}
                 className={`min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 transition ${
-                  kindFilter === item.value ? 'bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm' : 'text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground'
+                  kindFilter === item.value ? 'bg-card text-gray-900 dark:text-foreground shadow-sm' : 'text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground'
                 }`}
               >
                 {item.label}
@@ -267,7 +267,7 @@ export default function VendorRedemptionsPage() {
               setPage(1);
             }}
             aria-label={t('ui.redemptions.allOutlets', 'All Outlets')}
-            className="hidden h-11 min-w-0 max-w-xs rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-semibold text-gray-700 dark:text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary lg:block"
+            className="hidden h-11 min-w-0 max-w-xs rounded-xl border border-gray-200 dark:border-border bg-card px-3 text-sm font-semibold text-gray-700 dark:text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary lg:block"
           >
             <option value="">{t('ui.redemptions.allOutlets', 'All Outlets')}</option>
             {outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}
@@ -287,7 +287,7 @@ export default function VendorRedemptionsPage() {
             }}
             placeholder={t('ui.redemptions.searchPlaceholder', 'Search code, item, staff...')}
             aria-label={t('ui.redemptions.searchPlaceholder', 'Search code, item, staff...')}
-            className="h-11 w-full rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card pl-9 pr-3 text-sm text-gray-800 dark:text-foreground outline-none placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+            className="h-11 w-full rounded-xl border border-gray-200 dark:border-border bg-card pl-9 pr-3 text-sm text-gray-800 dark:text-foreground outline-none placeholder:text-gray-400 dark:placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary"
           />
           </label>
           {outlets.length > 1 && (
@@ -309,7 +309,7 @@ export default function VendorRedemptionsPage() {
                 setPage(1);
               }}
               aria-label={t('ui.redemptions.allOutlets', 'All Outlets')}
-              className="h-11 w-full min-w-0 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-semibold text-gray-700 dark:text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-11 w-full min-w-0 rounded-xl border border-gray-200 dark:border-border bg-card px-3 text-sm font-semibold text-gray-700 dark:text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             >
               <option value="">{t('ui.redemptions.allOutlets', 'All Outlets')}</option>
               {outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}
@@ -319,7 +319,7 @@ export default function VendorRedemptionsPage() {
       </section>
 
       {/* Main Table */}
-      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-card shadow-sm">
         {loading ? (
           <div className="p-8 text-center text-sm text-gray-500 dark:text-muted-foreground">
             <RefreshCw size={24} className="mx-auto mb-2 animate-spin text-primary" />

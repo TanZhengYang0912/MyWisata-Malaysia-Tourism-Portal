@@ -681,11 +681,11 @@ export default function VendorBookingsPage() {
               type="button"
               onClick={handleExportBookings}
               disabled={loading || bookings.length === 0}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40"
             >
               <Download size={16} /> {t("actions.exportCsv")}
             </button>
-            <button type="button" onClick={handleExportReadableBookings} disabled={loading || bookings.length === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
+            <button type="button" onClick={handleExportReadableBookings} disabled={loading || bookings.length === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-card px-3.5 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
               <Download size={16} /> {t("actions.exportReadableCsv")}
             </button>
             </>
@@ -701,7 +701,7 @@ export default function VendorBookingsPage() {
       />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm">
           <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.status.confirmed")}</p>
           <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">
             {stats.confirmed || 0}
@@ -710,7 +710,7 @@ export default function VendorBookingsPage() {
             {t("ui.bookings.currentFilter")}
           </p>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm">
           <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.status.checked_in")}</p>
           <p className="mt-1 text-2xl font-bold text-primary">
             {stats.checked_in || 0}
@@ -719,7 +719,7 @@ export default function VendorBookingsPage() {
             {t("ui.bookings.currentFilter")}
           </p>
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-4 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-4 shadow-sm">
           <p className="text-xs text-gray-500 dark:text-muted-foreground">{t("ui.status.cancelled")}</p>
           <p className="mt-1 text-2xl font-bold text-gray-950 dark:text-foreground">
             {stats.cancelled || 0}
@@ -761,10 +761,10 @@ export default function VendorBookingsPage() {
             )}
             {tab === "reservations" && (
               <details className="group relative shrink-0">
-                <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 [&::-webkit-details-marker]:hidden">
+                <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-border bg-card px-3.5 text-sm font-semibold text-gray-700 dark:text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 [&::-webkit-details-marker]:hidden">
                   <MoreHorizontal size={17} aria-hidden="true" /> {t("actions.moreActions")}
                 </summary>
-                <div className="absolute right-0 z-20 mt-2 flex w-60 flex-col gap-1 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card p-2 shadow-xl">
+                <div className="absolute right-0 z-20 mt-2 flex w-60 flex-col gap-1 rounded-xl border border-gray-200 dark:border-border bg-card p-2 shadow-xl">
                   <button type="button" onClick={handleExportBookings} disabled={loading || bookings.length === 0} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50 disabled:opacity-40">
                     <Download size={16} aria-hidden="true" /> {t("actions.exportCsv")}
                   </button>
@@ -778,20 +778,20 @@ export default function VendorBookingsPage() {
         )}
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm">
+      <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 dark:border-border bg-card p-3 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex rounded-xl bg-gray-100 dark:bg-muted p-1">
             <button
               type="button"
               onClick={() => switchTab("reservations")}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${tab === "reservations" ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground"}`}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${tab === "reservations" ? "bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground"}`}
             >
               <Users size={15} /> {t("ui.bookings.reservations")}
             </button>
             <button
               type="button"
               onClick={() => switchTab("operating-hours")}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${tab === "operating-hours" ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground"}`}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${tab === "operating-hours" ? "bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground"}`}
             >
               <Clock3 size={15} /> {t("ui.bookings.operatingHours")}
             </button>
@@ -811,7 +811,7 @@ export default function VendorBookingsPage() {
                   onClick={() =>
                     setFilters((current) => ({ ...current, status: f.value }))
                   }
-                  className={`min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold ${filters.status === f.value ? "bg-white dark:bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"}`}
+                  className={`min-h-10 shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold ${filters.status === f.value ? "bg-card text-gray-900 dark:text-foreground shadow-sm" : "text-gray-500 dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground"}`}
                 >
                   {f.label}
                 </button>
@@ -844,7 +844,7 @@ export default function VendorBookingsPage() {
             value={filters.outletId}
             onChange={(event) => setOutletFilter(event.target.value)}
             aria-label={t("ui.bookings.allOutlets")}
-            className="h-11 min-w-0 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm text-gray-600 dark:text-muted-foreground outline-none focus:border-primary"
+            className="h-11 min-w-0 rounded-xl border border-gray-200 dark:border-border bg-card px-3 text-sm text-gray-600 dark:text-muted-foreground outline-none focus:border-primary"
           >
             <option value="">{t("ui.bookings.allOutlets")}</option>
             {outlets.map((outlet) => (
@@ -858,7 +858,7 @@ export default function VendorBookingsPage() {
               value={filters.productId}
               onChange={(event) => setFilters((current) => ({ ...current, productId: event.target.value }))}
               aria-label={t("ui.bookings.allExperiences")}
-              className="h-11 min-w-0 rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm text-gray-600 dark:text-muted-foreground outline-none focus:border-primary"
+              className="h-11 min-w-0 rounded-xl border border-gray-200 dark:border-border bg-card px-3 text-sm text-gray-600 dark:text-muted-foreground outline-none focus:border-primary"
             >
               <option value="">{t("ui.bookings.allExperiences")}</option>
               {filteredProducts.map((product) => (
@@ -870,11 +870,11 @@ export default function VendorBookingsPage() {
             <>
               <label className="min-w-0 text-xs font-medium text-gray-500 dark:text-muted-foreground">
                 {t("ui.orders.fromDate")}
-                <input type="date" value={filters.from} onFocus={primeDateRange} onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))} className="mt-1 h-11 w-full rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm text-gray-700 dark:text-foreground" />
+                <input type="date" value={filters.from} onFocus={primeDateRange} onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))} className="mt-1 h-11 w-full rounded-xl border border-gray-200 dark:border-border bg-card px-3 text-sm text-gray-700 dark:text-foreground" />
               </label>
               <label className="min-w-0 text-xs font-medium text-gray-500 dark:text-muted-foreground">
                 {t("ui.orders.toDate")}
-                <input type="date" value={filters.to} onFocus={primeDateRange} onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))} className="mt-1 h-11 w-full rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm text-gray-700 dark:text-foreground" />
+                <input type="date" value={filters.to} onFocus={primeDateRange} onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))} className="mt-1 h-11 w-full rounded-xl border border-gray-200 dark:border-border bg-card px-3 text-sm text-gray-700 dark:text-foreground" />
               </label>
             </>
           )}
@@ -938,7 +938,7 @@ export default function VendorBookingsPage() {
       )}
 
       {tab === "reservations" ? (
-        <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm">
+        <section className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-card shadow-sm">
           <div className="flex items-center justify-between border-b border-gray-100 dark:border-border px-5 py-3 text-xs text-gray-500 dark:text-muted-foreground">
             <label className="inline-flex items-center gap-2 font-semibold">
               <input
@@ -1183,7 +1183,7 @@ export default function VendorBookingsPage() {
 
       {showSlotForm && vendorId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/35 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white dark:bg-card p-6 shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-card p-6 shadow-2xl">
             <SlotForm
               vendorId={vendorId}
               outlets={outlets}
@@ -1205,7 +1205,7 @@ export default function VendorBookingsPage() {
         >
           <aside
             onClick={(event) => event.stopPropagation()}
-            className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white dark:bg-card p-6 shadow-2xl"
+            className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-card p-6 shadow-2xl"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -1383,7 +1383,7 @@ function WeeklyOperatingHoursRow({
       </div>
 
       <label
-        className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold transition ${isOpen ? "border-primary/15 bg-secondary/60 text-primary" : "border-gray-200 dark:border-border bg-white dark:bg-card text-gray-500 dark:text-muted-foreground"} ${canEdit ? "cursor-pointer" : "cursor-not-allowed opacity-70"}`}
+        className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold transition ${isOpen ? "border-primary/15 bg-secondary/60 text-primary" : "border-gray-200 dark:border-border bg-card text-gray-500 dark:text-muted-foreground"} ${canEdit ? "cursor-pointer" : "cursor-not-allowed opacity-70"}`}
       >
         <input
           type="checkbox"
@@ -1396,7 +1396,7 @@ function WeeklyOperatingHoursRow({
 
       <div className="flex min-w-0 items-center gap-2">
         <label
-          className={`min-w-0 flex-1 rounded-xl border px-2 ${isOpen ? "border-gray-200 dark:border-border bg-white dark:bg-card shadow-sm" : "border-gray-100 bg-white/70 dark:bg-card/70"}`}
+          className={`min-w-0 flex-1 rounded-xl border px-2 ${isOpen ? "border-gray-200 dark:border-border bg-card shadow-sm" : "border-gray-100 bg-white/70 dark:bg-card/70"}`}
         >
           <span className="sr-only">{labels.opensAt}</span>
           <input
@@ -1414,7 +1414,7 @@ function WeeklyOperatingHoursRow({
           –
         </span>
         <label
-          className={`min-w-0 flex-1 rounded-xl border px-2 ${isOpen ? "border-gray-200 dark:border-border bg-white dark:bg-card shadow-sm" : "border-gray-100 bg-white/70 dark:bg-card/70"}`}
+          className={`min-w-0 flex-1 rounded-xl border px-2 ${isOpen ? "border-gray-200 dark:border-border bg-card shadow-sm" : "border-gray-100 bg-white/70 dark:bg-card/70"}`}
         >
           <span className="sr-only">{labels.closesAt}</span>
           <input
@@ -1507,7 +1507,7 @@ function OperatingHoursPanel({
       }
     >
       {showOutletSelector && (
-        <aside className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-3 shadow-sm">
+        <aside className="rounded-2xl border border-gray-100 dark:border-border bg-card p-3 shadow-sm">
           <div className="flex items-center justify-between px-2 pb-3">
             <div>
               <p className="text-sm font-semibold text-gray-900 dark:text-foreground">
@@ -1557,7 +1557,7 @@ function OperatingHoursPanel({
         </aside>
       )}
       <div className="space-y-5">
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-5 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-5 shadow-sm">
           <div className="flex flex-col gap-3 border-b border-gray-100 dark:border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
@@ -1586,7 +1586,7 @@ function OperatingHoursPanel({
                 <button
                   type="button"
                   onClick={() => setScheduleEditorOpen((current) => !current)}
-                  className="inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-card px-3 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50"
+                  className="inline-flex items-center justify-center rounded-xl border border-gray-200 dark:border-border bg-card px-3 py-2.5 text-sm font-semibold text-gray-700 dark:text-foreground hover:bg-gray-50 dark:hover:bg-muted/50"
                 >
                   {isScheduleEditorOpen
                     ? t("ui.bookings.doneEditing")
@@ -1672,7 +1672,7 @@ function OperatingHoursPanel({
             </p>
           )}
         </div>
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card p-5 shadow-sm">
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-5 shadow-sm">
           <div className="flex flex-col gap-4 border-b border-gray-100 dark:border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-200">
@@ -1714,21 +1714,21 @@ function OperatingHoursPanel({
               <button
                 type="button"
                 onClick={() => addShortcutExceptions("today")}
-                className="rounded-lg bg-white dark:bg-card px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-foreground shadow-sm ring-1 ring-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10"
+                className="rounded-lg bg-card px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-foreground shadow-sm ring-1 ring-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10"
               >
                 {t("ui.bookings.today")}
               </button>
               <button
                 type="button"
                 onClick={() => addShortcutExceptions("tomorrow")}
-                className="rounded-lg bg-white dark:bg-card px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-foreground shadow-sm ring-1 ring-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10"
+                className="rounded-lg bg-card px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-foreground shadow-sm ring-1 ring-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10"
               >
                 {t("ui.bookings.tomorrow")}
               </button>
               <button
                 type="button"
                 onClick={() => addShortcutExceptions("weekend")}
-                className="rounded-lg bg-white dark:bg-card px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-foreground shadow-sm ring-1 ring-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10"
+                className="rounded-lg bg-card px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-foreground shadow-sm ring-1 ring-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10"
               >
                 {t("ui.bookings.thisWeekend")}
               </button>
@@ -1761,7 +1761,7 @@ function OperatingHoursPanel({
                           ),
                         )
                       }
-                      className="h-10 w-full rounded-lg border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-medium text-gray-900 dark:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                      className="h-10 w-full rounded-lg border border-gray-200 dark:border-border bg-card px-3 text-sm font-medium text-gray-900 dark:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                     />
                   </label>
                   <div
@@ -1785,7 +1785,7 @@ function OperatingHoursPanel({
                       className={
                         exception.closed
                           ? "rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
-                          : "rounded-lg bg-white dark:bg-card px-3 py-2 text-xs font-semibold text-gray-600 dark:text-muted-foreground ring-1 ring-gray-200 transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-60"
+                          : "rounded-lg bg-card px-3 py-2 text-xs font-semibold text-gray-600 dark:text-muted-foreground ring-1 ring-gray-200 transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-60"
                       }
                     >
                       {t("ui.bookings.closedAllDay")}
@@ -1806,7 +1806,7 @@ function OperatingHoursPanel({
                       className={
                         !exception.closed
                           ? "rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
-                          : "rounded-lg bg-white dark:bg-card px-3 py-2 text-xs font-semibold text-gray-600 dark:text-muted-foreground ring-1 ring-gray-200 transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-60"
+                          : "rounded-lg bg-card px-3 py-2 text-xs font-semibold text-gray-600 dark:text-muted-foreground ring-1 ring-gray-200 transition hover:bg-gray-50 dark:hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-60"
                       }
                     >
                       {t("ui.bookings.customHours")}
@@ -1844,7 +1844,7 @@ function OperatingHoursPanel({
                             ),
                           )
                         }
-                        className="mt-1 h-10 w-full rounded-lg border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-medium text-gray-900 dark:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                        className="mt-1 h-10 w-full rounded-lg border border-gray-200 dark:border-border bg-card px-3 text-sm font-medium text-gray-900 dark:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                       />
                     </label>
                     <label className="text-xs font-semibold text-gray-600 dark:text-muted-foreground">
@@ -1862,7 +1862,7 @@ function OperatingHoursPanel({
                             ),
                           )
                         }
-                        className="mt-1 h-10 w-full rounded-lg border border-gray-200 dark:border-border bg-white dark:bg-card px-3 text-sm font-medium text-gray-900 dark:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                        className="mt-1 h-10 w-full rounded-lg border border-gray-200 dark:border-border bg-card px-3 text-sm font-medium text-gray-900 dark:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                       />
                     </label>
                   </div>
@@ -1877,7 +1877,7 @@ function OperatingHoursPanel({
           </div>
         </div>
         <div
-          className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-white dark:bg-card shadow-sm"
+          className="overflow-hidden rounded-2xl border border-gray-100 dark:border-border bg-card shadow-sm"
           data-booking-slot-list
         >
           <div className="flex items-center justify-between border-b border-gray-100 dark:border-border bg-gray-50/70 dark:bg-muted/70 px-5 py-3">

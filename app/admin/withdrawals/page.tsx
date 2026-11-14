@@ -45,10 +45,12 @@ export default function AdminWithdrawalsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(15);
   const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState({ payoutValueSen: 0, highRiskCount: 0, overdueCount: 0 });
   const [totalPages, setTotalPages] = useState(0);
   const [status, setStatus] = useState("review");
   const [risk, setRisk] = useState("");
   const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [referenceNow, setReferenceNow] = useState<number | null>(null);
 
@@ -61,11 +63,12 @@ export default function AdminWithdrawalsPage() {
       if (search.trim()) params.set("search", search.trim());
       const response = await fetch(`/api/admin/withdrawals?${params.toString()}`, { cache: "no-store", signal });
       if (response.status === 401 || response.status === 403) { setItems([]); throw Object.assign(new Error(t("reviewRefresh.denied")), { status: response.status }); }
-      const body = await response.json() as { data?: { items: WithdrawalListItem[]; total: number; totalPages: number }; error?: { message?: string } };
+      const body = await response.json() as { data?: { items: WithdrawalListItem[]; total: number; totalPages: number; summary: typeof summary }; error?: { message?: string } };
       if (!response.ok || !body.data) throw new Error(body.error?.message ?? t("withdrawals.errors.loadRequests"));
       setItems(body.data.items);
       setTotal(body.data.total);
       setTotalPages(body.data.totalPages);
+      setSummary(body.data.summary);
       setReferenceNow(Date.now());
     } catch (loadError) {
       if (signal) throw loadError;
@@ -90,9 +93,6 @@ export default function AdminWithdrawalsPage() {
     return t("withdrawals.age.daysHours", { days: Math.floor(hours / 24), hours: hours % 24 });
   };
 
-  const visiblePayoutValue = items.reduce((sum, item) => sum + item.amountSen, 0);
-  const visibleHighRisk = items.filter((item) => item.riskLevel === "high").length;
-  const visibleOverdue = items.filter((item) => item.status === "overdue").length;
 
   return (
     <AdminPageShell>
@@ -110,14 +110,14 @@ export default function AdminWithdrawalsPage() {
       <div aria-label={t("withdrawals.accessibility.reviewSummary")}>
         <AdminMetricGrid items={[
           { label: t("withdrawals.metrics.needsAction"), value: total },
-          { label: t("withdrawals.metrics.pendingPayoutValue"), value: formatMYRFromSen(visiblePayoutValue, locale) },
-          { label: t("withdrawals.metrics.highRisk"), value: visibleHighRisk },
-          { label: t("withdrawals.metrics.overdue"), value: visibleOverdue },
+          { label: t("withdrawals.metrics.pendingPayoutValue"), value: formatMYRFromSen(summary.payoutValueSen, locale) },
+          { label: t("withdrawals.metrics.highRisk"), value: summary.highRiskCount },
+          { label: t("withdrawals.metrics.overdue"), value: summary.overdueCount },
         ]} />
       </div>
 
       <AdminFilterBar>
-        <div className="relative min-w-[220px] flex-1"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { setPage(1); void loadList(); } }} placeholder={t("withdrawals.filters.searchCustomerOrEmail")} className={`${adminFilterControlClassName} w-full pl-9`} /></div>
+        <div className="relative min-w-[220px] flex-1"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { setPage(1); setSearch(searchInput.trim()); } }} placeholder={t("withdrawals.filters.searchCustomerOrEmail")} className={`${adminFilterControlClassName} w-full pl-9`} /></div>
         <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className={adminFilterControlClassName}><option value="">{t("withdrawals.filters.allStatuses")}</option>{STATUS_OPTIONS.map((item) => <option key={item.value} value={item.value}>{t(item.labelKey)}</option>)}</select>
         <select value={risk} onChange={(event) => { setRisk(event.target.value); setPage(1); }} className={adminFilterControlClassName}><option value="">{t("withdrawals.filters.allRiskLevels")}</option><option value="low">{t("withdrawals.risk.low")}</option><option value="review">{t("withdrawals.risk.review")}</option><option value="high">{t("withdrawals.risk.high")}</option></select>
         <select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value) as (typeof PAGE_SIZES)[number]); setPage(1); }} className={adminFilterControlClassName}>{PAGE_SIZES.map((size) => <option key={size} value={size}>{t("withdrawals.filters.perPage", { count: size })}</option>)}</select>

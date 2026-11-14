@@ -124,6 +124,7 @@ export const PRIOR_TASK_FILES = [
   "components/admin/access-control/staff-modules-panel.tsx",
   "components/admin/access-control/staff-roles-tab.tsx",
   "components/admin/access-control/types.ts",
+  "components/admin/admin-ai-action-card.tsx",
   "components/admin/admin-ai-message.tsx",
   "components/admin/admin-page-shell.tsx",
   "components/admin/batch-action-bar.tsx",

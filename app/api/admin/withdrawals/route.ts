@@ -58,13 +58,29 @@ export async function GET(request: Request) {
     // PostgREST's `or` grammar treats commas and parentheses as operators;
     // strip them before interpolating the user-supplied search term.
     const safeSearch = postgrestSearchTerm(search);
-    if (safeSearch) query = query.or(`users.full_name.ilike.%${safeSearch}%,users.email.ilike.%${safeSearch}%`);
+    // The name/email columns belong to the joined (inner) users relation, so the filter must be scoped
+    // to it with referencedTable. Qualifying the columns as `users.full_name` inside or() cannot be
+    // parsed by PostgREST and made every search return 500.
+    if (safeSearch) query = query.or(`full_name.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`, { referencedTable: 'users' });
   }
 
-  const { data, count, error } = await query;
+  const [listResult, summaryResult] = await Promise.all([
+    query,
+    service.rpc('get_admin_withdrawal_filter_summary', {
+      p_statuses: status === 'review' ? [...WITHDRAWAL_REVIEW_STATUSES] : status ? [status] : null,
+      p_risk_level: risk ?? null,
+      p_search: search ? postgrestSearchTerm(search) || null : null,
+    }),
+  ]);
+  const { data, count, error } = listResult;
   if (error) {
     console.error('[admin-withdrawals-list]', error);
     return apiFail('LIST_FAILED', 'Failed to load withdrawals', 500);
+  }
+
+  if (summaryResult.error || !summaryResult.data || typeof summaryResult.data !== 'object') {
+    console.error('[admin-withdrawals-summary]', summaryResult.error);
+    return apiFail('SUMMARY_FAILED', 'Unable to load withdrawal summary', 500);
   }
 
   const items = ((data ?? []) as Record<string, unknown>[]).map((row) => {
@@ -90,9 +106,17 @@ export async function GET(request: Request) {
   });
 
   const total = count ?? 0;
+  const summary = summaryResult.data as Record<string, unknown>;
+  const payoutValueSen = Number(summary.payoutValueSen);
+  const highRiskCount = Number(summary.highRiskCount);
+  const overdueCount = Number(summary.overdueCount);
+  if (![payoutValueSen, highRiskCount, overdueCount].every(Number.isSafeInteger) || [payoutValueSen, highRiskCount, overdueCount].some((value) => value < 0)) {
+    return apiFail('SUMMARY_FAILED', 'Unable to load withdrawal summary', 500);
+  }
   const payload: WithdrawalListResponse = {
     items,
     total,
+    summary: { payoutValueSen, highRiskCount, overdueCount },
     page,
     pageSize,
     totalPages: Math.ceil(total / pageSize),

@@ -1031,16 +1031,87 @@
   "aiAssistant": {
     "ask": {
       "clear": "Kosongkan sembang",
-      "empty": "cth. “Berapa banyak cadangan yang menunggu minggu ini?” atau “Tunjukkan pengeluaran melebihi 500”. Jawapan hanya datang daripada pertanyaan agregat berdaftar — bukan data pelanggan mentah.",
+      "empty": "cth. “Berapa banyak pengeluaran yang belum selesai?”, “Bagaimana saya meluluskan bayaran balik?” atau “Tandakan tiket pembayaran terbuka sebagai sedang diproses”. Tiada apa-apa berubah sehingga anda menekan Sahkan pada kad.",
       "placeholder": "Tanya soalan…",
+      "send": "Hantar",
       "restoring": "Memulihkan perbualan…",
-      "title": "Tanya tentang metrik platform"
+      "title": "Tanya pembantu"
     },
     "errors": {
       "unavailable": "Pembantu tidak tersedia buat masa ini."
     },
     "restricted": "Pembantu AI terhad kepada pentadbir super.",
-    "title": "Pembantu AI"
+    "title": "Pembantu AI",
+    "actions": {
+      "create_kb_entry": "Tambah entri pangkalan pengetahuan (disimpan dimatikan)",
+      "set_kb_entry_active": "Hidupkan atau matikan entri pangkalan pengetahuan",
+      "reindex_kb": "Indeks semula pangkalan pengetahuan",
+      "update_ticket": "Kemas kini tiket sokongan",
+      "reply_to_ticket": "Balas kepada pelanggan",
+      "mark_notifications_read": "Tandakan semua pemberitahuan dibaca",
+      "claim_event_exception": "Tuntut kes pengecualian acara",
+      "add_hotel_amenity": "Tambah kemudahan hotel",
+      "set_hotel_amenity_active": "Hidupkan atau matikan kemudahan hotel",
+      "add_moderation_word": "Tambah perkataan moderasi",
+      "set_moderation_word_active": "Hidupkan atau matikan perkataan moderasi",
+      "send_vendor_announcement": "Hantar pengumuman kepada semua vendor",
+      "vendor_request_information": "Minta maklumat lanjut daripada pemohon vendor",
+      "recommendation_request_changes": "Minta perubahan pada cadangan",
+      "review_catalogue_item": "Semak item katalog",
+      "resolve_chat_report": "Tutup laporan sembang",
+      "set_event_ad_paused": "Jeda atau sambung iklan acara",
+      "pause_sponsored_ad": "Jeda iklan tajaan",
+      "change_stall_number": "Tukar nombor gerai"
+    },
+    "fields": {
+      "title": "Tajuk",
+      "body": "Kandungan",
+      "keywords": "Kata kunci",
+      "entry": "Entri",
+      "active": "Tetapkan",
+      "ticket": "Tiket",
+      "status": "Status tiket",
+      "category": "Kategori",
+      "message": "Mesej",
+      "case": "Kes",
+      "dueDate": "Tarikh akhir",
+      "code": "Kod",
+      "labelEn": "Label (Inggeris)",
+      "labelMs": "Label (Melayu)",
+      "labelZh": "Label (Cina)",
+      "icon": "Ikon",
+      "term": "Perkataan",
+      "language": "Bahasa",
+      "vendor": "Penjual",
+      "reason": "Sebab",
+      "recommendation": "Cadangan",
+      "note": "Nota dalaman",
+      "item": "Item katalog",
+      "decision": "Keputusan",
+      "report": "Laporan",
+      "outcome": "Hasil",
+      "ad": "Iklan",
+      "change": "Perubahan",
+      "stallNumber": "Gerai"
+    },
+    "card": {
+      "pending": "Menunggu pengesahan anda",
+      "confirm": "Sahkan",
+      "cancel": "Batal",
+      "running": "Sedang dijalankan…",
+      "done": "Selesai",
+      "cancelled": "Dibatalkan",
+      "failed": "Gagal",
+      "on": "Hidup",
+      "off": "Mati",
+      "open": "Buka halaman"
+    },
+    "choices": {
+      "name": "Nama",
+      "active": "Keadaan",
+      "save_one": "Simpan {{count}} perubahan",
+      "save_other": "Simpan {{count}} perubahan"
+    }
   },
   "catalogue": {
     "accessibility": {
@@ -1477,6 +1548,7 @@
     "openItems_other": "{{count}} item terbuka",
     "walletPending_one": "{{count}} permintaan memerlukan keputusan, dengan {{amount}} dalam semakan.",
     "walletPending_other": "{{count}} permintaan memerlukan keputusan, dengan {{amount}} dalam semakan.",
+    "someSourcesUnavailable": "Sesetengah sumber tidak tersedia",
     "queueUnavailable": "Data barisan tidak tersedia buat sementara waktu",
     "staleData": "Muat semula gagal. Memaparkan hasil terakhir yang berjaya."
   },
@@ -1861,7 +1933,8 @@
   "reconciliation": {
     "eyebrow": "Ke mana wang pergi",
     "title": "Pecahan wang pesanan",
-    "description": "Pecahan setiap pesanan: bayaran pelanggan, amaun bersih vendor, komisen platform, dan jumlah yang digunakan untuk membayar komisen afiliasi dan komisen rujukan.",
+    "description": "Pecahan agihan dalaman setiap pesanan daripada penyelesaian platform, komisen afiliasi dan komisen rujukan.",
+    "scope": "Laporan agihan dalaman. Tidak dipadankan dengan penyata bank atau Stripe.",
     "month": "Bulan",
     "reload": "Muat semula",
     "loading": "Memuatkan…",
@@ -1871,10 +1944,11 @@
     "negativeWarning_one": "{{count}} pesanan membayar lebih banyak komisen rujukan daripada pendapatan platform — dijangka untuk bonus jualan pertama, ditunjukkan di sini untuk ketelusan.",
     "negativeWarning_other": "{{count}} pesanan membayar lebih banyak komisen rujukan daripada pendapatan platform — dijangka untuk bonus jualan pertama, ditunjukkan di sini untuk ketelusan.",
     "errors": {
-      "load": "Tidak dapat memuatkan laporan penyata."
+      "load": "Tidak dapat memuatkan laporan penyata.",
+      "exportLimit": "Kecilkan penapis untuk mengeksport 10,000 pesanan atau kurang."
     },
     "metrics": {
-      "gross": "Bayaran pelanggan",
+      "gross": "Jumlah kasar direkodkan",
       "platformFee": "Komisen platform",
       "vendorNet": "Bersih vendor",
       "affiliate": "Pembayaran komisen afiliasi",
@@ -1897,8 +1971,8 @@
       "unknownStatus": "Status lain",
       "orderWithoutNumber": "Nombor pesanan tidak tersedia",
       "noMatches": "Tiada pesanan sepadan dengan penapis ini.",
-      "scope": "Penapis kewangan digunakan pada jadual, jumlah dan CSV. Angka berdasarkan data penyelesaian yang dimuatkan.",
-      "count": "Memaparkan {{shown}} daripada {{total}} pesanan yang dimuatkan.",
+      "scope": "Penapis digunakan pada baris, jumlah dan CSV yang dikira pada pelayan.",
+      "count": "Memaparkan {{shown}} daripada {{total}} pesanan yang sepadan.",
       "net": {
         "all": "Semua amaun bersih",
         "positive": "Positif",
@@ -2276,6 +2350,7 @@
       "batch": {
         "confirm": "{{action}} {{count}} akaun pengguna yang dipilih?",
         "failed": "Satu atau lebih tindakan pengguna gagal.",
+        "outcomes": "{{applied}} berjaya, {{rejected}} ditolak, {{unknown}} perlu disahkan. Senarai telah dimuat semula.",
         "noCommonAction": "Tiada satu tindakan akaun yang sah untuk setiap pengguna yang dipilih.",
         "processed": "{{count}} akaun pengguna telah diproses.",
         "reasonError": "Sebab sekurang-kurangnya 10 aksara diperlukan.",

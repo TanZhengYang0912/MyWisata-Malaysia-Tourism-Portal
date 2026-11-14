@@ -20,6 +20,7 @@ import { formatEventDateRange, formatEventHours } from '@/lib/promotion-campaign
 import type { PromotionCampaignPublic } from '@/lib/promotion-campaigns/types';
 import { EventListingsManager, type RegistrationListing } from './event-listings-manager';
 import { PickupSlotsManager, type PickupSlot } from './pickup-slots-manager';
+import { EventStaffManager } from './event-staff-manager';
 import { VendorPageHeader } from '@/components/vendor/vendor-page-header';
 
 type ItemKind = 'product' | 'service';
@@ -104,6 +105,8 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
   const { user, isEventVendor } = useAuth();
   const { showFeedback } = useActionFeedback();
   const vendorId = user?.activeVendorId;
+  // Event staff links are owner-only (the API rejects outlet managers).
+  const isVendorOwner = user?.roles.some((role) => role === 'vendor_owner' || role === 'event_vendor') ?? false;
 
   const [campaign, setCampaign] = useState<PromotionCampaignPublic | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
@@ -420,6 +423,10 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
               <span>{formatDate(campaign.startsAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })} – {formatDate(campaign.endsAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })}</span>
             </div>
           </div>
+
+          {vendorId && isVendorOwner && registrations.some((entry) => entry.status === 'approved') && (
+            <EventStaffManager vendorId={vendorId} campaignId={id} />
+          )}
 
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">
             <div>

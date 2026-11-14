@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { callGemini } from '@/lib/admin-ai/gemini';
+import { callGemini, callGeminiAgent } from '@/lib/admin-ai/gemini';
 
 describe('callGemini multimodal payload', () => {
   afterEach(() => {
@@ -45,5 +45,53 @@ describe('callGemini text source', () => {
     await expect(callGemini('system', 'How many KYC submissions are pending?')).rejects.toThrow('sensitive_data_detected');
     await expect(callGemini('system', 'KYC for 990101-14-5678 please', { textSource: 'staff' })).rejects.toThrow('sensitive_data_detected');
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('callGeminiAgent', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete process.env.LLM_API_KEY;
+  });
+
+  it('checks tool results as well as questions, and echoes the model turn back unchanged', async () => {
+    process.env.LLM_API_KEY = 'test-key';
+    const modelParts = [{ functionCall: { name: 'run_query', args: { query: 'kyc_pending_count' } }, thoughtSignature: 'sig' }];
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ candidates: [{ content: { role: 'model', parts: modelParts } }] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const turn = await callGeminiAgent('system', [{ role: 'user', parts: [{ text: 'How many KYC submissions are pending?' }] }], []);
+    expect(turn.calls).toEqual([modelParts[0].functionCall]);
+    expect(turn.content.parts).toEqual(modelParts);
+
+    const leakingResult = { role: 'user' as const, parts: [{ functionResponse: { name: 'run_query', response: { phone: '012-3456789' } } }] };
+    await expect(callGeminiAgent('system', [leakingResult], [])).rejects.toThrow('sensitive_data_detected');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a stalled request or a 503 up to three times, but not a real error', async () => {
+    process.env.LLM_API_KEY = 'test-key';
+    const ok = () => new Response(JSON.stringify({ candidates: [{ content: { role: 'model', parts: [{ text: 'hi' }] } }] }), { status: 200 });
+    const abort = () => Object.assign(new Error('This operation was aborted'), { name: 'AbortError' });
+    const messages = [{ role: 'user' as const, parts: [{ text: 'hello there' }] }];
+
+    const stalled = vi.fn().mockRejectedValueOnce(abort()).mockResolvedValueOnce(ok());
+    vi.stubGlobal('fetch', stalled);
+    expect((await callGeminiAgent('system', messages, [])).text).toBe('hi');
+    expect(stalled).toHaveBeenCalledTimes(2);
+
+    const overloaded = vi.fn().mockResolvedValueOnce(new Response('', { status: 503 })).mockResolvedValueOnce(ok());
+    vi.stubGlobal('fetch', overloaded);
+    expect((await callGeminiAgent('system', messages, [])).text).toBe('hi');
+
+    const stalledAlways = vi.fn().mockRejectedValue(abort());
+    vi.stubGlobal('fetch', stalledAlways);
+    await expect(callGeminiAgent('system', messages, [])).rejects.toThrow('aborted');
+    expect(stalledAlways).toHaveBeenCalledTimes(3);
+
+    const rejected = vi.fn(async () => new Response('', { status: 400 }));
+    vi.stubGlobal('fetch', rejected);
+    await expect(callGeminiAgent('system', messages, [])).rejects.toThrow('HTTP 400');
+    expect(rejected).toHaveBeenCalledTimes(1);
   });
 });

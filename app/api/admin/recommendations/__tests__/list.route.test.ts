@@ -26,4 +26,11 @@ describe('GET /api/admin/recommendations contract', () => {
     expect(source).toContain('availableActions');
     expect(source).toContain('counts');
   });
+
+  it('gets exact statistics and state facets from a bounded database aggregate', () => {
+    expect(source).toContain("rpc('get_admin_recommendation_stats'");
+    expect(source).not.toContain('countQuery');
+    expect(source).not.toContain('allCountRows.reduce');
+    expect(source).toContain('searchTerm');
+  });
 });

@@ -109,6 +109,7 @@ export type WithdrawalListItem = {
 export type WithdrawalListResponse = {
   items: WithdrawalListItem[];
   total: number;
+  summary: { payoutValueSen: number; highRiskCount: number; overdueCount: number };
   page: number;
   pageSize: number;
   totalPages: number;

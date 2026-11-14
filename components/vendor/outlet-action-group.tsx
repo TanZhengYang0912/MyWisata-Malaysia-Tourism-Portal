@@ -22,7 +22,7 @@ const variantClasses: Record<OutletAction['variant'], string> = {
   primary: 'bg-primary text-white hover:bg-primary/90',
   secondary: 'border-primary/20 bg-secondary text-primary hover:bg-secondary/80',
   tertiary: 'text-primary hover:bg-secondary',
-  destructive: 'border-red-200 dark:border-red-500/30 bg-white dark:bg-card text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10',
+  destructive: 'border-red-200 dark:border-red-500/30 bg-card text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10',
 };
 
 export default function OutletActionGroup({ actions, ariaLabel, layout = 'card' }: Props) {

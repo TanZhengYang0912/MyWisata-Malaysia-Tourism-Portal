@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 
-const mocks = vi.hoisted(() => ({ createAuthClient: vi.fn(), getUser: vi.fn(), from: vi.fn(), rpc: vi.fn(), answer: vi.fn(), clean: vi.fn(), reserveQuota: vi.fn(), guestCredential: vi.fn(), tokenHash: vi.fn(), bindGuest: vi.fn(), messageInserts: [] as unknown[] }));
+const mocks = vi.hoisted(() => ({ createAuthClient: vi.fn(), getUser: vi.fn(), from: vi.fn(), rpc: vi.fn(), answer: vi.fn(), clean: vi.fn(), reserveQuota: vi.fn(), guestCredential: vi.fn(), tokenHash: vi.fn(), bindGuest: vi.fn(), catalogueData: vi.fn(), computeCatalogue: vi.fn(), callGemini: vi.fn(), messageInserts: [] as unknown[] }));
 function query(result: unknown) {
   const terminal = Promise.resolve(result);
   const builder: Record<string, ReturnType<typeof vi.fn>> = {};
-  for (const method of ['select', 'eq', 'insert', 'limit']) builder[method] = vi.fn(() => builder);
+  for (const method of ['select', 'eq', 'neq', 'in', 'order', 'insert', 'limit']) builder[method] = vi.fn(() => builder);
   builder.maybeSingle = vi.fn(() => terminal);
   builder.single = vi.fn(() => terminal);
   builder.then = terminal.then.bind(terminal) as ReturnType<typeof vi.fn>;
@@ -22,12 +22,16 @@ vi.mock('@/lib/chatbot/guest-session', () => ({
   hashChatbotGuestCredential: mocks.tokenHash,
   bindChatbotGuestSessionToken: mocks.bindGuest,
 }));
+vi.mock('@/lib/cache/catalogue-cache', () => ({ getCachedDiscoveryActivityData: mocks.catalogueData }));
+vi.mock('@/backend/domains/catalogue', () => ({ computeDiscoveryActivities: mocks.computeCatalogue }));
+vi.mock('@/lib/admin-ai/gemini', () => ({ callGemini: mocks.callGemini }));
 
 import { POST } from '../route';
 
 describe('POST /api/chatbot/ask session ownership', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
     mocks.messageInserts.length = 0;
     mocks.createAuthClient.mockResolvedValue({ auth: { getUser: mocks.getUser } });
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'attacker' } } });
@@ -41,7 +45,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
         data: { state: 'running', shouldExecute: true, leaseToken: 'lease-token' }, error: null,
       });
       if (name === 'mark_support_operation_external_started') return Promise.resolve({ data: true, error: null });
-      if (name === 'complete_chatbot_ask_operation_with_evidence') return Promise.resolve({ data: 'bot-message-1', error: null });
+      if (name === 'complete_chatbot_ask_operation_with_evidence' || name === 'complete_chatbot_ask_operation_with_recommendations') return Promise.resolve({ data: 'bot-message-1', error: null });
       return Promise.resolve({ data: true, error: null });
     });
     mocks.from.mockImplementation((table: string) => {
@@ -54,7 +58,9 @@ describe('POST /api/chatbot/ask session ownership', () => {
         ? { data: null, error: null }
         : messageQuery === 2
           ? { data: { id: 'user-message-1' }, error: null }
-          : { data: { id: 'bot-message-1' }, error: null };
+          : messageQuery === 3
+            ? { data: [], error: null }
+            : { data: { id: 'bot-message-1' }, error: null };
       const builder = query(result);
       builder.insert.mockImplementation((values: unknown) => {
         mocks.messageInserts.push(values);
@@ -192,12 +198,65 @@ describe('POST /api/chatbot/ask session ownership', () => {
 
     expect(mocks.answer).toHaveBeenCalledWith('Call me at [PHONE]', false);
     expect(body.data.privacyBlocked).toBe(true);
-    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation_with_evidence', expect.objectContaining({
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation_with_recommendations', expect.objectContaining({
       p_operation_id: expect.any(String),
       p_actor_key: 'user:victim',
       p_user_message_id: 'user-message-1',
     }));
     expect(mocks.messageInserts[0]).toEqual(expect.objectContaining({ body: 'Call me at [PHONE]', body_sanitized: true }));
+  });
+
+  it('asks for one product category with choices and stores the clarification in the chat turn', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'victim' } } });
+    mocks.clean.mockResolvedValue({
+      display: '可以推荐一些吗？', original: '可以推荐一些吗？',
+      hadProfanity: false, hadSlur: false, hadPII: false, severity: 'low',
+    });
+
+    const response = await POST(new Request('http://localhost/api/chatbot/ask', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionKey: 'victim-session', operationId: crypto.randomUUID(), question: '可以推荐一些吗？' }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.recommendationData).toMatchObject({ kind: 'clarification', question: 'category' });
+    expect(mocks.catalogueData).not.toHaveBeenCalled();
+    expect(mocks.answer).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation_with_recommendations', expect.objectContaining({
+      p_recommendation_data: { kind: 'clarification', question: 'category', options: ['food', 'activity', 'accommodation', 'retail'] },
+    }));
+  });
+
+  it('recommends only cached matching products when Gemini returns an unknown product id', async () => {
+    vi.stubEnv('LLM_API_KEY', 'test-gemini-key');
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'victim' } } });
+    mocks.clean.mockResolvedValue({
+      display: '推荐Penang适合小孩的活动，RM100以内', original: '推荐Penang适合小孩的活动，RM100以内',
+      hadProfanity: false, hadSlur: false, hadPII: false, severity: 'low',
+    });
+    mocks.catalogueData.mockResolvedValue({ activities: [], outlets: [] });
+    mocks.computeCatalogue.mockReturnValue([
+      { id: 'product-allowed', name: 'Penang Family Park', category: 'Activity', categorySlug: 'activity', price: 80, rating: 4.8, reviews: 40, isFamilyFriendly: true, outlet: { city: 'George Town', state: 'Penang' } },
+      { id: 'product-other', name: 'Other Penang Activity', category: 'Activity', categorySlug: 'activity', price: 90, rating: 4.2, reviews: 10, isFamilyFriendly: true, outlet: { city: 'Penang', state: 'Penang' } },
+      { id: 'wrong-budget', name: 'Expensive Park', category: 'Activity', categorySlug: 'activity', price: 300, rating: 5, reviews: 500, isFamilyFriendly: true, outlet: { city: 'Penang', state: 'Penang' } },
+    ]);
+    mocks.reserveQuota.mockResolvedValue(true);
+    mocks.callGemini.mockResolvedValue('{"suggestions":[{"productId":"not-in-catalogue"}]}');
+
+    const response = await POST(new Request('http://localhost/api/chatbot/ask', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionKey: 'victim-session', operationId: crypto.randomUUID(), question: '推荐Penang适合小孩的活动，RM100以内' }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.recommendationData.products.map((product: { id: string }) => product.id)).toEqual(['product-allowed', 'product-other']);
+    expect(body.data.recommendationData.products).not.toContainEqual(expect.objectContaining({ id: 'wrong-budget' }));
+    expect(mocks.callGemini).toHaveBeenCalledTimes(1);
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation_with_recommendations', expect.objectContaining({
+      p_recommendation_data: body.data.recommendationData,
+    }));
   });
 
   it('marks the stored question as sanitized only after server-side cleaning', async () => {
@@ -239,7 +298,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation_with_evidence', expect.objectContaining({
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation_with_recommendations', expect.objectContaining({
       p_kb_refs: [{ documentId: 'internal-document-id', title: 'Refund policy', contentVersion: 6, score: 0.91 }],
     }));
     expect(body.data.evidence).toEqual([expect.objectContaining({ title: 'Refund policy', contentVersion: 6 })]);
@@ -308,7 +367,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
     });
     mocks.rpc.mockImplementation((name: string) => name === 'reserve_support_operation'
       ? Promise.resolve({ data: { state: 'running', shouldExecute: true, leaseToken: 'recovered-lease', created: false }, error: null })
-      : name === 'complete_chatbot_ask_operation_with_evidence'
+      : name === 'complete_chatbot_ask_operation_with_recommendations'
         ? Promise.resolve({ data: 'bot-message-1', error: null })
         : Promise.resolve({ data: true, error: null }));
     let messageQuery = 0;
@@ -330,7 +389,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
     }));
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation_with_evidence', expect.objectContaining({
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation_with_recommendations', expect.objectContaining({
       p_user_message_id: 'saved-user-message',
     }));
   });
@@ -347,7 +406,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
     });
     mocks.rpc.mockImplementation((name: string) => name === 'reserve_support_operation'
       ? Promise.resolve({ data: { state: 'running', shouldExecute: true, leaseToken: 'recovered-lease', created: false }, error: null })
-      : name === 'complete_chatbot_ask_operation_with_evidence'
+      : name === 'complete_chatbot_ask_operation_with_recommendations'
         ? Promise.resolve({ data: 'bot-message-1', error: null })
         : Promise.resolve({ data: true, error: null }));
     const payloadHash = createHash('sha256').update(JSON.stringify({
@@ -375,7 +434,7 @@ describe('POST /api/chatbot/ask session ownership', () => {
     }));
 
     expect(response.status).toBe(200);
-    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation_with_evidence', expect.objectContaining({
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_chatbot_ask_operation_with_recommendations', expect.objectContaining({
       p_user_message_id: 'competing-user-message',
     }));
     expect(mocks.rpc).not.toHaveBeenCalledWith('mark_support_operation_unknown', expect.anything());
