@@ -340,7 +340,7 @@ export async function startCheckoutPayment({ db, user, prepared, total, plan }: 
         quantity: 1,
       }],
       metadata: { ...(buyer.subject.kind === 'account' ? { user_id: buyer.subject.userId } : { guest_subject_id: buyer.subject.guestSubjectId }), subject_kind: buyer.subject.kind, checkout_session_id: checkoutSessionId, order_id: String(prepared.order_id), payment_kind: 'order' },
-      success_url: `${origin}/customer/checkout?stripe_session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${origin}/customer/checkout/success?stripe_session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/customer/checkout?stripe_cancelled=1`,
     });
     const service = createServiceClient();

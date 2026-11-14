@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { isRatingEligibleProduct, isVisibleActiveProduct, resolveProductOutlet } from '@/lib/vendor/product-scope';
+import { allocateDashboardRevenue, classifyDashboardSale, matchesDashboardSalesMode, type DashboardPayment, type DashboardSaleClass } from '@/lib/vendor/dashboard-metrics';
 
 export type AnalyticsFilter = '7d' | '30d' | '12m';
 
@@ -14,6 +15,12 @@ export type AnalyticsItem = {
   created_at: string;
   slot_starts_at: string | null;
   order_status: string;
+  /**
+   * Payment provenance, classified the same way as the Vendor Dashboard
+   * (classifyDashboardSale). When present it decides revenue, so both pages
+   * use one sales definition; absent only for pure builder inputs in tests.
+   */
+  sale_class?: DashboardSaleClass;
 };
 
 export type AnalyticsProduct = {
@@ -78,6 +85,8 @@ export type AnalyticsInsight = {
 };
 
 export type VendorAnalyticsSnapshot = {
+  /** Set by getVendorAnalyticsData so the page can subscribe to this vendor's changes. */
+  vendorId?: string;
   range: AnalyticsInput['range'];
   filter: AnalyticsFilter;
   outletsAvailable: AnalyticsOutlet[];
@@ -141,6 +150,9 @@ function localParts(value: string | Date): LocalParts {
 }
 
 function isRevenueItem(item: AnalyticsItem) {
+  // Same scope as the Dashboard's default "all" view: verified and demo/test
+  // sales count; paid orders without a succeeded payment record do not.
+  if (item.sale_class) return matchesDashboardSalesMode(item.sale_class, 'all');
   return REVENUE_STATUSES.has(item.order_status);
 }
 
@@ -370,7 +382,7 @@ export async function getVendorAnalyticsData(filterValue: AnalyticsFilter = '30d
 
   const [itemsResult, productsResult, reviewsResult] = await Promise.all([
     queryOutletIds.length
-      ? db.from('order_items').select('order_id,outlet_id,product_id,product_name,quantity,line_total,created_at,slot_starts_at,orders!inner(status)').in('outlet_id', queryOutletIds).gte('created_at', range.start).lte('created_at', range.end).order('created_at', { ascending: false }).limit(10000)
+      ? db.from('order_items').select('id,order_id,outlet_id,product_id,product_name,quantity,line_total,created_at,slot_starts_at,orders!inner(status,subtotal,total_amount,payments(status,provider,is_live))').in('outlet_id', queryOutletIds).gte('created_at', range.start).lte('created_at', range.end).order('created_at', { ascending: false }).limit(10000)
       : Promise.resolve({ data: [], error: null }),
     db.from('products').select('id,name,base_price,status,outlet_id,outlet_offers(outlet_id,status)').eq('vendor_id', vendor.id),
     db.from('reviews').select('product_id,rating,created_at').eq('vendor_id', vendor.id).eq('is_visible', true).gte('created_at', range.start).lte('created_at', range.end),
@@ -381,16 +393,32 @@ export async function getVendorAnalyticsData(filterValue: AnalyticsFilter = '30d
 
   const products = ((productsResult.data || []) as Array<AnalyticsProduct & { base_price: number | string | null }>).map((product) => ({ ...product, base_price: number(product.base_price) }));
   const productIds = new Set(products.map((product) => product.id));
-  const items = ((itemsResult.data || []) as Array<AnalyticsItem & { orders?: { status?: string | null } | { status?: string | null }[] }>).map((item) => ({
-    ...item,
-    quantity: number(item.quantity),
-    line_total: number(item.line_total),
-    order_status: Array.isArray(item.orders) ? item.orders[0]?.status || 'unknown' : item.orders?.status || 'unknown',
-  })).filter((item) => !item.product_id || productIds.has(item.product_id));
+  type AnalyticsOrderJoin = { status?: string | null; subtotal?: number | string | null; total_amount?: number | string | null; payments?: DashboardPayment[] | null };
+  type AnalyticsItemRow = AnalyticsItem & { id: string; orders?: AnalyticsOrderJoin | AnalyticsOrderJoin[] };
+  const itemRows = (itemsResult.data || []) as AnalyticsItemRow[];
+  // Revenue is what the vendor received after order-level voucher discounts,
+  // allocated across the order's lines exactly like the Dashboard, so both
+  // pages report the same figure for the same orders.
+  const netRevenueByItem = allocateDashboardRevenue(itemRows.map((row) => ({
+    id: row.id,
+    order_id: row.order_id,
+    line_total: row.line_total,
+    orders: Array.isArray(row.orders) ? row.orders[0] : row.orders,
+  })));
+  const items = itemRows.map(({ orders, id, ...item }) => {
+    const order = Array.isArray(orders) ? orders[0] : orders;
+    return {
+      ...item,
+      quantity: number(item.quantity),
+      line_total: netRevenueByItem.get(id) ?? number(item.line_total),
+      order_status: order?.status || 'unknown',
+      sale_class: classifyDashboardSale(order?.status, order?.payments),
+    };
+  }).filter((item) => !item.product_id || productIds.has(item.product_id));
   const reviews = ((reviewsResult.data || []) as AnalyticsReview[]).filter((review) => {
     const product = products.find((candidate) => candidate.id === review.product_id);
     return product ? isRatingEligibleProduct(product, outletIds) : false;
   });
 
-  return buildAnalyticsSnapshot({ range, items, products, reviews, outlets }, filter, selectedOutletId);
+  return { ...buildAnalyticsSnapshot({ range, items, products, reviews, outlets }, filter, selectedOutletId), vendorId: vendor.id };
 }

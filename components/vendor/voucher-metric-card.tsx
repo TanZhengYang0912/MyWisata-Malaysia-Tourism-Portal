@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/components/utils";
+import { VendorMetricCard, type VendorMetricTone } from "@/components/vendor/vendor-metric-card";
 
 export interface VoucherMetricCardProps {
   label: string;
@@ -11,32 +12,24 @@ export interface VoucherMetricCardProps {
   className?: string;
 }
 
-const toneClasses = {
-  navy: "text-primary",
-  gold: "text-amber-600 dark:text-amber-300",
-  muted: "text-gray-900 dark:text-foreground",
-} as const;
+// Voucher tones predate the shared card; the figure stays neutral and only
+// "gold" (needs a look) keeps a meaning-bearing colour.
+const toneMap: Record<NonNullable<VoucherMetricCardProps["tone"]>, VendorMetricTone> = {
+  navy: "default",
+  gold: "attention",
+  muted: "default",
+};
 
-export function VoucherMetricCard({
-  label,
-  value,
-  note,
-  tone = "muted",
-  density = "comfortable",
-  className,
-}: VoucherMetricCardProps) {
+export function VoucherMetricCard({ label, value, note, tone = "muted", density = "comfortable", className }: VoucherMetricCardProps) {
   return (
-    <article
+    <VendorMetricCard
       data-voucher-metric
-      className={cn(
-        "min-w-0 rounded-2xl border border-gray-100 bg-card shadow-sm dark:border-border dark:bg-card",
-        density === "compact" ? "p-3" : "p-4",
-        className,
-      )}
-    >
-      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-muted-foreground">{label}</p>
-      <p className={cn("tabular-nums font-bold tracking-tight", density === "compact" ? "mt-0.5 text-xl" : "mt-1 text-2xl", toneClasses[tone])}>{value}</p>
-      {note && <div className={cn("text-muted-foreground/70", density === "compact" ? "mt-0.5 text-[11px] leading-4" : "mt-1 text-xs leading-5")}>{note}</div>}
-    </article>
+      label={label}
+      value={value}
+      note={note}
+      tone={toneMap[tone]}
+      density={density}
+      className={cn("border-border bg-card", className)}
+    />
   );
 }

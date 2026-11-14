@@ -1,14 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { CalendarDays } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, CalendarDays } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import { formatDate, formatDateTime } from "@/lib/i18n/format";
 import { isMalaysiaFullDayRange } from "@/lib/datetime/malaysia";
 import { getEventOperationalLabelKey } from "@/lib/promotion-campaigns/locations";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
-import { SeeMoreLink } from "@/components/customer/see-more-link";
 import { LocalizedContent } from "@/components/customer/localized-content";
 
 function CampaignPoster({
@@ -21,7 +22,7 @@ function CampaignPoster({
   sizes: string;
 }) {
   return (
-    <div data-slot="campaign-poster" className={`relative min-w-0 overflow-hidden bg-secondary ${className}`}>
+    <div data-slot="campaign-poster" className={`relative min-w-0 overflow-hidden bg-secondary/60 ${className}`}>
       {campaign.posterUrl ? (
         <Image
           src={campaign.posterUrl}
@@ -29,11 +30,11 @@ function CampaignPoster({
           fill
           sizes={sizes}
           unoptimized={campaign.posterUrl.startsWith("http://") || campaign.posterUrl.startsWith("https://")}
-          className="object-contain p-2 sm:p-3"
+          className="object-contain"
         />
       ) : (
         <div aria-hidden="true" className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
-          <CalendarDays size={54} strokeWidth={1.25} className="opacity-70" />
+          <CalendarDays size={42} strokeWidth={1.25} className="opacity-70" />
         </div>
       )}
     </div>
@@ -45,6 +46,7 @@ export function PromotionCampaignCard({
   campaign,
 }: {
   campaign: PromotionCampaignPublic;
+  /** Kept for existing callers; the map list card is the only variant (main removed "full"). */
   variant?: "compact";
 }) {
   const { t, i18n } = useTranslation("customer");
@@ -54,35 +56,40 @@ export function PromotionCampaignCard({
   const formatCampaignDate = isMalaysiaFullDayRange(campaign.startsAt, campaign.endsAt) ? formatDate : formatDateTime;
 
   return (
-    <article aria-labelledby={`campaign-${campaign.id}`} className="overflow-hidden rounded-3xl border border-border/70 bg-card shadow-sm">
-      <div className="grid min-w-0 grid-cols-1 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
-        <CampaignPoster campaign={campaign} className="aspect-[4/3] lg:aspect-auto lg:min-h-72" sizes="(max-width: 1023px) 100vw, (max-width: 1440px) 16vw, 15vw" />
-        <div className="flex min-w-0 flex-col p-4 sm:p-5 lg:min-h-72 lg:p-6">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <span className={`rounded-full px-3 py-1 text-xs font-bold ${isOperating ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" : "bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200"}`}>
-              {t(getEventOperationalLabelKey(campaign))}
-            </span>
-            <span className="text-sm text-muted-foreground">
-              {t(isLive ? "ui.promotionCampaigns.endsAt" : "ui.promotionCampaigns.startsAt", {
-                date: formatCampaignDate(isLive ? campaign.endsAt : campaign.startsAt, locale, {
-                  timeZone: "Asia/Kuala_Lumpur",
-                }),
-              })}
-            </span>
-          </div>
-          <span className="mt-3 inline-flex self-start rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground">
-            {t("ui.promotionCampaigns.vendorCount", { count: campaign.vendors.length })}
+    <article
+      data-slot="campaign-card-compact"
+      aria-labelledby={`campaign-${campaign.id}`}
+      className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card"
+    >
+      <CampaignPoster campaign={campaign} className="aspect-[4/3]" sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 33vw" />
+      <div className="flex min-w-0 flex-1 flex-col p-4 sm:p-5">
+        <h2
+          id={`campaign-${campaign.id}`}
+          className="break-words font-[family-name:var(--font-display)] text-xl font-bold leading-tight text-foreground sm:text-2xl"
+        >
+          <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title} />
+        </h2>
+        <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${isOperating ? "text-emerald-800 dark:text-emerald-200" : "text-amber-900 dark:text-amber-200"}`}>
+            <span aria-hidden="true" className={`size-1.5 shrink-0 rounded-full ${isOperating ? "bg-emerald-600 dark:bg-emerald-300" : "bg-amber-600 dark:bg-amber-300"}`} />
+            {t(getEventOperationalLabelKey(campaign))}
           </span>
-          <h2
-            id={`campaign-${campaign.id}`}
-            className="mt-3 break-words font-[family-name:var(--font-display)] text-xl font-bold leading-tight text-foreground sm:text-2xl"
-          >
-            <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title} />
-          </h2>
-          <div className="mt-5 flex justify-end lg:mt-auto">
-            <SeeMoreLink href={`/customer/events/${encodeURIComponent(campaign.slug)}`} ariaLabel={t("ui.promotionCampaigns.vendorCount", { count: campaign.vendors.length })} />
-          </div>
+          <span aria-hidden="true" className="text-muted-foreground">·</span>
+          <CalendarDays size={13} aria-hidden="true" className="shrink-0 text-primary" />
+          <span className="min-w-0 break-words text-xs font-medium text-muted-foreground">
+            {t(isLive ? "ui.promotionCampaigns.endsAt" : "ui.promotionCampaigns.startsAt", {
+              date: formatCampaignDate(isLive ? campaign.endsAt : campaign.startsAt, locale, {
+                timeZone: "Asia/Kuala_Lumpur",
+              }),
+            })}
+          </span>
         </div>
+        <Button asChild variant="outline" className="group mt-auto min-h-10 self-start rounded-lg border-primary/20 bg-transparent px-4 font-semibold text-primary transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground motion-reduce:transition-none">
+          <Link href={`/customer/events/${encodeURIComponent(campaign.slug)}`}>
+            {t("ui.promotionCampaigns.viewAllVendors", { count: campaign.vendors.length })}
+            <ArrowRight size={16} aria-hidden="true" className="text-primary transition-transform duration-200 ease-out group-hover:translate-x-1 group-focus-visible:translate-x-1 group-hover:text-primary-foreground motion-reduce:transition-none" />
+          </Link>
+        </Button>
       </div>
     </article>
   );

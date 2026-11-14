@@ -199,4 +199,3 @@ it("grows a title underline on hover only for cards that link, with no motion wh
   const unlinked = renderToStaticMarkup(<PlaceActivityCard imageUrl={null} imageAlt="Trail" imageFallback={null} title="Trail" footer="Free entry" />);
   expect(unlinked).not.toContain("hover:bg-[length:100%_2px]");
 });
-

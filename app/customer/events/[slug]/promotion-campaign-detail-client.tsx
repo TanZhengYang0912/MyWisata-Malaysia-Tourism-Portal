@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { BackLink } from "@/components/shared/back-link";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
-import { ArrowLeft, CalendarDays, Clock, MapPin, Megaphone, RefreshCw, Search } from "lucide-react";
+import { ArrowLeft, CalendarDays, ChevronDown, Clock, MapPin, RefreshCw, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
@@ -17,6 +17,7 @@ import { isMalaysiaFullDayRange } from "@/lib/datetime/malaysia";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { formatEventDateRange, formatEventHours, getEventOperationalLabelKey } from "@/lib/promotion-campaigns/locations";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
+import styles from "./promotion-campaign-detail.module.css";
 
 type Props = {
   slug: string;
@@ -36,6 +37,9 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
   const [vendorPage, setVendorPage] = useState(1);
 
   const stallCount = campaign?.vendors.reduce((total, vendor) => total + vendor.stalls.length, 0) ?? 0;
+  const isOperating = campaign?.operationalStatus
+    ? campaign.operationalStatus === "operating"
+    : campaign?.visibility === "live";
   const filteredVendors = useMemo(() => {
     if (!campaign) return [];
     const normalizedQuery = vendorQuery.trim().toLocaleLowerCase(locale);
@@ -61,7 +65,6 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
         .map((stall) => stall.stallNumber))]
       : [],
   }));
-
   const load = useCallback(async () => {
     try {
       const response = await fetch(`/api/customer/promotion-campaigns?slug=${encodeURIComponent(slug)}`, { cache: "no-store" });
@@ -83,6 +86,11 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
     setError(null);
     await load();
   }, [load]);
+  const backAction = (
+    <Button asChild variant="outline" className={`${styles.backButton} rounded-full`}>
+      <BackLink fallbackHref="/customer/events"><ArrowLeft size={15} /> {t("actions.back", { ns: "common" })}</BackLink>
+    </Button>
+  );
 
   return (
     <CustomerPageShell wide>
@@ -91,65 +99,83 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
         { label: t("navigation.events"), href: "/customer/events" },
         { label: <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title} /> },
       ]} />}
-      <CustomerPageHeader
-        eyebrow={t("ui.promotionCampaigns.eyebrow")}
-        title={campaign ? <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title} /> : t("ui.promotionCampaigns.detailTitle")}
-        description={campaign ? undefined : t("ui.promotionCampaigns.detailDescription")}
-        icon={<Megaphone size={15} />}
-        className="mb-6"
-        actions={<Button asChild variant="outline" className="rounded-full"><BackLink fallbackHref="/customer/events"><ArrowLeft size={15} /> {t("actions.back", { ns: "common" })}</BackLink></Button>}
-      />
+      {!campaign && <CustomerPageHeader
+        title={t("ui.promotionCampaigns.detailTitle")}
+        description={t("ui.promotionCampaigns.detailDescription")}
+        className="mb-6 sm:mb-8"
+        actions={backAction}
+      />}
       {loading ? <p role="status" className="py-12 text-center text-sm text-muted-foreground">{t("ui.promotionCampaigns.loading")}</p> : error ? (
         <div role="alert" className="rounded-3xl border border-border bg-card p-8 text-center"><CalendarDays size={28} className="mx-auto text-primary" /><h2 className="mt-3 font-bold text-foreground">{t(error === "missing" ? "ui.promotionCampaigns.notFound" : "ui.promotionCampaigns.loadError")}</h2><p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{t(error === "missing" ? "ui.promotionCampaigns.notFoundDescription" : "ui.promotionCampaigns.tryAgainDescription")}</p><div className="mt-5 flex justify-center gap-2">{error === "load" && <Button variant="outline" className="rounded-full" onClick={() => void refresh()}><RefreshCw size={14} /> {t("ui.actions.retry")}</Button>}<Button asChild className="rounded-full"><Link href="/customer/events">{t("ui.promotionCampaigns.backToEvents")}</Link></Button></div></div>
       ) : campaign && <>
-        <section className="mb-5 overflow-hidden rounded-3xl border border-primary/10 bg-card sm:mb-6">
-          <div className={campaign.posterUrl ? "grid lg:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)]" : undefined}>
+        <div data-slot="campaign-page-heading">
+          <CustomerPageHeader
+            title={<span id="campaign-detail-title"><LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="title" sourceText={campaign.title} /></span>}
+            className={styles.eventHeader}
+            actions={backAction}
+          />
+        </div>
+        <section data-slot="campaign-overview" aria-labelledby="campaign-detail-title" className={styles.eventOverview}>
+          <div className={`${styles.overviewGrid}${campaign.posterUrl ? ` ${styles.overviewGridWithPoster}` : ""}`}>
             {campaign.posterUrl && (
-              <div className="flex h-56 min-w-0 items-center justify-center bg-background/50 p-4 sm:h-80 lg:h-[26rem]">
+              <figure className={styles.posterFrame}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={campaign.posterUrl} alt={campaign.title} className="h-full w-full object-contain" />
-              </div>
+                <img src={campaign.posterUrl} alt={campaign.title} className={styles.posterImage} />
+              </figure>
             )}
-            <div className="min-w-0 p-5 sm:p-7 lg:flex lg:flex-col lg:justify-center">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${(campaign.operationalStatus ? campaign.operationalStatus === "operating" : campaign.visibility === "live") ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-200" : "bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-200"}`}>
-                  {t(getEventOperationalLabelKey(campaign))}
-                </span>
-                <CalendarDays size={14} className="ml-1 text-primary" />
-                <span className="text-sm text-muted-foreground">
-                  {(isMalaysiaFullDayRange(campaign.startsAt, campaign.endsAt) ? formatDate : formatDateTime)(campaign.startsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })} – {(isMalaysiaFullDayRange(campaign.startsAt, campaign.endsAt) ? formatDate : formatDateTime)(campaign.endsAt, locale, { timeZone: "Asia/Kuala_Lumpur" })}
-                </span>
-              </div>
-              {campaign.locations.length > 0 && (
-                <section aria-labelledby="event-locations-heading" className="mt-5">
-                  <h2 id="event-locations-heading" className="text-sm font-bold uppercase tracking-[0.14em] text-primary">
-                    {t("ui.promotionCampaigns.locationsSection", { count: campaign.locations.length })}
-                  </h2>
-                  <ul className="mt-3 grid gap-2.5">
-                    {campaign.locations.map((location) => (
-                      <li key={location.id} className="rounded-2xl border border-border/80 bg-card/80 p-3.5 sm:p-4">
-                        <p className="flex items-start gap-2 font-semibold text-foreground"><MapPin size={15} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />{location.name}</p>
-                        <p className="mt-1 break-words pl-6 text-xs leading-5 text-muted-foreground">{location.address ?? t("ui.promotionCampaigns.addressTba")}</p>
-                        <p className="mt-2 flex items-center gap-2 pl-6 text-xs text-muted-foreground"><CalendarDays size={13} aria-hidden="true" />{formatEventDateRange(location.startsOn, location.endsOn, locale)}</p>
-                        <p className="mt-1 flex items-center gap-2 pl-6 text-xs text-muted-foreground"><Clock size={13} aria-hidden="true" />{formatEventHours(location.opensAt, location.closesAt, locale)}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-              {campaign.visibility === "upcoming" && (
-                <p className="mt-4 rounded-xl bg-amber-100/70 dark:bg-amber-500/15 px-4 py-3 text-sm font-medium leading-5 text-amber-950 dark:text-amber-200">
-                  {t("ui.promotionCampaigns.upcomingNotice")}
+            <div className={`${styles.campaignInfo}${campaign.posterUrl ? "" : ` ${styles.campaignInfoWithoutPoster}`}`}>
+              <p className={`${styles.status} ${isOperating ? styles.statusOperating : styles.statusUpcoming}`}>
+                <span aria-hidden="true" className={styles.statusDot} />
+                {t(getEventOperationalLabelKey(campaign))}
+              </p>
+              <div className={styles.campaignDates}>
+                <p className={styles.campaignDate}>
+                  <CalendarDays size={16} aria-hidden="true" />
+                  <span>{t("ui.promotionCampaigns.startsAt", {
+                    date: (isMalaysiaFullDayRange(campaign.startsAt, campaign.endsAt) ? formatDate : formatDateTime)(campaign.startsAt, locale, { timeZone: "Asia/Kuala_Lumpur" }),
+                  })}</span>
                 </p>
+                <p className={styles.campaignDate}>
+                  <CalendarDays size={16} aria-hidden="true" />
+                  <span>{t("ui.promotionCampaigns.endsAt", {
+                    date: (isMalaysiaFullDayRange(campaign.startsAt, campaign.endsAt) ? formatDate : formatDateTime)(campaign.endsAt, locale, { timeZone: "Asia/Kuala_Lumpur" }),
+                  })}</span>
+                </p>
+              </div>
+              {campaign.visibility === "upcoming" && (
+                <p className={styles.upcomingNotice}>{t("ui.promotionCampaigns.upcomingNotice")}</p>
               )}
             </div>
           </div>
         </section>
-        <details className="mb-6 rounded-2xl border border-border bg-card px-4 py-3.5 sm:px-5">
-          <summary className="cursor-pointer text-sm font-semibold text-primary underline-offset-4 hover:underline">
-            {t("ui.promotionCampaigns.campaignDetails")}
+        {campaign.locations.length > 0 && (
+          <section aria-labelledby="event-locations-heading" className={styles.programSection}>
+            <h2 id="event-locations-heading" className={styles.programHeading}>
+              {t("ui.promotionCampaigns.locationsSection", { count: campaign.locations.length })}
+            </h2>
+            <ul data-slot="event-program" className={styles.programList}>
+              {campaign.locations.map((location) => (
+                <li key={location.id} data-slot="event-program-row" className={styles.programStop}>
+                  <p data-slot="event-location-date" className={styles.locationDate}>
+                    <CalendarDays size={15} aria-hidden="true" />
+                    <span>{formatEventDateRange(location.startsOn, location.endsOn, locale)}</span>
+                  </p>
+                  <div className={styles.locationDetails}>
+                    <h3 data-slot="event-location-name" className={styles.locationName}><MapPin size={16} aria-hidden="true" />{location.name}</h3>
+                    <p className={styles.locationAddress}>{location.address ?? t("ui.promotionCampaigns.addressTba")}</p>
+                  </div>
+                  <p className={styles.locationHours}><Clock size={15} aria-hidden="true" />{formatEventHours(location.opensAt, location.closesAt, locale)}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        <details className={styles.campaignDetails}>
+          <summary className={styles.detailsSummary}>
+            <span>{t("ui.promotionCampaigns.campaignDetails")}</span>
+            <ChevronDown size={16} aria-hidden="true" className={styles.detailsChevron} />
           </summary>
-          <p className="mt-3 max-w-3xl whitespace-pre-line break-words text-sm leading-6 text-muted-foreground">
+          <p className={styles.detailsBody}>
             <LocalizedContent entityType="promotion_campaign" entityId={campaign.id} field="description" sourceText={campaign.description} />
           </p>
         </details>
@@ -188,12 +214,16 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
               {vendorQuery.trim() ? t("ui.promotionCampaigns.noVendorSearchResults") : t("ui.promotionCampaigns.noVendors")}
             </p>
           ) : campaign.vendors.length === 1 ? (
-            <div className="grid min-w-0 gap-4">
-              {visibleVendorCards.map(({ vendor, matchingStallNumbers }) => <PromotionCampaignVendorCard key={vendor.vendorId} vendor={vendor} campaignSlug={campaign.slug} layout="featured" matchingStallNumbers={matchingStallNumbers} />)}
+            <div className={styles.vendorLineup}>
+              <div className="grid min-w-0 gap-4">
+                {visibleVendorCards.map(({ vendor, matchingStallNumbers }) => <PromotionCampaignVendorCard key={vendor.vendorId} vendor={vendor} campaignSlug={campaign.slug} layout="featured" matchingStallNumbers={matchingStallNumbers} />)}
+              </div>
             </div>
           ) : (
-            <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {visibleVendorCards.map(({ vendor, matchingStallNumbers }) => <PromotionCampaignVendorCard key={vendor.vendorId} vendor={vendor} campaignSlug={campaign.slug} matchingStallNumbers={matchingStallNumbers} />)}
+            <div className={styles.vendorLineup}>
+              <div className={`grid min-w-0 gap-4 md:grid-cols-2${visibleVendorCards.length === 4 ? " xl:grid-cols-4" : visibleVendorCards.length > 2 ? " xl:grid-cols-3" : ""}`}>
+                {visibleVendorCards.map(({ vendor, matchingStallNumbers }) => <PromotionCampaignVendorCard key={vendor.vendorId} vendor={vendor} campaignSlug={campaign.slug} matchingStallNumbers={matchingStallNumbers} />)}
+              </div>
             </div>
           )}
 

@@ -6,6 +6,9 @@ const mocks = vi.hoisted(() => ({
   getEventPromotionCostPerDaySen: vi.fn(),
   customersCreate: vi.fn(),
   sessionsCreate: vi.fn(),
+  sessionsExpire: vi.fn(),
+  expirePendingPromotionCheckout: vi.fn(),
+  recordPendingPromotionCheckout: vi.fn(),
 }));
 
 vi.mock('@/lib/vendor-authorization', () => ({ authorizeVendor: mocks.authorizeVendor }));
@@ -15,8 +18,17 @@ vi.mock('@/lib/vendor/event-promotions', async (importOriginal) => {
 });
 vi.mock('@/lib/admin/event-promotions', () => ({ getEventPromotionCostPerDaySen: mocks.getEventPromotionCostPerDaySen }));
 vi.mock('@/lib/stripe', () => ({
-  stripe: { customers: { create: mocks.customersCreate }, checkout: { sessions: { create: mocks.sessionsCreate } } },
+  stripe: { customers: { create: mocks.customersCreate }, checkout: { sessions: { create: mocks.sessionsCreate, expire: mocks.sessionsExpire } } },
 }));
+vi.mock('@/lib/vendor/event-promotion-checkout', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/vendor/event-promotion-checkout')>();
+  return {
+    ...actual,
+    expirePendingPromotionCheckout: mocks.expirePendingPromotionCheckout,
+    recordPendingPromotionCheckout: mocks.recordPendingPromotionCheckout,
+  };
+});
+vi.mock('server-only', () => ({}));
 
 import { POST } from '../route';
 
@@ -65,7 +77,10 @@ describe('POST /api/vendors/[vendorId]/event-promotions/[id]/pay', () => {
       access: { userId: 'user-1', vendorId, authDb: { from: authFrom }, serviceDb: { from: serviceFrom } },
     });
     mocks.getEventPromotionCostPerDaySen.mockResolvedValue(10_000);
-    mocks.sessionsCreate.mockResolvedValue({ url: 'https://checkout.stripe.test/session' });
+    mocks.sessionsCreate.mockResolvedValue({ id: 'cs_new', url: 'https://checkout.stripe.test/session' });
+    mocks.sessionsExpire.mockResolvedValue({});
+    mocks.expirePendingPromotionCheckout.mockResolvedValue({ ok: true });
+    mocks.recordPendingPromotionCheckout.mockResolvedValue({ ok: true });
     mocks.customersCreate.mockResolvedValue({ id: 'cus_new' });
   });
 
@@ -134,5 +149,36 @@ describe('POST /api/vendors/[vendorId]/event-promotions/[id]/pay', () => {
     const response = await POST(payRequest(), params());
     expect(response.status).toBe(403);
     expect(mocks.payEventPromotionFromWallet).not.toHaveBeenCalled();
+  });
+
+  it('expires an earlier open Checkout before paying from the wallet', async () => {
+    mocks.payEventPromotionFromWallet.mockResolvedValue({ ok: true, amountSen: 30_000 });
+    await POST(payRequest(), params());
+    expect(mocks.expirePendingPromotionCheckout).toHaveBeenCalledWith(expect.anything(), vendorId, promotionId);
+    expect(mocks.expirePendingPromotionCheckout.mock.invocationCallOrder[0])
+      .toBeLessThan(mocks.payEventPromotionFromWallet.mock.invocationCallOrder[0]);
+  });
+
+  it('refuses to take a second payment while an earlier card payment is completing', async () => {
+    mocks.expirePendingPromotionCheckout.mockResolvedValue({ ok: false, reason: 'completed' });
+    const response = await POST(payRequest(), params());
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'PAYMENT_IN_PROGRESS' } });
+    expect(mocks.payEventPromotionFromWallet).not.toHaveBeenCalled();
+    expect(mocks.sessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it('records the new Checkout session and amount as the only one that may pay', async () => {
+    mocks.payEventPromotionFromWallet.mockResolvedValue({ ok: false, code: 'insufficient_earnings' });
+    await POST(payRequest(), params());
+    expect(mocks.recordPendingPromotionCheckout).toHaveBeenCalledWith(expect.anything(), vendorId, promotionId, 'cs_new', 30_000);
+  });
+
+  it('expires the new session again when the promotion stopped awaiting payment meanwhile', async () => {
+    mocks.payEventPromotionFromWallet.mockResolvedValue({ ok: false, code: 'insufficient_earnings' });
+    mocks.recordPendingPromotionCheckout.mockResolvedValue({ ok: false, reason: 'not_payable' });
+    const response = await POST(payRequest(), params());
+    expect(response.status).toBe(409);
+    expect(mocks.sessionsExpire).toHaveBeenCalledWith('cs_new');
   });
 });

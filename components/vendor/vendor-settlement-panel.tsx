@@ -52,7 +52,7 @@ export function VendorSettlementPanel() {
 
       {data.fee && (
         <div className="border-b border-border bg-secondary/40 px-5 py-4 text-sm">
-          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">{t("ui.settlement.yourFee")}</p>
+          <p className="text-[0.6875rem] text-muted-foreground">{t("ui.settlement.yourFee")}</p>
           <p className="mt-1 font-bold text-foreground">
             {data.fee.tier.name} · {feeLabel(data.fee.tier, (sen) => formatMYRFromSen(sen), perItem)}
           </p>
@@ -72,22 +72,22 @@ export function VendorSettlementPanel() {
       {data.settlements.length > 0 && <>
       <div className="grid grid-cols-1 gap-4 px-5 py-4 sm:grid-cols-3">
         <div>
-          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">{t("ui.settlement.pending")}</p>
+          <p className="text-[0.6875rem] text-muted-foreground">{t("ui.settlement.pending")}</p>
           <p className="mt-1 text-lg font-bold text-foreground font-[family-name:var(--font-mono)]">{formatMYRFromSen(data.totals.pendingSen)}</p>
         </div>
         <div>
-          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">{t("ui.settlement.cleared")}</p>
+          <p className="text-[0.6875rem] text-muted-foreground">{t("ui.settlement.cleared")}</p>
           <p className="mt-1 text-lg font-bold text-foreground font-[family-name:var(--font-mono)]">{formatMYRFromSen(data.totals.clearedSen)}</p>
         </div>
         <div>
-          <p className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">{t("ui.settlement.lifetimeFees")}</p>
+          <p className="text-[0.6875rem] text-muted-foreground">{t("ui.settlement.lifetimeFees")}</p>
           <p className="mt-1 text-lg font-bold text-foreground font-[family-name:var(--font-mono)]">{formatMYRFromSen(data.totals.lifetimePlatformFeesSen)}</p>
         </div>
       </div>
 
       <div className="overflow-x-auto border-t border-border">
         <table className="w-full min-w-[560px] text-left">
-          <thead className="bg-muted/50 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+          <thead className="bg-muted/50 text-[11px] font-bold text-muted-foreground">
             <tr>
               <th className="px-5 py-3">{t("ui.settlement.orderColumn")}</th>
               <th className="px-5 py-3 text-right">{t("ui.settlement.grossColumn")}</th>

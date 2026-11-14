@@ -54,7 +54,7 @@ describe("customer discovery filter contract", () => {
     expect(exploreSource).not.toContain("<DirectoryPagination");
     // The search hint now lives in DiscoverySearchField itself.
     expect(exploreSource).not.toContain('placeholder={t("ui.map.searchExperience")}');
-    expect(filterSource).toContain('placeholder ?? t("ui.discovery.searchPlaceholder")');
+    expect(filterSource).toContain('placeholder ?? t("ui.discovery.searchPlaceholder", { ns: "customer" })');
   });
 
   it("clips document-level horizontal overflow without breaking sticky navigation", () => {

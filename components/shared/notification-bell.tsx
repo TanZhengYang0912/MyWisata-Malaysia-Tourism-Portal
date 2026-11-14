@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Bell, CheckCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -75,6 +76,17 @@ function paramsFor(props: NotificationBellProps, category = "all", read = "all",
   return params;
 }
 
+/**
+ * Headers use `backdrop-filter`, which turns them into the containing block of
+ * `position: fixed` children, so a fixed panel inside the header is offset by
+ * the header's own position. Portal out of the header; stay inside the
+ * `.vendor-portal` wrapper when present so its scoped tokens still apply.
+ */
+function portalTarget(trigger: HTMLElement | null): HTMLElement {
+  const scoped = typeof trigger?.closest === "function" ? trigger.closest<HTMLElement>(".vendor-portal") : null;
+  return scoped ?? document.body;
+}
+
 export function NotificationBell({ scope = "customer", vendorId = null, allHref, categories }: NotificationBellProps) {
   const props = { scope, vendorId, allHref: allHref ?? (scope === "staff" ? "/admin/notifications" : "/customer/notifications"), categories: categories ?? (scope === "vendor" ? VENDOR_CATEGORIES : scope === "staff" ? STAFF_CATEGORIES : CUSTOMER_CATEGORIES) };
   const { t, i18n } = useTranslation("common");
@@ -86,6 +98,8 @@ export function NotificationBell({ scope = "customer", vendorId = null, allHref,
     identityRef.current = identityKey;
   }, [identityKey]);
   const [open, setOpen] = useState(false);
+  // Resolved on click (not during render) so the panel can portal out of the header.
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   const [items, setItems] = useState<Notification[]>([]);
   const [feedIdentityKey, setFeedIdentityKey] = useState<string | null>(null);
   const [unread, setUnread] = useState(0);
@@ -199,8 +213,23 @@ export function NotificationBell({ scope = "customer", vendorId = null, allHref,
   }, [identityKey, open, scope, vendorId, category, readFilter]);
   useEffect(() => {
     if (!open) return;
-    const close = (event: PointerEvent) => { if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false); };
-    document.addEventListener("pointerdown", close); return () => document.removeEventListener("pointerdown", close);
+    // The panel is portalled, so it is no longer inside `ref`; check both.
+    const close = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (ref.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
   }, [open]);
   async function markRead(id: string) {
     const requestIdentity = identityKey;
@@ -247,14 +276,14 @@ export function NotificationBell({ scope = "customer", vendorId = null, allHref,
     }
   }
   return <div ref={ref} className="relative shrink-0">
-    <button ref={triggerRef} type="button" aria-label={t("accessibility.notifications")} aria-expanded={open} onClick={() => setOpen((value) => !value)} className={HEADER_ICON_BUTTON_CLASS}>
+    <button ref={triggerRef} type="button" aria-label={t("accessibility.notifications")} aria-expanded={open} onClick={(event) => { setPortalContainer(portalTarget(event.currentTarget)); setOpen((value) => !value); }} className={HEADER_ICON_BUTTON_CLASS}>
       <Bell size={18} />{visibleUnread > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-primary px-1 text-center text-[0.5625rem] font-bold leading-4 text-white">{visibleUnread > 99 ? "99+" : visibleUnread}</span>}
     </button>
-    {open && <div ref={panelRef} style={popoverPosition ?? { visibility: "hidden" }} className="fixed z-50 w-[min(26rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto rounded-2xl border border-border bg-card shadow-[0_18px_45px_rgba(1,0,102,0.16)]">
+    {open && portalContainer && createPortal(<div ref={panelRef} role="dialog" aria-label={t("notifications.title")} style={popoverPosition ?? { visibility: "hidden" }} className="fixed z-50 w-[min(26rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto rounded-2xl border border-border bg-card shadow-[0_18px_45px_rgba(1,0,102,0.16)]">
       <div className="flex items-center justify-between border-b border-border px-4 py-3"><p className="font-semibold">{t("notifications.title")}</p><button type="button" onClick={() => void markAll()} className="flex items-center gap-1 text-xs text-primary"><CheckCheck size={14} /> {t("notifications.markAllAsRead")}</button></div>
       <div className="flex gap-1 overflow-x-auto border-b border-border px-3 py-2"><button type="button" onClick={() => { setCategory("all"); setReadFilter("unread"); }} className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[0.6875rem] font-semibold ${readFilter === "unread" ? "border-primary bg-primary text-white" : "border-border text-muted-foreground"}`}>{t("notifications.unread")}</button>{props.categories.filter((option) => option.value !== "unread").map((option) => <button key={option.value} type="button" onClick={() => { setCategory(option.value); setReadFilter("all"); }} className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[0.6875rem] font-semibold ${readFilter === "all" && category === option.value ? "border-primary bg-primary text-white" : "border-border text-muted-foreground"}`}>{t(option.labelKey ?? CATEGORY_LABEL_KEYS[option.value] ?? option.label)}</button>)}</div>
       <div className="max-h-96 overflow-y-auto">{visibleItems.length === 0 ? <p className="p-5 text-sm text-muted-foreground">{t("notifications.noNotificationsYet")}</p> : visibleItems.map((item) => { const localized = localizeNotification(item, (key, options) => t(key, options)); return <div key={item.id} className={`border-b border-border px-4 py-3 ${item.readAt ? "" : "bg-primary/5"}`}><button type="button" onClick={() => void markRead(item.id)} className="w-full text-left"><p className="text-sm font-semibold">{localized.title}</p><p className="mt-1 text-xs text-muted-foreground">{localized.body}</p><p className="mt-1 text-[0.6875rem] text-muted-foreground">{formatDateTime(item.createdAt, locale)}</p></button>{item.link && <Link href={item.link} onClick={() => { if (!item.readAt) void markRead(item.id); setOpen(false); }} className="mt-1 inline-block text-xs font-semibold text-primary">{t("notifications.open")}</Link>}</div>; })}</div>
       {scope === "vendor" ? (visibleItems.length < visibleTotal && <div className="border-t border-border px-4 py-3 text-center"><button type="button" onClick={() => void loadMore()} disabled={loadingMore} className="text-sm font-semibold text-primary disabled:opacity-60">{loadingMore ? t("states.loading") : t("notifications.loadMore")}</button></div>) : <div className="border-t border-border px-4 py-3 text-center"><Link href={props.allHref} onClick={() => setOpen(false)} className="text-sm font-semibold text-primary">{t("notifications.viewAll")}</Link></div>}
-    </div>}
+    </div>, portalContainer)}
   </div>;
 }

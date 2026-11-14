@@ -26,3 +26,28 @@ describe('Vendor Inbox loading lifecycle', () => {
     expect(inboxSource).toContain('setThreads([]);');
   });
 });
+
+describe('Vendor Inbox realtime scope', () => {
+  const subscriptions = inboxSource.match(/'postgres_changes',\s*\{[^}]*\}/g) || [];
+  const subscriptionFor = (table: string) => subscriptions.filter((subscription) => subscription.includes(`table: '${table}'`));
+
+  it('never subscribes to platform-wide chat rows', () => {
+    expect(subscriptions.length).toBeGreaterThan(0);
+    for (const subscription of subscriptions) expect(subscription).toContain('filter: `');
+  });
+
+  it('refreshes the thread list from the vendor threads', () => {
+    expect(subscriptionFor('chat_threads')).toHaveLength(1);
+    expect(subscriptionFor('chat_threads')[0]).toContain("event: 'UPDATE'");
+    expect(subscriptionFor('chat_threads')[0]).toContain('filter: `vendor_id=eq.${vendorId');
+  });
+
+  it('streams messages and receipts only for the open conversation', () => {
+    expect(subscriptionFor('chat_messages')).toHaveLength(1);
+    expect(subscriptionFor('chat_messages')[0]).toContain('filter: `thread_id=eq.${active');
+    for (const table of ['chat_message_reads', 'chat_message_deliveries']) {
+      expect(subscriptionFor(table)).toHaveLength(1);
+      expect(subscriptionFor(table)[0]).toContain('filter: `user_id=eq.${activeCustomerId');
+    }
+  });
+});

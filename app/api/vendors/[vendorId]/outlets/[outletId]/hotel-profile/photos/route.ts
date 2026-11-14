@@ -4,6 +4,7 @@ import { authorizeOutlet } from '@/lib/vendor-authorization';
 import { isHotelOutlet } from '@/lib/customer/hotel-outlet';
 import { validateAvatarBytes, validateAvatarFileMetadata } from '@/lib/profile/avatar-validation';
 import { hotelPhotoPath } from '@/lib/vendor/hotel-profile';
+import { MEDIA_RESERVE_FAILED, markVendorMediaObjectStored, reserveVendorMediaObject } from '@/lib/vendor/media-objects';
 
 const BUCKET = 'vendor-products';
 const IMAGE_EXTENSION: Record<string, 'jpg' | 'png' | 'webp'> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -32,8 +33,11 @@ export async function POST(request: Request, { params }: Props) {
   if (!validation.ok) return apiFail('INVALID_IMAGE_CONTENT', validation.message, 422);
 
   const path = `${hotelPhotoPath(vendorId, outletId)}${crypto.randomUUID()}.${IMAGE_EXTENSION[validation.type]}`;
+  const reserved = await reserveVendorMediaObject(result.access.serviceDb, { bucket: BUCKET, path, vendorId, userId: result.access.userId, purpose: 'hotel_photo' });
+  if (!reserved.ok) return apiFail(MEDIA_RESERVE_FAILED.code, MEDIA_RESERVE_FAILED.message, MEDIA_RESERVE_FAILED.status);
   const storage = result.access.serviceDb.storage.from(BUCKET);
   const upload = await storage.upload(path, bytes, { contentType: validation.type, upsert: false });
   if (upload.error) return apiFail('UPLOAD_FAILED', 'The photo could not be uploaded. Try again.', 502);
+  await markVendorMediaObjectStored(result.access.serviceDb, reserved.objectId);
   return apiOk({ url: storage.getPublicUrl(path).data.publicUrl }, { status: 201 });
 }

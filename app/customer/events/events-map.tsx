@@ -153,7 +153,7 @@ export function EventsMap({ campaigns }: { campaigns: PromotionCampaignPublic[] 
             <p className="mt-2 text-sm text-muted-foreground">{t("ui.promotionCampaigns.map.emptyDescription")}</p>
           </div>
         ) : (
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className={`mt-4 grid gap-3 md:grid-cols-2 ${visibleCampaigns.length >= 3 ? "xl:grid-cols-3" : "xl:grid-cols-2"}`}>
             {visibleCampaigns.map((campaign) => (
               <PromotionCampaignCard key={campaign.id} campaign={campaign} variant="compact" />
             ))}

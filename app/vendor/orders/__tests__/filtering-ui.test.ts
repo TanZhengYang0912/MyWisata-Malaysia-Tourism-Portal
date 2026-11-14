@@ -13,12 +13,13 @@ const apiSource = readFileSync(
 
 describe("vendor order filtering UI", () => {
   it("keeps the default toolbar simple and exposes advanced filters on demand", () => {
-    expect(pageSource).toContain('import { MobileFilterToggle } from "@/components/vendor/compact-filter-bar"');
+    expect(pageSource).toContain('import { VendorListFilters } from "@/components/vendor/vendor-list-filters"');
+    expect(pageSource).toContain('<VendorListFilters');
     expect(pageSource).toContain("filtersOpen");
-    expect(pageSource).toContain('controlId="order-filters"');
+    expect(pageSource).toContain('onApply={applyAdvancedFilters}');
     expect(pageSource).toContain('t("ui.orders.needsAttention")');
     expect(pageSource).toContain('t("ui.orders.applyFilters")');
-    expect(pageSource).toContain("activeFilterCount");
+    expect(pageSource).toContain('setDraftFilters((current) => ({ ...current, fulfilStatus }))');
     expect(pageSource).toContain('t("ui.orders.allOrders")');
   });
 
