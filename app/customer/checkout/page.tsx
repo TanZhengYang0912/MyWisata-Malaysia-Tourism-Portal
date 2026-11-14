@@ -26,6 +26,7 @@ import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import {getSelectedOutletStock} from "@/lib/customer/outlet-shop";
 import {getCartLineAvailability,resolveBookingSlotLookupStatus,type BookingSlotLookupState} from "@/lib/customer/cart-availability";
 import { PAYMENT_CHOICES as METHODS, TOYYIBPAY_SANDBOX } from "@/lib/checkout/payment-choices";
+import { NAV_FORWARD } from "@/lib/customer/page-transitions";
 
 // Affiliate attribution remains fire-and-forget and never blocks checkout.
 function attributeCheckout(orderId: string) {
@@ -155,9 +156,9 @@ export default function CheckoutPage() {
       .then((body: { data?: { order_id?: string; status?: string } }) => {
         const orderId = body.data?.order_id;
         if (!orderId) throw new Error("stripe_order_missing");
-        if (body.data?.status === 'payment_exception') { router.push(`/customer/orders/${orderId}`); return; }
+        if (body.data?.status === 'payment_exception') { router.push(`/customer/orders/${orderId}`, { transitionTypes: [NAV_FORWARD] }); return; }
         attributeCheckout(orderId);
-        router.push(`/customer/orders/${orderId}`);
+        router.push(`/customer/orders/${orderId}`, { transitionTypes: [NAV_FORWARD] });
       })
       .catch(() => {
         setCheckoutError('PAYMENT_STATUS_UNCERTAIN');
@@ -316,7 +317,7 @@ export default function CheckoutPage() {
       if (isFreeReservation) {
         if (!prepared.data.order_id) { reportCheckoutError('CHECKOUT_FAILED'); return; }
         if (currentUser) attributeCheckout(prepared.data.order_id);
-        router.push(`/customer/orders/${prepared.data.order_id}`);
+        router.push(`/customer/orders/${prepared.data.order_id}`, { transitionTypes: [NAV_FORWARD] });
         return;
       }
       if (prepared.data.stripeUrl) {
@@ -353,7 +354,7 @@ export default function CheckoutPage() {
         return;
       }
       attributeCheckout(finalized.data.order_id);
-      router.push(`/customer/orders/${finalized.data.order_id}`);
+      router.push(`/customer/orders/${finalized.data.order_id}`, { transitionTypes: [NAV_FORWARD] });
     } catch (err) {
       reportCheckoutError(err instanceof TypeError ? 'CHECKOUT_CONNECTION_FAILED' : 'CHECKOUT_FAILED');
       await findCurrentGuestOrder();

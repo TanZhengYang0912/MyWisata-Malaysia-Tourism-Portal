@@ -874,3 +874,60 @@ input[type="checkbox"]:disabled {
     transition-duration: 0ms;
   }
 }
+
+/* Customer page transitions (React ViewTransition): route changes fade, typed forward steps slide 60px, back always fades. */
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-group(customer-header) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(customer-header) {
+  display: none;
+}
+::view-transition-new(customer-header) {
+  animation: none;
+}
+::view-transition-old(.page-fade) {
+  animation: 150ms ease-in both mw-fade reverse;
+}
+::view-transition-new(.page-fade) {
+  animation: 210ms ease-out 90ms both mw-fade;
+}
+::view-transition-old(.nav-forward) {
+  --mw-slide: -60px;
+  animation:
+    150ms ease-in both mw-fade reverse,
+    400ms ease-in-out both mw-slide reverse;
+}
+::view-transition-new(.nav-forward) {
+  --mw-slide: 60px;
+  animation:
+    210ms ease-out 150ms both mw-fade,
+    400ms ease-in-out both mw-slide;
+}
+@keyframes mw-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes mw-slide {
+  from {
+    translate: var(--mw-slide);
+  }
+  to {
+    translate: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(.nav-forward) {
+    animation: 150ms ease-in both mw-fade reverse;
+  }
+  ::view-transition-new(.nav-forward) {
+    animation: 210ms ease-out 90ms both mw-fade;
+  }
+}

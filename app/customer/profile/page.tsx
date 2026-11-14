@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, startTransition, addTransitionType, ViewTransition } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -18,6 +18,7 @@ import { ProfilePhotoPicker } from "@/components/profile/profile-photo-picker";
 import { ProfileSections } from "@/components/profile/profile-sections";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { canVisitWizardStep, getWizardProgress, WIZARD_STEPS, type WizardStep } from "./wizard-progress";
+import { NAV_FORWARD, PAGE_TRANSITION } from "@/lib/customer/page-transitions";
 import { GuestAccountEmptyState } from "@/components/customer/guest-account-empty-state";
 import { postLoginPath } from "@/lib/auth/guest-mode";
 import { identitySchema, bioSchema } from "@/lib/validation/profile-schemas";
@@ -110,7 +111,14 @@ function ProfileWizard({ userId }: { userId: string | null }) {
 
   function advanceTo(step: WizardStep, savedProfile = profile) {
     if (!mounted.current || !savedProfile) return;
-    setSelectedStep(canVisitWizardStep(savedProfile.verification, step) ? step : savedProfile.verification.currentStep);
+    const target = canVisitWizardStep(savedProfile.verification, step) ? step : savedProfile.verification.currentStep;
+    // The step on screen when the user acted (same rule as activeStep below); only a later step slides, everything else fades.
+    const current = selectedStep && profile && canVisitWizardStep(profile.verification, selectedStep) ? selectedStep : profile?.verification.currentStep;
+    const forward = WIZARD_STEPS.findIndex((item) => item.id === target) > WIZARD_STEPS.findIndex((item) => item.id === current);
+    startTransition(() => {
+      if (forward) addTransitionType(NAV_FORWARD);
+      setSelectedStep(target);
+    });
   }
 
   // ── Identity handler ───────────────────────────────────────────────────────
@@ -283,7 +291,7 @@ function ProfileWizard({ userId }: { userId: string | null }) {
           return (
             <Button key={id} variant="ghost" className="h-auto min-w-0 flex-1 flex-col gap-1 p-0 hover:bg-transparent"
               aria-current={active ? "step" : undefined}
-              disabled={isSaving || !canVisitWizardStep(profile.verification, id)} onClick={() => setSelectedStep(id)}>
+              disabled={isSaving || !canVisitWizardStep(profile.verification, id)} onClick={() => advanceTo(id)}>
               <span
                 className="w-full h-1.5 rounded-full transition-colors"
                 style={{ backgroundColor: done || active ? "var(--primary)" : "var(--secondary)" }}
@@ -305,6 +313,7 @@ function ProfileWizard({ userId }: { userId: string | null }) {
         <p className="mt-1 font-semibold text-primary">{tCustomer("ui.profileWizard.percentComplete", { percent: wizardProgress.percentage })}</p>
       </div>
 
+      <ViewTransition key={activeStep} enter={PAGE_TRANSITION} exit={PAGE_TRANSITION} default="none">
       {/* ── Step 1: Identity ─────────────────────────────────────────────── */}
       {activeStep === "identity" && (
         <fieldset disabled={isSaving} className="rounded-2xl border border-border bg-card p-6 space-y-4">
@@ -401,6 +410,7 @@ function ProfileWizard({ userId }: { userId: string | null }) {
           </div>
         </fieldset>
       )}
+      </ViewTransition>
 
       </CustomerPageShell>
     </>

@@ -295,6 +295,9 @@ export function installTestDom() {
   scope.window = document.defaultView;
   scope.requestAnimationFrame = document.defaultView.requestAnimationFrame.bind(document.defaultView);
   scope.cancelAnimationFrame = document.defaultView.cancelAnimationFrame.bind(document.defaultView);
+  // React <ViewTransition> measures host nodes with the bare global during transition commits.
+  scope.getComputedStyle = document.defaultView.getComputedStyle.bind(document.defaultView);
+  scope.CSS = { escape: (value: string) => value };
   Object.defineProperty(scope, "navigator", { configurable: true, value: { userAgent: "node", language: "en-US" } });
   scope.HTMLElement = TestElement;
   scope.Element = TestElement;
