@@ -17,7 +17,6 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { chatbotFeedbackSchema } from '@/lib/validation/chatbot-schemas';
-import { bindChatbotGuestSessionToken, hashChatbotGuestCredential, readChatbotGuestCredential } from '@/lib/chatbot/guest-session';
 import { getAuthenticatedUser } from '@/lib/auth/request-user';
 
 export async function POST(request: Request) {
@@ -36,12 +35,13 @@ export async function POST(request: Request) {
   if (authentication.state === 'unavailable') {
     return apiFail('AUTH_UNAVAILABLE', 'Unable to verify your sign-in right now. Check your connection and try again.', 503);
   }
-  const user = authentication.state === 'authenticated' ? authentication.user : null;
+  if (authentication.state !== 'authenticated') return apiFail('UNAUTHORIZED', 'Sign in to save chatbot feedback.', 401);
+  const user = authentication.user;
   const service = createServiceClient();
 
   const { data: message, error: messageError } = await service
     .from('chatbot_messages')
-    .select('id,role,session_id,reply_to_message_id,chatbot_sessions(id,session_key,user_id,guest_token_hash,channel)')
+    .select('id,role,session_id,reply_to_message_id,chatbot_sessions(id,session_key,user_id,channel)')
     .eq('id', messageId)
     .maybeSingle();
   if (messageError) return apiFail('DB_ERROR', 'Unable to verify this chat message.', 503);
@@ -51,30 +51,14 @@ export async function POST(request: Request) {
   const relatedSession = Array.isArray(message.chatbot_sessions)
     ? message.chatbot_sessions[0]
     : message.chatbot_sessions;
-  if (relatedSession?.user_id && !user) {
-    return apiFail('UNAUTHORIZED', 'Sign in again to save your chat feedback.', 401);
-  }
   if (
     !relatedSession
     || relatedSession.channel !== 'customer'
     || relatedSession.id !== message.session_id
     || relatedSession.session_key !== sessionKey
-    || (relatedSession.user_id === null ? Boolean(user) : relatedSession.user_id !== user?.id)
+    || relatedSession.user_id !== user.id
   ) {
     return apiFail('FORBIDDEN', 'This chat session does not belong to you.', 403);
-  }
-  if (relatedSession.user_id === null) {
-    const guestCredential = readChatbotGuestCredential(request);
-    const guestTokenHash = guestCredential ? hashChatbotGuestCredential(guestCredential) : null;
-    if (!guestTokenHash) {
-      return apiFail('FORBIDDEN', 'This chat session does not belong to you.', 403);
-    }
-    if (relatedSession.guest_token_hash !== guestTokenHash) {
-      if (relatedSession.guest_token_hash !== null) return apiFail('FORBIDDEN', 'This chat session does not belong to you.', 403);
-      const binding = await bindChatbotGuestSessionToken(sessionKey, guestTokenHash);
-      if (binding === 'unavailable') return apiFail('READ_UNAVAILABLE', 'Unable to verify this chat message. Try again.', 503);
-      if (binding !== 'bound') return apiFail('FORBIDDEN', 'This chat session does not belong to you.', 403);
-    }
   }
 
   // Feedback analytics use the exact sanitized message linked by /ask.

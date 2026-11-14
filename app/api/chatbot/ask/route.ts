@@ -17,7 +17,6 @@ import { cleanUserContent } from '@/lib/moderation/clean';
 import { logModerationFlag } from '@/lib/moderation/flags';
 import { reserveAiQuota } from '@/lib/rate-limit/ai';
 import { prepareExternalText } from '@/lib/chatbot/pii';
-import { bindChatbotGuestSessionToken, hashChatbotGuestCredential, readChatbotGuestCredential } from '@/lib/chatbot/guest-session';
 import { getAuthenticatedUser } from '@/lib/auth/request-user';
 
 export async function POST(request: Request) {
@@ -35,25 +34,13 @@ export async function POST(request: Request) {
   if (authentication.state === 'unavailable') {
     return apiFail('AUTH_UNAVAILABLE', 'Unable to verify your sign-in right now. Check your connection and try again.', 503);
   }
-  const user = authentication.state === 'authenticated' ? authentication.user : null;
-  const guestCredential = user ? null : readChatbotGuestCredential(request);
-  if (!user && !guestCredential) return apiFail('GUEST_SESSION_REQUIRED', 'Enable cookies to continue this guest chat, or sign in.', 401);
-  const guestTokenHash = guestCredential ? hashChatbotGuestCredential(guestCredential) : null;
+  if (authentication.state !== 'authenticated') return apiFail('UNAUTHORIZED', 'Sign in to use MYLawatan Bot.', 401);
+  const user = authentication.user;
   const resolvedSessionKey = sessionKey ?? crypto.randomUUID();
-  let guestBindingUnavailable = false;
 
   const service = createServiceClient();
 
   let session: { id: string; session_key: string; user_id: string | null; guest_token_hash: string | null; channel: string } | null = null;
-  async function guestSessionMatches(candidate: { guest_token_hash: string | null }) {
-    if (user) return true;
-    if (!guestTokenHash) return false;
-    if (candidate.guest_token_hash === guestTokenHash) return true;
-    if (candidate.guest_token_hash !== null) return false;
-    const binding = await bindChatbotGuestSessionToken(resolvedSessionKey, guestTokenHash);
-    if (binding === 'unavailable') guestBindingUnavailable = true;
-    return binding === 'bound';
-  }
   if (sessionKey) {
     const { data, error } = await service
       .from('chatbot_sessions')
@@ -63,11 +50,7 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (error) return apiFail('DB_ERROR', 'Unable to verify the chat session.', 503);
     if (data && data.channel !== 'customer') return apiFail('FORBIDDEN', 'This chat session does not belong to you.', 403);
-    if (data && data.user_id !== (user?.id ?? null)) {
-      return apiFail('FORBIDDEN', 'This chat session does not belong to you.', 403);
-    }
-    if (data && !await guestSessionMatches(data)) {
-      if (guestBindingUnavailable) return apiFail('SESSION_UNAVAILABLE', 'Unable to verify this chat right now. Check your connection and try again.', 503);
+    if (data && data.user_id !== user.id) {
       return apiFail('FORBIDDEN', 'This chat session does not belong to you.', 403);
     }
     session = data ?? null;
@@ -75,7 +58,7 @@ export async function POST(request: Request) {
   if (!session) {
     const { data: created, error: createErr } = await service
       .from('chatbot_sessions')
-      .insert({ user_id: user?.id ?? null, session_key: resolvedSessionKey, guest_token_hash: guestTokenHash, channel: 'customer' })
+      .insert({ user_id: user.id, session_key: resolvedSessionKey, guest_token_hash: null, channel: 'customer' })
       .select('id, session_key, user_id, guest_token_hash, channel')
       .single();
     if (createErr?.code === '23505' && sessionKey) {
@@ -85,7 +68,7 @@ export async function POST(request: Request) {
         .eq('session_key', sessionKey)
         .eq('channel', 'customer')
         .maybeSingle();
-      if (lookupErr || !existing || existing.user_id !== (user?.id ?? null) || !await guestSessionMatches(existing)) {
+      if (lookupErr || !existing || existing.user_id !== user.id) {
         return apiFail('DB_ERROR', 'Unable to establish the chat session.', 503);
       }
         if (existing.channel !== 'customer') return apiFail('FORBIDDEN', 'This chat session does not belong to you.', 403);
@@ -108,7 +91,7 @@ export async function POST(request: Request) {
   const operationPayloadHash = createHash('sha256')
     .update(JSON.stringify({ sessionId: session.id, userId: user?.id ?? null, question: cleaned.display }))
     .digest('hex');
-  const actorKey = user ? `user:${user.id}` : `guest:${guestTokenHash}`;
+  const actorKey = `user:${user.id}`;
 
   const loadPublicEvidence = async (messageId: string) => {
     const { data, error } = await service.from('chatbot_message_kb_refs')

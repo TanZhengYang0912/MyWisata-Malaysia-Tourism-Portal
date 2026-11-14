@@ -42,6 +42,7 @@ import { useSupportChat } from "@/components/providers/support-chat";
 import { useSpeechInput, resolveRecognitionLang } from "@/hooks/use-speech-input";
 import { ChatWidgetInbox } from "@/components/shared/chat-widget/chat-widget-inbox";
 import { ChatWidgetVendorThread } from "@/components/shared/chat-widget/chat-widget-vendor-thread";
+import { ChatWidgetHumanSupport } from "@/components/shared/chat-widget/chat-widget-human-support";
 import { resolveCustomerSupportIntent } from "@/lib/chatbot/customer-intent";
 import type { CustomerStatusItem } from "@/lib/chatbot/customer-tools";
 import type { CustomerStatusKind } from "@/lib/chatbot/policy";
@@ -500,12 +501,11 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   }
 
   useEffect(() => {
-    if (authLoading || !open || selected?.kind !== "support" || !sessionKey) return;
-    const historyKey = `${identityKey ?? "guest"}:${sessionKey}`;
-    if (!identityKey && freshGuestSessionRef.current === sessionKey) return;
+    if (authLoading || !identityKey || !open || selected?.kind !== "support" || !sessionKey) return;
+    const historyKey = `${identityKey}:${sessionKey}`;
     if (historyLoadedRef.current === historyKey) return;
     void loadChatHistory(sessionKey);
-  // History is loaded only when the support surface is visible; the function validates the current identity.
+  // Guest transcripts stay hidden until sign-in and explicit claim.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, identityKey, open, selected?.kind, sessionKey]);
 
@@ -520,7 +520,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
     const reopened = !supportPaneWasOpenRef.current;
     supportPaneWasOpenRef.current = true;
     const historyKey = `${identityKey ?? "guest"}:${sessionKey ?? ""}`;
-    if (reopened && sessionKey && (identityKey !== null || freshGuestSessionRef.current !== sessionKey)
+    if (reopened && identityKey && sessionKey
         && historyLoadedRef.current === historyKey && Date.now() - historyRefreshAtRef.current >= 5000) {
       historyRefreshAtRef.current = Date.now();
       void loadChatHistory(sessionKey);
@@ -530,9 +530,9 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
   }, [identityKey, open, selected?.kind, sessionKey]);
 
   useEffect(() => {
-    if (!open || selected?.kind !== "support" || !sessionKey) return;
+    if (!identityKey || !open || selected?.kind !== "support" || !sessionKey) return;
     const refreshOnReturn = () => {
-      if (document.visibilityState !== "visible" || (!identityKey && freshGuestSessionRef.current === sessionKey)
+      if (document.visibilityState !== "visible"
           || Date.now() - historyRefreshAtRef.current < 5000) return;
       historyRefreshAtRef.current = Date.now();
       void loadChatHistory(sessionKey);
@@ -1192,7 +1192,7 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
           style={expanded ? undefined : { height: 460, maxHeight: "calc(100vh - 6rem)" }}
         >
           <div className="flex items-center justify-between border-b border-border bg-primary px-4 py-3 text-primary-foreground">
-            <span className="text-sm font-semibold">{t("chatbot.title")}</span>
+            <span className="text-sm font-semibold">{t("chatbot.brand")}</span>
             <div className="flex items-center gap-3">
               <Link href="/customer/support" className="text-[0.6875rem] underline opacity-90 hover:opacity-100">
                 {t("chatbot.myTickets")}
@@ -1223,7 +1223,17 @@ export function ChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOn
               </div>
             )}
 
-            {selected?.kind === "vendor" && currentUser ? (
+            {authLoading ? (
+              <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-muted-foreground">{t("states.loading")}</div>
+            ) : !currentUser ? (
+              <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+                <p className="text-sm font-semibold text-foreground">{t("chatbot.loginRequired.title")}</p>
+                <p className="max-w-xs text-xs text-muted-foreground">{t("chatbot.loginRequired.description")}</p>
+                <Button asChild size="sm"><Link href="/login?next=%2Fcustomer%2Fsupport">{t("chatbot.loginRequired.action")}</Link></Button>
+              </div>
+            ) : selected?.kind === "human-support" ? (
+              <ChatWidgetHumanSupport key={currentUser.id} userId={currentUser.id} onBack={() => selectChat(null)} />
+            ) : selected?.kind === "vendor" && currentUser ? (
               <ChatWidgetVendorThread threadId={selected.threadId} currentUserId={currentUser.id} onBack={() => selectChat(null)} />
             ) : selected?.kind === "support" ? (
               <div className="flex min-h-0 flex-1 flex-col">

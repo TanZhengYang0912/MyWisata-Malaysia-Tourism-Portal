@@ -114,19 +114,15 @@ describe('POST /api/chatbot/feedback ownership', () => {
     expect(mocks.tables.chatbot_feedback.insert).not.toHaveBeenCalled();
   });
 
-  it('returns a retryable error instead of treating guest binding outages as forbidden', async () => {
+  it('rejects feedback from an unauthenticated guest before reading data', async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
-    mocks.tables.chatbot_messages = query({ data: {
-      ...botMessage,
-      chatbot_sessions: { ...botMessage.chatbot_sessions, user_id: null, guest_token_hash: null },
-    }, error: null });
-    mocks.bindGuest.mockResolvedValue('unavailable');
 
     const response = await POST(request());
     const body = await response.json();
 
-    expect(response.status).toBe(503);
-    expect(body.error.code).toBe('READ_UNAVAILABLE');
+    expect(response.status).toBe(401);
+    expect(body.error.code).toBe('UNAUTHORIZED');
+    expect(mocks.from).not.toHaveBeenCalled();
     expect(mocks.tables.chatbot_feedback.insert).not.toHaveBeenCalled();
   });
 

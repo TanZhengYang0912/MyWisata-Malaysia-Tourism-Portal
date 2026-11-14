@@ -36,22 +36,22 @@ describe('POST /api/chatbot/session/guest-token', () => {
     mocks.bind.mockResolvedValue('bound');
   });
 
-  it('sets a server-generated HttpOnly credential without returning its value', async () => {
+  it('rejects a guest before issuing a chatbot credential', async () => {
     const response = await POST(makeRequest());
     const payload = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(payload.data).toEqual({ ready: true, guest: true });
+    expect(response.status).toBe(401);
+    expect(payload.error.code).toBe('UNAUTHORIZED');
     expect(JSON.stringify(payload)).not.toContain('g'.repeat(43));
-    expect(mocks.setCookie).toHaveBeenCalledWith(expect.anything(), 'g'.repeat(43));
-    expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+    expect(mocks.setCookie).not.toHaveBeenCalled();
   });
 
-  it('reuses an existing credential without rotating it', async () => {
+  it('does not reuse a guest credential for an anonymous request', async () => {
     mocks.readCredential.mockReturnValue('p'.repeat(43));
 
-    await POST(makeRequest());
+    const response = await POST(makeRequest());
 
+    expect(response.status).toBe(401);
     expect(mocks.newCredential).not.toHaveBeenCalled();
     expect(mocks.setCookie).not.toHaveBeenCalled();
   });
@@ -79,7 +79,7 @@ describe('POST /api/chatbot/session/guest-token', () => {
     expect(mocks.setCookie).not.toHaveBeenCalled();
   });
 
-  it('does not silently replace a lost credential for an already bound session', async () => {
+  it('does not inspect an old guest session for an anonymous request', async () => {
     mocks.maybeSingle.mockResolvedValue({ data: { user_id: null, channel: 'customer', guest_token_hash: 'x'.repeat(64) }, error: null });
     const request = new Request('http://localhost/api/chatbot/session/guest-token', {
       method: 'POST', headers: { origin: 'http://localhost', 'content-type': 'application/json' },
@@ -89,12 +89,13 @@ describe('POST /api/chatbot/session/guest-token', () => {
     const response = await POST(request);
     const payload = await response.json();
 
-    expect(response.status).toBe(409);
-    expect(payload.error.code).toBe('GUEST_SESSION_REQUIRED');
+    expect(response.status).toBe(401);
+    expect(payload.error.code).toBe('UNAUTHORIZED');
     expect(mocks.setCookie).not.toHaveBeenCalled();
+    expect(mocks.maybeSingle).not.toHaveBeenCalled();
   });
 
-  it('binds a newly issued credential to an unbound legacy session before setting its cookie', async () => {
+  it('does not bind a legacy guest session without sign-in', async () => {
     mocks.maybeSingle.mockResolvedValue({ data: { user_id: null, channel: 'customer', guest_token_hash: null }, error: null });
     const request = new Request('http://localhost/api/chatbot/session/guest-token', {
       method: 'POST', headers: { origin: 'http://localhost', 'content-type': 'application/json' },
@@ -103,12 +104,12 @@ describe('POST /api/chatbot/session/guest-token', () => {
 
     const response = await POST(request);
 
-    expect(response.status).toBe(200);
-    expect(mocks.bind).toHaveBeenCalledWith('legacy-session', 'h'.repeat(64));
-    expect(mocks.setCookie).toHaveBeenCalled();
+    expect(response.status).toBe(401);
+    expect(mocks.bind).not.toHaveBeenCalled();
+    expect(mocks.setCookie).not.toHaveBeenCalled();
   });
 
-  it('does not report a temporary binding outage as a lost guest conversation', async () => {
+  it('does not attempt guest credential binding when unauthenticated', async () => {
     mocks.maybeSingle.mockResolvedValue({ data: { user_id: null, channel: 'customer', guest_token_hash: null }, error: null });
     mocks.bind.mockResolvedValue('unavailable');
     const request = new Request('http://localhost/api/chatbot/session/guest-token', {
@@ -119,8 +120,9 @@ describe('POST /api/chatbot/session/guest-token', () => {
     const response = await POST(request);
     const payload = await response.json();
 
-    expect(response.status).toBe(503);
-    expect(payload.error.code).toBe('READ_UNAVAILABLE');
+    expect(response.status).toBe(401);
+    expect(payload.error.code).toBe('UNAUTHORIZED');
+    expect(mocks.bind).not.toHaveBeenCalled();
     expect(mocks.setCookie).not.toHaveBeenCalled();
   });
 });

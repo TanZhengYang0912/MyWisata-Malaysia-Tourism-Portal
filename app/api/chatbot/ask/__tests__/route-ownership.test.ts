@@ -157,12 +157,8 @@ describe('POST /api/chatbot/ask session ownership', () => {
     expect(mocks.reserveQuota).toHaveBeenCalledWith(expect.any(Request), 'chatbot', 'victim');
   });
 
-  it('does not report a guest session mismatch when credential binding is unavailable', async () => {
+  it('rejects unauthenticated bot requests before establishing a session', async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null } });
-    mocks.bindGuest.mockResolvedValue('unavailable');
-    mocks.from.mockImplementation((table: string) => table === 'chatbot_sessions'
-      ? query({ data: { id: 'guest-session', session_key: 'guest-session', user_id: null, guest_token_hash: null, channel: 'customer' }, error: null })
-      : query({ data: null, error: null }));
 
     const response = await POST(new Request('http://localhost/api/chatbot/ask', {
       method: 'POST', headers: { 'content-type': 'application/json' },
@@ -170,8 +166,9 @@ describe('POST /api/chatbot/ask session ownership', () => {
     }));
     const body = await response.json();
 
-    expect(response.status).toBe(503);
-    expect(body.error.code).toBe('SESSION_UNAVAILABLE');
+    expect(response.status).toBe(401);
+    expect(body.error.code).toBe('UNAUTHORIZED');
+    expect(mocks.from).not.toHaveBeenCalled();
     expect(mocks.clean).not.toHaveBeenCalled();
     expect(mocks.answer).not.toHaveBeenCalled();
   });

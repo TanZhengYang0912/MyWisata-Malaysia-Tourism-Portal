@@ -72,37 +72,21 @@ describe('GET /api/support/operations/[operationId]', () => {
     expect(response.status).toBe(404);
   });
 
-  it('does not let an old guest cookie read an operation after the session is claimed', async () => {
+  it('does not let an unauthenticated guest read an operation after the session is claimed', async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null } });
-    mocks.from.mockImplementation((table: string) => query(table === 'support_operations' ? {
-      data: {
-        id: operationId, actor_key: `guest:${'a'.repeat(64)}`, owner_user_id: null, session_id: 'guest-session',
-        state: 'completed', result_id: 'answer-id', error_code: null, updated_at: new Date().toISOString(),
-        lease_expires_at: null, external_started_at: null,
-      }, error: null,
-    } : { data: null, error: null }));
 
     const response = await GET(new Request('https://example.test/api/support/operations'), { params: Promise.resolve({ operationId }) });
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(401);
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 
   it('does not treat an admin-channel session as a guest support operation owner', async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null } });
-    const operationQuery = query({
-      data: {
-        id: operationId, actor_key: `guest:${'a'.repeat(64)}`, owner_user_id: null, session_id: 'admin-session',
-        state: 'completed', result_id: 'answer-id', error_code: null, updated_at: new Date().toISOString(),
-        lease_expires_at: null, external_started_at: null,
-      }, error: null,
-    });
-    const sessionQuery = query({ data: null, error: null });
-    mocks.from.mockImplementation((table: string) => table === 'support_operations' ? operationQuery : sessionQuery);
-
     const response = await GET(new Request('https://example.test/api/support/operations'), { params: Promise.resolve({ operationId }) });
 
-    expect(response.status).toBe(404);
-    expect(sessionQuery.eq).toHaveBeenCalledWith('channel', 'customer');
+    expect(response.status).toBe(401);
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 
   it('does not expose an operation to its user owner when its session is not a customer session', async () => {

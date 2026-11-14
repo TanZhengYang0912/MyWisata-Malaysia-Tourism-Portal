@@ -113,44 +113,35 @@ describe('POST /api/chatbot/history', () => {
     expect(mocks.createServiceClient).not.toHaveBeenCalled();
   });
 
-  it('returns a retryable read error when legacy guest credential binding is unavailable', async () => {
+  it('requires sign-in before reading a legacy guest conversation', async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null } });
     mocks.bindGuest.mockResolvedValue('unavailable');
-    const session = makeBuilder({ data: { id: 'guest-session-row', guest_token_hash: null }, error: null }, 'maybeSingle');
-    const from = vi.fn(() => session);
-    mocks.createServiceClient.mockReturnValue({ from });
 
     const response = await POST(makeRequest());
     const body = await response.json();
 
-    expect(response.status).toBe(503);
-    expect(body.error.code).toBe('READ_UNAVAILABLE');
-    expect(from).toHaveBeenCalledTimes(1);
+    expect(response.status).toBe(401);
+    expect(body.error.code).toBe('UNAUTHORIZED');
+    expect(mocks.createServiceClient).not.toHaveBeenCalled();
   });
 
-  it('restores a guest conversation only through its unowned customer session key', async () => {
+  it('does not restore a guest conversation for an anonymous caller', async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null } });
-    const session = makeBuilder({ data: { id: 'guest-session-row', guest_token_hash: 'b'.repeat(64) }, error: null }, 'maybeSingle');
-    const messages = makeBuilder({ data: [], error: null });
-    mocks.createServiceClient.mockReturnValue({ from: (table: string) => table === 'chatbot_sessions' ? session : messages });
 
     const response = await POST(makeRequest());
     const payload = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(session.is).toHaveBeenCalledWith('user_id', null);
-    expect(payload.data.messages).toEqual([]);
+    expect(response.status).toBe(401);
+    expect(payload.error.code).toBe('UNAUTHORIZED');
+    expect(mocks.createServiceClient).not.toHaveBeenCalled();
   });
 
-  it('does not let an anonymous caller restore a signed-in session', async () => {
+  it('requires authentication before checking any chat session key', async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null } });
-    const session = makeBuilder({ data: null, error: null }, 'maybeSingle');
-    const from = vi.fn(() => session);
-    mocks.createServiceClient.mockReturnValue({ from });
 
     const response = await POST(makeRequest());
 
-    expect(response.status).toBe(404);
-    expect(from).toHaveBeenCalledTimes(1);
+    expect(response.status).toBe(401);
+    expect(mocks.createServiceClient).not.toHaveBeenCalled();
   });
 });

@@ -97,6 +97,19 @@ const translations: Record<string, string> = {
   "common:chatbot.somethingWrong": "Translated network fallback",
   "common:chatbot.title": "Translated support title",
   "common:chatbot.list.supportLabel": "Translated support label",
+  "common:chatbot.list.humanSupportLabel": "Translated human support label",
+  "common:chatbot.list.humanSupportPreview": "Translated ticket reply preview",
+  "common:chatbot.loginRequired.title": "Sign in to use Support",
+  "common:chatbot.loginRequired.description": "Sign in to use either support channel.",
+  "common:chatbot.loginRequired.action": "Sign in or create account",
+  "common:chatbot.humanSupport.create": "New ticket translated",
+  "common:chatbot.humanSupport.subject": "Subject translated",
+  "common:chatbot.humanSupport.description": "Describe the issue translated",
+  "common:chatbot.humanSupport.preview": "Review request translated",
+  "common:chatbot.humanSupport.review": "Review before sending translated",
+  "common:chatbot.humanSupport.consent": "Share with support translated",
+  "common:chatbot.humanSupport.submit": "Send to support translated",
+  "common:chatbot.humanSupport.created": "Request sent translated",
   "common:chatbot.wantTicket": "Translated ticket offer",
   "common:chatbot.gladToHelp": "Glad I could help.",
   "common:chatbot.feedback.saveFailed": "Feedback could not be saved translated",
@@ -207,6 +220,7 @@ async function openGuestHandoffPreview(question = "How can I contact customer su
       language: "en",
     } });
     if (url === "/api/chatbot/feedback") return response({ data: null });
+    if (String(url).startsWith("/api/support/drafts?")) return response({ data: { subject: "", body: "", version: 0 } });
     throw new Error(`Unexpected support request: ${url}`);
   });
 
@@ -217,6 +231,12 @@ async function openGuestHandoffPreview(question = "How can I contact customer su
   setInputValue(questionInput, question);
   await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
   await click(findButton("Yes translated"));
+}
+
+async function openGuestSupportGate() {
+  mocks.useAuth.mockReturnValue({ currentUser: null, loading: false });
+  await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+  await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
 }
 
 describe("Task 5 shared runtime behavior", () => {
@@ -234,9 +254,9 @@ describe("Task 5 shared runtime behavior", () => {
       t: namespace === "admin" ? adminTranslate : commonTranslate,
       i18n: { resolvedLanguage: "en" },
     }));
-    // Default: guest. The one vendor-thread test below overrides this with a
-    // real currentUser — everything else never touches vendor-chat fetches.
-    mocks.useAuth.mockReturnValue({ currentUser: null });
+    // Support conversations require an authenticated customer. Guest-specific
+    // coverage sets currentUser to null explicitly and checks the sign-in gate.
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" }, loading: false });
     vi.stubGlobal("fetch", mocks.fetch);
     Object.defineProperty(window, "location", { configurable: true, value: { pathname: "/customer/support", search: "?from=chat" } });
     container = document.createElement("div");
@@ -563,15 +583,27 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("offers a working retry after the FAQ request fails", async () => {
-    mocks.fetch.mockResolvedValueOnce(response({ data: null, error: { code: "READ_UNAVAILABLE" } }, false));
-    mocks.fetch.mockResolvedValueOnce(response({ data: { categories: [] }, error: null }));
+    let faqRequests = 0;
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
+      if (url === "/api/chat/mutes") return response({ data: [] });
+      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
+      if (url === "/api/chatbot/faq") {
+        faqRequests += 1;
+        return faqRequests === 1
+          ? response({ data: null, error: { code: "READ_UNAVAILABLE" } }, false)
+          : response({ data: { categories: [] }, error: null });
+      }
+      throw new Error(`Unexpected chatbot request: ${url}`);
+    });
     await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
     await click(findButton("Translated support label"));
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "Browse translated FAQs"));
     expect(container.textContent).toContain("chatbot.faq.error");
     await click(findButton("Retry translated"));
-    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    expect(faqRequests).toBe(2);
     expect(container.textContent).toContain("chatbot.faq.empty");
   });
 
@@ -956,67 +988,60 @@ describe("Task 5 shared runtime behavior", () => {
     expect(findOne(container, (element) => element.tagName === "A" && element.getAttribute("href") === "/customer/support/ticket-status-1")).toBeTruthy();
   });
 
-  it("sends a guest with an unavailable status query to sign in without showing a dead-end ticket action", async () => {
-    mocks.fetch.mockImplementation(async (url: string) => {
-      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
-      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
-      if (url === "/api/chat/mutes") return response({ data: [] });
-      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
-      if (url === "/api/support/status") return { ...response({ data: null, error: { code: "UNAUTHORIZED" } }, false), status: 401 } as Response;
-      throw new Error(`Unexpected support request: ${url}`);
-    });
+  it("blocks a guest from using either chatbot channel and offers sign-in", async () => {
+    await openGuestSupportGate();
 
-    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
-    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
-    await click(findButton("Translated support label"));
-    const questionInput = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
-    setInputValue(questionInput, "Where is my order status?");
-    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
-
-    expect(container.textContent).toContain("chatbot.statusQuery.signIn");
-    expect(container.textContent).not.toContain("Translated ticket offer");
-    expect(findOne(container, (element) => element.tagName === "A" && Boolean(element.getAttribute("href")?.startsWith("/login?next=")))).toBeTruthy();
-    expect(mocks.fetch.mock.calls.some(([url]) => String(url).includes("/api/support/drafts") || String(url).includes("/api/support/handoff/preview"))).toBe(false);
+    expect(container.textContent).toContain("Sign in to use Support");
+    expect(container.textContent).toContain("Translated human support label");
+    expect(findOne(container, (element) => element.tagName === "A" && element.getAttribute("href") === "/login?next=%2Fcustomer%2Fsupport")).toBeTruthy();
+    expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
-  it("explains that a guest must sign in before saving a chatbot handoff draft", async () => {
-    const question = "How can I contact customer support?";
-    mocks.fetch.mockImplementation(async (url: string) => {
-      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+  it("does not request a bot session for a guest", async () => {
+    await openGuestSupportGate();
+    expect(mocks.fetch.mock.calls.some(([url]) => String(url).startsWith("/api/chatbot/"))).toBe(false);
+  });
+
+  it("creates a human support ticket through the existing reviewed handoff flow", async () => {
+    mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === "/api/unread-count" || url === "/api/chat/unread-count") return response({ data: { count: 0 } });
       if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
       if (url === "/api/chat/mutes") return response({ data: [] });
-      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
-      if (url === "/api/chatbot/session/guest-token") return response({ data: { ready: true } });
-      if (url === "/api/chatbot/ask") return response({ data: {
-        sessionKey: "guest-support-session",
-        answer: "This needs a support teammate.",
-        botAnswered: false,
-        messageId: "guest-support-answer",
-        userMessageId: "guest-support-question",
-        language: "en",
-      } });
-      if (url === "/api/chatbot/feedback") return response({ data: null });
-      if (String(url).startsWith("/api/support/drafts?")) return { ...response({ data: null, error: { code: "UNAUTHORIZED" } }, false), status: 401 } as Response;
-      if (url === "/api/support/handoff/preview") return { ...response({ data: null, error: { code: "UNAUTHORIZED" } }, false), status: 401 } as Response;
+      if (url === "/api/support/tickets?page=1") return response({ data: { tickets: [], page: 1, total: 0, totalPages: 1 } });
+      if (url === "/api/support/handoff/preview") return response({ data: { subject: "Booking help", summary: "My booking is missing", handoffToken: "reviewed-handoff-token" } });
+      if (url === "/api/support/tickets" && init?.method === "POST") return response({ data: { id: "human-ticket-1" } });
       throw new Error(`Unexpected support request: ${url}`);
     });
 
     await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
-    await click(findButton("Translated support label"));
-    const questionInput = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
-    setInputValue(questionInput, question);
-    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
-    await click(findButton("Yes translated"));
+    await click(findButton("Translated human support label"));
+    await click(findButton("New ticket translated"));
+
+    const subject = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("maxLength") === "255");
+    const description = findOne(container, (element) => element.tagName === "TEXTAREA" && element.getAttribute("maxLength") === "2000");
+    await act(async () => {
+      setInputValue(subject, "Booking help");
+      setInputValue(description, "My booking is missing");
+      findOne(container, (element) => element.tagName === "FORM").dispatchEvent(new TestEvent("submit", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(container.textContent).toContain("Review before sending translated");
     const consent = findOne(container, (element) => element.tagName === "INPUT" && (element as unknown as { type: string }).type === "checkbox");
     (consent as unknown as { checked: boolean }).checked = true;
     await click(consent);
-    await click(findButton("Create translated ticket"));
+    await click(findButton("Send to support translated"));
 
-    expect(container.textContent).toContain("chatbot.supportErrors.signIn");
-    expect(findOne(container, (element) => element.tagName === "A" && Boolean(element.getAttribute("href")?.startsWith("/login?next=")))).toBeTruthy();
-    expect(mocks.fetch.mock.calls.some(([url]) => String(url) === "/api/support/tickets")).toBe(false);
+    const submitCall = mocks.fetch.mock.calls.find(([url, init]) => url === "/api/support/tickets" && init?.method === "POST");
+    expect(JSON.parse(String(submitCall?.[1]?.body))).toMatchObject({
+      subject: "Booking help",
+      body: "My booking is missing",
+      consent: true,
+      handoffToken: "reviewed-handoff-token",
+    });
+    expect(container.textContent).toContain("Request sent translated");
+    expect(findOne(container, (element) => element.tagName === "A" && element.getAttribute("href") === "/customer/support/human-ticket-1")).toBeTruthy();
   });
 
   it("keeps edited handoff content when the user declines to discard it", async () => {
@@ -1124,7 +1149,7 @@ describe("Task 5 shared runtime behavior", () => {
     expect(document.defaultView?.localStorage.getItem(`mw_chatbot_ask_operation:${askPayloads[0].sessionKey}`)).toBeNull();
     expect(container.textContent?.match(/I need help understanding wallet withdrawals\./g)).toHaveLength(1);
     expect(container.textContent).toContain(answer);
-    expect(container.textContent).toContain("Translated support title");
+    expect(container.textContent).toContain("chatbot.brand");
     expect(container.textContent).not.toContain("Translated answer");
     expect(container.textContent).toContain("Translated ticket offer");
 
@@ -1250,34 +1275,9 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("keeps the question and gives a retry path when guest session verification is temporarily unavailable", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: null });
-    const question = "What are your opening hours?";
-    let askRequests = 0;
-    mocks.fetch.mockImplementation(async (url: string) => {
-      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
-      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
-      if (url === "/api/chat/mutes") return response({ data: [] });
-      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
-      if (url === "/api/chatbot/faq") return response({ data: { categories: [] } });
-      if (url === "/api/chatbot/session/guest-token") return response({ data: null, error: { code: "READ_UNAVAILABLE" } }, false);
-      if (url === "/api/chatbot/ask") {
-        askRequests += 1;
-        throw new Error("ask must wait until guest session verification succeeds");
-      }
-      throw new Error(`Unexpected chatbot request: ${url}`);
-    });
-
-    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
-    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
-    await click(findButton("Translated support label"));
-    const input = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
-    await act(async () => { setInputValue(input, question); });
-    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
-
-    expect(container.textContent).toContain("Translated chat check outage; check your connection and try again");
-    expect((input as unknown as { value: string }).value).toBe(question);
-    expect(askRequests).toBe(0);
+    await openGuestSupportGate();
+    expect(container.textContent).toContain("Sign in to use Support");
+    expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
   it("recovers a refreshed ask when its stored operation belongs to a different question", async () => {
@@ -1321,8 +1321,8 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("refreshes bounded support history when the chat is reopened", async () => {
-    mocks.useAuth.mockReturnValue({ currentUser: null });
-    document.defaultView?.localStorage.setItem(chatbotSessionStorageKey(null), "199f9fac-8427-45c9-8096-0ece82d6cb54");
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
+    document.defaultView?.localStorage.setItem(chatbotSessionStorageKey("customer-1"), "199f9fac-8427-45c9-8096-0ece82d6cb54");
     let historyRequests = 0;
     mocks.fetch.mockImplementation(async (url: string) => {
       if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
@@ -1345,97 +1345,21 @@ describe("Task 5 shared runtime behavior", () => {
   });
 
   it("offers a new chat for an expired guest session and keeps the new session clear until its first ask", async () => {
-    const oldSessionKey = "199f9fac-8427-45c9-8096-0ece82d6cb54";
-    document.defaultView?.localStorage.setItem(chatbotSessionStorageKey(null), oldSessionKey);
-    let historyRequests = 0;
-    mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
-      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
-      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
-      if (url === "/api/chat/mutes") return response({ data: [] });
-      if (url === "/api/chatbot/history") {
-        historyRequests += 1;
-        return response({ data: null, error: { code: "NOT_FOUND" } }, false);
-      }
-      if (url === "/api/chatbot/session/guest-token") return response({ data: { sessionKey: "new-guest-session" } });
-      if (url === "/api/chatbot/ask") {
-        const { sessionKey } = JSON.parse(String(init?.body ?? "{}")) as { sessionKey: string };
-        return response({ data: {
-          sessionKey, answer: "New conversation started.", botAnswered: true,
-          messageId: "new-bot-message", userMessageId: "new-user-message", language: "en", privacyBlocked: false,
-        }, error: null });
-      }
-      throw new Error(`Unexpected chatbot request: ${url}`);
-    });
-
-    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
-    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
-    await click(findButton("Translated support label"));
-
-    expect(container.textContent).toContain("Guest session unavailable translated");
-    expect(container.textContent).toContain("Start new chat translated");
-    await click(findButton("Start new chat translated"));
-    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
-    await act(async () => {
-      document.dispatchEvent(new TestEvent("visibilitychange"));
-      await Promise.resolve();
-    });
-
-    const nextSessionKey = document.defaultView?.localStorage.getItem(chatbotSessionStorageKey(null));
-    expect(nextSessionKey).toMatch(/^[0-9a-f-]{36}$/i);
-    expect(nextSessionKey).not.toBe(oldSessionKey);
-    expect(historyRequests).toBe(1);
-    expect(container.textContent).not.toContain("Guest session unavailable translated");
-
-    const input = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
-    setInputValue(input, "I need help");
-    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
-    expect(container.textContent).toContain("New conversation started.");
-    expect(container.textContent).not.toContain("Start new chat translated");
+    await openGuestSupportGate();
+    expect(container.textContent).toContain("Sign in to use Support");
+    expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
   it("offers a new guest chat when the server explicitly requires a guest session during send", async () => {
-    mocks.fetch.mockImplementation(async (url: string) => {
-      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
-      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
-      if (url === "/api/chat/mutes") return response({ data: [] });
-      if (url === "/api/chatbot/history") return response({ data: { messages: [], nextCursor: null } });
-      if (url === "/api/chatbot/session/guest-token") return response({ data: null, error: { code: "GUEST_SESSION_REQUIRED" } }, false);
-      throw new Error(`Unexpected chatbot request: ${url}`);
-    });
-
-    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
-    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
-    await click(findButton("Translated support label"));
-    setInputValue(findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question"), "I need help");
-    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
-
-    expect(container.textContent).toContain("Guest session unavailable translated");
-    expect(container.textContent).toContain("Start new chat translated");
+    await openGuestSupportGate();
+    expect(container.textContent).toContain("Sign in to use Support");
+    expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
   it("keeps retry available for a temporary guest history read failure", async () => {
-    document.defaultView?.localStorage.setItem(chatbotSessionStorageKey(null), "199f9fac-8427-45c9-8096-0ece82d6cb54");
-    let historyRequests = 0;
-    mocks.fetch.mockImplementation(async (url: string) => {
-      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
-      if (url === "/api/customer/chat") return response({ data: { threads: [], readMessageIds: [] } });
-      if (url === "/api/chat/mutes") return response({ data: [] });
-      if (url === "/api/chatbot/history") {
-        historyRequests += 1;
-        return response({ data: null, error: { code: "READ_UNAVAILABLE" } }, false);
-      }
-      throw new Error(`Unexpected chatbot request: ${url}`);
-    });
-
-    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
-    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
-    await click(findButton("Translated support label"));
-
-    expect(container.textContent).toContain("History unavailable translated");
-    expect(container.textContent).toContain("Retry translated");
-    expect(container.textContent).not.toContain("Start new chat translated");
-    await click(findButton("Retry translated"));
-    expect(historyRequests).toBe(2);
+    await openGuestSupportGate();
+    expect(container.textContent).toContain("Sign in to use Support");
+    expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
   it("asks before claiming a guest chat and restores the transcript after confirmation", async () => {
@@ -1461,16 +1385,18 @@ describe("Task 5 shared runtime behavior", () => {
     await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
     await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
     await click(findButton("Translated support label"));
-    expect(container.textContent).toContain(userQuestion.text);
-    expect(historyRequests).toBe(1);
+    expect(container.textContent).toContain("Sign in to use Support");
+    expect(container.textContent).not.toContain(userQuestion.text);
+    expect(historyRequests).toBe(0);
 
     mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1" } });
     await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
     expect(container.textContent).toContain("Continue guest conversation translated");
     expect(container.textContent).not.toContain(botAnswer.text);
     await click(findButton("Continue guest chat translated"));
 
-    expect(historyRequests).toBe(2);
+    expect(historyRequests).toBe(1);
     expect(container.textContent).toContain(botAnswer.text);
     expect(container.textContent).not.toContain("Continue guest conversation translated");
     expect(document.defaultView?.localStorage.getItem(chatbotSessionStorageKey("customer-1"))).toBe(sessionKey);
