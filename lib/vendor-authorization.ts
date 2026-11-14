@@ -1,7 +1,7 @@
 import { type SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { apiFail } from '@/lib/validation/schemas';
+import { apiFail, databaseUuidSchema } from '@/lib/validation/schemas';
 import { activeEventStaffCampaignIds } from '@/lib/events/event-staff';
 
 export type VendorRole = 'vendor_owner' | 'outlet_manager' | 'event_staff';
@@ -107,6 +107,9 @@ export async function authorizeVendor(
   const authDb = (await createClient()) as SupabaseClient;
   const { data: { user } } = await authDb.auth.getUser();
   if (!user) return { ok: false, response: apiFail('UNAUTHORIZED', 'Sign in required', 401) };
+  // A malformed id would reach the uuid column and come back as a database error, i.e. a 500
+  // from every vendor route. It is a client error.
+  if (!databaseUuidSchema.safeParse(vendorId).success) return { ok: false, response: apiFail('VALIDATION_FAILED', 'vendorId must be a valid UUID', 400) };
 
   const { data: vendor, error: vendorError } = await authDb
     .from('vendors')

@@ -51,11 +51,21 @@ export default function AddressAutocomplete({ value = '', onChange, onSelect, pl
       setLoading(true);
       try {
         const response = await fetch(`/api/address/search?q=${encodeURIComponent(query)}`, { cache: 'no-store' });
-        const payload = await response.json();
-        if (!response.ok) setServiceError(payload.error?.message || t('address.serviceUnavailable'));
-        else setServiceError('');
+        // A missing or failing route answers with an HTML page, not JSON; treat that as "unavailable".
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload) {
+          setServiceError(payload?.error?.message || t('address.serviceUnavailable'));
+          setSuggestions([]);
+          setOpen(false);
+          return;
+        }
+        setServiceError('');
         setSuggestions(payload.data || []);
         setOpen(Boolean(payload.data?.length));
+      } catch {
+        setServiceError(t('address.serviceUnavailable'));
+        setSuggestions([]);
+        setOpen(false);
       } finally {
         setLoading(false);
       }
