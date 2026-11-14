@@ -22,7 +22,8 @@ import { REAL_CATEGORY_SLUGS, normalizeCategorySlugs, type RealCategorySlug } fr
 import { STATES_MY } from '@/lib/customer/malaysia-states';
 import { rankPersonalizedActivities } from '@/lib/personalization/scorer';
 import { prepareExternalText, prepareKbText, prepareStaffQuestionText } from './pii';
-import { retrieve } from './retrieve';
+import { detectSensitiveSupportDomain, resolveSupportPolicy } from './policy';
+import { retrieve, type RetrievedDoc } from './retrieve';
 
 const MAX_TOOL_ROUNDS = 4;
 const MAX_HISTORY_MESSAGES = 6;
@@ -68,7 +69,7 @@ export interface AgentContext {
 export interface AgentResult {
   /** null: the model said NO_ANSWER. */
   answer: string | null;
-  usedKb: { id: string; similarity: number }[];
+  usedKb: Pick<RetrievedDoc, 'id' | 'title' | 'contentVersion' | 'reviewed' | 'similarity'>[];
   listings: ChatListing[];
   comparison: ChatListing[] | null;
   refunds: RefundProposal[];
@@ -236,7 +237,12 @@ const refundArgs = z.object({
   reason: z.string().trim().min(1).max(500),
 }).refine((a) => a.reason_code !== 'other' || a.reason.length >= 5);
 
-export async function runCustomerAgent(service: SupabaseClient, question: string, ctx: AgentContext): Promise<AgentResult> {
+export async function runCustomerAgent(
+  service: SupabaseClient,
+  question: string,
+  ctx: AgentContext,
+  beforeExternalCall?: () => Promise<void>,
+): Promise<AgentResult> {
   const history: GeminiContent[] = ctx.history
     .slice(-MAX_HISTORY_MESSAGES)
     .filter((m) => prepareExternalText(m.text).allowed)
@@ -253,8 +259,15 @@ export async function runCustomerAgent(service: SupabaseClient, question: string
 
   async function runTool(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
     if (name === 'search_help') {
-      const docs = await retrieve(service, String(args.query ?? ''), 3);
-      for (const d of docs) if (!result.usedKb.some((k) => k.id === d.id)) result.usedKb.push({ id: d.id, similarity: d.similarity });
+      const query = String(args.query ?? '');
+      const domain = detectSensitiveSupportDomain(query);
+      const docs = await retrieve(service, query, 3, beforeExternalCall, domain !== null);
+      if (domain && (!docs.some((doc) => doc.reviewed) || !resolveSupportPolicy(domain, 'published_kb').canAnswerPolicy)) {
+        return { found: false };
+      }
+      for (const d of docs) if (!result.usedKb.some((k) => k.id === d.id)) {
+        result.usedKb.push({ id: d.id, title: d.title, contentVersion: d.contentVersion, reviewed: d.reviewed, similarity: d.similarity });
+      }
       const articles = docs.filter((d) => prepareKbText(`${d.title}\n${d.body}`).allowed).map((d) => ({ title: d.title, body: d.body }));
       return articles.length ? { articles } : { found: false };
     }
@@ -331,6 +344,7 @@ export async function runCustomerAgent(service: SupabaseClient, question: string
   }
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round += 1) {
+    await beforeExternalCall?.();
     const turn = await callGeminiAgent(SYSTEM_PROMPT, contents, TOOLS, { forceText: round === MAX_TOOL_ROUNDS });
     if (!turn.calls.length) {
       const text = turn.text.trim();

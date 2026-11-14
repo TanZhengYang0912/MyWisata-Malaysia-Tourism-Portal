@@ -1,47 +1,95 @@
-// P4 — Member 4: ticket reopen (CLAUDE-FIXES-2.md item 5)
-// POST /api/support/tickets/[id]/reopen — customer-only (must own the
-// ticket). A no-op 200 (not an error) if the ticket isn't actually
-// resolved/closed — avoids a confusing failure on a stray double-click.
-
+import { createHash } from 'node:crypto';
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { apiOk, apiFail } from '@/lib/validation/schemas';
-import { notifyTicketReopened } from '@/lib/support/notify';
+import { apiOk, apiFail, parseBody } from '@/lib/validation/schemas';
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
-const LOCKED_STATUSES = new Set(['resolved', 'closed']);
+const uuidSchema = z.string().uuid();
+const reopenRequestSchema = z.object({ operationId: z.string().uuid() });
+const TICKET_STATUSES = new Set(['open', 'in_progress', 'resolved', 'closed']);
 
-export async function POST(_request: Request, { params }: Props) {
+const PUBLIC_REOPEN_ERRORS: Record<string, { code: string; message: string; status: number }> = {
+  support_ticket_not_found: { code: 'NOT_FOUND', message: 'Ticket not found.', status: 404 },
+  support_ticket_forbidden: { code: 'FORBIDDEN', message: 'You cannot reopen this ticket.', status: 403 },
+  support_ticket_invalid_reopen: { code: 'INVALID_INPUT', message: 'This ticket could not be reopened.', status: 422 },
+  support_operation_conflict: { code: 'OPERATION_CONFLICT', message: 'This reopen request conflicts with an earlier request.', status: 409 },
+};
+
+function errorResponse(message: string) {
+  const knownError = PUBLIC_REOPEN_ERRORS[message];
+  if (knownError) return apiFail(knownError.code, knownError.message, knownError.status);
+  if (message === 'support_operation_lease_lost' || message === 'support_operation_forbidden') {
+    return apiFail('OPERATION_UNKNOWN', 'We could not confirm the ticket status. Check the ticket before trying again.', 409);
+  }
+  return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the ticket status. Check the ticket before trying again.', 503);
+}
+
+export async function POST(request: Request, { params }: Props) {
   const { id } = await params;
+  if (!uuidSchema.safeParse(id).success) return apiFail('INVALID_INPUT', 'Choose a valid support ticket.', 400);
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  const service = createServiceClient();
-  const { data: ticket } = await service
-    .from('support_tickets')
-    .select('id, subject, user_id, assigned_to, status')
-    .eq('id', id)
-    .maybeSingle();
-  if (!ticket) return apiFail('NOT_FOUND', 'Ticket not found', 404);
-  if (ticket.user_id !== user.id) return apiFail('FORBIDDEN', 'Not your ticket', 403);
+  const parsed = await parseBody(request, reopenRequestSchema);
+  if (!parsed.ok) return parsed.response;
 
-  if (!LOCKED_STATUSES.has(ticket.status)) {
-    return apiOk({ id: ticket.id, status: ticket.status });
+  const { operationId } = parsed.data;
+  const operationPayloadHash = createHash('sha256').update(JSON.stringify({
+    ticketId: id,
+    actorId: user.id,
+    action: 'reopen',
+  })).digest('hex');
+  const service = createServiceClient();
+
+  const { data: reservationData, error: reservationError } = await service.rpc('reserve_support_operation', {
+    p_operation_id: operationId,
+    p_actor_key: `user:${user.id}`,
+    p_owner_user_id: user.id,
+    p_session_id: null,
+    p_kind: 'reopen',
+    p_payload_hash: operationPayloadHash,
+    p_lease_seconds: 120,
+  });
+  if (reservationError) return errorResponse(reservationError.message);
+  if (typeof reservationData !== 'object' || reservationData === null) {
+    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the ticket status. Check the ticket before trying again.', 503);
   }
 
-  const { data, error } = await service
-    .from('support_tickets')
-    .update({ status: 'in_progress', reopened_at: new Date().toISOString(), resolved_at: null })
-    .eq('id', id)
-    .select('id, status')
-    .single();
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  const reservation = reservationData as Record<string, unknown>;
+  if (reservation.state === 'running' && reservation.shouldExecute !== true) {
+    return apiFail('OPERATION_UNKNOWN', 'We could not confirm the ticket status. Check the ticket before trying again.', 409);
+  }
+  if (reservation.state !== 'running' && reservation.state !== 'completed') {
+    return apiFail('OPERATION_UNKNOWN', 'We could not confirm the ticket status. Check the ticket before trying again.', 409);
+  }
+  const leaseToken = reservation.state === 'completed' ? null : reservation.leaseToken;
+  if (reservation.state === 'running' && (typeof leaseToken !== 'string' || !uuidSchema.safeParse(leaseToken).success)) {
+    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the ticket status. Check the ticket before trying again.', 503);
+  }
 
-  await notifyTicketReopened(service, ticket);
+  const { data, error } = await service.rpc('reopen_support_ticket', {
+    p_operation_id: operationId,
+    p_ticket_id: id,
+    p_actor_id: user.id,
+    p_operation_payload_hash: operationPayloadHash,
+    p_lease_token: leaseToken,
+  });
+  if (error) return errorResponse(error.message);
 
-  return apiOk(data);
+  if (typeof data !== 'object' || data === null) {
+    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the ticket status. Check the ticket before trying again.', 503);
+  }
+  const result = data as Record<string, unknown>;
+  if (result.id !== id || typeof result.status !== 'string' || !TICKET_STATUSES.has(result.status)
+      || typeof result.changed !== 'boolean') {
+    return apiFail('WRITE_UNAVAILABLE', 'We could not confirm the ticket status. Check the ticket before trying again.', 503);
+  }
+
+  return apiOk({ id, status: result.status, changed: result.changed, replayed: result.replayed === true });
 }

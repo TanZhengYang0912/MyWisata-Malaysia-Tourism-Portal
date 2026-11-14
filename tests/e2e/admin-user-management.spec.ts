@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { signIn } from './helpers/demo';
+import { randomUUID } from 'node:crypto';
 
 /**
  * E2E tests — real user journeys through the browser UI:
@@ -29,6 +30,20 @@ const CUSTOMER_EMAIL = 'customer@demo.local';
 
 async function signInViaForm(page: import('@playwright/test').Page, email: string, password: string) {
   await signIn(page, email, password);
+}
+
+async function postReviewedTicket(page: import('@playwright/test').Page, subject: string, body: string) {
+  const previewResponse = await page.request.post('/api/support/handoff/preview', { data: { subject, summary: body } });
+  expect(previewResponse.status()).toBe(200);
+  const preview = await previewResponse.json();
+  return page.request.post('/api/support/tickets', {
+    data: {
+      operationId: randomUUID(),
+      handoffToken: preview.data.handoffToken,
+      subject: preview.data.subject,
+      body: preview.data.summary,
+    },
+  });
 }
 
 // ─── 5. Admin Soft Delete ─────────────────────────────────────────────────────
@@ -299,12 +314,7 @@ test.describe('8. Regular Support Ticket not affected', () => {
     await signInViaForm(page, CUSTOMER_EMAIL, 'demo123456');
 
     // Create ticket via API (regular support, no moderation gate)
-    const res = await page.request.post('/api/support/tickets', {
-      data: {
-        subject: 'I cannot find my booking confirmation',
-        body:    'I cannot find my booking confirmation. Please help me locate it.',
-      },
-    });
+    const res = await postReviewedTicket(page, 'I cannot find my booking confirmation', 'I cannot find my booking confirmation. Please help me locate it.');
     expect(res.status()).toBe(201);
     const body = await res.json();
     const ticketId: string = body.data?.id;
@@ -327,12 +337,7 @@ test.describe('8. Regular Support Ticket not affected', () => {
     // So a regular ticket must always return 201, regardless of GOOGLE_AI_KEY validity.
     await signInViaForm(page, CUSTOMER_EMAIL, 'demo123456');
 
-    const res = await page.request.post('/api/support/tickets', {
-      data: {
-        subject: 'Payment issue with my order',
-        body:    'I was charged twice for the same order. Please investigate.',
-      },
-    });
+    const res = await postReviewedTicket(page, 'Payment issue with my order', 'I was charged twice for the same order. Please investigate.');
     // Must be 201 — never 503
     expect(res.status()).toBe(201);
     expect((await res.json()).data?.id).toBeTruthy();

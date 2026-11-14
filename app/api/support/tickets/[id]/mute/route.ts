@@ -21,7 +21,7 @@ export async function POST(_request: Request, { params }: Props) {
   if (error) {
     if (error.code === '23505') return apiOk({ ticketId: id, muted: true }); // already muted — idempotent
     if (error.code === '42501') return apiFail('FORBIDDEN', 'Not your ticket', 403);
-    return apiFail('DB_ERROR', error.message, 500);
+    return apiFail('WRITE_UNAVAILABLE', 'Unable to update this support request. Please try again.', 503);
   }
 
   return apiOk({ ticketId: id, muted: true }, { status: 201 });
@@ -34,7 +34,7 @@ export async function DELETE(_request: Request, { params }: Props) {
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
   const { error } = await supabase.from('ticket_mutes').delete().eq('ticket_id', id).eq('user_id', user.id);
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error) return apiFail('WRITE_UNAVAILABLE', 'Unable to update this support request. Please try again.', 503);
 
   return apiOk({ ticketId: id, muted: false });
 }

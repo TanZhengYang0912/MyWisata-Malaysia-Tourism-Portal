@@ -40,9 +40,12 @@ describe('admin AI action proposals', () => {
     expect(await proposeAction(fakeDb(null), 'reindex_kb', 'not json')).toMatchObject({ error: 'args_json is not valid JSON' });
   });
 
-  it('saves AI-written knowledge base entries turned off', async () => {
+  it('saves AI-written knowledge base entries as a reviewable draft', async () => {
     const card = await proposeAction(fakeDb(null), 'create_kb_entry', JSON.stringify({ title: 'Refund time', body: 'Refunds take 5 to 7 working days.', keywords: ['refund'] }));
-    expect(card).toMatchObject({ request: { method: 'POST', url: '/api/admin/chatbot/kb', body: { isActive: false } } });
+    expect(card).toMatchObject({ request: { method: 'POST', url: '/api/admin/chatbot/kb', body: {
+      title: 'Refund time', body: 'Refunds take 5 to 7 working days.', keywords: ['refund'], operationId: expect.any(String),
+    } } });
+    expect((card as { request?: { body?: Record<string, unknown> } }).request?.body).not.toHaveProperty('isActive');
   });
 
   it('claims an event case with its current version and a Malaysia end-of-day due time', async () => {

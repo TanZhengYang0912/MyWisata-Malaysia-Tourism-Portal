@@ -17,7 +17,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useAuth } from "@/components/providers/auth";
 import { supabase } from "@/backend/supabase";
 
-export type SelectedChat = { kind: "support" } | { kind: "vendor"; threadId: string };
+export type SelectedChat = { kind: "support" } | { kind: "human-support" } | { kind: "vendor"; threadId: string };
 
 /** The product a customer opened a vendor chat to ask about — carried until the next message is sent or the banner is dismissed. */
 export interface PendingChatContext {

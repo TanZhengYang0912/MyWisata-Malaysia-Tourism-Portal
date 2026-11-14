@@ -32,7 +32,11 @@ interface GeminiEmbedResponse {
  * gracefully rather than let it propagate to a user-facing 500.
  */
 /** `source: 'kb'` is for platform-written help articles only (see prepareKbText); everything else is user text. */
-export async function embedText(text: string, source: 'user' | 'kb' = 'user'): Promise<number[]> {
+export async function embedText(
+  text: string,
+  source: 'user' | 'kb' = 'user',
+  beforeExternalCall?: () => Promise<void>,
+): Promise<number[]> {
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) throw new Error('LLM_API_KEY not configured');
 
@@ -44,9 +48,9 @@ export async function embedText(text: string, source: 'user' | 'kb' = 'user'): P
   if (!preparedText.allowed) throw new Error('sensitive_data_detected');
   const { clean } = preparedText;
 
+  await beforeExternalCall?.();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), EMBED_TIMEOUT_MS);
-
   try {
     const res = await fetch(EMBED_URL, {
       method: 'POST',

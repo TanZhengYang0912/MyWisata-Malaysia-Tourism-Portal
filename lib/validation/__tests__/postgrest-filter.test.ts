@@ -40,6 +40,9 @@ const REVIEWED_SERVER_VALUES: Record<string, string> = {
   'lib/vendor-dashboard.ts': 'outlet ids from the server-side vendor scope',
   'lib/affiliate/earnings-export.ts': 'cursor timestamps and ids come from the previous database page',
   'app/api/admin/orders/[orderId]/guest-contact/route.ts': 'orderId is UUID-validated before constructing the PostgREST filter',
+  'app/api/chatbot/history/route.ts': 'cursor timestamp and UUID are validated by strict zod before constructing the filter',
+  'app/api/support/tickets/[id]/read/route.ts': 'timestamp comes from the matched database reply row, not request input',
+  'lib/support/reply-pagination.ts': 'only support reply routes call this helper; any user cursor is validated as ISO timestamp and UUID first',
 };
 
 function sourceFiles(dir: string): string[] {

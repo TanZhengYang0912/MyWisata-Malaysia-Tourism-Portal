@@ -1,38 +1,55 @@
-// P4 — Member 4: mark a ticket read (CLAUDE-FIXES-2.md item 1)
-// PATCH /api/support/tickets/[id]/read — sets customer_last_read_at or
-// admin_last_read_at depending on which the caller actually is. Call this
-// when the thread is actually opened (ticket detail mount), not when a list
-// merely renders a row — matches the doc's own instruction.
-
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { apiOk, apiFail } from '@/lib/validation/schemas';
+import { apiOk, apiFail, parseBody } from '@/lib/validation/schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
-export async function PATCH(_request: Request, { params }: Props) {
+const readSchema = z.object({
+  surface: z.enum(['customer', 'admin']),
+  lastDisplayedReplyId: z.string().uuid(),
+}).strict();
+
+export async function PATCH(request: Request, { params }: Props) {
   const { id } = await params;
+  const parsed = await parseBody(request, readSchema);
+  if (!parsed.ok) return parsed.response;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
   const service = createServiceClient();
-  const { data: ticket } = await service.from('support_tickets').select('id, user_id').eq('id', id).maybeSingle();
+  const { data: ticket, error: ticketError } = await service
+    .from('support_tickets').select('id,user_id').eq('id', id).maybeSingle();
+  if (ticketError) return apiFail('READ_UNAVAILABLE', 'Unable to update the ticket read status.', 503);
   if (!ticket) return apiFail('NOT_FOUND', 'Ticket not found', 404);
 
-  const isAdmin = await isSuperAdmin(supabase, user.id);
-  const isOwner = ticket.user_id === user.id;
-  if (!isAdmin && !isOwner) return apiFail('FORBIDDEN', 'Not your ticket', 403);
+  const isAdminSurface = parsed.data.surface === 'admin';
+  const canReadSurface = isAdminSurface
+    ? await isSuperAdmin(supabase, user.id)
+    : ticket.user_id === user.id;
+  if (!canReadSurface) return apiFail('FORBIDDEN', 'Not your ticket', 403);
+  const incomingRole = isAdminSurface ? 'customer' : 'admin';
+  const column = isAdminSurface ? 'admin_last_read_at' : 'customer_last_read_at';
+  const { data: reply, error: replyError } = await service
+    .from('support_ticket_replies')
+    .select('id,created_at,sender_role')
+    .eq('id', parsed.data.lastDisplayedReplyId)
+    .eq('ticket_id', id)
+    .maybeSingle();
+  if (replyError) return apiFail('READ_UNAVAILABLE', 'Unable to update the ticket read status.', 503);
+  if (!reply || reply.sender_role !== incomingRole) return apiFail('BAD_REQUEST', 'The displayed reply could not be verified.', 422);
 
-  // Admin takes priority if somehow both — an admin viewing their own
-  // ticket (unlikely, but not impossible on a demo account) is acting as
-  // admin here, since that's the role-gated dashboard they're using.
-  const column = isAdmin ? 'admin_last_read_at' : 'customer_last_read_at';
-  const { error } = await service.from('support_tickets').update({ [column]: new Date().toISOString() }).eq('id', id);
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  const { data: updated, error } = await service.from('support_tickets')
+    .update({ [column]: reply.created_at })
+    .eq('id', id)
+    .or(`${column}.is.null,${column}.lt.${reply.created_at}`)
+    .select('id')
+    .maybeSingle();
+  if (error) return apiFail('READ_UNAVAILABLE', 'Unable to update the ticket read status.', 503);
 
-  return apiOk({ id, column });
+  return apiOk({ id, column, changed: Boolean(updated) });
 }

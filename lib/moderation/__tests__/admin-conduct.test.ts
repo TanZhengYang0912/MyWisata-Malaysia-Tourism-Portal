@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getAdminConductFlags, logAdminConductFlagIfNeeded, reviewAdminConductFlag } from '../admin-conduct';
+import { logAdminConductFlagIfNeeded, reviewAdminConductFlag } from '../admin-conduct';
 import type { CleanedContent } from '../clean';
 
 function cleaned(overrides: Partial<CleanedContent> = {}): CleanedContent {
@@ -82,98 +82,40 @@ describe('logAdminConductFlagIfNeeded', () => {
   });
 });
 
-describe('getAdminConductFlags', () => {
-  it('joins flagged admin and target user names', async () => {
-    const flagsData = [{
-      id: 'flag-1',
-      flagged_admin_id: 'admin-1',
-      target_user_id: 'user-1',
-      source: 'ticket_reply',
-      source_ref_id: 'ticket-1',
-      original_text: 'you idiot',
-      severity: 'medium',
-      status: 'open',
-      created_at: '2026-08-09T00:00:00.000Z',
-      reviewed_at: null,
-      reviewed_by: null,
-    }];
-    const usersData = [
-      { id: 'admin-1', full_name: 'Ali Admin', email: 'ali@example.com' },
-      { id: 'user-1', full_name: null, email: 'bob@example.com' },
-    ];
-    const service = {
-      from: (table: string) => {
-        if (table === 'admin_conduct_flags') {
-          return { select: () => ({ order: () => Promise.resolve({ data: flagsData }) }) };
-        }
-        return { select: () => ({ in: () => Promise.resolve({ data: usersData }) }) };
-      },
-    } as unknown as SupabaseClient;
-
-    const result = await getAdminConductFlags(service);
-
-    expect(result).toEqual([{
-      id: 'flag-1',
-      flaggedAdminId: 'admin-1',
-      flaggedAdminName: 'Ali Admin',
-      targetUserId: 'user-1',
-      targetUserName: 'bob@example.com',
-      source: 'ticket_reply',
-      sourceRefId: 'ticket-1',
-      originalText: 'you idiot',
-      severity: 'medium',
-      status: 'open',
-      createdAt: '2026-08-09T00:00:00.000Z',
-      reviewedAt: null,
-      reviewedBy: null,
-    }]);
-  });
-
-  it('leaves targetUserName null when there is no target (admin_ai)', async () => {
-    const flagsData = [{
-      id: 'flag-2',
-      flagged_admin_id: 'admin-1',
-      target_user_id: null,
-      source: 'admin_ai',
-      source_ref_id: 'session-key-1',
-      original_text: 'you idiot',
-      severity: 'high',
-      status: 'open',
-      created_at: '2026-08-09T00:00:00.000Z',
-      reviewed_at: null,
-      reviewed_by: null,
-    }];
-    const service = {
-      from: (table: string) => {
-        if (table === 'admin_conduct_flags') {
-          return { select: () => ({ order: () => Promise.resolve({ data: flagsData }) }) };
-        }
-        return { select: () => ({ in: () => Promise.resolve({ data: [{ id: 'admin-1', full_name: 'Ali Admin', email: 'ali@example.com' }] }) }) };
-      },
-    } as unknown as SupabaseClient;
-
-    const result = await getAdminConductFlags(service);
-    expect(result[0].targetUserId).toBeNull();
-    expect(result[0].targetUserName).toBeNull();
-  });
-});
-
 describe('reviewAdminConductFlag', () => {
-  it('returns true when a row was updated', async () => {
-    const maybeSingle = vi.fn().mockResolvedValue({ data: { id: 'flag-1' }, error: null });
+  function reviewService(updateResult: { data: unknown; error: unknown }, currentResult: { data: unknown; error: unknown }) {
+    const updateMaybeSingle = vi.fn().mockResolvedValue(updateResult);
+    const currentMaybeSingle = vi.fn().mockResolvedValue(currentResult);
+    const updateSelect = vi.fn(() => ({ maybeSingle: updateMaybeSingle }));
+    const updateEqSecond = vi.fn(() => ({ select: updateSelect }));
+    const updateEqFirst = vi.fn(() => ({ eq: updateEqSecond }));
+    const update = vi.fn(() => ({ eq: updateEqFirst }));
+    const currentEq = vi.fn(() => ({ maybeSingle: currentMaybeSingle }));
+    const select = vi.fn(() => ({ eq: currentEq }));
     const service = {
-      from: () => ({ update: () => ({ eq: () => ({ eq: () => ({ select: () => ({ maybeSingle }) }) }) }) }),
+      from: () => ({ update, select }),
     } as unknown as SupabaseClient;
+    return { service, update, currentMaybeSingle };
+  }
 
-    await expect(reviewAdminConductFlag(service, 'flag-1', 'admin-2')).resolves.toBe(true);
+  it('returns reviewed when an open row was updated', async () => {
+    const { service } = reviewService({ data: { id: 'flag-1' }, error: null }, { data: null, error: null });
+
+    await expect(reviewAdminConductFlag(service, 'flag-1', 'admin-2')).resolves.toBe('reviewed');
   });
 
-  it('returns false when no open row matched', async () => {
-    const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-    const service = {
-      from: () => ({ update: () => ({ eq: () => ({ eq: () => ({ select: () => ({ maybeSingle }) }) }) }) }),
-    } as unknown as SupabaseClient;
+  it('distinguishes an already-reviewed row from a missing row without a second write', async () => {
+    const { service, update } = reviewService(
+      { data: null, error: null },
+      { data: { status: 'reviewed' }, error: null },
+    );
+    await expect(reviewAdminConductFlag(service, 'flag-1', 'admin-2')).resolves.toBe('already_reviewed');
+    expect(update).toHaveBeenCalledTimes(1);
+  });
 
-    await expect(reviewAdminConductFlag(service, 'flag-1', 'admin-2')).resolves.toBe(false);
+  it('returns not_found when no row exists', async () => {
+    const { service } = reviewService({ data: null, error: null }, { data: null, error: null });
+
+    await expect(reviewAdminConductFlag(service, 'flag-1', 'admin-2')).resolves.toBe('not_found');
   });
 });

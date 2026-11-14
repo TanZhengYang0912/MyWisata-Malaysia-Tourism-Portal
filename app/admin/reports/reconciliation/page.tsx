@@ -7,14 +7,12 @@ import { useAppDialog } from "@/components/providers/app-dialog";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { formatMYRFromSen } from "@/lib/i18n/format";
-import { csvRow } from "@/lib/admin/csv";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
 import { AdminMobileRecordCard } from "@/components/admin/admin-mobile-record-card";
 import { malaysiaDateTimeLocalToIso } from '@/lib/datetime/malaysia';
-import { filterOrderReconciliationRows, summarizeOrderReconciliationRows, formatReconciliationSen, type ReconciliationFilters } from '@/lib/admin/reconciliation-filtering';
+import { formatReconciliationSen, type ReconciliationFilters } from '@/lib/admin/reconciliation-filtering';
 import { DEFAULT_EVENT_OPERATIONS_FILTERS, EVENT_CASE_KINDS, EVENT_CASE_HANDLING, EVENT_CASE_OWNERS, EVENT_CASE_DEADLINES, type EventOperationsFilters } from '@/lib/admin/event-operations-filters';
-import { paginateStaffConductRecords } from "@/components/admin/staff-conduct-filtering";
 import type { OrderReconciliation, EventOperations } from "@/lib/admin/reconciliation";
 import { PlatformFundsPanel } from "@/components/admin/platform-funds-panel";
 
@@ -43,13 +41,16 @@ export default function ReconciliationPage() {
   const [data, setData] = useState<(OrderReconciliation & { eventOperations: EventOperations }) | null>(null);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<ReconciliationFilters>({ search: '', status: 'all', net: 'all' });
+  const [searchInput, setSearchInput] = useState('');
   const [financialPage, setFinancialPage] = useState(1);
   const [financialPageSize, setFinancialPageSize] = useState<(typeof PAGE_SIZES)[number]>(15);
   const [caseFilters, setCaseFilters] = useState<EventOperationsFilters>(DEFAULT_EVENT_OPERATIONS_FILTERS);
   const [caseSearchInput, setCaseSearchInput] = useState('');
   const [loadedKey, setLoadedKey] = useState('');
   const controllerRef = useRef<AbortController | null>(null);
-  const requestKey = new URLSearchParams({ period, ...Object.fromEntries(Object.entries(caseFilters).map(([key, value]) => [key, String(value)])) }).toString();
+  const requestKey = new URLSearchParams({ period, search: filters.search, status: filters.status, net: filters.net,
+    page: String(financialPage), pageSize: String(financialPageSize),
+    ...Object.fromEntries(Object.entries(caseFilters).map(([key, value]) => [key, String(value)])) }).toString();
   const [dueDates, setDueDates] = useState<Record<string, string>>({});
   const [busyCase, setBusyCase] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -82,21 +83,32 @@ export default function ReconciliationPage() {
     return () => { active = false; controllerRef.current?.abort(); };
   }, [load]);
 
-  const ready = !!data && loadedKey === requestKey && !loading && !error;
-  const filteredRows = filterOrderReconciliationRows(data?.rows ?? [], filters);
-  const filteredReport = { rows: filteredRows, totals: summarizeOrderReconciliationRows(filteredRows) };
-  const pagedRows = paginateStaffConductRecords(filteredRows, financialPage, financialPageSize);
   useEffect(() => {
-    if (financialPage === pagedRows.page) return;
+    const timeout = window.setTimeout(() => {
+      const search = searchInput.trim();
+      setFilters((old) => old.search === search ? old : { ...old, search });
+      setFinancialPage(1);
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
+
+  const ready = !!data && loadedKey === requestKey && searchInput.trim() === filters.search && !loading && !error;
+  const filteredReport = data ?? { rows: [], total: 0, statusOptions: [], page: financialPage, pageSize: financialPageSize,
+    totals: { grossSen: 0, platformFeeSen: 0, vendorNetSen: 0, affiliatePayoutSen: 0, recommendationPayoutSen: 0, platformNetSen: 0, negativeOrders: 0 } };
+  const totalPages = Math.max(1, Math.ceil(filteredReport.total / financialPageSize));
+  useEffect(() => {
+    const effectivePage = Math.min(financialPage, totalPages);
+    if (financialPage === effectivePage) return;
     let active = true;
-    queueMicrotask(() => { if (active) setFinancialPage(pagedRows.page); });
+    queueMicrotask(() => { if (active) setFinancialPage(effectivePage); });
     return () => { active = false; };
-  }, [financialPage, pagedRows.page]);
+  }, [financialPage, totalPages]);
   function changeFinancialFilter<K extends keyof ReconciliationFilters>(key: K, value: ReconciliationFilters[K]) {
     setFilters((old) => ({ ...old, [key]: value }));
     setFinancialPage(1);
   }
-  const statusOptions = [...new Set((data?.rows ?? []).map((row) => row.status))].sort();
+  const statusOptions = filteredReport.statusOptions ?? [];
+  const hasActiveFinancialFilters = !!filters.search.trim() || filters.status !== 'all' || filters.net !== 'all';
   function statusLabel(status: string) {
     const key = `orderOperations.statuses.${status}`;
     return i18n.exists(key, { ns: 'admin' }) ? t(key) : t('reconciliation.filters.unknownStatus');
@@ -145,21 +157,25 @@ export default function ReconciliationPage() {
     } catch { setActionError(t('eventOperations.conflict')); } finally { setBusyCase(null); }
   }
 
-  function downloadCsv() {
-    if (!ready || !filteredReport.rows.length) return;
-    const header = ["order", "status", "paid_at", "gross_rm", "platform_fee_rm", "vendor_net_rm", "affiliate_rm", "recommendation_rm", "platform_net_rm"];
-    const lines = filteredReport.rows.map((r) => csvRow([
-      r.orderDisplayId ?? t('reconciliation.filters.orderWithoutNumber'), r.status, r.paidAt ?? "",
-      (r.grossSen / 100).toFixed(2), (r.platformFeeSen / 100).toFixed(2), (r.vendorNetSen / 100).toFixed(2),
-      (r.affiliatePayoutSen / 100).toFixed(2), (r.recommendationPayoutSen / 100).toFixed(2), (r.platformNetSen / 100).toFixed(2),
-    ]));
-    const blob = new Blob([[csvRow(header), ...lines].join("\n")], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `reconciliation-${period}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  async function downloadCsv() {
+    if (!ready || !filteredReport.total) return;
+    try {
+      const query = new URLSearchParams({ period, search: filters.search, status: filters.status, net: filters.net });
+      const response = await fetch(`/api/admin/reconciliation/export?${query}`, { cache: 'no-store' });
+      if (!response.ok) {
+        setError(response.status === 422 ? t('reconciliation.errors.exportLimit') : t('reconciliation.errors.load'));
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reconciliation-${period}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError(t('reconciliation.errors.load'));
+    }
   }
 
   const metrics: [string, number][] = ready ? [
@@ -177,7 +193,6 @@ export default function ReconciliationPage() {
         eyebrow={<span className="flex items-center gap-2"><Scale size={14} /> {t("reconciliation.eyebrow")}</span>}
         title={t("reconciliation.title")}
       />
-
       <PlatformFundsPanel />
 
       {(error || actionError) && <p role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error || actionError}</p>}
@@ -261,9 +276,10 @@ export default function ReconciliationPage() {
       )}
 
       <section className="mt-5 space-y-5">
+          <p className="text-sm text-muted-foreground">{t('reconciliation.scope')}</p>
           <AdminFilterBar>
             <input type="month" aria-label={t('reconciliation.month')} value={period} onChange={(event) => { setPeriod(event.target.value); setFinancialPage(1); }} className={adminFilterControlClassName} />
-            <input aria-label={t('reconciliation.filters.search')} className={`${adminFilterControlClassName} min-w-[220px] flex-1`} maxLength={100} value={filters.search} onChange={(event) => changeFinancialFilter('search', event.target.value)} />
+            <input aria-label={t('reconciliation.filters.search')} className={`${adminFilterControlClassName} min-w-[220px] flex-1`} maxLength={100} value={searchInput} onChange={(event) => setSearchInput(event.target.value)} />
             <select className={adminFilterControlClassName} aria-label={t('reconciliation.columns.status')} value={filters.status} onChange={(event) => changeFinancialFilter('status', event.target.value)}>
                 <option value="all">{t('orderOperations.statuses.all')}</option>
                 {[...new Set([...statusOptions, ...(filters.status === 'all' ? [] : [filters.status])])].map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
@@ -274,7 +290,7 @@ export default function ReconciliationPage() {
             <select className={adminFilterControlClassName} aria-label={t('staffConduct.filters.perPageAriaLabel')} value={financialPageSize} onChange={(event) => { setFinancialPageSize(Number(event.target.value) as (typeof PAGE_SIZES)[number]); setFinancialPage(1); }}>
                 {PAGE_SIZES.map((size) => <option key={size} value={size}>{t('ui.pagination.perPage', { count: size })}</option>)}
             </select>
-            <Button variant="outline" onClick={() => { setFilters({ search: '', status: 'all', net: 'all' }); setFinancialPage(1); }}>{t('reconciliation.filters.clear')}</Button>
+            <Button variant="outline" onClick={() => { setSearchInput(''); setFilters({ search: '', status: 'all', net: 'all' }); setFinancialPage(1); }}>{t('reconciliation.filters.clear')}</Button>
             <Button onClick={() => void load()} disabled={loading || !period}><RefreshCw size={15} />{loading ? t('reconciliation.loading') : t('reconciliation.reload')}</Button>
             <Button variant="outline" onClick={downloadCsv} disabled={!ready || !filteredReport.rows.length}><Download size={15} />{t('reconciliation.exportCsv')}</Button>
           </AdminFilterBar>
@@ -297,10 +313,10 @@ export default function ReconciliationPage() {
 
           <div className="rounded-2xl border border-border bg-card p-5">
             {filteredReport.rows.length === 0 ? (
-              <p className="py-10 text-center text-sm text-muted-foreground">{t(data?.rows.length ? 'reconciliation.filters.noMatches' : 'reconciliation.noOrders')}</p>
+              <p className="py-10 text-center text-sm text-muted-foreground">{t(hasActiveFinancialFilters ? 'reconciliation.filters.noMatches' : 'reconciliation.noOrders')}</p>
             ) : (
               <div className="space-y-3 lg:hidden">
-                {pagedRows.items.map((r) => <AdminMobileRecordCard key={r.orderId} header={<div className="min-w-0"><p className="break-words font-mono text-sm font-semibold">{r.orderDisplayId ?? t('reconciliation.filters.orderWithoutNumber')}</p><p className="mt-1 text-sm text-muted-foreground">{r.paidAt ? new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "Asia/Kuala_Lumpur" }).format(new Date(r.paidAt)) : "—"} · {statusLabel(r.status)}</p></div>} className={r.platformNetNegative ? "border-amber-300 bg-amber-50/60 dark:border-amber-500/30 dark:bg-amber-500/10" : ""}>
+                {filteredReport.rows.map((r) => <AdminMobileRecordCard key={r.orderId} header={<div className="min-w-0"><p className="break-words font-mono text-sm font-semibold">{r.orderDisplayId ?? t('reconciliation.filters.orderWithoutNumber')}</p><p className="mt-1 text-sm text-muted-foreground">{r.paidAt ? new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "Asia/Kuala_Lumpur" }).format(new Date(r.paidAt)) : "—"} · {statusLabel(r.status)}</p></div>} className={r.platformNetNegative ? "border-amber-300 bg-amber-50/60 dark:border-amber-500/30 dark:bg-amber-500/10" : ""}>
                   <div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">{t("reconciliation.columns.gross")}</p><p className="font-mono">{formatReconciliationSen(r.grossSen)}</p></div><div><p className="text-xs text-muted-foreground">{t("reconciliation.columns.fee")}</p><p className="font-mono text-muted-foreground">{formatReconciliationSen(r.platformFeeSen)}</p></div><div><p className="text-xs text-muted-foreground">{t("reconciliation.columns.vendorNet")}</p><p className="font-mono">{formatReconciliationSen(r.vendorNetSen)}</p></div><div><p className="text-xs text-muted-foreground">{t("reconciliation.columns.affiliate")}</p><p className="font-mono text-muted-foreground">{r.affiliatePayoutSen ? `−${formatReconciliationSen(r.affiliatePayoutSen)}` : "—"}</p></div><div><p className="text-xs text-muted-foreground">{t("reconciliation.columns.recommendation")}</p><p className="font-mono text-muted-foreground">{r.recommendationPayoutSen ? `−${formatReconciliationSen(r.recommendationPayoutSen)}` : "—"}</p></div><div><p className="text-xs text-muted-foreground">{t("reconciliation.columns.platformNet")}</p><p className={`font-mono font-bold ${r.platformNetNegative ? "text-destructive" : "text-foreground"}`}>{formatReconciliationSen(r.platformNetSen)}</p></div></div>
                 </AdminMobileRecordCard>)}
               </div>
@@ -320,7 +336,7 @@ export default function ReconciliationPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {pagedRows.items.map((r) => (
+                    {filteredReport.rows.map((r) => (
                       <tr key={r.orderId} className={r.platformNetNegative ? "bg-amber-50/60 dark:bg-amber-500/10" : ""}>
                         <td className="py-3 pr-3 font-mono text-xs text-muted-foreground">{r.orderDisplayId ?? t('reconciliation.filters.orderWithoutNumber')}</td>
                         <td className="py-3 pr-3 text-xs text-muted-foreground">
@@ -337,7 +353,7 @@ export default function ReconciliationPage() {
                   </tbody>
                 </table>
               </div>}
-            <Pagination currentPage={pagedRows.page} totalPages={pagedRows.totalPages} totalItems={filteredRows.length} pageSize={financialPageSize} onPageChange={setFinancialPage} disabled={loading} className="mt-4 border-t border-border pt-3" />
+            <Pagination currentPage={financialPage} totalPages={totalPages} totalItems={filteredReport.total} pageSize={financialPageSize} onPageChange={setFinancialPage} disabled={loading} className="mt-4 border-t border-border pt-3" />
           </div>
           </>}
         </section>

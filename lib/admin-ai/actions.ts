@@ -195,11 +195,11 @@ async function exists(service: SupabaseClient, table: string, column: string, va
 export const ACTION_SPECS = {
   create_kb_entry: {
     description: 'Add a chatbot knowledge base entry. Args: {"title": string, "body": string, "keywords": string[], "category"?: string}. It is saved turned off, so the admin can check it on the Chatbot page and turn it on. Write the body only from facts in search_help results or the admin request; if you have neither, ask the admin what it should say.',
-    args: createKbDocumentSchema.omit({ isActive: true }),
+    args: createKbDocumentSchema.omit({ operationId: true }),
     async build(_service, args: { title: string; body: string; keywords: string[]; category?: string | null }) {
       return {
         details: [{ field: 'title', value: args.title }, { field: 'body', value: args.body }, { field: 'keywords', value: args.keywords.join(', ') }],
-        request: { method: 'POST', url: '/api/admin/chatbot/kb', body: { ...args, isActive: false } },
+        request: { method: 'POST', url: '/api/admin/chatbot/kb', body: { ...args, operationId: crypto.randomUUID() } },
       };
     },
   },

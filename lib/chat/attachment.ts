@@ -9,10 +9,19 @@ export type ChatAttachmentValidation =
   | { ok: true; buffer: ArrayBuffer }
   | { ok: false; code: 'INVALID_FILE_TYPE' | 'FILE_TOO_LARGE' | 'INVALID_FILE_CONTENT' };
 
-export async function validateChatAttachment(file: UploadFile): Promise<ChatAttachmentValidation> {
+export type ChatAttachmentMetadataValidation =
+  | { ok: true }
+  | { ok: false; code: 'INVALID_FILE_TYPE' | 'FILE_TOO_LARGE' };
+
+export function validateChatAttachmentMetadata(file: Pick<File, 'type' | 'size'>): ChatAttachmentMetadataValidation {
   if (!ACCEPTED_TYPES.has(file.type)) return { ok: false, code: 'INVALID_FILE_TYPE' };
   if (file.size > MAX_SIZE) return { ok: false, code: 'FILE_TOO_LARGE' };
+  return { ok: true };
+}
 
+export async function validateChatAttachment(file: UploadFile): Promise<ChatAttachmentValidation> {
+  const metadataValidation = validateChatAttachmentMetadata(file);
+  if (!metadataValidation.ok) return metadataValidation;
   const buffer = await file.arrayBuffer();
   if (!await validateMagicBytes(buffer, file.type)) return { ok: false, code: 'INVALID_FILE_CONTENT' };
   return { ok: true, buffer };

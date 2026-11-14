@@ -1219,7 +1219,11 @@
       "addToKb": "Add to KB",
       "aiDraft": "AI: draft a KB answer",
       "edit": "Edit",
-      "newDoc": "New doc"
+      "newDoc": "New doc",
+      "saveDraft": "Save draft",
+      "reviewDraft": "Review draft",
+      "publish": "Publish",
+      "reindexEntry": "Retry indexing"
     },
     "categories": {
       "account": "Account",
@@ -1239,13 +1243,23 @@
       "batchFailed": "Batch knowledge document update failed.",
       "batchUpdate": "One or more knowledge documents could not be updated.",
       "draft": "Could not draft a KB entry right now.",
+      "draftOutcomeUnknown": "Gemini may have received this draft request, but the result is unconfirmed. Check again later or write the entry manually.",
+      "draftResultExpired": "The saved draft result expired. Select AI Draft again to start a new request, or write the entry manually.",
+      "draftOperationConflict": "This request key was already used for another draft. Select AI Draft again to start a new request, or write the entry manually.",
+      "draftRateLimited": "AI drafting is temporarily unavailable. Wait a little or write the entry manually.",
+      "draftStorageUnavailable": "This browser cannot safely remember the draft request. Enable session storage or write the entry manually.",
       "privacyBlocked": "The full request was not sent to AI because it may contain personal details. Remove phone, email, identity, bank, or private-address details, or write the KB entry manually. Keyword answers remain available.",
       "loadDescription": "Something went wrong loading the chatbot overview. Try refreshing the page.",
       "loadTitle": "Couldn't load chatbot stats",
+      "loadDocsTitle": "Couldn't load knowledge base",
+      "loadStatsRefresh": "Couldn't refresh chatbot stats. The last successful range is still shown.",
+      "retry": "Retry",
       "reindex": "Reindex failed.",
       "sameStatus": "Select documents with the same current status before applying this action.",
       "save": "Failed to save.",
       "saveRetry": "Knowledge document could not be saved. Please try again.",
+      "publish": "Could not publish this entry.",
+      "publishRetry": "The entry may not have published. Reload the knowledge base to check before trying again.",
       "status": "Could not update document status.",
       "statusRetry": "Could not update document status. Please try again."
     },
@@ -1255,7 +1269,10 @@
       "editTitle": "Edit KB document",
       "keywords": "Keywords, comma-separated (used by the keyword fallback)",
       "newTitle": "New KB document",
-      "title": "Title"
+      "title": "Title",
+      "sources": "Source references, one per line",
+      "sourcesHint": "Add the policy page or internal record that confirms these facts. Drafts stay offline until reviewed and published.",
+      "reviewConfirmation": "I reviewed the answer and sources. They match current platform policy."
     },
     "inactive": "inactive",
     "knowledgeBase": "Knowledge base",
@@ -1264,7 +1281,16 @@
       "answerRate": "Answer rate",
       "escalationNote": "of failed answers became a ticket",
       "escalationRate": "Escalation rate",
-      "questions": "Questions asked"
+      "questions": "Questions asked",
+      "range": "Report range",
+      "dateRange": "{{from}} – {{to}}",
+      "noQuestions": "No questions were asked in this range.",
+      "days": {
+        "7": "Last 7 days",
+        "30": "Last 30 days",
+        "90": "Last 90 days"
+      },
+      "turnCoverage": "Paired unanswered turns: {{paired}} · older unpaired replies: {{legacy}}"
     },
     "notEmbedded": "not embedded (keyword-only)",
     "notHelpful": {
@@ -1276,6 +1302,8 @@
     "reindexErrors": ", {{count}} error(s)",
     "reindexResult": "Scanned {{scanned}}, embedded {{embedded}}, skipped {{skipped}}{{errors}}",
     "reindexing": "Reindexing…",
+    "publishing": "Publishing…",
+    "pendingReview": "Draft awaiting review",
     "saving": "Saving…",
     "selectAll": "Select all documents",
     "success": {
@@ -1284,6 +1312,9 @@
       "created": "Knowledge document created.",
       "deactivated": "Knowledge document deactivated.",
       "updated": "Knowledge document updated.",
+      "draftSaved": "Draft saved. The current published answer stays online until review.",
+      "published": "Knowledge document published.",
+      "noChanges": "No changes to save.",
       "batchStatus_one": "{{count}} knowledge documents updated.",
       "batchStatus_other": "{{count}} knowledge documents updated."
     },
@@ -1291,6 +1322,10 @@
     "topUnanswered": {
       "empty": "Nothing unanswered yet — the KB is covering everything asked so far.",
       "title": "Top unanswered questions"
+    },
+    "topCommon": {
+      "empty": "No questions in this range.",
+      "title": "Most common questions"
     },
     "uncategorized": "uncategorized",
     "reindexErrors_one": ", {{count}} error(s)",
@@ -1553,16 +1588,16 @@
       "numberMismatch": "Number differs from OCR",
       "ocrUnavailable": "OCR unavailable",
       "ocrUnreadable": "OCR unreadable",
-        "ocrSourceUnavailable": "OCR source unavailable",
-        "ocrVisibleFieldsIncomplete": "Visible fields incomplete",
-        "ocrTranscriptionError": "MRZ transcription error",
-        "transcriptionCorrection": "What was corrected from the OCR result?",
-        "nationality": "Nationality",
-        "birthDate": "Birth date",
-        "expiryDate": "Expiry date",
-        "sex": "Sex",
-        "mrzLine1": "MRZ line 1",
-        "mrzLine2": "MRZ line 2",
+      "ocrSourceUnavailable": "OCR source unavailable",
+      "ocrVisibleFieldsIncomplete": "Visible fields incomplete",
+      "ocrTranscriptionError": "MRZ transcription error",
+      "transcriptionCorrection": "What was corrected from the OCR result?",
+      "nationality": "Nationality",
+      "birthDate": "Birth date",
+      "expiryDate": "Expiry date",
+      "sex": "Sex",
+      "mrzLine1": "MRZ line 1",
+      "mrzLine2": "MRZ line 2",
       "openBothDocuments": "Open both the front and back images before confirming.",
       "secondaryReviewer": "Independent second reviewer",
       "secondaryReviewerRequired": "Select an eligible second reviewer first.",
@@ -1898,7 +1933,8 @@
   "reconciliation": {
     "eyebrow": "Where the money goes",
     "title": "Order money breakdown",
-    "description": "Per-order breakdown: what the customer paid, the vendor's net, the platform commission, and how much of it funded affiliate and recommendation payouts.",
+    "description": "Per-order allocation from platform settlement, affiliate commissions and referral commissions.",
+    "scope": "Internal allocation report. Not matched to bank or Stripe settlements.",
     "month": "Month",
     "reload": "Reload",
     "loading": "Loading…",
@@ -1908,10 +1944,11 @@
     "negativeWarning_one": "{{count}} order paid out more in referral commission than the platform earned on it — expected for first-sale bonuses, shown here for visibility.",
     "negativeWarning_other": "{{count}} orders paid out more in referral commission than the platform earned on them — expected for first-sale bonuses, shown here for visibility.",
     "errors": {
-      "load": "Unable to load the reconciliation report."
+      "load": "Unable to load the reconciliation report.",
+      "exportLimit": "Narrow the filters to export 10,000 orders or fewer."
     },
     "metrics": {
-      "gross": "Customer paid",
+      "gross": "Recorded gross",
       "platformFee": "Platform commission",
       "vendorNet": "Vendor net",
       "affiliate": "Affiliate payouts",
@@ -1934,8 +1971,8 @@
       "unknownStatus": "Other status",
       "orderWithoutNumber": "Order number unavailable",
       "noMatches": "No orders match these filters.",
-      "scope": "Financial filters apply to the table, totals and CSV. Figures reflect loaded settlement data.",
-      "count": "Showing {{shown}} of {{total}} loaded orders.",
+      "scope": "Filters apply to server-calculated rows, totals and CSV.",
+      "count": "Showing {{shown}} of {{total}} matching orders.",
       "net": {
         "all": "All net amounts",
         "positive": "Positive",
@@ -2313,6 +2350,7 @@
       "batch": {
         "confirm": "{{action}} {{count}} selected user accounts?",
         "failed": "One or more user actions failed.",
+        "outcomes": "{{applied}} applied, {{rejected}} rejected, {{unknown}} need verification. The list has been refreshed.",
         "noCommonAction": "No single account action is valid for every selected user.",
         "processed": "{{count}} user accounts processed.",
         "reasonError": "A reason of at least 10 characters is required.",
@@ -2921,10 +2959,24 @@
       "allReviewed": "Everything has been reviewed.",
       "noMatchingRecords": "No conduct records match these filters."
     },
+    "states": {
+      "loading": "Loading conduct records…",
+      "updating": "Updating results…"
+    },
+    "errors": {
+      "load": "Conduct records could not be loaded. Retry to check them again.",
+      "staleLoad": "Could not refresh these results. Showing the last loaded records.",
+      "reviewFailed": "This record was not updated. Retry to mark it reviewed.",
+      "reviewSignIn": "Your session expired. Sign in in a new tab, then return here and retry.",
+      "reviewNotFound": "This record is no longer available. Refresh the results before continuing.",
+      "alreadyReviewed": "This record was already reviewed. The queue has been refreshed."
+    },
     "actions": {
       "viewLog": "View log",
       "marking": "Marking…",
       "markReviewed": "Mark reviewed",
+      "retry": "Retry",
+      "signIn": "Sign in",
       "reviewed": "Reviewed"
     },
     "dialogs": {

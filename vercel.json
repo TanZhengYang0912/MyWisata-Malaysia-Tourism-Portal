@@ -59,6 +59,10 @@
     {
       "path": "/api/cron/purge-avatar-assets",
       "schedule": "15 3 * * *"
+    },
+    {
+      "path": "/api/cron/support-maintenance",
+      "schedule": "23 * * * *"
     }
   ]
 }

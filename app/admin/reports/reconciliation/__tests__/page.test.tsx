@@ -37,10 +37,29 @@ describe('financial reconciliation pagination', () => {
     Object.defineProperty(TestElement.prototype, 'click', { configurable: true, value() {} });
   });
   beforeEach(async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ data: {
-      rows, totals: {}, eventOperations: { cases: [], summary: { open: 0, unassigned: 0, undated: 0, overdue: 0, outstandingSen: 0 },
-        jobs: [], total: 0, matchingOutstandingSen: 0, page: 1, pageSize: 25 },
-    } }) })));
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input), 'http://localhost');
+      if (url.pathname.endsWith('/export')) {
+        return { ok: true, blob: async () => new Blob(['order,status\n', ...rows.map((row) => `${row.orderDisplayId},${row.status}\n`)]) };
+      }
+      const page = Number(url.searchParams.get('page') ?? 1);
+      const pageSize = Number(url.searchParams.get('pageSize') ?? 15);
+      const search = url.searchParams.get('search') ?? '';
+      const net = url.searchParams.get('net') ?? 'all';
+      const matches = rows.filter((row) => (!search || row.orderDisplayId?.includes(search))
+        && (net !== 'zero' || row.platformNetSen === 0)
+        && (net !== 'positive' || row.platformNetSen > 0)
+        && (net !== 'negative' || row.platformNetSen < 0));
+      return { ok: true, json: async () => ({ data: {
+        rows: matches.slice((page - 1) * pageSize, page * pageSize), total: matches.length,
+        totals: { grossSen: matches.reduce((sum, row) => sum + row.grossSen, 0), platformFeeSen: matches.reduce((sum, row) => sum + row.platformFeeSen, 0),
+          vendorNetSen: matches.reduce((sum, row) => sum + row.vendorNetSen, 0), affiliatePayoutSen: 0, recommendationPayoutSen: 0,
+          platformNetSen: matches.reduce((sum, row) => sum + row.platformNetSen, 0), negativeOrders: 0 },
+        statusOptions: ['paid'], page, pageSize,
+        eventOperations: { cases: [], summary: { open: 0, unassigned: 0, undated: 0, overdue: 0, outstandingSen: 0 },
+          jobs: [], total: 0, matchingOutstandingSen: 0, page: 1, pageSize: 25 },
+      } }) };
+    }));
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container as unknown as Element);
@@ -80,10 +99,12 @@ describe('financial reconciliation pagination', () => {
 
   it('clamps a later page after refreshed matching rows shrink', async () => {
     await click(button('accessibility.nextPage'));
-    vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ data: {
-      rows: rows.slice(0, 2), totals: {}, eventOperations: { cases: [], summary: { open: 0, unassigned: 0, undated: 0, overdue: 0, outstandingSen: 0 },
+    vi.mocked(fetch).mockImplementation(async () => ({ ok: true, json: async () => ({ data: {
+      rows: rows.slice(0, 2), total: 2, statusOptions: ['paid'], page: 1, pageSize: 15,
+      totals: { grossSen: 200, platformFeeSen: 20, vendorNetSen: 180, affiliatePayoutSen: 0, recommendationPayoutSen: 0, platformNetSen: 20, negativeOrders: 0 },
+      eventOperations: { cases: [], summary: { open: 0, unassigned: 0, undated: 0, overdue: 0, outstandingSen: 0 },
         jobs: [], total: 0, matchingOutstandingSen: 0, page: 1, pageSize: 25 },
-    } }) } as Response);
+    } }) } as Response));
     await click(findOne(container, e => e.tagName === 'BUTTON' && e.textContent.includes('reconciliation.reload')));
     expect(bodyRows().length).toBe(2);
     expect(container.textContent).toContain('pagination.range {"from":1,"to":2,"total":2}');
@@ -112,7 +133,8 @@ describe('financial reconciliation pagination', () => {
       assignedName: 'Reviewer', assigned: true, isMine: true, dueAt: null, createdAt: null, overdue: false, refundStatus: null, refundId: null,
       outstandingSen: 1200, state: 'open', handling: 'needs_review', resolvedAt: null, refundCompleted: false,
       pickupItems: [{ name: 'Drink', quantity: 3, pickupDate: '2026-10-10', status: 'pending', vendorName: 'Vendor One', pickupLabel: 'Main Hall · 10:00–12:00' }] };
-    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ data: { rows, totals: {}, eventOperations: {
+    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ data: { rows: rows.slice(0, 15), total: 16, statusOptions: ['paid'], page: 1, pageSize: 15,
+      totals: { grossSen: 1600, platformFeeSen: 160, vendorNetSen: 1440, affiliatePayoutSen: 0, recommendationPayoutSen: 0, platformNetSen: 160, negativeOrders: 0 }, eventOperations: {
       cases: [pickupCase], summary: {open:1,unassigned:0,undated:1,overdue:0,outstandingSen:1200},jobs:[],total:1,matchingOutstandingSen:1200,page:1,pageSize:25,
     } } }) } as Response);
     await click(findOne(container, e => e.tagName === 'BUTTON' && e.textContent.includes('reconciliation.reload')));
@@ -128,7 +150,8 @@ describe('financial reconciliation pagination', () => {
     const pickupCase = { id: 'case-deadline', version: 1, kind: 'pickup_overdue', orderNumber: 'ORD-DEADLINE',
       assigned: false, isMine: false, assignedName: null, state: 'open', handling: 'needs_review', outstandingSen: 1200,
       dueAt: null, overdue: false, refundId: null, refundCompleted: false };
-    const response = { ok: true, json: async () => ({ data: { rows, totals: {}, eventOperations: {
+    const response = { ok: true, json: async () => ({ data: { rows: rows.slice(0, 15), total: 16, statusOptions: ['paid'], page: 1, pageSize: 15,
+      totals: { grossSen: 1600, platformFeeSen: 160, vendorNetSen: 1440, affiliatePayoutSen: 0, recommendationPayoutSen: 0, platformNetSen: 160, negativeOrders: 0 }, eventOperations: {
       cases: [pickupCase],summary:{open:1,unassigned:1,undated:1,overdue:0,outstandingSen:1200},jobs:[],total:1,matchingOutstandingSen:1200,page:1,pageSize:25,
     } } }) } as Response;
     vi.mocked(fetch).mockResolvedValue(response);

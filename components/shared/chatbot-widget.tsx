@@ -33,56 +33,53 @@ import Link from "next/link";
 import { ChevronLeft, HelpCircle, MessageCircle, Mic, MicOff, Minimize2, Maximize2, Send, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import type { FaqCategory } from "@/app/api/chatbot/faq/route";
+import { Pagination } from "@/components/shared/pagination";
+import { useAppDialog } from "@/components/providers/app-dialog";
+import type { FaqCategory, FaqQuestionPage } from "@/app/api/chatbot/faq/route";
 import type { ChatLanguage } from "@/lib/chatbot/language";
 import { useAuth } from "@/components/providers/auth";
 import { useSupportChat } from "@/components/providers/support-chat";
-import { useSpeechInput, resolveRecognitionLang, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
+import { useSpeechInput, resolveRecognitionLang } from "@/hooks/use-speech-input";
 import { ChatWidgetInbox } from "@/components/shared/chat-widget/chat-widget-inbox";
 import { ChatWidgetVendorThread } from "@/components/shared/chat-widget/chat-widget-vendor-thread";
+import { ChatWidgetHumanSupport } from "@/components/shared/chat-widget/chat-widget-human-support";
+import { resolveCustomerSupportIntent } from "@/lib/chatbot/customer-intent";
+import type { CustomerStatusItem } from "@/lib/chatbot/customer-tools";
+import type { CustomerStatusKind } from "@/lib/chatbot/policy";
+import type { SupportPolicyAction } from "@/lib/chatbot/policy";
+import { supportError } from "@/lib/support/errors";
 import { ChatbotComparisonTable, ChatbotListingLinks, ChatbotRefundCard } from "@/components/shared/chat-widget/chatbot-agent-results";
 import type { ChatListing, RefundProposal } from "@/lib/chatbot/agent";
+import { formatChatTimestamp } from "@/lib/customer/chat-view";
+import { buildProductPath } from "@/lib/customer/navigation-context";
+import { combineProductRecommendationFollowUp, type ProductRecommendationData } from "@/lib/chatbot/product-recommendations";
+import { classifyIntent } from "@/lib/chatbot/intent";
 
 // CLAUDE-VOICE-INPUT.md Part 2. Friendly copy per error kind — never a raw
 // error/exception reaching this UI (the hook itself already guarantees
 // that; this is just the last-mile string).
-const SPEECH_ERROR_TEXT: Record<SpeechInputErrorKind, string> = {
-  "permission-denied": "Microphone access needed",
-  "no-speech": "Didn't catch that — try again",
-  network: "Voice input needs a connection",
-  unknown: "Voice input isn't available right now",
-};
-
-// Display labels for the KB's own `category` values (the live set today:
-// account, affiliate, booking, general, payment, rewards, vendor, wallet).
-// Admins can add new categories from the KB editor at any time, so an
-// unmapped value falls back to its own capitalised name rather than
-// disappearing from the FAQ browser.
-const FAQ_CATEGORY_LABEL: Record<string, string> = {
-  account: "Account",
-  affiliate: "Affiliate",
-  booking: "Booking",
-  general: "General",
-  payment: "Payment",
-  rewards: "Rewards",
-  vendor: "Vendor",
-  wallet: "Wallet",
-};
-
-function faqCategoryLabel(category: string): string {
-  return FAQ_CATEGORY_LABEL[category] ?? category.charAt(0).toUpperCase() + category.slice(1);
-}
-
 type FeedbackStage =
   | "awaiting_helpful" // Flow 1: bot answered, ask "was this helpful?"
   | "helpful_done" // collapsed after Yes
   | "awaiting_ticket" // Flow 2 (bot couldn't answer) or Flow 1's "No" — offer a ticket
+  | "handoff_preview" // User reviews and edits the exact ticket content before sharing
   | "ticket_created" // collapsed after the ticket offer's Yes succeeds
   | "ticket_declined"; // collapsed after the ticket offer's No
+
+const LOCALIZED_FAQ_CATEGORIES = new Set(["account", "affiliate", "booking", "general", "payment", "rewards", "vendor", "wallet"]);
+const CHATBOT_STARTER_ACTIONS = ["booking", "refund", "products", "faq"] as const;
+
+function faqCategoryLabel(category: string, translate: (key: string) => string): string {
+  if (LOCALIZED_FAQ_CATEGORIES.has(category)) return translate(`chatbot.faq.categories.${category}`);
+  return category.charAt(0).toUpperCase() + category.slice(1);
+}
 
 interface ChatMessage {
   role: "user" | "bot";
   text: string;
+  createdAt?: string;
+  persistedId?: string;
+  localId?: string;
   /** Bot messages only — ties this reply to its chatbot_feedback row. */
   messageId?: string;
   /** Bot messages only — the user's question this reply answers, used as the ticket subject/body if one gets opened. */
@@ -92,48 +89,173 @@ interface ChatMessage {
   /** The original question was withheld from AI; the reply used local FAQ matching. */
   privacyBlocked?: boolean;
   feedbackStage?: FeedbackStage;
+  feedbackSaving?: boolean;
+  feedbackSaveFailed?: boolean;
+  feedbackNeedsSignIn?: boolean;
+  feedbackLoginHref?: string;
+  feedbackVote?: boolean;
   /** Agent replies only; not restored with history. */
   listings?: ChatListing[];
   comparison?: ChatListing[] | null;
   refunds?: RefundProposal[];
   ticketId?: string;
   ticketError?: string;
+  ticketErrorCode?: string;
+  statusItems?: CustomerStatusItem[];
+  statusKind?: CustomerStatusKind;
+  statusActions?: readonly SupportPolicyAction[];
+  statusRetryAvailable?: boolean;
+  evidence?: { title: string; contentVersion: number; checkedAt: string }[];
+  botAnswered?: boolean;
+  recommendationData?: ProductRecommendationData | null;
+  statusActionHref?: string;
+  statusActionLabel?: string;
+  handoffSubject?: string;
+  handoffSummary?: string;
+  handoffPreviewSubject?: string;
+  handoffPreviewSummary?: string;
+  handoffSourceMessage?: string | null;
+  handoffOperationId?: string;
+  handoffDraftTarget?: string;
+  handoffDraftVersion?: number;
+  handoffDraftSaved?: boolean;
+  handoffConsented?: boolean;
+  ticketOperationUnknown?: boolean;
+  ticketOperationNotFound?: boolean;
+  handoffDraftLoadFailed?: boolean;
+  ticketNeedsSignIn?: boolean;
+  retryQuestion?: string;
+  sessionRecoveryQuestion?: string;
+  loginHref?: string;
+  retryForLocalId?: string;
 }
 
-type ChatbotAnswerData = Pick<ChatMessage, "text" | "messageId" | "language" | "privacyBlocked" | "listings" | "comparison" | "refunds"> & {
+interface ChatHistoryCursor {
+  createdAt: string;
+  id: string;
+}
+
+type ChatbotAnswerData = Pick<ChatMessage, "text" | "messageId" | "language" | "privacyBlocked" | "evidence" | "createdAt" | "listings" | "comparison" | "refunds" | "recommendationData"> & {
   botAnswered: boolean;
+  recommendationData?: ProductRecommendationData | null;
 };
 
 export function createBotMessage(data: ChatbotAnswerData, question: string): ChatMessage {
   return {
     role: "bot",
     text: data.text,
+    createdAt: data.createdAt ?? new Date().toISOString(),
+    persistedId: data.messageId,
     messageId: data.messageId,
     question,
     language: data.language,
     privacyBlocked: data.privacyBlocked,
+    evidence: data.evidence,
     listings: data.listings,
     comparison: data.comparison,
     refunds: data.refunds,
+    botAnswered: data.botAnswered,
+    recommendationData: data.recommendationData,
     feedbackStage: data.botAnswered ? "awaiting_helpful" : "awaiting_ticket",
   };
 }
 
 export function resolveTicketSubject(question: string | undefined, fallback: string): string {
-  return question ?? fallback;
+  return (question?.trim() || fallback).slice(0, 255);
 }
 
-const SESSION_STORAGE_KEY = "mw_chatbot_session";
+export function chatbotSessionStorageKey(userId: string | null): string {
+  return `mw_chatbot_session:${userId ?? "guest"}`;
+}
+
+function customerStatusPage(kind: CustomerStatusKind): string {
+  if (kind === "tickets") return "/customer/support";
+  if (kind === "bookings") return "/customer/calendar";
+  if (kind === "withdrawals") return "/customer/wallet/withdrawals";
+  if (kind === "kyc") return "/customer/kyc";
+  return "/customer/orders";
+}
+
+async function fetchCustomerStatus(kind: CustomerStatusKind) {
+  try {
+    const response = await fetch("/api/support/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind }),
+    });
+    const result = await response.json().catch(() => ({})) as {
+      data?: { state?: string; items?: CustomerStatusItem[]; actions?: readonly SupportPolicyAction[] };
+    };
+    return { ok: response.ok, signInRequired: response.status === 401, data: result.data };
+  } catch {
+    return { ok: false, signInRequired: false, data: undefined };
+  }
+}
+
+function chatbotAskOperationStorageKey(sessionKey: string): string {
+  return `mw_chatbot_ask_operation:${sessionKey}`;
+}
+
+function readPendingAskOperation(sessionKey: string): string | null {
+  try {
+    const operationId = window.localStorage.getItem(chatbotAskOperationStorageKey(sessionKey));
+    return operationId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(operationId)
+      ? operationId
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function storePendingAskOperation(sessionKey: string, operationId: string | null): boolean {
+  try {
+    const key = chatbotAskOperationStorageKey(sessionKey);
+    if (operationId) window.localStorage.setItem(key, operationId);
+    else window.localStorage.removeItem(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function chatbotPendingOperationsStorageKey(userId: string): string {
+  return `mw_chatbot_support_operations:${userId}`;
+}
+
+function readPendingSupportOperation(userId: string | null, messageId: string | undefined): string | null {
+  if (!userId || !messageId) return null;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(chatbotPendingOperationsStorageKey(userId)) ?? "{}") as Record<string, unknown>;
+    const operationId = parsed[messageId];
+    return typeof operationId === "string" && /^[0-9a-f-]{36}$/i.test(operationId) ? operationId : null;
+  } catch {
+    return null;
+  }
+}
+
+function storePendingSupportOperation(userId: string, messageId: string, operationId: string | null) {
+  try {
+    const key = chatbotPendingOperationsStorageKey(userId);
+    const current = JSON.parse(window.localStorage.getItem(key) ?? "{}") as Record<string, unknown>;
+    if (operationId) current[messageId] = operationId;
+    else delete current[messageId];
+    const bounded = Object.fromEntries(Object.entries(current).slice(-20));
+    window.localStorage.setItem(key, JSON.stringify(bounded));
+  } catch {
+    // The request still uses the server operation key; storage failure only limits refresh recovery.
+  }
+}
 
 async function postFeedback(payload: Record<string, unknown>) {
   try {
-    await fetch("/api/chatbot/feedback", {
+    const response = await fetch("/api/chatbot/feedback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    return { saved: response.ok, requiresSignIn: response.status === 401 };
   } catch {
-    // best-effort — a logging failure must never visibly break the chat flow
+    return { saved: false, requiresSignIn: false };
   }
 }
 
@@ -149,20 +271,59 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
   // activity page "Message vendor" buttons — can open this same widget
   // instance instead of building a second chat surface.
   const { open, setOpen, selected, selectChat, unreadChatCount } = useSupportChat();
-  const { currentUser } = useAuth();
-  const { t } = useTranslation("common");
+  const { currentUser, loading: authLoading } = useAuth();
+  const { t, i18n } = useTranslation("common");
+  const { confirm } = useAppDialog();
   const { t: tCustomer } = useTranslation("customer");
-  // Lazy initializer, not an effect: reading localStorage here is
-  // synchronous and doesn't need a render cycle. Guarded for SSR, where
-  // `window` doesn't exist — sessionKey is never rendered into JSX, so a
-  // server/client value mismatch here can't cause a hydration warning.
-  const [sessionKey, setSessionKey] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : window.localStorage.getItem(SESSION_STORAGE_KEY),
-  );
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
+  const identityKey = currentUser?.id ?? null;
+  const identityRef = useRef<string | null>(identityKey);
+  const [storedSession, setStoredSession] = useState<{ ownerId: string | null; value: string | null }>({ ownerId: identityKey, value: null });
+  const sessionKey = storedSession.ownerId === identityKey ? storedSession.value : null;
+  const setSessionKey = (value: string | null) => setStoredSession({ ownerId: identityRef.current, value });
+  const [guestClaimCandidate, setGuestClaimCandidate] = useState<{ ownerId: string; sessionKey: string } | null>(null);
+  const [guestClaiming, setGuestClaiming] = useState(false);
+  const [guestClaimError, setGuestClaimError] = useState<string | null>(null);
+  const [guestRecoverySessionKey, setGuestRecoverySessionKey] = useState<string | null>(null);
+  const [messageState, setMessageState] = useState<{ ownerId: string | null; value: ChatMessage[] }>({ ownerId: identityKey, value: [] });
+  const messages = useMemo(() => messageState.ownerId === identityKey ? messageState.value : [], [identityKey, messageState]);
+  const setMessages = (update: ChatMessage[] | ((current: ChatMessage[]) => ChatMessage[])) => setMessageState((previous) => {
+    const current = previous.ownerId === identityRef.current ? previous.value : [];
+    return { ownerId: identityRef.current, value: typeof update === "function" ? update(current) : update };
+  });
+  const [historyCursor, setHistoryCursor] = useState<ChatHistoryCursor | null>(null);
+  const [historyError, setHistoryError] = useState(false);
+  const [historyRecovery, setHistoryRecovery] = useState<"not-found" | "unauthorized" | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const startingNewCustomerConversationRef = useRef(false);
+  const historyLoadedRef = useRef<string | null>(null);
+  const freshGuestSessionRef = useRef<string | null>(null);
+  const historyAbortRef = useRef<AbortController | null>(null);
+  const historyRequestKeyRef = useRef<string | null>(null);
+  const historyRefreshAtRef = useRef(0);
+  const supportPaneWasOpenRef = useRef(false);
+
+  useEffect(() => {
+    startingNewCustomerConversationRef.current = false;
+  }, [sessionKey]);
+  const [inputState, setInputState] = useState<{ ownerId: string | null; value: string }>({ ownerId: identityKey, value: "" });
+  const input = inputState.ownerId === identityKey ? inputState.value : "";
+  const setInput = (update: string | ((current: string) => string)) => setInputState((previous) => {
+    const current = previous.ownerId === identityRef.current ? previous.value : "";
+    return { ownerId: identityRef.current, value: typeof update === "function" ? update(current) : update };
+  });
+  const faqRequestRef = useRef<Promise<void> | null>(null);
+  const sendLockRef = useRef(false);
+  const guestCookieReadyRef = useRef(false);
+  const pendingAskRef = useRef<{ identity: string | null; question: string; sessionKey: string; operationId: string; localMessageId: string } | null>(null);
+  const ticketOperationLockRef = useRef(false);
+  const statusRefreshLocksRef = useRef(new Set<string>());
+  const [statusRefreshingId, setStatusRefreshingId] = useState<string | null>(null);
+  const ticketOperationIdentityRef = useRef<string | null>(identityKey);
+  const handoffDraftSaveLocksRef = useRef(new Set<string>());
+  const feedbackSaveLocksRef = useRef(new Set<string>());
   const [sending, setSending] = useState(false);
   const [creatingTicketFor, setCreatingTicketFor] = useState<string | null>(null);
+  const [savingHandoffDraftFor, setSavingHandoffDraftFor] = useState<string | null>(null);
   // Full-screen toggle for the merged widget — resets to the normal
   // bottom-right panel whenever the widget is closed (its only setOpen(false)
   // call site clears this too), so reopening never surprises the user with a
@@ -208,23 +369,354 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
   const [faq, setFaq] = useState<FaqCategory[] | null | undefined>(undefined);
   const [faqOpen, setFaqOpen] = useState(false);
   const [faqCategory, setFaqCategory] = useState<string | null>(null);
+  const [faqQuestionPage, setFaqQuestionPage] = useState<{ category: string; data: FaqQuestionPage } | null>(null);
+  const [faqPage, setFaqPage] = useState(1);
+  const [faqPageLoading, setFaqPageLoading] = useState(false);
+  const [faqPageError, setFaqPageError] = useState(false);
+  const faqPageRequestIdRef = useRef(0);
+  const faqPageAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (authLoading) return;
+    identityRef.current = identityKey;
+    sendLockRef.current = false;
+    guestCookieReadyRef.current = false;
+    pendingAskRef.current = null;
+    ticketOperationLockRef.current = false;
+    ticketOperationIdentityRef.current = identityKey;
+    const ownerId = identityKey;
+    queueMicrotask(() => {
+      if (identityRef.current !== ownerId) return;
+      try {
+        const ownedSessionKey = window.localStorage.getItem(chatbotSessionStorageKey(ownerId));
+        setStoredSession({ ownerId, value: ownedSessionKey });
+        if (ownerId && !ownedSessionKey) {
+          const guestKey = window.localStorage.getItem(chatbotSessionStorageKey(null));
+          setGuestClaimCandidate(guestKey ? { ownerId, sessionKey: guestKey } : null);
+        } else {
+          setGuestClaimCandidate(null);
+        }
+      } catch {
+        setStoredSession({ ownerId, value: null });
+        setGuestClaimCandidate(null);
+      }
+      setSending(false);
+      setCreatingTicketFor(null);
+      setGuestClaiming(false);
+      setGuestClaimError(null);
+    });
+  }, [authLoading, identityKey]);
+
+  async function claimGuestConversation() {
+    const candidate = guestClaimCandidate;
+    if (!candidate || candidate.ownerId !== identityRef.current || guestClaiming) return;
+    setGuestClaiming(true);
+    setGuestClaimError(null);
+    try {
+      const response = await fetch('/api/chatbot/session/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionKey: candidate.sessionKey }),
+      });
+      const result = await response.json().catch(() => ({})) as { data?: { sessionKey?: string }; error?: { code?: string } };
+      if (identityRef.current !== candidate.ownerId) return;
+      if (!response.ok || result.data?.sessionKey !== candidate.sessionKey) {
+        setGuestClaimError(result.error?.code ? supportError(result.error.code).key : 'unavailable');
+        return;
+      }
+      try {
+        window.localStorage.setItem(chatbotSessionStorageKey(candidate.ownerId), candidate.sessionKey);
+        window.localStorage.removeItem(chatbotSessionStorageKey(null));
+      } catch {
+        // Keep the guest key if possible; the authenticated session can still continue in memory.
+      }
+      historyLoadedRef.current = null;
+      setHistoryCursor(null);
+      setHistoryError(false);
+      setHistoryRecovery(null);
+      setMessageState({ ownerId: candidate.ownerId, value: [] });
+      setStoredSession({ ownerId: candidate.ownerId, value: candidate.sessionKey });
+      setGuestClaimCandidate(null);
+    } catch {
+      if (identityRef.current === candidate.ownerId) setGuestClaimError('unavailable');
+    } finally {
+      if (identityRef.current === candidate.ownerId) setGuestClaiming(false);
+    }
+  }
+
+  function startNewGuestConversation() {
+    if (!guestRecoverySessionKey || guestRecoverySessionKey !== sessionKey) return;
+    const nextSessionKey = crypto.randomUUID();
+    try {
+      window.localStorage.setItem(chatbotSessionStorageKey(identityRef.current), nextSessionKey);
+    } catch {
+      setMessages((current) => [...current, { role: 'bot', text: t('chatbot.somethingWrong'), createdAt: new Date().toISOString() }]);
+      return;
+    }
+    historyAbortRef.current?.abort();
+    historyLoadedRef.current = null;
+    setHistoryCursor(null);
+    setHistoryError(false);
+    setHistoryRecovery(null);
+    setMessages([]);
+    setInput('');
+    setStoredSession({ ownerId: identityRef.current, value: nextSessionKey });
+    freshGuestSessionRef.current = nextSessionKey;
+    setGuestRecoverySessionKey(null);
+    guestCookieReadyRef.current = false;
+  }
+
+  function startNewCustomerConversation(question?: string) {
+    const ownerId = identityRef.current;
+    if (!ownerId || !sessionKey || startingNewCustomerConversationRef.current) return;
+    startingNewCustomerConversationRef.current = true;
+    const nextSessionKey = crypto.randomUUID();
+    try {
+      window.localStorage.setItem(chatbotSessionStorageKey(ownerId), nextSessionKey);
+      storePendingAskOperation(sessionKey, null);
+    } catch {
+      startingNewCustomerConversationRef.current = false;
+      setMessages((current) => [...current, { role: "bot", text: t("chatbot.somethingWrong"), createdAt: new Date().toISOString() }]);
+      return;
+    }
+    historyAbortRef.current?.abort();
+    historyLoadedRef.current = `${ownerId}:${nextSessionKey}`;
+    historyRequestKeyRef.current = null;
+    setHistoryCursor(null);
+    setHistoryError(false);
+    setHistoryRecovery(null);
+    setMessages([]);
+    setInput(question ?? input);
+    setStoredSession({ ownerId, value: nextSessionKey });
+    pendingAskRef.current = null;
+    setGuestRecoverySessionKey(null);
+  }
+
+  async function loadChatHistory(targetSessionKey: string, cursor?: ChatHistoryCursor) {
+    const requestIdentity = identityRef.current;
+    const requestKey = `${requestIdentity ?? "guest"}:${targetSessionKey}:${cursor?.createdAt ?? ""}:${cursor?.id ?? ""}`;
+    if (historyRequestKeyRef.current === requestKey) return;
+    historyAbortRef.current?.abort();
+    historyRequestKeyRef.current = requestKey;
+    setHistoryLoading(true);
+    const controller = new AbortController();
+    historyAbortRef.current = controller;
+    try {
+      const response = await fetch("/api/chatbot/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionKey: targetSessionKey, beforeCreatedAt: cursor?.createdAt, beforeId: cursor?.id }),
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      const result = await response.json().catch(() => ({})) as {
+        error?: { code?: string } | null;
+        data?: {
+          messages: Array<{ id: string; role: "user" | "bot"; text: string; createdAt: string; question?: string; feedbackStage?: FeedbackStage; botAnswered?: boolean; evidence?: ChatMessage["evidence"]; recommendationData?: ProductRecommendationData | null }>;
+          nextCursor: ChatHistoryCursor | null;
+        };
+      };
+      if (!response.ok || !result.data || identityRef.current !== requestIdentity || sessionKey !== targetSessionKey) {
+        if (!response.ok && identityRef.current === requestIdentity && sessionKey === targetSessionKey && requestIdentity === null
+            && (response.status === 404 || result.error?.code === 'NOT_FOUND'
+              || result.error?.code === 'UNAUTHORIZED' || result.error?.code === 'GUEST_SESSION_REQUIRED')) {
+          setGuestRecoverySessionKey(targetSessionKey);
+        }
+        if (!controller.signal.aborted && identityRef.current === requestIdentity) {
+          setHistoryError(true);
+          setHistoryRecovery(requestIdentity
+            ? response.status === 401 || result.error?.code === 'UNAUTHORIZED' ? 'unauthorized'
+              : response.status === 404 || result.error?.code === 'NOT_FOUND' ? 'not-found'
+                : null
+            : null);
+        }
+        return;
+      }
+      const restored = result.data.messages.map((item): ChatMessage => ({
+        role: item.role,
+        text: item.text,
+        createdAt: item.createdAt,
+        persistedId: item.id,
+        messageId: item.role === "bot" ? item.id : undefined,
+        question: item.question,
+        feedbackStage: item.feedbackStage,
+        botAnswered: item.botAnswered,
+        evidence: item.evidence,
+        recommendationData: item.recommendationData ?? null,
+        handoffOperationId: item.role === "bot" ? readPendingSupportOperation(identityKey, item.id) ?? undefined : undefined,
+        ticketOperationUnknown: item.role === "bot" ? Boolean(readPendingSupportOperation(identityKey, item.id)) : false,
+      }));
+      if (cursor) {
+        setMessages((current) => {
+          const existingIds = new Set(current.map((item) => item.persistedId).filter((id): id is string => Boolean(id)));
+          return [...restored.filter((item) => !item.persistedId || !existingIds.has(item.persistedId)), ...current];
+        });
+      } else {
+        setMessages((current) => {
+          if (!current.length) return restored;
+          const restoredById = new Map(restored.filter((item) => item.persistedId).map((item) => [item.persistedId, item]));
+          const existingIds = new Set(current.map((item) => item.persistedId).filter((id): id is string => Boolean(id)));
+          const reconciled = current.map((item) => item.persistedId ? restoredById.get(item.persistedId) ?? item : item);
+          return [...reconciled, ...restored.filter((item) => item.persistedId && !existingIds.has(item.persistedId))];
+        });
+      }
+      setHistoryCursor(result.data.nextCursor);
+      setHistoryError(false);
+      setHistoryRecovery(null);
+      setGuestRecoverySessionKey(null);
+      historyLoadedRef.current = `${requestIdentity ?? "guest"}:${targetSessionKey}`;
+    } catch {
+      if (!controller.signal.aborted && identityRef.current === requestIdentity) {
+        setHistoryError(true);
+        setHistoryRecovery(null);
+      }
+    } finally {
+      if (historyAbortRef.current === controller) {
+        historyAbortRef.current = null;
+        historyRequestKeyRef.current = null;
+        setHistoryLoading(false);
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (authLoading || !identityKey || !open || selected?.kind !== "support" || !sessionKey) return;
+    const historyKey = `${identityKey}:${sessionKey}`;
+    if (historyLoadedRef.current === historyKey) return;
+    void loadChatHistory(sessionKey);
+  // Guest transcripts stay hidden until sign-in and explicit claim.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, identityKey, open, selected?.kind, sessionKey]);
+
+  useEffect(() => () => historyAbortRef.current?.abort(), [identityKey, sessionKey]);
+
+  useEffect(() => {
+    const isSupportPaneOpen = open && selected?.kind === "support";
+    if (!isSupportPaneOpen) {
+      supportPaneWasOpenRef.current = false;
+      return;
+    }
+    const reopened = !supportPaneWasOpenRef.current;
+    supportPaneWasOpenRef.current = true;
+    const historyKey = `${identityKey ?? "guest"}:${sessionKey ?? ""}`;
+    if (reopened && identityKey && sessionKey
+        && historyLoadedRef.current === historyKey && Date.now() - historyRefreshAtRef.current >= 5000) {
+      historyRefreshAtRef.current = Date.now();
+      void loadChatHistory(sessionKey);
+    }
+  // Reconcile the bounded first history page when the support pane is reopened.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identityKey, open, selected?.kind, sessionKey]);
+
+  useEffect(() => {
+    if (!identityKey || !open || selected?.kind !== "support" || !sessionKey) return;
+    const refreshOnReturn = () => {
+      if (document.visibilityState !== "visible"
+          || Date.now() - historyRefreshAtRef.current < 5000) return;
+      historyRefreshAtRef.current = Date.now();
+      void loadChatHistory(sessionKey);
+    };
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    return () => document.removeEventListener("visibilitychange", refreshOnReturn);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, open, selected?.kind, sessionKey]);
 
   async function loadFaq() {
+    if (faqRequestRef.current) return faqRequestRef.current;
+    const request = (async () => {
+      try {
+        const res = await fetch("/api/chatbot/faq");
+        const body = (await res.json()) as { data: { categories: FaqCategory[] } | null };
+        setFaq(res.ok && body.data ? body.data.categories : null);
+      } catch {
+        setFaq(null);
+      }
+    })();
+    faqRequestRef.current = request;
     try {
-      const res = await fetch("/api/chatbot/faq");
-      const body = (await res.json()) as { data: { categories: FaqCategory[] } | null };
-      setFaq(res.ok && body.data ? body.data.categories : null);
-    } catch {
-      setFaq(null);
+      await request;
+    } finally {
+      faqRequestRef.current = null;
     }
+  }
+
+  async function loadFaqQuestions(category: string, page: number) {
+    const requestId = ++faqPageRequestIdRef.current;
+    faqPageAbortRef.current?.abort();
+    const controller = new AbortController();
+    faqPageAbortRef.current = controller;
+    setFaqPage(page);
+    setFaqPageLoading(true);
+    setFaqPageError(false);
+    try {
+      const params = new URLSearchParams({ category, page: String(page) });
+      const res = await fetch(`/api/chatbot/faq?${params}`, { signal: controller.signal });
+      const body = (await res.json().catch(() => ({}))) as { data?: FaqQuestionPage | null };
+      if (!res.ok || !body.data) throw new Error("faq_page_unavailable");
+      if (requestId !== faqPageRequestIdRef.current) return;
+      setFaqQuestionPage({ category, data: body.data });
+      setFaqPage(body.data.page);
+    } catch {
+      if (controller.signal.aborted || requestId !== faqPageRequestIdRef.current) return;
+      setFaqPageError(true);
+    } finally {
+      if (requestId === faqPageRequestIdRef.current) setFaqPageLoading(false);
+    }
+  }
+
+  function openFaqCategory(category: string) {
+    setFaqCategory(category);
+    setFaqPage(1);
+    void loadFaqQuestions(category, 1);
+  }
+
+  function returnToFaqCategories() {
+    faqPageAbortRef.current?.abort();
+    faqPageRequestIdRef.current += 1;
+    setFaqPageLoading(false);
+    setFaqPageError(false);
+    setFaqCategory(null);
   }
 
   function toggleFaq() {
     setFaqOpen((wasOpen) => {
-      if (!wasOpen && faq === undefined) void loadFaq();
-      if (wasOpen) setFaqCategory(null); // reset to the category list for next time
+      if (!wasOpen && (faq === undefined || faq === null)) void loadFaq();
+      if (wasOpen) returnToFaqCategories(); // reset to the category list for next time
       return !wasOpen;
     });
+  }
+
+  function starterQuestion(action: (typeof CHATBOT_STARTER_ACTIONS)[number]) {
+    switch (action) {
+      case "booking": return t("chatbot.starters.questions.booking");
+      case "refund": return t("chatbot.starters.questions.refund");
+      case "products": return t("chatbot.starters.questions.products");
+      case "faq": return null;
+    }
+  }
+
+  function renderStarterActions() {
+    return (
+      <div className="flex max-w-[90%] flex-wrap justify-center gap-1.5" aria-label={t("chatbot.starters.label")}>
+        {CHATBOT_STARTER_ACTIONS.map((action) => (
+          <Button
+            key={action}
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 rounded-full px-2.5 text-xs"
+            disabled={sending}
+            onClick={() => {
+              const question = starterQuestion(action);
+              if (question) void sendMessage(question);
+              else toggleFaq();
+            }}
+          >
+            {t(`chatbot.starters.${action}`)}
+          </Button>
+        ))}
+      </div>
+    );
   }
 
   useEffect(() => {
@@ -255,45 +747,247 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
   // being clobbered by a stray effect re-run.
   const speech = useSpeechInput({ lang: resolveRecognitionLang(currentLanguage), onTranscriptChange: setInput });
 
+  function presentCustomerStatus(
+    localId: string,
+    kind: CustomerStatusKind,
+    question: string,
+    result: Awaited<ReturnType<typeof fetchCustomerStatus>>,
+    append: boolean,
+  ) {
+    const signInRequired = result.signInRequired;
+    const items = result.ok && result.data?.state === "available" ? result.data.items ?? [] : [];
+    const actions = result.data?.actions ?? (result.ok ? [] : ["refresh_status", "open_record", "handoff"] as const);
+    const unconfirmed = items.some((item) => item.actions.includes("refresh_status"));
+    const hasKnownResult = result.data?.state === "available" || result.data?.state === "no_records";
+    const needsHumanHelp = signInRequired || !result.ok || !hasKnownResult || unconfirmed;
+    const shouldOfferHuman = !signInRequired && (needsHumanHelp || result.data?.state === "no_records");
+    const message = signInRequired
+      ? t("chatbot.statusQuery.signIn")
+      : needsHumanHelp
+        ? t("chatbot.statusQuery.unavailable")
+        : result.data?.state === "available"
+          ? t("chatbot.statusQuery.found")
+          : result.data?.state === "no_records"
+            ? t("chatbot.statusQuery.none")
+            : t("chatbot.statusQuery.unavailable");
+    const pageHref = customerStatusPage(kind);
+    const statusMessage: ChatMessage = {
+      role: "bot",
+      createdAt: new Date().toISOString(),
+      localId,
+      text: message,
+      statusKind: kind,
+      statusActions: actions,
+      statusItems: items.length ? items : undefined,
+      statusRetryAvailable: !signInRequired && actions.includes("refresh_status"),
+      question: shouldOfferHuman && actions.includes("handoff") ? question : undefined,
+      feedbackStage: shouldOfferHuman && actions.includes("handoff") ? "awaiting_ticket" : undefined,
+      statusActionHref: signInRequired ? `/login?next=${encodeURIComponent(pageHref)}` : actions.includes("open_record") ? pageHref : undefined,
+      statusActionLabel: signInRequired ? t("chatbot.statusQuery.signInAction") : actions.includes("open_record") ? t("chatbot.statusQuery.openRecord") : undefined,
+    };
+    setMessages((current) => append
+      ? [...current, statusMessage]
+      : current.map((item) => item.localId === localId ? statusMessage : item));
+  }
+
+  async function refreshCustomerStatus(localId: string, kind: CustomerStatusKind, question: string) {
+    if (statusRefreshLocksRef.current.has(localId)) return;
+    statusRefreshLocksRef.current.add(localId);
+    const requestIdentity = identityRef.current;
+    setStatusRefreshingId(localId);
+    try {
+      const result = await fetchCustomerStatus(kind);
+      if (identityRef.current !== requestIdentity) return;
+      presentCustomerStatus(localId, kind, question, result, false);
+    } finally {
+      statusRefreshLocksRef.current.delete(localId);
+      setStatusRefreshingId((current) => current === localId ? null : current);
+    }
+  }
+
   /**
    * `explicitQuestion` is the FAQ path — an exact, curated KB question the
    * user tapped, sent as-is. The typed path (no argument) reads and clears
    * the composer as before; a FAQ tap deliberately leaves whatever the user
    * had typed untouched, since it never came from the composer.
    */
-  async function sendMessage(explicitQuestion?: string) {
-    const question = (explicitQuestion ?? input).trim();
-    if (!question || sending) return;
+  function sendRecommendationChoice(message: ChatMessage, choice: string) {
+    if (!message.question || sending) return;
+    void sendMessage(`${message.question} ${choice}`);
+  }
+
+  async function sendMessage(explicitQuestion?: string, isRetry = false) {
+    const typedQuestion = input.trim();
+    const latestMessage = messages[messages.length - 1];
+    const question = (explicitQuestion === undefined
+      && latestMessage?.role === "bot"
+      && latestMessage.recommendationData?.kind === "clarification"
+      && latestMessage.question
+      ? combineProductRecommendationFollowUp(latestMessage.question, typedQuestion)
+      : explicitQuestion ?? typedQuestion).trim();
+    if (!question || sending || sendLockRef.current || guestClaimCandidate?.ownerId === identityRef.current) return;
+    sendLockRef.current = true;
+    const requestIdentity = identityRef.current;
     setSending(true);
-    setMessages((m) => [...m, { role: "user", text: question }]);
-    if (explicitQuestion === undefined) setInput("");
+    const statusIntent = resolveCustomerSupportIntent(question);
+    const retryingAsk = !statusIntent && pendingAskRef.current?.identity === requestIdentity && pendingAskRef.current.question === question
+      ? pendingAskRef.current
+      : null;
+    const localMessageId = retryingAsk?.localMessageId ?? crypto.randomUUID();
+    if (!retryingAsk) setMessages((m) => [...m, { role: "user", text: question, localId: localMessageId, createdAt: new Date().toISOString() }]);
 
     try {
-      const res = await fetch("/api/chatbot/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionKey: sessionKey ?? undefined, question }),
-      });
-      const body = (await res.json()) as {
-        data: {
-          sessionKey: string; answer: string; botAnswered: boolean; messageId: string; language: ChatLanguage; privacyBlocked: boolean;
-          listings?: ChatListing[]; comparison?: ChatListing[] | null; refunds?: RefundProposal[];
-        } | null;
-        error: { message: string } | null;
-      };
-      if (!res.ok || !body.data) {
-        setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
+      if (statusIntent) {
+        const statusLocalId = crypto.randomUUID();
+        const result = await fetchCustomerStatus(statusIntent);
+        if (identityRef.current !== requestIdentity) return;
+        presentCustomerStatus(statusLocalId, statusIntent, question, result, true);
+        if (explicitQuestion === undefined) setInput((current) => current === typedQuestion ? "" : current);
         return;
       }
-      const { answer, botAnswered, messageId, language, privacyBlocked, listings, comparison, refunds } = body.data;
+
+      let targetSessionKey = sessionKey;
+      if (!targetSessionKey) {
+        targetSessionKey = crypto.randomUUID();
+        if (!requestIdentity) freshGuestSessionRef.current = targetSessionKey;
+        try {
+          window.localStorage.setItem(chatbotSessionStorageKey(requestIdentity), targetSessionKey);
+        } catch {
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong"), createdAt: new Date().toISOString() }]);
+          return;
+        }
+        setSessionKey(targetSessionKey);
+      }
+      let pendingAsk = retryingAsk;
+      if (!pendingAsk || pendingAsk.identity !== requestIdentity || pendingAsk.question !== question || pendingAsk.sessionKey !== targetSessionKey) {
+        pendingAsk = {
+          identity: requestIdentity,
+          question,
+          sessionKey: targetSessionKey,
+          operationId: readPendingAskOperation(targetSessionKey) ?? crypto.randomUUID(),
+          localMessageId,
+        };
+      }
+      if (!storePendingAskOperation(targetSessionKey, pendingAsk.operationId)) {
+        setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong"), createdAt: new Date().toISOString() }]);
+        return;
+      }
+      pendingAskRef.current = pendingAsk;
+      if (!requestIdentity && !guestCookieReadyRef.current) {
+        const cookieResponse = await fetch('/api/chatbot/session/guest-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionKey: targetSessionKey }),
+        });
+        const cookieResult = await cookieResponse.json().catch(() => ({})) as { error?: { code?: string } };
+        if (identityRef.current !== requestIdentity) return;
+        if (!cookieResponse.ok) {
+          if (cookieResult.error?.code === 'GUEST_SESSION_REQUIRED') {
+            setHistoryError(true);
+            setGuestRecoverySessionKey(targetSessionKey);
+            setMessages((m) => [...m, { role: 'bot', text: t('chatbot.guestSessionUnavailable'), createdAt: new Date().toISOString() }]);
+          } else if (cookieResult.error?.code === 'READ_UNAVAILABLE') {
+            setMessages((m) => [...m, { role: 'bot', text: t('chatbot.sessionUnavailable'), createdAt: new Date().toISOString() }]);
+          } else if (cookieResult.error?.code === 'AUTH_UNAVAILABLE') {
+            setMessages((m) => [...m, { role: 'bot', text: t('chatbot.authUnavailable'), createdAt: new Date().toISOString() }]);
+          } else {
+            setMessages((m) => [...m, { role: 'bot', text: t('chatbot.somethingWrong'), createdAt: new Date().toISOString() }]);
+          }
+          return;
+        }
+        guestCookieReadyRef.current = true;
+      }
+      const createAskRequest = (operationId: string) => fetch("/api/chatbot/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionKey: targetSessionKey, operationId, question }),
+      });
+      let res = await createAskRequest(pendingAsk.operationId);
+      let body = (await res.json()) as {
+        data: {
+          sessionKey: string; answer: string; botAnswered: boolean; messageId: string; userMessageId: string;
+          language: ChatLanguage; privacyBlocked: boolean; evidence?: ChatMessage["evidence"];
+          listings?: ChatListing[]; comparison?: ChatListing[] | null; refunds?: RefundProposal[];
+          recommendationData?: ProductRecommendationData | null;
+        } | null;
+        error: { code?: string; message: string } | null;
+      };
+      if (!res.ok && body.error?.code === "OPERATION_CONFLICT") {
+        // A persisted operation ID may outlive the question it originally guarded.
+        // The server rejected this payload before any model call, so retry once with a fresh ID.
+        const renewedOperationId = crypto.randomUUID();
+        if (storePendingAskOperation(targetSessionKey, renewedOperationId)) {
+          pendingAsk = { ...pendingAsk, operationId: renewedOperationId };
+          pendingAskRef.current = pendingAsk;
+          res = await createAskRequest(renewedOperationId);
+          body = (await res.json()) as typeof body;
+        }
+      }
+      if (identityRef.current !== requestIdentity) return;
+      if (!res.ok || !body.data) {
+        if (body.error?.code === "OPERATION_UNKNOWN") {
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.askResultUnknown"), createdAt: new Date().toISOString() }]);
+        } else if (body.error?.code === "UNAUTHORIZED") {
+          setMessages((m) => [...m, {
+            role: "bot",
+            createdAt: new Date().toISOString(),
+            text: t("chatbot.history.signIn"),
+            loginHref: `/login?next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`,
+          }]);
+        } else if (body.error?.code === "AUTH_UNAVAILABLE") {
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.authUnavailable"), retryQuestion: question, retryForLocalId: localMessageId, createdAt: new Date().toISOString() }]);
+        } else if (body.error?.code === "SESSION_UNAVAILABLE") {
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.sessionUnavailable"), retryQuestion: question, retryForLocalId: localMessageId, createdAt: new Date().toISOString() }]);
+        } else if (requestIdentity && (body.error?.code === "FORBIDDEN" || body.error?.code === "NOT_FOUND")) {
+          storePendingAskOperation(targetSessionKey, null);
+          pendingAskRef.current = null;
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.history.sessionGone"), sessionRecoveryQuestion: question, createdAt: new Date().toISOString() }]);
+        } else if (body.error?.code === "OPERATION_CONFLICT") {
+          storePendingAskOperation(targetSessionKey, null);
+          pendingAskRef.current = null;
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.askOperationConflict"), createdAt: new Date().toISOString() }]);
+        } else if (body.error?.code === "GUEST_SESSION_REQUIRED") {
+          guestCookieReadyRef.current = false;
+          if (!requestIdentity) {
+            setHistoryError(true);
+            setGuestRecoverySessionKey(targetSessionKey);
+          }
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.guestCookieUnavailable"), createdAt: new Date().toISOString() }]);
+        } else {
+          setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong"), retryQuestion: question, retryForLocalId: localMessageId, createdAt: new Date().toISOString() }]);
+        }
+        return;
+      }
+      pendingAskRef.current = null;
+      storePendingAskOperation(targetSessionKey, null);
+      if (!requestIdentity && freshGuestSessionRef.current === targetSessionKey) {
+        freshGuestSessionRef.current = null;
+        historyLoadedRef.current = `guest:${targetSessionKey}`;
+      }
+      setHistoryError(false);
+      setGuestRecoverySessionKey(null);
+      const { answer, botAnswered, messageId, userMessageId, language, privacyBlocked, evidence, recommendationData } = body.data;
+      const { listings, comparison, refunds } = body.data;
+      if (explicitQuestion === undefined || (isRetry && input.trim() === question)) {
+        setInput((current) => current === typedQuestion || (isRetry && current.trim() === question) ? "" : current);
+      }
       let effectiveSessionKey = sessionKey;
       if (body.data.sessionKey && body.data.sessionKey !== sessionKey) {
         effectiveSessionKey = body.data.sessionKey;
         setSessionKey(body.data.sessionKey);
-        window.localStorage.setItem(SESSION_STORAGE_KEY, body.data.sessionKey);
+        try {
+          window.localStorage.setItem(chatbotSessionStorageKey(requestIdentity), body.data.sessionKey);
+        } catch {
+          // The key was saved before the request; the server response remains usable.
+        }
       }
 
-      setMessages((m) => [...m, createBotMessage({ text: answer, messageId, language, privacyBlocked, botAnswered, listings, comparison, refunds }, question)]);
+      setMessages((m) => [
+        ...m
+          .filter((message) => message.retryForLocalId !== localMessageId)
+          .map((message) => message.localId === localMessageId ? { ...message, localId: undefined, persistedId: userMessageId } : message),
+        createBotMessage({ text: answer, messageId, language, privacyBlocked, evidence, botAnswered, recommendationData, listings, comparison, refunds, createdAt: new Date().toISOString() }, question),
+      ]);
 
       // Flow 2: the bot already knows it didn't help — there's no yes/no
       // helpfulness question to ask, so this is recorded automatically
@@ -305,48 +999,333 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
         postFeedback({ sessionKey: effectiveSessionKey ?? undefined, messageId, question, botAnswered: false, helpful: null });
       }
     } catch {
-      setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
+      if (identityRef.current === requestIdentity) setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong"), retryQuestion: question, retryForLocalId: localMessageId, createdAt: new Date().toISOString() }]);
     } finally {
-      setSending(false);
+      if (identityRef.current === requestIdentity) {
+        sendLockRef.current = false;
+        setSending(false);
+      }
     }
   }
 
   function submitHelpful(index: number, helpful: boolean) {
     const msg = messages[index];
-    if (!msg.messageId) return;
-    setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: helpful ? "helpful_done" : "awaiting_ticket" } : m)));
-    postFeedback({ sessionKey: sessionKey ?? undefined, messageId: msg.messageId, question: msg.question, botAnswered: true, helpful });
+    if (!msg?.messageId || feedbackSaveLocksRef.current.has(msg.messageId)) return;
+    feedbackSaveLocksRef.current.add(msg.messageId);
+    setMessages((prev) => prev.map((item) => (item.messageId === msg.messageId
+      ? { ...item, feedbackSaving: true, feedbackSaveFailed: false, feedbackVote: helpful, feedbackStage: helpful ? "awaiting_helpful" : "awaiting_ticket" }
+      : item)));
+    void postFeedback({ sessionKey: sessionKey ?? undefined, messageId: msg.messageId, question: msg.question, botAnswered: true, helpful })
+      .then((result) => {
+        feedbackSaveLocksRef.current.delete(msg.messageId!);
+        const feedbackLoginHref = result.requiresSignIn
+          ? `/login?next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`
+          : undefined;
+        setMessages((prev) => prev.map((item) => (item.messageId === msg.messageId
+          ? {
+            ...item,
+            feedbackSaving: false,
+            feedbackSaveFailed: !result.saved,
+            feedbackNeedsSignIn: !result.saved && result.requiresSignIn,
+            feedbackLoginHref: !result.saved ? feedbackLoginHref : undefined,
+            feedbackVote: result.saved ? undefined : helpful,
+            feedbackStage: helpful ? (result.saved ? "helpful_done" : "awaiting_helpful") : "awaiting_ticket",
+          }
+          : item)));
+      });
   }
 
   function declineTicket(index: number) {
     setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: "ticket_declined" } : m)));
   }
 
+  async function cancelHandoffPreview(index: number) {
+    const message = messages[index];
+    if (!message || message.feedbackStage !== "handoff_preview") return;
+    const hasUnsavedEdits = !message.handoffDraftSaved && (
+      (message.handoffSubject ?? "") !== (message.handoffPreviewSubject ?? "")
+      || (message.handoffSummary ?? "") !== (message.handoffPreviewSummary ?? "")
+    );
+    if (hasUnsavedEdits && !(await confirm(t("chatbot.handoff.discardUnsavedConfirm")))) return;
+    setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
+      ? { ...item, feedbackStage: "ticket_declined", ticketError: undefined }
+      : item));
+  }
+
   async function createTicket(index: number) {
     const msg = messages[index];
-    if (!msg.messageId || creatingTicketFor) return;
-    setCreatingTicketFor(msg.messageId);
-    setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: undefined } : m)));
+    if (!msg.question || creatingTicketFor || ticketOperationLockRef.current) return;
+    const requestIdentity = identityRef.current;
+    ticketOperationLockRef.current = true;
+    ticketOperationIdentityRef.current = requestIdentity;
+    const pendingOperationId = readPendingSupportOperation(currentUser?.id ?? null, msg.messageId);
+    const operationId = pendingOperationId ?? crypto.randomUUID();
+    const hasPendingOperation = Boolean(pendingOperationId);
+    const draftTarget = msg.messageId ?? msg.handoffDraftTarget ?? operationId;
+    setCreatingTicketFor(msg.messageId ?? operationId);
+    setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
+      ? { ...item, ticketError: undefined, ticketErrorCode: undefined, ticketNeedsSignIn: false, handoffDraftLoadFailed: false }
+      : item));
+    try {
+      let subject = resolveTicketSubject(msg.question, t("chatbot.supportRequest"));
+      let summary = msg.question;
+      let draftVersion = 0;
+      if (currentUser) {
+        const draftResponse = await fetch(`/api/support/drafts?surface=handoff&target=${encodeURIComponent(draftTarget)}`, { cache: "no-store" }).catch(() => null);
+        if (identityRef.current !== requestIdentity) return;
+        if (draftResponse?.status === 401) {
+          setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
+            ? { ...item, ticketErrorCode: "UNAUTHORIZED", ticketNeedsSignIn: true, handoffDraftLoadFailed: true }
+            : item));
+          return;
+        }
+        if (!draftResponse?.ok) {
+          setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
+            ? { ...item, handoffDraftLoadFailed: true }
+            : item));
+          return;
+        }
+        const draftResult = await draftResponse.json().catch(() => null) as { data?: { subject?: unknown; body?: unknown; version?: unknown } } | null;
+        if (identityRef.current !== requestIdentity) return;
+        const draft = draftResult?.data;
+        if (!draft || typeof draft.subject !== "string" || typeof draft.body !== "string"
+          || typeof draft.version !== "number" || !Number.isInteger(draft.version) || draft.version < 0) {
+          setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
+            ? { ...item, handoffDraftLoadFailed: true }
+            : item));
+          return;
+        }
+        if (draft.version > 0) {
+          subject = draft.subject;
+          summary = draft.body;
+          draftVersion = draft.version;
+        }
+      }
+      if (identityRef.current !== requestIdentity) return;
+      setMessages((prev) => prev.map((m, i) => (i === index ? {
+        ...m,
+        feedbackStage: "handoff_preview",
+        handoffSubject: subject,
+        handoffSummary: summary,
+        handoffPreviewSubject: subject,
+        handoffPreviewSummary: summary,
+        handoffSourceMessage: msg.messageId ? msg.question ?? null : null,
+        handoffOperationId: operationId,
+        handoffDraftTarget: draftTarget,
+        handoffDraftVersion: draftVersion,
+        handoffDraftSaved: draftVersion > 0,
+        handoffDraftLoadFailed: false,
+        ticketOperationUnknown: hasPendingOperation,
+        ticketError: undefined,
+      } : m)));
+    } catch {
+      if (identityRef.current === requestIdentity) {
+        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError") } : m)));
+      }
+    } finally {
+      if (ticketOperationIdentityRef.current === requestIdentity) {
+        ticketOperationLockRef.current = false;
+        setCreatingTicketFor(null);
+      }
+    }
+  }
+
+  async function saveHandoffDraft(index: number): Promise<boolean> {
+    const msg = messages[index];
+    if (!msg.handoffOperationId) return false;
+    if (!currentUser) {
+      setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
+        ? { ...item, ticketError: t("chatbot.ticketError"), ticketErrorCode: "UNAUTHORIZED", ticketNeedsSignIn: true }
+        : item));
+      return false;
+    }
+    const draftTarget = msg.messageId ?? msg.handoffDraftTarget ?? msg.handoffOperationId;
+    const saveLockKey = `${currentUser.id}:${draftTarget}`;
+    if (handoffDraftSaveLocksRef.current.has(saveLockKey)) return false;
+    handoffDraftSaveLocksRef.current.add(saveLockKey);
+    setSavingHandoffDraftFor(saveLockKey);
+    const requestIdentity = identityRef.current;
+    const subject = msg.handoffSubject ?? "";
+    const body = msg.handoffSummary ?? "";
+    const expectedVersion = msg.handoffDraftVersion ?? 0;
+    setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
+      ? { ...item, ticketError: undefined, ticketErrorCode: undefined, ticketNeedsSignIn: false }
+      : item));
+    try {
+      const response = await fetch("/api/support/drafts", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ surface: "handoff", target: draftTarget, subject, body, expectedVersion }),
+      }).catch(() => null);
+      if (identityRef.current !== requestIdentity) return false;
+      const result = await response?.json().catch(() => ({})) as { data?: { version?: number; changed?: boolean } } | undefined;
+      if (identityRef.current !== requestIdentity) return false;
+      if (!response?.ok || typeof result?.data?.version !== "number") {
+        const needsSignIn = response?.status === 401;
+        setMessages((prev) => prev.map((item, itemIndex) => itemIndex === index
+          ? {
+            ...item,
+            handoffDraftSaved: false,
+            ticketError: needsSignIn ? undefined : t("chatbot.handoff.draftSaveFailed"),
+            ticketErrorCode: needsSignIn ? "UNAUTHORIZED" : undefined,
+            ticketNeedsSignIn: needsSignIn,
+          }
+          : item));
+        return false;
+      }
+      setMessages((prev) => prev.map((item, itemIndex) => {
+        if (itemIndex !== index) return item;
+        const contentUnchanged = item.handoffSubject === subject
+          && item.handoffSummary === body
+          && (item.handoffDraftVersion ?? 0) === expectedVersion;
+        return {
+          ...item,
+          handoffDraftVersion: result.data!.version,
+          handoffDraftSaved: contentUnchanged,
+          ticketError: undefined,
+          ticketErrorCode: undefined,
+          ticketNeedsSignIn: false,
+        };
+      }));
+      return true;
+    } finally {
+      handoffDraftSaveLocksRef.current.delete(saveLockKey);
+      setSavingHandoffDraftFor((current) => current === saveLockKey ? null : current);
+    }
+  }
+
+  async function confirmTicket(index: number) {
+    const msg = messages[index];
+    if (!msg.handoffOperationId || creatingTicketFor || ticketOperationLockRef.current) return;
+    if (!msg.handoffConsented) return;
+    const requestIdentity = identityRef.current;
+    const subject = msg.handoffSubject?.trim() ?? "";
+    const summary = msg.handoffSummary?.trim() ?? "";
+    if (!subject || subject.length > 255 || !summary || summary.length > 2000) {
+      setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.handoff.invalid") } : m)));
+      return;
+    }
+    ticketOperationLockRef.current = true;
+    ticketOperationIdentityRef.current = requestIdentity;
+    setCreatingTicketFor(msg.messageId ?? msg.handoffOperationId);
+    setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: undefined, ticketNeedsSignIn: false } : m)));
 
     try {
-      const subject = resolveTicketSubject(msg.question, t("chatbot.supportRequest"));
+      if (!(await saveHandoffDraft(index))) return;
+      const previewResponse = await fetch("/api/support/handoff/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject, summary, sessionKey: sessionKey ?? undefined, messageId: msg.messageId }),
+      }).catch(() => null);
+      const previewResult = await previewResponse?.json().catch(() => ({})) as { data?: { subject: string; summary: string; handoffToken: string; sourceMessageId?: string | null; sourceMessage?: string | null }; error?: { code?: string } } | undefined;
+      if (identityRef.current !== requestIdentity) return;
+      if (!previewResponse?.ok || !previewResult?.data) {
+        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError"), ticketErrorCode: previewResult?.error?.code ?? "PREVIEW_UNAVAILABLE", ticketNeedsSignIn: previewResponse?.status === 401 } : m)));
+        return;
+      }
+      if (previewResult.data.subject !== subject || previewResult.data.summary !== summary
+        || (previewResult.data.sourceMessageId && previewResult.data.sourceMessage !== msg.handoffSourceMessage)) {
+        setMessages((prev) => prev.map((m, i) => (i === index ? {
+          ...m,
+          handoffSubject: previewResult.data!.subject,
+          handoffSummary: previewResult.data!.summary,
+          handoffSourceMessage: previewResult.data!.sourceMessage ?? null,
+          handoffPreviewSubject: previewResult.data!.subject,
+          handoffPreviewSummary: previewResult.data!.summary,
+          handoffConsented: false,
+          ticketError: t("chatbot.handoff.cleanedReview"),
+        } : m)));
+        return;
+      }
+      if (currentUser && msg.messageId) storePendingSupportOperation(currentUser.id, msg.messageId, msg.handoffOperationId);
       const res = await fetch("/api/support/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionKey: sessionKey ?? undefined, subject, body: subject }),
+        body: JSON.stringify({
+          operationId: msg.handoffOperationId,
+          handoffToken: previewResult.data.handoffToken,
+          consent: true,
+          subject,
+          body: summary,
+          ...(previewResult.data.sourceMessageId ? {
+            sourceMessageId: previewResult.data.sourceMessageId,
+            sourceMessage: previewResult.data.sourceMessage ?? undefined,
+          } : {}),
+        }),
       });
-      const result = (await res.json()) as { data: { id: string; category: string } | null };
+      const result = (await res.json().catch(() => ({}))) as { data?: { id: string; category: string } | null; error?: { code?: string } | null };
+      if (identityRef.current !== requestIdentity) return;
       const ticketErrorText = t("chatbot.ticketError");
       if (res.ok && result.data) {
-        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: "ticket_created", ticketId: result.data!.id } : m)));
-        postFeedback({ sessionKey: sessionKey ?? undefined, messageId: msg.messageId, openedTicket: true });
+        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: "ticket_created", ticketId: result.data!.id, ticketOperationUnknown: false, ticketOperationNotFound: false } : m)));
+        const draftTarget = msg.messageId ?? msg.handoffDraftTarget ?? msg.handoffOperationId;
+        if (currentUser && draftTarget) {
+          void fetch(`/api/support/drafts?surface=handoff&target=${encodeURIComponent(draftTarget)}`, { method: "DELETE" });
+        }
+        if (msg.messageId && sessionKey) postFeedback({ sessionKey, messageId: msg.messageId, openedTicket: true });
       } else {
-        setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: ticketErrorText } : m)));
+        setMessages((prev) => prev.map((m, i) => (i === index ? {
+          ...m,
+          ticketError: ticketErrorText,
+          ticketErrorCode: result.error?.code,
+          ticketNeedsSignIn: res.status === 401,
+          ticketOperationUnknown: res.status >= 500,
+        } : m)));
       }
     } catch {
-      setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: t("chatbot.ticketError") } : m)));
+      if (identityRef.current === requestIdentity) setMessages((prev) => prev.map((m, i) => (i === index ? {
+        ...m,
+        ticketError: t("chatbot.ticketError"),
+        ticketNeedsSignIn: false,
+        ticketOperationUnknown: true,
+      } : m)));
     } finally {
-      setCreatingTicketFor(null);
+      if (ticketOperationIdentityRef.current === requestIdentity) {
+        ticketOperationLockRef.current = false;
+        setCreatingTicketFor(null);
+      }
+    }
+  }
+
+  async function checkTicketOperation(index: number) {
+    const msg = messages[index];
+    if (!msg.handoffOperationId || creatingTicketFor || ticketOperationLockRef.current) return;
+    const requestIdentity = identityRef.current;
+    ticketOperationLockRef.current = true;
+    ticketOperationIdentityRef.current = requestIdentity;
+    setCreatingTicketFor(msg.messageId ?? msg.handoffOperationId);
+    try {
+      const response = await fetch(`/api/support/operations/${msg.handoffOperationId}`);
+      const result = await response.json().catch(() => ({})) as { data?: { state?: string; ticketId?: string } };
+      if (identityRef.current !== requestIdentity) return;
+      if (!response.ok || !result.data) {
+        setMessages((current) => current.map((item, itemIndex) => itemIndex === index
+          ? { ...item, ticketError: t("chatbot.statusQuery.unavailable") }
+          : item));
+        return;
+      }
+      if (result.data.state === "completed" && result.data.ticketId) {
+        if (currentUser && msg.messageId) storePendingSupportOperation(currentUser.id, msg.messageId, null);
+        setMessages((current) => current.map((item, itemIndex) => itemIndex === index
+          ? { ...item, feedbackStage: "ticket_created", ticketId: result.data!.ticketId, ticketOperationUnknown: false, ticketOperationNotFound: false, ticketError: undefined }
+          : item));
+        if (msg.messageId && sessionKey && currentUser) postFeedback({ sessionKey, messageId: msg.messageId, openedTicket: true });
+        return;
+      }
+      setMessages((current) => current.map((item, itemIndex) => itemIndex === index
+        ? { ...item, ticketOperationUnknown: false, ticketOperationNotFound: true, ticketError: t("chatbot.handoff.notCreated") }
+        : item));
+    } catch {
+      if (identityRef.current === requestIdentity) {
+        setMessages((current) => current.map((item, itemIndex) => itemIndex === index
+          ? { ...item, ticketError: t("chatbot.statusQuery.unavailable") }
+          : item));
+      }
+    } finally {
+      if (ticketOperationIdentityRef.current === requestIdentity) {
+        ticketOperationLockRef.current = false;
+        setCreatingTicketFor(null);
+      }
     }
   }
 
@@ -362,7 +1341,7 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
           style={expanded ? undefined : { height: 460, maxHeight: "calc(100vh - 6rem)" }}
         >
           <div className="flex items-center justify-between border-b border-border bg-primary px-4 py-3 text-primary-foreground">
-            <span className="text-sm font-semibold">{t("chatbot.title")}</span>
+            <span className="text-sm font-semibold">{t("chatbot.brand")}</span>
             <div className="flex items-center gap-3">
               <Link href="/customer/support" className="text-[0.6875rem] underline opacity-90 hover:opacity-100">
                 {t("chatbot.myTickets")}
@@ -393,7 +1372,17 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
               </div>
             )}
 
-            {selected?.kind === "vendor" && currentUser ? (
+            {authLoading ? (
+              <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-muted-foreground">{t("states.loading")}</div>
+            ) : !currentUser ? (
+              <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+                <p className="text-sm font-semibold text-foreground">{t("chatbot.loginRequired.title")}</p>
+                <p className="max-w-xs text-xs text-muted-foreground">{t("chatbot.loginRequired.description")}</p>
+                <Button asChild size="sm"><Link href={`/login?next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`}>{t("chatbot.loginRequired.action")}</Link></Button>
+              </div>
+            ) : selected?.kind === "human-support" ? (
+              <ChatWidgetHumanSupport key={currentUser.id} userId={currentUser.id} onBack={() => selectChat(null)} />
+            ) : selected?.kind === "vendor" && currentUser ? (
               <ChatWidgetVendorThread threadId={selected.threadId} currentUserId={currentUser.id} onBack={() => selectChat(null)} />
             ) : selected?.kind === "support" ? (
               <div className="flex min-h-0 flex-1 flex-col">
@@ -401,21 +1390,47 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
                   <ChevronLeft size={14} /> {t("actions.back")}
                 </button>
 
+                {guestClaimCandidate?.ownerId === identityKey && (
+                  <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-3 py-2">
+                    <span className="flex-1 text-xs text-foreground">{t("chatbot.guestClaim.prompt")}</span>
+                    <Button type="button" size="sm" className="h-7 px-2.5 text-xs" onClick={() => void claimGuestConversation()} disabled={guestClaiming}>
+                      {guestClaiming ? t("chatbot.guestClaim.working") : t("chatbot.guestClaim.continue")}
+                    </Button>
+                    <button type="button" className="text-xs text-muted-foreground underline" onClick={() => { setGuestClaimCandidate(null); setGuestClaimError(null); }}>
+                      {t("chatbot.guestClaim.notNow")}
+                    </button>
+                  </div>
+                )}
+                {guestClaimError && guestClaimCandidate?.ownerId === identityKey && (
+                  <p role="alert" className="border-b border-border px-3 py-1.5 text-xs text-destructive">
+                    {t(`chatbot.supportErrors.${guestClaimError}`)}
+                  </p>
+                )}
+
                 <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
-                  {messages.length === 0 && (
+                  {historyCursor && sessionKey && (
+                    <Button type="button" size="sm" variant="ghost" className="mx-auto flex h-7 text-xs" onClick={() => void loadChatHistory(sessionKey, historyCursor)} disabled={historyLoading}>
+                      {t("chatbot.history.loadEarlier")}
+                    </Button>
+                  )}
+                  {historyError && (
+                    <div role="alert" className="flex flex-wrap items-center justify-center gap-2 text-xs text-destructive">
+                      <span>{guestRecoverySessionKey === sessionKey ? t("chatbot.guestSessionUnavailable")
+                        : historyRecovery === "unauthorized" ? t("chatbot.history.signIn")
+                          : historyRecovery === "not-found" ? t("chatbot.history.sessionGone")
+                            : t("chatbot.history.unavailable")}</span>
+                      {historyRecovery === "unauthorized" && <Link href={`/login?next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`} className="font-medium underline underline-offset-2">{t("chatbot.feedback.signInAction")}</Link>}
+                      {historyRecovery === "not-found" && <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => startNewCustomerConversation()} disabled={historyLoading}>{t("chatbot.newConversation")}</Button>}
+                      {sessionKey && historyRecovery === null && guestRecoverySessionKey !== sessionKey && <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => void loadChatHistory(sessionKey)} disabled={historyLoading}>{t("chatbot.faq.retry")}</Button>}
+                      {guestRecoverySessionKey === sessionKey && <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={startNewGuestConversation}>{t("chatbot.newConversation")}</Button>}
+                    </div>
+                  )}
+                  {messages.length === 0 && !faqOpen && (
                     <div className="mt-8 flex flex-col items-center gap-2.5">
-                      <p className="text-xs text-muted-foreground text-center">
-                        {t("chatbot.emptyPrompt")}
+                      <p className="max-w-[85%] rounded-xl bg-muted px-3 py-2 text-center text-sm text-foreground">
+                        {t("chatbot.greeting")}
                       </p>
-                      {!faqOpen && (
-                        <button
-                          type="button"
-                          onClick={toggleFaq}
-                          className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
-                        >
-                          <HelpCircle size={13} /> {t("chatbot.faq.browse")}
-                        </button>
-                      )}
+                      {renderStarterActions()}
                     </div>
                   )}
                   {messages.map((m, i) => {
@@ -429,20 +1444,173 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
                       {m.listings && m.listings.length > 0 && <ChatbotListingLinks listings={m.listings} />}
                       {m.comparison && <ChatbotComparisonTable rows={m.comparison} />}
                       {m.refunds?.map((refund) => <ChatbotRefundCard key={refund.id} refund={refund} />)}
+                      <div className={`flex max-w-[85%] items-center gap-1.5 px-1 text-[11px] text-muted-foreground ${m.role === "user" ? "ml-auto justify-end" : ""}`}>
+                        <span>{formatChatTimestamp(m.createdAt ?? new Date().toISOString())}</span>
+                      </div>
+                      {m.role === "bot" && m.question && classifyIntent(m.question) === "greeting" && renderStarterActions()}
+                      {m.role === "bot" && (m.retryQuestion || m.sessionRecoveryQuestion || m.loginHref) && (
+                        <div className="mt-1.5 flex max-w-[85%] flex-wrap gap-1.5">
+                          {m.retryQuestion && (
+                            <Button type="button" size="sm" variant="outline" className="h-7 rounded-full px-2.5 text-xs" disabled={sending} onClick={() => void sendMessage(m.retryQuestion, true)}>
+                              {t("chatbot.starters.retry")}
+                            </Button>
+                          )}
+                          {m.sessionRecoveryQuestion && (
+                            <Button type="button" size="sm" variant="outline" className="h-7 rounded-full px-2.5 text-xs" disabled={sending} onClick={() => startNewCustomerConversation(m.sessionRecoveryQuestion)}>
+                              {t("chatbot.newConversation")}
+                            </Button>
+                          )}
+                          {m.loginHref && <Link href={m.loginHref} className="inline-flex h-7 items-center rounded-full border border-border px-2.5 text-xs font-medium underline-offset-2 hover:underline">{t("chatbot.feedback.signInAction")}</Link>}
+                        </div>
+                      )}
+                      {m.role === "bot" && m.recommendationData?.kind === "clarification" && (
+                        <div className="mt-1.5 flex max-w-[85%] flex-wrap gap-1.5" aria-label={m.text}>
+                          {m.recommendationData.options.map((category) => (
+                            <Button
+                              key={category}
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-7 rounded-full px-2.5 text-xs"
+                              disabled={sending}
+                              onClick={() => sendRecommendationChoice(m, t(`chatbot.recommendation.categories.${category}`))}
+                            >
+                              {t(`chatbot.recommendation.categories.${category}`)}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                      {m.role === "bot" && m.recommendationData?.kind === "no-results" && (
+                        <div className="mt-1.5 flex max-w-[85%] flex-wrap gap-1.5">
+                          {m.recommendationData.options.map((option) => (
+                            <Button
+                              key={option}
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-7 rounded-full px-2.5 text-xs"
+                              disabled={sending}
+                              onClick={() => sendRecommendationChoice(m, t(`chatbot.recommendation.${option === "any-state" ? "anyState" : "removeBudget"}`))}
+                            >
+                              {t(`chatbot.recommendation.${option === "any-state" ? "anyState" : "removeBudget"}`)}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                      {m.role === "bot" && m.recommendationData?.kind === "unavailable" && (
+                        <div className="mt-1.5 max-w-[85%]">
+                          <Button type="button" size="sm" variant="outline" className="h-7 px-2.5 text-xs" disabled={sending} onClick={() => m.question && void sendMessage(m.question)}>
+                            {t("chatbot.faq.retry")}
+                          </Button>
+                        </div>
+                      )}
+                      {m.role === "bot" && m.recommendationData?.kind === "results" && (
+                        <div className="mt-1.5 grid max-w-[85%] gap-2">
+                          {m.recommendationData.products.map((product) => (
+                            <Link
+                              key={product.id}
+                              href={buildProductPath(product.id)}
+                              className="rounded-lg border border-border bg-background px-3 py-2 text-foreground transition-colors hover:bg-secondary"
+                            >
+                              <span className="block text-xs font-semibold">{product.name}</span>
+                              <span className="mt-1 block text-[11px] text-muted-foreground">
+                                {t(`chatbot.recommendation.categories.${product.category}`)}
+                                {product.reviews > 0 && ` · ${product.rating.toFixed(1)} ★ (${product.reviews})`}
+                                {` · ${new Intl.NumberFormat(i18n.resolvedLanguage ?? i18n.language ?? "en", { style: "currency", currency: "MYR" }).format(product.price)}`}
+                              </span>
+                              <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                                {[product.city, product.state].filter(Boolean).join(", ") || t("chatbot.recommendation.locationUnknown")}
+                              </span>
+                              <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                                {product.reviews > 0
+                                  ? t("chatbot.recommendation.ratingReason", { rating: product.rating.toFixed(1), reviews: product.reviews })
+                                  : t("chatbot.recommendation.matchReason")}
+                              </span>
+                              <span className="mt-1 block text-[11px] text-primary underline underline-offset-2">{t("chatbot.recommendation.seeProduct")}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
                       {m.role === "bot" && m.privacyBlocked && (
                         <p role="status" className="mt-1 max-w-[85%] rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-2 text-xs leading-5 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
                           {t("chatbot.privacyBlocked")}
                         </p>
                       )}
+                      {m.role === "bot" && m.botAnswered && m.evidence?.map((source, sourceIndex) => (
+                        <p key={`${source.title}-${source.contentVersion}-${sourceIndex}`} className="mt-1 max-w-[85%] px-1 text-[11px] text-muted-foreground">
+                          {t("chatbot.evidence", { title: source.title })}
+                        </p>
+                      ))}
+                      {m.role === "bot" && m.statusItems && m.statusItems.length > 0 && (
+                        <ul className="mt-1.5 max-w-[85%] space-y-1">
+                          {m.statusItems.map((item) => (
+                            <li key={item.id}>
+                              {item.actions.includes("open_record") ? (
+                                <Link href={item.href} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-2.5 py-2 text-xs hover:bg-secondary">
+                                  <span className="min-w-0 truncate">{item.kind === "withdrawals" || item.kind === "kyc" ? t(`chatbot.statusQuery.records.${item.kind}`) : item.label}</span>
+                                  <span className="shrink-0 text-muted-foreground">
+                                    {t(`chatbot.statusQuery.values.${item.status.toLowerCase()}`)}
+                                  </span>
+                                </Link>
+                              ) : (
+                                <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-2.5 py-2 text-xs">
+                                  <span className="min-w-0 truncate">{item.kind === "withdrawals" || item.kind === "kyc" ? t(`chatbot.statusQuery.records.${item.kind}`) : item.label}</span>
+                                  <span className="shrink-0 text-muted-foreground">{t(`chatbot.statusQuery.values.${item.status.toLowerCase()}`)}</span>
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {m.role === "bot" && m.statusActionHref && m.statusActionLabel && (
+                        <Link href={m.statusActionHref} className="mt-1 inline-block text-xs text-primary underline">
+                          {m.statusActionLabel}
+                        </Link>
+                      )}
+                      {m.role === "bot" && m.statusRetryAvailable && m.statusKind && m.localId && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="mt-1 h-7 px-2.5 text-xs"
+                          disabled={statusRefreshingId === m.localId}
+                          onClick={() => void refreshCustomerStatus(m.localId!, m.statusKind!, m.question ?? "")}
+                        >
+                          {statusRefreshingId === m.localId ? t("chatbot.statusQuery.refreshing") : t("chatbot.statusQuery.retry")}
+                        </Button>
+                      )}
                       {m.role === "bot" && m.feedbackStage && (
                         <div className="mt-1.5 max-w-[85%]">
+                          {m.feedbackSaving && <p role="status" className="mb-1 px-1 text-xs text-muted-foreground">{t("chatbot.feedback.saving")}</p>}
+                          {m.feedbackSaveFailed && (
+                            <div role="alert" className="mb-1 flex items-center gap-2 rounded-lg border border-destructive/30 bg-background px-2.5 py-1.5">
+                              <span className="flex-1 text-xs text-destructive">
+                                {m.feedbackNeedsSignIn ? t("chatbot.feedback.signIn") : t("chatbot.feedback.saveFailed")}
+                              </span>
+                              {m.feedbackNeedsSignIn && m.feedbackLoginHref ? (
+                                <Link href={m.feedbackLoginHref} className="text-xs font-medium underline underline-offset-2">
+                                  {t("chatbot.feedback.signInAction")}
+                                </Link>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2.5 text-xs"
+                                  onClick={() => submitHelpful(i, m.feedbackVote ?? true)}
+                                  disabled={m.feedbackSaving}
+                                >
+                                  {t("chatbot.feedback.retry")}
+                                </Button>
+                              )}
+                            </div>
+                          )}
                           {m.feedbackStage === "awaiting_helpful" && (
                             <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5">
                               <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wasThisHelpful")}</span>
-                              <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, true)}>
+                              <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, true)} disabled={m.feedbackSaving}>
                                 {t("chatbot.yes")}
                               </Button>
-                              <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, false)}>
+                              <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => submitHelpful(i, false)} disabled={m.feedbackSaving}>
                                 {t("chatbot.no")}
                               </Button>
                             </div>
@@ -451,27 +1619,95 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
                           {m.feedbackStage === "awaiting_ticket" && (
                             <div className="rounded-lg border border-border bg-background px-2.5 py-1.5">
                               <div className="flex items-center gap-2">
-                                <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wantTicket")}</span>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 px-2.5 text-xs"
-                                  onClick={() => createTicket(i)}
-                                  disabled={creatingTicketFor === m.messageId}
-                                >
-                                  {creatingTicketFor === m.messageId ? t("chatbot.creatingTicket") : t("chatbot.yes")}
-                                </Button>
+                                <span role={m.handoffDraftLoadFailed ? "alert" : undefined} className="text-xs text-muted-foreground flex-1">{m.handoffDraftLoadFailed ? t("chatbot.handoff.draftLoadFailed") : t("chatbot.wantTicket")}</span>
+                                {m.handoffDraftLoadFailed ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2.5 text-xs"
+                                    onClick={() => createTicket(i)}
+                                    disabled={Boolean(creatingTicketFor)}
+                                  >
+                                    {creatingTicketFor ? t("chatbot.creatingTicket") : t("chatbot.handoff.retryDraftLoad")}
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2.5 text-xs"
+                                    onClick={() => createTicket(i)}
+                                    disabled={Boolean(creatingTicketFor)}
+                                  >
+                                    {creatingTicketFor ? t("chatbot.creatingTicket") : t("chatbot.yes")}
+                                  </Button>
+                                )}
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   className="h-7 px-2.5 text-xs"
                                   onClick={() => declineTicket(i)}
-                                  disabled={creatingTicketFor === m.messageId}
+                                  disabled={Boolean(creatingTicketFor)}
                                 >
                                   {t("chatbot.no")}
                                 </Button>
                               </div>
-                              {m.ticketError && <p className="text-[0.6875rem] text-destructive mt-1">{m.ticketError}</p>}
+                              {(m.ticketError || m.ticketErrorCode) && <p role="alert" className="text-[0.6875rem] text-destructive mt-1">{m.ticketErrorCode ? t(`chatbot.supportErrors.${supportError(m.ticketErrorCode).key}`) : m.ticketError}</p>}
+                              {m.ticketNeedsSignIn && (
+                                <Link href="/login?next=%2Fcustomer%2Fsupport" target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-primary underline">
+                                  {t("chatbot.handoff.signIn")}
+                                </Link>
+                              )}
+                            </div>
+                          )}
+                          {m.feedbackStage === "handoff_preview" && (
+                            <div className="space-y-2 rounded-lg border border-border bg-background p-2.5">
+                              <label className="block text-xs font-medium">
+                                {t("chatbot.handoff.subject")}
+                                <input
+                                  value={m.handoffSubject ?? ""}
+                                  maxLength={255}
+                                  disabled={m.ticketOperationUnknown || m.ticketOperationNotFound || creatingTicketFor === (m.messageId ?? m.handoffOperationId)}
+                                  onChange={(event) => setMessages((prev) => prev.map((item, index) => index === i ? { ...item, handoffSubject: event.target.value, handoffOperationId: crypto.randomUUID(), handoffDraftSaved: false, handoffConsented: false, ticketError: undefined } : item))}
+                                  className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm font-normal"
+                                />
+                              </label>
+                              {m.handoffSourceMessage && (
+                                <div className="rounded-md bg-muted/50 p-2 text-xs">
+                                  <span className="font-medium">{t("chatbot.handoff.selectedQuestion")}</span>
+                                  <p className="mt-1 whitespace-pre-wrap">{m.handoffSourceMessage}</p>
+                                </div>
+                              )}
+                              <label className="block text-xs font-medium">
+                                {t("chatbot.handoff.summary")}
+                                <textarea
+                                  value={m.handoffSummary ?? ""}
+                                  maxLength={2000}
+                                  rows={3}
+                                  disabled={m.ticketOperationUnknown || m.ticketOperationNotFound || creatingTicketFor === (m.messageId ?? m.handoffOperationId)}
+                                  onChange={(event) => setMessages((prev) => prev.map((item, index) => index === i ? { ...item, handoffSummary: event.target.value, handoffOperationId: crypto.randomUUID(), handoffDraftSaved: false, handoffConsented: false, ticketError: undefined } : item))}
+                                  className="mt-1 w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm font-normal"
+                                />
+                              </label>
+                              {(m.ticketError || m.ticketErrorCode) && <p role="alert" className="text-xs text-destructive">{m.ticketErrorCode ? t(`chatbot.supportErrors.${supportError(m.ticketErrorCode).key}`) : m.ticketError}</p>}
+                              {m.ticketNeedsSignIn && (
+                                <Link href="/login?next=%2Fcustomer%2Fsupport" target="_blank" rel="noreferrer" className="text-xs text-primary underline">
+                                  {t("chatbot.handoff.signIn")}
+                                </Link>
+                              )}
+                              <label className="flex items-start gap-2 text-xs text-muted-foreground">
+                                <input type="checkbox" checked={m.handoffConsented ?? false} disabled={m.ticketOperationUnknown || m.ticketOperationNotFound || creatingTicketFor === (m.messageId ?? m.handoffOperationId)} onChange={(event) => setMessages((prev) => prev.map((item, index) => index === i ? { ...item, handoffConsented: event.target.checked } : item))} className="mt-0.5 accent-primary" />
+                                <span>{t("chatbot.handoff.consent")}</span>
+                              </label>
+                              <div className="flex items-center justify-end gap-2">
+                                {m.handoffDraftSaved && <span className="mr-auto text-xs text-muted-foreground">{t("chatbot.handoff.draftSaved")}</span>}
+                                {currentUser && <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => void saveHandoffDraft(i)} disabled={!m.handoffSubject?.trim() || !m.handoffSummary?.trim() || savingHandoffDraftFor === `${currentUser.id}:${m.messageId ?? m.handoffDraftTarget ?? m.handoffOperationId}`}>{savingHandoffDraftFor === `${currentUser.id}:${m.messageId ?? m.handoffDraftTarget ?? m.handoffOperationId}` ? t("chatbot.handoff.savingDraft") : t("chatbot.handoff.saveDraft")}</Button>}
+                                <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => void cancelHandoffPreview(i)} disabled={creatingTicketFor === (m.messageId ?? m.handoffOperationId) || m.ticketOperationUnknown || m.ticketOperationNotFound}>
+                                  {t("chatbot.handoff.cancel")}
+                                </Button>
+                                <Button size="sm" className="h-7 px-2.5 text-xs" onClick={() => m.ticketOperationUnknown ? void checkTicketOperation(i) : void confirmTicket(i)} disabled={creatingTicketFor === (m.messageId ?? m.handoffOperationId) || !m.handoffSubject?.trim() || !m.handoffSummary?.trim() || (!m.ticketOperationUnknown && !m.handoffConsented)}>
+                                  {creatingTicketFor === (m.messageId ?? m.handoffOperationId) ? t("chatbot.creatingTicket") : m.ticketOperationUnknown ? t("chatbot.handoff.check") : m.ticketOperationNotFound ? t("chatbot.handoff.retrySame") : t("chatbot.handoff.confirm")}
+                                </Button>
+                              </div>
                             </div>
                           )}
                           {m.feedbackStage === "ticket_declined" && <p className="text-xs text-muted-foreground px-1">{t("chatbot.noProblem")}</p>}
@@ -480,7 +1716,7 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
                               <p className="text-xs text-muted-foreground">
                                 {t("strictMigration.chatbotTicketCreated", { id: m.ticketId?.slice(0, 8).toUpperCase() })}
                               </p>
-                              <Link href={`/customer/support/${m.ticketId}`} className="text-xs text-primary underline">
+                              <Link href={m.ticketId ? `/customer/support/${m.ticketId}` : "/customer/support"} className="text-xs text-primary underline">
                                 {t("chatbot.viewMyTickets")}
                               </Link>
                             </div>
@@ -500,7 +1736,10 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
                       <p className="text-xs text-muted-foreground">{t("chatbot.faq.loading")}</p>
                     )}
                     {faq === null && (
-                      <p className="text-xs text-destructive">{t("chatbot.faq.error")}</p>
+                      <div role="status" className="flex items-center justify-between gap-2 text-xs text-destructive">
+                        <span>{t("chatbot.faq.error")}</span>
+                        <button type="button" className="underline" onClick={() => void loadFaq()}>{t("chatbot.faq.retry")}</button>
+                      </div>
                     )}
                     {faq && faq.length === 0 && (
                       <p className="text-xs text-muted-foreground">{t("chatbot.faq.empty")}</p>
@@ -515,11 +1754,11 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
                             <button
                               key={c.category}
                               type="button"
-                              onClick={() => setFaqCategory(c.category)}
+                              onClick={() => openFaqCategory(c.category)}
                               className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-secondary"
                             >
-                              {faqCategoryLabel(c.category)}
-                              <span className="ml-1 text-muted-foreground">{c.questions.length}</span>
+                              {faqCategoryLabel(c.category, t)}
+                              <span className="ml-1 text-muted-foreground">{c.count}</span>
                             </button>
                           ))}
                         </div>
@@ -529,17 +1768,29 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
                       <>
                         <button
                           type="button"
-                          onClick={() => setFaqCategory(null)}
+                          onClick={returnToFaqCategories}
                           className="mb-2 flex items-center gap-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
                         >
-                          <ChevronLeft size={12} /> {faqCategoryLabel(faqCategory)}
+                          <ChevronLeft size={12} /> {faqCategoryLabel(faqCategory, t)}
                         </button>
+                        {faqPageLoading && (faqQuestionPage?.category !== faqCategory || faqQuestionPage.data.page !== faqPage) && (
+                          <p role="status" className="text-xs text-muted-foreground">{t("chatbot.faq.loading")}</p>
+                        )}
+                        {faqPageError && (
+                          <div role="alert" className="flex items-center justify-between gap-2 text-xs text-destructive">
+                            <span>{t("chatbot.faq.error")}</span>
+                            <button type="button" className="underline" onClick={() => void loadFaqQuestions(faqCategory, faqPage)}>{t("chatbot.faq.retry")}</button>
+                          </div>
+                        )}
+                        {faqQuestionPage?.category === faqCategory && faqQuestionPage.data.page === faqPage && faqQuestionPage.data.questions.length === 0 && (
+                          <p className="text-xs text-muted-foreground">{t("chatbot.faq.empty")}</p>
+                        )}
                         <div className="flex flex-col gap-1">
-                          {(faq.find((c) => c.category === faqCategory)?.questions ?? []).map((q) => (
+                          {(faqQuestionPage?.category === faqCategory && faqQuestionPage.data.page === faqPage ? faqQuestionPage.data.questions : []).map((q) => (
                             <button
                               key={q.id}
                               type="button"
-                              disabled={sending}
+                              disabled={sending || guestClaimCandidate?.ownerId === identityKey}
                               onClick={() => {
                                 setFaqOpen(false);
                                 setFaqCategory(null);
@@ -551,26 +1802,42 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
                             </button>
                           ))}
                         </div>
+                        {faqQuestionPage?.category === faqCategory && faqQuestionPage.data.page === faqPage && faqQuestionPage.data.totalPages > 1 && (
+                          <Pagination
+                            currentPage={faqPage}
+                            totalPages={faqQuestionPage.data.totalPages}
+                            totalItems={faqQuestionPage.data.total}
+                            pageSize={faqQuestionPage.data.pageSize}
+                            onPageChange={(page) => void loadFaqQuestions(faqCategory, page)}
+                            disabled={faqPageLoading}
+                            className="mt-1"
+                          />
+                        )}
                       </>
                     )}
                   </div>
                 )}
 
-                {speech.error && <p className="px-3 pt-1.5 text-[0.6875rem] text-destructive border-t border-border">{SPEECH_ERROR_TEXT[speech.error]}</p>}
+                {speech.error && <p role="status" className="px-3 pt-1.5 text-[0.6875rem] text-destructive border-t border-border">{t(`chatbot.voice.errors.${speech.error}`)}</p>}
                 <div className={`flex items-center gap-2 px-3 py-3 ${speech.error ? "" : "border-t border-border"}`}>
                   <input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") sendMessage();
+                      if (e.key === "Enter" && !e.nativeEvent.isComposing && !e.shiftKey) {
+                        e.preventDefault();
+                        void sendMessage();
+                      }
                     }}
                     placeholder={t("chatbot.inputPlaceholder")}
+                    maxLength={500}
                     className="flex-1 min-w-0 h-9 rounded-full border border-border px-3 text-sm bg-background text-foreground"
-                    disabled={sending}
+                    disabled={sending || guestClaimCandidate?.ownerId === identityKey}
                   />
                   <button
                     type="button"
                     onClick={toggleFaq}
+                    disabled={guestClaimCandidate?.ownerId === identityKey}
                     aria-label={t("chatbot.faq.toggle")}
                     aria-expanded={faqOpen}
                     title={t("chatbot.faq.toggle")}
@@ -586,7 +1853,7 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
                     <button
                       type="button"
                       onClick={() => (speech.isListening ? speech.stop() : speech.start())}
-                      disabled={sending}
+                      disabled={sending || guestClaimCandidate?.ownerId === identityKey}
                       aria-label={speech.isListening ? t("chatbot.voice.stop") : t("chatbot.voice.start")}
                       title={speech.isListening ? t("chatbot.voice.stop") : t("chatbot.voice.start")}
                       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
@@ -598,7 +1865,7 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
                       {speech.isListening ? <MicOff size={15} /> : <Mic size={15} />}
                     </button>
                   )}
-                  <Button size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={() => sendMessage()} aria-label={t("chatbot.send")} disabled={sending || !input.trim()}>
+                  <Button size="icon" className="h-9 w-9 rounded-full shrink-0" onClick={() => sendMessage()} aria-label={t("chatbot.send")} disabled={sending || guestClaimCandidate?.ownerId === identityKey || !input.trim()}>
                     <Send size={14} aria-hidden="true" />
                   </Button>
                 </div>

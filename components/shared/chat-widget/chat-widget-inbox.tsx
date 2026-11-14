@@ -183,6 +183,20 @@ export function ChatWidgetInbox({ currentUserId, selected, onSelect, widthPx }: 
         </span>
       </button>
 
+      <button
+        type="button"
+        onClick={() => onSelect({ kind: "human-support" })}
+        className={`flex w-full items-center gap-3 border-b border-border px-3 py-3 text-left transition hover:bg-secondary/70 ${selected?.kind === "human-support" ? "bg-secondary" : ""}`}
+      >
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-700">
+          <MessageCircle size={18} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-foreground">{tCommon("chatbot.list.humanSupportLabel")}</span>
+          <span className="block truncate text-xs text-muted-foreground">{tCommon("chatbot.list.humanSupportPreview")}</span>
+        </span>
+      </button>
+
       {!currentUserId ? (
         <p className="px-3 py-4 text-xs text-muted-foreground">{tCommon("chatbot.list.signInPrompt")}</p>
       ) : (

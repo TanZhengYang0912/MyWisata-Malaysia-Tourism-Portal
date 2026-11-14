@@ -32,11 +32,12 @@
 import { createServiceClient } from '@/lib/supabase/service';
 import { retrieve, type RetrievedDoc } from './retrieve';
 import { generateAnswer } from './generate';
-import { answerQuestion as matchKeyword, type KbDoc } from './match';
 import { classifyIntent, splitQuestions } from './intent';
-import { redactPII } from './pii';
+import { prepareKbText, redactPII } from './pii';
 import { detectLanguage, type ChatLanguage } from './language';
 import { CHAT_STRINGS } from './strings';
+import { detectSensitiveSupportDomain, resolveSupportPolicy } from './policy';
+import { resolveCustomerSupportIntent } from './customer-intent';
 import { runCustomerAgent, type AgentContext, type ChatListing, type RefundProposal } from './agent';
 
 // CLAUDE-CHATBOT-FEEDBACK.md Flow 2: this line IS the ticket offer's lead-in
@@ -52,6 +53,9 @@ export const FALLBACK_ANSWER = CHAT_STRINGS.en.fallback;
 
 export interface UsedKbRef {
   id: string;
+  title: string;
+  contentVersion: number;
+  reviewed: boolean;
   /** null for keyword-mode matches — that path has no continuous similarity score. */
   similarity: number | null;
 }
@@ -102,41 +106,67 @@ async function answerWithKeywordFallback(
   piiDetected: boolean,
   language: ChatLanguage,
 ): Promise<AnswerResult> {
-  const { data: kbRows } = await service
-    .from('chatbot_kb_documents')
-    .select('id, title, body, keywords, category')
-    .eq('is_active', true);
+  interface KeywordMatchRow {
+    question_index: number;
+    id: string;
+    title: string;
+    body: string;
+    keywords: string[];
+    category: string | null;
+    content_version: number | null;
+    published_source_refs: unknown;
+  }
 
-  const docs: KbDoc[] = (kbRows ?? []).map((row) => ({
-    id: row.id,
-    title: row.title,
-    body: row.body,
-    keywords: row.keywords ?? [],
-    category: row.category,
-  }));
+  const domains = questions.map((question) => detectSensitiveSupportDomain(question));
+  const { data, error } = await service.rpc('search_support_kb_keywords', {
+    p_questions: questions,
+    p_reviewed_only: domains.map((domain) => domain !== null),
+  });
+  if (error) console.error('[chatbot] keyword KB lookup failed', error.code ?? 'unknown');
+
+  const safeRows = ((error ? [] : data ?? []) as KeywordMatchRow[]).filter((row) => (
+    prepareKbText(`TITLE: ${row.title}\nBODY: ${row.body}`).allowed
+  ));
+  const reviewedIds = new Set(safeRows
+    .filter((row) => Array.isArray(row.published_source_refs) && row.published_source_refs.length > 0)
+    .map((row) => row.id));
 
   // The keyword matcher only ever scores against an English KB (Extra 1
   // deliberately doesn't translate the KB — see lib/chatbot/retrieve.ts's
   // header), so its ANSWER is always English regardless of `language`. Only
-  // the fallback line (no match at all) gets localized here — there's
-  // nothing to translate on a successful match without risking exactly the
-  // "subtly wrong translation" the extras doc warns about, and this path
-  // only runs when the LLM is unavailable/failing anyway.
-  // One match per question, each doc shown once.
+  // the fallback line (no match at all) gets localized here. Each question
+  // is ranked in Postgres; the RPC returns at most ten candidates, after the
+  // full active set has been scored, for this safety check.
+  const questionMatches = questions.map((_question, index) => ({
+    domain: domains[index],
+    match: safeRows.find((row) => row.question_index === index + 1) ?? null,
+  }));
+  if (questionMatches.some(({ domain, match }) => domain && (
+    !match || !resolveSupportPolicy(domain, 'published_kb').canAnswerPolicy
+  ))) {
+    return { answer: CHAT_STRINGS[language].sensitiveUnavailable, kbMatched: false, canEscalate: true, usedKb: [], mode: 'keyword', piiDetected, language };
+  }
   const matches = [...new Map(
-    questions.map((q) => matchKeyword(q, docs)).filter((doc): doc is KbDoc => doc !== null).map((doc) => [doc.id, doc]),
+    questionMatches.map(({ match }) => match).filter((row): row is KeywordMatchRow => row !== null).map((row) => [row.id, row]),
   ).values()];
+  const hasUnansweredQuestion = questionMatches.some(({ match }) => match === null);
+  const answerParts = matches.map((doc) => doc.body);
+  if (hasUnansweredQuestion && matches.length > 0) answerParts.push(CHAT_STRINGS[language].fallback);
   return matches.length > 0
-    ? { answer: matches.map((doc) => doc.body).join('\n\n'), kbMatched: true, canEscalate: false, usedKb: matches.map((doc) => ({ id: doc.id, similarity: null })), mode: 'keyword', piiDetected, language }
+    ? { answer: answerParts.join('\n\n'), kbMatched: true, canEscalate: hasUnansweredQuestion, usedKb: matches.map((doc) => {
+      return { id: doc.id, title: doc.title, contentVersion: Number(doc.content_version ?? 0), reviewed: reviewedIds.has(doc.id), similarity: null };
+    }), mode: 'keyword', piiDetected, language }
     : { answer: CHAT_STRINGS[language].fallback, kbMatched: false, canEscalate: true, usedKb: [], mode: 'keyword', piiDetected, language };
 }
 
-/**
- * `useAi: false` (caller over its AI quota) answers from the keyword matcher instead of the LLM.
- * `agent` (the customer's session and recent messages) tries the customer agent first; if it
- * fails, the help-article pipeline below answers as before.
- */
-export async function answerQuestion(question: string, useAi = true, agent?: AgentContext): Promise<AnswerResult> {
+/** `useAi: false` skips the model; when enabled, each provider call reserves quota before leaving the server. */
+export async function answerQuestion(
+  question: string,
+  useAi = true,
+  beforeExternalCall?: () => Promise<void>,
+  reserveProviderCall?: () => Promise<boolean>,
+  agent?: AgentContext,
+): Promise<AnswerResult> {
   // Computed once from the raw question, independent of which mode ends up
   // answering it — a keyword-mode or intent-gated reply can still follow a
   // message that contained PII. The actual redaction enforcement lives in
@@ -149,6 +179,12 @@ export async function answerQuestion(question: string, useAi = true, agent?: Age
   // lib/chatbot/language.ts's header for why a lightweight heuristic here
   // is sufficient).
   const language = detectLanguage(question);
+
+  // Personal status is resolved through the owner-scoped server endpoint,
+  // never from public policy articles or a model guess.
+  if (resolveCustomerSupportIntent(question)) {
+    return { answer: CHAT_STRINGS[language].sensitiveUnavailable, kbMatched: false, canEscalate: true, usedKb: [], mode: 'intent', piiDetected, language };
+  }
 
   // Never escalate, never retrieve, never call the LLM for these — see the
   // file header and lib/chatbot/intent.ts. kbMatched: true because the bot
@@ -172,9 +208,21 @@ export async function answerQuestion(question: string, useAi = true, agent?: Age
   const service = createServiceClient();
   const questions = splitQuestions(question);
 
+  let externalCallMarker: Promise<void> | undefined;
+  const markBeforeExternalCall = beforeExternalCall
+    ? () => {
+      externalCallMarker ??= Promise.resolve().then(beforeExternalCall);
+      return externalCallMarker;
+    }
+    : undefined;
+  const prepareProviderCall = async () => {
+    if (reserveProviderCall && !(await reserveProviderCall())) throw new Error('AI_QUOTA_EXHAUSTED');
+    await markBeforeExternalCall?.();
+  };
+
   if (useAi && process.env.LLM_API_KEY && agent) {
     try {
-      const run = await runCustomerAgent(service, question, agent);
+      const run = await runCustomerAgent(service, question, agent, prepareProviderCall);
       const extras = { listings: run.listings, comparison: run.comparison, refunds: run.refunds };
       return run.answer
         ? { answer: run.answer, kbMatched: true, canEscalate: false, usedKb: run.usedKb, mode: 'agent', piiDetected, language, ...extras }
@@ -189,21 +237,98 @@ export async function answerQuestion(question: string, useAi = true, agent?: Age
       // Each question clears the similarity threshold on its own, so one
       // off-topic question no longer sinks an on-topic one beside it.
       const k = retrievalCount(questions.length);
-      const retrieved = mergeRetrieved(await Promise.all(questions.map((q) => retrieve(service, q, k))));
+      const questionEvidence = await Promise.all(questions.map(async (question) => {
+        const domain = detectSensitiveSupportDomain(question);
+        const docs = await retrieve(service, question, k, prepareProviderCall, domain !== null);
+        return { question, domain, docs };
+      }));
+      const sensitiveQuestions = questionEvidence.filter(({ domain }) => domain !== null);
+
+      // A mixed message must not let a booking or tourism article stand in
+      // for a missing refund/payment/KYC source. Answer reviewed policy
+      // questions with their own approved article text, then ask Gemini only
+      // about the non-sensitive questions and their separately retrieved docs.
+      if (questions.length > 1 && sensitiveQuestions.length > 0) {
+        if (sensitiveQuestions.some(({ domain, docs }) => (
+          !docs.some((doc) => doc.reviewed)
+          || !domain
+          || !resolveSupportPolicy(domain, 'published_kb').canAnswerPolicy
+        ))) {
+          return { answer: strings.sensitiveUnavailable, kbMatched: false, canEscalate: true, usedKb: [], mode: 'llm', piiDetected, language };
+        }
+
+        const ordinaryQuestions = questionEvidence.filter(({ domain }) => domain === null);
+        const ordinaryDocs = mergeRetrieved(ordinaryQuestions.map(({ docs }) => docs));
+        const sensitiveDocs = mergeRetrieved([sensitiveQuestions.flatMap(({ docs }) => {
+          const bestReviewedDoc = docs.find((doc) => doc.reviewed);
+          return bestReviewedDoc ? [bestReviewedDoc] : [];
+        })]);
+        let ordinaryAnswer: string | null = null;
+        let usedLlm = false;
+        if (ordinaryQuestions.length > 0) {
+          if (ordinaryDocs.length > 0) {
+            const ordinaryQuestion = ordinaryQuestions.map(({ question }) => question).join('\n');
+            ordinaryAnswer = await generateAnswer(ordinaryQuestion, ordinaryDocs, ordinaryQuestions.length, prepareProviderCall);
+            usedLlm = true;
+          }
+          ordinaryAnswer ??= strings.fallback;
+        }
+
+        const usedDocs = mergeRetrieved([sensitiveDocs, ordinaryDocs]);
+        const sensitiveIds = new Set<string>();
+        const answerParts: string[] = [];
+        for (const evidence of questionEvidence) {
+          if (evidence.domain) {
+            const bestReviewedDoc = evidence.docs.find((doc) => doc.reviewed);
+            if (!bestReviewedDoc || sensitiveIds.has(bestReviewedDoc.id)) continue;
+            sensitiveIds.add(bestReviewedDoc.id);
+            answerParts.push(bestReviewedDoc.body);
+          } else if (ordinaryAnswer && !answerParts.includes(ordinaryAnswer)) {
+            answerParts.push(ordinaryAnswer);
+          }
+        }
+
+        const unansweredOrdinaryQuestion = ordinaryQuestions.some(({ docs }) => docs.length === 0) || (
+          ordinaryQuestions.length > 0 && ordinaryDocs.length > 0 && ordinaryAnswer === strings.fallback
+        );
+        const usedKb: UsedKbRef[] = usedDocs.map((doc) => ({
+          id: doc.id,
+          title: doc.title,
+          contentVersion: doc.contentVersion,
+          reviewed: doc.reviewed,
+          similarity: doc.similarity,
+        }));
+        return {
+          answer: answerParts.join('\n\n'),
+          kbMatched: usedKb.length > 0,
+          canEscalate: unansweredOrdinaryQuestion,
+          usedKb,
+          mode: usedLlm ? 'llm' : 'keyword',
+          piiDetected,
+          language,
+        };
+      }
+
+      const retrieved = mergeRetrieved(questionEvidence.map(({ docs }) => docs));
       if (retrieved.length === 0) {
         // Threshold check happens BEFORE the LLM call — the model never
         // sees an off-topic question at all. See lib/chatbot/retrieve.ts.
-        return { answer: strings.fallback, kbMatched: false, canEscalate: true, usedKb: [], mode: 'llm', piiDetected, language };
+        return { answer: detectSensitiveSupportDomain(question) ? strings.sensitiveUnavailable : strings.fallback, kbMatched: false, canEscalate: true, usedKb: [], mode: 'llm', piiDetected, language };
       }
 
-      const usedKb: UsedKbRef[] = retrieved.map((r) => ({ id: r.id, similarity: r.similarity }));
-      const llmAnswer = await generateAnswer(question, retrieved, questions.length);
+      const domain = detectSensitiveSupportDomain(question);
+      const evidenceDocs = domain ? retrieved.filter((doc) => doc.reviewed) : retrieved;
+      if (domain && (!evidenceDocs.length || !resolveSupportPolicy(domain, 'published_kb').canAnswerPolicy)) {
+        return { answer: strings.sensitiveUnavailable, kbMatched: false, canEscalate: true, usedKb: [], mode: 'llm', piiDetected, language };
+      }
+      const usedKb: UsedKbRef[] = evidenceDocs.map((r) => ({ id: r.id, title: r.title, contentVersion: r.contentVersion, reviewed: r.reviewed, similarity: r.similarity }));
+      const llmAnswer = await generateAnswer(question, evidenceDocs, questions.length, prepareProviderCall);
 
       if (llmAnswer === null) {
         // NO_ANSWER — still record which docs were retrieved/considered,
         // useful admin-side provenance even though the model couldn't
         // ground an answer in them.
-        return { answer: strings.fallback, kbMatched: false, canEscalate: true, usedKb, mode: 'llm', piiDetected, language };
+        return { answer: domain ? strings.sensitiveUnavailable : strings.fallback, kbMatched: false, canEscalate: true, usedKb, mode: 'llm', piiDetected, language };
       }
 
       return { answer: llmAnswer, kbMatched: true, canEscalate: false, usedKb, mode: 'llm', piiDetected, language };

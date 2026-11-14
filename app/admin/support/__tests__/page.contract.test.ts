@@ -8,6 +8,15 @@ const pageSource = readFileSync(
 );
 
 describe('support ticket pagination', () => {
+  it('persists admin attachment references and requires a confirmed upload response', () => {
+    expect(pageSource).toContain('supportAttachmentOperationStorageKey("admin"');
+    expect(pageSource).toContain('saveSessionOperationId(storageKey, operationId)');
+    expect(pageSource).toContain('typeof result?.data?.id !== "string"');
+    expect(pageSource).toContain('uploadInFlightRef.current');
+    expect(pageSource).toContain('attachmentRecoveryAnotherTicket');
+    expect(pageSource).toContain('if (!pendingStorageKey || !readSessionOperationId(pendingStorageKey))');
+  });
+
   it('requests a fixed page from the server and exposes previous/next navigation', () => {
     expect(pageSource).toContain('const TICKETS_PER_PAGE = 10;');
     expect(pageSource).toContain('page: String(ticketPage)');
@@ -25,6 +34,7 @@ describe('support ticket pagination', () => {
     expect(pageSource).toContain('setStatusFilter(value); setTicketPage(1); setSelectedIds(new Set());');
     expect(pageSource).toContain('return () => controller.abort();');
     expect(pageSource).toContain('setDebouncedSearch(searchQuery.trim()), 250');
+    expect(pageSource).toContain('surface: "admin", lastDisplayedReplyId: lastDisplayedReply.id');
   });
 
   it('keeps queue failures retryable instead of showing an empty queue', () => {

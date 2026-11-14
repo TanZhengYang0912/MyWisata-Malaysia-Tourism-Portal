@@ -16,11 +16,31 @@ import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { reportChatSchema } from '@/lib/validation/conduct-schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { createChatConductReport } from '@/lib/moderation/chat-conduct-reports';
+import { getRequestId } from '@/lib/request-id';
+import { getAuthenticatedUser } from '@/lib/auth/request-user';
+
+function safeErrorCode(error: unknown): string {
+  if (!error || typeof error !== 'object' || !('code' in error)) return 'unknown';
+  const code = error.code;
+  return typeof code === 'string' && /^[A-Z0-9]{5}$/.test(code) ? code : 'unknown';
+}
+
+function writeUnavailable(request: Request, errorCode: string) {
+  const requestId = getRequestId(request);
+  console.error('[conduct/report] insert failed', { requestId, errorCode });
+  return apiFail('WRITE_UNAVAILABLE', 'We could not confirm whether the report was sent. Do not submit it again now; return to the conversation and contact Support if needed.', 503, undefined, { requestId });
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  const authentication = await getAuthenticatedUser(supabase);
+  if (authentication.state === 'unauthenticated') return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  if (authentication.state === 'unavailable') {
+    const requestId = getRequestId(request);
+    console.error('[conduct/report] authentication check failed', { requestId });
+    return apiFail('READ_UNAVAILABLE', 'Unable to verify your sign-in. Check your connection and try again.', 503, undefined, { requestId });
+  }
+  const { user } = authentication;
 
   const parsed = await parseBody(request, reportChatSchema);
   if (!parsed.ok) return parsed.response;
@@ -32,39 +52,55 @@ export async function POST(request: Request) {
   let partyBId: string | null;
 
   if (chatType === 'user_vendor') {
-    const { data: thread } = await service
+    const { data: thread, error: threadError } = await service
       .from('chat_threads')
       .select('id, customer_id, outlet_id')
       .eq('id', threadId)
       .maybeSingle();
+    if (threadError) return apiFail('READ_UNAVAILABLE', 'Unable to verify this conversation. Try again.', 503);
     if (!thread) return apiFail('NOT_FOUND', 'Chat thread not found', 404);
 
-    const { data: outlet } = await service.from('outlets').select('id, vendor_id').eq('id', thread.outlet_id).maybeSingle();
-    const { data: vendor } = outlet
-      ? await service.from('vendors').select('id, owner_id').eq('id', outlet.vendor_id).maybeSingle()
-      : { data: null as { id: string; owner_id: string } | null };
-    const { data: manager } = await service
+    const { data: outlet, error: outletError } = await service.from('outlets').select('id, vendor_id').eq('id', thread.outlet_id).maybeSingle();
+    if (outletError) return apiFail('READ_UNAVAILABLE', 'Unable to verify this conversation. Try again.', 503);
+    if (!outlet) return apiFail('NOT_FOUND', 'Chat thread not found', 404);
+
+    const { data: vendor, error: vendorError } = await service.from('vendors').select('id, owner_id').eq('id', outlet.vendor_id).maybeSingle();
+    if (vendorError) return apiFail('READ_UNAVAILABLE', 'Unable to verify this conversation. Try again.', 503);
+    if (!vendor) return apiFail('NOT_FOUND', 'Chat thread not found', 404);
+    const { data: manager, error: managerError } = await service
       .from('outlet_managers')
       .select('user_id')
       .eq('outlet_id', thread.outlet_id)
       .eq('user_id', user.id)
       .maybeSingle();
+    if (managerError) return apiFail('READ_UNAVAILABLE', 'Unable to verify this conversation. Try again.', 503);
 
     const isParticipant = thread.customer_id === user.id || vendor?.owner_id === user.id || Boolean(manager);
-    if (!isParticipant) return apiFail('FORBIDDEN', 'Not a participant in this chat', 403);
+    if (!isParticipant) return apiFail('NOT_FOUND', 'Chat thread not found', 404);
 
     partyAId = thread.customer_id;
     partyBId = vendor?.owner_id ?? null;
   } else if (chatType === 'user_admin') {
-    const { data: ticket } = await service
+    const { data: ticket, error: ticketError } = await service
       .from('support_tickets')
       .select('id, user_id, assigned_to')
       .eq('id', threadId)
       .maybeSingle();
+    if (ticketError) return apiFail('READ_UNAVAILABLE', 'Unable to verify this support request. Try again.', 503);
     if (!ticket) return apiFail('NOT_FOUND', 'Ticket not found', 404);
 
-    const isParticipant = ticket.user_id === user.id || (await isSuperAdmin(supabase, user.id));
-    if (!isParticipant) return apiFail('FORBIDDEN', 'Not a participant in this ticket', 403);
+    let isTicketAdmin = false;
+    if (ticket.user_id !== user.id) {
+      try {
+        isTicketAdmin = await isSuperAdmin(supabase, user.id, { throwOnLookupError: true });
+      } catch {
+        const requestId = getRequestId(request);
+        console.error('[conduct/report] ticket access check failed', { requestId });
+        return apiFail('READ_UNAVAILABLE', 'Unable to verify access to this support request. Try again.', 503, undefined, { requestId });
+      }
+    }
+    const isParticipant = ticket.user_id === user.id || isTicketAdmin;
+    if (!isParticipant) return apiFail('NOT_FOUND', 'Ticket not found', 404);
 
     partyAId = ticket.user_id;
     partyBId = ticket.assigned_to;
@@ -72,18 +108,23 @@ export async function POST(request: Request) {
     return apiFail('NOT_SUPPORTED', 'Vendor-admin chat reporting is not available yet', 400);
   }
 
-  const result = await createChatConductReport(service, {
-    reporterId: user.id,
-    partyAId,
-    partyBId,
-    chatType,
-    threadRef: threadId,
-    reason: reason ?? null,
-  });
+  let result;
+  try {
+    result = await createChatConductReport(service, {
+      reporterId: user.id,
+      partyAId,
+      partyBId,
+      chatType,
+      threadRef: threadId,
+      reason: reason ?? null,
+    });
+  } catch (error) {
+    return writeUnavailable(request, safeErrorCode(error));
+  }
 
   if (!result.ok) {
     if (result.reason === 'duplicate') return apiFail('ALREADY_REPORTED', 'You already have an open report for this chat', 409);
-    return apiFail('DB_ERROR', result.message ?? 'Unable to submit report', 500);
+    return writeUnavailable(request, result.errorCode && /^[A-Z0-9]{5}$/.test(result.errorCode) ? result.errorCode : 'unknown');
   }
 
   return apiOk({ id: result.id }, { status: 201 });

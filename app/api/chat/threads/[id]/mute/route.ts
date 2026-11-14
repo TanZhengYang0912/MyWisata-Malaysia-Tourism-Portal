@@ -19,7 +19,7 @@ export async function POST(_request: Request, { params }: Props) {
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
   const { data: thread, error: threadError } = await supabase.from('chat_threads').select('id,customer_id,outlet_id').eq('id', id).maybeSingle();
-  if (threadError) return apiFail('DB_ERROR', 'Unable to load conversation', 500);
+  if (threadError) return apiFail('READ_UNAVAILABLE', 'Unable to load this conversation. Please try again.', 503);
   if (!thread || !(await accessibleChatThreadIds(supabase, user.id, [thread])).has(thread.id)) {
     return apiFail('FORBIDDEN', 'Not a participant in this chat', 403);
   }
@@ -28,7 +28,7 @@ export async function POST(_request: Request, { params }: Props) {
   if (error) {
     if (error.code === '23505') return apiOk({ threadId: id, muted: true }); // already muted — idempotent
     if (error.code === '42501') return apiFail('FORBIDDEN', 'Not a participant in this chat', 403);
-    return apiFail('DB_ERROR', error.message, 500);
+    return apiFail('WRITE_UNAVAILABLE', 'Unable to update this conversation. Please try again.', 503);
   }
 
   return apiOk({ threadId: id, muted: true }, { status: 201 });
@@ -41,7 +41,7 @@ export async function DELETE(_request: Request, { params }: Props) {
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
   const { error } = await supabase.from('chat_thread_mutes').delete().eq('thread_id', id).eq('user_id', user.id);
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error) return apiFail('WRITE_UNAVAILABLE', 'Unable to update this conversation. Please try again.', 503);
 
   return apiOk({ threadId: id, muted: false });
 }

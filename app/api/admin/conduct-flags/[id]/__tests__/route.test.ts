@@ -31,7 +31,7 @@ describe('PATCH /api/admin/conduct-flags/[id]', () => {
     getUser.mockResolvedValue({ data: { user: { id: 'admin-2' } } });
     isSuperAdmin.mockResolvedValue(true);
     createServiceClient.mockReturnValue({});
-    reviewAdminConductFlag.mockResolvedValue(true);
+    reviewAdminConductFlag.mockResolvedValue('reviewed');
   });
 
   it('requires an authenticated user', async () => {
@@ -47,7 +47,7 @@ describe('PATCH /api/admin/conduct-flags/[id]', () => {
   });
 
   it('404s when nothing open matched', async () => {
-    reviewAdminConductFlag.mockResolvedValue(false);
+    reviewAdminConductFlag.mockResolvedValue('not_found');
     const response = await callRoute();
     expect(response.status).toBe(404);
   });
@@ -57,5 +57,14 @@ describe('PATCH /api/admin/conduct-flags/[id]', () => {
     expect(response.status).toBe(200);
     expect(reviewAdminConductFlag).toHaveBeenCalledWith(expect.anything(), FLAG_ID, 'admin-2');
     await expect(response.json()).resolves.toMatchObject({ data: { id: FLAG_ID, status: 'reviewed' } });
+  });
+
+  it('returns the current reviewed result for a duplicate review without a second update', async () => {
+    reviewAdminConductFlag.mockResolvedValue('already_reviewed');
+
+    const response = await callRoute();
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ data: { id: FLAG_ID, status: 'reviewed', alreadyReviewed: true } });
   });
 });

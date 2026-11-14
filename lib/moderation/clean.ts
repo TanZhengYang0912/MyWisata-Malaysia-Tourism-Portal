@@ -37,9 +37,11 @@ export interface CleanedContent {
   severity: ModerationSeverity;
 }
 
-export async function cleanUserContent(text: string, service: SupabaseClient): Promise<CleanedContent> {
+function cleanWithActiveTerms(
+  text: string,
+  extra: Awaited<ReturnType<typeof getActiveTermsByCategory>>,
+): CleanedContent {
   const { clean: piiRedacted, found: hadPII } = redactPII(text);
-  const extra = await getActiveTermsByCategory(service);
   const { masked: display, hits } = maskProfanity(piiRedacted, extra);
   const hadProfanity = hits.includes('profanity');
   const hadSlur = hits.includes('slur');
@@ -54,4 +56,13 @@ export async function cleanUserContent(text: string, service: SupabaseClient): P
     hadPII,
     severity,
   };
+}
+
+export async function cleanUserContentBatch(texts: readonly string[], service: SupabaseClient): Promise<CleanedContent[]> {
+  const extra = await getActiveTermsByCategory(service);
+  return texts.map((text) => cleanWithActiveTerms(text, extra));
+}
+
+export async function cleanUserContent(text: string, service: SupabaseClient): Promise<CleanedContent> {
+  return (await cleanUserContentBatch([text], service))[0];
 }

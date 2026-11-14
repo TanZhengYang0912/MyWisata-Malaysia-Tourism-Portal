@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 export const chatbotAskSchema = z.object({
   sessionKey: z.string().min(1).max(64).optional(),
+  operationId: z.string().uuid(),
   question: z.string().trim().min(1).max(500),
 }).strict();
 
@@ -31,10 +32,22 @@ export type ChatbotFeedbackInput = z.infer<typeof chatbotFeedbackSchema>;
 
 export const supportTicketSchema = z.object({
   sessionKey: z.string().min(1).max(64).optional(),
+  operationId: z.string().uuid().optional(),
+  handoffToken: z.string().min(1).max(4096).optional(),
+  consent: z.boolean().optional(),
+  sourceMessageId: z.string().uuid().optional(),
+  sourceMessage: z.string().min(1).max(2000).optional(),
   withdrawalId: z.string().uuid().optional(),
   subject: z.string().trim().min(1).max(255),
   body: z.string().trim().min(1).max(2000),
-}).strict();
+}).strict().superRefine((data, ctx) => {
+  if (data.withdrawalId && !data.operationId) {
+    ctx.addIssue({ code: 'custom', path: ['operationId'], message: 'An operation id is required for withdrawal tickets' });
+  }
+  if (Boolean(data.sourceMessageId) !== (data.sourceMessage !== undefined)) {
+    ctx.addIssue({ code: 'custom', path: ['sourceMessage'], message: 'The selected source message must match the reviewed preview' });
+  }
+});
 
 export type SupportTicketInput = z.infer<typeof supportTicketSchema>;
 
@@ -58,27 +71,45 @@ const kbDocumentFields = z.object({
   body: z.string().trim().min(1),
   keywords: z.array(z.string().trim().min(1)).default([]),
   category: z.string().trim().min(1).max(50).nullable().optional(),
+  sourceRefs: z.array(z.string().trim().min(3).max(500)).max(10).default([]),
+  expectedContentVersion: z.number().int().nonnegative().optional(),
   isActive: z.boolean().optional(),
+  operationId: z.string().uuid().optional(),
 });
 
 // ── AI-drafted KB entries from chatbot gaps (CLAUDE-P4-EXTRAS-2.md Extra 5) ──
 
 export const draftKbEntrySchema = z.object({
   question: z.string().trim().min(1).max(500),
+  operationId: z.string().uuid(),
 }).strict();
 
 export type DraftKbEntryInput = z.infer<typeof draftKbEntrySchema>;
 
-export const createKbDocumentSchema = kbDocumentFields.strict();
+export const createKbDocumentSchema = kbDocumentFields.omit({ expectedContentVersion: true, isActive: true, operationId: true })
+  .extend({ operationId: z.string().uuid() }).strict();
 export type CreateKbDocumentInput = z.infer<typeof createKbDocumentSchema>;
 
-export const updateKbDocumentSchema = kbDocumentFields.partial().strict();
+const saveKbDocumentRevisionSchema = z.object({
+  title: z.string().trim().min(1).max(255),
+  body: z.string().trim().min(1),
+  keywords: z.array(z.string().trim().min(1)),
+  category: z.string().trim().min(1).max(50).nullable(),
+  sourceRefs: z.array(z.string().trim().min(3).max(500)).max(10),
+  expectedContentVersion: z.number().int().nonnegative(),
+}).strict();
+
+export const updateKbDocumentSchema = z.union([
+  z.object({ isActive: z.boolean() }).strict(),
+  saveKbDocumentRevisionSchema,
+]);
 export type UpdateKbDocumentInput = z.infer<typeof updateKbDocumentSchema>;
 
 // ── Ticket replies (CLAUDE-FIXES.md Fix 2) ──────────────────
 
 export const createTicketReplySchema = z.object({
   body: z.string().trim().min(1).max(2000),
+  operationId: z.string().uuid().optional(),
 }).strict();
 
 export type CreateTicketReplyInput = z.infer<typeof createTicketReplySchema>;

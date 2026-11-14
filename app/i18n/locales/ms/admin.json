@@ -1219,7 +1219,11 @@
       "addToKb": "Tambah ke KB",
       "aiDraft": "AI: rangka jawapan KB",
       "edit": "Sunting",
-      "newDoc": "Dokumen baharu"
+      "newDoc": "Dokumen baharu",
+      "saveDraft": "Simpan draf",
+      "reviewDraft": "Semak draf",
+      "publish": "Terbitkan",
+      "reindexEntry": "Cuba indeks semula"
     },
     "categories": {
       "account": "Akaun",
@@ -1239,13 +1243,23 @@
       "batchFailed": "Kemas kini dokumen pengetahuan secara pukal gagal.",
       "batchUpdate": "Satu atau lebih dokumen pengetahuan tidak dapat dikemas kini.",
       "draft": "Tidak dapat merangka entri KB sekarang.",
+      "draftOutcomeUnknown": "Gemini mungkin telah menerima permintaan draf ini, tetapi hasilnya belum disahkan. Semak semula kemudian atau tulis entri secara manual.",
+      "draftResultExpired": "Hasil draf yang disimpan telah tamat tempoh. Pilih Draf AI sekali lagi untuk memulakan permintaan baharu, atau tulis entri secara manual.",
+      "draftOperationConflict": "Kunci permintaan ini telah digunakan untuk draf lain. Pilih Draf AI sekali lagi untuk memulakan permintaan baharu, atau tulis entri secara manual.",
+      "draftRateLimited": "Draf AI tidak tersedia buat sementara waktu. Cuba lagi kemudian atau tulis entri secara manual.",
+      "draftStorageUnavailable": "Pelayar tidak dapat menyimpan kunci permintaan draf dengan selamat. Aktifkan storan sesi atau tulis entri secara manual.",
       "privacyBlocked": "Permintaan penuh tidak dihantar kepada AI kerana mungkin mengandungi maklumat peribadi. Buang nombor telefon, e-mel, ID, butiran bank atau alamat peribadi, atau tulis entri KB secara manual. Jawapan kata kunci masih tersedia.",
       "loadDescription": "Sesuatu tidak kena semasa memuatkan gambaran keseluruhan chatbot. Cuba muat semula halaman.",
       "loadTitle": "Tidak dapat memuatkan statistik chatbot",
+      "loadDocsTitle": "Tidak dapat memuatkan pangkalan pengetahuan",
+      "loadStatsRefresh": "Statistik chatbot tidak dapat dimuat semula. Julat terakhir yang berjaya masih dipaparkan.",
+      "retry": "Cuba lagi",
       "reindex": "Pengindeksan semula gagal.",
       "sameStatus": "Pilih dokumen dengan status semasa yang sama sebelum menggunakan tindakan ini.",
       "save": "Gagal menyimpan.",
       "saveRetry": "Dokumen pangkalan pengetahuan tidak dapat disimpan. Sila cuba lagi.",
+      "publish": "Tidak dapat menerbitkan entri ini.",
+      "publishRetry": "Entri mungkin telah diterbitkan. Muat semula pangkalan pengetahuan untuk menyemak sebelum mencuba lagi.",
       "status": "Tidak dapat mengemas kini status dokumen.",
       "statusRetry": "Tidak dapat mengemas kini status dokumen. Sila cuba lagi."
     },
@@ -1255,7 +1269,10 @@
       "editTitle": "Sunting dokumen KB",
       "keywords": "Kata kunci, dipisahkan dengan koma (digunakan oleh sandaran kata kunci)",
       "newTitle": "Dokumen KB baharu",
-      "title": "Tajuk"
+      "title": "Tajuk",
+      "sources": "Rujukan sumber, satu setiap baris",
+      "sourcesHint": "Tambah halaman dasar atau rekod dalaman yang mengesahkan fakta ini. Draf kekal di luar talian sehingga disemak dan diterbitkan.",
+      "reviewConfirmation": "Saya telah menyemak jawapan dan sumber. Kedua-duanya sepadan dengan dasar platform semasa."
     },
     "inactive": "tidak aktif",
     "knowledgeBase": "Pangkalan pengetahuan",
@@ -1264,7 +1281,16 @@
       "answerRate": "Kadar jawapan",
       "escalationNote": "daripada jawapan gagal menjadi tiket",
       "escalationRate": "Kadar eskalasi",
-      "questions": "Soalan yang ditanya"
+      "questions": "Soalan yang ditanya",
+      "range": "Julat laporan",
+      "dateRange": "{{from}} hingga {{to}}",
+      "noQuestions": "Tiada soalan ditanya dalam julat ini.",
+      "days": {
+        "7": "7 hari lalu",
+        "30": "30 hari lalu",
+        "90": "90 hari lalu"
+      },
+      "turnCoverage": "Giliran tidak terjawab berpasangan: {{paired}} · balasan lama tanpa pasangan: {{legacy}}"
     },
     "notEmbedded": "tidak dibenamkan (kata kunci sahaja)",
     "notHelpful": {
@@ -1276,6 +1302,8 @@
     "reindexErrors": ", {{count}} ralat",
     "reindexResult": "Diimbas {{scanned}}, dibenamkan {{embedded}}, dilangkau {{skipped}}{{errors}}",
     "reindexing": "Mengindeks semula…",
+    "publishing": "Menerbitkan…",
+    "pendingReview": "Draf menunggu semakan",
     "saving": "Menyimpan…",
     "selectAll": "Pilih semua dokumen",
     "success": {
@@ -1284,6 +1312,9 @@
       "created": "Dokumen pangkalan pengetahuan dicipta.",
       "deactivated": "Dokumen pangkalan pengetahuan dinyahaktifkan.",
       "updated": "Dokumen pangkalan pengetahuan dikemas kini.",
+      "draftSaved": "Draf disimpan. Jawapan terbitan semasa kekal dalam talian sehingga disemak.",
+      "published": "Dokumen pengetahuan diterbitkan.",
+      "noChanges": "Tiada perubahan untuk disimpan.",
       "batchStatus_one": "{{count}} dokumen pengetahuan dikemas kini.",
       "batchStatus_other": "{{count}} dokumen pengetahuan dikemas kini."
     },
@@ -1291,6 +1322,10 @@
     "topUnanswered": {
       "empty": "Tiada soalan belum dijawab lagi — KB meliputi semua soalan yang ditanya setakat ini.",
       "title": "Soalan paling banyak belum dijawab"
+    },
+    "topCommon": {
+      "empty": "Tiada soalan dalam julat ini.",
+      "title": "Soalan paling lazim"
     },
     "uncategorized": "tidak dikategorikan",
     "reindexErrors_one": ", {{count}} ralat",
@@ -1553,16 +1588,16 @@
       "numberMismatch": "Nombor berbeza daripada OCR",
       "ocrUnavailable": "OCR tidak tersedia",
       "ocrUnreadable": "OCR tidak dapat dibaca",
-        "ocrSourceUnavailable": "Sumber foto OCR tiada",
-        "ocrVisibleFieldsIncomplete": "Medan terlihat tidak lengkap",
-        "ocrTranscriptionError": "Ralat transkripsi MRZ",
-        "transcriptionCorrection": "Apakah yang dibetulkan daripada hasil OCR?",
-        "nationality": "Kewarganegaraan",
-        "birthDate": "Tarikh lahir",
-        "expiryDate": "Tarikh luput",
-        "sex": "Jantina",
-        "mrzLine1": "Baris MRZ 1",
-        "mrzLine2": "Baris MRZ 2",
+      "ocrSourceUnavailable": "Sumber foto OCR tiada",
+      "ocrVisibleFieldsIncomplete": "Medan terlihat tidak lengkap",
+      "ocrTranscriptionError": "Ralat transkripsi MRZ",
+      "transcriptionCorrection": "Apakah yang dibetulkan daripada hasil OCR?",
+      "nationality": "Kewarganegaraan",
+      "birthDate": "Tarikh lahir",
+      "expiryDate": "Tarikh luput",
+      "sex": "Jantina",
+      "mrzLine1": "Baris MRZ 1",
+      "mrzLine2": "Baris MRZ 2",
       "openBothDocuments": "Buka imej depan dan belakang sebelum mengesahkan.",
       "secondaryReviewer": "Penyemak kedua bebas",
       "secondaryReviewerRequired": "Pilih penyemak kedua yang layak terlebih dahulu.",
@@ -1898,7 +1933,8 @@
   "reconciliation": {
     "eyebrow": "Ke mana wang pergi",
     "title": "Pecahan wang pesanan",
-    "description": "Pecahan setiap pesanan: bayaran pelanggan, amaun bersih vendor, komisen platform, dan jumlah yang digunakan untuk membayar komisen afiliasi dan komisen rujukan.",
+    "description": "Pecahan agihan dalaman setiap pesanan daripada penyelesaian platform, komisen afiliasi dan komisen rujukan.",
+    "scope": "Laporan agihan dalaman. Tidak dipadankan dengan penyata bank atau Stripe.",
     "month": "Bulan",
     "reload": "Muat semula",
     "loading": "Memuatkan…",
@@ -1908,10 +1944,11 @@
     "negativeWarning_one": "{{count}} pesanan membayar lebih banyak komisen rujukan daripada pendapatan platform — dijangka untuk bonus jualan pertama, ditunjukkan di sini untuk ketelusan.",
     "negativeWarning_other": "{{count}} pesanan membayar lebih banyak komisen rujukan daripada pendapatan platform — dijangka untuk bonus jualan pertama, ditunjukkan di sini untuk ketelusan.",
     "errors": {
-      "load": "Tidak dapat memuatkan laporan penyata."
+      "load": "Tidak dapat memuatkan laporan penyata.",
+      "exportLimit": "Kecilkan penapis untuk mengeksport 10,000 pesanan atau kurang."
     },
     "metrics": {
-      "gross": "Bayaran pelanggan",
+      "gross": "Jumlah kasar direkodkan",
       "platformFee": "Komisen platform",
       "vendorNet": "Bersih vendor",
       "affiliate": "Pembayaran komisen afiliasi",
@@ -1934,8 +1971,8 @@
       "unknownStatus": "Status lain",
       "orderWithoutNumber": "Nombor pesanan tidak tersedia",
       "noMatches": "Tiada pesanan sepadan dengan penapis ini.",
-      "scope": "Penapis kewangan digunakan pada jadual, jumlah dan CSV. Angka berdasarkan data penyelesaian yang dimuatkan.",
-      "count": "Memaparkan {{shown}} daripada {{total}} pesanan yang dimuatkan.",
+      "scope": "Penapis digunakan pada baris, jumlah dan CSV yang dikira pada pelayan.",
+      "count": "Memaparkan {{shown}} daripada {{total}} pesanan yang sepadan.",
       "net": {
         "all": "Semua amaun bersih",
         "positive": "Positif",
@@ -2313,6 +2350,7 @@
       "batch": {
         "confirm": "{{action}} {{count}} akaun pengguna yang dipilih?",
         "failed": "Satu atau lebih tindakan pengguna gagal.",
+        "outcomes": "{{applied}} berjaya, {{rejected}} ditolak, {{unknown}} perlu disahkan. Senarai telah dimuat semula.",
         "noCommonAction": "Tiada satu tindakan akaun yang sah untuk setiap pengguna yang dipilih.",
         "processed": "{{count}} akaun pengguna telah diproses.",
         "reasonError": "Sebab sekurang-kurangnya 10 aksara diperlukan.",
@@ -2921,10 +2959,24 @@
       "allReviewed": "Semuanya telah disemak.",
       "noMatchingRecords": "Tiada rekod kelakuan sepadan dengan penapis ini."
     },
+    "states": {
+      "loading": "Memuatkan rekod kelakuan…",
+      "updating": "Mengemas kini hasil…"
+    },
+    "errors": {
+      "load": "Rekod kelakuan tidak dapat dimuatkan. Cuba lagi untuk menyemaknya.",
+      "staleLoad": "Hasil ini tidak dapat dikemas kini. Rekod terakhir yang dimuatkan masih dipaparkan.",
+      "reviewFailed": "Rekod ini tidak dikemas kini. Cuba lagi untuk menandainya telah disemak.",
+      "reviewSignIn": "Sesi anda telah tamat. Log masuk dalam tab baharu, kemudian kembali ke sini dan cuba lagi.",
+      "reviewNotFound": "Rekod ini tidak lagi tersedia. Muat semula hasil sebelum meneruskan.",
+      "alreadyReviewed": "Rekod ini telah disemak. Senarai telah dikemas kini."
+    },
     "actions": {
       "viewLog": "Lihat log",
       "marking": "Menanda…",
       "markReviewed": "Tanda telah disemak",
+      "retry": "Cuba lagi",
+      "signIn": "Log masuk",
       "reviewed": "Disemak"
     },
     "dialogs": {

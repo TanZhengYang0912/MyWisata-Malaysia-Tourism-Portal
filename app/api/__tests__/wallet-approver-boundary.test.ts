@@ -73,7 +73,7 @@ async function call(path: string, method: string, body: Record<string, unknown> 
     method, ...(method !== 'GET' ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
   });
   try {
-    return await routeModule[method](request, { params: Promise.resolve({ id, userId: id, reportId: id, refundId: id }) });
+    return await routeModule[method](request, { params: Promise.resolve({ id, userId: id, reportId: id, refundId: id, replyId: id }) });
   } catch (error) {
     if (error === reachedBusinessData) return error;
     throw error;
@@ -158,30 +158,51 @@ describe('shared APIs do not give approver a staff override', () => {
     });
     mocks.serviceFrom.mockImplementation((table: string) => {
       if (table === 'support_tickets') return query(ticket);
+      if (table === 'moderation_custom_words') return query([]);
       throw reachedBusinessData;
     });
-    mocks.service.mockReturnValue({ from: mocks.serviceFrom, storage: { from: mocks.storage } });
+    mocks.service.mockReturnValue({
+      from: mocks.serviceFrom,
+      rpc: vi.fn(async () => ({ data: null, error: { message: 'support_ticket_forbidden' } })),
+      storage: { from: mocks.storage },
+    });
     mocks.storage.mockImplementation(() => { throw reachedBusinessData; });
   });
 
   it.each([
-    ['support/tickets/[id]', 'GET', {}],
-    ['support/tickets/[id]/read', 'PATCH', {}],
-    ['support/tickets/[id]/replies', 'POST', { body: 'A valid ticket reply.' }],
-    ['support/tickets/[id]/attachments', 'GET', {}],
-    ['support/tickets/[id]/attachments', 'POST', {}],
-    ['conduct/report', 'POST', { chatType: 'user_admin', threadId: id, reason: 'Please review this ticket' }],
-    ['vendor/share-analytics', 'GET', {}],
-  ] as [string, string, Record<string, unknown>][])('%s %s denies access to someone else’s resource', async (path, method, body) => {
-    expect(await call(path, method, body)).toMatchObject({ status: 403 });
+    ['support/tickets/[id]', 'GET', {}, 403],
+    ['support/tickets/[id]/read', 'PATCH', { surface: 'customer', lastDisplayedReplyId: id }, 403],
+    ['support/tickets/[id]/replies', 'POST', { body: 'A valid ticket reply.', operationId: id }, 403],
+    ['support/tickets/[id]/attachments', 'POST', {}, 403],
+    ['conduct/report', 'POST', { chatType: 'user_admin', threadId: id, reason: 'Please review this ticket' }, 404],
+    ['vendor/share-analytics', 'GET', {}, 403],
+  ] as [string, string, Record<string, unknown>, number][])('%s %s denies access to someone else’s resource', async (path, method, body, expectedStatus) => {
+    expect(await call(path, method, body)).toMatchObject({ status: expectedStatus });
     expect(mocks.storage).not.toHaveBeenCalled();
-    expect(mocks.serviceFrom.mock.calls.every(([table]) => table === 'support_tickets')).toBe(true);
+    expect(mocks.serviceFrom.mock.calls.every(([table]) => ['support_tickets', 'moderation_custom_words'].includes(String(table)))).toBe(true);
+  });
+
+  it('keeps the retired arbitrary-path attachment route unavailable', async () => {
+    expect(await call('support/tickets/[id]/attachments', 'GET')).toMatchObject({ status: 410 });
+    expect(mocks.storage).not.toHaveBeenCalled();
   });
 
   it('lets an approver mark only their own ticket as customer-read', async () => {
-    const update = vi.fn().mockReturnValue(query(null));
-    mocks.serviceFrom.mockReturnValue({ ...query({ id, user_id: 'actor' }), update });
-    expect(await call('support/tickets/[id]/read', 'PATCH')).toMatchObject({ status: 200 });
+    const updateQuery = {
+      eq: vi.fn().mockReturnThis(),
+      or: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: { id }, error: null }),
+    };
+    const update = vi.fn(() => updateQuery);
+    const ticketLookup = { ...query({ id, user_id: 'actor' }), update };
+    const incomingReply = query({ id, created_at: '2026-11-11T10:00:00.000Z', sender_role: 'admin' });
+    mocks.serviceFrom.mockImplementation((table: string) => {
+      if (table === 'support_tickets') return update.mock.calls.length ? updateQuery : ticketLookup;
+      if (table === 'support_ticket_replies') return incomingReply;
+      throw reachedBusinessData;
+    });
+    expect(await call('support/tickets/[id]/read', 'PATCH', { surface: 'customer', lastDisplayedReplyId: id })).toMatchObject({ status: 200 });
     expect(update).toHaveBeenCalledWith({ customer_last_read_at: expect.any(String) });
   });
 

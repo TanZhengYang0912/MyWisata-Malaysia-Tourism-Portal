@@ -55,15 +55,25 @@ describe('GET /api/admin/reconciliation', () => {
     expect((await GET(req('http://localhost/api/admin/reconciliation?period=2026-13'))).status).toBe(422);
   });
 
-  it('returns the report for a super admin, deriving a UTC month range', async () => {
+  it('returns the report for a super admin, deriving the Malaysia calendar month range', async () => {
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'admin' } } });
     mocks.rpc.mockResolvedValue({ data: true, error: null });
-    const res = await GET(req('http://localhost/api/admin/reconciliation?period=2026-03'));
+    const res = await GET(req('http://localhost/api/admin/reconciliation?period=2026-03&search=MW-4&status=paid&net=negative&page=2&pageSize=25'));
     expect(res.status).toBe(200);
     expect(mocks.getOrderMoneyReconciliation).toHaveBeenCalledWith(
       expect.anything(),
-      { fromISO: '2026-03-01T00:00:00.000Z', toISO: '2026-04-01T00:00:00.000Z' },
+      { fromISO: '2026-02-28T16:00:00.000Z', toISO: '2026-03-31T16:00:00.000Z' },
+      { filters: { search: 'MW-4', status: 'paid', net: 'negative' }, page: 2, pageSize: 25 },
     );
+  });
+
+  it('rejects invalid financial pagination and filters before database reads', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'admin' } } });
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
+    for (const query of ['page=0', 'pageSize=100', 'net=unknown', 'search=' + 'x'.repeat(101)]) {
+      expect((await GET(req(`http://localhost/api/admin/reconciliation?${query}`))).status).toBe(422);
+    }
+    expect(mocks.getOrderMoneyReconciliation).not.toHaveBeenCalled();
   });
 });
 

@@ -90,6 +90,7 @@ const priorTaskFiles = new Set([
   'components/layout/vendor-sidebar.tsx',
   'components/vendor/compact-filter-bar.tsx',
   'components/shared/pagination.tsx',
+  'components/shared/chat-widget/chat-widget-human-support.tsx',
   'components/vendor/vendor-page-header.tsx',
   'components/vendor/redemption-scanner.tsx',
   'components/vendor/register-vendor-form.tsx',

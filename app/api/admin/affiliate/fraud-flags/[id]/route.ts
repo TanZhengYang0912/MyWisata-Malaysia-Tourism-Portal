@@ -13,7 +13,6 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { reviewFraudFlagSchema } from '@/lib/validation/affiliate-schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
-import { autoDisableLink } from '@/lib/affiliate/fraud';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -32,25 +31,13 @@ export async function PATCH(request: Request, { params }: Props) {
   if (!parsed.ok) return parsed.response;
 
   const service = createServiceClient();
-  const { data: flag } = await service
-    .from('affiliate_fraud_flags')
-    .select('id, link_id, status')
-    .eq('id', id)
-    .maybeSingle();
-  if (!flag) return apiFail('NOT_FOUND', 'Fraud flag not found', 404);
-
-  const newStatus = parsed.data.action === 'dismiss' ? 'dismissed' : 'reviewed';
-  const { data, error } = await service
-    .from('affiliate_fraud_flags')
-    .update({ status: newStatus, reviewed_by: user.id, reviewed_at: new Date().toISOString() })
-    .eq('id', id)
-    .select('id, status')
-    .maybeSingle();
+  const { data, error } = await service.rpc('admin_review_affiliate_fraud_flag', {
+    p_flag_id: id,
+    p_actor_id: user.id,
+    p_action: parsed.data.action,
+  });
   if (error) return apiFail('DB_ERROR', error.message, 500);
-
-  if (parsed.data.action === 'confirm' && flag.link_id) {
-    await autoDisableLink(service, flag.link_id, `admin confirmed fraud flag ${id}`, user.id);
-  }
-
-  return apiOk(data);
+  const result = Array.isArray(data) ? data[0] : null;
+  if (!result) return apiFail('NOT_FOUND', 'Fraud flag not found', 404);
+  return apiOk(result);
 }

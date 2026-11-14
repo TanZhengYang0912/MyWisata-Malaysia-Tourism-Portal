@@ -21,112 +21,90 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileText } from "lucide-react";
-
-export interface TranscriptMessage {
-  id: string;
-  role: "user" | "bot";
-  body: string;
-  created_at: string;
-  kbRefs?: { title: string; score: number | null }[];
-}
+import { Button } from "@/components/ui/button";
 
 export interface ReplyMessage {
   id: string;
-  sender_id: string;
+  is_mine: boolean;
   sender_role: "customer" | "admin";
   body: string;
   created_at: string;
-  attachment_url?: string | null;
+  attachment_type?: "image" | "document" | null;
 }
-
-const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
 
 interface ThreadItem {
   key: string;
   at: string;
-  /** null for bot messages — they're never "mine" for anyone. */
-  senderId: string | null;
+  isMine: boolean;
   isBot: boolean;
   label: string | null;
   body: string;
-  attachmentUrl: string | null;
-  kbRefs: { title: string; score: number | null }[];
+  handoffSourceMessage?: string | null;
+  attachmentType: "image" | "document" | null;
 }
 
 interface TicketThreadProps {
-  /** Needed to resolve a signed URL for each attachment via GET /api/support/tickets/[id]/attachments — omit if this ticket has no attachments to show (e.g. not yet loaded). */
+  /** Used to build the same-origin, owner-checked reply attachment route. */
   ticketId?: string;
-  currentUserId: string;
-  /** The ticket owner's user id — used to attribute chatbot-transcript "user" turns, which have no sender_id of their own in the schema. Null for a guest ticket (no account). */
-  ticketOwnerId: string | null;
+  ticketIsMine: boolean;
   ticketBody: string;
+  handoffSourceMessage?: string | null;
   ticketCreatedAt: string;
-  transcript: TranscriptMessage[];
   replies: ReplyMessage[];
+  hasEarlierReplies?: boolean;
+  loadingEarlierReplies?: boolean;
+  earlierRepliesError?: boolean;
+  onLoadEarlierReplies?: () => void;
 }
 
-export function TicketThread({ ticketId, currentUserId, ticketOwnerId, ticketBody, ticketCreatedAt, transcript, replies }: TicketThreadProps) {
+export function TicketThread({ ticketId, ticketIsMine, ticketBody, handoffSourceMessage, ticketCreatedAt, replies, hasEarlierReplies = false, loadingEarlierReplies = false, earlierRepliesError = false, onLoadEarlierReplies }: TicketThreadProps) {
   const { t } = useTranslation("common");
   const bottomRef = useRef<HTMLDivElement>(null);
-  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const lastItemKeyRef = useRef<string | null>(null);
+  const [failedAttachments, setFailedAttachments] = useState<Record<string, boolean>>({});
+  const [attachmentAttempts, setAttachmentAttempts] = useState<Record<string, number>>({});
+  const [downloadingAttachments, setDownloadingAttachments] = useState<Record<string, boolean>>({});
 
-  // Every ticket created via the chatbot widget already has its opening
-  // message duplicated as the last "user" turn in the transcript — only add
-  // the ticket's own body as a standalone item when it ISN'T already there
-  // (defensive: any future path that creates a ticket without a chatbot
-  // session would otherwise show an empty thread).
-  const bodyAlreadyInTranscript = transcript.some((m) => m.role === "user" && m.body === ticketBody);
+  async function downloadAttachment(replyId: string, href: string) {
+    if (downloadingAttachments[replyId]) return;
+    setDownloadingAttachments((current) => ({ ...current, [replyId]: true }));
+    setFailedAttachments((current) => ({ ...current, [replyId]: false }));
+    try {
+      const response = await fetch(href, { cache: "no-store" });
+      if (!response.ok) throw new Error("attachment_unavailable");
+      const objectUrl = URL.createObjectURL(await response.blob());
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = "support-attachment.pdf";
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
+    } catch {
+      setFailedAttachments((current) => ({ ...current, [replyId]: true }));
+    } finally {
+      setDownloadingAttachments((current) => ({ ...current, [replyId]: false }));
+    }
+  }
 
   const items: ThreadItem[] = [
-    ...(bodyAlreadyInTranscript
-      ? []
-      : [{ key: "ticket-body", at: ticketCreatedAt, senderId: ticketOwnerId, isBot: false, label: null, body: ticketBody, attachmentUrl: null, kbRefs: [] }]),
-    ...transcript.map((m) => ({
-      key: m.id,
-      at: m.created_at,
-      senderId: m.role === "user" ? ticketOwnerId : null,
-      isBot: m.role === "bot",
-      label: null,
-      body: m.body,
-      attachmentUrl: null,
-      kbRefs: m.kbRefs ?? [],
-    })),
+    { key: "ticket-body", at: ticketCreatedAt, isMine: ticketIsMine, isBot: false, label: null, body: ticketBody, handoffSourceMessage, attachmentType: null },
     ...replies.map((r) => ({
       key: r.id,
       at: r.created_at,
-      senderId: r.sender_id,
+      isMine: r.is_mine,
       isBot: false,
       label: r.sender_role === "admin" ? "Support team" : null,
       body: r.body,
-      attachmentUrl: r.attachment_url ?? null,
-      kbRefs: [] as { title: string; score: number | null }[],
+      attachmentType: r.attachment_type ?? null,
     })),
-  ].sort((a, b) => (a.at < b.at ? -1 : 1));
+  ].sort((a, b) => a.at === b.at ? a.key.localeCompare(b.key) : a.at < b.at ? -1 : 1);
+  const lastItemKey = items.at(-1)?.key ?? null;
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [items.length]);
-
-  useEffect(() => {
-    if (!ticketId) return;
-    const missing = items.filter((item) => item.attachmentUrl && !signedUrls[item.key]);
-    if (missing.length === 0) return;
-    let cancelled = false;
-    Promise.all(missing.map(async (item) => {
-      const response = await fetch(`/api/support/tickets/${ticketId}/attachments?path=${encodeURIComponent(item.attachmentUrl!)}`);
-      const payload = await response.json().catch(() => ({}));
-      return response.ok ? [item.key, payload.data?.signedUrl as string] as const : null;
-    })).then((results) => {
-      if (cancelled) return;
-      const resolved = results.filter((r): r is readonly [string, string] => r !== null && !!r[1]);
-      if (resolved.length === 0) return;
-      setSignedUrls((previous) => ({ ...previous, ...Object.fromEntries(resolved) }));
-    });
-    return () => {
-      cancelled = true;
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items.map((i) => i.key).join(","), ticketId]);
+    if (lastItemKeyRef.current !== lastItemKey) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    lastItemKeyRef.current = lastItemKey;
+  }, [lastItemKey]);
 
   if (items.length === 0) {
     return <p className="text-sm text-muted-foreground text-center py-6">{t("ticket.noMessagesYet")}</p>;
@@ -134,46 +112,72 @@ export function TicketThread({ ticketId, currentUserId, ticketOwnerId, ticketBod
 
   return (
     <div className="space-y-2">
+      {hasEarlierReplies && onLoadEarlierReplies && (
+        <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-1">
+            {earlierRepliesError && <p role="alert" className="text-xs text-destructive">{t("chatbot.supportErrors.readUnavailable")}</p>}
+            <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={onLoadEarlierReplies} disabled={loadingEarlierReplies}>
+              {loadingEarlierReplies ? t("states.loadingEllipsis") : earlierRepliesError ? t("chatbot.faq.retry") : t("chatbot.history.loadEarlier")}
+            </Button>
+          </div>
+        </div>
+      )}
       {items.map((item) => {
-        const isMine = item.senderId !== null && item.senderId === currentUserId;
-        const extension = item.attachmentUrl?.split(".").pop()?.toLowerCase() ?? "";
-        const isImage = IMAGE_EXTENSIONS.has(extension);
-        const attachmentSrc = item.attachmentUrl ? signedUrls[item.key] : undefined;
+        const isMine = item.isMine;
+        const isImage = item.attachmentType === "image";
+        const attachmentSrc = ticketId && item.attachmentType
+          ? `/api/support/tickets/${ticketId}/attachments/${item.key}`
+          : undefined;
         return (
           <div key={item.key} className={isMine ? "ml-auto w-fit max-w-[85%]" : "w-fit max-w-[85%]"}>
             {item.isBot && <p className="text-[0.625rem] text-muted-foreground mb-0.5">{t("ticket.bot")}</p>}
             {item.label && <p className="text-[0.625rem] text-muted-foreground mb-0.5">{isMine ? t("ticket.you") : t("ticket.supportTeam")}</p>}
-            {item.attachmentUrl && (
+            {item.attachmentType && (
               <div className="mb-1">
                 {isImage ? (
-                  attachmentSrc ? (
-                    <a href={attachmentSrc} target="_blank" rel="noreferrer">
-                      {/* eslint-disable-next-line @next/next/no-img-element -- signed URL, not an optimizable static asset */}
-                      <img src={attachmentSrc} alt={t("ticket.attachment")} className="max-h-56 rounded-xl border border-border object-cover" />
-                    </a>
-                  ) : (
-                    <div className="flex h-28 w-40 items-center justify-center rounded-xl border border-border bg-secondary text-xs text-muted-foreground">
-                      {t("ticket.loadingAttachment")}
-                    </div>
-                  )
-                ) : (
-                  <a
-                    href={attachmentSrc ?? "#"}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={`flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm ${attachmentSrc ? "hover:bg-secondary" : "pointer-events-none opacity-60"}`}
-                  >
-                    <FileText size={15} className="text-primary" /> {t("ticket.document")}
+                  <a href={attachmentSrc ?? "#"} target="_blank" rel="noreferrer" className="block">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- authenticated same-origin endpoint */}
+                    <img
+                      loading="lazy"
+                      src={`${attachmentSrc}?retry=${attachmentAttempts[item.key] ?? 0}`}
+                      alt={t("ticket.attachment")}
+                      onError={() => setFailedAttachments((current) => ({ ...current, [item.key]: true }))}
+                      onLoad={() => setFailedAttachments((current) => ({ ...current, [item.key]: false }))}
+                      className="max-h-56 rounded-xl border border-border object-cover"
+                    />
                   </a>
+                ) : (
+                  <button type="button" onClick={() => attachmentSrc && void downloadAttachment(item.key, attachmentSrc)} disabled={!attachmentSrc || downloadingAttachments[item.key]} className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm hover:bg-secondary disabled:opacity-60">
+                    <FileText size={15} className="text-primary" /> {downloadingAttachments[item.key] ? t("ticket.loadingAttachment") : t("ticket.document")}
+                  </button>
+                )}
+                {failedAttachments[item.key] && <p role="alert" className="mt-1 text-xs text-destructive">{t("ticket.attachmentUnavailable")}</p>}
+                {failedAttachments[item.key] && (
+                  <button type="button" onClick={() => {
+                    if (isImage) {
+                      setFailedAttachments((current) => ({ ...current, [item.key]: false }));
+                      setAttachmentAttempts((current) => ({ ...current, [item.key]: (current[item.key] ?? 0) + 1 }));
+                    } else if (attachmentSrc) {
+                      void downloadAttachment(item.key, attachmentSrc);
+                    }
+                  }} className="text-xs text-primary underline">
+                    {t("ticket.retryAttachment")}
+                  </button>
                 )}
               </div>
             )}
-            {item.body && (
+            {(item.body || item.handoffSourceMessage) && (
             <div
               className={`w-fit max-w-full break-words rounded-xl px-3 py-2 text-sm ${
                 item.isBot ? "bg-teal/10 text-foreground" : isMine ? "bg-primary text-white" : "bg-muted text-foreground"
               }`}
             >
+              {item.handoffSourceMessage && (
+                <blockquote className="mb-2 border-l-2 border-current/40 pl-2">
+                  <p className="mb-1 text-xs font-medium">{t("chatbot.handoff.selectedQuestion")}</p>
+                  <p className="whitespace-pre-wrap break-words">{item.handoffSourceMessage}</p>
+                </blockquote>
+              )}
               {item.body}
             </div>
             )}

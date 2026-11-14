@@ -27,16 +27,12 @@ Draft a concise, accurate knowledge-base entry that would answer this
 question well next time.
 
 Rules — these are strict:
-- Only state facts you can reasonably infer are generally true for a
-  tourism booking platform (e.g. "bookings can typically be cancelled
-  before the activity starts" is a reasonable inference; a specific
-  cancellation window, fee percentage, or deadline is NOT — you cannot
-  know that).
-- Wherever a specific figure, deadline, percentage, or policy detail is
-  needed and you do not actually know it from the context given, write a
-  placeholder in EXACTLY this form: [ADMIN: confirm <what's needed>].
-  Never invent a specific number, deadline, percentage, or policy detail —
-  a placeholder is always correct where a fabricated fact is not.
+- Use only facts explicitly present in the supplied existing answer. Do not
+  infer MYLawatan policy from general tourism practice or from the question.
+- If the supplied answer does not establish a fact needed to answer, write
+  a placeholder in EXACTLY this form: [ADMIN: confirm <what's needed>].
+  Never invent a number, deadline, percentage, refund outcome, or platform
+  policy. When no reliable fact exists, make the draft a review request.
 - Be concise: the body should be 1-4 sentences.
 - Also suggest 3-8 keywords for this entry — the exact words/short phrases a
   customer would type when asking this, for a keyword-fallback matcher (not
@@ -64,7 +60,11 @@ export interface KbDraft {
  * response) so the caller can show "couldn't draft one" instead of a 500 —
  * this is a nice-to-have admin tool, not a money or accuracy path.
  */
-export async function draftKbEntry(question: string, existingWeakAnswer: string | null): Promise<KbDraft | null> {
+export async function draftKbEntry(
+  question: string,
+  existingWeakAnswer: string | null,
+  beforeExternalCall?: () => Promise<void>,
+): Promise<KbDraft | null> {
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) return null;
 
@@ -82,6 +82,7 @@ export async function draftKbEntry(question: string, existingWeakAnswer: string 
   const timeout = setTimeout(() => controller.abort(), DRAFT_TIMEOUT_MS);
 
   try {
+    await beforeExternalCall?.();
     const res = await fetch(DRAFT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
@@ -98,7 +99,7 @@ export async function draftKbEntry(question: string, existingWeakAnswer: string 
     const text = body.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!text) return null;
 
-    return parseDraft(text);
+    return parseDraft(text, existingWeakAnswer === null);
   } catch {
     return null;
   } finally {
@@ -117,7 +118,7 @@ export async function draftKbEntry(question: string, existingWeakAnswer: string 
  * fill in themselves — losing keyword suggestions isn't worth discarding an
  * otherwise-good title+body.
  */
-function parseDraft(text: string): KbDraft | null {
+function parseDraft(text: string, requireReviewPlaceholder: boolean): KbDraft | null {
   const titleMatch = /^TITLE:\s*(.+)$/m.exec(text);
   const title = titleMatch?.[1]?.trim();
   const bodyStart = text.search(/^BODY:/m);
@@ -127,6 +128,8 @@ function parseDraft(text: string): KbDraft | null {
   const bodyRaw = keywordsStart > bodyStart ? text.slice(bodyStart, keywordsStart) : text.slice(bodyStart);
   const body = bodyRaw.replace(/^BODY:\s*/, '').trim();
   if (!body) return null;
+  if (title.length > 255 || body.length > 2000) return null;
+  if (requireReviewPlaceholder && !body.includes('[ADMIN: confirm')) return null;
 
   const keywords =
     keywordsStart === -1
@@ -138,6 +141,9 @@ function parseDraft(text: string): KbDraft | null {
           .split(',')
           .map((k) => k.trim().toLowerCase())
           .filter(Boolean);
+
+  if (keywords.length > 8 || keywords.some((keyword) => keyword.length > 64)) return null;
+  if (!prepareExternalText(`TITLE: ${title}\nBODY: ${body}\nKEYWORDS: ${keywords.join(', ')}`).allowed) return null;
 
   return { title, body, keywords };
 }

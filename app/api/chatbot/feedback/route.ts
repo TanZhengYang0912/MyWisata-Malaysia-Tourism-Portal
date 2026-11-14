@@ -17,20 +17,31 @@ import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { chatbotFeedbackSchema } from '@/lib/validation/chatbot-schemas';
+import { getAuthenticatedUser } from '@/lib/auth/request-user';
 
 export async function POST(request: Request) {
   const parsed = await parseBody(request, chatbotFeedbackSchema);
   if (!parsed.ok) return parsed.response;
-  const { sessionKey, messageId, question, botAnswered, helpful, openedTicket } = parsed.data;
+  const { sessionKey, messageId, botAnswered, helpful, openedTicket } = parsed.data;
   if (!sessionKey) return apiFail('BAD_REQUEST', 'Chat session is required for feedback.', 400);
 
-  const authClient = await createClient();
-  const { data: { user } } = await authClient.auth.getUser();
+  let authClient: Awaited<ReturnType<typeof createClient>>;
+  try {
+    authClient = await createClient();
+  } catch {
+    return apiFail('AUTH_UNAVAILABLE', 'Unable to verify your sign-in right now. Check your connection and try again.', 503);
+  }
+  const authentication = await getAuthenticatedUser(authClient);
+  if (authentication.state === 'unavailable') {
+    return apiFail('AUTH_UNAVAILABLE', 'Unable to verify your sign-in right now. Check your connection and try again.', 503);
+  }
+  if (authentication.state !== 'authenticated') return apiFail('UNAUTHORIZED', 'Sign in to save chatbot feedback.', 401);
+  const user = authentication.user;
   const service = createServiceClient();
 
   const { data: message, error: messageError } = await service
     .from('chatbot_messages')
-    .select('id,role,session_id,chatbot_sessions(id,session_key,user_id)')
+    .select('id,role,session_id,reply_to_message_id,chatbot_sessions(id,session_key,user_id,channel)')
     .eq('id', messageId)
     .maybeSingle();
   if (messageError) return apiFail('DB_ERROR', 'Unable to verify this chat message.', 503);
@@ -42,16 +53,33 @@ export async function POST(request: Request) {
     : message.chatbot_sessions;
   if (
     !relatedSession
+    || relatedSession.channel !== 'customer'
     || relatedSession.id !== message.session_id
     || relatedSession.session_key !== sessionKey
-    || (relatedSession.user_id === null ? Boolean(user) : relatedSession.user_id !== user?.id)
+    || relatedSession.user_id !== user.id
   ) {
     return apiFail('FORBIDDEN', 'This chat session does not belong to you.', 403);
   }
 
+  // Feedback analytics use the exact sanitized message linked by /ask.
+  // Historical replies remain unpaired; never guess by timestamp or trust
+  // question text echoed back by the browser.
+  let persistedQuestion: string | null = null;
+  if (message.reply_to_message_id) {
+    const { data: questionMessage, error: questionError } = await service
+      .from('chatbot_messages')
+      .select('id,role,session_id,body,body_sanitized')
+      .eq('id', message.reply_to_message_id)
+      .eq('session_id', message.session_id)
+      .eq('role', 'user')
+      .maybeSingle();
+    if (questionError) return apiFail('DB_ERROR', 'Unable to verify this chat question.', 503);
+    persistedQuestion = questionMessage?.body_sanitized === true ? questionMessage.body ?? null : null;
+  }
+
   const { data: existing, error: existingError } = await service
     .from('chatbot_feedback')
-    .select('id,session_id,user_id,opened_ticket')
+    .select('id,session_id,user_id,question,question_source_version,helpful,opened_ticket')
     .eq('message_id', messageId)
     .maybeSingle();
   if (existingError) return apiFail('DB_ERROR', 'Unable to load chat feedback.', 503);
@@ -61,8 +89,12 @@ export async function POST(request: Request) {
       return apiFail('FORBIDDEN', 'This chat feedback does not belong to the current session.', 403);
     }
     const patch: Record<string, unknown> = {};
-    if (helpful !== undefined) patch.helpful = helpful;
+    if (helpful !== undefined && helpful !== existing.helpful) patch.helpful = helpful;
     if (openedTicket === true && existing.opened_ticket !== true) patch.opened_ticket = true;
+    if (existing.question_source_version !== 1 || existing.question !== persistedQuestion) {
+      patch.question = persistedQuestion;
+      patch.question_source_version = 1;
+    }
     if (Object.keys(patch).length === 0) return apiOk({ id: existing.id });
     const { data: updated, error } = await service.from('chatbot_feedback')
       .update(patch)
@@ -71,7 +103,7 @@ export async function POST(request: Request) {
       .eq('session_id', message.session_id)
       .select('id')
       .maybeSingle();
-    if (error) return apiFail('DB_ERROR', error.message, 500);
+    if (error) return apiFail('WRITE_UNAVAILABLE', 'Unable to save feedback. Try again.', 503);
     if (!updated) return apiFail('CONFLICT', 'Chat feedback changed. Refresh and try again.', 409);
     return apiOk({ id: existing.id });
   }
@@ -86,14 +118,35 @@ export async function POST(request: Request) {
       session_id: message.session_id,
       message_id: messageId,
       user_id: relatedSession.user_id,
-      question: question ?? null,
+      question: persistedQuestion,
+      question_source_version: 1,
       bot_answered: botAnswered,
       helpful: helpful ?? null,
       opened_ticket: openedTicket ?? false,
     })
     .select('id')
     .single();
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error?.code === '23505') {
+    const { data: raced, error: raceLookupError } = await service.from('chatbot_feedback')
+      .select('id,session_id,user_id,question,question_source_version,helpful,opened_ticket')
+      .eq('message_id', messageId)
+      .maybeSingle();
+    if (raceLookupError) return apiFail('READ_UNAVAILABLE', 'Unable to check the feedback result.', 503);
+    if (raced && raced.session_id === message.session_id && raced.user_id === relatedSession.user_id) {
+      const patch: Record<string, unknown> = {};
+      if (helpful !== undefined && helpful !== raced.helpful) patch.helpful = helpful;
+      if (openedTicket === true && raced.opened_ticket !== true) patch.opened_ticket = true;
+      if (raced.question_source_version !== 1 || raced.question !== persistedQuestion) {
+        patch.question = persistedQuestion;
+        patch.question_source_version = 1;
+      }
+      if (Object.keys(patch).length === 0) return apiOk({ id: raced.id });
+      const { error: updateError } = await service.from('chatbot_feedback').update(patch).eq('id', raced.id).eq('session_id', message.session_id);
+      if (updateError) return apiFail('DB_ERROR', 'Unable to save feedback. Try again.', 500);
+      return apiOk({ id: raced.id });
+    }
+  }
+  if (error) return apiFail('DB_ERROR', 'Unable to save feedback. Try again.', 500);
 
   return apiOk({ id: created.id }, { status: 201 });
 }

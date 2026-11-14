@@ -1219,7 +1219,11 @@
       "addToKb": "添加到知识库",
       "aiDraft": "AI：起草知识库答案",
       "edit": "编辑",
-      "newDoc": "新建文档"
+      "newDoc": "新建文档",
+      "saveDraft": "保存草稿",
+      "reviewDraft": "审核草稿",
+      "publish": "发布",
+      "reindexEntry": "重试索引"
     },
     "categories": {
       "account": "账户",
@@ -1239,13 +1243,23 @@
       "batchFailed": "批量更新知识库文件失败。",
       "batchUpdate": "一个或多个知识库文件无法更新。",
       "draft": "暂时无法起草知识库条目。",
+      "draftOutcomeUnknown": "Gemini 可能已收到这次起草请求，但结果尚未确认。请稍后检查，或手动编写条目。",
+      "draftResultExpired": "已保存的草稿结果已过期。再次选择 AI 起草以发起新请求，或手动编写条目。",
+      "draftOperationConflict": "此请求编号已用于另一条草稿。再次选择“AI 起草”将发起新请求，或手动编写条目。",
+      "draftRateLimited": "AI 起草暂时不可用。请稍后再试，或手动编写条目。",
+      "draftStorageUnavailable": "浏览器无法安全保存起草请求编号。请启用会话存储，或手动编写条目。",
       "privacyBlocked": "完整请求没有发送给 AI，因为可能包含个人资料。请移除电话、邮箱、证件、银行资料或私人地址，或手动编写知识库条目。关键词答复仍可使用。",
       "loadDescription": "加载聊天机器人概览时出错。请尝试刷新页面。",
       "loadTitle": "无法加载聊天机器人统计数据",
+      "loadDocsTitle": "无法加载知识库",
+      "loadStatsRefresh": "无法刷新聊天机器人统计数据。当前仍显示上次成功加载的范围。",
+      "retry": "重试",
       "reindex": "重新索引失败。",
       "sameStatus": "执行此操作前，请选择当前状态相同的文件。",
       "save": "保存失败。",
       "saveRetry": "知识库文件无法保存。请重试。",
+      "publish": "无法发布此条目。",
+      "publishRetry": "条目可能已经发布。请先刷新知识库确认状态，再决定是否重试。",
       "status": "无法更新文件状态。",
       "statusRetry": "无法更新文件状态。请重试。"
     },
@@ -1255,7 +1269,10 @@
       "editTitle": "编辑知识库文件",
       "keywords": "关键词，使用英文逗号分隔（用于关键词后备机制）",
       "newTitle": "新建知识库文件",
-      "title": "标题"
+      "title": "标题",
+      "sources": "来源参考，每行一条",
+      "sourcesHint": "填写能佐证这些事实的政策页面或内部记录。审核并发布前，草稿不会上线。",
+      "reviewConfirmation": "我已核对答复和来源，内容符合当前平台政策。"
     },
     "inactive": "未启用",
     "knowledgeBase": "知识库",
@@ -1264,7 +1281,16 @@
       "answerRate": "回答率",
       "escalationNote": "失败回答中转为工单的比例",
       "escalationRate": "升级率",
-      "questions": "提问数"
+      "questions": "提问数",
+      "range": "统计范围",
+      "dateRange": "{{from}} 至 {{to}}",
+      "noQuestions": "此统计范围内没有用户提问。",
+      "days": {
+        "7": "最近 7 天",
+        "30": "最近 30 天",
+        "90": "最近 90 天"
+      },
+      "turnCoverage": "已配对的未解决问题：{{paired}} · 旧版未配对回复：{{legacy}}"
     },
     "notEmbedded": "未嵌入（仅限关键词）",
     "notHelpful": {
@@ -1276,6 +1302,8 @@
     "reindexErrors": "，{{count}} 个错误",
     "reindexResult": "已扫描 {{scanned}} 项，已嵌入 {{embedded}} 项，已跳过 {{skipped}} 项{{errors}}",
     "reindexing": "正在重新索引…",
+    "publishing": "发布中…",
+    "pendingReview": "草稿待审核",
     "saving": "保存中…",
     "selectAll": "全选文件",
     "success": {
@@ -1284,6 +1312,9 @@
       "created": "知识库文件已创建。",
       "deactivated": "知识库文件已停用。",
       "updated": "知识库文件已更新。",
+      "draftSaved": "草稿已保存。审核前，当前已发布的答复会继续使用。",
+      "published": "知识库文件已发布。",
+      "noChanges": "没有需要保存的更改。",
       "batchStatus_one": "{{count}} 个知识库文件已更新。",
       "batchStatus_other": "{{count}} 个知识库文件已更新。"
     },
@@ -1291,6 +1322,10 @@
     "topUnanswered": {
       "empty": "尚无未回答问题——知识库已覆盖目前收到的所有提问。",
       "title": "最常见的未回答问题"
+    },
+    "topCommon": {
+      "empty": "此统计范围内没有用户提问。",
+      "title": "常见问题排行"
     },
     "uncategorized": "未分类",
     "reindexErrors_one": "，{{count}} 个错误",
@@ -1553,16 +1588,16 @@
       "numberMismatch": "号码与 OCR 不一致",
       "ocrUnavailable": "OCR 无法使用",
       "ocrUnreadable": "OCR 无法识别",
-        "ocrSourceUnavailable": "无法取得原始识别照片",
-        "ocrVisibleFieldsIncomplete": "可见字段不完整",
-        "ocrTranscriptionError": "MRZ 转录错误",
-        "transcriptionCorrection": "请说明根据原图更正了 OCR 的哪些内容",
-        "nationality": "国籍",
-        "birthDate": "出生日期",
-        "expiryDate": "有效期",
-        "sex": "性别",
-        "mrzLine1": "MRZ 第一行",
-        "mrzLine2": "MRZ 第二行",
+      "ocrSourceUnavailable": "无法取得原始识别照片",
+      "ocrVisibleFieldsIncomplete": "可见字段不完整",
+      "ocrTranscriptionError": "MRZ 转录错误",
+      "transcriptionCorrection": "请说明根据原图更正了 OCR 的哪些内容",
+      "nationality": "国籍",
+      "birthDate": "出生日期",
+      "expiryDate": "有效期",
+      "sex": "性别",
+      "mrzLine1": "MRZ 第一行",
+      "mrzLine2": "MRZ 第二行",
       "openBothDocuments": "请先打开证件正反面图片，再进行确认。",
       "secondaryReviewer": "独立第二审核员",
       "secondaryReviewerRequired": "请先选择一名符合条件的第二审核员。",
@@ -1898,7 +1933,8 @@
   "reconciliation": {
     "eyebrow": "资金去向",
     "title": "订单资金明细",
-    "description": "逐单明细：客户付款额、商家净额、平台佣金，以及其中有多少用于支付推广佣金和推荐佣金。",
+    "description": "按平台结算、推广佣金和推荐佣金记录汇总的逐单内部资金分配。",
+    "scope": "内部资金分配报告；未与银行或 Stripe 结算记录核对。",
     "month": "月份",
     "reload": "重新加载",
     "loading": "加载中…",
@@ -1908,10 +1944,11 @@
     "negativeWarning_one": "有 {{count}} 笔订单支付的推荐佣金超过了平台在该订单上的收入——首单奖励属正常情况，此处列出以便查看。",
     "negativeWarning_other": "有 {{count}} 笔订单支付的推荐佣金超过了平台在该订单上的收入——首单奖励属正常情况，此处列出以便查看。",
     "errors": {
-      "load": "无法加载对账报告。"
+      "load": "无法加载对账报告。",
+      "exportLimit": "请缩小筛选范围，每次最多导出 10,000 笔订单。"
     },
     "metrics": {
-      "gross": "客户付款",
+      "gross": "记录的订单总额",
       "platformFee": "平台佣金",
       "vendorNet": "商家净额",
       "affiliate": "推广佣金支出",
@@ -1934,8 +1971,8 @@
       "unknownStatus": "其他状态",
       "orderWithoutNumber": "订单号未提供",
       "noMatches": "没有符合筛选条件的订单。",
-      "scope": "财务筛选同步作用于表格、金额汇总和 CSV；金额仅反映已载入的结算数据。",
-      "count": "显示 {{shown}} / {{total}} 笔已载入订单。",
+      "scope": "筛选条件会作用于服务器计算的表格、汇总金额和 CSV。",
+      "count": "显示 {{shown}} / {{total}} 笔符合条件的订单。",
       "net": {
         "all": "全部净额",
         "positive": "正数",
@@ -2313,6 +2350,7 @@
       "batch": {
         "confirm": "要对选中的 {{count}} 个用户账户执行“{{action}}”吗？",
         "failed": "一个或多个用户操作失败。",
+        "outcomes": "{{applied}} 项已完成，{{rejected}} 项被拒绝，{{unknown}} 项需要确认。列表已刷新。",
         "noCommonAction": "没有一项账户操作适用于所有选中的用户。",
         "processed": "已处理 {{count}} 个用户账户。",
         "reasonError": "理由必须至少 10 个字符。",
@@ -2921,10 +2959,24 @@
       "allReviewed": "所有内容均已审核。",
       "noMatchingRecords": "没有符合这些筛选条件的行为记录。"
     },
+    "states": {
+      "loading": "正在加载行为记录…",
+      "updating": "正在更新结果…"
+    },
+    "errors": {
+      "load": "无法加载行为记录。请重试查看。",
+      "staleLoad": "无法刷新这些结果，当前显示最近一次加载的记录。",
+      "reviewFailed": "此记录未能更新。请重试并标记为已审核。",
+      "reviewSignIn": "登录状态已过期。请在新标签页登录，然后返回此处重试。",
+      "reviewNotFound": "此记录已不可用。请刷新结果后再继续。",
+      "alreadyReviewed": "此记录已审核，队列已刷新。"
+    },
     "actions": {
       "viewLog": "查看记录",
       "marking": "标记中…",
       "markReviewed": "标记为已审核",
+      "retry": "重试",
+      "signIn": "登录",
       "reviewed": "已审核"
     },
     "dialogs": {

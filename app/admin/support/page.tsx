@@ -19,7 +19,7 @@ import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
 import { AdminMobileRecordCard } from "@/components/admin/admin-mobile-record-card";
 import { AdminFilterBar, adminFilterControlClassName } from "@/components/admin/filter-bar";
 import { AdminMetricGrid, AdminPageHeader, AdminPageShell } from "@/components/admin/admin-page-shell";
-import { TicketThread, type ReplyMessage, type TranscriptMessage } from "@/components/shared/ticket-thread";
+import { TicketThread, type ReplyMessage } from "@/components/shared/ticket-thread";
 import { ReportChatButton } from "@/components/shared/report-chat-button";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { ModerationFlagsPanel } from "@/components/admin/moderation-flags-panel";
@@ -27,6 +27,9 @@ import { useTranslation } from "react-i18next";
 import { useSpeechInput, resolveRecognitionLangFromLocale, type SpeechInputErrorKind } from "@/hooks/use-speech-input";
 import { TICKET_CATEGORIES } from "@/lib/chatbot/classify";
 import { teamForCategory } from "@/lib/support/team-routing";
+import { supportError } from "@/lib/support/errors";
+import { validateChatAttachmentMetadata } from "@/lib/chat/attachment";
+import { clearSessionOperationId, readSessionOperationId, saveSessionOperationId, supportAttachmentOperationStorageKey } from "@/lib/support/operation-storage";
 
 // CLAUDE-VOICE-INPUT.md, mounted on the admin ticket reply composer too.
 const SPEECH_ERROR_TEXT: Record<SpeechInputErrorKind, string> = {
@@ -71,13 +74,14 @@ const SORT_LABEL: Record<SortKey, string> = {
 
 interface TicketDetail {
   id: string;
-  userId: string | null;
+  viewerIsOwner: boolean;
   subject: string;
   body: string;
+  handoffSourceMessage: string | null;
   status: "open" | "in_progress" | "resolved" | "closed";
   createdAt: string;
-  transcript: TranscriptMessage[];
   replies: ReplyMessage[];
+  repliesCursor: { createdAt: string; id: string } | null;
 }
 
 const CATEGORIES = TICKET_CATEGORIES;
@@ -96,6 +100,7 @@ function AdminSupportContent() {
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
   const { t, i18n } = useTranslation("admin");
+  const { t: tCommon } = useTranslation("common");
   const [tickets, setTickets] = useState<AdminTicket[] | null>(null);
   const [stats, setStats] = useState<QueueStats | null>(null);
   const [totalTickets, setTotalTickets] = useState(0);
@@ -112,11 +117,19 @@ function AdminSupportContent() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [openTicketId, setOpenTicketId] = useState<string | null>(null);
   const [detail, setDetail] = useState<TicketDetail | null>(null);
+  const [loadingEarlierRepliesFor, setLoadingEarlierRepliesFor] = useState<string | null>(null);
+  const [earlierRepliesErrorFor, setEarlierRepliesErrorFor] = useState<string | null>(null);
+  const earlierRepliesRequestFor = useRef<string | null>(null);
+  const earlierRepliesController = useRef<AbortController | null>(null);
   const [reply, setReply] = useState("");
+  const [replyOperationId, setReplyOperationId] = useState<string | null>(null);
   const speech = useSpeechInput({ lang: resolveRecognitionLangFromLocale(i18n.resolvedLanguage), onTranscriptChange: setReply });
   const [sending, setSending] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [attachmentOperationId, setAttachmentOperationId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const attachmentOperationStorageKeyRef = useRef<string | null>(null);
+  const uploadInFlightRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchBusy, setBatchBusy] = useState(false);
@@ -158,17 +171,70 @@ function AdminSupportContent() {
 
   const visibleTickets = tickets ?? [];
 
-  async function loadDetail(id: string) {
+  async function loadDetail(id: string): Promise<TicketDetail | null> {
+    earlierRepliesController.current?.abort();
+    earlierRepliesController.current = null;
+    earlierRepliesRequestFor.current = null;
+    setLoadingEarlierRepliesFor(null);
     try {
       const res = await fetch(`/api/support/tickets/${id}`);
       const result = (await res.json()) as { data: TicketDetail | null };
-      setDetail(res.ok && result.data ? result.data : null);
+      const loadedDetail = res.ok && result.data ? result.data : null;
+      setDetail(loadedDetail);
+      return loadedDetail;
     } catch {
       setDetail(null);
+      return null;
+    }
+  }
+
+  async function loadEarlierReplies(ticketId: string) {
+    if (detail?.id !== ticketId || !detail.repliesCursor || loadingEarlierRepliesFor === ticketId || earlierRepliesRequestFor.current === ticketId) return;
+    const cursor = detail.repliesCursor;
+    earlierRepliesRequestFor.current = ticketId;
+    const controller = new AbortController();
+    earlierRepliesController.current = controller;
+    setLoadingEarlierRepliesFor(ticketId);
+    setEarlierRepliesErrorFor(null);
+    try {
+      const params = new URLSearchParams({ beforeCreatedAt: cursor.createdAt, beforeId: cursor.id });
+      const response = await fetch(`/api/support/tickets/${ticketId}/replies?${params.toString()}`, { cache: "no-store", signal: controller.signal });
+      const result = await response.json().catch(() => ({})) as { data?: { replies?: ReplyMessage[]; nextCursor?: TicketDetail["repliesCursor"] } };
+      if (!response.ok || !result.data || !Array.isArray(result.data.replies)) throw new Error("support_replies_unavailable");
+      const olderReplies = result.data.replies;
+      const nextCursor = result.data.nextCursor ?? null;
+      setDetail((current) => current?.id === ticketId
+        && current.repliesCursor?.createdAt === cursor.createdAt
+        && current.repliesCursor?.id === cursor.id ? {
+        ...current,
+        replies: [...olderReplies, ...current.replies],
+        repliesCursor: nextCursor,
+      } : current);
+    } catch {
+      if (!controller.signal.aborted) setEarlierRepliesErrorFor(ticketId);
+    } finally {
+      if (earlierRepliesController.current === controller) {
+        earlierRepliesController.current = null;
+        if (earlierRepliesRequestFor.current === ticketId) earlierRepliesRequestFor.current = null;
+        setLoadingEarlierRepliesFor((current) => current === ticketId ? null : current);
+      }
     }
   }
 
   function openTicket(id: string) {
+    const nextStorageKey = currentUser?.id ? supportAttachmentOperationStorageKey("admin", currentUser.id, id) : null;
+    const pendingStorageKey = attachmentOperationStorageKeyRef.current;
+    if (pendingStorageKey && pendingStorageKey !== nextStorageKey && readSessionOperationId(pendingStorageKey)) {
+      showFeedback("error", tCommon("chatbot.supportErrors.attachmentRecoveryAnotherTicket"));
+      return;
+    }
+    if (pendingStorageKey && pendingStorageKey !== nextStorageKey) {
+      attachmentOperationStorageKeyRef.current = null;
+      setReply("");
+      setReplyOperationId(null);
+      setPendingFile(null);
+      setAttachmentOperationId(null);
+    }
     setOpenTicketId(id);
   }
 
@@ -180,9 +246,23 @@ function AdminSupportContent() {
   // there's no async operation here at all.
   useEffect(() => {
     const ticketId = searchParams.get("ticket");
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (ticketId) setOpenTicketId(ticketId);
-  }, [searchParams]);
+    if (ticketId) {
+      const nextStorageKey = currentUser?.id ? supportAttachmentOperationStorageKey("admin", currentUser.id, ticketId) : null;
+      const pendingStorageKey = attachmentOperationStorageKeyRef.current;
+      if (pendingStorageKey && pendingStorageKey !== nextStorageKey && readSessionOperationId(pendingStorageKey)) {
+        showFeedback("error", tCommon("chatbot.supportErrors.attachmentRecoveryAnotherTicket"));
+        return;
+      }
+      if (pendingStorageKey && pendingStorageKey !== nextStorageKey) {
+        attachmentOperationStorageKeyRef.current = null;
+        setReply("");
+        setReplyOperationId(null);
+        setPendingFile(null);
+        setAttachmentOperationId(null);
+      }
+      setOpenTicketId(ticketId);
+    }
+  }, [currentUser?.id, searchParams, showFeedback, tCommon]);
 
   // Fetches whenever the open ticket changes, regardless of whether it was
   // opened by a click or by the deep-link effect above — this is the single
@@ -192,10 +272,17 @@ function AdminSupportContent() {
   useEffect(() => {
     if (!openTicketId) return;
     (async () => {
-      await loadDetail(openTicketId);
-      // Marks read on actually opening the dialog (CLAUDE-FIXES-2.md item 1).
-      await fetch(`/api/support/tickets/${openTicketId}/read`, { method: "PATCH" });
-      setTickets((prev) => prev?.map((t) => (t.id === openTicketId ? { ...t, unread: false } : t)) ?? null);
+      const loadedDetail = await loadDetail(openTicketId);
+      if (!loadedDetail) return;
+      const lastDisplayedReply = [...loadedDetail.replies].reverse().find((reply) => reply.sender_role === "customer");
+      if (lastDisplayedReply) {
+        const readResponse = await fetch(`/api/support/tickets/${openTicketId}/read`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ surface: "admin", lastDisplayedReplyId: lastDisplayedReply.id }),
+        });
+        if (readResponse.ok) setTickets((prev) => prev?.map((t) => (t.id === openTicketId ? { ...t, unread: false } : t)) ?? null);
+      }
     })();
   }, [openTicketId]);
 
@@ -273,20 +360,37 @@ function AdminSupportContent() {
     if (pendingFile) return sendAttachment();
     const text = reply.trim();
     if (!text || sending || !openTicketId) return;
+    const pendingAttachmentKey = attachmentOperationStorageKeyRef.current;
+    if (pendingAttachmentKey && readSessionOperationId(pendingAttachmentKey)) {
+      const currentStorageKey = currentUser?.id
+        ? supportAttachmentOperationStorageKey("admin", currentUser.id, openTicketId)
+        : null;
+      showFeedback("error", tCommon(pendingAttachmentKey === currentStorageKey
+        ? "chatbot.supportErrors.attachmentChecking"
+        : "chatbot.supportErrors.attachmentRecoveryAnotherTicket"));
+      return;
+    }
+    const operationId = replyOperationId ?? crypto.randomUUID();
+    setReplyOperationId(operationId);
     setSending(true);
     try {
       const res = await fetch(`/api/support/tickets/${openTicketId}/replies`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: text }),
+        body: JSON.stringify({ body: text, operationId }),
       });
-      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? t("ui.support.errors.sendReply")); return; }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: { code?: string } };
+        showFeedback("error", body.error?.code ? tCommon(`chatbot.supportErrors.${supportError(body.error.code).key}`) : t("ui.support.errors.sendReply"));
+        return;
+      }
       setReply("");
+      setReplyOperationId(null);
       showFeedback("success", t("ui.support.replySent"));
       await loadDetail(openTicketId);
       await loadTickets();
     } catch {
-      showFeedback("error", t("ui.support.errors.sendReplyTryAgain"));
+      showFeedback("error", tCommon("chatbot.supportErrors.checking"));
     } finally {
       setSending(false);
     }
@@ -296,26 +400,100 @@ function AdminSupportContent() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file || uploading) return;
+    const validation = validateChatAttachmentMetadata(file);
+    if (!validation.ok) {
+      showFeedback("error", tCommon(`chatbot.supportErrors.${supportError(validation.code).key}`));
+      return;
+    }
+    const storageKey = currentUser?.id && openTicketId
+      ? supportAttachmentOperationStorageKey("admin", currentUser.id, openTicketId)
+      : null;
+    const pendingStorageKey = attachmentOperationStorageKeyRef.current;
+    if (pendingStorageKey && pendingStorageKey !== storageKey && readSessionOperationId(pendingStorageKey)) {
+      showFeedback("error", tCommon("chatbot.supportErrors.attachmentRecoveryAnotherTicket"));
+      return;
+    }
     setPendingFile(file);
+    attachmentOperationStorageKeyRef.current = storageKey;
+    setAttachmentOperationId(storageKey ? readSessionOperationId(storageKey) : null);
   }
 
   async function sendAttachment() {
-    if (!pendingFile || uploading || !openTicketId) return;
+    if (!pendingFile || uploading || uploadInFlightRef.current || !openTicketId) return;
+    if (!currentUser?.id) {
+      showFeedback("error", tCommon("chatbot.supportErrors.signIn"));
+      return;
+    }
+    const ticketId = openTicketId;
+    const storageKey = supportAttachmentOperationStorageKey("admin", currentUser.id, ticketId);
+    if (attachmentOperationStorageKeyRef.current && attachmentOperationStorageKeyRef.current !== storageKey
+        && readSessionOperationId(attachmentOperationStorageKeyRef.current)) {
+      showFeedback("error", tCommon("chatbot.supportErrors.attachmentRecoveryAnotherTicket"));
+      return;
+    }
+    const currentOperationId = attachmentOperationStorageKeyRef.current === storageKey ? attachmentOperationId : null;
+    const operationId = currentOperationId ?? readSessionOperationId(storageKey) ?? crypto.randomUUID();
+    if (!saveSessionOperationId(storageKey, operationId)) {
+      showFeedback("error", tCommon("chatbot.supportErrors.attachmentRecoveryUnavailable"));
+      return;
+    }
+    uploadInFlightRef.current = true;
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", pendingFile);
+      setAttachmentOperationId(operationId);
+      attachmentOperationStorageKeyRef.current = storageKey;
+      formData.append("operationId", operationId);
       if (reply.trim()) formData.append("caption", reply.trim());
-      const res = await fetch(`/api/support/tickets/${openTicketId}/attachments`, { method: "POST", body: formData });
-      if (!res.ok) { const body = await res.json().catch(() => ({})); showFeedback("error", body?.error?.message ?? t("ui.support.errors.sendReply")); return; }
-      setReply("");
-      setPendingFile(null);
+      const res = await fetch(`/api/support/tickets/${ticketId}/attachments`, { method: "POST", body: formData });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: { code?: string } };
+        if (body.error?.code === "OPERATION_CONFLICT") {
+          const nextOperationId = crypto.randomUUID();
+          const savedNextOperation = saveSessionOperationId(storageKey, nextOperationId);
+          if (attachmentOperationStorageKeyRef.current === storageKey) setAttachmentOperationId(nextOperationId);
+          await loadDetail(ticketId);
+          await loadTickets();
+          showFeedback("error", tCommon(savedNextOperation
+            ? "chatbot.supportErrors.attachmentConflict"
+            : "chatbot.supportErrors.attachmentRecoveryUnavailable"));
+          return;
+        }
+        if (body.error?.code === "WRITE_UNAVAILABLE" || res.status >= 500) {
+          await loadDetail(ticketId);
+          await loadTickets();
+          showFeedback("error", tCommon("chatbot.supportErrors.attachmentChecking"));
+          return;
+        }
+        if (body.error?.code === "UPLOAD_FAILED" || body.error?.code === "ATTACHMENT_RESELECT_REQUIRED") {
+          clearSessionOperationId(storageKey, operationId);
+          if (attachmentOperationStorageKeyRef.current === storageKey) setAttachmentOperationId(null);
+        }
+        showFeedback("error", body.error?.code ? tCommon(`chatbot.supportErrors.${supportError(body.error.code).key}`) : t("ui.support.errors.sendReply"));
+        return;
+      }
+      const result = await res.json().catch(() => null) as { data?: { id?: unknown } } | null;
+      if (typeof result?.data?.id !== "string") {
+        await loadDetail(ticketId);
+        showFeedback("error", tCommon("chatbot.supportErrors.attachmentChecking"));
+        return;
+      }
+      clearSessionOperationId(storageKey, operationId);
+      if (attachmentOperationStorageKeyRef.current === storageKey) {
+        setReply("");
+        setPendingFile(null);
+        setAttachmentOperationId(null);
+        attachmentOperationStorageKeyRef.current = null;
+      }
       showFeedback("success", t("ui.support.replySent"));
-      await loadDetail(openTicketId);
+      await loadDetail(ticketId);
       await loadTickets();
     } catch {
-      showFeedback("error", t("ui.support.errors.sendReplyTryAgain"));
+      await loadDetail(ticketId);
+      showFeedback("error", tCommon("chatbot.supportErrors.attachmentChecking"));
     } finally {
+      uploadInFlightRef.current = false;
       setUploading(false);
     }
   }
@@ -523,8 +701,14 @@ function AdminSupportContent() {
           if (!open) {
             setOpenTicketId(null);
             setDetail(null);
-            setReply("");
-            setPendingFile(null);
+            const pendingStorageKey = attachmentOperationStorageKeyRef.current;
+            if (!pendingStorageKey || !readSessionOperationId(pendingStorageKey)) {
+              attachmentOperationStorageKeyRef.current = null;
+              setReply("");
+              setReplyOperationId(null);
+              setPendingFile(null);
+              setAttachmentOperationId(null);
+            }
           }
         }}
       >
@@ -533,7 +717,7 @@ function AdminSupportContent() {
             <div className="flex flex-col gap-2 pr-6 sm:flex-row sm:items-center sm:justify-between">
               <DialogTitle className="break-words">{detail?.subject}</DialogTitle>
               <div className="flex flex-wrap items-center gap-2">
-                {detail && openTicketId && <ReportChatButton chatType="user_admin" threadId={openTicketId} />}
+                {detail && openTicketId && <ReportChatButton chatType="user_admin" threadId={openTicketId} returnPath={`/admin/support?ticket=${openTicketId}`} />}
                 {detail && detail.status !== "resolved" && (
                   <Button
                     size="sm"
@@ -555,12 +739,15 @@ function AdminSupportContent() {
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 <TicketThread
                   ticketId={openTicketId ?? undefined}
-                  currentUserId={currentUser.id}
-                  ticketOwnerId={detail.userId}
+                  ticketIsMine={detail.viewerIsOwner}
                   ticketBody={detail.body}
+                  handoffSourceMessage={detail.handoffSourceMessage}
                   ticketCreatedAt={detail.createdAt}
-                  transcript={detail.transcript}
                   replies={detail.replies}
+                  hasEarlierReplies={Boolean(detail.repliesCursor)}
+                  loadingEarlierReplies={loadingEarlierRepliesFor === detail.id}
+                  earlierRepliesError={earlierRepliesErrorFor === detail.id}
+                  onLoadEarlierReplies={() => void loadEarlierReplies(detail.id)}
                 />
               </div>
 
@@ -570,7 +757,7 @@ function AdminSupportContent() {
                   <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-secondary/60 px-3 py-2 text-xs">
                     <FileText size={16} className="shrink-0 text-primary" />
                     <span className="min-w-0 flex-1 truncate text-foreground">{pendingFile.name}</span>
-                    <button type="button" onClick={() => setPendingFile(null)} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={t("ui.support.removeAttachment")}>
+                    <button type="button" onClick={() => { setPendingFile(null); setAttachmentOperationId(null); }} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={t("ui.support.removeAttachment")}>
                       <X size={13} />
                     </button>
                   </div>
@@ -588,7 +775,10 @@ function AdminSupportContent() {
                   </button>
                   <input
                     value={reply}
-                    onChange={(e) => setReply(e.target.value)}
+                    onChange={(e) => {
+                      setReply(e.target.value);
+                      setReplyOperationId(e.target.value.trim() ? crypto.randomUUID() : null);
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") sendReply();
                     }}

@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cleanUserContent } from '../clean';
+import { cleanUserContent, cleanUserContentBatch } from '../clean';
 
 function mockService(customWords: { term: string; category: string }[] = []): SupabaseClient {
   return {
@@ -13,6 +13,22 @@ function mockService(customWords: { term: string; category: string }[] = []): Su
 }
 
 describe('cleanUserContent', () => {
+  it('loads custom terms once when cleaning several values for one request', async () => {
+    const eq = vi.fn().mockResolvedValue({ data: [] });
+    const select = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ select }));
+
+    const cleaned = await cleanUserContentBatch(
+      ['Title', 'Summary', 'Call 012-3456789'],
+      { from } as unknown as SupabaseClient,
+    );
+
+    expect(cleaned.map((item) => item.display)).toEqual(['Title', 'Summary', 'Call [PHONE]']);
+    expect(from).toHaveBeenCalledTimes(1);
+    expect(select).toHaveBeenCalledTimes(1);
+    expect(eq).toHaveBeenCalledTimes(1);
+  });
+
   it('masks profanity in display but keeps it real in original', async () => {
     const r = await cleanUserContent('this fucking withdrawal is broken', mockService());
     expect(r.display).toContain('f***');

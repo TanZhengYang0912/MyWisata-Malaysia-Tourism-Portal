@@ -33,6 +33,10 @@ export async function PATCH(request: Request, { params }: Props) {
   const { data: link } = await service.from('affiliate_links').select('id').eq('id', id).maybeSingle();
   if (!link) return apiFail('NOT_FOUND', 'Affiliate link not found', 404);
 
-  await reactivateLink(service, id, user.id);
+  try {
+    await reactivateLink(service, id, user.id);
+  } catch {
+    return apiFail('DB_ERROR', 'Unable to re-enable affiliate link', 500);
+  }
   return apiOk({ id, isActive: true });
 }
