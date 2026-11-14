@@ -244,7 +244,8 @@ describe("customer home first viewport", () => {
     expect(homeSource).toContain("forYouItems.map((activity)");
     expect(homePageSource).toContain("campaign.vendors.map((vendor) => vendor.vendorId)");
     expect(homePageSource).toContain("eventVendorIds");
-    expect(homePageSource).toContain('.in("id", eventVendorIds)');
+    expect(homePageSource).toContain("getCachedEventPartnerVendors(vendorIds)");
+    expect(readFileSync(resolve(process.cwd(), "lib/cache/catalogue-cache.ts"), "utf8")).toContain(".in('id', vendorIds)");
     expect(homePageSource).toContain("nextVendorEvent");
   });
 

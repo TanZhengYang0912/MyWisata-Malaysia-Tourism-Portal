@@ -9,8 +9,8 @@
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  /* One warm off-white for every page, card and popover (2026-11-14): no pure-white surfaces anywhere. */
-  --background: #faf9f6;
+  /* Pages use a very light blue (2026-11-14); cards and popovers keep the warm off-white. No pure-white surfaces anywhere. */
+  --background: #f7faff;
   --foreground: #0f172a;
   --card: #faf9f6;
   --card-foreground: #0f172a;
