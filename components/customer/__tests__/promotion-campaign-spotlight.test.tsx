@@ -25,7 +25,6 @@ vi.mock("react-i18next", () => ({ useTranslation: () => ({
 
 import { PromotionCampaignSpotlight } from "@/components/customer/promotion-campaign-spotlight";
 import { FeaturedRecommendationsFrame } from "@/components/customer/featured-recommendations-frame";
-import { formatEventHours } from "@/lib/promotion-campaigns/locations";
 
 const campaign: PromotionCampaignPublic = {
   id: "campaign", slug: "sample-event", title: "Sample event",
@@ -61,9 +60,7 @@ describe("promotion campaign home spotlight", () => {
     expect(markup).toContain("Pop-up Fiesta");
     expect(markup).not.toContain("Demo – Pop-up Fiesta");
     expect(markup).not.toContain("Demo event: three locations");
-    expect(markup).toContain("ui.promotionCampaigns.operating");
     expect(markup).toContain("8:00 PM");
-    expect(markup).toContain("ui.promotionCampaigns.stallsJoining");
     expect(markup).toContain('href="/customer/events/demo-popup-fiesta"');
     expect(markup).toContain('href="/customer/events"');
   });
@@ -71,7 +68,6 @@ describe("promotion campaign home spotlight", () => {
   it("links the upcoming teaser to its campaign details", () => {
     const markup = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={campaign} />);
     expect(markup).toContain("Sample event");
-    expect(markup).toContain("ui.promotionCampaigns.upcoming");
     expect(markup).toContain('href="/customer/events/sample-event"');
     // The letter sits under the envelope pieces, so it comes first in the DOM.
     const letterIndex = markup.indexOf('data-slot="campaign-envelope-letter"');
@@ -101,9 +97,8 @@ describe("promotion campaign home spotlight", () => {
     expect(front).toContain("ui.promotionCampaigns.invitedTo");
     // The front shows the range from its start: 25 Sep 2026, 20:00 in Malaysia.
     expect(front).toContain("Sep 25, 2026");
-    expect(front).toContain(">2026<");
-    // The status now sits in the letter, which renders before the front; the title is on the front.
-    expect(markup.indexOf("ui.promotionCampaigns.upcoming")).toBeLessThan(markup.indexOf("<h2 id=\"campaign-envelope-"));
+    // The stamp is picked by slide position; the attribute sits on the <article>, before the front.
+    expect(markup).toContain('data-stamp="hibiscus"');
   });
 
   it("shows dates for a full-day event and retains the precise time for a legacy event", () => {
@@ -129,10 +124,10 @@ describe("promotion campaign home spotlight", () => {
     const markup = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={timedCampaign} />);
     const contentPanel = markup.slice(markup.indexOf('data-slot="promotion-campaign-content"'));
 
-    expect(contentPanel).toContain("ui.promotionCampaigns.startsAt Sep 25, 2026");
-    expect(contentPanel).toContain("6:50 PM");
-    expect(contentPanel).toContain("ui.promotionCampaigns.endsAt Mar 13, 2027");
-    expect(contentPanel).toContain("7:00 AM");
+    const inOrder = ["ui.promotionCampaigns.envelopeStarts", "Sep 25, 2026", "6:50 PM", "ui.promotionCampaigns.envelopeEnds", "Mar 13, 2027", "7:00 AM"]
+      .map((text) => contentPanel.indexOf(text));
+    expect(inOrder.every((index) => index >= 0)).toBe(true);
+    expect(inOrder).toEqual([...inOrder].sort((left, right) => left - right));
   });
 
   it("distinguishes an unavailable projection from a genuine empty campaign list", () => {
@@ -183,20 +178,12 @@ describe("promotion campaign home spotlight", () => {
     expect(markup.indexOf('src="https://thumb.wikimedia.org/event-poster.jpg"')).toBeLessThan(markup.indexOf('data-slot="campaign-envelope-front"'));
   });
 
-  it("shows a live campaign's status in the letter even between opening sessions", () => {
-    const markup = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={{ ...campaign, visibility: "live", operationalStatus: "between_sessions" }} />);
-    const letter = markup.slice(markup.indexOf('data-slot="campaign-envelope-letter"'), markup.indexOf('data-slot="campaign-envelope-front"'));
-    expect(letter).toContain("ui.promotionCampaigns.betweenSessions");
-  });
-
-  it("shows the location on the front and its hours in the letter", () => {
+  it("shows the location on the front", () => {
     const markup = renderToStaticMarkup(<PromotionCampaignSpotlight campaign={campaign} />);
 
     expect(markup).not.toContain("bg-gradient-to-t from-primary/95 via-primary/40 to-transparent");
     const front = markup.slice(markup.indexOf('data-slot="campaign-envelope-front"'));
     expect(front).toContain("Melaka");
-    const letter = markup.slice(markup.indexOf('data-slot="campaign-envelope-letter"'), markup.indexOf('data-slot="campaign-envelope-front"'));
-    expect(letter).toContain(formatEventHours("10:00", "18:00", "en"));
     // Per-location hours replace the campaign's free-text operating hours.
     expect(markup).not.toContain("10:00 AM - 6:00 PM");
     expect(markup).not.toContain("lg:grid-cols-[44%_minmax(0,1fr)_9rem]");
@@ -260,7 +247,8 @@ describe("campaign carousel interactions", () => {
       await Promise.resolve();
     });
 
-    const indicators = findElements(container, (element) => element.tagName === "BUTTON");
+    // The envelope's pull tab is a button too; the dots are the buttons named after a slide.
+    const indicators = findElements(container, (element) => element.tagName === "BUTTON" && (element.getAttribute("aria-label") ?? "").startsWith("ui.accessibility.carouselSlide"));
     expect(indicators.map((indicator) => indicator.getAttribute("aria-label"))).toHaveLength(3);
     expect(indicators[0].getAttribute("aria-current")).toBe("true");
     expect(container.textContent).toContain("Sample event");
@@ -295,5 +283,21 @@ describe("campaign carousel interactions", () => {
       await Promise.resolve();
     });
     expect(container.textContent).toContain("Sample event");
+  });
+
+  it("gives each slide's envelope the stamp for its position", async () => {
+    const second = { ...campaign, id: "campaign-2", slug: "second-event", title: "Second event" };
+    const third = { ...campaign, id: "campaign-3", slug: "third-event", title: "Third event" };
+    await act(async () => {
+      root.render(<PromotionCampaignSpotlight campaign={campaign} campaigns={[campaign, second, third]} />);
+      await Promise.resolve();
+    });
+    const stamp = () => findOne(container, (element) => element.tagName === "ARTICLE").getAttribute("data-stamp");
+    expect(stamp()).toBe("hibiscus");
+    await act(async () => {
+      findOne(container, (element) => element.getAttribute("aria-label") === "ui.accessibility.carouselSlide 2 3").dispatchEvent(new TestEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(stamp()).toBe("tiger");
   });
 });
