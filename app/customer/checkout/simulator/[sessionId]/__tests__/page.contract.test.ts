@@ -48,4 +48,9 @@ describe('customer payment simulator experience', () => {
       expect(customer.strictMigration.paymentSimulator.statuses.requires_action).toBe(translation);
     }
   });
+
+  it('slides forward to the order once the simulated payment succeeds', () => {
+    const source = readFileSync(simulatorUrl, 'utf8');
+    expect(source).toContain('router.push(`/customer/orders/${result.orderId}`, { transitionTypes: [NAV_FORWARD] })');
+  });
 });

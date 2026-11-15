@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, ViewTransition, type MouseEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -19,6 +19,7 @@ import { NotificationBell } from "@/components/shared/notification-bell";
 import { AppearanceControl } from "@/components/shared/appearance-control";
 import { CustomerSiteFooter } from "@/components/customer/customer-site-footer";
 import { customerFooterVariant } from "@/lib/customer/footer-navigation";
+import { PAGE_TRANSITION } from "@/lib/customer/page-transitions";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { CurrencySwitcher } from "@/components/shared/currency-switcher";
 import { useCustomerHeaderLayout } from "@/components/customer/use-customer-header-layout";
@@ -204,7 +205,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="customer-portal min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }} onClickCapture={confirmGuestNavigation} onAuxClickCapture={confirmGuestNavigation}>
       {/* One row only when it fits, else the phone's two rows: useCustomerHeaderLayout sets data-layout on this nav. */}
-      <nav ref={headerRef} className="group/header sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden">
+      <nav ref={headerRef} className="group/header sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden" style={{ viewTransitionName: "customer-header" }}>
         <div className={`max-w-7xl mx-auto px-2 sm:px-6 flex items-center gap-1 sm:gap-8 ${isTripRoute ? "h-14 md:h-17" : "h-17"}`}>
           <Link href="/customer" className="group flex items-center gap-2.5 shrink-0">
               <Image
@@ -392,7 +393,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      <main className={isActivityDetailPage ? "flex-none" : "flex-1 min-h-0"}><CustomerBreadcrumbs />{children}</main>
+      {/* Keyed by pathname so every customer route change runs one exit/enter pair; query-only changes do not animate. */}
+      <main className={isActivityDetailPage ? "flex-none" : "flex-1 min-h-0"}><ViewTransition key={pathname} enter={PAGE_TRANSITION} exit={PAGE_TRANSITION} default="none"><CustomerBreadcrumbs />{children}</ViewTransition></main>
       {/* Preserve footer space only where the mobile chat launcher is visible. */}
       <CustomerSiteFooter variant={customerFooterVariant(pathname)} className={hideMobileChatLauncher ? "pb-0" : "pb-16 sm:pb-0"} />
       <ChatbotWidget hideLauncherOnMobile={hideMobileChatLauncher} />

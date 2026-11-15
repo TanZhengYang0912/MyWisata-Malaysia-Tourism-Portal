@@ -921,21 +921,23 @@ export async function getComputedActivity(
   db: SupabaseClient = supabase,
   preferredOutletId?: string,
 ): Promise<ComputedActivity | null> {
-  const { data: row, error } = await db
-    .from("products")
-    .select(ACTIVITY_SELECT)
-    .eq("id", id)
-    .eq("status", "active")
-    .eq("review_status", "approved")
-    .maybeSingle();
+  // The metric read needs only the id, so it runs alongside the product read (one round trip, not two).
+  const [{ data: row, error }, { data: metricRow, error: metricError }] = await Promise.all([
+    db
+      .from("products")
+      .select(ACTIVITY_SELECT)
+      .eq("id", id)
+      .eq("status", "active")
+      .eq("review_status", "approved")
+      .maybeSingle(),
+    db
+      .from("product_review_metrics")
+      .select("product_id,rating,reviews")
+      .eq("product_id", id)
+      .maybeSingle(),
+  ]);
   if (error) throw error;
   if (!row) return null;
-
-  const { data: metricRow, error: metricError } = await db
-    .from("product_review_metrics")
-    .select("product_id,rating,reviews")
-    .eq("product_id", id)
-    .maybeSingle();
   if (metricError) throw metricError;
 
   const metric = metricRow
@@ -973,9 +975,14 @@ export async function getComputedActivity(
   return toComputed(activity, outletMap, from, preferredOutletId);
 }
 
+/** Same shape loadDiscoveryActivityData returns, for a catalogue the caller already loaded (e.g. the 60 s cache). */
+function withOutletMap(data: DiscoveryActivityData) {
+  return { activities: data.activities, outletMap: new Map(data.outlets.map((outlet) => [outlet.id, outlet])) };
+}
+
 /** Products sold by one outlet, with the outlet's own offer price applied. */
-export async function getOutletActivities(outletId: string, excludeProductId?: string, db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
-  const { activities, outletMap } = await loadDiscoveryActivityData(db);
+export async function getOutletActivities(outletId: string, excludeProductId?: string, db: SupabaseClient = supabase, preloaded?: DiscoveryActivityData): Promise<ComputedActivity[]> {
+  const { activities, outletMap } = preloaded ? withOutletMap(preloaded) : await loadDiscoveryActivityData(db);
   const outlet = outletMap.get(outletId);
   if (!outlet) return [];
 
@@ -1000,8 +1007,8 @@ export async function getOutletActivities(outletId: string, excludeProductId?: s
  * (source=vendor) so the "More from …" rail shows the vendor catalogue, not a
  * single branch.
  */
-export async function getVendorActivities(vendorId: string, excludeProductId?: string, db: SupabaseClient = supabase): Promise<ComputedActivity[]> {
-  const { activities, outletMap } = await loadDiscoveryActivityData(db);
+export async function getVendorActivities(vendorId: string, excludeProductId?: string, db: SupabaseClient = supabase, preloaded?: DiscoveryActivityData): Promise<ComputedActivity[]> {
+  const { activities, outletMap } = preloaded ? withOutletMap(preloaded) : await loadDiscoveryActivityData(db);
   const vendorOutlets = [...outletMap.values()].filter((o) => o.vendorId === vendorId);
   if (vendorOutlets.length === 0) return [];
   const vendorOutletIds = new Set(vendorOutlets.map((o) => o.id));
