@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), staffAccess: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), getClaims: vi.fn(), from: vi.fn(), staffAccess: vi.fn() }));
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, from: mocks.from })),
+  createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser, getClaims: mocks.getClaims }, from: mocks.from })),
 }));
 
 vi.mock('@/lib/notifications/staff-access', () => ({
@@ -22,6 +22,7 @@ describe('GET /api/notifications', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null });
+    mocks.getClaims.mockResolvedValue({ data: { claims: { sub: userId } }, error: null });
     mocks.staffAccess.mockResolvedValue(null);
     const query = {
       select: vi.fn().mockReturnThis(),
@@ -40,8 +41,25 @@ describe('GET /api/notifications', () => {
   });
 
   it('requires authentication', async () => {
-    mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
+    mocks.getClaims.mockResolvedValue({ data: { claims: null }, error: null });
     expect((await GET(request())).status).toBe(401);
+  });
+
+  it('verifies the customer feed locally from the token claims, without an Auth server round trip', async () => {
+    const response = await GET(request('?scope=customer'));
+
+    expect(response.status).toBe(200);
+    expect(mocks.getClaims).toHaveBeenCalled();
+    expect(mocks.getUser).not.toHaveBeenCalled();
+    expect(mocks.from.mock.results[0]?.value.eq).toHaveBeenCalledWith('user_id', userId);
+  });
+
+  it('keeps the Auth server check for the staff inbox', async () => {
+    const response = await GET(request('?scope=staff'));
+
+    expect(response.status).toBe(200);
+    expect(mocks.getUser).toHaveBeenCalled();
+    expect(mocks.getClaims).not.toHaveBeenCalled();
   });
 
   it('limits the feed to the requested page and wallet category', async () => {

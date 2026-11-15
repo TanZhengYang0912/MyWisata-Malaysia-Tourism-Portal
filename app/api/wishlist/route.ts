@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 import { recordInteraction } from "@/lib/interactions";
+import { getClaimsUserId } from "@/lib/auth/claims-user";
 
 const postgresUuid = z.string().regex(
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
@@ -14,13 +15,13 @@ const wishlistSchema = z.object({
 
 export async function GET() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail("UNAUTHORIZED", "Sign in required", 401);
+  const userId = await getClaimsUserId(supabase);
+  if (!userId) return apiFail("UNAUTHORIZED", "Sign in required", 401);
 
   const { data, error } = await supabase
     .from("customer_wishlists")
     .select("product_id")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) return apiFail("DB_ERROR", error.message, 500);
