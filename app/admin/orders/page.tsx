@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw, Search } from 'lucide-react';
 import { Pagination } from '@/components/shared/pagination';
 import { AdminFilterBar, adminFilterControlClassName } from '@/components/admin/filter-bar';
@@ -9,9 +9,12 @@ import { AdminMobileRecordCard } from '@/components/admin/admin-mobile-record-ca
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useAppDialog } from '@/components/providers/app-dialog';
 import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
+import { createEventShortageReason, EVENT_SHORTAGE_REASON_OPTIONS } from './shortage-reason';
 
 type OrderItem = {
   id: string;
@@ -41,9 +44,15 @@ type AdminOrder = {
   created_at: string;
   customer: { name: string | null; email: string | null };
   items: OrderItem[];
+  itemCount: number;
+  itemsHasMore: boolean;
+  paymentCount: number;
+  paymentsHasMore: boolean;
   payments?: { id: string; method: string; provider: string | null; status: string; amount: number }[];
   payment: { id: string; method: string; provider: string | null; status: string; amount: number } | null;
 };
+
+type VendorOption = { id: string; name: string };
 
 type ContactCorrectionPreview = {
   order: { id: string; displayId: string | null; status: string; contactEmail: string | null; totalAmount: number; currency: string };
@@ -54,23 +63,32 @@ type ContactCorrectionPreview = {
 
 const PAGE_SIZE = 25;
 const STATUS_OPTIONS = ['all', 'pending_payment', 'paid', 'completed', 'cancelled', 'failed', 'refunded'] as const;
-
 function formatMoney(amount: number, currency: string, locale: string) {
   return new Intl.NumberFormat(locale, { style: 'currency', currency, minimumFractionDigits: 2 }).format(Number(amount));
 }
 
 export default function AdminOrdersPage() {
   const { t, i18n } = useTranslation('admin');
-  const { prompt, confirm } = useAppDialog();
+  const { confirm } = useAppDialog();
   const locale = i18n.resolvedLanguage === 'ms' ? 'ms-MY' : i18n.resolvedLanguage === 'zh-CN' ? 'zh-CN' : 'en-MY';
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [status, setStatus] = useState<(typeof STATUS_OPTIONS)[number]>('all');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
+  const [selectedVendor, setSelectedVendor] = useState<VendorOption | null>(null);
+  const [vendorSearchInput, setVendorSearchInput] = useState('');
+  const [vendorOptions, setVendorOptions] = useState<VendorOption[]>([]);
+  const [activeVendorIndex, setActiveVendorIndex] = useState(0);
+  const [vendorSearchLoading, setVendorSearchLoading] = useState(false);
+  const [vendorSearchError, setVendorSearchError] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [shortageItem, setShortageItem] = useState<OrderItem | null>(null);
+  const [shortageReasonCode, setShortageReasonCode] = useState('');
+  const [shortageManualReason, setShortageManualReason] = useState('');
+  const shortageSubmissionActive = useRef(false);
   const [correctionOrder, setCorrectionOrder] = useState<AdminOrder | null>(null);
   const [correctionPreview, setCorrectionPreview] = useState<ContactCorrectionPreview | null>(null);
   const [newEmail, setNewEmail] = useState('');
@@ -86,6 +104,7 @@ export default function AdminOrdersPage() {
     setError('');
     const params = new URLSearchParams({ page: String(page), status });
     if (search) params.set('search', search);
+    if (selectedVendor) params.set('vendorId', selectedVendor.id);
     try {
       const response = await fetch(`/api/admin/orders?${params}`, { cache: 'no-store', signal });
       const payload = await response.json() as {
@@ -103,7 +122,7 @@ export default function AdminOrdersPage() {
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
-  }, [page, search, status, t]);
+  }, [page, search, selectedVendor, status, t]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -113,15 +132,99 @@ export default function AdminOrdersPage() {
     return () => controller.abort();
   }, [loadOrders]);
 
+  useEffect(() => {
+    const term = vendorSearchInput.trim();
+    if (term.length < 2) return;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      void (async () => {
+        setVendorSearchLoading(true);
+        setVendorSearchError(false);
+        try {
+          const response = await fetch(`/api/admin/orders/vendors?search=${encodeURIComponent(term)}`, {
+            cache: 'no-store',
+            signal: controller.signal,
+          });
+          const payload = await response.json() as {
+            data?: { vendors: VendorOption[] };
+          };
+          if (!response.ok || !payload.data) throw new Error('vendor-search-failed');
+          setVendorOptions(payload.data.vendors);
+          setActiveVendorIndex(0);
+        } catch (reason) {
+          if (reason instanceof DOMException && reason.name === 'AbortError') return;
+          setVendorOptions([]);
+          setVendorSearchError(true);
+        } finally {
+          if (!controller.signal.aborted) setVendorSearchLoading(false);
+        }
+      })();
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [vendorSearchInput]);
+
   function applySearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPage(1);
     setSearch(searchInput.trim());
   }
 
-  async function resolveShortage(item: OrderItem) {
-    const reason = (await prompt(t('eventOperations.shortageReason')))?.trim();
-    if (!reason || reason.length < 5) return;
+  function selectVendor(vendor: VendorOption) {
+    if (selectedVendor?.id !== vendor.id) {
+      setSelectedVendor(vendor);
+      setPage(1);
+    }
+    setVendorSearchInput('');
+    setVendorOptions([]);
+    setActiveVendorIndex(0);
+    setVendorSearchLoading(false);
+    setVendorSearchError(false);
+  }
+
+  function updateVendorSearch(value: string) {
+    setVendorSearchInput(value);
+    setVendorOptions([]);
+    setActiveVendorIndex(0);
+    setVendorSearchLoading(value.trim().length >= 2);
+    setVendorSearchError(false);
+  }
+
+  function handleVendorSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const activeVendor = vendorOptions[activeVendorIndex];
+      if (activeVendor) selectVendor(activeVendor);
+    } else if (event.key === 'ArrowDown' && vendorOptions.length > 0) {
+      event.preventDefault();
+      setActiveVendorIndex((current) => Math.min(current + 1, vendorOptions.length - 1));
+    } else if (event.key === 'ArrowUp' && vendorOptions.length > 0) {
+      event.preventDefault();
+      setActiveVendorIndex((current) => Math.max(current - 1, 0));
+    } else if (event.key === 'Escape') {
+      setVendorSearchInput('');
+      setVendorOptions([]);
+      setVendorSearchLoading(false);
+      setVendorSearchError(false);
+    }
+  }
+
+  function clearVendorFilter() {
+    if (!selectedVendor) return;
+    setSelectedVendor(null);
+    setPage(1);
+  }
+
+  function openShortageDialog(item: OrderItem) {
+    setShortageItem(item);
+    setShortageReasonCode('');
+    setShortageManualReason('');
+  }
+
+  async function resolveShortage(item: OrderItem, reason: string) {
     const input = { listingId: item.eventListingId, pickupDate: item.pickupDate, reason };
     try {
       const preview = await fetch('/api/admin/orders/event-shortage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) });
@@ -132,6 +235,18 @@ export default function AdminOrdersPage() {
       if (!saved.ok) throw new Error(t('eventOperations.conflict'));
       await loadOrders();
     } catch { setError(t('eventOperations.conflict')); }
+  }
+
+  function submitShortageReason(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!shortageItem || shortageSubmissionActive.current) return;
+    const reason = createEventShortageReason(shortageReasonCode, shortageManualReason, (key) => t(key));
+    if (!reason) return;
+
+    const item = shortageItem;
+    shortageSubmissionActive.current = true;
+    setShortageItem(null);
+    void resolveShortage(item, reason).finally(() => { shortageSubmissionActive.current = false; });
   }
 
   async function openGuestContactCorrection(order: AdminOrder) {
@@ -215,6 +330,64 @@ export default function AdminOrdersPage() {
               aria-label={t('orderOperations.searchLabel')}
             />
           </label>
+          <div className="relative min-w-[220px] text-sm">
+            <label htmlFor="admin-order-vendor-search" className="mb-1.5 block font-medium">{t('orderOperations.vendorFilter')}</label>
+            {selectedVendor && (
+              <div className="mb-1 flex min-h-10 items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 px-3">
+                <span className="min-w-0 truncate">{selectedVendor.name}</span>
+                <Button type="button" variant="ghost" size="sm" onClick={clearVendorFilter}>{t('orderOperations.clearVendorFilter')}</Button>
+              </div>
+            )}
+            <Input
+              id="admin-order-vendor-search"
+              value={vendorSearchInput}
+              onChange={(event) => updateVendorSearch(event.target.value)}
+              onKeyDown={handleVendorSearchKeyDown}
+              placeholder={t('orderOperations.vendorSearchPlaceholder')}
+              maxLength={100}
+              aria-label={t('orderOperations.vendorFilter')}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={vendorSearchInput.trim().length >= 2}
+              aria-controls={vendorSearchInput.trim().length >= 2 ? 'admin-order-vendor-results' : undefined}
+              aria-activedescendant={vendorOptions[activeVendorIndex] ? `admin-order-vendor-option-${vendorOptions[activeVendorIndex].id}` : undefined}
+              autoComplete="off"
+            />
+            {vendorSearchInput.trim().length > 0 && vendorSearchInput.trim().length < 2 && (
+              <p role="status" className="mt-1 text-xs text-muted-foreground">{t('orderOperations.vendorSearchHint')}</p>
+            )}
+            {vendorSearchInput.trim().length >= 2 && (
+              <div id="admin-order-vendor-results" className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-border bg-card p-1 shadow-lg">
+                {vendorSearchLoading ? (
+                  <p role="status" className="px-3 py-2 text-xs text-muted-foreground">{t('orderOperations.vendorSearchLoading')}</p>
+                ) : vendorSearchError ? (
+                  <p role="alert" className="px-3 py-2 text-xs text-destructive">{t('orderOperations.vendorSearchError')}</p>
+                ) : vendorOptions.length === 0 ? (
+                  <p role="status" className="px-3 py-2 text-xs text-muted-foreground">{t('orderOperations.vendorSearchEmpty')}</p>
+                ) : (
+                  <ul role="listbox" aria-label={t('orderOperations.vendorSearchResults')}>
+                    {vendorOptions.map((vendor, index) => (
+                      <li key={vendor.id}>
+                        <Button
+                          id={`admin-order-vendor-option-${vendor.id}`}
+                          type="button"
+                          variant="ghost"
+                          className="h-auto w-full justify-start px-3 py-2 text-left"
+                          aria-label={`${vendor.name} ${vendor.id}`}
+                          aria-selected={activeVendorIndex === index}
+                          role="option"
+                          onClick={() => selectVendor(vendor)}
+                        >
+                          <span className="min-w-0 truncate">{vendor.name}</span>
+                          <span className="ml-auto shrink-0 font-mono text-xs text-muted-foreground">{vendor.id.slice(0, 8)}</span>
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
           <label className="text-sm">
             <span className="mb-1.5 block font-medium">{t('orderOperations.status')}</span>
             <select className={adminFilterControlClassName} value={status} onChange={(event) => { setPage(1); setStatus(event.target.value as typeof status); }}>
@@ -241,7 +414,9 @@ export default function AdminOrdersPage() {
                 footer={order.isGuest && order.canCorrectGuestContact && ['paid', 'completed'].includes(order.status) && order.customer.email ? <Button size="sm" variant="outline" onClick={() => void openGuestContactCorrection(order)}>{t('orderOperations.contactCorrection.action')}</Button> : undefined}
               >
                 <div><p className="text-xs font-semibold text-muted-foreground">{t('orderOperations.customer')}</p><p className="mt-1 font-medium">{order.customer.name ?? t('orderOperations.unknownCustomer')}</p><p className="break-all text-sm text-muted-foreground">{order.customer.email ?? '—'}</p></div>
-                <div><p className="text-xs font-semibold text-muted-foreground">{t('orderOperations.items')}</p><ul className="mt-1 space-y-3">{order.items.map((item) => <li key={item.id}><p className="font-medium">{item.quantity} × {item.productName}</p>{item.eventListingId && item.pickupDate && ['pending', 'ready'].includes(item.fulfilStatus) && <Button className="mt-1" size="sm" variant="outline" onClick={() => void resolveShortage(item)}>{t('eventOperations.shortage')}</Button>}<p className="text-xs text-muted-foreground">{item.vendorName ?? '—'} · {item.outletName ?? '—'} · {t('orderOperations.fulfilment')}: {item.fulfilStatus}</p></li>)}</ul></div>
+                <div><p className="text-xs font-semibold text-muted-foreground">{t('orderOperations.items')}</p><ul className="mt-1 space-y-3">{order.items.map((item) => <li key={item.id}><p className="font-medium">{item.quantity} × {item.productName}</p>{item.eventListingId && item.pickupDate && ['pending', 'ready'].includes(item.fulfilStatus) && <Button className="mt-1" size="sm" variant="outline" onClick={() => openShortageDialog(item)}>{t('eventOperations.shortage')}</Button>}<p className="text-xs text-muted-foreground">{item.vendorName ?? '—'} · {item.outletName ?? '—'} · {t('orderOperations.fulfilment')}: {item.fulfilStatus}</p></li>)}</ul></div>
+                <p className="text-xs text-muted-foreground">{t('orderOperations.detail.associationCounts', { items: order.itemCount, payments: order.paymentCount })}</p>
+                <Link href={`/admin/orders/${order.id}`} className="text-sm font-semibold text-primary hover:underline">{t('orderOperations.detail.viewOrder')}</Link>
                 <div><p className="text-xs font-semibold text-muted-foreground">{t('orderOperations.payment')}</p>{(order.payments?.length ? order.payments : order.payment ? [order.payment] : []).length ? (order.payments?.length ? order.payments : order.payment ? [order.payment] : []).map((payment, index) => <p key={index} className="mt-1 text-sm">{payment.method} · {formatMoney(payment.amount, order.currency || 'MYR', locale)} <span className="text-muted-foreground">· {payment.status}</span></p>) : <p className="mt-1 text-sm">{t('orderOperations.paymentPending')}</p>}</div>
                 <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-3"><span className="text-sm text-muted-foreground">{t('orderOperations.created')}: {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(order.created_at))}</span><span className="font-semibold">{t('orderOperations.total')}: {formatMoney(order.total_amount, order.currency || 'MYR', locale)}</span></div>
               </AdminMobileRecordCard>
@@ -280,7 +455,7 @@ export default function AdminOrdersPage() {
                         {order.items.map((item) => (
                           <li key={item.id}>
                             <p className="font-medium">{item.quantity} × {item.productName}</p>
-                            {item.eventListingId && item.pickupDate && ['pending','ready'].includes(item.fulfilStatus) && <Button variant="outline" onClick={() => void resolveShortage(item)}>{t('eventOperations.shortage')}</Button>}
+                            {item.eventListingId && item.pickupDate && ['pending','ready'].includes(item.fulfilStatus) && <Button variant="outline" onClick={() => openShortageDialog(item)}>{t('eventOperations.shortage')}</Button>}
                             <p className="text-xs text-muted-foreground">
                               <span>{item.vendorName ?? '—'}</span><span aria-hidden="true"> · </span>
                               <span>{item.outletName ?? '—'}</span><span aria-hidden="true"> · </span>
@@ -289,6 +464,7 @@ export default function AdminOrdersPage() {
                           </li>
                         ))}
                       </ul>
+                      <p className="mt-2 text-xs text-muted-foreground">{t('orderOperations.detail.associationCounts', { items: order.itemCount, payments: order.paymentCount })}</p>
                     </td>
                     <td className="px-4 py-4">
                       {(order.payments?.length ? order.payments : order.payment ? [order.payment] : []).map((payment, index) => (
@@ -308,6 +484,41 @@ export default function AdminOrdersPage() {
           </div>}
         <Pagination currentPage={page} totalPages={pageCount} totalItems={total} pageSize={PAGE_SIZE} onPageChange={setPage} disabled={loading} className="mt-0 border-t border-border px-4 py-3" />
       </section>
+      <Dialog open={Boolean(shortageItem)} onOpenChange={(open) => { if (!open) setShortageItem(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('eventOperations.shortage')}</DialogTitle>
+            <DialogDescription>{t('eventOperations.shortageReason')}</DialogDescription>
+          </DialogHeader>
+          {shortageItem && <form onSubmit={submitShortageReason} className="space-y-4">
+            <Select value={shortageReasonCode} onValueChange={(value) => setShortageReasonCode(value)}>
+              <SelectTrigger aria-label={t('eventOperations.shortageReasonLabel')}>
+                <SelectValue placeholder={t('eventOperations.shortageReasonPlaceholder')} />
+              </SelectTrigger>
+              <SelectContent>
+                {EVENT_SHORTAGE_REASON_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{t(option.key)}</SelectItem>)}
+                <SelectItem value="other">{t('eventOperations.shortageReasonOptions.other')}</SelectItem>
+              </SelectContent>
+            </Select>
+            {shortageReasonCode === 'other' && <label className="block space-y-1.5 text-sm">
+              <span>{t('eventOperations.shortageManualReasonLabel')}</span>
+              <Textarea
+                required
+                minLength={5}
+                maxLength={500}
+                value={shortageManualReason}
+                onChange={(event) => setShortageManualReason(event.target.value)}
+                aria-describedby="shortage-reason-length"
+              />
+              <span id="shortage-reason-length" className="text-xs text-muted-foreground">{t('eventOperations.shortageReasonLength')}</span>
+            </label>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShortageItem(null)}>{t('orderOperations.contactCorrection.cancel')}</Button>
+              <Button type="submit" disabled={!createEventShortageReason(shortageReasonCode, shortageManualReason, (key) => t(key))}>{t('eventOperations.shortagePreview')}</Button>
+            </DialogFooter>
+          </form>}
+        </DialogContent>
+      </Dialog>
       <Dialog open={Boolean(correctionOrder)} onOpenChange={(open) => { if (!open && !correctionBusy) setCorrectionOrder(null); }}>
         <DialogContent>
           <DialogHeader>

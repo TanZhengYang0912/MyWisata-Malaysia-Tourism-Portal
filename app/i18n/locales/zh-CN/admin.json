@@ -105,6 +105,8 @@
     "actions": {
       "submit": "提交",
       "approve": "批准",
+      "viewEvidence": "查看凭证",
+      "hideEvidence": "收起凭证",
       "reject": "拒绝",
       "stateDuration": "{{state}}｜{{duration}}",
       "pause": "暂停"
@@ -1372,6 +1374,7 @@
     "errors": {
       "batchFailed": "批量更新举报失败。",
       "batchUpdate": "一个或多个举报无法更新。",
+      "loadFailed": "无法加载举报。",
       "blockReporter": "无法屏蔽举报人。",
       "blockReporterRetry": "无法屏蔽举报人。请重试。",
       "invalidReason": "请选择有效的解决原因。",
@@ -2139,11 +2142,13 @@
     "confirmed": "已确认 {{count}} 条归因。",
     "errors": {
       "clearanceFailed": "清算失败",
+      "summaryLoad": "无法加载待处理奖励汇总。",
       "unknown": "未知错误"
     },
     "movedToEarnings": "待转入 earnings_sen",
     "pastHoldWindow": "已超过持有窗口的归因",
     "readyToConfirm": "可以确认",
+    "retry": "重试",
     "runClearance": "运行清算",
     "runDescription": "处理所有持有窗口已到期的待处理佣金。Vercel Cron 也会在 MYT 午夜自动运行。",
     "running": "运行中…",
@@ -2597,6 +2602,9 @@
       "grantTitle": "添加钱包审批人",
       "inactive": "账户未激活",
       "loading": "正在加载钱包审批人…",
+      "searchCandidates": "搜索符合条件的用户",
+      "pageSize": "每页行数",
+      "noCandidates": "没有符合条件的用户。",
       "reasonCategories": {
         "coverage_change": "值班覆盖调整",
         "other": "其他",
@@ -2875,6 +2883,8 @@
     },
     "flags": {
       "title": "审核标记",
+      "loadFailed": "无法加载审核标记。",
+      "reviewFailed": "无法将此标记设为已审核。",
       "openCount": "{{count}} 个待处理",
       "showReviewed": "显示已审核",
       "allReviewed": "所有标记均已审核。",
@@ -3626,6 +3636,8 @@
   "refunds": {
     "actions": {
       "approve": "批准",
+      "viewEvidence": "查看凭证",
+      "hideEvidence": "隐藏凭证",
       "refresh": "刷新",
       "reject": "拒绝",
       "simulateRetryableFailure": "模拟可重试失败",
@@ -3636,7 +3648,8 @@
     "manualReferenceLabel": "人工退款凭证编号",
     "manualReferencePrompt": "输入已完成的银行或支付商退款交易凭证编号",
     "detail": {
-      "noReason": "未提供原因"
+      "noReason": "未提供原因",
+      "noEvidence": "没有活动核销记录。"
     },
     "empty": {
       "description": "新的客户退款申请会显示在这里。",
@@ -3645,6 +3658,7 @@
     },
     "errors": {
       "loadRequests": "无法加载退款申请。",
+      "evidenceLoad": "无法加载最新退款凭证。",
       "reviewFailed": "退款审核失败。",
       "simulationFailed": "模拟失败。"
     },
@@ -3743,6 +3757,14 @@
     "searchPlaceholder": "订单 ID 或订单编号",
     "search": "搜索",
     "status": "状态",
+    "vendorFilter": "商家",
+    "vendorSearchPlaceholder": "搜索商家名称…",
+    "vendorSearchHint": "请输入至少 2 个字符",
+    "vendorSearchLoading": "正在搜索商家…",
+    "vendorSearchError": "无法搜索商家。",
+    "vendorSearchEmpty": "没有找到商家。",
+    "vendorSearchResults": "商家搜索结果",
+    "clearVendorFilter": "清除商家筛选",
     "statuses": {
       "all": "全部状态",
       "pending_payment": "待付款",
@@ -3818,6 +3840,8 @@
       "customerTypeLabel": "顾客类型",
       "updated": "最后更新",
       "items": "商品与履约",
+      "associationCounts": "{{items}} 项商品 · {{payments}} 笔付款",
+      "viewOrder": "查看订单",
       "noItems": "没有商品记录。",
       "payments": "付款记录",
       "processed": "处理时间",
@@ -3860,6 +3884,9 @@
     "eyebrow": "内容审核",
     "title": "审核词库",
     "loading": "加载中…",
+    "search": "搜索词条",
+    "pageSize": "每页行数",
+    "retry": "重试",
     "empty": "尚未添加自定义词语。",
     "confirmDelete": "确定要从自动屏蔽列表中移除“{{term}}”吗？",
     "form": {
@@ -3891,6 +3918,7 @@
       "removed": "词语已移除"
     },
     "errors": {
+      "load": "无法加载审核词条。",
       "add": "无法添加词语",
       "update": "无法更新词语",
       "remove": "无法移除词语"
@@ -4340,6 +4368,18 @@
     "uncollected": "未取货",
     "shortage": "处理该日期的缺货",
     "shortageReason": "请说明已确认的缺货原因。",
+    "shortageReasonLabel": "缺货原因",
+    "shortageReasonPlaceholder": "选择缺货原因",
+    "shortageManualReasonLabel": "请填写具体原因",
+    "shortageReasonLength": "请输入5至500个字符。",
+    "shortagePreview": "预览影响",
+    "shortageReasonOptions": {
+      "supplierUnavailable": "供应商确认库存不足",
+      "inventoryMismatch": "实际库存少于系统记录",
+      "itemDamagedOrLost": "商品损坏、遗失或无法交付",
+      "restockDelayed": "补货无法赶上预订日期",
+      "other": "其他"
+    },
     "shortageConfirm": "停止此商品在该日期的新预订，并取消 {{orders}} 个受影响订单（{{units}} 件；已付款 {{amount}}）？已取货及其他订单会受到保护。",
     "filters": {
       "search": "搜索异常订单号",
@@ -4453,6 +4493,7 @@
     "description": "酒店在酒店资料里勾选的设施清单。关闭的设施不会出现在新的资料和酒店页上。",
     "loading": "正在加载设施…",
     "empty": "还没有设施",
+    "retry": "重试",
     "manage": "酒店设施",
     "form": {
       "code": "代码",
@@ -4476,6 +4517,7 @@
       "added": "已新增设施"
     },
     "errors": {
+      "load": "无法加载酒店设施。",
       "add": "无法新增设施",
       "update": "无法更新设施"
     }

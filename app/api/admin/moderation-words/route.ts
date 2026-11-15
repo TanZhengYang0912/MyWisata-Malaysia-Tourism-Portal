@@ -8,8 +8,15 @@ import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { addCustomWordSchema } from '@/lib/validation/moderation-schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 import { addCustomWord, listCustomWords } from '@/lib/moderation/custom-words';
+import { z } from 'zod';
 
-export async function GET() {
+const listQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(100000).default(1),
+  pageSize: z.coerce.number().int().refine((value) => [10, 25, 50].includes(value)).default(10),
+  search: z.string().trim().max(200).default(''),
+});
+
+export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
@@ -17,8 +24,14 @@ export async function GET() {
     return apiFail('FORBIDDEN', 'Only Super Admin can view the moderation word list', 403);
   }
 
-  const words = await listCustomWords(createServiceClient());
-  return apiOk(words);
+  const parsedQuery = listQuerySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
+  if (!parsedQuery.success) return apiFail('VALIDATION_FAILED', 'Invalid moderation word list filters', 422);
+  try {
+    const result = await listCustomWords(createServiceClient(), parsedQuery.data);
+    return apiOk({ ...result, page: parsedQuery.data.page, pageSize: parsedQuery.data.pageSize });
+  } catch {
+    return apiFail('DB_ERROR', 'Unable to load moderation words', 500);
+  }
 }
 
 export async function POST(request: Request) {

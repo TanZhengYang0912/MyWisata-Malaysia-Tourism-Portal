@@ -8,6 +8,11 @@ const baselinePath = resolve(process.cwd(), "supabase/canonical-migration-baseli
 const approvedForwardMigrations = [
   "20261114080708_admin_affiliate_fraud_transaction.sql",
   "20261114081100_affiliate_link_state_audit_transaction.sql",
+  "20261114163502_admin_moderation_queue_paging.sql",
+  "20261114163503_wallet_approver_candidate_page.sql",
+  "20261114163505_admin_order_list_association_summaries.sql",
+  "20261114163506_admin_rewards_pending_summary.sql",
+  "20261114183937_staff_permission_assurance.sql",
   "20261114030000_restore_definer_support_unread_count.sql",
   "20261105095628_admin_support_ticket_atomic_transition.sql",
   "20261105094626_admin_campaign_noop_save.sql",

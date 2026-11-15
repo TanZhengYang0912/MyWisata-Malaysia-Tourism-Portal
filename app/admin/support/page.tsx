@@ -335,19 +335,19 @@ function AdminSupportContent() {
     if (!selected.length) return;
     setBatchBusy(true);
     try {
-      const responses = await Promise.all(selected.map((ticket) => fetch(`/api/admin/tickets/${ticket.id}`, {
+      const results = await Promise.allSettled(selected.map((ticket) => fetch(`/api/admin/tickets/${ticket.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: action }),
       })));
-      const failed = responses.find((response) => !response.ok);
-      if (failed) {
-        const body = await failed.json().catch(() => ({}));
+      const failed = results.find((result) => result.status === "rejected" || !result.value.ok);
+      await loadTickets();
+      setSelectedIds(new Set());
+      if (failed?.status === "fulfilled") {
+        const body = await failed.value.json().catch(() => ({}));
         throw new Error(body?.error?.message ?? t("ui.support.errors.batchUpdate"));
       }
-      setTickets((previous) => previous?.map((ticket) => selected.some((item) => item.id === ticket.id) ? { ...ticket, status: "resolved" } : ticket) ?? null);
-      setSelectedIds(new Set());
-      await loadTickets();
+      if (failed) throw new Error(t("ui.support.errors.batchUpdateFailed"));
       showFeedback("success", t("ui.support.batchResolved", { count: selected.length }));
     } catch (error) {
       showFeedback("error", error instanceof Error ? error.message : t("ui.support.errors.batchUpdateFailed"));

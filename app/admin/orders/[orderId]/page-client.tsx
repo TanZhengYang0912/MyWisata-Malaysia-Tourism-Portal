@@ -34,6 +34,8 @@ type Summary = {
   passes: Array<Record<string, unknown>>;
   checkIns: Array<Record<string, unknown>>;
   hasMore: Record<string, boolean>;
+  associationTotals: { items: number; payments: number };
+  nextCursors: { items: string | null; payments: string | null };
 };
 
 type TimelineEvent = {
@@ -66,6 +68,8 @@ export default function AdminOrderDetailClient({ orderId, returnTo }: { orderId:
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [error, setError] = useState('');
   const [timelineError, setTimelineError] = useState('');
+  const [associationLoading, setAssociationLoading] = useState<{ items: boolean; payments: boolean }>({ items: false, payments: false });
+  const [associationError, setAssociationError] = useState<{ items: string; payments: string }>({ items: '', payments: '' });
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -123,6 +127,28 @@ export default function AdminOrderDetailClient({ orderId, returnTo }: { orderId:
     }
   };
 
+  const loadMoreAssociation = async (section: 'items' | 'payments') => {
+    const nextCursor = summary?.nextCursors[section];
+    if (!nextCursor || associationLoading[section]) return;
+    setAssociationLoading((current) => ({ ...current, [section]: true }));
+    setAssociationError((current) => ({ ...current, [section]: '' }));
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}?section=${section}&cursor=${encodeURIComponent(nextCursor)}`, { cache: 'no-store' });
+      const payload = await response.json() as ApiPayload<{ rows: Array<Record<string, unknown>>; nextCursor: string | null; hasMore: boolean }>;
+      if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? t('orderOperations.detail.loadError'));
+      setSummary((current) => current ? {
+        ...current,
+        [section]: [...current[section], ...payload.data!.rows],
+        nextCursors: { ...current.nextCursors, [section]: payload.data!.nextCursor },
+        hasMore: { ...current.hasMore, [section]: payload.data!.hasMore },
+      } : current);
+    } catch (reason) {
+      setAssociationError((current) => ({ ...current, [section]: reason instanceof Error ? reason.message : t('orderOperations.detail.loadError') }));
+    } finally {
+      setAssociationLoading((current) => ({ ...current, [section]: false }));
+    }
+  };
+
   const order = summary?.order;
   const hasMoreDetail = Object.values(summary?.hasMore ?? {}).some(Boolean);
 
@@ -148,8 +174,8 @@ export default function AdminOrderDetailClient({ orderId, returnTo }: { orderId:
         ].map(([label, value]) => <div key={label}><p className="text-xs font-semibold text-muted-foreground">{label}</p><p className="mt-1 text-sm font-medium text-foreground">{value}</p></div>)}
       </section>
       <section className="grid gap-5 xl:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-5"><h2 className="font-semibold">{t('orderOperations.detail.items')}</h2><div className="mt-4 divide-y divide-border">{summary.items.map((item) => <div key={String(item.id)} className="py-3"><div className="flex justify-between gap-3"><p className="font-medium">{String(item.productName ?? '—')}</p><p className="font-mono text-sm">{formatMoney(Number(item.lineTotal ?? 0), order.currency, locale)}</p></div><p className="mt-1 text-xs text-muted-foreground">{t('orderOperations.detail.itemContext', { quantity: t('orderOperations.detail.quantity', { count: Number(item.quantity ?? 0) }), vendor: String(item.vendorName ?? '—'), outlet: String(item.outletName ?? '—') })}</p><p className="mt-1 text-xs text-muted-foreground">{t('orderOperations.detail.fulfilmentContext', { status: String(item.fulfilmentStatus ?? '—'), date: formatDate(item.fulfilledAt, locale) })}</p></div>)}{summary.items.length === 0 && <p className="py-3 text-sm text-muted-foreground">{t('orderOperations.detail.noItems')}</p>}</div></div>
-        <div className="rounded-2xl border border-border bg-card p-5"><h2 className="font-semibold">{t('orderOperations.detail.payments')}</h2><div className="mt-4 divide-y divide-border">{summary.payments.map((payment) => <div key={String(payment.id)} className="flex justify-between gap-3 py-3"><div><p className="font-medium">{t('orderOperations.detail.paymentContext', { method: String(payment.method ?? '—'), status: String(payment.status ?? '—') })}</p><p className="mt-1 text-xs text-muted-foreground">{t('orderOperations.detail.processedAt', { date: formatDate(payment.processedAt, locale) })}</p></div><p className="font-mono text-sm">{formatMoney(Number(payment.amount ?? 0), order.currency, locale)}</p></div>)}{summary.payments.length === 0 && <p className="py-3 text-sm text-muted-foreground">{t('orderOperations.detail.noPayments')}</p>}</div></div>
+        <div className="rounded-2xl border border-border bg-card p-5"><div className="flex items-baseline justify-between gap-3"><h2 className="font-semibold">{t('orderOperations.detail.items')}</h2><span className="text-xs text-muted-foreground">{summary.associationTotals.items}</span></div><div className="mt-4 divide-y divide-border">{summary.items.map((item) => <div key={String(item.id)} className="py-3"><div className="flex justify-between gap-3"><p className="font-medium">{String(item.productName ?? '—')}</p><p className="font-mono text-sm">{formatMoney(Number(item.lineTotal ?? 0), order.currency, locale)}</p></div><p className="mt-1 text-xs text-muted-foreground">{t('orderOperations.detail.itemContext', { quantity: t('orderOperations.detail.quantity', { count: Number(item.quantity ?? 0) }), vendor: String(item.vendorName ?? '—'), outlet: String(item.outletName ?? '—') })}</p><p className="mt-1 text-xs text-muted-foreground">{t('orderOperations.detail.fulfilmentContext', { status: String(item.fulfilmentStatus ?? '—'), date: formatDate(item.fulfilledAt, locale) })}</p></div>)}{summary.items.length === 0 && <p className="py-3 text-sm text-muted-foreground">{t('orderOperations.detail.noItems')}</p>}</div>{associationError.items && <p role="alert" className="mt-3 text-sm text-destructive">{associationError.items}</p>}{summary.nextCursors.items && <Button className="mt-3" variant="outline" disabled={associationLoading.items} onClick={() => void loadMoreAssociation('items')}>{associationLoading.items ? t('orderOperations.detail.loading') : t('orderOperations.detail.loadMore')}</Button>}</div>
+        <div className="rounded-2xl border border-border bg-card p-5"><div className="flex items-baseline justify-between gap-3"><h2 className="font-semibold">{t('orderOperations.detail.payments')}</h2><span className="text-xs text-muted-foreground">{summary.associationTotals.payments}</span></div><div className="mt-4 divide-y divide-border">{summary.payments.map((payment) => <div key={String(payment.id)} className="flex justify-between gap-3 py-3"><div><p className="font-medium">{t('orderOperations.detail.paymentContext', { method: String(payment.method ?? '—'), status: String(payment.status ?? '—') })}</p><p className="mt-1 text-xs text-muted-foreground">{t('orderOperations.detail.processedAt', { date: formatDate(payment.processedAt, locale) })}</p></div><p className="font-mono text-sm">{formatMoney(Number(payment.amount ?? 0), order.currency, locale)}</p></div>)}{summary.payments.length === 0 && <p className="py-3 text-sm text-muted-foreground">{t('orderOperations.detail.noPayments')}</p>}</div>{associationError.payments && <p role="alert" className="mt-3 text-sm text-destructive">{associationError.payments}</p>}{summary.nextCursors.payments && <Button className="mt-3" variant="outline" disabled={associationLoading.payments} onClick={() => void loadMoreAssociation('payments')}>{associationLoading.payments ? t('orderOperations.detail.loading') : t('orderOperations.detail.loadMore')}</Button>}</div>
         <div className="rounded-2xl border border-border bg-card p-5"><h2 className="font-semibold">{t('orderOperations.detail.bookings')}</h2><div className="mt-4 divide-y divide-border">{summary.bookings.map((booking) => <div key={String(booking.id)} className="flex justify-between gap-3 py-3"><div><p className="font-medium">{String(booking.status ?? '—')}</p><p className="mt-1 text-xs text-muted-foreground">{t('orderOperations.detail.checkedInAt', { date: formatDate(booking.checkInAt, locale) })}</p></div></div>)}{summary.bookings.length === 0 && <p className="py-3 text-sm text-muted-foreground">{t('orderOperations.detail.noBookings')}</p>}</div><div className="mt-3 text-xs text-muted-foreground">{t('orderOperations.detail.passCounts', { passes: summary.passes.length, checkIns: summary.checkIns.length })}</div></div>
         <div className="rounded-2xl border border-border bg-card p-5"><h2 className="font-semibold">{t('orderOperations.detail.refunds')}</h2><div className="mt-4 divide-y divide-border">{summary.refunds.map((refund) => <div key={String(refund.id)} className="flex justify-between gap-3 py-3"><div><p className="font-medium">{String(refund.status ?? '—')}</p><p className="mt-1 text-xs text-muted-foreground">{t('orderOperations.detail.refundDates', { created: formatDate(refund.createdAt, locale), processed: formatDate(refund.processedAt, locale) })}</p></div><p className="font-mono text-sm">{formatMoney(Number(refund.amount ?? 0), order.currency, locale)}</p></div>)}{summary.refunds.length === 0 && <p className="py-3 text-sm text-muted-foreground">{t('orderOperations.detail.noRefunds')}</p>}</div></div>
       </section>

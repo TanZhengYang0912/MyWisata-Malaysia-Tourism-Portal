@@ -12,8 +12,15 @@ const timelineCursorSchema = z.object({
   beforeKey: z.string().regex(/^[a-z0-9_]+:[0-9a-f-]{36}$/).max(120),
   watermark: z.string().datetime({ offset: true }),
 }).strict();
+const associationCursorSchema = z.object({
+  version: z.literal(CURSOR_VERSION),
+  orderId: z.string().uuid(),
+  section: z.enum(['items', 'payments']),
+  beforeAt: z.string().datetime({ offset: true }),
+  beforeId: z.string().uuid(),
+}).strict();
 
-export type AdminOrderSection = 'summary' | 'timeline';
+export type AdminOrderSection = 'summary' | 'timeline' | 'items' | 'payments';
 export type AdminOrderReadResult =
   | { status: 'ok'; data: Record<string, unknown> }
   | { status: 'not_found' }
@@ -41,6 +48,21 @@ function decodeCursor(value: string, orderId: string) {
   }
 }
 
+function encodeAssociationCursor(value: z.infer<typeof associationCursorSchema>) {
+  return Buffer.from(JSON.stringify(value)).toString('base64url');
+}
+
+function decodeAssociationCursor(value: string, orderId: string, section: 'items' | 'payments') {
+  if (value.length > 2048 || !/^[A-Za-z0-9_-]+$/.test(value)) return null;
+  try {
+    const parsed = associationCursorSchema.safeParse(JSON.parse(Buffer.from(value, 'base64url').toString('utf8')));
+    if (!parsed.success || parsed.data.orderId !== orderId || parsed.data.section !== section || Date.parse(parsed.data.beforeAt) > Date.now()) return null;
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
 type OrderHeader = {
   id: string;
   display_id: string | null;
@@ -57,6 +79,17 @@ type OrderHeader = {
   cancelled_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type AssociationItemRow = {
+  id: string; product_name: string; quantity: number; line_total: number | string;
+  fulfil_status: string; fulfilled_at: string | null; pickup_date: string | null; created_at: string;
+  vendors: { name: string | null } | Array<{ name: string | null }> | null;
+  outlets: { name: string | null } | Array<{ name: string | null }> | null;
+};
+type AssociationPaymentRow = {
+  id: string; method: string | null; status: string; amount: number | string;
+  created_at: string; processed_at: string | null;
 };
 
 function timelineCursorFilter(
@@ -102,10 +135,58 @@ export async function readAdminOrderDetail(
     updatedAt: header.updated_at,
   };
 
+  if (section === 'items' || section === 'payments') {
+    const cursor = cursorValue ? decodeAssociationCursor(cursorValue, orderId, section) : null;
+    if (cursorValue && !cursor) return { status: 'invalid_cursor' };
+    const table = section === 'items' ? 'order_items' : 'payments';
+    const select = section === 'items'
+      ? 'id,product_name,quantity,line_total,fulfil_status,fulfilled_at,event_listing_id,pickup_date,created_at,vendors(name),outlets(name)'
+      : 'id,method,status,amount,created_at,processed_at';
+    const baseQuery = db.from(table).select(select).eq('order_id', orderId);
+    const countQuery = db.from(table).select('id', { count: 'exact', head: true }).eq('order_id', orderId);
+    const filteredQuery = cursor && section === 'items'
+      ? baseQuery.or(`created_at.gt.${cursor.beforeAt},and(created_at.eq.${cursor.beforeAt},id.gt.${cursor.beforeId})`)
+      : cursor
+        ? baseQuery.or(`created_at.lt.${cursor.beforeAt},and(created_at.eq.${cursor.beforeAt},id.lt.${cursor.beforeId})`)
+        : baseQuery;
+    const orderedQuery = section === 'items'
+      ? filteredQuery.order('created_at', { ascending: true }).order('id', { ascending: true })
+      : filteredQuery.order('created_at', { ascending: false }).order('id', { ascending: false });
+    const [rowsResult, countResult] = await Promise.all([
+      orderedQuery.limit(PAGE_SIZE + 1),
+      countQuery,
+    ]);
+    if (rowsResult.error || countResult.error) return { status: 'unavailable' };
+    const fetchedRows = (rowsResult.data ?? []) as unknown as Array<Record<string, unknown>>;
+    const rows = fetchedRows.slice(0, PAGE_SIZE);
+    const last = rows.at(-1) as { id: string; created_at: string } | undefined;
+    const hasMore = fetchedRows.length > PAGE_SIZE;
+    const nextCursor = hasMore && last ? encodeAssociationCursor({ version: CURSOR_VERSION, orderId, section, beforeAt: last.created_at, beforeId: last.id }) : null;
+    return {
+      status: 'ok',
+      data: {
+        order: orderView,
+        section,
+        rows: section === 'items' ? (rows as unknown as AssociationItemRow[]).map((item) => ({
+          id: item.id, productName: item.product_name, quantity: item.quantity, lineTotal: item.line_total,
+          fulfilmentStatus: item.fulfil_status, fulfilledAt: item.fulfilled_at, eventDate: item.pickup_date,
+          vendorName: one(item.vendors)?.name ?? null, outletName: one(item.outlets)?.name ?? null,
+          createdAt: item.created_at,
+        })) : (rows as unknown as AssociationPaymentRow[]).map((payment) => ({
+          id: payment.id, method: payment.method, status: payment.status, amount: payment.amount,
+          createdAt: payment.created_at, processedAt: payment.processed_at,
+        })),
+        total: countResult.count ?? 0,
+        nextCursor,
+        hasMore,
+      },
+    };
+  }
+
   if (section === 'summary') {
     const [itemsResult, paymentsResult, refundsResult, eventCountResult] = await Promise.all([
       db.from('order_items')
-        .select('id,product_name,quantity,line_total,fulfil_status,fulfilled_at,event_listing_id,pickup_date,slot_starts_at,vendors(name),outlets(name)', { count: 'exact' })
+        .select('id,product_name,quantity,line_total,fulfil_status,fulfilled_at,event_listing_id,pickup_date,slot_starts_at,created_at,vendors(name),outlets(name)', { count: 'exact' })
         .eq('order_id', orderId).order('created_at', { ascending: true }).order('id', { ascending: true }).range(0, PAGE_SIZE - 1),
       db.from('payments')
         .select('id,method,status,amount,created_at,processed_at', { count: 'exact' })
@@ -136,6 +217,8 @@ export async function readAdminOrderDetail(
     if (checkInsResult.error) return { status: 'unavailable' };
     const passes = passesResult.data ?? [];
     const checkIns = checkInsResult.data ?? [];
+    const lastItem = items.at(-1);
+    const lastPayment = (paymentsResult.data ?? []).at(-1);
     return {
       status: 'ok',
       data: {
@@ -181,6 +264,11 @@ export async function readAdminOrderDetail(
           bookings: bookings.length > PAGE_SIZE,
           passes: passes.length > PAGE_SIZE,
           checkIns: checkIns.length > PAGE_SIZE,
+        },
+        associationTotals: { items: itemsResult.count ?? 0, payments: paymentsResult.count ?? 0 },
+        nextCursors: {
+          items: (itemsResult.count ?? 0) > PAGE_SIZE && lastItem ? encodeAssociationCursor({ version: CURSOR_VERSION, orderId, section: 'items', beforeAt: lastItem.created_at, beforeId: lastItem.id }) : null,
+          payments: (paymentsResult.count ?? 0) > PAGE_SIZE && lastPayment ? encodeAssociationCursor({ version: CURSOR_VERSION, orderId, section: 'payments', beforeAt: lastPayment.created_at, beforeId: lastPayment.id }) : null,
         },
       },
     };

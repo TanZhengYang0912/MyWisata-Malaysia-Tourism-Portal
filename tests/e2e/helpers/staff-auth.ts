@@ -51,7 +51,7 @@ export async function passwordLogin(page: Page, account: PortalAccount) {
   if (captchaWindow) {
     expect(new URL(page.url()).origin).toBe('http://localhost:3001');
     expect(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY).toBe('1x00000000000000000000AA');
-    await expect(page.locator('[data-portal-qa-captcha="ready"]')).toBeVisible();
+    await expect(page.locator('input[type="email"]')).toBeVisible();
     await page.locator('form').getByRole('button', { name: /^sign in$/i }).click();
     await page.waitForURL(url => !url.pathname.startsWith('/login'), { timeout: 45_000 });
     return;

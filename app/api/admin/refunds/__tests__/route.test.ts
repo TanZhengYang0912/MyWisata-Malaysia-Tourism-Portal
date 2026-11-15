@@ -28,6 +28,7 @@ vi.mock('@/lib/refunds/process-refund', () => ({ processRefund: mocks.processRef
 
 import { GET } from '../route';
 import { POST } from '../[refundId]/route';
+import { GET as GET_EVIDENCE } from '../[refundId]/evidence/route';
 
 describe('GET /api/admin/refunds', () => {
   beforeEach(() => {
@@ -42,7 +43,6 @@ describe('GET /api/admin/refunds', () => {
       amount: 50,
       reason: 'Customer request',
       reasonCode: null,
-      evidence: { items: [], version: 'a'.repeat(32) },
       status: 'approved',
       provider_refund_id: 'sim_refund_0123456789abcdef0123456789abcdef01234567',
       manual_reference: null,
@@ -71,7 +71,6 @@ describe('GET /api/admin/refunds', () => {
       amountRm: 50,
       reason: 'Customer request',
       reasonCode: null,
-      evidence: { items: [], version: 'a'.repeat(32) },
       status: 'approved',
       provider: 'tng_ewallet_simulator',
       method: 'ewallet',
@@ -88,7 +87,7 @@ describe('GET /api/admin/refunds', () => {
     });
     expect(JSON.stringify(body)).not.toContain('provider_payment_id');
     expect(mocks.serviceFrom.mock.results[0].value.in).toHaveBeenCalledWith('id', [REFUND_ID]);
-    expect(mocks.serviceRpc.mock.calls.filter(([name]) => name === 'get_event_refund_evidence')).toHaveLength(1);
+    expect(mocks.serviceRpc.mock.calls.filter(([name]) => name === 'get_event_refund_evidence')).toHaveLength(0);
   });
 
   it('rejects non-admin users before using the service client', async () => {
@@ -124,5 +123,27 @@ describe('POST /api/admin/refunds/[refundId]', () => {
       actorId: USER_ID,
       manualReference: 'BANK-REF-12345',
     }));
+  });
+});
+
+describe('GET /api/admin/refunds/[refundId]/evidence', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.adminGuard.mockResolvedValue({ db: {}, user: { id: USER_ID }, response: null });
+    mocks.serviceFrom.mockReturnValue(queryResult({ id: REFUND_ID }));
+    mocks.serviceRpc.mockResolvedValue({ data: { items: [], version: 'a'.repeat(32) }, error: null });
+  });
+
+  it('authorizes, checks the refund ID, and returns only its evidence', async () => {
+    const response = await GET_EVIDENCE(new Request(`http://localhost/api/admin/refunds/${REFUND_ID}/evidence`), { params: Promise.resolve({ refundId: REFUND_ID }) });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ data: { evidence: { items: [], version: 'a'.repeat(32) } } });
+    expect(mocks.serviceRpc).toHaveBeenCalledWith('get_event_refund_evidence', { p_refund: REFUND_ID });
+  });
+
+  it('does not expose an evidence query failure as an empty result', async () => {
+    mocks.serviceRpc.mockResolvedValue({ data: null, error: new Error('private database detail') });
+    const response = await GET_EVIDENCE(new Request(`http://localhost/api/admin/refunds/${REFUND_ID}/evidence`), { params: Promise.resolve({ refundId: REFUND_ID }) });
+    expect(response.status).toBe(500);
   });
 });

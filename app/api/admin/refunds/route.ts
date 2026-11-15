@@ -2,7 +2,6 @@ import { apiFail, apiOk } from '@/lib/validation/schemas';
 import { createServiceClient } from '@/lib/supabase/service';
 import { readReviewQueue, reviewQueueQuery } from '@/lib/admin/review-queue';
 import { requireStaffRoleManagementSuperAdmin } from '@/lib/staff-permissions/server';
-import type { Json } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,10 +45,7 @@ export async function GET(request: Request) {
     .order('id', { ascending: false });
   if (error) return apiFail('DB_ERROR', 'Unable to load refund requests', 500);
 
-  try {
-    const refunds = await Promise.all(((data ?? []) as unknown as RefundQueryRow[]).map(async (refund) => {
-      const { data: evidenceData, error: evidenceError } = await service.rpc('get_event_refund_evidence', { p_refund: refund.id });
-      if (evidenceError) throw new Error('refund_evidence_unavailable');
+  const refunds = ((data ?? []) as unknown as RefundQueryRow[]).map((refund) => {
       const payment = Array.isArray(refund.payments) ? refund.payments[0] : refund.payments;
       const order = Array.isArray(refund.orders) ? refund.orders[0] : refund.orders;
       return {
@@ -59,7 +55,6 @@ export async function GET(request: Request) {
         amountRm: Number(refund.amount),
         reason: refund.reason ?? null,
         reasonCode: refund.reason_code ?? null,
-        evidence: evidenceData as Json,
         status: refund.status,
         provider: payment?.provider ?? null,
         method: payment?.method ?? null,
@@ -74,8 +69,6 @@ export async function GET(request: Request) {
         createdAt: refund.created_at,
         updatedAt: refund.updated_at,
       };
-    }));
-
-    return apiOk({ ...queue, refunds });
-  } catch { return apiFail('DB_ERROR', 'Unable to load refund evidence', 500); }
+  });
+  return apiOk({ ...queue, refunds });
 }

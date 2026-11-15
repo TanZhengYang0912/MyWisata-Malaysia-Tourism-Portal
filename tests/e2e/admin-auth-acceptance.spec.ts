@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { api, localEnv } from './helpers/demo';
 import { installPortalFixtureCleanup, PortalFixture, portalArtifacts } from './helpers/portal-fixture';
-import { PortalGallery, portalRoutes } from './helpers/portal-pages';
+import { adminRoutesAvailableToNavigation, PortalGallery, portalRoutes } from './helpers/portal-pages';
 import { authenticateStaff, staffEvidence } from './helpers/staff-auth';
 
 test.use({ trace: 'off', video: 'off', launchOptions: { channel: 'chrome' } });
@@ -26,6 +26,47 @@ test('a real password, TOTP and WebAuthn assertion authorize the three admin mod
       details: 'Synthetic event advertising detail; never approve, publish or pay this fixture.', poster_url: '/customer/melaka-home-destination.webp', starts_on: date, ends_on: date, status: 'pending' });
     const session = await authenticateStaff(page, fixture, account);
     evidence.authentication = session.evidence;
+
+    // Exercise the shortage reason chooser with a synthetic order and never submit its preview.
+    let shortageRequests = 0;
+    await page.route('**/api/admin/orders?*', route => route.fulfill({ json: { data: {
+      orders: [{
+        id: '00000000-0000-4000-8000-000000000001', isGuest: false, canCorrectGuestContact: false,
+        display_id: 'ORD-QA-SHORTAGE', status: 'paid', subtotal: 45, discount_amount: 0, total_amount: 45,
+        currency: 'MYR', payment_method: 'stripe_card', voucher_code: null, paid_at: new Date().toISOString(),
+        created_at: new Date().toISOString(), customer: { name: 'Synthetic QA customer', email: null },
+        items: [{ id: '00000000-0000-4000-8000-000000000002', eventListingId: '00000000-0000-4000-8000-000000000003',
+          pickupDate: '2026-11-20', productName: 'Synthetic event item', quantity: 1, lineTotal: 45, fulfilStatus: 'pending',
+          vendorName: 'Synthetic vendor', outletName: null }], itemCount: 1, itemsHasMore: false, paymentCount: 1,
+        paymentsHasMore: false, payments: [], payment: null,
+      }], page: 1, pageSize: 25, total: 1, canCorrectGuestContact: false,
+    }, error: null } }));
+    await page.route('**/api/admin/orders/event-shortage', async route => {
+      shortageRequests += 1;
+      await route.fulfill({ json: { data: {}, error: null } });
+    });
+    await page.goto('/admin/orders');
+    await page.getByRole('button', { name: 'Resolve shortage for this date' }).first().click();
+    const reasonSelector = page.getByRole('combobox', { name: 'Shortage reason' });
+    await expect(reasonSelector).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Explain the reason' })).toHaveCount(0);
+    await reasonSelector.click();
+    await page.getByRole('option', { name: 'Supplier confirmed stock is unavailable' }).click();
+    await expect(page.getByRole('textbox', { name: 'Explain the reason' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+
+    await page.getByRole('button', { name: 'Resolve shortage for this date' }).first().click();
+    await page.getByRole('combobox', { name: 'Shortage reason' }).click();
+    await page.getByRole('option', { name: 'Other', exact: true }).click();
+    const manualReason = page.getByRole('textbox', { name: 'Explain the reason' });
+    await expect(manualReason).toBeVisible();
+    await manualReason.fill('Unexpected delivery interruption');
+    await expect(page.getByRole('button', { name: 'Preview impact' })).toBeEnabled();
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    expect(shortageRequests, 'Choosing or canceling a reason must not preview or mutate a shortage').toBe(0);
+    await page.unroute('**/api/admin/orders?*');
+    await page.unroute('**/api/admin/orders/event-shortage');
+
     for (const spec of [
       { routeTemplate: '/admin/access-control', path: '/admin/access-control', role: 'super_admin', heading: 'Access Control', apiPath: '/api/admin/access-control/overview' },
       { routeTemplate: '/admin/event-promotions', path: '/admin/event-promotions', role: 'super_admin', heading: 'External Event Ads', apiPath: '/api/admin/event-promotions', content: promotionTitle },
@@ -37,9 +78,27 @@ test('a real password, TOTP and WebAuthn assertion authorize the three admin mod
     }
     // Static admin pages are visual smoke; domain acceptance is asserted above.
     const covered = new Set(['/admin/access-control', '/admin/event-promotions', '/admin/recommendations']);
-    if (localEnv('PORTAL_E2E_SCREENSHOT_ALL') === '1') for (const route of portalRoutes().filter(route => route.startsWith('/admin/') && !route.includes('[') && !covered.has(route) && !['/admin/kyc', '/admin/kyc/mfa', '/admin/security'].includes(route))) {
-      const result = await gallery.capture(page, { routeTemplate: route, path: route, role: 'super_admin' });
-      expect.soft(result.passed, result.reason ?? route).toBe(true);
+    if (localEnv('PORTAL_E2E_SCREENSHOT_ALL') === '1') {
+      const navigationHrefs = await page.locator('nav a[href^="/admin/"]').evaluateAll(links => links.map(link => new URL((link as HTMLAnchorElement).href).pathname));
+      const routes = portalRoutes().filter(route => route.startsWith('/admin/') && !route.includes('[') && !covered.has(route));
+      const reachableRoutes = adminRoutesAvailableToNavigation(routes, navigationHrefs);
+      const sensitiveRoutes = new Set(['/admin/kyc', '/admin/kyc/mfa', '/admin/security']);
+      expect(reachableRoutes).toContain('/admin/catalogue/hotel-amenities');
+      expect(reachableRoutes).toContain('/admin/staff-conduct');
+      expect(reachableRoutes).toContain('/admin/notifications');
+      expect(reachableRoutes).not.toContain('/admin/hotel-amenities');
+      expect(reachableRoutes).not.toContain('/admin/rewards');
+      expect(reachableRoutes).toContain('/admin/recommendations/rewards');
+
+      for (const route of reachableRoutes.filter(path => !sensitiveRoutes.has(path))) {
+        const spec = route === '/admin/staff-conduct'
+          ? { routeTemplate: route, path: route, role: 'super_admin', apiPath: '/api/admin/conduct-queue' }
+          : route === '/admin/catalogue/hotel-amenities'
+            ? { routeTemplate: route, path: route, role: 'super_admin', apiPath: '/api/admin/hotel-amenities' }
+            : { routeTemplate: route, path: route, role: 'super_admin' };
+        const result = await gallery.capture(page, spec);
+        expect.soft(result.passed, result.reason ?? route).toBe(true);
+      }
     }
     // Invalidate only this run's new staff credentials; the old browser must lose authority.
     const grant = randomBytes(32).toString('base64url');

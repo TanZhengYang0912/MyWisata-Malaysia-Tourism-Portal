@@ -122,6 +122,12 @@ export class TestNode {
     return this.childNodes.map((node) => node.nodeType === 3 ? node.nodeValue : node.textContent).join("");
   }
 
+  querySelectorAll(selector: string) {
+    const radioName = selector.match(/^input\[name="([^"]+)"\]\[type="radio"\]$/)?.[1];
+    if (!radioName) return [];
+    return findElements(this, (element) => element.tagName === "INPUT" && element.type === "radio" && element.getAttribute("name") === radioName);
+  }
+
   set textContent(value: string) {
     this.childNodes = value ? [new TestText(this.ownerDocument, value)] : [];
     if (this.childNodes[0]) this.childNodes[0].parentNode = this;

@@ -1,9 +1,21 @@
 import { createClient } from '@/lib/supabase/server';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
+import { createServiceClient } from '@/lib/supabase/service';
+import { z } from 'zod';
+
+const querySchema = z.object({
+  page: z.coerce.number().int().min(1).max(100000).default(1),
+  pageSize: z.coerce.number().int().refine((value) => [10, 25, 50].includes(value)).default(10),
+  tab: z.enum(['open', 'closed']).default('open'),
+  closedStatus: z.enum(['all', 'resolved', 'dismissed']).default('all'),
+  reason: z.enum(['all', 'scam', 'abuse', 'spam', 'other']).default('all'),
+  sort: z.enum(['newest', 'oldest', 'reason']).default('newest'),
+  search: z.string().trim().max(200).default(''),
+});
 
 // chat_reports_admin_select RLS already scopes this to admins only — the
 // is_admin() check here just turns "empty because not admin" into a clear 403.
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
@@ -11,44 +23,19 @@ export async function GET() {
   const { data: isAdmin, error: roleError } = await supabase.rpc('is_super_admin', { uid: user.id });
   if (roleError || isAdmin !== true) return apiFail('FORBIDDEN', 'Admin role required', 403);
 
-  const { data, error } = await supabase
-    .from('chat_reports')
-    .select('id,thread_id,reporter_id,reason,details,status,resolution_reason,resolution_note,resolved_at,created_at,reporter:users!chat_reports_reporter_id_fkey(full_name,email),chat_threads(customer_id,created_at,customer:users!chat_threads_customer_id_fkey(full_name,email),outlets(name))')
-    .order('created_at', { ascending: false });
-  if (error) return apiFail('DB_ERROR', error.message, 500);
-
-  const reports = data ?? [];
-
-  // Reporter reputation (dismissed vs total) and same-thread crowd-signal are
-  // both derivable from this one result set — no second query needed.
-  const reporterStats = new Map<string, { total: number; dismissed: number }>();
-  const threadReportCounts = new Map<string, number>();
-  for (const r of reports) {
-    const stats = reporterStats.get(r.reporter_id) ?? { total: 0, dismissed: 0 };
-    stats.total += 1;
-    if (r.status === 'dismissed') stats.dismissed += 1;
-    reporterStats.set(r.reporter_id, stats);
-    threadReportCounts.set(r.thread_id, (threadReportCounts.get(r.thread_id) ?? 0) + 1);
-  }
-
-  const reporterIds = [...new Set(reports.map((r) => r.reporter_id))];
-  const bannedUntilByUser = new Map<string, string>();
-  if (reporterIds.length > 0) {
-    const { data: bans, error: bansError } = await supabase
-      .from('chat_report_bans')
-      .select('user_id,banned_until')
-      .in('user_id', reporterIds)
-      .gt('banned_until', new Date().toISOString());
-    if (bansError) return apiFail('DB_ERROR', bansError.message, 500);
-    for (const b of bans ?? []) bannedUntilByUser.set(b.user_id, b.banned_until);
-  }
-
-  const enriched = reports.map((r) => ({
-    ...r,
-    reporterStats: reporterStats.get(r.reporter_id) ?? { total: 1, dismissed: 0 },
-    sameThreadReportCount: threadReportCounts.get(r.thread_id) ?? 1,
-    reporterBannedUntil: bannedUntilByUser.get(r.reporter_id) ?? null,
-  }));
-
-  return apiOk(enriched);
+  const parsed = querySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
+  if (!parsed.success) return apiFail('VALIDATION_FAILED', 'Invalid chat report filters', 422);
+  const { data, error } = await createServiceClient().rpc('list_admin_chat_reports', {
+    p_page: parsed.data.page,
+    p_page_size: parsed.data.pageSize,
+    p_tab: parsed.data.tab,
+    p_closed_status: parsed.data.closedStatus,
+    p_reason: parsed.data.reason,
+    p_sort: parsed.data.sort,
+    p_search: parsed.data.search,
+  });
+  if (error || !data || typeof data !== 'object') return apiFail('DB_ERROR', 'Unable to load chat reports', 500);
+  const result = data as { reports?: unknown[]; page?: number; pageSize?: number; total?: number; summary?: { openCount?: number; closedCount?: number } };
+  if (!Array.isArray(result.reports) || typeof result.total !== 'number' || !result.summary) return apiFail('DB_ERROR', 'Unable to load chat reports', 500);
+  return apiOk(result);
 }

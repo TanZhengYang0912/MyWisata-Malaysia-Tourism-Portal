@@ -111,6 +111,7 @@ function publicSiteUrl() {
 }
 
 const nextConfig: NextConfig = {
+  distDir: process.env.PORTAL_E2E_DIST_DIR ?? '.next',
   // Self-contained server for the Docker image (Dockerfile); Vercel builds it too.
   output: 'standalone',
   compress: true,

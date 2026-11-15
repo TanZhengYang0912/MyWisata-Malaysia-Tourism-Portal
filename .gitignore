@@ -17,6 +17,7 @@
 
 # next.js
 /.next/
+/.next-access-control-e2e/
 /out/
 
 # production

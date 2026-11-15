@@ -37,21 +37,21 @@ describe('/api/admin/moderation-words', () => {
   describe('GET', () => {
     it('requires an authenticated user', async () => {
       mocks.getUser.mockResolvedValue({ data: { user: null } });
-      const res = await GET();
+      const res = await GET(new Request('http://localhost/api/admin/moderation-words'));
       expect(res.status).toBe(401);
     });
 
     it('requires super admin', async () => {
       mocks.isSuperAdmin.mockResolvedValue(false);
-      const res = await GET();
+      const res = await GET(new Request('http://localhost/api/admin/moderation-words'));
       expect(res.status).toBe(403);
     });
 
     it('returns the word list', async () => {
-      mocks.listCustomWords.mockResolvedValue([{ id: 'w1', term: 'bengkok', category: 'slur', language: 'ms', isActive: true, createdAt: '2026-09-12T00:00:00Z' }]);
-      const res = await GET();
+      mocks.listCustomWords.mockResolvedValue({ words: [{ id: 'w1', term: 'bengkok', category: 'slur', language: 'ms', isActive: true, createdAt: '2026-09-12T00:00:00Z' }], total: 1 });
+      const res = await GET(new Request('http://localhost/api/admin/moderation-words'));
       expect(res.status).toBe(200);
-      await expect(res.json()).resolves.toMatchObject({ data: [{ term: 'bengkok' }] });
+      await expect(res.json()).resolves.toMatchObject({ data: { words: [{ term: 'bengkok' }], total: 1, page: 1, pageSize: 10 } });
     });
   });
 

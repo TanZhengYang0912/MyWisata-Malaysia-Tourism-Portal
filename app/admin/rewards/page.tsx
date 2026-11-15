@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { Award, Clock, CheckCircle2, Play } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
-import { supabase } from "@/backend/supabase";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { formatMYR } from "@/lib/i18n/format";
@@ -29,22 +28,19 @@ export default function AdminRewardsPage() {
   const [clearing, setClearing]   = useState(false);
   const [lastResult, setLastResult] = useState<{ confirmed: number } | null>(null);
   const [error, setError]         = useState("");
+  const [summaryError, setSummaryError] = useState(false);
 
   async function loadPending() {
     setLoading(true);
+    setSummaryError(false);
     try {
-      // Count attributions past their hold_until (ready to confirm)
-      const { data: overdue } = await supabase
-        .from("affiliate_attributions")
-        .select("commission_amount")
-        .eq("status", "pending")
-        .lte("hold_until", new Date().toISOString());
-
-      const rows = overdue ?? [];
-      setPending({
-        count:   rows.length,
-        totalRM: rows.reduce((s, r) => s + Number(r.commission_amount), 0),
-      });
+      const response = await fetch("/api/admin/rewards/summary", { cache: "no-store" });
+      const body = await response.json() as { data?: PendingSummary };
+      if (!response.ok || !body.data || !Number.isInteger(body.data.count) || !Number.isFinite(body.data.totalRM)) throw new Error("summary_load_failed");
+      setPending(body.data);
+    } catch {
+      setPending(null);
+      setSummaryError(true);
     } finally {
       setLoading(false);
     }
@@ -90,7 +86,7 @@ export default function AdminRewardsPage() {
           <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1.5">
             <Clock size={12} /> {t("rewards.readyToConfirm")}
           </p>
-          {loading ? (
+          {loading || summaryError ? (
             <p className="text-2xl font-bold text-foreground">—</p>
           ) : (
             <p className="text-2xl font-bold text-foreground">{pending?.count ?? 0}</p>
@@ -99,7 +95,7 @@ export default function AdminRewardsPage() {
         </div>
         <div className="rounded-2xl border border-border bg-card p-5">
           <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">{t("rewards.totalValue")}</p>
-          {loading ? (
+          {loading || summaryError ? (
             <p className="text-2xl font-bold text-foreground">—</p>
           ) : (
             <p className="text-2xl font-bold text-foreground font-[family-name:var(--font-mono)]">
@@ -109,6 +105,7 @@ export default function AdminRewardsPage() {
           <p className="text-xs text-muted-foreground mt-1">{t("rewards.movedToEarnings")}</p>
         </div>
       </div>
+      {summaryError && <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><span>{t("rewards.errors.summaryLoad")}</span><Button variant="outline" onClick={() => void loadPending()}>{t("rewards.retry")}</Button></div>}
 
       {/* Run clearance */}
       <div className="rounded-2xl border border-border bg-card p-6">

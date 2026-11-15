@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   CheckCircle2,
@@ -23,6 +23,8 @@ import { formatMYR } from "@/lib/i18n/format";
 
 import { useVisibleReviewRefresh } from "@/hooks/use-visible-review-refresh";
 
+type RefundEvidence = { version: string; items: { name: string; quantity: number; status: string; collectedAt: string | null; venue: string | null; pickupDate: string | null; pickupWindow: string | null; vendor: string | null; scannedBy: string | null }[] };
+
 type RefundRow = {
   id: string;
   orderId: string;
@@ -30,7 +32,6 @@ type RefundRow = {
   amountRm: number;
   reason: string | null;
   reasonCode: string | null;
-  evidence: { version: string; items: { name: string; quantity: number; status: string; collectedAt: string | null; venue: string | null; pickupDate: string | null; pickupWindow: string | null; vendor: string | null; scannedBy: string | null }[] };
   status: string;
   provider: string | null;
   method: string | null;
@@ -92,6 +93,9 @@ export default function AdminRefundsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(15);
   const [referenceNow, setReferenceNow] = useState<number | null>(null);
+  const [expandedEvidence, setExpandedEvidence] = useState<Set<string>>(new Set());
+  const [evidenceById, setEvidenceById] = useState<Record<string, { evidence?: RefundEvidence; updatedAt: string; loading: boolean; error: boolean }>>({});
+  const evidenceRequests = useRef(new Map<string, Promise<RefundEvidence | null>>());
 
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -140,6 +144,54 @@ export default function AdminRefundsPage() {
   const processedCount = summary.processedCount;
   const failedCount = summary.failedCount;
 
+  async function loadEvidence(refund: RefundRow, forceRefresh = false): Promise<RefundEvidence | null> {
+    const cached = evidenceById[refund.id];
+    if (!forceRefresh && cached?.evidence && cached.updatedAt === refund.updatedAt) return cached.evidence;
+    const pendingRequest = evidenceRequests.current.get(refund.id);
+    if (pendingRequest) return pendingRequest;
+    setEvidenceById((previous) => ({ ...previous, [refund.id]: { updatedAt: refund.updatedAt, loading: true, error: false } }));
+    const request = (async (): Promise<RefundEvidence | null> => {
+      try {
+        const response = await fetch(`/api/admin/refunds/${refund.id}/evidence`, { cache: "no-store" });
+        const body = await response.json() as { data?: { evidence?: RefundEvidence } };
+        if (!response.ok || !body.data?.evidence || typeof body.data.evidence.version !== "string" || !Array.isArray(body.data.evidence.items)) throw new Error("evidence_load_failed");
+        setEvidenceById((previous) => ({ ...previous, [refund.id]: { evidence: body.data!.evidence!, updatedAt: refund.updatedAt, loading: false, error: false } }));
+        return body.data.evidence;
+      } catch {
+        setEvidenceById((previous) => ({ ...previous, [refund.id]: { updatedAt: refund.updatedAt, loading: false, error: true } }));
+        setError(t("refunds.errors.evidenceLoad"));
+        return null;
+      } finally {
+        evidenceRequests.current.delete(refund.id);
+      }
+    })();
+    evidenceRequests.current.set(refund.id, request);
+    return request;
+  }
+
+  function toggleEvidence(refund: RefundRow) {
+    setExpandedEvidence((previous) => {
+      const next = new Set(previous);
+      if (next.has(refund.id)) next.delete(refund.id);
+      else next.add(refund.id);
+      return next;
+    });
+    if (!expandedEvidence.has(refund.id)) void loadEvidence(refund);
+  }
+
+  function renderEvidence(refund: RefundRow) {
+    const entry = evidenceById[refund.id];
+    if (!expandedEvidence.has(refund.id)) return <Button size="sm" variant="outline" onClick={() => toggleEvidence(refund)}>{t("refunds.actions.viewEvidence")}</Button>;
+    return <div className="space-y-2 rounded-lg bg-secondary/60 p-2">
+      <Button size="sm" variant="outline" onClick={() => toggleEvidence(refund)}>{t("refunds.actions.hideEvidence")}</Button>
+      {entry?.loading && <p className="text-xs text-muted-foreground">{t("refunds.loading")}</p>}
+      {entry?.error && <p role="alert" className="text-xs text-destructive">{t("refunds.errors.evidenceLoad")}</p>}
+      {entry?.evidence?.items.map((item, index) => <div key={index} className="text-xs text-muted-foreground"><p>{item.quantity} × {item.name} · {item.vendor}</p><p>{item.venue} · {item.pickupDate} · {item.pickupWindow}</p><p>{item.status === "fulfilled" ? t("eventOperations.collected") : t("eventOperations.uncollected")}{item.collectedAt && ` · ${new Intl.DateTimeFormat(locale, { timeZone: "Asia/Kuala_Lumpur", dateStyle: "short", timeStyle: "short" }).format(new Date(item.collectedAt))}`}{item.scannedBy && ` · ${item.scannedBy}`}</p></div>)}
+      {entry?.evidence?.items.length === 0 && <p className="text-xs text-muted-foreground">{t("refunds.detail.noEvidence")}</p>}
+      {entry?.error && <Button size="sm" variant="outline" onClick={() => void loadEvidence(refund)}>{t("refunds.actions.viewEvidence")}</Button>}
+    </div>;
+  }
+
   function formatAge(createdAt: string) {
     const createdAtTime = new Date(createdAt).getTime();
     const elapsedHours = Math.max(
@@ -159,8 +211,13 @@ export default function AdminRefundsPage() {
   }
 
   async function review(refund: RefundRow, action: "approve" | "reject") {
+    let evidence: RefundEvidence | null = null;
+    if (action === "approve") {
+      evidence = await loadEvidence(refund, true);
+      if (!evidence?.version) return;
+    }
     let note: string | undefined;
-    if (action === 'approve' && refund.evidence?.items.some((item) => item.status === 'fulfilled')) {
+    if (action === 'approve' && evidence?.items.some((item) => item.status === 'fulfilled')) {
       note = (await prompt(t('eventOperations.collectedRefundNote')))?.trim();
       if (!note || note.length < 5) return;
     }
@@ -180,10 +237,13 @@ export default function AdminRefundsPage() {
       const response = await fetch(`/api/admin/refunds/${refundId}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action, evidenceVersion: refund.evidence?.version, ...(note ? { note } : {}), ...(manualReference ? { manualReference } : {}) }),
+        body: JSON.stringify({ action, ...(action === "approve" && evidence ? { evidenceVersion: evidence.version } : {}), ...(note ? { note } : {}), ...(manualReference ? { manualReference } : {}) }),
       });
       const body = await response.json().catch(() => ({}));
-      if (response.status === 409) await load();
+      if (response.status === 409) {
+        setEvidenceById((previous) => { const next = { ...previous }; delete next[refundId]; return next; });
+        await load();
+      }
       if (!response.ok)
         throw new Error(
           body.error?.message ?? t("refunds.errors.reviewFailed"),
@@ -334,7 +394,7 @@ export default function AdminRefundsPage() {
               const simulated = Boolean(refund.provider && SIMULATOR_PROVIDERS.has(refund.provider));
               const busy = busyId === refund.id;
               return <AdminMobileRecordCard key={refund.id} header={<div className="min-w-0"><p className="break-all font-semibold text-foreground">{refund.orderNumber ?? refund.orderId}</p><p className="mt-1 text-sm text-muted-foreground">{refund.reason ?? t("refunds.detail.noReason")}</p></div>} footer={<div className="flex flex-wrap gap-2"><StatusBadge status={statusLabel(refund.status)} />{refund.status === "pending" && <><Button size="sm" variant="outline" disabled={busy} onClick={() => void review(refund, "reject")}>{t("refunds.actions.reject")}</Button><Button size="sm" disabled={busy} onClick={() => void review(refund, "approve")}>{t("refunds.actions.approve")}</Button></>}{refund.status === "approved" && simulated && <><Button size="sm" variant="outline" disabled={busy} onClick={() => void simulate(refund.id, "failed")}>{t("refunds.actions.simulateRetryableFailure")}</Button><Button size="sm" disabled={busy} onClick={() => void simulate(refund.id, "succeeded")}>{t("refunds.actions.simulateSuccess")}</Button></>}{refund.failureMessage && <XCircle size={15} aria-label={refund.failureMessage} className="text-destructive" />}{refund.status === "processed" && <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-300" />}{refund.status === "approved" && !simulated && <Clock3 size={15} className="text-amber-600 dark:text-amber-300" />}</div>}>
-                {refund.evidence?.items.map((item, index) => <div key={index} className="text-xs text-muted-foreground"><p>{item.quantity} × {item.name} · {item.vendor}</p><p>{item.venue} · {item.pickupDate} · {item.pickupWindow}</p><p>{item.status === "fulfilled" ? t("eventOperations.collected") : t("eventOperations.uncollected")}{item.collectedAt && ` · ${new Intl.DateTimeFormat(locale, { timeZone: "Asia/Kuala_Lumpur", dateStyle: "short", timeStyle: "short" }).format(new Date(item.collectedAt))}`}{item.scannedBy && ` · ${item.scannedBy}`}</p></div>)}
+                {renderEvidence(refund)}
                 {refund.failureCode && <p className="break-all font-mono text-xs font-semibold text-destructive">{refund.failureCode}</p>}{refund.failureMessage && <p className="break-words text-xs text-destructive">{refund.failureMessage}</p>}
                 <div className="grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">{t("refunds.table.amount")}</p><p className="font-mono font-bold">{formatMYR(refund.amountRm, locale)}</p><p className="text-xs text-muted-foreground">{refund.method ?? "—"}</p></div><div><p className="text-xs text-muted-foreground">{t("refunds.table.provider")}</p><p className="break-words">{providerLabel(refund.provider, t)}</p>{simulated && <span className="text-xs font-semibold text-amber-800 dark:text-amber-200">{t("refunds.status.simulated")}</span>}</div></div>
                 <p className="text-xs text-muted-foreground">{t("refunds.fundingSummary", { walletTopup: formatMYR(refund.walletTopupSen / 100, locale), walletEarnings: formatMYR(refund.walletEarningsSen / 100, locale), provider: formatMYR(refund.externalAmountSen / 100, locale) })}</p>
@@ -389,15 +449,7 @@ export default function AdminRefundsPage() {
                             <p className="mt-1 truncate text-xs text-muted-foreground">
                               {refund.reason ?? t("refunds.detail.noReason")}
                             </p>
-                            {refund.evidence?.items.map((item, index) => (
-                              <div key={index} className="mt-2 text-xs text-muted-foreground">
-                                <p>{item.quantity} × {item.name} · {item.vendor}</p>
-                                <p>{item.venue} · {item.pickupDate} · {item.pickupWindow}</p>
-                                <p>{item.status === 'fulfilled' ? t('eventOperations.collected') : t('eventOperations.uncollected')}
-                                  {item.collectedAt && ` · ${new Intl.DateTimeFormat(locale, { timeZone: 'Asia/Kuala_Lumpur', dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.collectedAt))}`}
-                                  {item.scannedBy && ` · ${item.scannedBy}`}</p>
-                              </div>
-                            ))}
+                            {renderEvidence(refund)}
                             {refund.failureCode && (
                               <p className="mt-1 truncate font-[family-name:var(--font-mono)] text-[11px] font-semibold text-destructive">
                                 {refund.failureCode}

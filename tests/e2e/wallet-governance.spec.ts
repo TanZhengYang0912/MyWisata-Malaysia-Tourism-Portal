@@ -34,7 +34,7 @@ async function mockWalletSettings(page: Page, patches: PatchRecord[]) {
 async function mockWalletApprovers(page: Page, patches: PatchRecord[]) {
   let approvers = [{ id: 'approver-1', email: 'approver@demo.local', name: 'Wallet Approver', accountStatus: 'active', active: true, grantedAt: null }];
   await page.route('**/api/admin/wallet-approvers', async (route) => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: { data: { items: approvers, eligibleUsers: [{ id: 'user-2', email: 'customer2@demo.local', name: 'Customer Bob' }] }, error: null } });
+    if (route.request().method() === 'GET') return route.fulfill({ json: { data: { items: approvers, eligibleUsers: [{ id: 'user-2', email: 'customer2@demo.local', name: 'Customer Bob' }], total: 1 }, error: null } });
     const body = JSON.parse(route.request().postData() ?? '{}') as { userId: string; action: 'grant' | 'revoke'; reason: string };
     patches.push({ url: route.request().url(), body });
     approvers = [...approvers, { id: body.userId, email: 'customer2@demo.local', name: 'Customer Bob', accountStatus: 'active', active: true, grantedAt: null }];
@@ -74,8 +74,9 @@ test.describe('Wallet governance browser flows', () => {
     await page.goto('/admin/wallet/approvers');
     await expect(page.getByRole('heading', { name: 'Wallet approvers' })).toBeVisible();
 
+    await page.getByLabel('Eligible user').fill('Customer');
+    await page.getByRole('radio', { name: /Customer Bob/ }).check();
     await page.locator('textarea').first().fill('Add a second reviewer for payout coverage');
-    await page.getByLabel('Eligible user').selectOption('user-2');
     await page.getByRole('button', { name: 'Grant access' }).click();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Grant access' }).click();
     await expect(page.getByText('Wallet approver access changed: Grant.')).toBeVisible();

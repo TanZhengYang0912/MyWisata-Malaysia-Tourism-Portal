@@ -81,6 +81,8 @@ async function run() {
   const baseURL = 'http://localhost:3001';
   const env = { ...process.env, PORTAL_E2E_TEST_DB_CONFIRM: ref, PORTAL_E2E_BASE_URL: baseURL,
     PORTAL_E2E_ARTIFACTS: artifacts, PORTAL_E2E_CAPTCHA_WINDOW: directory,
+    PORTAL_E2E_DIST_DIR: '.next-access-control-e2e',
+    ...(process.env.PORTAL_E2E_SCREENSHOT_ALL === '1' ? { PORTAL_E2E_INTERACTIVE: '1' } : {}),
     NEXT_PUBLIC_SITE_URL: baseURL, STAFF_PASSKEY_ORIGIN: baseURL, MYWISATA_LOCAL_LEGACY_STAFF_AUTH: 'false',
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: '1x00000000000000000000AA',
   };
@@ -131,6 +133,7 @@ async function run() {
       if (existsSync(receipt)) writeFileSync(join(artifacts, 'captcha-restoration.json'), readFileSync(receipt), { mode: 0o600 });
     } finally {
       await stop(server, true);
+      rmSync(resolve('.next-access-control-e2e'), { recursive: true, force: true });
       // Failure DOM snapshots can contain form secrets; keep only deliberately sanitized evidence.
       rmSync(join(directory, 'private-test-results'), { recursive: true, force: true });
       process.removeListener('SIGINT', onSignal); process.removeListener('SIGTERM', onSignal);

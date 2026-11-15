@@ -4,6 +4,8 @@ import { apiFail, apiOk, parseBody, walletApproverPatchSchema } from '@/lib/vali
 import { moderateWalletAction } from '@/lib/wallet/moderation-guard';
 import { walletReasonSchema } from '@/lib/validation/wallet-reason-schemas';
 
+type EligibleUser = { id: string; email: string; name: string };
+
 async function requireSuperAdmin() {
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
@@ -19,9 +21,16 @@ async function getRoleId(service: ReturnType<typeof createServiceClient>, name: 
   return data.id as number;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const { response } = await requireSuperAdmin();
   if (response) return response;
+  const query = new URL(request.url).searchParams;
+  const page = Number(query.get('page') ?? 1);
+  const pageSize = Number(query.get('pageSize') ?? 10);
+  const search = (query.get('search') ?? '').trim();
+  if (!Number.isInteger(page) || page < 1 || page > 100000 || ![10, 25, 50].includes(pageSize) || search.length > 200) {
+    return apiFail('VALIDATION_FAILED', 'Invalid Wallet Approver filters', 422);
+  }
   const service = createServiceClient();
   let approverRoleId: number;
   try { approverRoleId = await getRoleId(service, 'approver'); }
@@ -43,22 +52,19 @@ export async function GET() {
     id: user.id, email: user.email, name: user.full_name ?? user.display_name ?? user.email,
     accountStatus: user.status, active: user.status === 'active', grantedAt: created.get(user.id) ?? null,
   }));
-  const { data: activeUsers } = await service.from('users')
-    .select('id,email,full_name,display_name,status').eq('status', 'active').order('created_at', { ascending: false }).limit(100);
-  const eligibleIds = new Set(ids);
-  let superAdminRoleId: number;
-  try { superAdminRoleId = await getRoleId(service, 'super_admin'); }
-  catch { return apiFail('APPROVERS_LOAD_FAILED', 'Super Admin role is not configured', 503); }
-  const { data: superAssignments } = await service.from('user_roles')
-    .select('user_id')
-    .eq('role_id', superAdminRoleId)
-    .is('vendor_id', null)
-    .is('outlet_id', null);
-  for (const row of superAssignments ?? []) eligibleIds.add(row.user_id);
-  const eligibleUsers = (activeUsers ?? []).filter((user) => !eligibleIds.has(user.id)).map((user) => ({
-    id: user.id, email: user.email, name: user.full_name ?? user.display_name ?? user.email,
-  }));
-  return apiOk({ items, eligibleUsers });
+  const { data: candidatePage, error: candidateError } = await service.rpc('list_wallet_approver_candidates', {
+    p_search: search,
+    p_page: page,
+    p_page_size: pageSize,
+  });
+  if (candidateError || !candidatePage || typeof candidatePage !== 'object') {
+    return apiFail('APPROVERS_LOAD_FAILED', 'Unable to load eligible Wallet Approver candidates', 500);
+  }
+  const candidateData = candidatePage as { eligibleUsers?: EligibleUser[]; total?: number };
+  if (!Array.isArray(candidateData.eligibleUsers) || typeof candidateData.total !== 'number') {
+    return apiFail('APPROVERS_LOAD_FAILED', 'Unable to load eligible Wallet Approver candidates', 500);
+  }
+  return apiOk({ items, eligibleUsers: candidateData.eligibleUsers, page, pageSize, total: candidateData.total });
 }
 
 export async function PATCH(request: Request) {

@@ -7,7 +7,7 @@ import { readAdminOrderDetail } from '@/lib/admin/order-operations';
 export const dynamic = 'force-dynamic';
 
 const querySchema = z.object({
-  section: z.enum(['summary', 'timeline']).default('summary'),
+  section: z.enum(['summary', 'timeline', 'items', 'payments']).default('summary'),
   cursor: z.string().max(2048).optional(),
 }).strict();
 
@@ -32,7 +32,7 @@ async function read(request: Request, context: Context) {
   try {
     const result = await readAdminOrderDetail(createServiceClient(), parsedId.data, parsedQuery.data.section, parsedQuery.data.cursor ?? null);
     if (result.status === 'not_found') return apiFail('NOT_FOUND', 'Order not found.', 404);
-    if (result.status === 'invalid_cursor') return apiFail('VALIDATION_FAILED', 'Invalid order timeline cursor.', 422);
+    if (result.status === 'invalid_cursor') return apiFail('VALIDATION_FAILED', 'Invalid order history cursor.', 422);
     if (result.status === 'unavailable') return apiFail('ORDER_DETAIL_UNAVAILABLE', 'Unable to load this order right now. Retry the request.', 503);
     return apiOk(result.data);
   } catch {

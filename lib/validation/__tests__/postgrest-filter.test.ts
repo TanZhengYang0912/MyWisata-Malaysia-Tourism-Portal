@@ -43,6 +43,7 @@ const REVIEWED_SERVER_VALUES: Record<string, string> = {
   'app/api/chatbot/history/route.ts': 'cursor timestamp and UUID are validated by strict zod before constructing the filter',
   'app/api/support/tickets/[id]/read/route.ts': 'timestamp comes from the matched database reply row, not request input',
   'lib/support/reply-pagination.ts': 'only support reply routes call this helper; any user cursor is validated as ISO timestamp and UUID first',
+  'lib/admin/order-operations.ts': 'order association and timeline cursors are strict Zod-validated ISO timestamps and UUIDs, bound to the requested order and section',
 };
 
 function sourceFiles(dir: string): string[] {

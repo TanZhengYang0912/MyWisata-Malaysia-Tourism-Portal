@@ -105,6 +105,8 @@
     "actions": {
       "submit": "Submit",
       "approve": "Approve",
+      "viewEvidence": "View evidence",
+      "hideEvidence": "Hide evidence",
       "reject": "Reject",
       "stateDuration": "{{state}} · {{duration}}",
       "pause": "Pause"
@@ -1372,6 +1374,7 @@
     "errors": {
       "batchFailed": "Batch report update failed.",
       "batchUpdate": "One or more reports could not be updated.",
+      "loadFailed": "Unable to load reports.",
       "blockReporter": "Could not block reporter.",
       "blockReporterRetry": "Could not block reporter. Please try again.",
       "invalidReason": "Choose a valid resolution reason.",
@@ -2139,11 +2142,13 @@
     "confirmed": "Confirmed {{count}} attribution.",
     "errors": {
       "clearanceFailed": "Clearance failed",
+      "summaryLoad": "Could not load the pending reward summary.",
       "unknown": "Unknown error"
     },
     "movedToEarnings": "to be moved to earnings_sen",
     "pastHoldWindow": "attributions past hold window",
     "readyToConfirm": "Ready to confirm",
+    "retry": "Retry",
     "runClearance": "Run Clearance",
     "runDescription": "Processes all pending commissions whose hold window has expired. Vercel Cron also runs this automatically at midnight MYT.",
     "running": "Running…",
@@ -2597,6 +2602,9 @@
       "grantTitle": "Add a wallet approver",
       "inactive": "Inactive account",
       "loading": "Loading wallet approvers…",
+      "searchCandidates": "Search eligible users",
+      "pageSize": "Rows per page",
+      "noCandidates": "No eligible users found.",
       "reasonCategories": {
         "coverage_change": "Coverage change",
         "other": "Other",
@@ -2875,6 +2883,8 @@
     },
     "flags": {
       "title": "Moderation flags",
+      "loadFailed": "Unable to load moderation flags.",
+      "reviewFailed": "Could not mark this flag as reviewed.",
       "openCount": "{{count}} open",
       "showReviewed": "Show reviewed",
       "allReviewed": "All flags reviewed.",
@@ -3626,6 +3636,8 @@
   "refunds": {
     "actions": {
       "approve": "Approve",
+      "viewEvidence": "View evidence",
+      "hideEvidence": "Hide evidence",
       "refresh": "Refresh",
       "reject": "Reject",
       "simulateRetryableFailure": "Simulate retryable failure",
@@ -3636,7 +3648,8 @@
     "manualReferenceLabel": "Manual refund reference",
     "manualReferencePrompt": "Enter the completed bank or provider refund transaction reference",
     "detail": {
-      "noReason": "No reason supplied"
+      "noReason": "No reason supplied",
+      "noEvidence": "No event pickup evidence."
     },
     "empty": {
       "description": "New customer refund requests will appear here.",
@@ -3645,6 +3658,7 @@
     },
     "errors": {
       "loadRequests": "Unable to load refund requests.",
+      "evidenceLoad": "Unable to load current refund evidence.",
       "reviewFailed": "Refund review failed.",
       "simulationFailed": "Simulation failed."
     },
@@ -3743,6 +3757,14 @@
     "searchPlaceholder": "Order ID or order number",
     "search": "Search",
     "status": "Status",
+    "vendorFilter": "Vendor",
+    "vendorSearchPlaceholder": "Search vendor name…",
+    "vendorSearchHint": "Type at least 2 characters",
+    "vendorSearchLoading": "Searching vendors…",
+    "vendorSearchError": "Unable to search vendors.",
+    "vendorSearchEmpty": "No vendors found.",
+    "vendorSearchResults": "Vendor search results",
+    "clearVendorFilter": "Clear vendor",
     "statuses": {
       "all": "All statuses",
       "pending_payment": "Pending payment",
@@ -3818,6 +3840,8 @@
       "customerTypeLabel": "Customer type",
       "updated": "Last updated",
       "items": "Items and fulfilment",
+      "associationCounts": "{{items}} items · {{payments}} payments",
+      "viewOrder": "View order",
       "noItems": "No items recorded.",
       "payments": "Payments",
       "processed": "Processed",
@@ -3860,6 +3884,9 @@
     "eyebrow": "Moderation",
     "title": "Moderation Words",
     "loading": "Loading…",
+    "search": "Search words",
+    "pageSize": "Rows per page",
+    "retry": "Retry",
     "empty": "No custom words added yet.",
     "confirmDelete": "Remove \"{{term}}\" from the auto-censor list?",
     "form": {
@@ -3891,6 +3918,7 @@
       "removed": "Word removed"
     },
     "errors": {
+      "load": "Could not load moderation words.",
       "add": "Could not add word",
       "update": "Could not update word",
       "remove": "Could not remove word"
@@ -4340,6 +4368,18 @@
     "uncollected": "Not collected",
     "shortage": "Resolve shortage for this date",
     "shortageReason": "Explain the confirmed shortage.",
+    "shortageReasonLabel": "Shortage reason",
+    "shortageReasonPlaceholder": "Choose a reason",
+    "shortageManualReasonLabel": "Explain the reason",
+    "shortageReasonLength": "Enter 5 to 500 characters.",
+    "shortagePreview": "Preview impact",
+    "shortageReasonOptions": {
+      "supplierUnavailable": "Supplier confirmed stock is unavailable",
+      "inventoryMismatch": "Actual stock is lower than the system record",
+      "itemDamagedOrLost": "Item is damaged, lost, or cannot be delivered",
+      "restockDelayed": "Restocking will miss the pickup date",
+      "other": "Other"
+    },
     "shortageConfirm": "Close new reservations for this listing/date and cancel {{orders}} affected orders ({{units}} units; {{amount}} paid)? Collected and unrelated orders are protected.",
     "filters": {
       "search": "Search exception order number",
@@ -4453,6 +4493,7 @@
     "description": "The checklist hotels tick in their hotel profile. Turning an amenity off hides it from new profiles and hotel pages.",
     "loading": "Loading amenities…",
     "empty": "No amenities yet",
+    "retry": "Retry",
     "manage": "Hotel amenities",
     "form": {
       "code": "Code",
@@ -4476,6 +4517,7 @@
       "added": "Amenity added"
     },
     "errors": {
+      "load": "Could not load hotel amenities.",
       "add": "Could not add the amenity",
       "update": "Could not update the amenity"
     }

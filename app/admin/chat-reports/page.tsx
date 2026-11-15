@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Flag, Search } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { useAppDialog } from "@/components/providers/app-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
+import { Pagination } from "@/components/shared/pagination";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AdminBatchActionBar } from "@/components/admin/batch-action-bar";
@@ -71,11 +72,17 @@ export default function AdminChatReportsPage() {
   const resolutionLabel = (value: string, fallback: string) => labelOrFallback(`chatReports.resolutions.${value}`, fallback);
   const reportStatusLabel = (value: string) => t(`chatReports.status.${value}`);
   const [reports, setReports] = useState<ChatReport[] | null>(null);
+  const [reportLoadError, setReportLoadError] = useState(false);
   const [statusTab, setStatusTab] = useState<StatusTab>("open");
   const [closedStatusFilter, setClosedStatusFilter] = useState<ClosedStatusFilter>("all");
   const [reasonFilter, setReasonFilter] = useState<ReasonFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
   const [query, setQuery] = useState("");
+  const [appliedQuery, setAppliedQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<10 | 25 | 50>(10);
+  const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState({ openCount: 0, closedCount: 0 });
 
   const [viewReport, setViewReport] = useState<ChatReport | null>(null);
   const [threadMessages, setThreadMessages] = useState<ChatMessage[] | null>(null);
@@ -129,11 +136,22 @@ export default function AdminChatReportsPage() {
   }
 
   async function loadReports() {
+    setReports(null);
     try {
-      const res = await fetch("/api/admin/chat-reports");
-      const result = (await res.json()) as { data: ChatReport[] | null };
-      setReports(res.ok && result.data ? result.data : []);
+      const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize), tab: statusTab, closedStatus: closedStatusFilter, reason: reasonFilter, sort: sortKey, search: appliedQuery });
+      const res = await fetch(`/api/admin/chat-reports?${params}`, { cache: "no-store" });
+      const result = (await res.json()) as { data?: { reports?: ChatReport[]; total?: number; summary?: { openCount: number; closedCount: number } } };
+      if (!res.ok || !Array.isArray(result.data?.reports) || typeof result.data.total !== "number" || !result.data.summary) {
+        setReportLoadError(true);
+        setReports([]);
+        return;
+      }
+      setReportLoadError(false);
+      setReports(result.data.reports);
+      setTotal(result.data.total);
+      setSummary(result.data.summary);
     } catch {
+      setReportLoadError(true);
       setReports([]);
     }
   }
@@ -141,7 +159,14 @@ export default function AdminChatReportsPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadReports();
-  }, []);
+    setSelectedIds(new Set());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusTab, closedStatusFilter, reasonFilter, sortKey, appliedQuery, page, pageSize]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => { setAppliedQuery(query); setPage(1); }, 250);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     if (!viewReport) return;
@@ -150,28 +175,9 @@ export default function AdminChatReportsPage() {
     getMessages(viewReport.thread_id).then(setThreadMessages).catch(() => setThreadMessages([]));
   }, [viewReport]);
 
-  const filtered = useMemo(() => {
-    if (!reports) return [];
-    const normalizedQuery = query.trim().toLowerCase();
-    return reports
-      .filter((r) => (statusTab === "open" ? r.status === "open" : r.status !== "open"))
-      .filter((r) => statusTab === "open" || closedStatusFilter === "all" || r.status === closedStatusFilter)
-      .filter((r) => reasonFilter === "all" || r.reason === reasonFilter)
-      .filter((r) => {
-        if (!normalizedQuery) return true;
-        const searchable = [r.chat_threads?.outlets?.name, r.reporter?.full_name, r.reporter?.email, r.details]
-          .filter(Boolean).join(" ").toLowerCase();
-        return searchable.includes(normalizedQuery);
-      })
-      .sort((a, b) => {
-        if (sortKey === "newest") return b.created_at.localeCompare(a.created_at);
-        if (sortKey === "oldest") return a.created_at.localeCompare(b.created_at);
-        return a.reason.localeCompare(b.reason);
-      });
-  }, [reports, statusTab, closedStatusFilter, reasonFilter, query, sortKey]);
-
-  const openCount = reports?.filter((r) => r.status === "open").length ?? 0;
-  const closedCount = reports ? reports.length - openCount : 0;
+  const filtered = reports ?? [];
+  const openCount = summary.openCount;
+  const closedCount = summary.closedCount;
 
   function startResolve(report: ChatReport, action: "resolved" | "dismissed") {
     setResolveTarget({ report, action });
@@ -194,9 +200,7 @@ export default function AdminChatReportsPage() {
         showFeedback("error", body?.error?.message ?? t("chatReports.errors.updateReport"));
         return;
       }
-      setReports((prev) => prev?.map((r) => (
-        r.id === report.id ? { ...r, status: action, resolution_reason: resolveReason, resolution_note: resolveNote.trim() || null } : r
-      )) ?? null);
+      await loadReports();
       showFeedback("success", t("chatReports.success.marked", { action: resolutionLabel(action, action) }));
       setResolveTarget(null);
       // Acting from inside the view dialog leaves it showing a now-stale "open"
@@ -223,18 +227,19 @@ export default function AdminChatReportsPage() {
     const note = (await prompt(t("chatReports.prompts.resolutionNote"), ""))?.trim() ?? "";
     setBatchBusy(true);
     try {
-      const responses = await Promise.all(selected.map((report) => fetch(`/api/admin/chat-reports/${report.id}`, {
+      const results = await Promise.allSettled(selected.map((report) => fetch(`/api/admin/chat-reports/${report.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: action, resolution_reason: enteredReason, resolution_note: note }),
       })));
-      const failed = responses.find((response) => !response.ok);
-      if (failed) {
-        const body = await failed.json().catch(() => ({}));
+      const failed = results.find((result) => result.status === "rejected" || !result.value.ok);
+      await loadReports();
+      setSelectedIds(new Set());
+      if (failed?.status === "fulfilled") {
+        const body = await failed.value.json().catch(() => ({}));
         throw new Error(body?.error?.message ?? t("chatReports.errors.batchUpdate"));
       }
-      setReports((previous) => previous?.map((report) => selected.some((item) => item.id === report.id) ? { ...report, status: action, resolution_reason: enteredReason, resolution_note: note || null } : report) ?? null);
-      setSelectedIds(new Set());
+      if (failed) throw new Error(t("chatReports.errors.batchFailed"));
       showFeedback("success", t("chatReports.success.batchMarked", { count: selected.length, action: resolutionLabel(action, action) }));
     } catch (error) {
       showFeedback("error", error instanceof Error ? error.message : t("chatReports.errors.batchFailed"));
@@ -325,7 +330,7 @@ export default function AdminChatReportsPage() {
           value={statusTab}
           ariaLabel="chatReports.accessibility.status"
           items={[{ value: "open", label: t("chatReports.tabs.pending"), count: openCount }, { value: "closed", label: t("chatReports.tabs.resolved"), count: closedCount }]}
-          onChange={(value) => setStatusTab(value as StatusTab)}
+          onChange={(value) => { setStatusTab(value as StatusTab); setPage(1); }}
         />
       </div>
 
@@ -342,7 +347,7 @@ export default function AdminChatReportsPage() {
         <div className="flex items-center gap-2">
           <select
             value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
+            onChange={(e) => { setSortKey(e.target.value as SortKey); setPage(1); }}
             className={adminFilterControlClassName}
           >
             <option value="newest">{t("chatReports.sort.newest")}</option>
@@ -350,7 +355,7 @@ export default function AdminChatReportsPage() {
             <option value="reason">{t("chatReports.sort.reason")}</option>
           </select>
           {statusTab === "closed" && (
-            <Select value={closedStatusFilter} onValueChange={(v) => setClosedStatusFilter(v as ClosedStatusFilter)}>
+            <Select value={closedStatusFilter} onValueChange={(v) => { setClosedStatusFilter(v as ClosedStatusFilter); setPage(1); }}>
               <SelectTrigger className={`${adminFilterControlClassName} w-32`}>
                 <SelectValue placeholder={t("chatReports.filters.outcome")} />
               </SelectTrigger>
@@ -361,7 +366,7 @@ export default function AdminChatReportsPage() {
               </SelectContent>
             </Select>
           )}
-          <Select value={reasonFilter} onValueChange={(v) => setReasonFilter(v as ReasonFilter)}>
+          <Select value={reasonFilter} onValueChange={(v) => { setReasonFilter(v as ReasonFilter); setPage(1); }}>
             <SelectTrigger className={`${adminFilterControlClassName} w-36`}>
               <SelectValue placeholder={t("chatReports.filters.reason")} />
             </SelectTrigger>
@@ -373,10 +378,21 @@ export default function AdminChatReportsPage() {
             </SelectContent>
           </Select>
         </div>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          {t("ui.pagination.perPage", { count: pageSize })}
+          <select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value) as 10 | 25 | 50); setPage(1); }} className={adminFilterControlClassName}>
+            {[10, 25, 50].map((size) => <option key={size} value={size}>{size}</option>)}
+          </select>
+        </label>
       </AdminFilterBar>
 
       {reports === null ? (
         <p className="text-sm text-muted-foreground">{t("chatReports.loading")}</p>
+      ) : reportLoadError ? (
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <span>{t("chatReports.errors.loadFailed")}</span>
+          <Button type="button" size="sm" variant="outline" onClick={() => void loadReports()}>{t("ui.support.retry")}</Button>
+        </div>
       ) : filtered.length === 0 ? (
         <EmptyState title={statusTab === "open" ? t("chatReports.empty.pending") : t("chatReports.empty.resolved")} description={t("chatReports.empty.description")} />
       ) : (
@@ -463,6 +479,8 @@ export default function AdminChatReportsPage() {
           </div>
         </div>
       )}
+
+      {!reportLoadError && reports !== null && total > 0 && <Pagination currentPage={page} totalPages={Math.ceil(total / pageSize)} totalItems={total} pageSize={pageSize} onPageChange={setPage} />}
 
       <Dialog open={!!viewReport} onOpenChange={(open) => { if (!open) { setViewReport(null); setThreadMessages(null); } }}>
         <DialogContent className="flex max-h-[85dvh] flex-col overflow-y-auto overscroll-contain sm:max-w-lg">

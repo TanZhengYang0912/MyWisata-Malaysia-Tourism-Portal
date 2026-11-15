@@ -64,3 +64,66 @@ describe('readAdminOrderDetail timeline', () => {
     expect(calls.some((call) => call.method === 'or' || call.method === 'lt')).toBe(true);
   });
 });
+
+describe('readAdminOrderDetail association paging', () => {
+  it('pages every order item with an order-scoped stable cursor', async () => {
+    const header = {
+      id: ORDER_ID, display_id: 'ORD-1', user_id: null, status: 'paid', subtotal: 270,
+      discount_amount: 0, total_amount: 270, currency: 'MYR', payment_method: 'card', voucher_code: null,
+      paid_at: null, completed_at: null, cancelled_at: null,
+      created_at: '2020-01-01T00:00:00.000Z', updated_at: '2020-01-01T00:00:00.000Z',
+    };
+    const itemRows = Array.from({ length: 30 }, (_, index) => ({
+      id: `20000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+      product_name: `Item ${index + 1}`, quantity: 1, line_total: 10, fulfil_status: 'pending',
+      fulfilled_at: null, pickup_date: null, created_at: new Date(Date.UTC(2026, 0, 1, 0, 0, index)).toISOString(),
+      vendors: null, outlets: null,
+    }));
+    const calls: Array<{ table: string; method: string; args: unknown[] }> = [];
+    const client = {
+      from(table: string) {
+        let hasCursor = false;
+        let isHead = false;
+        const result = { data: [], error: null };
+        const proxy = new Proxy({} as Record<string, (...args: unknown[]) => unknown>, {
+          get(_target, method: string | symbol) {
+            if (method === 'then') {
+              const data = table === 'orders' ? header
+                : table === 'order_items' && isHead ? { data: null, count: 30, error: null }
+                  : table === 'order_items' ? { data: hasCursor ? itemRows.slice(25) : itemRows.slice(0, 26), count: 30, error: null }
+                    : result;
+              return (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) => Promise.resolve(data).then(resolve, reject);
+            }
+            if (method === 'maybeSingle') return () => Promise.resolve({ data: table === 'orders' ? header : null, error: null });
+            return (...args: unknown[]) => {
+              calls.push({ table, method: String(method), args });
+              if (method === 'select' && (args[1] as { head?: boolean } | undefined)?.head) isHead = true;
+              if (method === 'or') hasCursor = true;
+              return proxy;
+            };
+          },
+        });
+        return proxy;
+      },
+    } as unknown as SupabaseClient;
+
+    const first = await readAdminOrderDetail(client, ORDER_ID, 'items', null);
+    expect(first.status).toBe('ok');
+    if (first.status !== 'ok') return;
+    const firstRows = first.data.rows as Array<{ id: string }>;
+    expect(firstRows).toHaveLength(25);
+    expect(first.data.total).toBe(30);
+    expect(first.data.hasMore).toBe(true);
+
+    const second = await readAdminOrderDetail(client, ORDER_ID, 'items', first.data.nextCursor as string);
+    expect(second.status).toBe('ok');
+    if (second.status !== 'ok') return;
+    const secondRows = second.data.rows as Array<{ id: string }>;
+    expect(secondRows).toHaveLength(5);
+    expect(secondRows.some((row) => firstRows.some((firstRow) => row.id === firstRow.id))).toBe(false);
+    expect(calls.filter((call) => call.table === 'order_items' && call.method === 'eq')).toEqual(expect.arrayContaining([
+      expect.objectContaining({ args: ['order_id', ORDER_ID] }),
+    ]));
+    expect((await readAdminOrderDetail(client, '22222222-2222-4222-8222-222222222222', 'items', first.data.nextCursor as string)).status).toBe('invalid_cursor');
+  });
+});

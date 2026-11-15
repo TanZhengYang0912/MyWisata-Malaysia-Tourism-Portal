@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), rpc: vi.fn(), from: vi.fn(), serviceFrom: vi.fn(), moderateWalletAction: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), rpc: vi.fn(), from: vi.fn(), serviceFrom: vi.fn(), serviceRpc: vi.fn(), moderateWalletAction: vi.fn() }));
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, rpc: mocks.rpc, from: mocks.from })) }));
-vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn(() => ({ from: mocks.serviceFrom })) }));
+vi.mock('@/lib/supabase/service', () => ({ createServiceClient: vi.fn(() => ({ from: mocks.serviceFrom, rpc: mocks.serviceRpc })) }));
 vi.mock('@/lib/wallet/moderation-guard', () => ({ moderateWalletAction: mocks.moderateWalletAction }));
 
 import { GET, PATCH } from '../route';
@@ -19,19 +19,31 @@ describe('/api/admin/wallet-approvers', () => {
     mocks.rpc.mockResolvedValue({ data: true, error: null });
     mocks.moderateWalletAction.mockResolvedValue({ ok: true, categories: [] });
     mocks.from.mockReturnValue({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: { id: 7 }, error: null }) });
-    mocks.serviceFrom.mockReturnValue({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }), insert: vi.fn().mockResolvedValue({ error: null }), delete: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), upsert: vi.fn().mockResolvedValue({ error: null }) });
+    mocks.serviceFrom.mockImplementation((table: string) => {
+      const result = table === 'roles' ? { data: { id: 7 }, error: null } : { data: [], error: null };
+      const terminal = Promise.resolve(result);
+      const query: Record<string, ReturnType<typeof vi.fn>> = {};
+      for (const method of ['select', 'eq', 'in', 'is', 'delete', 'insert', 'upsert']) query[method] = vi.fn(() => query);
+      query.maybeSingle = vi.fn(async () => result);
+      query.then = terminal.then.bind(terminal) as ReturnType<typeof vi.fn>;
+      return query;
+    });
+    mocks.serviceRpc.mockResolvedValue({ data: { eligibleUsers: [{ id: target, email: 'candidate@example.com', name: 'Candidate' }], total: 1 }, error: null });
   });
 
   it('blocks non-super-admin role management', async () => {
     mocks.rpc.mockResolvedValue({ data: false, error: null });
-    expect((await GET()).status).toBe(403);
+    expect((await GET(new Request('http://localhost/api/admin/wallet-approvers'))).status).toBe(403);
   });
 
-  it('lists only global approver and super-admin assignments', () => {
+  it('uses a database-paged candidate query instead of a 100-user cap', async () => {
     const source = readFileSync(resolve(process.cwd(), 'app/api/admin/wallet-approvers/route.ts'), 'utf8');
-
-    expect(source).toMatch(/select\('user_id,created_at'\)[\s\S]*?\.eq\('role_id', approverRoleId\)[\s\S]*?\.is\('vendor_id', null\)[\s\S]*?\.is\('outlet_id', null\)/);
-    expect(source).toMatch(/select\('user_id'\)[\s\S]*?\.eq\('role_id', superAdminRoleId\)[\s\S]*?\.is\('vendor_id', null\)[\s\S]*?\.is\('outlet_id', null\)/);
+    expect(source).toContain("rpc('list_wallet_approver_candidates'");
+    expect(source).not.toContain('.limit(100)');
+    const response = await GET(new Request('http://localhost/api/admin/wallet-approvers?page=2&pageSize=25&search=Candidate'));
+    expect(response.status).toBe(200);
+    expect(mocks.serviceRpc).toHaveBeenCalledWith('list_wallet_approver_candidates', { p_search: 'Candidate', p_page: 2, p_page_size: 25 });
+    await expect(response.json()).resolves.toMatchObject({ data: { page: 2, pageSize: 25, total: 1 } });
   });
 
   it('prevents self role changes', async () => {

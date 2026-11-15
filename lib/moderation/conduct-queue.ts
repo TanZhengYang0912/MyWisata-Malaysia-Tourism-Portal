@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { databaseUuidSchema } from '@/lib/validation/schemas';
 
 export const CONDUCT_QUEUE_PAGE_SIZES = [15, 25, 50] as const;
 
@@ -19,7 +20,7 @@ export type ConductQueueQuery = z.infer<typeof conductQueueQuerySchema>;
 const conductFlagSchema = z.object({
   id: z.string().uuid(),
   flaggedAdminName: z.string(),
-  targetUserId: z.string().uuid().nullable(),
+  targetUserId: databaseUuidSchema.nullable(),
   targetUserName: z.string().nullable(),
   source: z.enum(['ticket_reply', 'admin_ai']),
   sourceRefId: z.string(),

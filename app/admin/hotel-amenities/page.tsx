@@ -29,16 +29,22 @@ export default function HotelAmenitiesPage() {
   const { showFeedback } = useActionFeedback();
   const [amenities, setAmenities] = useState<Amenity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const ready = /^[a-z0-9_]{2,40}$/.test(form.code) && form.labelEn.trim() && form.labelMs.trim() && form.labelZh.trim() && form.icon.trim();
 
   async function load() {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await fetch("/api/admin/hotel-amenities", { cache: "no-store" });
       const body = (await res.json()) as { data?: { amenities?: Amenity[] } };
-      setAmenities(body.data?.amenities ?? []);
+      if (!res.ok || !Array.isArray(body.data?.amenities)) throw new Error("load_failed");
+      setAmenities(body.data.amenities);
+    } catch {
+      setAmenities([]);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -111,7 +117,12 @@ export default function HotelAmenitiesPage() {
       </section>
 
       <section className="mt-5 rounded-2xl border border-border bg-card p-5">
-        {loading ? (
+        {loadError ? (
+          <div role="alert" className="py-8 text-center">
+            <p className="mb-3 text-sm text-destructive">{t("hotelAmenities.errors.load")}</p>
+            <Button variant="outline" onClick={() => void load()}>{t("hotelAmenities.retry")}</Button>
+          </div>
+        ) : loading ? (
           <p className="py-10 text-center text-sm text-muted-foreground">{t("hotelAmenities.loading")}</p>
         ) : amenities.length === 0 ? (
           <EmptyState title={t("hotelAmenities.empty")} />

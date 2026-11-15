@@ -44,47 +44,31 @@ export interface ModerationFlagRow {
   reviewedAt: string | null;
 }
 
-function userDisplayName(row: { full_name: string | null; email: string } | undefined): string {
-  return row?.full_name ?? row?.email ?? 'Unknown user';
+export interface ModerationFlagPage {
+  groups?: Array<{ key: string; ticketId: string | null; latestFlag: ModerationFlagRow; distinctFlagCount: number; openFlagCount: number }>;
+  flags?: ModerationFlagRow[];
+  page: number;
+  pageSize: number;
+  totalGroups?: number;
+  totalFlags?: number;
+  openFlagCount: number;
 }
 
-export async function getModerationFlags(service: SupabaseClient): Promise<ModerationFlagRow[]> {
-  const { data: flagsData } = await service
-    .from('moderation_flags')
-    .select('id, source_type, source_id, user_id, flag_type, severity, original_excerpt, status, created_at, reviewed_at')
-    .order('created_at', { ascending: false });
-  const flags = flagsData ?? [];
-
-  const userIds = [...new Set(flags.map((f) => f.user_id).filter((id): id is string => Boolean(id)))];
-  const { data: usersData } = userIds.length
-    ? await service.from('users').select('id, full_name, email').in('id', userIds)
-    : { data: [] as { id: string; full_name: string | null; email: string }[] };
-  const usersById = new Map((usersData ?? []).map((u) => [u.id, u]));
-
-  // ticket_reply flags store the reply's own id as source_id (see the
-  // POST /replies route), not the ticket's — resolve reply -> ticket_id so
-  // the admin panel can deep-link into /admin/support?ticket= regardless of
-  // which of the two source types produced the flag.
-  const replyIds = flags.filter((f) => f.source_type === 'ticket_reply').map((f) => f.source_id);
-  const { data: repliesData } = replyIds.length
-    ? await service.from('support_ticket_replies').select('id, ticket_id').in('id', replyIds)
-    : { data: [] as { id: string; ticket_id: string }[] };
-  const ticketIdByReplyId = new Map((repliesData ?? []).map((r) => [r.id, r.ticket_id]));
-
-  return flags.map((f) => ({
-    id: f.id,
-    sourceType: f.source_type,
-    sourceId: f.source_id,
-    ticketId: f.source_type === 'ticket' ? f.source_id : f.source_type === 'ticket_reply' ? ticketIdByReplyId.get(f.source_id) ?? null : null,
-    userId: f.user_id,
-    userName: f.user_id ? userDisplayName(usersById.get(f.user_id)) : 'Unknown user',
-    flagType: f.flag_type,
-    severity: f.severity,
-    originalExcerpt: f.original_excerpt,
-    status: f.status,
-    createdAt: f.created_at,
-    reviewedAt: f.reviewed_at,
-  }));
+export async function getModerationFlagPage(service: SupabaseClient, input: {
+  page: number;
+  pageSize: number;
+  showReviewed: boolean;
+  groupKey?: string;
+}): Promise<ModerationFlagPage> {
+  const { data, error } = await service.rpc('list_admin_moderation_flag_groups', {
+    p_page: input.page,
+    p_page_size: input.pageSize,
+    p_show_reviewed: input.showReviewed,
+    p_group_key: input.groupKey ?? null,
+  });
+  if (error) throw error;
+  if (!data || typeof data !== 'object') throw new Error('moderation_flags_invalid_response');
+  return data as ModerationFlagPage;
 }
 
 export async function reviewModerationFlag(service: SupabaseClient, id: string): Promise<boolean> {

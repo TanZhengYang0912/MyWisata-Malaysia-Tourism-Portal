@@ -104,6 +104,35 @@ describe('GET /api/admin/conduct-queue', () => {
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
   });
 
+  it('accepts database UUIDs used by seeded users in conduct records', async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: {
+        ...queueResponse(),
+        items: [{
+          id: 'd1b3974a-10cb-4d3f-9e1e-6189ff338704',
+          kind: 'flagged_conduct',
+          status: 'open',
+          createdAt: '2026-11-14T18:49:20.000Z',
+          data: {
+            id: 'd1b3974a-10cb-4d3f-9e1e-6189ff338704',
+            flaggedAdminName: 'QA admin',
+            targetUserId: 'aaaaaaaa-0000-0000-0000-000000000005',
+            targetUserName: 'QA user',
+            source: 'ticket_reply',
+            sourceRefId: 'd1b3974a-10cb-4d3f-9e1e-6189ff338705',
+            originalText: 'Test content',
+            severity: 'medium',
+            status: 'open',
+            createdAt: '2026-11-14T18:49:20.000Z',
+          },
+        }],
+      },
+      error: null,
+    });
+
+    expect((await GET(request())).status).toBe(200);
+  });
+
   it('returns a retryable safe error when the RPC fails or returns an invalid shape', async () => {
     mocks.rpc.mockResolvedValueOnce({ data: null, error: { message: 'private database host' } });
     const failed = await GET(request());

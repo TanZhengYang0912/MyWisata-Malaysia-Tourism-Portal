@@ -6,10 +6,19 @@ const ROW = { id: 'w1', term: 'bengkok', category: 'slur', language: 'ms', is_ac
 
 describe('listCustomWords', () => {
   it('maps rows to CustomWord, newest first', async () => {
-    const order = vi.fn().mockResolvedValue({ data: [ROW] });
-    const service = { from: () => ({ select: () => ({ order }) }) } as unknown as SupabaseClient;
-    const words = await listCustomWords(service);
-    expect(words).toEqual([{ id: 'w1', term: 'bengkok', category: 'slur', language: 'ms', isActive: true, createdAt: '2026-09-12T00:00:00Z' }]);
+    const range = vi.fn().mockResolvedValue({ data: [ROW], count: 1, error: null });
+    const query = { order: vi.fn().mockReturnThis(), range, ilike: vi.fn().mockReturnThis() };
+    const service = { from: () => ({ select: () => query }) } as unknown as SupabaseClient;
+    const result = await listCustomWords(service, { page: 1, pageSize: 10, search: '' });
+    expect(result).toEqual({ words: [{ id: 'w1', term: 'bengkok', category: 'slur', language: 'ms', isActive: true, createdAt: '2026-09-12T00:00:00Z' }], total: 1 });
+    expect(range).toHaveBeenCalledWith(0, 9);
+  });
+
+  it('propagates query failure instead of reporting an empty list', async () => {
+    const failure = new Error('database unavailable');
+    const query = { order: vi.fn().mockReturnThis(), range: vi.fn().mockResolvedValue({ data: null, count: null, error: failure }) };
+    const service = { from: () => ({ select: () => query }) } as unknown as SupabaseClient;
+    await expect(listCustomWords(service, { page: 1, pageSize: 10, search: '' })).rejects.toBe(failure);
   });
 });
 

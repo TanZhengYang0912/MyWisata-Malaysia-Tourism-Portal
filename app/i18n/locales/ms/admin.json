@@ -105,6 +105,8 @@
     "actions": {
       "submit": "Hantar",
       "approve": "Luluskan",
+      "viewEvidence": "Lihat bukti",
+      "hideEvidence": "Sembunyikan bukti",
       "reject": "Tolak",
       "stateDuration": "{{state}} • {{duration}}",
       "pause": "Jeda"
@@ -1372,6 +1374,7 @@
     "errors": {
       "batchFailed": "Kemas kini laporan secara pukal gagal.",
       "batchUpdate": "Satu atau lebih laporan tidak dapat dikemas kini.",
+      "loadFailed": "Tidak dapat memuatkan laporan.",
       "blockReporter": "Tidak dapat menyekat pelapor.",
       "blockReporterRetry": "Tidak dapat menyekat pelapor. Sila cuba lagi.",
       "invalidReason": "Pilih sebab penyelesaian yang sah.",
@@ -2139,11 +2142,13 @@
     "confirmed": "Atribusi {{count}} disahkan.",
     "errors": {
       "clearanceFailed": "Penyelesaian gagal",
+      "summaryLoad": "Ringkasan ganjaran tertunda tidak dapat dimuatkan.",
       "unknown": "Ralat tidak diketahui"
     },
     "movedToEarnings": "untuk dipindahkan ke earnings_sen",
     "pastHoldWindow": "atribusi yang melepasi tempoh penahanan",
     "readyToConfirm": "Sedia untuk disahkan",
+    "retry": "Cuba lagi",
     "runClearance": "Jalankan penyelesaian",
     "runDescription": "Memproses semua komisen tertunda yang tempoh penahanannya telah tamat. Vercel Cron turut menjalankannya secara automatik pada tengah malam MYT.",
     "running": "Berjalan…",
@@ -2597,6 +2602,9 @@
       "grantTitle": "Tambah pelulus dompet",
       "inactive": "Akaun tidak aktif",
       "loading": "Memuatkan pelulus dompet…",
+      "searchCandidates": "Cari pengguna yang layak",
+      "pageSize": "Baris setiap halaman",
+      "noCandidates": "Tiada pengguna yang layak ditemui.",
       "reasonCategories": {
         "coverage_change": "Perubahan liputan",
         "other": "Lain-lain",
@@ -2875,6 +2883,8 @@
     },
     "flags": {
       "title": "Bendera penyederhanaan",
+      "loadFailed": "Tidak dapat memuatkan bendera penyederhanaan.",
+      "reviewFailed": "Tidak dapat menandakan laporan ini sebagai disemak.",
       "openCount": "{{count}} terbuka",
       "showReviewed": "Tunjukkan yang disemak",
       "allReviewed": "Semua tanda telah disemak.",
@@ -3626,6 +3636,8 @@
   "refunds": {
     "actions": {
       "approve": "Luluskan",
+      "viewEvidence": "Lihat bukti",
+      "hideEvidence": "Sembunyikan bukti",
       "refresh": "Muat semula",
       "reject": "Tolak",
       "simulateRetryableFailure": "Simulasikan kegagalan boleh cuba semula",
@@ -3636,7 +3648,8 @@
     "manualReferenceLabel": "Rujukan bayaran balik manual",
     "manualReferencePrompt": "Masukkan rujukan transaksi bayaran balik bank atau penyedia yang telah selesai",
     "detail": {
-      "noReason": "Tiada sebab dibekalkan"
+      "noReason": "Tiada sebab dibekalkan",
+      "noEvidence": "Tiada bukti kutipan acara."
     },
     "empty": {
       "description": "Permintaan bayaran balik pelanggan baharu akan muncul di sini.",
@@ -3645,6 +3658,7 @@
     },
     "errors": {
       "loadRequests": "Tidak dapat memuatkan permintaan bayaran balik.",
+      "evidenceLoad": "Tidak dapat memuatkan bukti bayaran balik terkini.",
       "reviewFailed": "Semakan bayaran balik gagal.",
       "simulationFailed": "Simulasi gagal."
     },
@@ -3743,6 +3757,14 @@
     "searchPlaceholder": "ID pesanan atau nombor pesanan",
     "search": "Cari",
     "status": "Status pesanan",
+    "vendorFilter": "Vendor",
+    "vendorSearchPlaceholder": "Cari nama vendor…",
+    "vendorSearchHint": "Masukkan sekurang-kurangnya 2 aksara",
+    "vendorSearchLoading": "Sedang mencari vendor…",
+    "vendorSearchError": "Vendor tidak dapat dicari.",
+    "vendorSearchEmpty": "Tiada vendor ditemui.",
+    "vendorSearchResults": "Hasil carian vendor",
+    "clearVendorFilter": "Kosongkan vendor",
     "statuses": {
       "all": "Semua status",
       "pending_payment": "Menunggu pembayaran",
@@ -3818,6 +3840,8 @@
       "customerTypeLabel": "Jenis pelanggan",
       "updated": "Kemas kini terakhir",
       "items": "Item dan pemenuhan",
+      "associationCounts": "{{items}} item · {{payments}} pembayaran",
+      "viewOrder": "Lihat pesanan",
       "noItems": "Tiada item direkodkan.",
       "payments": "Pembayaran",
       "processed": "Diproses",
@@ -3860,6 +3884,9 @@
     "eyebrow": "Moderasi",
     "title": "Perkataan Moderasi",
     "loading": "Memuatkan…",
+    "search": "Cari perkataan",
+    "pageSize": "Baris setiap halaman",
+    "retry": "Cuba lagi",
     "empty": "Belum ada perkataan tersuai ditambah.",
     "confirmDelete": "Buang \"{{term}}\" daripada senarai penapisan automatik?",
     "form": {
@@ -3891,6 +3918,7 @@
       "removed": "Perkataan dibuang"
     },
     "errors": {
+      "load": "Tidak dapat memuatkan perkataan moderasi.",
       "add": "Tidak dapat menambah perkataan",
       "update": "Tidak dapat mengemas kini perkataan",
       "remove": "Tidak dapat membuang perkataan"
@@ -4340,6 +4368,18 @@
     "uncollected": "Belum diambil",
     "shortage": "Selesaikan kekurangan pada tarikh ini",
     "shortageReason": "Jelaskan kekurangan yang telah disahkan.",
+    "shortageReasonLabel": "Sebab kekurangan stok",
+    "shortageReasonPlaceholder": "Pilih sebab",
+    "shortageManualReasonLabel": "Jelaskan sebab tersebut",
+    "shortageReasonLength": "Masukkan 5 hingga 500 aksara.",
+    "shortagePreview": "Pratonton kesan",
+    "shortageReasonOptions": {
+      "supplierUnavailable": "Pembekal mengesahkan stok tiada",
+      "inventoryMismatch": "Stok sebenar kurang daripada rekod sistem",
+      "itemDamagedOrLost": "Barang rosak, hilang atau tidak dapat dihantar",
+      "restockDelayed": "Stok baharu tidak sempat tiba sebelum tarikh ambil",
+      "other": "Lain-lain"
+    },
     "shortageConfirm": "Tutup tempahan baharu untuk barang/tarikh ini dan batalkan {{orders}} pesanan terjejas ({{units}} unit; bayaran {{amount}})? Pesanan yang telah diambil dan pesanan lain dilindungi.",
     "filters": {
       "search": "Cari nombor pesanan pengecualian",
@@ -4453,6 +4493,7 @@
     "description": "Senarai semak yang ditanda oleh hotel dalam profil hotel mereka. Kemudahan yang dimatikan tidak dipaparkan dalam profil baharu dan halaman hotel.",
     "loading": "Memuatkan kemudahan…",
     "empty": "Belum ada kemudahan",
+    "retry": "Cuba lagi",
     "manage": "Kemudahan hotel",
     "form": {
       "code": "Kod",
@@ -4476,6 +4517,7 @@
       "added": "Kemudahan ditambah"
     },
     "errors": {
+      "load": "Tidak dapat memuatkan kemudahan hotel.",
       "add": "Kemudahan tidak dapat ditambah",
       "update": "Kemudahan tidak dapat dikemas kini"
     }

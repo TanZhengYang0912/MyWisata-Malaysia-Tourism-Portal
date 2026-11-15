@@ -7,6 +7,13 @@ export type PortalPage = { routeTemplate: string; path: string; role: string; fi
 type Capture = PortalPage & { actualPath: string; readiness: string; criticalApiStatuses: number[]; screenshotPath: string; outcome: 'passed' | 'failed'; failureReason: string | null };
 const escape = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
 
+export function adminRoutesAvailableToNavigation(routes: string[], navigationHrefs: string[]) {
+  return routes.filter(route => route === '/admin/notifications'
+    || route === '/admin/help'
+    || route.startsWith('/admin/help/')
+    || navigationHrefs.some(href => route === href || route.startsWith(`${href}/`)));
+}
+
 export function portalRoutes(directory = join(process.cwd(), 'app')): string[] {
   const routes: string[] = [];
   function visit(folder: string, segments: string[]) {
@@ -28,6 +35,20 @@ export class PortalGallery {
   async capture(page: Page, spec: PortalPage) {
     const screenshotPath = `${this.name}-${String(this.records.length + 1).padStart(3, '0')}.png`;
     const statuses: number[] = [];
+    const failedAdminApis: string[] = [];
+    const pageErrors: string[] = [];
+    const observeResponse = (response: import('@playwright/test').Response) => {
+      const url = new URL(response.url());
+      if (url.origin === new URL(page.url()).origin && url.pathname.startsWith('/api/admin/') && response.status() >= 400) {
+        failedAdminApis.push(`${url.pathname} (${response.status()})`);
+      }
+    };
+    const observePageError = (error: Error) => pageErrors.push(error.message.slice(0, 160));
+    const isAdminPage = spec.role === 'admin' || spec.role === 'super_admin';
+    if (isAdminPage) {
+      page.on('response', observeResponse);
+      page.on('pageerror', observePageError);
+    }
     let reason: string | null = null;
     const responsePromise = spec.apiPath ? page.waitForResponse(response => new URL(response.url()).pathname === spec.apiPath && response.request().method() === 'GET', { timeout: 25_000 }) : null;
     // Observe failures immediately so a navigation failure cannot leave an unhandled promise.
@@ -36,6 +57,7 @@ export class PortalGallery {
       const response = await page.goto(spec.path, { waitUntil: 'domcontentloaded', timeout: 35_000 });
       expect(response?.status(), 'Main document must be successful').toBe(200);
       const actualPath = new URL(page.url()).pathname;
+      expect(actualPath, 'The requested admin route must remain open').toBe(new URL(spec.path, page.url()).pathname);
       const isExpectedPublicLogin = spec.role === 'public' && spec.path === '/login' && actualPath === '/login';
       expect(isExpectedPublicLogin || actualPath !== '/login').toBe(true);
       if (primary) {
@@ -48,12 +70,21 @@ export class PortalGallery {
       }
       if (spec.heading) await expect(page.getByRole('heading', { name: spec.heading, exact: true })).toBeVisible({ timeout: 20_000 });
       if (spec.content) await expect(page.getByText(spec.content, { exact: false }).first()).toBeVisible({ timeout: 20_000 });
-      await expect(page.getByText(/^Loading(?:…|\.\.\.)?$/, { exact: true })).toHaveCount(0, { timeout: 15_000 });
+      await expect(page.getByText(/^Loading(?:\s+[^\n]+)?(?:…|\.\.\.)?$/, { exact: true })).toHaveCount(0, { timeout: 20_000 });
       await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 20_000 });
       await expect(page.getByText('Your review access is no longer available.', { exact: true })).toHaveCount(0);
       await expect(page.getByText('Loading Access Control data…', { exact: true })).toHaveCount(0, { timeout: 20_000 });
+      await expect.poll(() => new URL(page.url()).pathname, { timeout: 20_000 }).toBe(new URL(spec.path, page.url()).pathname);
+      if (isAdminPage) {
+        expect(failedAdminApis, 'Admin API requests must succeed').toEqual([]);
+        expect(pageErrors, 'The page must not throw browser errors').toEqual([]);
+      }
     } catch (error) {
       reason = error instanceof Error ? error.message.split('\n')[0].slice(0, 240) : 'Page acceptance failed';
+    }
+    if (isAdminPage) {
+      page.off('response', observeResponse);
+      page.off('pageerror', observePageError);
     }
     await page.screenshot({ path: join(this.directory, screenshotPath), fullPage: true, animations: 'disabled' });
     this.records.push({ ...spec, environment: spec.environment ?? 'shared-supabase', actualPath: new URL(page.url()).pathname,

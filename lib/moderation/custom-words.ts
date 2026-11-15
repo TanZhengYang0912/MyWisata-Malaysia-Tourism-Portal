@@ -35,12 +35,20 @@ function toCustomWord(row: Row): CustomWord {
   };
 }
 
-export async function listCustomWords(service: SupabaseClient): Promise<CustomWord[]> {
-  const { data } = await service
+export async function listCustomWords(
+  service: SupabaseClient,
+  options: { page: number; pageSize: number; search: string },
+): Promise<{ words: CustomWord[]; total: number }> {
+  let query = service
     .from('moderation_custom_words')
-    .select('id, term, category, language, is_active, created_at')
-    .order('created_at', { ascending: false });
-  return (data ?? []).map((row) => toCustomWord(row as Row));
+    .select('id, term, category, language, is_active, created_at', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false });
+  if (options.search) query = query.ilike('term', `%${options.search.replace(/[\\%_]/g, '\\$&')}%`);
+  const from = (options.page - 1) * options.pageSize;
+  const { data, count, error } = await query.range(from, from + options.pageSize - 1);
+  if (error) throw error;
+  return { words: (data ?? []).map((row) => toCustomWord(row as Row)), total: count ?? 0 };
 }
 
 export type AddCustomWordResult = { ok: true; word: CustomWord } | { ok: false; error: string };
