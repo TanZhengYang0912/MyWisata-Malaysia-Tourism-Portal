@@ -163,7 +163,6 @@ export const CUSTOMER_I18N_FILES = [
   "components/customer/product-save-button.tsx",
   "components/customer/promotion-spotlight.tsx",
   "components/customer/promotion-campaign-spotlight.tsx",
-  "components/customer/promotion-campaign-vendor-card.tsx",
   "components/customer/recommendation-earnings-panel.tsx",
   "components/customer/refund-request-dialog.tsx",
   "components/customer/save-toggle-button.tsx",

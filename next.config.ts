@@ -194,6 +194,8 @@ const nextConfig: NextConfig = {
       { pathname: '**', search: '' },
     ],
     minimumCacheTTL: 2592000,
+    // Bound the optimizer's on-disk cache (default is unbounded within the container).
+    maximumDiskCacheSize: 500_000_000,
   },
 };
 

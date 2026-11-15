@@ -5,6 +5,7 @@ const USER = "11111111-1111-4111-8111-111111111111";
 
 const state = vi.hoisted(() => ({
   user: null as { id: string } | null,
+  getClaims: null as unknown as ReturnType<typeof vi.fn>,
   isHotel: true,
   calls: [] as Array<{ op: string; table: string; payload?: unknown; options?: unknown; filters: Array<[string, unknown]> }>,
 }));
@@ -12,7 +13,7 @@ const state = vi.hoisted(() => ({
 vi.mock("@/lib/customer/hotel-outlet", () => ({ isHotelOutlet: vi.fn(async () => state.isHotel) }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
-    auth: { getUser: async () => ({ data: { user: state.user } }) },
+    auth: { getUser: async () => ({ data: { user: state.user } }), getClaims: state.getClaims },
     from: (table: string) => {
       const call = { op: "select", table, filters: [] as Array<[string, unknown]>, payload: undefined as unknown, options: undefined as unknown };
       state.calls.push(call);
@@ -36,7 +37,18 @@ const request = (method: string, body?: unknown) => new Request("http://localhos
 });
 
 describe("saved hotels API", () => {
-  beforeEach(() => { state.user = { id: USER }; state.isHotel = true; state.calls = []; });
+  beforeEach(() => {
+    state.user = { id: USER }; state.isHotel = true; state.calls = [];
+    state.getClaims = vi.fn(async () => ({ data: { claims: state.user ? { sub: state.user.id } : null }, error: null }));
+  });
+
+  it("lists the caller's saved hotels from locally verified token claims", async () => {
+    const response = await route.GET();
+
+    expect(response.status).toBe(200);
+    expect(state.getClaims).toHaveBeenCalled();
+    expect(state.calls[0].filters).toContainEqual(["user_id", USER]);
+  });
 
   it("requires sign-in", async () => {
     state.user = null;

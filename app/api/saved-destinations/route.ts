@@ -2,6 +2,7 @@ import { z } from "zod";
 import { MALAYSIA_DESTINATIONS } from "@/lib/customer/malaysia-destinations";
 import { createClient } from "@/lib/supabase/server";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
+import { getClaimsUserId } from "@/lib/auth/claims-user";
 
 const savedDestinationSchema = z.object({
   destinationState: z.string().trim().min(1).max(80),
@@ -18,13 +19,14 @@ async function getUser() {
 }
 
 export async function GET() {
-  const { supabase, user } = await getUser();
-  if (!user) return apiFail("UNAUTHORIZED", "Sign in required", 401);
+  const supabase = await createClient();
+  const userId = await getClaimsUserId(supabase);
+  if (!userId) return apiFail("UNAUTHORIZED", "Sign in required", 401);
 
   const { data, error } = await supabase
     .from("customer_saved_destinations")
     .select("destination_state,created_at")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) return apiFail("DB_ERROR", error.message, 500);

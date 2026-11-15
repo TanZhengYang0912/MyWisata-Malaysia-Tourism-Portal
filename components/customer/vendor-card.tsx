@@ -1,10 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Map as MapIcon } from "lucide-react";
 import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
+import { isOptimizableImageUrl } from "@/lib/storage/optimizable-image";
 import { CardFrame, CardLocationStatus } from "@/components/customer/card-frame";
 import { ShareButton } from "@/components/shared/share-button";
 import { PhotoRatingBadge } from "@/components/customer/photo-rating-badge";
@@ -75,8 +77,7 @@ export function VendorCard({ vendor, categories = [], destinationHref, index = 0
         closedLabel={t("ui.operatingHours.closedNow")}
       />}
       brandMark={visual.logoUrl
-        // eslint-disable-next-line @next/next/no-img-element -- vendor logos come from runtime-configured storage hosts
-        ? <img src={visual.logoUrl} alt="" className="h-full w-full bg-card object-cover" />
+        ? <Image src={visual.logoUrl} alt="" fill sizes="38px" unoptimized={!isOptimizableImageUrl(visual.logoUrl)} className="h-full w-full bg-card object-cover" />
         : visual.initials}
     />
   );

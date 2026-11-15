@@ -61,6 +61,14 @@ describe("campaign envelope markup", () => {
     expect(markup.match(/data-show-original/g)).toHaveLength(1);
   });
 
+  it("serves a Supabase poster through the image optimizer", () => {
+    const posterUrl = "https://abcdefghijklmnop.supabase.co/storage/v1/object/public/campaign-posters/p.jpg";
+    const markup = renderToStaticMarkup(<CampaignEnvelope campaign={{ ...campaign, posterUrl }} />);
+    const images = markup.match(/<img [^>]*>/g) ?? [];
+    expect(images.length).toBeGreaterThan(0);
+    for (const image of images) expect(image).toContain("/_next/image?url=");
+  });
+
   it("omits the stalls row without vendors and caps the location list", () => {
     const many = { ...campaign, locations: ["a", "b", "c", "d", "e"].map((id) => location(id, `Place ${id}`)) };
     const markup = renderToStaticMarkup(<CampaignEnvelope campaign={many} />);

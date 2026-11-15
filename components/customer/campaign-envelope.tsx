@@ -15,6 +15,7 @@ import { formatDate, formatDateTime } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { formatEventDate, formatEventDateRange, formatEventHours, getEventOperationalLabelKey, getNextEventSession } from "@/lib/promotion-campaigns/locations";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
+import { isOptimizableImageUrl } from "@/lib/storage/optimizable-image";
 
 const PIECES = ["bottom", "top", "flap"] as const;
 const DOUBLE_CLICK_MS = 260;
@@ -57,7 +58,7 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
   const placeNames = [...new Set(campaign.locations.map((location) => location.name))];
   const session = getNextEventSession(campaign.locations);
   const image = campaign.posterUrl;
-  const unoptimized = Boolean(image && (image.startsWith("http://") || image.startsWith("https://")));
+  const unoptimized = !isOptimizableImageUrl(image);
   const firstLocation = campaign.locations[0];
 
   useEffect(() => {
@@ -390,7 +391,7 @@ export function CampaignEnvelope({ campaign, imagePriority = false }: { campaign
                       {campaign.vendors.slice(0, 4).map((vendor) => (
                         <span key={vendor.vendorId} className="relative -ml-2 flex h-7 w-7 items-center justify-center overflow-hidden rounded-[9px] border-2 border-card bg-primary text-[10px] font-bold text-primary-foreground">
                           {vendor.vendorLogoUrl
-                            ? <Image src={vendor.vendorLogoUrl} alt="" fill sizes="28px" unoptimized={vendor.vendorLogoUrl.startsWith("http://") || vendor.vendorLogoUrl.startsWith("https://")} className="object-cover" />
+                            ? <Image src={vendor.vendorLogoUrl} alt="" fill sizes="28px" unoptimized={!isOptimizableImageUrl(vendor.vendorLogoUrl)} className="object-cover" />
                             : initials(vendor.vendorName)}
                         </span>
                       ))}

@@ -13,7 +13,7 @@ vi.mock("@/components/customer/use-customer-capability-gate", () => ({
   useCustomerCapabilityGate: () => Object.assign(() => true, { handleResponse: vi.fn(async () => false) }),
 }));
 vi.mock("@/lib/promotion-campaigns/public", () => ({ getPublicPromotionCampaigns: mocks.getPublicPromotionCampaigns }));
-vi.mock("next/navigation", () => ({ notFound: mocks.notFound }));
+vi.mock("next/navigation", () => ({ notFound: mocks.notFound, useSearchParams: () => new URLSearchParams() }));
 
 import CustomerEventDetailPage from "@/app/customer/events/[slug]/page";
 
@@ -65,7 +65,7 @@ describe("customer promotion campaign detail", () => {
     expect(markup).toContain(`href="/customer/events/${campaign.slug}/${vendor.vendorId}"`);
     expect(markup).not.toContain("ui.promotionCampaigns.loading");
     expect(mocks.getPublicPromotionCampaigns).toHaveBeenCalledWith(campaign.slug);
-    expect(markup).toContain("8:00 PM");
+    expect(markup).toContain("10:00 AM – 6:00 PM");
   });
 
   it("shows only dates for an event that covers full Malaysia calendar days", async () => {

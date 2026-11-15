@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 import { isHotelOutlet } from "@/lib/customer/hotel-outlet";
+import { getClaimsUserId } from "@/lib/auth/claims-user";
 
 const savedOutletSchema = z.object({
   outletId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "Invalid UUID"),
@@ -14,13 +15,14 @@ async function getUser() {
 }
 
 export async function GET() {
-  const { supabase, user } = await getUser();
-  if (!user) return apiFail("UNAUTHORIZED", "Sign in required", 401);
+  const supabase = await createClient();
+  const userId = await getClaimsUserId(supabase);
+  if (!userId) return apiFail("UNAUTHORIZED", "Sign in required", 401);
 
   const { data, error } = await supabase
     .from("customer_saved_outlets")
     .select("outlet_id,created_at")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) return apiFail("DB_ERROR", error.message, 500);
