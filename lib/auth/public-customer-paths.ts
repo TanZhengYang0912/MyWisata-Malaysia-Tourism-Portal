@@ -30,6 +30,16 @@ const PUBLIC_CUSTOMER_PREFIXES = [
 export function isPublicCustomerPath(pathname: string): boolean {
   if (/^\/customer\/(?:orders|checkout\/simulator)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pathname)) return true;
   if (PUBLIC_CUSTOMER_ROOTS.includes(pathname as (typeof PUBLIC_CUSTOMER_ROOTS)[number])) return true;
+  return isCustomerBrowsePath(pathname);
+}
+
+/**
+ * Home and catalogue pages that render the same for everyone, so they may render
+ * before the sign-in state resolves. Commerce and account roots stay excluded:
+ * they start guest-only flows that a signed-in visitor must not run.
+ */
+export function isCustomerBrowsePath(pathname: string): boolean {
+  if (pathname === "/customer") return true;
   return PUBLIC_CUSTOMER_PREFIXES.some((prefix) => {
     if (prefix.endsWith("/")) return pathname.startsWith(prefix);
     return pathname === prefix || pathname.startsWith(`${prefix}/`);

@@ -26,29 +26,73 @@ vi.mock("@/components/customer/localized-content", () => ({
 import { CampaignEnvelope } from "@/components/customer/campaign-envelope";
 
 const location = (id: string, name: string) => ({ id, name, address: null, lat: null, lng: null, startsOn: "2026-10-01", endsOn: "2026-10-08", opensAt: "10:00", closesAt: "18:00" });
+// Full-day campaign: 1–8 Oct 2026 in Malaysia time.
 const campaign: PromotionCampaignPublic = {
   id: "campaign", slug: "sample-event", title: "Sample event", summary: "", description: "",
   posterUrl: null, operatingHours: null,
   startsAt: "2026-09-30T16:00:00.000Z", endsAt: "2026-10-08T15:59:59.999Z",
   visibility: "upcoming", locations: [location("a", "Bangsar"), location("b", "Penang")], vendors: [],
 };
+// Timed campaign: 25 Sep 2026, 6:50 PM to 13 Mar 2027, 7:00 AM in Malaysia time.
+const timed: PromotionCampaignPublic = { ...campaign, startsAt: "2026-09-25T10:50:00.000Z", endsAt: "2027-03-12T23:00:00.000Z" };
 
 describe("campaign envelope markup", () => {
-  it("shows only the invitation, name, dates and places on the closed front", () => {
-    const markup = renderToStaticMarkup(<CampaignEnvelope campaign={campaign} />);
-    expect(markup).toContain("ui.promotionCampaigns.invitedTo");
-    expect(markup).toContain("Sample event");
-    expect(markup).toContain("Oct 1, 2026");
-    expect(markup).toContain("Oct 8, 2026");
-    expect(markup).toContain("Bangsar · Penang");
-    expect(markup).toContain('href="/customer/events/sample-event"');
+  it("shows the invitation, dates and first place on the front, with no status or hints", () => {
+    const fullDay = renderToStaticMarkup(<CampaignEnvelope campaign={campaign} />);
+    for (const key of ["invitedTo", "envelopeStarts", "envelopeEnds"]) expect(fullDay).toContain(`ui.promotionCampaigns.${key}`);
+    expect(fullDay).toContain("ui.labels.location");
+    expect(fullDay).toContain("Oct 1, 2026");
+    expect(fullDay).toContain("Oct 8, 2026");
+    expect(fullDay).not.toContain('class="t"');
+    expect(fullDay).toContain("Bangsar");
+    expect(fullDay).toContain("ui.promotionCampaigns.moreLocations");
+    expect(fullDay).not.toContain("Penang");
+    expect(fullDay.match(/href="\/customer\/events\/sample-event"/g)).toHaveLength(1);
+    const link = fullDay.match(/<a [^>]*href="\/customer\/events\/sample-event"[^>]*>/)?.[0] ?? "";
+    expect(link).toContain("mw-envelope__alt");
+    expect(link).toContain("sr-only");
+    expect(link).toContain("focus-visible:not-sr-only");
+    for (const gone of ["stallsJoining", "envelopeHint", "insideEvent", "viewCampaign", "ui.promotionCampaigns.upcoming"]) expect(fullDay).not.toContain(gone);
+
+    const timedMarkup = renderToStaticMarkup(<CampaignEnvelope campaign={timed} />);
+    expect(timedMarkup).toContain("Sep 25, 2026");
+    expect(timedMarkup).toContain("6:50 PM");
+    expect(timedMarkup).toContain("Mar 13, 2027");
+    expect(timedMarkup).toContain("7:00 AM");
+  });
+
+  it("splits the title at its first spaced dash, and keeps the translation control in the eyebrow", () => {
+    const markup = renderToStaticMarkup(<CampaignEnvelope campaign={{ ...campaign, title: "Heritage Walk KL — Local Explorer Picks" }} />);
+    expect(markup).toContain('<h2 id="campaign-envelope-campaign-title" class="mw-envelope__title" data-sub="true"><span class="mw-envelope__main">Heritage Walk KL</span><span class="mw-envelope__subtitle">Local Explorer Picks</span></h2>');
+    const eyebrows = markup.match(/<span class="mw-envelope__eyebrow">[\s\S]*?<\/span>/g) ?? [];
+    expect(eyebrows.filter((eyebrow) => eyebrow.includes("data-show-original"))).toHaveLength(1);
+
+    const demo = renderToStaticMarkup(<CampaignEnvelope campaign={{ ...campaign, slug: "demo-pop-up-fiesta", title: "Demo – Pop-up Fiesta" }} />);
+    expect(demo).toContain('<h2 id="campaign-envelope-campaign-title" class="mw-envelope__title"><span class="mw-envelope__main">Pop-up Fiesta</span></h2>');
+    expect(demo).not.toContain("mw-envelope__subtitle");
+    expect(demo).not.toContain("data-sub");
+  });
+
+  it("hides the letter, which carries the poster and the main title only", () => {
+    const posterUrl = "https://abcdefghijklmnop.supabase.co/storage/v1/object/public/campaign-posters/p.jpg";
+    const markup = renderToStaticMarkup(<CampaignEnvelope campaign={{ ...campaign, posterUrl, title: "Heritage Walk KL — Local Explorer Picks" }} />);
+    expect(markup).toContain('class="mw-envelope__pocket" aria-hidden="true"');
+    const pocket = markup.slice(markup.indexOf('class="mw-envelope__pocket"'), markup.indexOf('data-k="bottom"'));
+    expect(pocket).toContain("Heritage Walk KL");
+    expect(pocket).not.toContain("Local Explorer Picks");
+    expect(markup.indexOf("<img")).toBeLessThan(markup.indexOf('data-slot="campaign-envelope-front"'));
+  });
+
+  it("picks the stamp by carousel position", () => {
+    const stampAt = (position: number) => renderToStaticMarkup(<CampaignEnvelope campaign={campaign} position={position} />).match(/data-stamp="([a-z]+)"/)?.[1];
+    expect([0, 1, 2, 3].map(stampAt)).toEqual(["hibiscus", "tiger", "stall", "hibiscus"]);
   });
 
   it("exposes one heading to assistive tech; the hidden parts of each copy stay hidden", () => {
     const markup = renderToStaticMarkup(<CampaignEnvelope campaign={campaign} />);
     expect(markup.match(/<h2/g)).toHaveLength(1);
     expect(markup.match(/id="campaign-envelope-campaign-title"/g)).toHaveLength(1);
-    // The title sits on the top half and the rows on the bottom half, so each is read from where it shows.
+    // The title sits on the top half and the dates on the bottom half, so each is read from where it shows.
     expect(markup.match(/data-k="flap" aria-hidden="true"/g)).toHaveLength(1);
     expect(markup).not.toMatch(/data-k="(top|bottom)" aria-hidden/);
     expect(markup.match(/class="mw-envelope__head"(?! aria-hidden)/g)).toHaveLength(1);
@@ -68,29 +112,22 @@ describe("campaign envelope markup", () => {
     expect(images.length).toBeGreaterThan(0);
     for (const image of images) expect(image).toContain("/_next/image?url=");
   });
-
-  it("omits the stalls row without vendors and caps the location list", () => {
-    const many = { ...campaign, locations: ["a", "b", "c", "d", "e"].map((id) => location(id, `Place ${id}`)) };
-    const markup = renderToStaticMarkup(<CampaignEnvelope campaign={many} />);
-    expect(markup).not.toContain("ui.promotionCampaigns.stallsJoining");
-    expect(markup.match(/mw-envelope__loc /g)).toHaveLength(3);
-    expect(markup).toContain("mw-envelope__more-wide");
-    expect(markup).toContain("ui.promotionCampaigns.moreLocations");
-  });
 });
 
 describe("campaign envelope stylesheet contract", () => {
   const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
   const rules = css.match(/[^{}]*mw-envelope[^{}]*\{[^}]*\}/g) ?? [];
-  it("lets the letter link take clicks once the strip has flown off", () => {
-    // A piece's own box spans the whole card; only its clipped fold may take pointer events.
-    expect(css).toContain(".mw-envelope__pc { position: absolute; left: 0; right: 0; top: 0; height: var(--h0); pointer-events: none; }");
-    expect(css).toContain(".mw-envelope__fold { transform-origin: 0 0; background: #fffdf6; pointer-events: auto; }");
-    expect(css).toContain('.mw-envelope[data-state="open"] .mw-envelope__pc[data-k="flap"] .mw-envelope__fold { pointer-events: none; }');
+  // A match can start with the comment above the rule, so compare the selector without it.
+  const rule = (selector: string) => rules.find((candidate) => candidate.replace(/\/\*[\s\S]*?\*\//g, "").trim().startsWith(selector)) ?? "";
+  it("lets only the tab and the link take pointer events", () => {
+    expect(rule(".mw-envelope__grip {")).toContain("touch-action: pan-y pinch-zoom");
+    expect(rule(".mw-envelope__pc {")).toContain("pointer-events: none");
+    expect(rule('.mw-envelope[data-state="gone"] :is(.mw-envelope__grip, .mw-envelope__alt)')).toContain("pointer-events: none");
+    expect(rule('.mw-envelope:is([data-state="busy"], [data-state="gone"]) .mw-envelope__alt')).toContain("opacity: 0");
   });
   it("never lifts the envelope above the carousel arrows", () => {
     expect(rules.length).toBeGreaterThan(10);
-    expect(rules.filter((rule) => rule.includes("z-index"))).toEqual([]);
+    expect(rules.filter((candidate) => candidate.includes("z-index"))).toEqual([]);
   });
 });
 
@@ -99,12 +136,12 @@ describe("campaign envelope interactions", () => {
   let container: TestElement;
   let root: ReturnType<typeof import("react-dom/client").createRoot>;
   let createRoot: typeof import("react-dom/client").createRoot;
-  let touch = false;
   let width = 1200;
   let pendingAnimations = false;
   let resizeCallback: (() => void) | null = null;
-  const reverse = vi.fn();
   let created: { cancel(): void }[] = [];
+  const focused: TestElement[] = [];
+  const captured = new Set<number>();
 
   beforeAll(async () => {
     document = installTestDom();
@@ -116,11 +153,16 @@ describe("campaign envelope interactions", () => {
       // Pending animations only settle when cancelled, which rejects `finished` like the real WAAPI.
       let reject: (error: Error) => void = () => {};
       const finished = pendingAnimations ? new Promise<void>((_, fail) => { reject = fail; }) : Promise.resolve();
-      const animation = { finished, reverse, cancel() { reject(new Error("AbortError")); }, updatePlaybackRate() {} };
+      const animation = { finished, cancel() { reject(new Error("AbortError")); } };
       created.push(animation);
       return animation;
     };
     proto.getAnimations = () => created;
+    // Pointer capture and focus are not in the shared test DOM; record them here.
+    proto.setPointerCapture = (id: number) => { captured.add(id); };
+    proto.releasePointerCapture = (id: number) => { captured.delete(id); };
+    proto.hasPointerCapture = (id: number) => captured.has(id);
+    proto.focus = function (this: TestElement) { focused.push(this); };
     (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = class { constructor(callback: () => void) { resizeCallback = callback; } observe() {} disconnect() {} };
     Object.defineProperty(TestElement.prototype, "clientWidth", { configurable: true, get: () => width });
     proto.getBoundingClientRect = () => ({ top: 600, bottom: 1040, left: 0, right: 1200, width: 1200, height: 440 });
@@ -130,13 +172,13 @@ describe("campaign envelope interactions", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     push.mockReset();
-    reverse.mockReset();
     created = [];
-    touch = false;
+    focused.length = 0;
+    captured.clear();
     width = 1200;
     pendingAnimations = false;
     // Reduced motion keeps state changes independent of tween timing (covered by the geometry tests and the browser check).
-    window.matchMedia = ((query: string) => ({ matches: (touch && query === "(hover: none)") || query === "(prefers-reduced-motion: reduce)", media: query })) as typeof window.matchMedia;
+    window.matchMedia = ((query: string) => ({ matches: query === "(prefers-reduced-motion: reduce)", media: query })) as typeof window.matchMedia;
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container as unknown as Element);
@@ -148,24 +190,32 @@ describe("campaign envelope interactions", () => {
   });
 
   const article = () => findOne(container, (element) => element.tagName === "ARTICLE");
+  const grip = () => findOne(container, (element) => element.tagName === "BUTTON" && element.getAttribute("class") === "mw-envelope__grip");
   const link = () => findOne(container, (element) => element.tagName === "A");
   const state = () => article().getAttribute("data-state");
   const fire = async (target: { dispatchEvent(event: TestEvent): boolean }, type: string, extra: Record<string, unknown> = {}) => {
-    await act(async () => { target.dispatchEvent(Object.assign(new TestEvent(type, { bubbles: true }), extra)); });
+    const event = Object.assign(new TestEvent(type, { bubbles: true }), extra);
+    await act(async () => { target.dispatchEvent(event); });
+    return event;
   };
   const wait = async (ms: number) => { await act(async () => { vi.advanceTimersByTime(ms); }); await act(async () => {}); };
   const render = async () => { await act(async () => { root.render(<CampaignEnvelope campaign={campaign} />); }); };
+  const pointer = (clientX: number) => ({ pointerId: 1, isPrimary: true, button: 0, clientX });
+  const drag = async (to: number, end: "pointerup" | "pointercancel" = "pointerup") => {
+    await fire(grip(), "pointerdown", pointer(0));
+    await fire(grip(), "pointermove", pointer(to));
+    await fire(grip(), end, pointer(to));
+  };
 
   it("keeps the envelope drawable through StrictMode ref replay", async () => {
     await act(async () => {
       root.render(<React.StrictMode><CampaignEnvelope campaign={campaign} /></React.StrictMode>);
     });
     expect(article().style.height).toBe("460px");
-    await fire(article(), "pointerenter", { pointerType: "mouse" });
-    expect(state()).toBe("open");
-    await fire(article(), "pointerleave", { pointerType: "mouse" });
-    await wait(150);
-    expect(state()).toBe("closed");
+    await drag(950);
+    await wait(0);
+    expect(state()).toBe("gone");
+    expect(push).toHaveBeenCalledTimes(1);
   });
 
   it("ignores a queued resize callback after the envelope unmounts", async () => {
@@ -187,7 +237,7 @@ describe("campaign envelope interactions", () => {
     });
     try {
       await render();
-      await fire(article(), "pointerenter", { pointerType: "mouse" });
+      await fire(grip(), "click", { detail: 0 });
       expect(state()).toBe("busy");
       expect(queuedFrame).toBeDefined();
       await act(async () => { root.render(<></>); });
@@ -206,42 +256,17 @@ describe("campaign envelope interactions", () => {
       setTimeout(() => callback(performance.now()), 16) as unknown as number);
     try {
       await render();
-      await fire(article(), "pointerenter", { pointerType: "mouse" });
+      await fire(grip(), "click", { detail: 0 });
       await wait(32);
       await act(async () => { root.render(<CampaignEnvelope campaign={{ ...campaign }} />); });
       await wait(500);
-      expect(state()).toBe("open");
-      await fire(article(), "pointerleave", { pointerType: "mouse" });
-      await wait(150); // leave grace
-      await wait(700);
-      expect(state()).toBe("closed");
+      expect(state()).toBe("gone");
+      expect(push).toHaveBeenCalledTimes(1);
+      expect(push).toHaveBeenCalledWith("/customer/events/sample-event");
     } finally {
       requestFrame.mockRestore();
       clock.mockRestore();
     }
-  });
-
-  it("opens on hover and closes when the mouse leaves, keeping its height", async () => {
-    await render();
-    const height = article().style.height;
-    expect(height).toBe("460px");
-    await fire(article(), "pointerenter", { pointerType: "mouse" });
-    expect(state()).toBe("open");
-    expect(article().style.height).toBe(height);
-    await fire(article(), "pointerleave", { pointerType: "mouse" });
-    await wait(150);
-    expect(state()).toBe("closed");
-    expect(article().style.height).toBe(height);
-  });
-
-  it("stays open when the mouse crosses the gap between a half and the letter", async () => {
-    await render();
-    await fire(article(), "pointerenter", { pointerType: "mouse" });
-    await fire(article(), "pointerleave", { pointerType: "mouse" });
-    await wait(100);
-    await fire(article(), "pointerenter", { pointerType: "mouse" });
-    await wait(200);
-    expect(state()).toBe("open");
   });
 
   it("rests the closed letter on the strip, showing only the band under it", async () => {
@@ -252,91 +277,129 @@ describe("campaign envelope interactions", () => {
     expect(letter.style.clipPath).toBe("inset(-24px 0px -24px 0px round 16px)");
   });
 
-  it("ignores a single mouse click and opens the event page on a double click", async () => {
+  it("springs back below the threshold and ignores the click that ends the drag", async () => {
     await render();
-    await fire(article(), "click");
-    await wait(300);
+    await fire(grip(), "pointerdown", pointer(0));
+    await fire(grip(), "pointermove", pointer(600));
+    expect(article().getAttribute("data-ready")).toBe("false");
+    // The tab follows the pointer 1:1 (travel at width 1200 is 1182px).
+    expect(parseFloat((grip().style as unknown as Record<string, string>)["--drag"])).toBeCloseTo(600, 6);
+    await fire(grip(), "pointerup", pointer(600));
+    await fire(grip(), "click", { detail: 1 });
+    await wait(0);
     expect(state()).toBe("closed");
     expect(push).not.toHaveBeenCalled();
-    await fire(article(), "click");
-    await fire(article(), "click");
-    await wait(0);
-    expect(push).toHaveBeenCalledWith("/customer/events/sample-event");
   });
 
-  it("toggles on single taps, goes to the event on a double tap, and closes on an outside tap", async () => {
-    touch = true;
+  it("opens and goes to the event page once dragged past the threshold", async () => {
     await render();
-    await fire(article(), "click");
-    await wait(260);
-    expect(state()).toBe("open");
-    await fire(article(), "click");
-    await wait(260);
-    expect(state()).toBe("closed");
-    await fire(article(), "click");
-    await wait(260);
-    expect(state()).toBe("open");
-    await fire(document, "pointerdown");
-    expect(state()).toBe("closed");
-    await fire(article(), "click");
-    await fire(article(), "click");
+    await fire(grip(), "pointerdown", pointer(0));
+    await fire(grip(), "pointermove", pointer(950));
+    expect(article().getAttribute("data-ready")).toBe("true");
+    await fire(grip(), "pointerup", pointer(950));
     await wait(0);
+    expect(push).toHaveBeenCalledTimes(1);
     expect(push).toHaveBeenCalledWith("/customer/events/sample-event");
+    expect(state()).toBe("gone");
   });
 
-  it("opens while focus is inside and closes when neither focus nor hover remains", async () => {
+  it("treats a press that moves 6px or less as a tap that opens it", async () => {
     await render();
-    await fire(link(), "focusin");
-    expect(state()).toBe("open");
-    await fire(link(), "focusout", { relatedTarget: null });
-    expect(state()).toBe("closed");
-    await fire(article(), "pointerenter", { pointerType: "mouse" });
-    await fire(link(), "focusin");
-    await fire(link(), "focusout", { relatedTarget: null });
-    expect(state()).toBe("open");
-  });
-
-  it("does not reseal the strip when a double tap opens and leaves in one go", async () => {
-    touch = true;
-    await render();
-    await fire(article(), "click");
-    await fire(article(), "click");
+    await drag(7);
+    await fire(grip(), "click", { detail: 1 });
     await wait(0);
-    expect(push).toHaveBeenCalledWith("/customer/events/sample-event");
-    expect(reverse).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+    await drag(4);
+    expect(state()).toBe("closed");
+    expect(push).not.toHaveBeenCalled();
+    await fire(grip(), "click", { detail: 1 });
+    await wait(0);
+    expect(push).toHaveBeenCalledTimes(1);
   });
 
-  it("does not leak a rejection when it unmounts mid-animation", async () => {
+  it("springs back on a cancelled drag, and a later keyboard click still opens it", async () => {
+    await render();
+    await drag(950, "pointercancel");
+    await wait(0);
+    expect(push).not.toHaveBeenCalled();
+    expect(state()).toBe("closed");
+    await fire(grip(), "click", { detail: 0 });
+    await wait(0);
+    expect(push).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens on Enter or Space (a click without a pointer)", async () => {
+    await render();
+    await fire(grip(), "click", { detail: 0 });
+    await wait(0);
+    expect(push).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens from the link on a plain click and leaves modified clicks to the browser", async () => {
+    await render();
+    const modified = await fire(link(), "click", { button: 0, metaKey: true });
+    await wait(0);
+    expect(modified.defaultPrevented).toBe(false);
+    expect(push).not.toHaveBeenCalled();
+    const plain = await fire(link(), "click", { button: 0 });
+    expect(plain.defaultPrevented).toBe(true);
+    await wait(0);
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(state()).toBe("gone");
+  });
+
+  it("navigates only once whatever opens it", async () => {
+    await render();
+    await fire(link(), "click", { button: 0 });
+    await fire(grip(), "click", { detail: 0 });
+    await drag(950);
+    await wait(0);
+    expect(push).toHaveBeenCalledTimes(1);
+  });
+
+  it("focuses the tab on press so the carousel's focus pause holds during a drag", async () => {
+    await render();
+    await fire(grip(), "pointerdown", pointer(0));
+    expect(focused).toContain(grip());
+    expect(captured.has(1)).toBe(true);
+  });
+
+  it("re-measures after a resize only once the tab is back at rest", async () => {
+    await render();
+    await fire(grip(), "pointerdown", pointer(0));
+    await fire(grip(), "pointermove", pointer(100));
+    width = 360;
+    await act(async () => { resizeCallback?.(); });
+    expect(article().getAttribute("data-narrow")).toBe("false");
+    expect(article().style.height).toBe("460px");
+    await fire(grip(), "pointerup", pointer(100));
+    await wait(0);
+    await act(async () => { resizeCallback?.(); });
+    expect(article().getAttribute("data-narrow")).toBe("true");
+    expect(article().style.height).toBe("500px");
+  });
+
+  it("does not leak a rejection or navigate when it unmounts mid-animation", async () => {
     const unhandled = vi.fn();
     process.on("unhandledRejection", unhandled);
     pendingAnimations = true;
     await render();
-    await fire(article(), "pointerenter", { pointerType: "mouse" });
+    await drag(950);
     expect(state()).toBe("busy");
     await act(async () => { root.render(<></>); });
+    await wait(2000);
+    expect(push).not.toHaveBeenCalled();
     vi.useRealTimers();
     await new Promise((resolve) => setTimeout(resolve, 20));
     process.off("unhandledRejection", unhandled);
     expect(unhandled).not.toHaveBeenCalled();
   });
 
-  it("re-measures after a resize that happens while open", async () => {
-    await render();
-    await fire(article(), "pointerenter", { pointerType: "mouse" });
-    width = 500;
-    await act(async () => { resizeCallback?.(); });
-    await fire(article(), "pointerleave", { pointerType: "mouse" });
-    await wait(150);
-    expect(state()).toBe("closed");
-    expect(article().getAttribute("data-narrow")).toBe("true");
-    expect(article().style.height).toBe("480px");
-  });
-
-  it("lets the title's translation control work without toggling the envelope", async () => {
-    touch = true;
+  it("lets the title's translation control work without opening the envelope", async () => {
     await render();
     await fire(findOne(container, (element) => element.hasAttribute("data-show-original")), "click");
     await wait(300);
     expect(state()).toBe("closed");
+    expect(push).not.toHaveBeenCalled();
   });
 });

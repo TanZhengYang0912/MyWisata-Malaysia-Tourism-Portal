@@ -36,7 +36,7 @@ import { LOGO_BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { guestProtectedCustomerPath } from "@/lib/auth/guest-mode";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
-import { isPublicCustomerPath } from "@/lib/auth/public-customer-paths";
+import { isCustomerBrowsePath, isPublicCustomerPath } from "@/lib/auth/public-customer-paths";
 import { CustomerCapabilityGateProvider } from "@/components/customer/customer-capability-gate-dialog";
 import { useViewportClampedPopoverPosition } from "@/components/shared/use-viewport-clamped-popover-position";
 
@@ -181,7 +181,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   }
 
   const guestPublic = !currentUser && isPublicCustomerPath(pathname);
-  if (loading || (!currentUser && !guestPublic)) {
+  // Browse pages render (and server-render) while sign-in resolves; other pages wait.
+  if (loading ? !isCustomerBrowsePath(pathname) : !currentUser && !guestPublic) {
     return <div className="customer-portal min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis")}</div>;
   }
 
@@ -189,7 +190,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
     ? getCustomerDisplayName(currentUser, tCommon("strictMigration.accountFallbackName"))
     : tCommon("account.guestMenu");
   function confirmGuestNavigation(event: MouseEvent<HTMLDivElement>) {
-    if (currentUser || event.defaultPrevented || (event.button !== 0 && event.button !== 1)) return;
+    if (loading || currentUser || event.defaultPrevented || (event.button !== 0 && event.button !== 1)) return;
     const anchor = event.target instanceof Element ? event.target.closest("a[href]") : null;
     if (!anchor || anchor.hasAttribute("download")) return;
     const nextPath = guestProtectedCustomerPath(anchor.getAttribute("href")!, window.location.href);
@@ -306,13 +307,14 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 aria-label={currentUser
                   ? tCommon("account.openMenuFor", { name: customerDisplayName })
                   : tCommon("account.guestMenu")}
+                disabled={loading}
                 className="flex items-center justify-center rounded-full border border-border bg-card/80 p-1 transition hover:border-primary/30 hover:bg-secondary"
               >
                 <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white shadow-xs">
                   <Avatar key={currentUser?.id ?? "guest"} className="h-8 w-8">
                     <AvatarImage src={currentUser?.avatarUrl ?? undefined} alt="" className="object-cover" />
                     <AvatarFallback className="bg-primary text-xs font-bold text-white">
-                      {currentUser?.avatarInitial ?? "G"}
+                      {currentUser?.avatarInitial ?? (loading ? "" : "G")}
                     </AvatarFallback>
                   </Avatar>
                   {unreadTickets > 0 && (

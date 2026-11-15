@@ -250,6 +250,7 @@ export function CustomerHomeClient({
             alt=""
             fill
             loading="eager"
+            fetchPriority="high"
             quality={90}
             sizes="100vw"
             onLoad={() => handleHeroPhotoLoaded(activeDestination.state)}
