@@ -32,6 +32,17 @@ import {
 } from "@/app/customer/customer-home-client";
 
 describe("customer home Discover Malaysia hero", () => {
+  it("marks only the active hero photo as high fetch priority", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const markup = renderToStaticMarkup(
+      <CustomerHomeClient highlightItems={[]} forYouItems={[]} vendors={[]} campaign={null} />,
+    );
+    consoleError.mockRestore();
+    expect(markup.match(/<img[^>]*fetchPriority="high"/gi)).toHaveLength(1);
+    expect(markup).toMatch(/<link rel="preload" as="image"[^>]*fetchPriority="high"/i);
+    expect(markup).toMatch(/<img[^>]*fetchPriority="high"[^>]*class="atlas-hero-photo /i);
+  });
+
   it("renders the active state as the editorial display title", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     const markup = renderToStaticMarkup(
