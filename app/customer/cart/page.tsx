@@ -393,8 +393,11 @@ export default function CartPage() {
   }
 
   if (items.length === 0) {
-    if (itemsLoadError) return <EmptyState icon={<ShoppingCart size={40} />} title={tCustomer("ui.cart.loadErrorTitle")} description={tCustomer("ui.cart.loadErrorDescription")} action={<Button type="button" onClick={reloadItems}>{tCustomer("ui.actions.retry")}</Button>} />;
+    // The empty and error views have no page heading of their own, so screen readers get the cart's h1 here.
+    if (itemsLoadError) return <><h1 className="sr-only">{tCustomer("ui.cart.title")}</h1><EmptyState icon={<ShoppingCart size={40} />} title={tCustomer("ui.cart.loadErrorTitle")} description={tCustomer("ui.cart.loadErrorDescription")} action={<Button type="button" onClick={reloadItems}>{tCustomer("ui.actions.retry")}</Button>} /></>;
     return (
+      <>
+      <h1 className="sr-only">{tCustomer("ui.cart.title")}</h1>
       <EmptyState
         icon={<ShoppingCart size={40} />}
         title={tCustomer("ui.cart.guestTitle")}
@@ -408,6 +411,7 @@ export default function CartPage() {
           </div>
         }
       />
+      </>
     );
   }
 
