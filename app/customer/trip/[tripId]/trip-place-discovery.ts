@@ -1,4 +1,4 @@
-import type { ComputedActivity, DiscoveryResult, SponsoredPlacement } from "@/backend/core/types";
+import type { ComputedActivity, DiscoveryResult, SponsoredPlacement, TripDiscoveryActivity } from "@/backend/core/types";
 import { canonicalCategorySlug } from "@/lib/customer/discovery-categories";
 import { rankDiscoveryResults } from "@/lib/customer/discovery-ranking";
 import { isOperatingHoursOpenNow } from "@/lib/customer/operating-hours";
@@ -145,7 +145,7 @@ export function filterAndRankTripPlaces({
   suggestedAtByVendor,
   now,
 }: {
-  activities: ComputedActivity[];
+  activities: Array<ComputedActivity & Partial<Pick<TripDiscoveryActivity, "tripDiscoveryAvailable">>>;
   filters: TripPlaceFilters;
   hasOrigin: boolean;
   placements: SponsoredPlacement[];
@@ -155,7 +155,8 @@ export function filterAndRankTripPlaces({
   const category = canonicalCategorySlug(filters.category);
   const currentTime = new Date(now);
   const matching = activities.filter((activity) => (
-    matchesQuery(activity, filters.query)
+    activity.tripDiscoveryAvailable !== false
+    && matchesQuery(activity, filters.query)
     && (!category || canonicalCategorySlug(activity.categorySlug) === category)
     && matchesPrice(activity.price, filters.priceBand)
     && (filters.minimumRating === null || activity.rating >= filters.minimumRating)

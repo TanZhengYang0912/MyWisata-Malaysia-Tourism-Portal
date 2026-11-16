@@ -128,6 +128,13 @@ describe("POST /api/weather/forecast", () => {
     expect(mocks.getForecast).not.toHaveBeenCalled();
   });
 
+  it("requires an item forecast to match the destination arrival time", async () => {
+    const itemTarget = { ...target, kind: "item" as const, scheduledTime: "10:00" };
+    expect((await POST(request({ tripId: "trip-1", targets: [{ ...itemTarget, scheduledTime: "15:00" }] }))).status).toBe(403);
+    expect((await POST(request({ tripId: "trip-1", targets: [{ ...itemTarget, scheduledTime: undefined }] }))).status).toBe(422);
+    expect(mocks.getForecast).not.toHaveBeenCalled();
+  });
+
   it("never bypasses authenticated ownership for a mock-user trip", async () => {
     mocks.getTripById.mockResolvedValue({ ...trip, user_id: "mock-user" });
     mocks.isDemoRuntime.mockReturnValue(true);
@@ -154,7 +161,7 @@ describe("POST /api/weather/forecast", () => {
   });
 
   it("deduplicates provider work and returns private fail-soft results", async () => {
-    const duplicate = { ...target, key: "w:duplicate", kind: "item" as const };
+    const duplicate = { ...target, key: "w:duplicate", kind: "item" as const, scheduledTime: "10:00" };
     const response = await POST(request({ tripId: "trip-1", targets: [target, duplicate] }));
     const body = await response.json();
 
@@ -164,6 +171,7 @@ describe("POST /api/weather/forecast", () => {
     expect(Object.keys(body.data.results)).toEqual([target.key, duplicate.key]);
     expect(body.data.results[target.key].risk).toMatchObject({ level: "high", reasons: expect.arrayContaining(["thunderstorm"]) });
     expect(body.data.results[target.key].risk.window).toEqual({ startHour: 15, endHour: 17 });
+    expect(body.data.results[duplicate.key].risk).toMatchObject({ level: "none", reasons: [], window: null });
     expect(JSON.stringify(body)).not.toContain("stack");
   });
 

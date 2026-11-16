@@ -12,9 +12,9 @@ function isResults(value: unknown): value is WeatherBatchResponse["results"] {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
-export function useItineraryWeather(tripId: string, targets: WeatherTarget[]): ItineraryWeatherState {
+export function useItineraryWeather(tripId: string, targets: WeatherTarget[], retryToken = 0): ItineraryWeatherState {
   const requestFingerprint = useMemo(
-    () => `${tripId}|${targets.map((target) => target.key).sort().join("|")}`,
+    () => `${tripId}|${targets.map((target) => `${target.key}@${target.scheduledTime ?? "daily"}`).sort().join("|")}`,
     [targets, tripId],
   );
   const [state, setState] = useState<ItineraryWeatherState>({ status: "idle", results: {} });
@@ -55,7 +55,7 @@ export function useItineraryWeather(tripId: string, targets: WeatherTarget[]): I
       active = false;
       controller.abort();
     };
-  }, [requestFingerprint, targets, tripId]);
+  }, [requestFingerprint, retryToken, targets, tripId]);
 
   return state;
 }

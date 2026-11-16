@@ -219,6 +219,9 @@ export interface ComputedActivity extends Activity {
   openNowSummary?: { totalOutletCount: number; openOutletCount: number };
 }
 
+/** Trip discovery includes a server-verified purchase eligibility decision. */
+export type TripDiscoveryActivity = ComputedActivity & { tripDiscoveryAvailable: boolean };
+
 export interface DiscoveryPropertySummary {
   roomTypeCount: number;
   fromPrice: number;

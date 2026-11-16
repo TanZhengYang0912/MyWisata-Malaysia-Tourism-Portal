@@ -57,6 +57,7 @@ export type WeatherTarget = {
   label: string;
   kind: "day" | "item";
   itemId: string;
+  scheduledTime?: string | null;
 };
 
 export type WeatherTargetResult = {
@@ -84,13 +85,21 @@ export type RainBandLevel = "light" | "moderate" | "heavy";
 
 export type WeatherMapMode = "now" | "forecast";
 
+export type RadarFrame = {
+  frameTime: string;
+  tileUrlTemplate: string;
+  intensityTileUrlTemplate: string;
+  coverageTileUrlTemplate: string;
+};
+
 export type RadarOverlayResult = {
   availability: "radar" | "unavailable";
   provider: "rainviewer";
-  observedAt: string | null;
+  frameTime: string | null;
   fetchedAt: string;
   stale: boolean;
   tileUrlTemplate: string | null;
+  frames: RadarFrame[];
   maxZoom: 7;
   attributionLabel: "RainViewer";
   attributionUrl: "https://www.rainviewer.com/";
@@ -111,6 +120,11 @@ export type WeatherEffectParticle = {
   phase: number;
 };
 
+export type WeatherRainParticle = {
+  coordinates: [number, number];
+  phase: number;
+};
+
 export type WeatherOverlayResult = {
   availability: ForecastAvailability;
   provider: "open_meteo";
@@ -119,6 +133,7 @@ export type WeatherOverlayResult = {
   timezone: string;
   fetchedAt: string;
   stale: boolean;
+  spatialCoverageComplete: boolean;
   bounds: [number, number, number, number] | null;
   samples: WeatherOverlaySample[];
   contours: GeoJSON.FeatureCollection<GeoJSON.MultiPolygon, WeatherContourProperties>;

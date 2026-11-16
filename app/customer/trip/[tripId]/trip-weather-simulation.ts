@@ -29,9 +29,6 @@ const CONDITION_KEY_BY_HOUR: Record<number, string> = {
   20: "clear",
 };
 
-const ACTIVE_SAMPLE_INDEXES = new Set([10, 11, 12, 17, 18, 19, 20, 25, 26, 27, 28, 34, 35]);
-const SIMULATION_GRID_SCALE = 0.42;
-
 const EVIDENCE_BY_CODE: Record<number, ForecastEvidence> = {
   0: { weatherCode: 0, temperatureMaxC: 31, temperatureMinC: 25, apparentTemperatureMaxC: 34, precipitationProbabilityMax: 5, precipitationSumMm: 0, windGustMaxKmh: 12, uvIndexMax: 8 },
   3: { weatherCode: 3, temperatureMaxC: 29, temperatureMinC: 24, apparentTemperatureMaxC: 32, precipitationProbabilityMax: 20, precipitationSumMm: 0, windGustMaxKmh: 14, uvIndexMax: 3 },
@@ -115,12 +112,15 @@ export function buildSimulatedWeatherOverlay(
   const activeCode = simulatedWeatherCodeForHour(hour);
   const activePrecipitation = simulatedPrecipitation(activeCode);
   const samples: WeatherOverlaySample[] = buildWeatherSampleGrid([anchor]).map((coordinate, index) => {
-    const active = ACTIVE_SAMPLE_INDEXES.has(index) && activeCode !== 0;
+    const gridX = ((index % 8) - 3.5) / 3;
+    const gridY = (Math.floor(index / 8) - 2.5) / 2.3;
+    const intensity = activeCode === 0 ? 0 : Math.max(0, 1 - gridX * gridX - gridY * gridY);
+    const active = intensity > 0;
     const weatherCode = active ? activeCode : 0;
-    const precipitationMm = active ? activePrecipitation : 0;
+    const precipitationMm = activePrecipitation * intensity;
     return {
-      latitude: anchor.lat + (coordinate.latitude - anchor.lat) * SIMULATION_GRID_SCALE,
-      longitude: anchor.lng + (coordinate.longitude - anchor.lng) * SIMULATION_GRID_SCALE,
+      latitude: coordinate.latitude,
+      longitude: coordinate.longitude,
       precipitationMm,
       precipitationProbability: precipitationMm > 0 ? 90 : 5,
       weatherCode,
@@ -138,6 +138,7 @@ export function buildSimulatedWeatherOverlay(
     timezone: "Asia/Kuala_Lumpur",
     fetchedAt: `${date}T00:00:00.000Z`,
     stale: false,
+    spatialCoverageComplete: samples.every((sample) => sample.precipitationProbability !== null),
     samples,
     ...precipitationGeometry,
     conditionContours: buildWeatherConditionContours(samples),

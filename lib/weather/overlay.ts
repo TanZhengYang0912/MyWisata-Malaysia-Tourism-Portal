@@ -1,5 +1,6 @@
 import { contours as createContours } from "d3-contour";
 import { weatherEffectConditionForCode, type WeatherEffectCondition } from "@/lib/weather/conditions";
+import { buildScatteredWeatherGrid } from "@/lib/weather/scattered-grid";
 import type {
   RainBandLevel,
   WeatherContourProperties,
@@ -14,10 +15,10 @@ export const MAX_OVERLAY_SAMPLES = 48;
 
 const GRID_WIDTH = 8;
 const GRID_HEIGHT = 6;
-const SURFACE_WIDTH = 40;
-const SURFACE_HEIGHT = 30;
-const SINGLE_POINT_LAT_PAD = 0.09;
-const SINGLE_POINT_LNG_PAD = 0.12;
+const SURFACE_WIDTH = 80;
+const SURFACE_HEIGHT = 60;
+const SINGLE_POINT_LAT_PAD = 0.24;
+const SINGLE_POINT_LNG_PAD = 0.32;
 const MIN_LAT_PAD = 0.04;
 const MIN_LNG_PAD = 0.05;
 const MAX_LAT_SPAN = 0.36;
@@ -76,43 +77,21 @@ function emptyConditionContours(): WeatherOverlayResult["conditionContours"] {
   return { type: "FeatureCollection", features: [] };
 }
 
-function orderedGrid(samples: WeatherOverlaySample[]) {
-  const latitudes = [...new Set(samples.map((sample) => sample.latitude))].sort((a, b) => a - b);
-  const longitudes = [...new Set(samples.map((sample) => sample.longitude))].sort((a, b) => a - b);
-  if (latitudes.length < 2 || longitudes.length < 2 || latitudes.length * longitudes.length !== samples.length) return null;
-  const byCoordinate = new Map(samples.map((sample) => [`${sample.latitude}:${sample.longitude}`, sample]));
-  const values = latitudes.flatMap((latitude) => longitudes.map((longitude) => {
-    const sample = byCoordinate.get(`${latitude}:${longitude}`);
-    if (!sample || sample.precipitationProbability === null || sample.precipitationProbability < OVERLAY_MIN_PROBABILITY) return 0;
-    return Math.max(0, sample.precipitationMm);
-  }));
-  const orderedSamples = latitudes.flatMap((latitude) => longitudes.map((longitude) => (
-    byCoordinate.get(`${latitude}:${longitude}`) ?? null
-  )));
-  return { latitudes, longitudes, values, orderedSamples };
-}
-
-function interpolateValues(sourceWidth: number, sourceHeight: number, sourceValues: number[]) {
+function interpolateSurface(samples: WeatherOverlaySample[], valueFor: (sample: WeatherOverlaySample) => number | null) {
+  const minLat = Math.min(...samples.map((sample) => sample.latitude));
+  const maxLat = Math.max(...samples.map((sample) => sample.latitude));
+  const minLng = Math.min(...samples.map((sample) => sample.longitude));
+  const maxLng = Math.max(...samples.map((sample) => sample.longitude));
+  const bounds: [number, number, number, number] = [minLng, minLat, maxLng, maxLat];
+  const grid = buildScatteredWeatherGrid(samples);
   const values = Array.from({ length: SURFACE_WIDTH * SURFACE_HEIGHT }, (_, index) => {
-    const surfaceX = index % SURFACE_WIDTH;
-    const surfaceY = Math.floor(index / SURFACE_WIDTH);
-    const sourceX = (surfaceX / (SURFACE_WIDTH - 1)) * (sourceWidth - 1);
-    const sourceY = (surfaceY / (SURFACE_HEIGHT - 1)) * (sourceHeight - 1);
-    const x0 = Math.floor(sourceX);
-    const y0 = Math.floor(sourceY);
-    const x1 = Math.min(sourceWidth - 1, x0 + 1);
-    const y1 = Math.min(sourceHeight - 1, y0 + 1);
-    const tx = sourceX - x0;
-    const ty = sourceY - y0;
-    const top = sourceValues[y0 * sourceWidth + x0] * (1 - tx) + sourceValues[y0 * sourceWidth + x1] * tx;
-    const bottom = sourceValues[y1 * sourceWidth + x0] * (1 - tx) + sourceValues[y1 * sourceWidth + x1] * tx;
-    return top * (1 - ty) + bottom * ty;
+    const x = index % SURFACE_WIDTH;
+    const y = Math.floor(index / SURFACE_WIDTH);
+    const longitude = minLng + ((maxLng - minLng) * x) / (SURFACE_WIDTH - 1);
+    const latitude = minLat + ((maxLat - minLat) * y) / (SURFACE_HEIGHT - 1);
+    return grid.interpolate(latitude, longitude, valueFor) ?? 0;
   });
-  return { width: SURFACE_WIDTH, height: SURFACE_HEIGHT, values };
-}
-
-function interpolateSurface(grid: NonNullable<ReturnType<typeof orderedGrid>>) {
-  return interpolateValues(grid.longitudes.length, grid.latitudes.length, grid.values);
+  return { bounds, surface: { width: SURFACE_WIDTH, height: SURFACE_HEIGHT, values } };
 }
 
 function convertCoordinate(
@@ -148,7 +127,7 @@ function liesAlongSamplingEdge(
 }
 
 function boundaryFeatures(
-  surface: ReturnType<typeof interpolateSurface>,
+  surface: ReturnType<typeof interpolateSurface>["surface"],
   bounds: [number, number, number, number],
 ): WeatherOverlayResult["rainBoundary"]["features"] {
   const wetMask = surface.values.map((value) => value >= RAIN_THRESHOLDS_MM.light ? 1 : 0);
@@ -254,21 +233,21 @@ function dominantSample(
 }
 
 export function buildPrecipitationContours(samples: WeatherOverlaySample[]): Pick<WeatherOverlayResult, "bounds" | "contours" | "rainBoundary" | "dominantCenter"> {
-  const grid = orderedGrid(samples);
-  if (!grid || Math.max(...grid.values) < RAIN_THRESHOLDS_MM.light) {
+  const hasRainSample = samples.some((sample) => sample.precipitationProbability !== null
+    && sample.precipitationProbability >= OVERLAY_MIN_PROBABILITY
+    && sample.precipitationMm >= RAIN_THRESHOLDS_MM.light);
+  if (!hasRainSample || samples.length < 3) {
     return { bounds: null, contours: emptyContours(), rainBoundary: emptyBoundary(), dominantCenter: null };
   }
-  const bounds: [number, number, number, number] = [
-    grid.longitudes[0],
-    grid.latitudes[0],
-    grid.longitudes.at(-1)!,
-    grid.latitudes.at(-1)!,
-  ];
-  const surface = interpolateSurface(grid);
+  const { bounds, surface } = interpolateSurface(samples, (sample) => (
+    sample.precipitationProbability === null || sample.precipitationProbability < OVERLAY_MIN_PROBABILITY
+      ? 0
+      : Math.max(0, sample.precipitationMm)
+  ));
   const levels = Object.entries(RAIN_THRESHOLDS_MM) as Array<[RainBandLevel, number]>;
   const features = levels.flatMap(([level, thresholdMm], index) => {
     const upperBound = levels[index + 1]?.[1] ?? Number.POSITIVE_INFINITY;
-    const mask = surface.values.map((value) => value >= thresholdMm && value < upperBound ? 1 : 0);
+    const mask = surface.values.map((value) => value >= thresholdMm - 1e-9 && value < upperBound - 1e-9 ? 1 : 0);
     const contour = createContours()
       .size([surface.width, surface.height])
       .thresholds([0.5])(mask)[0];
@@ -297,22 +276,13 @@ export function buildPrecipitationContours(samples: WeatherOverlaySample[]): Pic
 }
 
 export function buildWeatherConditionContours(samples: WeatherOverlaySample[]): WeatherOverlayResult["conditionContours"] {
-  const grid = orderedGrid(samples);
-  if (!grid) return emptyConditionContours();
-
-  const width = grid.longitudes.length;
-  const height = grid.latitudes.length;
-  const bounds: [number, number, number, number] = [
-    grid.longitudes[0],
-    grid.latitudes[0],
-    grid.longitudes.at(-1)!,
-    grid.latitudes.at(-1)!,
-  ];
+  if (samples.length < 3) return emptyConditionContours();
+  const { bounds } = interpolateSurface(samples, () => 0);
   const scores = new Map(EFFECT_CONDITIONS.map((condition) => [
     condition,
-    interpolateValues(width, height, grid.orderedSamples.map((sample) => (
-      weatherEffectConditionForCode(sample?.weatherCode ?? null) === condition ? 1 : 0
-    ))).values,
+    interpolateSurface(samples, (sample) => (
+      weatherEffectConditionForCode(sample.weatherCode) === condition ? 1 : 0
+    )).surface.values,
   ]));
   const winners = Array.from({ length: SURFACE_WIDTH * SURFACE_HEIGHT }, (_, index) => {
     let winner: WeatherEffectCondition | null = null;

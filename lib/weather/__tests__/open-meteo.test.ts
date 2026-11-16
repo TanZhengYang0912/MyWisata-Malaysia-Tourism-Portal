@@ -54,7 +54,7 @@ describe("Open-Meteo forecast adapter", () => {
     expect(url.searchParams.get("longitude")).toBe("100.3288");
     expect(url.searchParams.get("start_date")).toBe("2026-09-15");
     expect(url.searchParams.get("end_date")).toBe("2026-09-15");
-    expect(url.searchParams.get("timezone")).toBe("auto");
+    expect(url.searchParams.get("timezone")).toBe("Asia/Kuala_Lumpur");
     expect(url.searchParams.get("daily")).toContain("weather_code");
     expect(url.searchParams.get("hourly")).toBe("weather_code,precipitation,precipitation_probability");
     expect(result).toMatchObject({

@@ -64,4 +64,15 @@ describe("temporary trip weather simulation", () => {
     expect(bounds![2]).toBeGreaterThan(100.3288);
     expect(result.conditionContours.features[0].geometry.coordinates[0][0].length).toBeGreaterThan(4);
   });
+
+  it("keeps simulated rain distributed across the local weather grid", () => {
+    const result = buildSimulatedWeatherOverlay("2026-09-17", 10, { lat: 5.4141, lng: 100.3288 });
+    const wetSamples = result.samples.filter((sample) => sample.precipitationProbability !== null
+      && sample.precipitationProbability >= 40 && sample.precipitationMm >= 0.1);
+    const latitudeSpan = Math.max(...wetSamples.map((sample) => sample.latitude)) - Math.min(...wetSamples.map((sample) => sample.latitude));
+    const longitudeSpan = Math.max(...wetSamples.map((sample) => sample.longitude)) - Math.min(...wetSamples.map((sample) => sample.longitude));
+
+    expect(latitudeSpan).toBeGreaterThan(0.04);
+    expect(longitudeSpan).toBeGreaterThan(0.07);
+  });
 });
