@@ -41,7 +41,7 @@ describe("platform branding contract", () => {
     for (const path of ["app/guest/layout.tsx", "app/login/page.tsx", "components/layout/portal-sidebar.tsx"]) {
       expect(read(path), path).toContain("@/components/shared/mylawatan-logo");
     }
-    expect(read("app/customer/layout.tsx")).toContain("/branding/mylawatan-logo-transparent.png?v=4");
+    expect(read("app/customer/layout.tsx")).toContain("/branding/mylawatan-logo-transparent.png?v=6");
   });
 
   it("exposes the MYLawatan browser title and App Router icon", () => {
@@ -60,7 +60,7 @@ describe("platform branding contract", () => {
 
   it("allows the versioned logo asset through next/image", () => {
     expect(nextConfigSource).toContain("pathname: '/branding/mylawatan-logo-transparent.png'");
-    expect(nextConfigSource).toContain("search: '?v=4'");
+    expect(nextConfigSource).toContain("search: '?v=6'");
   });
 
   it("uses the renamed brand in the browser tab metadata", () => {

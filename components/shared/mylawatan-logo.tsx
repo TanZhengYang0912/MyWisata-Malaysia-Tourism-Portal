@@ -36,9 +36,9 @@ export function MyLawatanLogo({
   className,
   priority = false,
 }: MyLawatanLogoProps) {
-  // Master logo natural dimensions: 758 x 306 (ratio ~2.477:1)
+  // Master logo natural dimensions: 1009 x 331 (ratio ~3.048:1), cropped tight to the artwork
   const renderedHeight = height ?? markSize;
-  const renderedWidth = width ?? Math.round(renderedHeight * (758 / 306));
+  const renderedWidth = width ?? Math.round(renderedHeight * (1009 / 331));
 
   return (
     <span
@@ -48,10 +48,10 @@ export function MyLawatanLogo({
       role="img"
     >
       <Image
-        src="/branding/mylawatan-logo-transparent.png?v=4"
+        src="/branding/mylawatan-logo-transparent.png?v=6"
         alt={LOGO_BRAND_NAME}
-        width={758}
-        height={306}
+        width={1009}
+        height={331}
         priority={priority}
         className="block h-auto w-auto max-w-full object-contain"
         style={{ height: `${renderedHeight}px`, width: `${renderedWidth}px` }}

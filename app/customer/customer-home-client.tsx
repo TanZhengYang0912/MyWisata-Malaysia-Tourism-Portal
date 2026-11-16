@@ -28,6 +28,9 @@ import { HOME_HIGHLIGHT_LIMIT } from "@/lib/customer/discovery-ranking";
 import { useRouter } from "next/navigation";
 
 const HERO_CROSSFADE_DURATION_MS = 240;
+// Featured Highlights is hidden for now at the client's request (2026-11-16); the shelf, its data and its
+// sponsored analytics stay intact. Set to true to show it again. Hidden, it records no sponsored impressions.
+export const SHOW_FEATURED_HIGHLIGHTS = false;
 // Match the card widths from the responsive rail, including its outer and trailing padding.
 const HOME_DESTINATION_IMAGE_SIZES = "(min-width: 1420px) 339px, (min-width: 1024px) calc(25vw - 16px), (min-width: 640px) calc(50vw - 48px), calc(50vw - 32px)";
 const FEATURED_DESTINATION_STATES = ["Kuala Lumpur", "Penang", "Sabah", "Melaka"];
@@ -373,7 +376,7 @@ export function CustomerHomeClient({
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <PromotionCampaignSpotlight campaign={campaign} campaigns={campaigns} unavailable={campaignUnavailable} />
 
-        {highlightItems.length > 0 && (
+        {SHOW_FEATURED_HIGHLIGHTS && highlightItems.length > 0 && (
           <section aria-labelledby="featured-highlights-heading" className="mt-12">
             <div className="mb-5 flex items-center justify-between gap-4 border-b border-border/70 pb-4">
               <h2 id="featured-highlights-heading" className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">

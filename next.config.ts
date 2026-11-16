@@ -192,6 +192,8 @@ const nextConfig: NextConfig = {
       { pathname: '/branding/mylawatan-logo-transparent.png', search: '?v=2' },
       { pathname: '/branding/mylawatan-logo-transparent.png', search: '?v=3' },
       { pathname: '/branding/mylawatan-logo-transparent.png', search: '?v=4' },
+      { pathname: '/branding/mylawatan-logo-transparent.png', search: '?v=5' },
+      { pathname: '/branding/mylawatan-logo-transparent.png', search: '?v=6' },
       { pathname: '**', search: '' },
     ],
     minimumCacheTTL: 2592000,

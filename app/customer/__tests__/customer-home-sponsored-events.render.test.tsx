@@ -2,6 +2,7 @@ import React, { act } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { findOne, installTestDom, TestEvent, type TestDocument, type TestElement } from "@/components/shared/__tests__/render-test-dom";
 import type { DiscoveryResult } from "@/backend/core/types";
+import { SHOW_FEATURED_HIGHLIGHTS } from "@/app/customer/customer-home-client";
 
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
 vi.mock("next/image", () => ({ default: () => null }));
@@ -62,7 +63,16 @@ describe("Home Featured Highlights sponsored analytics", () => {
     return [url, JSON.parse(String(init.body)).eventType];
   });
 
-  it("records one impression per placement across re-renders and a click on a sponsored card only", async () => {
+  it.skipIf(SHOW_FEATURED_HIGHLIGHTS)("renders nothing and records no sponsored impressions while Featured Highlights is hidden", async () => {
+    const { CustomerHomeClient } = await import("@/app/customer/customer-home-client");
+    await act(async () => { root.render(<CustomerHomeClient highlightItems={[item("paid", "pl-1"), item("plain")]} forYouItems={[]} vendors={[]} campaign={null} />); });
+    await act(async () => { vi.advanceTimersByTime(1_000); });
+    expect(container.textContent).not.toContain("ui.home.featuredHighlights");
+    expect(events()).toEqual([]);
+  });
+
+  // The analytics below only apply while the shelf is shown; they run again once it is re-enabled.
+  it.skipIf(!SHOW_FEATURED_HIGHLIGHTS)("records one impression per placement across re-renders and a click on a sponsored card only", async () => {
     const { CustomerHomeClient } = await import("@/app/customer/customer-home-client");
     const items = [item("paid", "pl-1"), item("plain")];
     await act(async () => { root.render(<CustomerHomeClient highlightItems={items} forYouItems={[]} vendors={[]} campaign={null} />); });
@@ -79,7 +89,7 @@ describe("Home Featured Highlights sponsored analytics", () => {
     ]);
   });
 
-  it("records impressions only once the first page has stayed put for 300ms, and only for that page", async () => {
+  it.skipIf(!SHOW_FEATURED_HIGHLIGHTS)("records impressions only once the first page has stayed put for 300ms, and only for that page", async () => {
     const { CustomerHomeClient } = await import("@/app/customer/customer-home-client");
     // Without matchMedia (no desktop query) a page holds 2 cards, so pl-3 sits on page 2.
     const items = [item("a", "pl-1"), item("b", "pl-2"), item("c", "pl-3")];
