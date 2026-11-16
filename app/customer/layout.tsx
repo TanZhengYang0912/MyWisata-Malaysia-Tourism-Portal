@@ -210,7 +210,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
         <div className={`max-w-7xl mx-auto px-2 sm:px-6 flex items-center gap-1 sm:gap-8 ${isTripRoute ? "h-14 md:h-17" : "h-17"}`}>
           <Link href="/customer" className="group flex items-center gap-2.5 shrink-0">
               <Image
-                src="/branding/mylawatan-logo-transparent.png?v=3"
+                src="/branding/mylawatan-logo-transparent.png?v=4"
                 alt={LOGO_BRAND_NAME}
                 width={758}
                 height={306}

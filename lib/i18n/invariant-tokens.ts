@@ -5,6 +5,8 @@
 export const BRAND_NAME = "MYLawatan";
 export const BRAND_DOMAIN = "mylawatan.my";
 export const LOGO_BRAND_NAME = BRAND_NAME;
+/** Company that operates MYLawatan; shown as "Powered by …" in the footer and in the logo artwork. */
+export const OPERATOR_NAME = "MES EVENT MANAGEMENT";
 export const ATLAS_BRAND_NAME = "MYLawatan / Atlas";
 export const ATLAS_PRODUCT_NAME = "Atlas";
 export const MYR_CODE = "RM";
