@@ -347,8 +347,8 @@ body {
 
 /* Home campaign envelope (components/customer/campaign-envelope.tsx). The front
    is "printed paper", so it keeps its kraft colours in dark mode; the letter
-   inside follows the theme. Three stacked copies of the front are clipped by the
-   runtime into the part above the tear strip, the part below it, and the strip.
+   inside follows the theme. Two stacked copies of the front are clipped by the
+   runtime around the tear, keeping the untorn strip attached to the upper piece.
    No stacking order is set anywhere: the tab, guide and link paint above the pieces
    by DOM order, and the envelope stays below the carousel arrows. */
 .mw-envelope {
@@ -360,7 +360,7 @@ body {
   --stamp-bg: #fffdf8;
   /* Grayscale grain tile, blended in overlay mode; half its pixel size so it stays sharp on 2x screens. */
   --paper-tex: url(/customer/envelope-kraft.webp); --strip-tex: var(--paper-tex); --tex-size: 512px 422px;
-  --fold-bg: #efe0c2; --fold-back: #d9c099; --lining-1: #1b1b80; --lining-2: #10106a;
+  --fold-bg: #efe0c2; --lining-1: #1b1b80; --lining-2: #10106a;
   --h0: 460px; --a: 264px; --sh: 48px; --ovh: 30px;
   position: relative;
   min-width: 0;
@@ -372,19 +372,11 @@ body {
 .mw-envelope__under { position: absolute; left: 0; right: 0; top: 0; height: var(--h0); overflow: hidden; border-radius: 22px; background: repeating-linear-gradient(45deg, var(--lining-1) 0 10px, var(--lining-2) 10px 20px); box-shadow: inset 0 16px 30px rgba(0, 0, 0, .35); }
 /* Pieces, pocket and letter never take pointer events; only the tab and the link do. */
 .mw-envelope__pc { position: absolute; left: 0; right: 0; top: 0; height: var(--h0); pointer-events: none; }
-/* The torn strip curls off past the right edge instead of hanging outside the card. */
-.mw-envelope__pc[data-k="flap"] { clip-path: inset(-200px 0 -200px -200px); }
 .mw-envelope__fold,
 .mw-envelope__artwrap,
 .mw-envelope__art { position: absolute; inset: 0; }
-.mw-envelope__fold { transform-origin: 0 0; border-radius: 22px; background: var(--fold-bg); }
-.mw-envelope__fold[data-back="true"] { background: var(--fold-back); }
-.mw-envelope__fold[data-back="true"] .mw-envelope__artwrap { opacity: .12; filter: grayscale(1) contrast(.7); }
+.mw-envelope__fold { border-radius: 22px; background: var(--fold-bg); }
 .mw-envelope__artwrap { filter: drop-shadow(0 0 1.2px rgba(20, 20, 50, .45)); }
-.mw-envelope__shade { position: absolute; inset: 0; pointer-events: none; }
-.mw-envelope__roll { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
-.mw-envelope__bits { position: absolute; inset: 0; pointer-events: none; }
-.mw-envelope__bits i { position: absolute; width: 5px; height: 9px; border: 1px solid rgba(1, 0, 102, .18); border-radius: 1px; background: #fffdf6; }
 
 /* Envelope front */
 .mw-envelope__bg { position: absolute; inset: 0; overflow: hidden; border-radius: 22px; background: var(--paper-tex) 0 0 / var(--tex-size), var(--env-bg); background-blend-mode: overlay; box-shadow: 0 1px 2px rgba(1, 0, 102, .08), 0 18px 40px -18px rgba(1, 0, 102, .28); }
