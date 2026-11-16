@@ -27,9 +27,9 @@ describe("customer header reference contract", () => {
   });
 
   it("uses the supplied logo asset without changing the header row geometry", () => {
-    expect(customerLayoutSource).toContain('src="/branding/mylawatan-logo-transparent.png?v=6"');
-    expect(customerLayoutSource).toContain("width={1009}");
-    expect(customerLayoutSource).toContain("height={331}");
+    expect(customerLayoutSource).toContain('src="/branding/mylawatan-logo-transparent.png?v=7"');
+    expect(customerLayoutSource).toContain("width={1880}");
+    expect(customerLayoutSource).toContain("height={271}");
     expect(customerLayoutSource).toContain("h-17");
   });
 
@@ -78,7 +78,11 @@ describe("customer header reference contract", () => {
 
   it("compresses the customer utility row at phone widths to keep account controls visible", () => {
     expect(customerLayoutSource).toContain("px-2 sm:px-6 flex items-center gap-1 sm:gap-8");
-    expect(customerLayoutSource).toContain("w-[62px] min-[360px]:w-[84px] min-[420px]:w-[94px] sm:w-[118px]");
+    // Phones get the stacked two-line logo at these widths; from sm up the horizontal one takes over.
+    expect(customerLayoutSource).toContain('src="/branding/mylawatan-logo-stacked.png?v=1"');
+    expect(customerLayoutSource).toContain("block h-auto sm:hidden");
+    expect(customerLayoutSource).toContain("w-[62px] min-[360px]:w-[84px] min-[420px]:w-[94px]");
+    expect(customerLayoutSource).toContain("hidden h-auto sm:block sm:w-[240px] lg:w-[140px] xl:w-[320px]");
     expect(customerLayoutSource).toContain("<CurrencySwitcher compact hideFlagOnNarrowMobile className=\"w-14 min-[360px]:w-16 min-[420px]:w-20 md:w-24\" />");
   });
 

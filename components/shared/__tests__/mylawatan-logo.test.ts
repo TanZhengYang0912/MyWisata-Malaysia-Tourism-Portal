@@ -20,8 +20,11 @@ describe("MYLawatan logo contract", () => {
   });
 
   it("renders the master logo with object-contain to prevent image distortion", () => {
-    expect(source).toContain("/branding/mylawatan-logo-transparent.png?v=6");
+    expect(source).toContain("/branding/mylawatan-logo-transparent.png?v=7");
     expect(source).toContain("object-contain");
     expect(existsSync(resolve(process.cwd(), "public/branding/mylawatan-logo-transparent.png"))).toBe(true);
+    // Phones show the stacked two-line artwork instead of the wide horizontal lockup.
+    expect(source).toContain("/branding/mylawatan-logo-stacked.png?v=1");
+    expect(existsSync(resolve(process.cwd(), "public/branding/mylawatan-logo-stacked.png"))).toBe(true);
   });
 });

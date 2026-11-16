@@ -362,12 +362,13 @@ function LoginContent() {
         : "w-full max-w-7xl mx-auto flex-1 pt-8 sm:pt-10 pb-10"}
       >
         <header className={human.hasVerifiedOnce
-          ? "relative mb-5 sm:mb-6 flex items-center justify-center min-h-[60px]"
+          ? "mb-5 sm:mb-6 flex items-center justify-between gap-4 min-h-[60px]"
           : "mb-6 sm:mb-12 flex min-h-[44px] items-center gap-3 sm:gap-4"}
         >
           {human.hasVerifiedOnce ? <>
-            <MyLawatanLogo markSize={60} priority />
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-28 sm:w-32">
+            {/* Logo on the left edge of the sign-in card, language switcher on the right; the logo shrinks to fit between them. */}
+            <MyLawatanLogo markSize={48} priority />
+            <div className="w-28 shrink-0 sm:w-32">
               <LanguageSwitcher compact />
             </div>
           </> : <>
