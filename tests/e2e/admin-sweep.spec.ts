@@ -32,7 +32,12 @@ test.skip(process.env.ADMIN_SWEEP !== "1", "Manual: needs a human admin sign-in.
 test.use({ viewport: { width: 1440, height: 900 }, actionTimeout: 15_000 });
 test.setTimeout(2_700_000);
 
-const BASE = "http://localhost:3000";
+// SWEEP_BASE_URL=https://mylawatan.my sweeps production. There every write is stubbed (verified before
+// the first page), database function calls outside a read-only allowlist are stubbed too, and the admin area is refused.
+const BASE = (process.env.SWEEP_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+const BASE_ORIGIN = new URL(BASE).origin;
+const IS_PROD = BASE_ORIGIN !== "http://localhost:3000";
+const READ_ONLY_RPC = /^\/rest\/v1\/rpc\/(get|list|search|count|is|has|can|find|fetch|check|read|view|nearby|match|rank|recommend)[a-z0-9_]*$/i;
 const OUT = process.env.ADMIN_SWEEP_OUT ?? "test-results/admin-sweep";
 const RUN = Date.now().toString(36);
 const ADMIN_ROUTES = [
@@ -74,6 +79,9 @@ const DETAIL_PATTERNS = AREA === "vendor" ? VENDOR_DETAIL_PATTERNS : ADMIN_DETAI
 const MOBILE = process.env.SWEEP_VIEWPORT === "mobile";
 const LOCALE = process.env.SWEEP_LOCALE === "ms" || process.env.SWEEP_LOCALE === "zh-CN" ? process.env.SWEEP_LOCALE : "en";
 const GUEST = process.env.SWEEP_GUEST === "1";
+// A signed-in account's saved language outranks the NEXT_LOCALE cookie, so a customer language run (ms, zh-CN) is made as a
+// logged-out visitor in a fresh context, where the cookie decides. Pages that need an account redirect to /login and are skipped.
+const ANON = AREA === "customer" && !GUEST && (process.env.SWEEP_ANON === "1" || LOCALE !== "en");
 const DEEP = process.env.SWEEP_DEEP === "1";
 const WRITES_FAIL = process.env.SWEEP_WRITES === "fail";
 // Money screens: nothing is opened or clicked there beyond tabs and search.
@@ -85,6 +93,10 @@ type Finding = { page: string; kind: string; detail: string };
 const findings: Finding[] = [];
 const steps: string[] = [];
 let where = "setup";
+// Any new step or finding counts as progress; the watchdog in the test ends a run that has none for too long.
+let lastProgress = Date.now();
+const recordStep = steps.push.bind(steps);
+steps.push = (...items: string[]) => { lastProgress = Date.now(); return recordStep(...items); };
 
 function save() {
   mkdirSync(OUT, { recursive: true });
@@ -92,6 +104,7 @@ function save() {
 }
 
 function note(kind: string, detail: string, page = where) {
+  lastProgress = Date.now();
   const key = `${page}|${kind}|${detail}`;
   if (findings.some((f) => `${f.page}|${f.kind}|${f.detail}` === key)) return;
   findings.push({ page, kind, detail });
@@ -133,15 +146,25 @@ function listen(page: Page) {
   });
   page.on("response", (response) => {
     const url = new URL(response.url());
-    if (url.origin !== "http://localhost:3000" || response.status() < 400) return;
+    if (url.origin !== BASE_ORIGIN || response.status() < 400) return;
     if (/favicon|\/_next\/(static|webpack)/.test(url.pathname) && response.status() === 404) return;
     note("http-error", `${response.request().method()} ${stripQuery(url.pathname)} -> ${response.status()}`);
   });
 }
 
+/** Production sits behind a Cloudflare check that can reappear; wait it out (never work around it) and record it, so it is not mistaken for a broken page. */
+async function waitOutChallenge(page: Page) {
+  const challenged = () => page.evaluate(() => /Performing security verification/i.test(document.body?.innerText ?? "")).catch(() => false);
+  if (!(await challenged())) return;
+  note("cloudflare-challenge", `shown on ${new URL(page.url()).pathname}`);
+  for (let i = 0; i < 40 && (await challenged()); i += 1) await page.waitForTimeout(2_000);
+  if (await challenged()) note("cloudflare-challenge-stuck", `still shown after 80 s on ${new URL(page.url()).pathname}`);
+}
+
 /** Waits until spinners and "Loading" text are gone (up to 12 s) and reports a page that never finishes loading. */
 async function settle(page: Page) {
   await page.waitForLoadState("domcontentloaded");
+  if (IS_PROD) await waitOutChallenge(page);
   await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
   // Vendor pages fetch only after the signed-in user has loaded, so the first idle can be the gap
   // between two waves of requests; give the second wave time to start, then wait for it too.
@@ -240,9 +263,13 @@ async function visit(page: Page, path: string): Promise<boolean> {
     return null;
   });
   if (!response) return false;
+  // Account-only pages send a logged-out visitor to /login from the browser, just after the page loads.
+  if (ANON && path !== "/login") await page.waitForURL((url) => /^\/login/.test(url.pathname), { timeout: 3_000 }).catch(() => {});
   const final = new URL(page.url()).pathname;
-  if (/^\/(login|admin\/security)/.test(final) && !(GUEST || path === "/login" || (AREA === "customer" && !path.startsWith("/customer")))) throw new Error(`Session lost: ${path} redirected to ${final}`);
+  if (/^\/(login|admin\/security)/.test(final) && !(GUEST || ANON || path === "/login" || (AREA === "customer" && !path.startsWith("/customer")))) throw new Error(`Session lost: ${path} redirected to ${final}`);
   if (final !== path) note("redirected", `${path} -> ${final}`);
+  // A logged-out visitor is sent to the login page by account-only pages; there is nothing to sweep there.
+  if (ANON && path !== "/login" && /^\/login/.test(final)) return false;
   if (response.status() >= 400) note("http-error", `page ${path} -> ${response.status()}`);
   await settle(page);
   const seconds = (Date.now() - started) / 1000;
@@ -307,8 +334,11 @@ async function exercise(page: Page, path: string) {
   const openers = page.locator("main button:not([type=submit]):visible").filter({ hasText: /^(view|details?|preview|filters?|edit|add|new|create)\b/i });
   const openerCount = NO_OPENERS.includes(path) ? 0 : await openers.count();
   for (let i = 0; i < Math.min(openerCount, 3); i += 1) {
+    // An earlier opener can remove later ones from the page; skip those instead of waiting for them.
+    if (i >= (await openers.count())) break;
     const opener = openers.nth(i);
-    const name = ((await opener.textContent()) ?? "").trim().slice(0, 30);
+    const name = ((await opener.textContent({ timeout: 3_000 }).catch(() => null)) ?? "").trim().slice(0, 30);
+    if (!name) continue;
     await step(`open "${name}" then close`, async () => {
       await opener.click({ timeout: 4_000 });
       await page.waitForTimeout(500);
@@ -345,6 +375,8 @@ async function detailLinks(page: Page): Promise<string[]> {
 
 let writesSent = 0;
 let lastWrite = "";
+// True only while the demo account signs in, so the human-check and session calls under /api/auth/ can pass.
+let loginWindow = false;
 
 /**
  * Stubs every write, so only reads reach the database: API writes, server actions, and direct
@@ -354,18 +386,21 @@ let lastWrite = "";
 async function installStubs(context: BrowserContext) {
   const isRead = (method: string) => method === "GET" || method === "HEAD" || method === "OPTIONS";
   const respond = (route: Route, label: string, supabase: boolean) => {
+    // Supabase is another origin, so the browser needs CORS headers before it will show the stub's answer.
+    const headers: Record<string, string> = supabase ? { "x-sweep-stub": "1", "access-control-allow-origin": "*", "access-control-expose-headers": "x-sweep-stub" } : { "x-sweep-stub": "1" };
     writesSent += 1;
     lastWrite = label;
     note("stubbed-write", label);
     if (WRITES_FAIL) {
-      return route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify(supabase ? { message: "Sweep injected failure", code: "SWEEP" } : { data: null, error: { code: "SWEEP_INJECTED_FAILURE", message: "Sweep injected failure" } }) });
+      return route.fulfill({ status: 500, headers, contentType: "application/json", body: JSON.stringify(supabase ? { message: "Sweep injected failure", code: "SWEEP" } : { data: null, error: { code: "SWEEP_INJECTED_FAILURE", message: "Sweep injected failure" } }) });
     }
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(supabase ? [] : { data: {}, error: null }) });
+    return route.fulfill({ status: 200, headers, contentType: "application/json", body: JSON.stringify(supabase ? [] : { data: {}, error: null }) });
   };
-  await context.route(/^http:\/\/localhost:3000\//, (route) => {
+  await context.route((url) => url.origin === BASE_ORIGIN, (route) => {
     const request = route.request();
     if (isRead(request.method())) return route.continue();
     const url = new URL(request.url());
+    if (loginWindow && url.pathname.startsWith("/api/auth/")) return route.continue();
     if (url.pathname.startsWith("/api/") || request.headers()["next-action"]) return respond(route, `${request.method()} ${stripQuery(url.pathname)}`, false);
     return route.continue();
   });
@@ -375,6 +410,8 @@ async function installStubs(context: BrowserContext) {
     if (isRead(request.method()) || url.pathname.startsWith("/auth/v1/token")) return route.continue();
     const label = `${request.method()} supabase ${url.pathname.replace(/\/[0-9a-f-]{36}/g, "/:id")}`;
     if (url.pathname.startsWith("/rest/v1/rpc/")) {
+      // On production only database functions named like reads go through; anything else is treated as a write.
+      if (IS_PROD && !READ_ONLY_RPC.test(url.pathname)) return respond(route, label, true);
       note("unstubbed-rpc", label);
       return route.continue();
     }
@@ -382,18 +419,46 @@ async function installStubs(context: BrowserContext) {
   });
 }
 
-/** The seeded demo customer (public demo credentials), or a guest, in the given page's fresh context. */
+/** Production only: proves a POST to the site and to Supabase comes back from the stub, or stops the run. */
+async function assertWritesStubbed(page: Page) {
+  const supabaseUrl = localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const probes = await page.evaluate(async (supabase) => {
+    const stubbed = async (url: string) => {
+      const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => null);
+      return response?.headers.get("x-sweep-stub") === "1";
+    };
+    return { site: await stubbed("/api/sweep-self-check"), supabase: supabase ? await stubbed(`${supabase}/rest/v1/sweep_self_check`) : true, rpc: supabase ? await stubbed(`${supabase}/rest/v1/rpc/sweep_self_check_write`) : true };
+  }, supabaseUrl);
+  steps.push(`write self-check ${JSON.stringify(probes)}`);
+  if (!probes.site || !probes.supabase || !probes.rpc) throw new Error(`Write protection failed its self-check ${JSON.stringify(probes)}; stopping before any page is swept.`);
+}
+
+/** A seeded demo account (public demo credentials: the customer, or the vendor owner), or a guest, in the given page's fresh context. */
 async function loginCustomer(page: Page) {
   await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded", timeout: 120_000 });
+  if (IS_PROD) await waitOutChallenge(page);
   await page.waitForTimeout(5_000);
   if (GUEST) {
-    await page.getByRole("button", { name: /guest mode/i }).click();
+    const guestButton = page.getByRole("button", { name: /continue as guest|guest mode/i });
+    await guestButton.waitFor({ timeout: 90_000 });
+    await guestButton.click();
     await page.waitForURL((url) => url.pathname.startsWith("/customer"), { timeout: 60_000 });
     return;
   }
-  await page.locator('input[type="email"]').fill("customer@demo.local");
+  await page.locator('input[type="email"]').waitFor({ timeout: 90_000 }).catch(async (error) => {
+    const text = await page.evaluate(() => document.body?.innerText.slice(0, 200).replace(/\s+/g, " ")).catch(() => "");
+    note("login-form-missing", `url=${page.url()} text="${text}"`);
+    await page.screenshot({ path: join(OUT, "login-form-missing.png") }).catch(() => {});
+    throw error;
+  });
+  await page.locator('input[type="email"]').fill(AREA === "vendor" ? "owner.ghee-hiang@demo.local" : "customer@demo.local");
   await page.locator('input[type="password"]').fill("demo123456");
   await page.waitForTimeout(8_000);
+  // The real Turnstile on production fills this token once it has passed; the local test key does it at once.
+  await page.waitForFunction(() => {
+    const field = document.querySelector('input[name="cf-turnstile-response"]') as HTMLInputElement | null;
+    return !field || field.value.length > 0;
+  }, null, { timeout: 90_000 }).catch(() => note("login-captcha-slow", "the human check did not finish within 90 s"));
   await page.locator("form").getByRole("button", { name: /^sign in$/i }).click();
   await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 90_000 });
   await page.waitForURL((url) => !url.pathname.startsWith("/auth/"), { timeout: 30_000 });
@@ -505,11 +570,13 @@ async function customerJourney(page: Page) {
       await settle(page);
       await audit(page);
       log(`opened ${new URL(page.url()).pathname}`);
-      const add = page.getByRole("button", { name: /add to (cart|basket|trip|itinerary)|book now|reserve|tambah ke|加入/i }).first();
+      const add = page.getByRole("button", { name: /add (booking )?to (cart|basket|trip|itinerary)|book now|reserve|tambah ke|加入/i }).first();
       if (await add.isVisible().catch(() => false)) {
         const before = await feedbackSnapshot(page);
         await add.click().catch((error) => note("journey-step-failed", `add to cart: ${String(error.message).split("\n")[0].slice(0, 100)}`));
-        await page.waitForTimeout(1_200);
+        // The cart write can take several seconds on the shared database, so wait for the
+        // button to settle (success relabels it) before judging whether anything was shown.
+        await page.waitForTimeout(4_000);
         const after = await feedbackSnapshot(page);
         const feedback = after.alerts.some((text) => !before.alerts.includes(text));
         log(`add to cart clicked; feedback shown: ${feedback}`);
@@ -544,19 +611,35 @@ async function waitForHumanLogin(page: Page) {
   throw new Error("Timed out waiting for the admin sign-in");
 }
 
+// The customer, and (SWEEP_AUTO_LOGIN=1) the vendor owner, are signed in by the sweep in a fresh context.
+// The login page's Cloudflare Turnstile can demand a human click, which the sweep never automates: with
+// SWEEP_HUMAN_LOGIN=1 it instead continues in a Chrome window where a person has already signed in.
+const AUTO_LOGIN = process.env.SWEEP_HUMAN_LOGIN !== "1" && (AREA === "customer" || (AREA === "vendor" && process.env.SWEEP_AUTO_LOGIN === "1"));
+
 test("admin sweep", async ({ page: launchedPage }) => {
+  if (IS_PROD && AREA === "admin") throw new Error("The admin area is never swept against production: its flows write real rows.");
+  // A page that hangs a script step would otherwise hold the run until the 45-minute limit: save what was found and stop.
+  setInterval(() => {
+    if (Date.now() - lastProgress < 12 * 60_000) return;
+    note("watchdog-exit", `no progress for 12 minutes while on ${where}`);
+    save();
+    process.exit(3);
+  }, 30_000).unref();
   let page = launchedPage;
   let customerContext: BrowserContext | null = null;
   const phone = { width: 390, height: 844 };
   if (process.env.ADMIN_SWEEP_CDP) {
     const browser = await chromium.connectOverCDP(process.env.ADMIN_SWEEP_CDP);
-    if (AREA === "customer") {
+    if (AUTO_LOGIN || ANON) {
       // A fresh context, so the vendor or admin session in the same Chrome is never touched.
       customerContext = await browser.newContext({ viewport: MOBILE ? phone : { width: 1280, height: 900 }, isMobile: MOBILE, hasTouch: MOBILE, deviceScaleFactor: MOBILE ? 2 : 1 });
       page = await customerContext.newPage();
     } else {
       const context = browser.contexts()[0];
-      page = context.pages()[0] ?? (await context.newPage());
+      // Chrome also lists its own pages (the address-bar popup) here; drive only the person's tab so the signed-in session
+      // is never touched from a second page, which can make two clients refresh the same login at once.
+      const pages = context.pages();
+      page = pages.find((p) => p.url().startsWith(BASE)) ?? pages.find((p) => !p.url().startsWith("chrome")) ?? (await context.newPage());
       await page.setViewportSize(MOBILE ? phone : { width: 1440, height: 900 });
     }
   }
@@ -569,10 +652,25 @@ test("admin sweep", async ({ page: launchedPage }) => {
   const wordTerm = `e2esweep${RUN}`;
 
   try {
-    if (AREA === "customer") await loginCustomer(page);
-    else await waitForHumanLogin(page);
-    steps.push(GUEST ? "continued as guest" : "signed in");
-    if (AREA !== "admin") await installStubs(page.context());
+    if (ANON) {
+      await installStubs(page.context());
+      if (IS_PROD) await assertWritesStubbed(page);
+    } else if (AUTO_LOGIN) {
+      // Stubs go in before the sign-in so no request on the way in or out can write unchecked (token calls are let through).
+      await installStubs(page.context());
+      if (IS_PROD) {
+        await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded", timeout: 120_000 });
+        await assertWritesStubbed(page);
+      }
+      loginWindow = true;
+      try { await loginCustomer(page); } finally { loginWindow = false; }
+    } else {
+      // A person signs in first; only then do the stubs go in, so their sign-in requests are never touched.
+      await waitForHumanLogin(page);
+      if (AREA !== "admin") await installStubs(page.context());
+      if (IS_PROD) await assertWritesStubbed(page);
+    }
+    steps.push(GUEST ? "continued as guest" : ANON ? "browsing logged out" : "signed in");
     // The language is chosen after sign-in, because the login screen's own labels are English.
     if (LOCALE !== "en") await page.context().addCookies([{ name: "NEXT_LOCALE", value: LOCALE, url: BASE }]);
 
@@ -587,8 +685,14 @@ test("admin sweep", async ({ page: launchedPage }) => {
       if (!(await visit(page, path))) continue;
       steps.push(`visited ${path}`);
       for (const href of (await detailLinks(page)).slice(0, 2)) details.add(href);
-      await exercise(page, path);
-      if (DEEP && AREA !== "admin") await clickThrough(page, path);
+      // One page misbehaving must not end the whole run: record it and go on to the next page.
+      try {
+        await exercise(page, path);
+        if (DEEP && AREA !== "admin") await clickThrough(page, path);
+      } catch (error) {
+        note("sweep-step-crashed", String((error as Error).message).split("\n")[0].slice(0, 200), path);
+        await page.goto(new URL(path, BASE).toString(), { waitUntil: "domcontentloaded" }).catch(() => {});
+      }
       // The sidebar is part of every page: its links must resolve.
       if (AREA !== "customer" && path === STATIC_ROUTES[0]) {
         const nav = await page.locator(`a[href^="/${AREA}/"]`).evaluateAll((els) => [...new Set(els.map((el) => (el as HTMLAnchorElement).getAttribute("href")!.split("?")[0]))]);
@@ -607,9 +711,11 @@ test("admin sweep", async ({ page: launchedPage }) => {
       // Read-only probe of the vendor API: a 5xx here is a server bug whatever the page does with it.
       where = "vendor API probe";
       const vendorId = await page.evaluate(async () => (await (await fetch("/api/auth/me")).json()).user?.activeVendorId as string | undefined).catch(() => undefined);
+      const probeRoutes = vendorGetRoutes();
+      steps.push(`vendor API probe: vendor id ${vendorId ? "found" : "missing"}, ${probeRoutes.length} routes, cwd ${process.cwd()}`);
       if (!vendorId) note("probe-skipped", "the signed-in user has no active vendor id");
       else {
-        for (const rel of vendorGetRoutes()) {
+        for (const rel of probeRoutes) {
           const url = `${BASE}/api/vendors/${vendorId}${rel}`;
           const status = await page.evaluate(async (u) => (await fetch(u, { cache: "no-store" })).status, url).catch(() => -1);
           if (status >= 500 || status === -1) note("api-5xx", `GET /api/vendors/:id${rel} -> ${status}`);
@@ -707,10 +813,12 @@ test("admin sweep", async ({ page: launchedPage }) => {
       await page.screenshot({ path: join(OUT, "flow_word_failed.png") }).catch(() => {});
     }
   } finally {
-    if (AREA !== "admin") await page.context().unrouteAll({ behavior: "ignoreErrors" }).catch(() => {});
+    // Cleanup must never hold the run: each step gets 15 s, then the run finishes regardless.
+    const within = (task: Promise<unknown>) => Promise.race([task.catch(() => {}), new Promise((resolve) => setTimeout(resolve, 15_000))]);
+    if (AREA !== "admin") await within(page.context().unrouteAll({ behavior: "ignoreErrors" }));
     // The vendor/admin Chrome is the user's own: put its language back.
-    if (!customerContext && LOCALE !== "en") await page.context().addCookies([{ name: "NEXT_LOCALE", value: "en", url: BASE }]).catch(() => {});
-    await customerContext?.close().catch(() => {});
+    if (!customerContext && LOCALE !== "en") await within(page.context().addCookies([{ name: "NEXT_LOCALE", value: "en", url: BASE }]));
+    if (customerContext) await within(customerContext.close());
     // Remove every row this run created, even after a failure.
     if (service) {
       await service.from("hotel_amenities").delete().eq("code", amenityCode);

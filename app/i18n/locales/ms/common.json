@@ -422,7 +422,8 @@
   },
   "brand": {
     "speed": "MYLawatan Speed",
-    "copyright": "© {{year}} MYLawatan. Hak cipta terpelihara."
+    "copyright": "© {{year}} MYLawatan. Hak cipta terpelihara.",
+    "poweredBy": "Dikuasakan oleh {{name}}"
   },
   "ui": {
     "vendor": {

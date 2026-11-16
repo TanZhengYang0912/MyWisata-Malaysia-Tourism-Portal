@@ -4022,18 +4022,22 @@
     },
     "about": {
       "title": "About MYLawatan",
-      "intro": "MYLawatan is a Malaysia-focused tourism marketplace built as a final-year project. It brings discovery, booking, payments, and traveller support together in one place.",
+      "intro": "MYLawatan is a digital event and marketplace platform operated under MES EVENT MANAGEMENT (KT0624597-M) in partnership with SCASHTEC SDN BHD (1334393-M).\nThe platform is designed to bring event discovery, event management, vendor engagement and marketplace services together in one convenient digital ecosystem. MYLawatan aims to connect event organisers, vendors, businesses and customers through a seamless online experience.",
       "what": {
-        "heading": "What MYLawatan is",
-        "body": "You can explore activities, food, stays, and hidden gems across Malaysia, book and pay in one cart, chat with vendors, and manage everything from a single account. Vendors manage their outlets, listings, bookings, and vouchers, while the platform keeps payments, verification, and rewards running behind the scenes."
+        "heading": "What MYLawatan Offers",
+        "body": "MYLawatan provides a platform where users can discover events, explore marketplace offerings, connect with vendors and access various services through a single account.\nFor vendors and business partners, the platform provides opportunities to showcase their offerings, manage listings, engage with customers and expand their reach through the MYLawatan ecosystem.\nOur goal is to make event participation, vendor engagement and marketplace discovery more accessible and convenient."
       },
-      "prototype": {
-        "heading": "A student prototype",
-        "body": "This is an academic project rather than a commercial service. Some features, including certain payment methods, are simulated for demonstration, and it is not intended for real-money travel bookings."
+      "company": {
+        "heading": "Our Company & Partnership",
+        "body": "MYLawatan operates under:\nMES EVENT MANAGEMENT\nRegistration No.: KT0624597-M\nIn partnership with:\nSCASHTEC SDN BHD\nCompany Registration No.: 1334393-M\nTogether, both parties collaborate to develop and provide digital solutions and services supporting event management and marketplace activities through MYLawatan."
+      },
+      "vision": {
+        "heading": "Our Vision",
+        "body": "To build an integrated digital ecosystem that connects people, businesses, events and marketplace opportunities while creating a more accessible and connected experience for everyone."
       },
       "contact": {
-        "heading": "Getting help",
-        "body": "The fastest way to get answers is the Help Center or the in-app assistant, which can create a support ticket for our team if it cannot answer your question."
+        "heading": "Getting Help",
+        "body": "For enquiries, assistance or partnership opportunities, please visit our Help Center or contact our support team through the MYLawatan platform.\nWe welcome event organisers, vendors, businesses and potential partners to be part of the MYLawatan ecosystem."
       },
       "helpCta": "Visit Help Center",
       "supportCta": "Contact support"

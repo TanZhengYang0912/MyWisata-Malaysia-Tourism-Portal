@@ -3,7 +3,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { findOne, installTestDom, type TestDocument, type TestElement } from "@/components/shared/__tests__/render-test-dom";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({ t: (key: string, options?: { name?: string }) => (options?.name ? `${key}:${options.name}` : key) }),
 }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/customer/orders/order-1" }));
 vi.mock("next/link", () => ({
@@ -49,5 +49,12 @@ describe("customer site footer print visibility", () => {
 
     const footer = findOne(container, (element) => element.tagName === "FOOTER");
     expect(footer.className).toContain("print:hidden");
+  });
+
+  it.each(["full", "slim"] as const)("shows the operator under the copyright in the %s footer", async (variant) => {
+    await renderFooter(variant);
+
+    const footer = findOne(container, (element) => element.tagName === "FOOTER");
+    expect(footer.textContent).toContain("brand.poweredBy:MES EVENT MANAGEMENT");
   });
 });
