@@ -185,6 +185,16 @@ describe("Supabase proxy locale resolution", () => {
     expect(response.cookies.has("NEXT_LOCALE")).toBe(false);
   });
 
+  it("forwards the request pathname to the root layout, overwriting a client-supplied value", async () => {
+    setupSupabase();
+
+    const response = await updateSession(makeRequest({
+      path: "/customer/explore?q=food", extraHeaders: { "x-app-pathname": "/admin" },
+    }));
+
+    expect(response.headers.get("x-middleware-request-x-app-pathname")).toBe("/customer/explore");
+  });
+
   it("overwrites a client-supplied x-app-locale on API requests with the resolved locale", async () => {
     setupSupabase({ accountLocale: "zh-CN", claimsSub: "user-123" });
 

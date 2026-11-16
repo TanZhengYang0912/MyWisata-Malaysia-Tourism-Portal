@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { Fraunces, Plus_Jakarta_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/auth";
@@ -18,7 +18,7 @@ import {
   resolveReferenceCurrencyPreference,
 } from "@/lib/currency/reference";
 import { getRequestLocale } from "@/lib/i18n/server";
-import { loadLocaleResources } from "@/lib/i18n/resources";
+import { loadLocaleResources, selectPageResources } from "@/lib/i18n/resources";
 import { RouteScrollReset } from "@/components/shared/route-scroll-reset";
 
 const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"], display: "swap" });
@@ -52,10 +52,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   );
   const referenceRate = await getReferenceRate(currency);
   const resources = await loadLocaleResources(locale);
-  const englishResources = locale === "en" ? resources : await loadLocaleResources("en");
+  // Browse pages inline only the copy they render; see selectPageResources.
+  const page = selectPageResources(resources, (await headers()).get("x-app-pathname") ?? "");
   const resourcesByLocale: AppI18nResources = {
-    en: englishResources,
-    [locale]: resources,
+    [locale]: page.resources,
   };
 
   return (
@@ -70,7 +70,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <FontSizeScript />
         <ThemeProvider>
           <FontSizeProvider>
-            <AppI18nProvider locale={locale} resources={resourcesByLocale}>
+            <AppI18nProvider locale={locale} resources={resourcesByLocale} partialNamespaces={page.partialNamespaces}>
               <AppDialogProvider>
                 <ReferenceCurrencyProvider currency={currency} snapshot={referenceRate}>
                 <ActionFeedbackProvider>

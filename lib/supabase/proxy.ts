@@ -93,6 +93,8 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   });
 
   forwardedHeaders.set('x-app-locale', locale);
+  // The root layout picks which translations to inline from this; set, never trust the client's.
+  forwardedHeaders.set('x-app-pathname', request.nextUrl.pathname);
   const gate = adminAssuranceGate(request.nextUrl.pathname, claims);
   let supabaseResponse = gate === 'api'
     ? NextResponse.json({ data: null, error: { code: 'MFA_REQUIRED', message: 'Authenticator verification required' } }, { status: 403 })
