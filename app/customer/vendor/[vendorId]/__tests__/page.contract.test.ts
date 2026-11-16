@@ -8,6 +8,10 @@ const listingSource = readFileSync(resolve(process.cwd(), "components/customer/v
 const locationSource = readFileSync(resolve(process.cwd(), "components/customer/vendor-location-list.tsx"), "utf8");
 
 describe("customer vendor profile image contract", () => {
+  it("passes the vendor id to Event items so each stop row can open the vendor's stall page", () => {
+    expect(pageSource).toContain("<EventItemsTable items={eventItems} vendorId={vendor.id} />");
+  });
+
   it("uses only the vendor cover for the vendor hero", () => {
     expect(pageSource).toContain("const vendorVisual = getVendorVisual({ name: vendor.name, coverUrl: vendor.cover_url, logoUrl: vendor.logo_url });");
     expect(pageSource).toContain("const heroImage = vendorVisual.coverUrl;");

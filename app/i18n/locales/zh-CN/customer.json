@@ -2945,6 +2945,7 @@
       "stallCount": "{{count}} 个摊位",
       "stallCount_one": "{{count}} 个摊位",
       "stallCount_other": "{{count}} 个摊位",
+      "alsoAt": "也在这些地点",
       "stallProducts": "此摊位售卖的商品",
       "productCount": "{{count}} 件商品",
       "productCount_one": "{{count}} 件商品",

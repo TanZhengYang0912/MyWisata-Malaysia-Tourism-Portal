@@ -2945,6 +2945,7 @@
       "stallCount": "{{count}} gerai",
       "stallCount_one": "{{count}} gerai",
       "stallCount_other": "{{count}} gerai",
+      "alsoAt": "Juga di",
       "stallProducts": "Apa yang dijual gerai ini",
       "productCount": "{{count}} item",
       "productCount_one": "{{count}} item",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatEventShortDateRange, getEventLocationPhase } from "@/lib/promotion-campaigns/locations";
+import { formatEventShortDateRange, getDefaultStopId, getEventLocationPhase } from "@/lib/promotion-campaigns/locations";
 
 describe("getEventLocationPhase", () => {
   const stop = { startsOn: "2026-10-03", endsOn: "2026-10-08", closesAt: "23:00" };
@@ -27,5 +27,17 @@ describe("formatEventShortDateRange", () => {
     expect(formatEventShortDateRange("2026-10-03", "2026-10-08", "en")).not.toMatch(/2026/);
     expect(formatEventShortDateRange("2026-10-03", "2026-10-08", "en")).toMatch(/3.*8/);
     expect(formatEventShortDateRange("2026-11-14", "2026-11-14", "en")).toBe("Nov 14");
+  });
+});
+
+describe("getDefaultStopId", () => {
+  const stops = [{ id: "a" }, { id: "b" }, { id: "c" }];
+  const pick = (phases: string[]) => getDefaultStopId(stops, new Map(stops.map((stop, index) => [stop.id, phases[index] as "ended" | "running" | "upcoming"])));
+
+  it("prefers the running stop, then the next upcoming one, then the last", () => {
+    expect(pick(["ended", "running", "upcoming"])).toBe("b");
+    expect(pick(["ended", "upcoming", "upcoming"])).toBe("b");
+    expect(pick(["ended", "ended", "ended"])).toBe("c");
+    expect(getDefaultStopId([], new Map())).toBeNull();
   });
 });

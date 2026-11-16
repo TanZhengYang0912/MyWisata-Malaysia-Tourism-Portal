@@ -1,18 +1,32 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { BackLink } from "@/components/shared/back-link";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarDays, Clock, ImageOff, MapPin, Store } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, ChevronRight, Clock, MapPin, Store } from "lucide-react";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { getPublicPromotionCampaigns } from "@/lib/promotion-campaigns/public";
 import { campaignSlugSchema } from "@/lib/promotion-campaigns/validation";
-import { formatEventDateRange, formatEventHours } from "@/lib/promotion-campaigns/locations";
-import { formatMYR } from "@/lib/i18n/format";
+import {
+  formatEventDateRange,
+  formatEventHours,
+  formatEventShortDateRange,
+  getDefaultStopId,
+  getEventLocationPhase,
+  PHASE_LABEL_KEY,
+  type EventLocationPhase,
+} from "@/lib/promotion-campaigns/locations";
+import type { PromotionCampaignPublic, PromotionCampaignPublicLocation, PromotionCampaignPublicStall, PromotionCampaignPublicVendor } from "@/lib/promotion-campaigns/types";
 import { CustomerPageShell } from "@/components/customer/customer-page-shell";
-import { EventReserveButton } from "@/components/customer/event-reserve-dialog";
+import { StallProductCard } from "./stall-product-card";
 
-type Props = { params: Promise<{ slug: string; vendorId: string }> };
+type Props = {
+  params: Promise<{ slug: string; vendorId: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+type StallAtStop = { stall: PromotionCampaignPublicStall; location: PromotionCampaignPublicLocation; phase: EventLocationPhase };
 
 async function findVendor(slug: string, vendorId: string) {
   const parsedSlug = campaignSlugSchema.safeParse(slug);
@@ -25,119 +39,140 @@ async function findVendor(slug: string, vendorId: string) {
   return { campaign, vendor };
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug, vendorId } = await params;
-  const found = await findVendor(slug, vendorId);
-  if (!found) return { title: `${BRAND_NAME}` };
-  const title = `${found.vendor.vendorName} · ${found.campaign.title} — ${BRAND_NAME}`;
-  return { title, description: found.vendor.stalls[0].stallDescription.slice(0, 160) };
+/**
+ * The stall the visitor came from (`?stop=` is a location id), else the vendor's running stall, else the next
+ * one to start, else the last. Stalls whose location is missing are skipped; null when none is left.
+ */
+function selectStall(campaign: PromotionCampaignPublic, vendor: PromotionCampaignPublicVendor, stop: string | string[] | undefined) {
+  const locationsById = new Map(campaign.locations.map((location) => [location.id, location]));
+  const now = new Date();
+  const stalls: StallAtStop[] = vendor.stalls
+    .flatMap((stall) => {
+      const location = locationsById.get(stall.locationId);
+      return location ? [{ stall, location, phase: getEventLocationPhase(location, now) }] : [];
+    })
+    .sort((a, b) => a.location.startsOn.localeCompare(b.location.startsOn) || a.location.opensAt.localeCompare(b.location.opensAt));
+  if (stalls.length === 0) return null;
+  const requested = typeof stop === "string" ? stop : undefined;
+  const selectedId = stalls.some((entry) => entry.location.id === requested)
+    ? requested
+    : getDefaultStopId(stalls.map((entry) => entry.location), new Map(stalls.map((entry) => [entry.location.id, entry.phase])));
+  const selected = stalls.find((entry) => entry.location.id === selectedId) ?? stalls[0];
+  return { selected, others: stalls.filter((entry) => entry !== selected) };
 }
 
-export default async function EventVendorStallPage({ params }: Props) {
-  const { slug, vendorId } = await params;
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  const [{ slug, vendorId }, { stop }] = await Promise.all([params, searchParams]);
+  const found = await findVendor(slug, vendorId);
+  const stall = found && selectStall(found.campaign, found.vendor, stop)?.selected.stall;
+  if (!found || !stall) return { title: `${BRAND_NAME}` };
+  const title = `${found.vendor.vendorName} · ${found.campaign.title} — ${BRAND_NAME}`;
+  return { title, description: stall.stallDescription.slice(0, 160) };
+}
+
+export default async function EventVendorStallPage({ params, searchParams }: Props) {
+  const [{ slug, vendorId }, { stop }] = await Promise.all([params, searchParams]);
   const { t, locale } = await getServerTranslation("customer");
   const { t: tCommon } = await getServerTranslation("common");
   const found = await findVendor(slug, vendorId);
   if (!found) notFound();
   const { campaign, vendor } = found;
-  const locationsById = new Map(campaign.locations.map((location) => [location.id, location]));
+  const selection = selectStall(campaign, vendor, stop);
+  if (!selection) notFound();
+  const { selected: { stall, location, phase }, others } = selection;
+  const stallHref = (locationId: string) => `/customer/events/${encodeURIComponent(slug)}/${encodeURIComponent(vendorId)}?stop=${encodeURIComponent(locationId)}`;
+  const eventHref = `/customer/events/${encodeURIComponent(slug)}?stop=${encodeURIComponent(location.id)}`;
+  const sectionHeadClass = "mb-5 flex items-center justify-between gap-4 border-b border-border/70 pb-4";
+  const sectionTitleClass = "font-[family-name:var(--font-display)] text-2xl font-bold text-foreground";
 
   return (
     <CustomerPageShell wide>
       <Breadcrumbs className="mb-4" label={t("ui.place.breadcrumb")} items={[
         { label: t("navigation.home"), href: "/customer" },
         { label: t("navigation.events"), href: "/customer/events" },
-        { label: campaign.title, href: `/customer/events/${encodeURIComponent(slug)}` },
+        { label: campaign.title, href: eventHref },
         { label: vendor.vendorName },
       ]} />
-      <BackLink fallbackHref={`/customer/events/${encodeURIComponent(slug)}`} className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
+      <BackLink fallbackHref={eventHref} className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden="true" /> {tCommon("actions.back")}
       </BackLink>
 
-      <div className="flex items-start gap-3 sm:items-center">
-        <Store className="mt-1 shrink-0 text-primary sm:mt-0" size={22} aria-hidden="true" />
+      <div className="flex flex-wrap items-center gap-3">
+        <Store className="shrink-0 text-primary" size={22} aria-hidden="true" />
         <div>
           <h1 className="text-3xl leading-tight font-black tracking-tight text-foreground sm:text-4xl">{vendor.vendorName}</h1>
           {vendor.vendorKind === "event" && (
             <span className="inline-flex rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-900 dark:text-amber-200">{t("ui.eventPartners.badge")}</span>
           )}
-          {vendor.stalls.length > 1 && (
-            <p className="text-sm text-muted-foreground">{t("ui.promotionCampaigns.locationCount", { count: vendor.stalls.length })}</p>
-          )}
         </div>
+        <Link href={`/customer/vendors/${encodeURIComponent(vendorId)}`} className="ml-auto inline-flex min-h-10 shrink-0 items-center gap-1.5 text-sm font-bold text-primary transition-colors hover:text-accent active:text-accent focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
+          {t("ui.actions.visitVendor")} <ArrowRight size={16} aria-hidden="true" />
+        </Link>
       </div>
 
-      <div className="mt-5 space-y-8 sm:mt-6 sm:space-y-10">
-        {vendor.stalls.map((stall) => {
-          const location = locationsById.get(stall.locationId);
-          return (
-            <section key={stall.registrationId} aria-label={location?.name ?? stall.stallNumber}>
-              {location && (
-                <div className="mb-4 rounded-3xl border border-border bg-card p-4 shadow-sm sm:mb-5 sm:p-5">
-                  <p className="flex items-center gap-2 font-semibold text-foreground"><MapPin size={16} className="text-primary" aria-hidden="true" />{location.name}</p>
-                  <p className="mt-1 break-words pl-6 text-sm text-muted-foreground">{location.address ?? t("ui.promotionCampaigns.addressTba")}</p>
-                  <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 pl-6 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1.5"><CalendarDays size={14} aria-hidden="true" />{formatEventDateRange(location.startsOn, location.endsOn, locale)}</span>
-                    <span className="flex items-center gap-1.5"><Clock size={14} aria-hidden="true" />{formatEventHours(location.opensAt, location.closesAt, locale)}</span>
-                    <span className="flex items-center gap-1.5"><Store size={14} aria-hidden="true" />{t("ui.promotionCampaigns.stallNumber", { number: stall.stallNumber })}</span>
-                  </div>
-                </div>
-              )}
+      <section aria-label={location.name} className="mt-5 sm:mt-6">
+        <div className="mb-4 rounded-3xl border border-border bg-card p-4 shadow-sm sm:mb-5 sm:p-5">
+          <p className="flex items-center gap-2 font-semibold text-foreground"><MapPin size={16} className="text-primary" aria-hidden="true" />{location.name}</p>
+          <p className="mt-1 break-words pl-6 text-sm text-muted-foreground">{location.address ?? t("ui.promotionCampaigns.addressTba")}</p>
+          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 pl-6 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1.5"><CalendarDays size={14} aria-hidden="true" />{formatEventDateRange(location.startsOn, location.endsOn, locale)}</span>
+            <span className="flex items-center gap-1.5"><Clock size={14} aria-hidden="true" />{formatEventHours(location.opensAt, location.closesAt, locale)}</span>
+            <span className="flex items-center gap-1.5"><Store size={14} aria-hidden="true" />{t("ui.promotionCampaigns.stallNumber", { number: stall.stallNumber })}</span>
+          </div>
+        </div>
 
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={stall.stallPosterUrl} alt="" className="h-52 w-full rounded-3xl border border-border object-cover shadow-sm sm:h-72 lg:h-80" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={stall.stallPosterUrl} alt="" className="h-52 w-full rounded-3xl border border-border object-cover shadow-sm sm:h-72 lg:h-80" />
 
-              <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted-foreground sm:mt-5">{stall.stallDescription}</p>
+        <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-muted-foreground sm:mt-5">{stall.stallDescription}</p>
+      </section>
 
-              {stall.products.length > 0 && (
-                <div className="mt-6 rounded-3xl border border-primary/10 bg-card p-4 shadow-sm sm:mt-7 sm:p-7">
-                  <h2 className="border-b border-border pb-4 text-xl font-bold tracking-tight text-foreground sm:pb-5 sm:text-2xl">{t("ui.promotionCampaigns.stallProducts")}</h2>
-                  <ul className="mt-4 grid grid-cols-1 gap-4 sm:mt-6 sm:grid-cols-2 sm:gap-5 xl:grid-cols-4">
-                    {stall.products.map((product) => {
-                      return (
-                        <li key={product.id} className="mw-card min-w-0">
-                          <div className="mw-card-media">
-                            {product.imageUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={product.imageUrl} alt={product.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full flex-col items-center justify-center bg-secondary text-primary">
-                                <ImageOff size={28} strokeWidth={1.5} aria-hidden="true" />
-                                <span className="mt-2 text-xs font-semibold text-muted-foreground">{t("ui.outlet.photoComingSoon")}</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="mw-card-body !min-h-0 p-4 sm:p-5">
-                            <div className="flex items-start justify-between gap-3">
-                              <h3 className="mw-card-title flex-1 text-base leading-snug font-bold text-foreground">{product.name}</h3>
-                              <p className="shrink-0 text-right text-lg leading-tight font-bold text-primary">
-                                {product.price === 0 ? t("ui.reserve.free") : formatMYR(product.price)}
-                              </p>
-                            </div>
-                            {location && (
-                              <div className="mt-auto pt-4 [&>button]:h-11 [&>button]:w-full">
-                                <EventReserveButton
-                                  registrationId={stall.registrationId}
-                                  listingId={product.id}
-                                  itemName={product.name}
-                                  price={product.price}
-                                  locationName={location.name}
-                                  startsOn={location.startsOn}
-                                  endsOn={location.endsOn}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
-            </section>
-          );
-        })}
-      </div>
+      {stall.products.length > 0 && (
+        <section aria-labelledby="stall-products-heading" className="mt-12">
+          <div className={sectionHeadClass}>
+            <h2 id="stall-products-heading" className={sectionTitleClass}>{t("ui.promotionCampaigns.stallProducts")}</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+            {stall.products.map((product) => (
+              <StallProductCard
+                key={product.id}
+                product={product}
+                registrationId={stall.registrationId}
+                location={{ name: location.name, startsOn: location.startsOn, endsOn: location.endsOn }}
+                isEnded={phase === "ended"}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {others.length > 0 && (
+        <section aria-labelledby="stall-also-at-heading" className="mt-12">
+          <div className={sectionHeadClass}>
+            <h2 id="stall-also-at-heading" className={sectionTitleClass}>{t("ui.promotionCampaigns.alsoAt")}</h2>
+          </div>
+          <ul className="divide-y divide-border">
+            {others.map((entry) => (
+              <li key={entry.stall.registrationId}>
+                <Link
+                  href={stallHref(entry.location.id)}
+                  className="group/stop grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-md px-1 py-4 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-primary sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]"
+                >
+                  <MapPin size={16} className="row-span-2 text-primary sm:row-span-1" aria-hidden="true" />
+                  <span className="min-w-0">
+                    <span className="block font-bold text-primary transition-colors group-hover/stop:text-accent group-active/stop:text-accent">{entry.location.name}</span>
+                    <span className={`block text-xs font-semibold ${entry.phase === "running" ? "text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"}`}>{t(PHASE_LABEL_KEY[entry.phase])}</span>
+                  </span>
+                  <span className="col-start-2 text-[13px] text-muted-foreground sm:col-start-auto sm:whitespace-nowrap">
+                    {formatEventShortDateRange(entry.location.startsOn, entry.location.endsOn, locale)} · {t("ui.promotionCampaigns.stallNumber", { number: entry.stall.stallNumber })}
+                  </span>
+                  <ChevronRight size={18} className="col-start-3 row-span-2 row-start-1 text-primary transition-colors group-hover/stop:text-accent group-active/stop:text-accent sm:col-start-auto sm:row-span-1" aria-hidden="true" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </CustomerPageShell>
   );
 }

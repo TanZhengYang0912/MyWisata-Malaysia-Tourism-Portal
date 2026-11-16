@@ -346,7 +346,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.eventItems.eyebrow')}</p>
             <h2 id="event-items-heading" className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t('ui.vendor.eventItems.title')}</h2>
             <p className="mb-4 mt-2 max-w-2xl text-sm leading-5 text-muted-foreground sm:mb-6 sm:leading-6">{t('ui.vendor.eventItems.description')}</p>
-            <EventItemsTable items={eventItems} />
+            <EventItemsTable items={eventItems} vendorId={vendor.id} />
           </section>
         )}
 

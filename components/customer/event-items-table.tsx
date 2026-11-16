@@ -1,13 +1,19 @@
 import Link from "next/link";
-import { CalendarX } from "lucide-react";
+import { CalendarX, ChevronRight } from "lucide-react";
 import { ReferencePrice } from "@/components/shared/reference-price";
-import { EventReserveButton } from "@/components/customer/event-reserve-dialog";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { formatEventDateRange, formatEventHours } from "@/lib/promotion-campaigns/locations";
-import type { VendorEventItem } from "@/lib/promotion-campaigns/vendor-events";
+import { groupVendorEventItems, type VendorEventItem } from "@/lib/promotion-campaigns/vendor-events";
 
-/** A vendor's event items as a table: item, location, date, time, price and reserve. */
-export async function EventItemsTable({ items }: { items: VendorEventItem[] }) {
+// Stop columns shared by the heading row and each stop row (desktop): location, date, time, price + chevron.
+const STOP_COLUMNS = "lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.9fr)_8rem]";
+
+/**
+ * A vendor's event items grouped by item: each item once, with every upcoming or live stop under it.
+ * A stop row links to the vendor's stall page at that stop, where tapping the item reserves it.
+ * Lists, not a table: a whole-row link needs a positioned row, which table rows do not reliably give.
+ */
+export async function EventItemsTable({ items, vendorId }: { items: VendorEventItem[]; vendorId: string }) {
   const { t, locale } = await getServerTranslation("customer");
   if (items.length === 0) {
     return (
@@ -19,74 +25,73 @@ export async function EventItemsTable({ items }: { items: VendorEventItem[] }) {
     );
   }
 
+  const price = (amount: number, className: string) => amount === 0
+    ? <span className={className}>{t("ui.vendor.eventItems.free")}</span>
+    : <ReferencePrice amountMYR={amount} className={className} />;
+
   return (
-    <div className="overflow-x-auto rounded-2xl border border-border bg-card">
-      <table className="block w-full min-w-0 text-left text-sm lg:table lg:min-w-[760px]">
-        <caption className="sr-only">{t("ui.vendor.eventItems.caption")}</caption>
-        <thead className="sr-only bg-secondary/50 text-xs font-bold uppercase tracking-wide text-muted-foreground lg:not-sr-only lg:table-header-group">
-          <tr className="lg:table-row">
-            <th scope="col" className="px-4 py-3">{t("ui.vendor.eventItems.item")}</th>
-            <th scope="col" className="px-4 py-3">{t("ui.vendor.eventItems.location")}</th>
-            <th scope="col" className="px-4 py-3">{t("ui.vendor.eventItems.date")}</th>
-            <th scope="col" className="px-4 py-3">{t("ui.vendor.eventItems.time")}</th>
-            <th scope="col" className="px-4 py-3 text-right">{t("ui.vendor.eventItems.price")}</th>
-            <th scope="col" className="px-4 py-3"><span className="sr-only">{t("ui.vendor.eventItems.reserve")}</span></th>
-          </tr>
-        </thead>
-        <tbody className="block space-y-3 p-3 lg:table-row-group lg:space-y-0 lg:divide-y lg:divide-border lg:p-0">
-          {items.map((item) => (
-            <tr key={item.key} className="grid grid-cols-2 gap-x-3 gap-y-3 rounded-2xl border border-border bg-card p-4 lg:table-row lg:rounded-none lg:border-0 lg:p-0">
-              <td className="col-span-2 block p-0 lg:table-cell lg:px-4 lg:py-3">
-                <div className="flex items-start gap-3 lg:items-center">
-                  {item.product.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.product.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover lg:h-11 lg:w-11 lg:rounded-lg" />
-                  ) : (
-                    <div className="h-14 w-14 shrink-0 rounded-xl bg-secondary lg:h-11 lg:w-11 lg:rounded-lg" aria-hidden="true" />
-                  )}
+    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <div aria-hidden="true" className="hidden bg-secondary/50 px-5 py-3 text-xs font-bold uppercase tracking-wide text-muted-foreground lg:grid lg:grid-cols-[300px_minmax(0,1fr)]">
+        <span />
+        <span className={`grid gap-x-4 ${STOP_COLUMNS}`}>
+          <span>{t("ui.vendor.eventItems.location")}</span>
+          <span>{t("ui.vendor.eventItems.date")}</span>
+          <span>{t("ui.vendor.eventItems.time")}</span>
+          <span />
+        </span>
+      </div>
+      <ul aria-label={t("ui.vendor.eventItems.caption")} className="divide-y divide-border">
+        {groupVendorEventItems(items).map((group) => (
+          <li key={group.key} data-event-item-group="" className="grid px-4 pb-2 sm:px-5 lg:grid-cols-[300px_minmax(0,1fr)] lg:py-2">
+            <div className="flex items-start gap-3.5 pt-4 pb-2 lg:py-3.5 lg:pr-4">
+              {group.product.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={group.product.imageUrl} alt="" className="size-16 shrink-0 rounded-xl object-cover" />
+              ) : (
+                <div className="size-16 shrink-0 rounded-xl bg-secondary" aria-hidden="true" />
+              )}
+              <div className="min-w-0">
+                <p className="break-words font-bold leading-snug text-foreground">{group.product.name}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{t(`ui.vendor.eventItems.kinds.${group.product.kind}`)}</p>
+                {group.samePrice && price(group.product.price, "mt-1.5 block font-extrabold tabular-nums text-primary")}
+              </div>
+            </div>
+            <ol aria-label={group.product.name} className="divide-y divide-dashed divide-border">
+              {group.stops.map((item) => (
+                <li
+                  key={item.key}
+                  className={`group/stop relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-[10px] py-3 text-sm transition-colors hover:bg-primary/[0.04] has-[[data-stop-link]:focus-visible]:outline-[3px] has-[[data-stop-link]:focus-visible]:outline-offset-[-3px] has-[[data-stop-link]:focus-visible]:outline-primary lg:-mx-2.5 lg:gap-x-4 lg:px-2.5 lg:py-3.5 ${STOP_COLUMNS}`}
+                >
                   <div className="min-w-0">
-                    <p className="break-words font-semibold text-foreground">{item.product.name}</p>
-                    <p className="text-xs text-muted-foreground">{t(`ui.vendor.eventItems.kinds.${item.product.kind}`)}</p>
+                    <Link
+                      href={`/customer/events/${encodeURIComponent(item.campaignSlug)}/${encodeURIComponent(vendorId)}?stop=${encodeURIComponent(item.location.id)}`}
+                      data-stop-link=""
+                      className="break-words font-semibold text-foreground after:absolute after:inset-0 after:rounded-[10px] after:content-[''] focus-visible:outline-none"
+                    >
+                      {item.location.name}
+                    </Link>
+                    <p className="break-words text-xs text-muted-foreground">
+                      <Link href={`/customer/events/${encodeURIComponent(item.campaignSlug)}`} className="relative z-10 font-semibold text-primary transition-colors hover:text-accent">
+                        {item.campaignTitle}
+                      </Link>
+                      {item.stallNumber && <> · {t("ui.vendor.eventItems.stall", { stall: item.stallNumber })}</>}
+                    </p>
                   </div>
-                </div>
-              </td>
-              <td className="col-span-2 block min-w-0 p-0 lg:table-cell lg:px-4 lg:py-3">
-                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted-foreground lg:hidden">{t("ui.vendor.eventItems.location")}</span>
-                <p className="break-words font-semibold text-foreground">{item.location.name}</p>
-                <Link href={`/customer/events/${encodeURIComponent(item.campaignSlug)}`} className="break-words text-xs font-semibold text-primary hover:underline">
-                  {item.campaignTitle}
-                </Link>
-                {item.stallNumber && <p className="text-xs text-muted-foreground">{t("ui.vendor.eventItems.stall", { stall: item.stallNumber })}</p>}
-              </td>
-              <td className="block min-w-0 p-0 text-muted-foreground lg:table-cell lg:whitespace-nowrap lg:px-4 lg:py-3">
-                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted-foreground lg:hidden">{t("ui.vendor.eventItems.date")}</span>
-                <span className="break-words">{formatEventDateRange(item.location.startsOn, item.location.endsOn, locale)}</span>
-              </td>
-              <td className="block min-w-0 p-0 text-muted-foreground lg:table-cell lg:whitespace-nowrap lg:px-4 lg:py-3">
-                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted-foreground lg:hidden">{t("ui.vendor.eventItems.time")}</span>
-                <span className="break-words">{formatEventHours(item.location.opensAt, item.location.closesAt, locale)}</span>
-              </td>
-              <td className="block min-w-0 p-0 text-left font-semibold text-foreground lg:table-cell lg:whitespace-nowrap lg:px-4 lg:py-3 lg:text-right">
-                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted-foreground lg:hidden">{t("ui.vendor.eventItems.price")}</span>
-                {item.product.price === 0 ? t("ui.vendor.eventItems.free") : <ReferencePrice amountMYR={item.product.price} />}
-              </td>
-              <td className="block p-0 text-right lg:table-cell lg:px-4 lg:py-3">
-                <div className="flex min-h-11 items-end justify-end lg:min-h-0 lg:items-center">
-                  <EventReserveButton
-                    registrationId={item.registrationId}
-                    listingId={item.product.id}
-                    itemName={item.product.name}
-                    price={item.product.price}
-                    locationName={item.location.name}
-                    startsOn={item.location.startsOn}
-                    endsOn={item.location.endsOn}
-                  />
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                  <p className="col-start-1 text-[13px] text-muted-foreground lg:contents lg:text-sm">
+                    <span className="lg:whitespace-nowrap">{formatEventDateRange(item.location.startsOn, item.location.endsOn, locale)}</span>
+                    <span aria-hidden="true" className="lg:hidden"> · </span>
+                    <span className="lg:whitespace-nowrap">{formatEventHours(item.location.opensAt, item.location.closesAt, locale)}</span>
+                  </p>
+                  <div className="col-start-2 row-span-2 row-start-1 flex items-center justify-end gap-3 lg:col-start-auto lg:row-span-1 lg:row-start-auto">
+                    {!group.samePrice && price(item.product.price, "font-extrabold tabular-nums text-primary")}
+                    <ChevronRight size={18} className="text-primary transition-colors group-hover/stop:text-accent group-active/stop:text-accent" aria-hidden="true" />
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

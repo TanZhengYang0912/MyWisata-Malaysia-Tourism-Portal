@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PromotionCampaignPublic, PromotionCampaignPublicLocation } from "@/lib/promotion-campaigns/types";
-import { nextVendorEvent, vendorEventItems } from "@/lib/promotion-campaigns/vendor-events";
+import { groupVendorEventItems, nextVendorEvent, vendorEventItems } from "@/lib/promotion-campaigns/vendor-events";
 
 const location = (id: string, startsOn: string, endsOn: string): PromotionCampaignPublicLocation => ({
   id, name: `Location ${id}`, address: null, lat: null, lng: null, startsOn, endsOn, opensAt: "10:00", closesAt: "18:00",
@@ -41,5 +41,21 @@ describe("vendor event items", () => {
     expect(nextVendorEvent([campaign], "v1", "2026-09-30")?.location.id).toBe("soon");
     expect(nextVendorEvent([campaign], "v2", "2026-09-30")).toBeNull();
     expect(nextVendorEvent([campaign], "missing", "2026-09-30")).toBeNull();
+  });
+
+  it("groups an item across stops in first-seen order, keeping stops in date order and flagging price changes", () => {
+    const repeat = (registrationId: string, locationId: string, products: ReturnType<typeof product>[]) => ({ registrationId, locationId, stallNumber: "C1", stallDescription: "", stallPosterUrl: "", products });
+    const touring: PromotionCampaignPublic = {
+      ...campaign,
+      vendors: [{ ...campaign.vendors[0], stalls: [
+        repeat("r-soon", "soon", [product("a")]),
+        repeat("r-late", "late", [{ ...product("x"), name: "Item a" }, { ...product("b"), price: 12 }]),
+      ] }],
+    };
+    const groups = groupVendorEventItems(vendorEventItems([touring], "v1", "2026-10-01"));
+    expect(groups.map((group) => group.product.name)).toEqual(["Item a", "Item b"]);
+    expect(groups[0].stops.map((stop) => stop.location.id)).toEqual(["soon", "late"]);
+    expect(groups[0].samePrice).toBe(true);
+    expect(groupVendorEventItems([...groups[0].stops, { ...groups[0].stops[1], key: "z", product: { ...groups[0].stops[1].product, price: 99 } }])[0].samePrice).toBe(false);
   });
 });

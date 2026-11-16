@@ -25,6 +25,7 @@ export const CUSTOMER_I18N_FILES = [
   "app/customer/customer-home-client.tsx",
   "app/customer/design-demo/design-demo-client.tsx",
   "app/customer/events/[slug]/[vendorId]/page.tsx",
+  "app/customer/events/[slug]/[vendorId]/stall-product-card.tsx",
   "app/customer/events/[slug]/page.tsx",
   "app/customer/events/[slug]/promotion-campaign-detail-client.tsx",
   "app/customer/events/events-date-header.tsx",

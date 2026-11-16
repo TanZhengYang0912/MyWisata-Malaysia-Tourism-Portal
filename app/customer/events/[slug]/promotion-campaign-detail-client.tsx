@@ -20,11 +20,13 @@ import {
   formatEventHours,
   formatEventShortDateRange,
   getEventLocationPhase,
+  getDefaultStopId,
   getEventOperationalLabelKey,
+  PHASE_LABEL_KEY,
   type EventLocationPhase,
 } from "@/lib/promotion-campaigns/locations";
 import { isOptimizableImageUrl } from "@/lib/storage/optimizable-image";
-import type { PromotionCampaignPublic, PromotionCampaignPublicLocation, PromotionCampaignPublicStall, PromotionCampaignPublicVendor } from "@/lib/promotion-campaigns/types";
+import type { PromotionCampaignPublic, PromotionCampaignPublicStall, PromotionCampaignPublicVendor } from "@/lib/promotion-campaigns/types";
 import styles from "./promotion-campaign-detail.module.css";
 
 type Props = {
@@ -45,20 +47,6 @@ const FESTOON_BULBS = Array.from({ length: 12 }, (_, index) => {
   const t = (index + 1) / 13;
   return { x: FESTOON_WIDTH * t, y: (1 - t) ** 2 * 6 + 2 * (1 - t) * t * 41 + t ** 2 * 6 };
 });
-
-const PHASE_LABEL_KEY: Record<EventLocationPhase, string> = {
-  ended: "ui.promotionCampaigns.locationEnded",
-  running: "ui.promotionCampaigns.live",
-  upcoming: "ui.promotionCampaigns.upcoming",
-};
-
-/** Running stop first, else the next stop to start, else the last one (every stop has ended). */
-function getDefaultStopId(locations: PromotionCampaignPublicLocation[], phases: Map<string, EventLocationPhase>): string | null {
-  return locations.find((location) => phases.get(location.id) === "running")?.id
-    ?? locations.find((location) => phases.get(location.id) === "upcoming")?.id
-    ?? locations.at(-1)?.id
-    ?? null;
-}
 
 function StatusLabel({ tone, children }: { tone: "running" | "upcoming" | "ended"; children: ReactNode }) {
   return <span className={styles.status} data-tone={tone}>{children}</span>;
@@ -128,7 +116,7 @@ function StallBooth({ campaignSlug, entry, phase, locale }: { campaignSlug: stri
             />
           )}
         </div>
-        <Link href={`/customer/events/${encodeURIComponent(campaignSlug)}/${encodeURIComponent(vendor.vendorId)}`} className={styles.vendorLink}>
+        <Link href={`/customer/events/${encodeURIComponent(campaignSlug)}/${encodeURIComponent(vendor.vendorId)}?stop=${encodeURIComponent(stall.locationId)}`} className={styles.vendorLink}>
           {vendor.vendorName}
         </Link>
         {vendor.vendorKind === "event" && (

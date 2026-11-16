@@ -62,7 +62,7 @@ describe("customer promotion campaign detail", () => {
 
     expect(markup).toContain(campaign.title);
     expect(markup).toContain("Heritage Walk KL");
-    expect(markup).toContain(`href="/customer/events/${campaign.slug}/${vendor.vendorId}"`);
+    expect(markup).toContain(`href="/customer/events/${campaign.slug}/${vendor.vendorId}?stop=${vendor.stalls[0].locationId}"`);
     expect(markup).not.toContain("ui.promotionCampaigns.loading");
     expect(mocks.getPublicPromotionCampaigns).toHaveBeenCalledWith(campaign.slug);
     expect(markup).toContain("10:00 AM – 6:00 PM");

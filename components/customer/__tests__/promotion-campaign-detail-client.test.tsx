@@ -281,7 +281,7 @@ describe("PromotionCampaignDetailClient stall booths", () => {
     await render(fiesta);
     const [crew, nasiLemak] = stalls();
 
-    expect(findOne(nasiLemak, (element) => element.tagName === "A").getAttribute("href")).toBe("/customer/events/demo-popup-fiesta/vendor-nasi-lemak");
+    expect(findOne(nasiLemak, (element) => element.tagName === "A").getAttribute("href")).toBe(`/customer/events/demo-popup-fiesta/vendor-nasi-lemak?stop=${montKiara.id}`);
     const menuLines = findElements(nasiLemak, (element) => element.tagName === "LI");
     expect(menuLines).toHaveLength(2);
     expect(menuLines[0].textContent).toContain("ui.reserve.free");

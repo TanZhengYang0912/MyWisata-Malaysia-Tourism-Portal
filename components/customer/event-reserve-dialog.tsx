@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { CalendarCheck, Loader2 } from "lucide-react";
@@ -25,6 +25,8 @@ type Props = {
   locationName: string;
   startsOn: string;
   endsOn: string;
+  /** What the visitor taps to open the dialog (the stall page uses the whole product card). */
+  trigger: (open: () => void) => ReactNode;
 };
 
 type Slot = { id: string; startsAt: string; endsAt: string; remaining: number };
@@ -33,7 +35,7 @@ type Availability = { slots: Slot[]; itemRemaining: number };
 const KNOWN_ERRORS = ["EVENT_SOLD_OUT", "EVENT_SLOT_FULL", "EVENT_SLOT_INVALID", "EVENT_DATE_INVALID", "EVENT_ITEM_UNAVAILABLE", "WALLET_INSUFFICIENT"];
 
 /** Reserve one event item: pickup date → time slot → quantity → pay (or confirm when free). */
-export function EventReserveButton({ registrationId, listingId, itemName, price, locationName, startsOn, endsOn }: Props) {
+export function EventReserveButton({ registrationId, listingId, itemName, price, locationName, startsOn, endsOn, trigger }: Props) {
   const { t, i18n } = useTranslation("customer");
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const { currentUser } = useAuth();
@@ -156,9 +158,7 @@ export function EventReserveButton({ registrationId, listingId, itemName, price,
 
   return (
     <>
-      <Button type="button" size="sm" className="rounded-full" disabled={ended} onClick={() => openDialog(true)}>
-        {ended ? t("ui.reserve.ended") : t("ui.reserve.open")}
-      </Button>
+      {trigger(() => openDialog(true))}
       <Dialog open={open} onOpenChange={openDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

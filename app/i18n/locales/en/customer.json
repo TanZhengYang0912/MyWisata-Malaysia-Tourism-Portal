@@ -2940,6 +2940,7 @@
       "stallCount": "{{count}} stall",
       "stallCount_one": "{{count}} stall",
       "stallCount_other": "{{count}} stalls",
+      "alsoAt": "Also at",
       "stallProducts": "What this stall sells",
       "productCount": "{{count}} item",
       "productCount_one": "{{count}} item",
