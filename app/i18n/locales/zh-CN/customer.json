@@ -2921,16 +2921,12 @@
       "envelopeFrom": "寄件人 · MYLawatan 活动",
       "envelopeTo": "收件人 · 您",
       "pullToOpen": "撕开查看",
-      "envelopeHintHover": "悬停打开 · 双击查看详情",
-      "envelopeHintTap": "点按打开 · 双击查看详情",
-      "insideEvent": "活动亮点",
-      "nextSession": "下一场 · {{date}}，{{hours}}",
-      "openNowSession": "正在营业 · {{hours}}",
+      "releaseToOpen": "松手即可打开",
+      "openWithoutDragging": "直接打开",
+      "envelopeStarts": "开始",
+      "envelopeEnds": "结束",
       "moreLocations_one": "另有 {{count}} 处",
       "moreLocations_other": "另有 {{count}} 处",
-      "stallsJoining": "{{count}} 个摊位参与",
-      "stallsJoining_one": "{{count}} 个摊位参与",
-      "stallsJoining_other": "{{count}} 个摊位参与",
       "viewAllStalls": "查看全部",
       "operating": "营业中",
       "betweenSessions": "非营业时段",
@@ -2949,13 +2945,9 @@
       "emptyDescription": "目前没有已发布的活动。规划行程时，可以先通过首页日历浏览可预约时段。",
       "unavailableTitle": "活动暂时无法使用",
       "unavailableDescription": "暂时无法更新活动列表，请稍后再试。",
-      "vendorCount": "{{count}} 个参与商家",
-      "vendorCount_one": "{{count}} 个参与商家",
-      "vendorCount_other": "{{count}} 个参与商家",
       "vendorsLabel": "商家",
       "exploreCampaign": "查看活动",
       "allCampaigns": "浏览全部活动",
-      "viewCampaign": "查看活动详情",
       "viewDetails": "查看详情",
       "viewAllVendors": "查看商家",
       "viewAllVendors_one": "查看商家",
@@ -2967,15 +2959,10 @@
       "notFound": "该活动已不可用",
       "notFoundDescription": "活动可能已经结束或尚未发布。你可以浏览其他正在进行或即将开始的活动。",
       "tryAgainDescription": "请检查网络连接后重试。",
-      "vendorsSection": "参与此活动的商家",
-      "campaignDetails": "活动说明",
       "upcomingNotice": "这是活动预览。活动开始后才能查看摊位。",
       "noVendors": "此活动尚未有获批的商家。",
-      "searchVendorsOrStalls": "搜索商家名称或摊位编号",
-      "noVendorSearchResults": "没有匹配的商家或摊位编号。",
       "vendorPages": "活动商家列表",
       "stallNumber": "摊位 {{number}}",
-      "matchingStalls": "匹配的摊位编号",
       "stallCount": "{{count}} 个摊位",
       "stallCount_one": "{{count}} 个摊位",
       "stallCount_other": "{{count}} 个摊位",
@@ -2983,7 +2970,6 @@
       "productCount": "{{count}} 件商品",
       "productCount_one": "{{count}} 件商品",
       "productCount_other": "{{count}} 件商品",
-      "viewStall": "查看摊位",
       "previous": "上一个活动",
       "next": "下一个活动",
       "locationCount": "{{count}} 个地点",
@@ -2993,6 +2979,13 @@
       "locationsSection_one": "活动地点",
       "locationsSection_other": "活动地点（{{count}}）",
       "addressTba": "地址待公布",
+      "stops": "站点",
+      "about": "简介",
+      "readMore": "展开",
+      "showLess": "收起",
+      "locationEnded": "已结束",
+      "noStallsAtStop": "这一站还没有摊位。",
+      "stallPages": "摊位分页",
       "map": {
         "mapRegion": "马来西亚活动地图",
         "loadingMap": "正在加载马来西亚地图…",
@@ -4069,18 +4062,22 @@
     },
     "about": {
       "title": "关于 MYLawatan",
-      "intro": "MYLawatan 是一个专注马来西亚的旅游市场平台，作为毕业设计项目构建。它将发现、预订、支付和旅客支持整合在一处。",
+      "intro": "MYLawatan 是一个数字活动与市场平台，由 MES EVENT MANAGEMENT（KT0624597-M）运营，并与 SCASHTEC SDN BHD（1334393-M）合作。\n该平台旨在将活动发现、活动管理、商家互动和市场服务整合在一个便捷的数字生态系统中。MYLawatan 致力于通过流畅的线上体验，连接活动主办方、商家、企业和顾客。",
       "what": {
-        "heading": "MYLawatan 是什么",
-        "body": "您可以探索马来西亚各地的活动、美食、住宿和隐藏景点，在一个购物车中预订并付款，与商家聊天，并在单一账户中管理一切。商家管理其门店、商品、预订和优惠券，而平台在幕后运行支付、验证和奖励。"
+        "heading": "MYLawatan 提供什么",
+        "body": "MYLawatan 提供一个平台，用户可以发现活动、浏览市场商品与服务、联系商家，并通过单一账户使用各种服务。\n对于商家和商业合作伙伴，平台提供展示其产品与服务、管理商品、与顾客互动，并通过 MYLawatan 生态系统拓展业务覆盖面的机会。\n我们的目标是让参与活动、商家互动和市场探索更便捷、更易于使用。"
       },
-      "prototype": {
-        "heading": "学生原型",
-        "body": "这是学术项目而非商业服务。部分功能（包括某些支付方式）为演示而模拟，并非用于真实资金的旅行预订。"
+      "company": {
+        "heading": "我们的公司与合作",
+        "body": "MYLawatan 由以下公司运营：\nMES EVENT MANAGEMENT\n注册号码：KT0624597-M\n合作伙伴：\nSCASHTEC SDN BHD\n公司注册号码：1334393-M\n双方共同合作，通过 MYLawatan 开发并提供支持活动管理和市场活动的数字解决方案和服务。"
+      },
+      "vision": {
+        "heading": "我们的愿景",
+        "body": "构建一个整合的数字生态系统，连接人、企业、活动与市场机会，为每个人打造更便捷、更紧密相连的体验。"
       },
       "contact": {
         "heading": "获取帮助",
-        "body": "获取答案最快的方式是帮助中心或应用内助手；如果助手无法回答您的问题，它可以为我们的团队创建支持工单。"
+        "body": "如有咨询、协助或合作需求，请访问我们的帮助中心，或通过 MYLawatan 平台联系我们的支持团队。\n我们欢迎活动主办方、商家、企业和潜在合作伙伴加入 MYLawatan 生态系统。"
       },
       "helpCta": "访问帮助中心",
       "supportCta": "联系客服"

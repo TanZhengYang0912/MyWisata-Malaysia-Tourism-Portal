@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getUser = vi.fn();
+const sessionFrom = vi.fn();
 const createServiceClient = vi.fn();
 const isSuperAdmin = vi.fn();
 
-vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { getUser } }) }));
+vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { getUser }, from: sessionFrom }) }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient }));
 vi.mock('@/lib/affiliate/admin-guard', () => ({ isSuperAdmin }));
 
@@ -28,8 +29,8 @@ function mockService(overrides: {
 } = {}) {
   const replyQuery = vi.fn();
   const replyLimit = vi.fn();
-  createServiceClient.mockReturnValue({
-    from: (table: string) => {
+  const service = {
+    from: vi.fn((table: string) => {
       if (table === 'support_tickets') {
         return {
           select: () => ({
@@ -66,9 +67,10 @@ function mockService(overrides: {
         return builder;
       }
       throw new Error(`Unexpected table ${table}`);
-    },
-  });
-  return { replyQuery, replyLimit };
+    }),
+  };
+  createServiceClient.mockReturnValue(service);
+  return { replyQuery, replyLimit, serviceFrom: service.from };
 }
 
 describe('GET /api/support/tickets/[id]', () => {
@@ -76,6 +78,19 @@ describe('GET /api/support/tickets/[id]', () => {
     getUser.mockReset().mockResolvedValue({ data: { user: { id: OWNER_ID } } });
     isSuperAdmin.mockReset().mockResolvedValue(false);
     createServiceClient.mockReset();
+    sessionFrom.mockReset();
+  });
+
+  it('reads the ticket body through the service client for the owner', async () => {
+    const { serviceFrom } = mockService();
+
+    const response = await callRoute();
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(serviceFrom).toHaveBeenCalledWith('support_tickets');
+    expect(sessionFrom).not.toHaveBeenCalledWith('support_tickets');
+    expect(payload.data.body).toBe('Help');
   });
 
   it('returns attachment type metadata without exposing the private storage path', async () => {

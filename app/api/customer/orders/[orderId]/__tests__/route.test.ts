@@ -60,6 +60,23 @@ describe("customer order detail refund projection", () => {
     expect(refundQuery.limit).toHaveBeenCalledWith(1);
   });
 
+  it("starts the refund read alongside the order read", async () => {
+    let releaseOrder: (value: unknown) => void = () => {};
+    mocks.serviceFrom.mockImplementation((table: string) => {
+      const builder = query(table);
+      if (table === "orders") builder.single = vi.fn(() => new Promise((resolve) => { releaseOrder = resolve; }));
+      return builder;
+    });
+
+    const pending = GET(new Request("https://mylawatan.test"), { params: Promise.resolve({ orderId }) });
+    await vi.waitFor(() => expect(mocks.serviceFrom).toHaveBeenCalledWith("refunds"));
+    releaseOrder({ data: order, error: null });
+    const response = await pending;
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).data.refundStatus.status).toBe("pending");
+  });
+
   it("does not query refund data for an unauthorized order", async () => {
     mocks.authorizeOrder.mockResolvedValue(null);
     const response = await GET(new Request("https://mylawatan.test"), { params: Promise.resolve({ orderId }) });

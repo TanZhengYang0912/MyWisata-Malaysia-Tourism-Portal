@@ -629,7 +629,8 @@
   },
   "brand": {
     "speed": "MYLawatan Speed",
-    "copyright": "© {{year}} MYLawatan. All rights reserved."
+    "copyright": "© {{year}} MYLawatan. All rights reserved.",
+    "poweredBy": "Powered by {{name}}"
   },
   "ui": {
     "vendor": {

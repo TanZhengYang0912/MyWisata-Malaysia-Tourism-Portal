@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { authorizeVendor, type VendorAccess } from '@/lib/vendor-authorization';
 import { requireStaffNotificationAccess } from '@/lib/notifications/staff-access';
 import { apiFail, apiOk } from '@/lib/validation/schemas';
+import { getClaimsUserId } from '@/lib/auth/claims-user';
 
 const PAGE_SIZE_MAX = 50;
 const CATEGORIES = new Set(['wallet', 'bookings_purchases', 'recommendations_affiliate', 'support', 'account_security', 'messages']);
@@ -11,10 +12,12 @@ const VENDOR_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 
 export async function GET(request: Request) {
   const db = await createClient();
-  const { data: { user } } = await db.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
   const url = new URL(request.url);
   const scope = url.searchParams.get('scope') ?? 'customer';
+  // The customer feed only reads the caller's own rows under RLS, so a locally
+  // verified token is enough; staff and vendor scopes keep the Auth server check.
+  const userId = scope === 'customer' ? await getClaimsUserId(db) : (await db.auth.getUser()).data.user?.id ?? null;
+  if (!userId) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
   if (scope !== 'customer' && scope !== 'vendor' && scope !== 'staff') return apiFail('INVALID_SCOPE', 'Unknown notification scope', 400);
   const page = Math.max(1, Number(url.searchParams.get('page') ?? 1) || 1);
   const pageSize = Math.min(PAGE_SIZE_MAX, Math.max(1, Number(url.searchParams.get('pageSize') ?? 15) || 15));
@@ -27,7 +30,7 @@ export async function GET(request: Request) {
   let queryDb = db;
   let scopedVendor: VendorAccess | null = null;
   if (scope === 'staff') {
-    const staffResponse = await requireStaffNotificationAccess(db, user.id);
+    const staffResponse = await requireStaffNotificationAccess(db, userId);
     if (staffResponse) return staffResponse;
   }
   if (scope === 'vendor') {
@@ -39,7 +42,7 @@ export async function GET(request: Request) {
     queryDb = authorization.access.serviceDb as typeof db;
   }
 
-  let query = queryDb.from('notifications').select('id,type,title,body,link,category,metadata,read_at,created_at', { count: 'exact', head: countOnly }).eq('user_id', user.id);
+  let query = queryDb.from('notifications').select('id,type,title,body,link,category,metadata,read_at,created_at', { count: 'exact', head: countOnly }).eq('user_id', userId);
   if (scope === 'staff') query = query.or(STAFF_NOTIFICATION_FILTER);
   if (scope === 'customer') query = query.not('type','in',`(${STAFF_NOTIFICATION_TYPES})`).or(CUSTOMER_LEGACY_NOTIFICATION_FILTER);
   if (!countOnly) query = query.order('created_at', { ascending: false }).order('id', { ascending: false });

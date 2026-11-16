@@ -2916,16 +2916,12 @@
       "envelopeFrom": "From · MYLawatan Events",
       "envelopeTo": "To · You",
       "pullToOpen": "Pull to open",
-      "envelopeHintHover": "Hover to open · double-click for details",
-      "envelopeHintTap": "Tap to open · double-tap for details",
-      "insideEvent": "Inside the event",
-      "nextSession": "Next session · {{date}}, {{hours}}",
-      "openNowSession": "Open now · {{hours}}",
+      "releaseToOpen": "Release to open",
+      "openWithoutDragging": "Open without dragging",
+      "envelopeStarts": "Starts",
+      "envelopeEnds": "Ends",
       "moreLocations_one": "+{{count}} more",
       "moreLocations_other": "+{{count}} more",
-      "stallsJoining": "{{count}} stalls joining",
-      "stallsJoining_one": "{{count}} stall joining",
-      "stallsJoining_other": "{{count}} stalls joining",
       "viewAllStalls": "View all",
       "operating": "Open now",
       "betweenSessions": "Between opening sessions",
@@ -2944,13 +2940,9 @@
       "emptyDescription": "There are no published campaigns to show right now. Browse bookable sessions from the home page calendar while you plan your next visit.",
       "unavailableTitle": "Campaigns are temporarily unavailable",
       "unavailableDescription": "We could not refresh the campaign list. Please try again in a little while.",
-      "vendorCount": "{{count}} participating vendor",
-      "vendorCount_one": "{{count}} participating vendor",
-      "vendorCount_other": "{{count}} participating vendors",
       "vendorsLabel": "vendors",
       "exploreCampaign": "Explore event",
       "allCampaigns": "Browse all events",
-      "viewCampaign": "View event details",
       "viewDetails": "View details",
       "viewAllVendors": "View vendor",
       "viewAllVendors_one": "View vendor",
@@ -2962,15 +2954,10 @@
       "notFound": "This event is no longer available",
       "notFoundDescription": "It may have ended or the campaign is not published. Browse other current and upcoming events.",
       "tryAgainDescription": "Please check your connection and try again.",
-      "vendorsSection": "Vendors joining this event",
-      "campaignDetails": "Campaign details",
       "upcomingNotice": "This is a preview. Stalls will be visible when the event starts.",
       "noVendors": "No vendors have been approved for this event yet.",
-      "searchVendorsOrStalls": "Search by vendor or stall number",
-      "noVendorSearchResults": "No vendors or stall numbers match your search.",
       "vendorPages": "Event vendor pages",
       "stallNumber": "Stall {{number}}",
-      "matchingStalls": "Matching stall numbers",
       "stallCount": "{{count}} stall",
       "stallCount_one": "{{count}} stall",
       "stallCount_other": "{{count}} stalls",
@@ -2978,7 +2965,6 @@
       "productCount": "{{count}} item",
       "productCount_one": "{{count}} item",
       "productCount_other": "{{count}} items",
-      "viewStall": "View stall",
       "previous": "Previous event",
       "next": "Next event",
       "locationCount": "{{count}} location",
@@ -2988,6 +2974,13 @@
       "locationsSection_one": "Location",
       "locationsSection_other": "Locations ({{count}})",
       "addressTba": "Address to be announced",
+      "stops": "Stops",
+      "about": "About",
+      "readMore": "Read more",
+      "showLess": "Show less",
+      "locationEnded": "Ended",
+      "noStallsAtStop": "No stalls at this stop yet.",
+      "stallPages": "Stall pages",
       "map": {
         "mapRegion": "Events across Malaysia map",
         "loadingMap": "Loading Malaysia map…",
@@ -4064,18 +4057,22 @@
     },
     "about": {
       "title": "About MYLawatan",
-      "intro": "MYLawatan is a Malaysia-focused tourism marketplace built as a final-year project. It brings discovery, booking, payments, and traveller support together in one place.",
+      "intro": "MYLawatan is a digital event and marketplace platform operated under MES EVENT MANAGEMENT (KT0624597-M) in partnership with SCASHTEC SDN BHD (1334393-M).\nThe platform is designed to bring event discovery, event management, vendor engagement and marketplace services together in one convenient digital ecosystem. MYLawatan aims to connect event organisers, vendors, businesses and customers through a seamless online experience.",
       "what": {
-        "heading": "What MYLawatan is",
-        "body": "You can explore activities, food, stays, and hidden gems across Malaysia, book and pay in one cart, chat with vendors, and manage everything from a single account. Vendors manage their outlets, listings, bookings, and vouchers, while the platform keeps payments, verification, and rewards running behind the scenes."
+        "heading": "What MYLawatan Offers",
+        "body": "MYLawatan provides a platform where users can discover events, explore marketplace offerings, connect with vendors and access various services through a single account.\nFor vendors and business partners, the platform provides opportunities to showcase their offerings, manage listings, engage with customers and expand their reach through the MYLawatan ecosystem.\nOur goal is to make event participation, vendor engagement and marketplace discovery more accessible and convenient."
       },
-      "prototype": {
-        "heading": "A student prototype",
-        "body": "This is an academic project rather than a commercial service. Some features, including certain payment methods, are simulated for demonstration, and it is not intended for real-money travel bookings."
+      "company": {
+        "heading": "Our Company & Partnership",
+        "body": "MYLawatan operates under:\nMES EVENT MANAGEMENT\nRegistration No.: KT0624597-M\nIn partnership with:\nSCASHTEC SDN BHD\nCompany Registration No.: 1334393-M\nTogether, both parties collaborate to develop and provide digital solutions and services supporting event management and marketplace activities through MYLawatan."
+      },
+      "vision": {
+        "heading": "Our Vision",
+        "body": "To build an integrated digital ecosystem that connects people, businesses, events and marketplace opportunities while creating a more accessible and connected experience for everyone."
       },
       "contact": {
-        "heading": "Getting help",
-        "body": "The fastest way to get answers is the Help Center or the in-app assistant, which can create a support ticket for our team if it cannot answer your question."
+        "heading": "Getting Help",
+        "body": "For enquiries, assistance or partnership opportunities, please visit our Help Center or contact our support team through the MYLawatan platform.\nWe welcome event organisers, vendors, businesses and potential partners to be part of the MYLawatan ecosystem."
       },
       "helpCta": "Visit Help Center",
       "supportCta": "Contact support"

@@ -11,11 +11,12 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
+import { getClaimsUserId } from '@/lib/auth/claims-user';
 
 export async function GET() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
+  const userId = await getClaimsUserId(supabase);
+  if (!userId) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
   const { data: count, error } = await supabase.rpc('get_support_unread_count');
   if (error || typeof count !== 'number') {

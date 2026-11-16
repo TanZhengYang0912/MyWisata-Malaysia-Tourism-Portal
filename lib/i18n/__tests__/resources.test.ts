@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { APP_LOCALES } from "../locale";
-import { APP_NAMESPACES, loadLocaleResources } from "../resources";
+import { APP_NAMESPACES, loadLocaleResources, selectPageResources } from "../resources";
 
 interface TranslationBranch {
   [key: string]: TranslationBranch;
@@ -203,4 +203,34 @@ describe("translation resources", () => {
     expect(chinese.admin.eventOperations.confirmNoShow).toContain("未领取");
     expect(malay.admin.eventOperations.confirmNoShow).toContain("tidak mengambil pesanan");
   });
+});
+
+describe("selectPageResources", () => {
+  it.each(["/customer", "/customer/explore", "/customer/products/0a52a238-dd80-5fd6-88cf-65178a38b103"])(
+    "keeps only the browse-page namespaces on %s",
+    async (pathname) => {
+      const full = await loadLocaleResources("en");
+      const { resources, partialNamespaces } = selectPageResources(full, pathname);
+
+      expect(Object.keys(resources).sort()).toEqual(["admin", "auth", "common", "customer"]);
+      expect(partialNamespaces).toEqual(["admin"]);
+      expect(resources.customer).toBe(full.customer);
+    },
+  );
+
+  it.each(APP_LOCALES)("keeps the share and affiliate QR admin copy for %s", async (locale) => {
+    const full = await loadTestResources(locale);
+    const { resources } = selectPageResources(full as never, "/customer");
+
+    expect(resources.admin).toEqual({ share: full.admin.share, affiliate: { qr: full.admin.affiliate.qr } });
+  });
+
+  it.each(["/customer/affiliate", "/customer/cart", "/vendor/dashboard", "/admin", "/login", ""])(
+    "keeps every namespace on %s",
+    async (pathname) => {
+      const full = await loadLocaleResources("en");
+
+      expect(selectPageResources(full, pathname)).toEqual({ resources: full, partialNamespaces: [] });
+    },
+  );
 });

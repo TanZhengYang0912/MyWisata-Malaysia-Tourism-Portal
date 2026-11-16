@@ -27,7 +27,7 @@ describe("customer header reference contract", () => {
   });
 
   it("uses the supplied logo asset without changing the header row geometry", () => {
-    expect(customerLayoutSource).toContain('src="/branding/mylawatan-logo-transparent.png?v=3"');
+    expect(customerLayoutSource).toContain('src="/branding/mylawatan-logo-transparent.png?v=4"');
     expect(customerLayoutSource).toContain("width={758}");
     expect(customerLayoutSource).toContain("height={306}");
     expect(customerLayoutSource).toContain("h-17");

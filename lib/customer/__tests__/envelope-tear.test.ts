@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildZipStrip, createEnvelopeGeometry, nextEnvelopeAction, splitOpenLayout } from "@/lib/customer/envelope-tear";
+import { buildZipStrip, createEnvelopeGeometry, splitOpenLayout } from "@/lib/customer/envelope-tear";
 
 const desktop = createEnvelopeGeometry(1200, false);
 
@@ -33,9 +33,28 @@ describe("envelope zip-strip geometry", () => {
   });
 
   it("uses the planned desktop and narrow sizes", () => {
-    expect(desktop).toMatchObject({ H: 460, a: 264, sh: 48 });
-    expect(createEnvelopeGeometry(360, true)).toMatchObject({ H: 480, a: 236, sh: 44 });
+    expect(desktop).toMatchObject({ H: 460, a: 264, sh: 48, ovh: 30 });
+    expect(createEnvelopeGeometry(360, true)).toMatchObject({ H: 500, a: 250, sh: 46, ovh: 12 });
     expect(desktop).not.toHaveProperty("tuck");
+  });
+
+  it("starts both tear lines at the strip's left overhang", () => {
+    for (const geometry of [desktop, createEnvelopeGeometry(360, true)]) {
+      expect(geometry.L1.pts[0].x).toBe(-geometry.ovh);
+      expect(geometry.L2.pts[0].x).toBe(-geometry.ovh);
+    }
+  });
+
+  it("closes the top piece along the ragged lower tear line, not a straight edge", () => {
+    const { L2 } = desktop, n = L2.n;
+    const outer = buildZipStrip(0, desktop).find((piece) => piece.k === "top")?.outer ?? [];
+    expect(outer).toHaveLength(n + 1 + 3);
+    // The edge runs right to left: outer[2 + j] sits just over L2.pts[n - j].
+    for (let j = 0; j <= n; j++) {
+      const [x, y] = outer[2 + j], pt = L2.pts[n - j];
+      expect(x).toBeCloseTo(pt.x, 6);
+      expect(Math.abs(y - pt.y)).toBeLessThanOrEqual(2);
+    }
   });
 });
 
@@ -59,18 +78,5 @@ describe("splitOpenLayout", () => {
     const out = splitOpenLayout({ ...base, cardTop: 200 });
     expect(out.letterTop - (base.tearTop + out.topShift)).toBe(8);
     expect(base.tearBottom + out.bottomShift - (out.letterTop + base.letterHeight)).toBe(8);
-  });
-});
-
-describe("nextEnvelopeAction", () => {
-  it("only opens a closed envelope and only closes an open one", () => {
-    const states = ["closed", "busy", "open", "gone"] as const;
-    const results = states.flatMap((state) => [true, false].map((wantOpen) => [state, wantOpen, nextEnvelopeAction(state, wantOpen)]));
-    expect(results).toEqual([
-      ["closed", true, "open"], ["closed", false, null],
-      ["busy", true, null], ["busy", false, null],
-      ["open", true, null], ["open", false, "close"],
-      ["gone", true, null], ["gone", false, null],
-    ]);
   });
 });

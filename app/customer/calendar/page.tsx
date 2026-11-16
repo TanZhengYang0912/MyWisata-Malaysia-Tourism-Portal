@@ -65,6 +65,14 @@ export default function CustomerCalendarPage() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  // The month picker is a dialog, so Escape closes it.
+  useEffect(() => {
+    if (!monthPickerOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setMonthPickerOpen(false); };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [monthPickerOpen]);
+
   useEffect(() => {
     if (!currentUser) return;
     let active = true;

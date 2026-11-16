@@ -27,6 +27,7 @@ import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import {getSelectedOutletStock} from "@/lib/customer/outlet-shop";
 import {getCartLineAvailability,resolveBookingSlotLookupStatus,type BookingSlotLookupState} from "@/lib/customer/cart-availability";
 import { PAYMENT_CHOICES as METHODS, TOYYIBPAY_SANDBOX } from "@/lib/checkout/payment-choices";
+import { NAV_FORWARD } from "@/lib/customer/page-transitions";
 
 type WalletSummary = {
   topupSen: number;
@@ -184,6 +185,7 @@ export default function CheckoutPage() {
   if (selectedItems.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h1 className="sr-only">{tCustomer("ui.checkout.title")}</h1>
         <EmptyState
           title={tCustomer("ui.checkout.nothing")}
           description={tCustomer("ui.checkout.selectItems")}
@@ -282,7 +284,7 @@ export default function CheckoutPage() {
       if (isFreeReservation) {
         if (!prepared.data.order_id) { reportCheckoutError('CHECKOUT_FAILED'); return; }
         if (currentUser) attributeCheckout(prepared.data.order_id);
-        router.push(`/customer/orders/${prepared.data.order_id}`);
+        router.push(`/customer/orders/${prepared.data.order_id}`, { transitionTypes: [NAV_FORWARD] });
         return;
       }
       if (prepared.data.stripeUrl) {
@@ -319,7 +321,7 @@ export default function CheckoutPage() {
         return;
       }
       attributeCheckout(finalized.data.order_id);
-      router.push(`/customer/orders/${finalized.data.order_id}`);
+      router.push(`/customer/orders/${finalized.data.order_id}`, { transitionTypes: [NAV_FORWARD] });
     } catch (err) {
       reportCheckoutError(err instanceof TypeError ? 'CHECKOUT_CONNECTION_FAILED' : 'CHECKOUT_FAILED');
       await findCurrentGuestOrder();

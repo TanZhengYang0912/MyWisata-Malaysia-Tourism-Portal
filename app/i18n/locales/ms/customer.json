@@ -2921,16 +2921,12 @@
       "envelopeFrom": "Daripada · Acara MYLawatan",
       "envelopeTo": "Kepada · Anda",
       "pullToOpen": "Tarik untuk buka",
-      "envelopeHintHover": "Halakan tetikus untuk buka · klik dua kali untuk butiran",
-      "envelopeHintTap": "Ketik untuk buka · ketik dua kali untuk butiran",
-      "insideEvent": "Dalam acara ini",
-      "nextSession": "Sesi seterusnya · {{date}}, {{hours}}",
-      "openNowSession": "Dibuka sekarang · {{hours}}",
+      "releaseToOpen": "Lepaskan untuk buka",
+      "openWithoutDragging": "Buka tanpa menarik",
+      "envelopeStarts": "Bermula",
+      "envelopeEnds": "Tamat",
       "moreLocations_one": "+{{count}} lagi",
       "moreLocations_other": "+{{count}} lagi",
-      "stallsJoining": "{{count}} gerai menyertai",
-      "stallsJoining_one": "{{count}} gerai menyertai",
-      "stallsJoining_other": "{{count}} gerai menyertai",
       "viewAllStalls": "Lihat semua",
       "operating": "Sedang dibuka",
       "betweenSessions": "Antara sesi pembukaan",
@@ -2949,13 +2945,9 @@
       "emptyDescription": "Tiada kempen diterbitkan untuk dipaparkan sekarang. Semak sesi yang boleh ditempah melalui kalendar di laman utama sementara merancang lawatan anda.",
       "unavailableTitle": "Kempen tidak tersedia buat sementara waktu",
       "unavailableDescription": "Senarai kempen tidak dapat dikemas kini. Cuba lagi sebentar nanti.",
-      "vendorCount": "{{count}} vendor yang mengambil bahagian",
-      "vendorCount_one": "{{count}} vendor yang mengambil bahagian",
-      "vendorCount_other": "{{count}} vendor yang mengambil bahagian",
       "vendorsLabel": "vendor",
       "exploreCampaign": "Terokai acara",
       "allCampaigns": "Lihat semua acara",
-      "viewCampaign": "Lihat butiran acara",
       "viewDetails": "Lihat butiran",
       "viewAllVendors": "Lihat vendor",
       "viewAllVendors_one": "Lihat vendor",
@@ -2967,15 +2959,10 @@
       "notFound": "Acara ini tidak lagi tersedia",
       "notFoundDescription": "Acara mungkin telah tamat atau belum diterbitkan. Lihat acara semasa dan akan datang yang lain.",
       "tryAgainDescription": "Semak sambungan anda dan cuba lagi.",
-      "vendorsSection": "Vendor yang menyertai acara ini",
-      "campaignDetails": "Butiran kempen",
       "upcomingNotice": "Ini ialah pratonton. Gerai akan kelihatan apabila acara bermula.",
       "noVendors": "Belum ada vendor yang diluluskan untuk acara ini.",
-      "searchVendorsOrStalls": "Cari mengikut nama vendor atau nombor gerai",
-      "noVendorSearchResults": "Tiada vendor atau nombor gerai yang sepadan dengan carian anda.",
       "vendorPages": "Halaman vendor acara",
       "stallNumber": "Gerai {{number}}",
-      "matchingStalls": "Nombor gerai yang sepadan",
       "stallCount": "{{count}} gerai",
       "stallCount_one": "{{count}} gerai",
       "stallCount_other": "{{count}} gerai",
@@ -2983,7 +2970,6 @@
       "productCount": "{{count}} item",
       "productCount_one": "{{count}} item",
       "productCount_other": "{{count}} item",
-      "viewStall": "Lihat gerai",
       "previous": "Acara sebelumnya",
       "next": "Acara seterusnya",
       "locationCount": "{{count}} lokasi",
@@ -2993,6 +2979,13 @@
       "locationsSection_one": "Lokasi",
       "locationsSection_other": "Lokasi ({{count}})",
       "addressTba": "Alamat akan diumumkan",
+      "stops": "Hentian",
+      "about": "Tentang",
+      "readMore": "Baca lagi",
+      "showLess": "Tunjuk kurang",
+      "locationEnded": "Tamat",
+      "noStallsAtStop": "Belum ada gerai di hentian ini.",
+      "stallPages": "Halaman gerai",
       "map": {
         "mapRegion": "Peta acara di seluruh Malaysia",
         "loadingMap": "Memuatkan peta Malaysia…",
@@ -4069,18 +4062,22 @@
     },
     "about": {
       "title": "Perihal MYLawatan",
-      "intro": "MYLawatan ialah pasar pelancongan tertumpu Malaysia yang dibina sebagai projek tahun akhir. Ia menggabungkan penemuan, tempahan, pembayaran, dan sokongan pelancong dalam satu tempat.",
+      "intro": "MYLawatan ialah platform acara dan pasar digital yang dikendalikan di bawah MES EVENT MANAGEMENT (KT0624597-M) dengan kerjasama SCASHTEC SDN BHD (1334393-M).\nPlatform ini direka untuk menggabungkan penemuan acara, pengurusan acara, penglibatan vendor dan perkhidmatan pasar dalam satu ekosistem digital yang mudah. MYLawatan bertujuan menghubungkan penganjur acara, vendor, perniagaan dan pelanggan melalui pengalaman dalam talian yang lancar.",
       "what": {
-        "heading": "Apa itu MYLawatan",
-        "body": "Anda boleh meneroka aktiviti, makanan, penginapan, dan permata tersembunyi di seluruh Malaysia, menempah dan membayar dalam satu troli, bersembang dengan vendor, dan menguruskan segalanya daripada satu akaun. Vendor menguruskan cawangan, penyenaraian, tempahan, dan baucar mereka, manakala platform mengendalikan pembayaran, pengesahan, dan ganjaran di belakang tabir."
+        "heading": "Apa yang Ditawarkan MYLawatan",
+        "body": "MYLawatan menyediakan platform di mana pengguna boleh menemui acara, meneroka tawaran pasar, berhubung dengan vendor dan mengakses pelbagai perkhidmatan melalui satu akaun.\nBagi vendor dan rakan perniagaan, platform ini menyediakan peluang untuk mempamerkan tawaran mereka, menguruskan penyenaraian, berinteraksi dengan pelanggan dan meluaskan jangkauan melalui ekosistem MYLawatan.\nMatlamat kami ialah menjadikan penyertaan acara, penglibatan vendor dan penemuan pasar lebih mudah diakses dan lebih mudah digunakan."
       },
-      "prototype": {
-        "heading": "Prototaip pelajar",
-        "body": "Ini ialah projek akademik dan bukan perkhidmatan komersial. Sesetengah ciri, termasuk kaedah pembayaran tertentu, disimulasikan untuk demonstrasi, dan ia tidak bertujuan untuk tempahan perjalanan wang sebenar."
+      "company": {
+        "heading": "Syarikat & Perkongsian Kami",
+        "body": "MYLawatan beroperasi di bawah:\nMES EVENT MANAGEMENT\nNo. Pendaftaran: KT0624597-M\nDalam perkongsian dengan:\nSCASHTEC SDN BHD\nNo. Pendaftaran Syarikat: 1334393-M\nBersama-sama, kedua-dua pihak bekerjasama membangunkan dan menyediakan penyelesaian serta perkhidmatan digital yang menyokong pengurusan acara dan aktiviti pasar melalui MYLawatan."
+      },
+      "vision": {
+        "heading": "Visi Kami",
+        "body": "Membina ekosistem digital bersepadu yang menghubungkan orang ramai, perniagaan, acara dan peluang pasar sambil mewujudkan pengalaman yang lebih mudah diakses dan lebih terhubung untuk semua orang."
       },
       "contact": {
-        "heading": "Mendapatkan bantuan",
-        "body": "Cara terpantas untuk mendapatkan jawapan ialah Pusat Bantuan atau pembantu dalam aplikasi, yang boleh mencipta tiket sokongan untuk pasukan kami jika ia tidak dapat menjawab soalan anda."
+        "heading": "Mendapatkan Bantuan",
+        "body": "Untuk pertanyaan, bantuan atau peluang perkongsian, sila lawati Pusat Bantuan kami atau hubungi pasukan sokongan kami melalui platform MYLawatan.\nKami mengalu-alukan penganjur acara, vendor, perniagaan dan bakal rakan kongsi untuk menjadi sebahagian daripada ekosistem MYLawatan."
       },
       "helpCta": "Lawati Pusat Bantuan",
       "supportCta": "Hubungi sokongan"

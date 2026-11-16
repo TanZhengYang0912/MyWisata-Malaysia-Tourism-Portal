@@ -629,7 +629,8 @@
   },
   "brand": {
     "speed": "MYLawatan Speed",
-    "copyright": "© {{year}} MYLawatan。版权所有。"
+    "copyright": "© {{year}} MYLawatan。版权所有。",
+    "poweredBy": "由 {{name}} 提供支持"
   },
   "ui": {
     "vendor": {

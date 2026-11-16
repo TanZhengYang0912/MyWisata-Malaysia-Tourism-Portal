@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { REFERENCE_PREFIX } from "@/lib/i18n/invariant-tokens";
 import { formatMYRFromSen } from "@/lib/i18n/format";
+import { NAV_FORWARD } from "@/lib/customer/page-transitions";
 
 type SimulatorProvider = "tng_ewallet_simulator" | "grabpay_simulator" | "bank_transfer_simulator";
 type SimulatorSession = {
@@ -74,7 +75,7 @@ export default function PaymentSimulatorPage() {
       if (!response.ok || !body.data) throw new Error(tCustomer("ui.states.loadingError"));
       const result = body.data as { status: string; orderId?: string };
       if (result.status === "paid" && result.orderId) {
-        router.push(`/customer/orders/${result.orderId}`);
+        router.push(`/customer/orders/${result.orderId}`, { transitionTypes: [NAV_FORWARD] });
         return;
       }
       setSession((current) => current ? { ...current, status: result.status } : current);

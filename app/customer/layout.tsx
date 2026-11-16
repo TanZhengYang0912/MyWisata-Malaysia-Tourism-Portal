@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, ViewTransition, type MouseEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -19,6 +19,7 @@ import { NotificationBell } from "@/components/shared/notification-bell";
 import { AppearanceControl } from "@/components/shared/appearance-control";
 import { CustomerSiteFooter } from "@/components/customer/customer-site-footer";
 import { customerFooterVariant } from "@/lib/customer/footer-navigation";
+import { PAGE_TRANSITION } from "@/lib/customer/page-transitions";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { CurrencySwitcher } from "@/components/shared/currency-switcher";
 import { useCustomerHeaderLayout } from "@/components/customer/use-customer-header-layout";
@@ -35,7 +36,7 @@ import { LOGO_BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { guestProtectedCustomerPath } from "@/lib/auth/guest-mode";
 import { CUSTOMER_CAPABILITY } from "@/lib/auth/customer-capabilities";
 import { useCustomerCapabilityGate } from "@/components/customer/use-customer-capability-gate";
-import { isPublicCustomerPath } from "@/lib/auth/public-customer-paths";
+import { isCustomerBrowsePath, isPublicCustomerPath } from "@/lib/auth/public-customer-paths";
 import { CustomerCapabilityGateProvider } from "@/components/customer/customer-capability-gate-dialog";
 import { useViewportClampedPopoverPosition } from "@/components/shared/use-viewport-clamped-popover-position";
 
@@ -180,7 +181,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   }
 
   const guestPublic = !currentUser && isPublicCustomerPath(pathname);
-  if (loading || (!currentUser && !guestPublic)) {
+  // Browse pages render (and server-render) while sign-in resolves; other pages wait.
+  if (loading ? !isCustomerBrowsePath(pathname) : !currentUser && !guestPublic) {
     return <div className="customer-portal min-h-screen flex items-center justify-center text-muted-foreground text-sm">{tCommon("states.loadingEllipsis")}</div>;
   }
 
@@ -188,7 +190,7 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
     ? getCustomerDisplayName(currentUser, tCommon("strictMigration.accountFallbackName"))
     : tCommon("account.guestMenu");
   function confirmGuestNavigation(event: MouseEvent<HTMLDivElement>) {
-    if (currentUser || event.defaultPrevented || (event.button !== 0 && event.button !== 1)) return;
+    if (loading || currentUser || event.defaultPrevented || (event.button !== 0 && event.button !== 1)) return;
     const anchor = event.target instanceof Element ? event.target.closest("a[href]") : null;
     if (!anchor || anchor.hasAttribute("download")) return;
     const nextPath = guestProtectedCustomerPath(anchor.getAttribute("href")!, window.location.href);
@@ -204,11 +206,11 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="customer-portal min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }} onClickCapture={confirmGuestNavigation} onAuxClickCapture={confirmGuestNavigation}>
       {/* One row only when it fits, else the phone's two rows: useCustomerHeaderLayout sets data-layout on this nav. */}
-      <nav ref={headerRef} className="group/header sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden">
+      <nav ref={headerRef} className="group/header sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden" style={{ viewTransitionName: "customer-header" }}>
         <div className={`max-w-7xl mx-auto px-2 sm:px-6 flex items-center gap-1 sm:gap-8 ${isTripRoute ? "h-14 md:h-17" : "h-17"}`}>
           <Link href="/customer" className="group flex items-center gap-2.5 shrink-0">
               <Image
-                src="/branding/mylawatan-logo-transparent.png?v=3"
+                src="/branding/mylawatan-logo-transparent.png?v=4"
                 alt={LOGO_BRAND_NAME}
                 width={758}
                 height={306}
@@ -305,13 +307,14 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
                 aria-label={currentUser
                   ? tCommon("account.openMenuFor", { name: customerDisplayName })
                   : tCommon("account.guestMenu")}
+                disabled={loading}
                 className="flex items-center justify-center rounded-full border border-border bg-card/80 p-1 transition hover:border-primary/30 hover:bg-secondary"
               >
                 <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white shadow-xs">
                   <Avatar key={currentUser?.id ?? "guest"} className="h-8 w-8">
                     <AvatarImage src={currentUser?.avatarUrl ?? undefined} alt="" className="object-cover" />
                     <AvatarFallback className="bg-primary text-xs font-bold text-white">
-                      {currentUser?.avatarInitial ?? "G"}
+                      {currentUser?.avatarInitial ?? (loading ? "" : "G")}
                     </AvatarFallback>
                   </Avatar>
                   {unreadTickets > 0 && (
@@ -392,7 +395,8 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      <main className={isActivityDetailPage ? "flex-none" : "flex-1 min-h-0"}><CustomerBreadcrumbs />{children}</main>
+      {/* Keyed by pathname so every customer route change runs one exit/enter pair; query-only changes do not animate. */}
+      <main className={isActivityDetailPage ? "flex-none" : "flex-1 min-h-0"}><ViewTransition key={pathname} enter={PAGE_TRANSITION} exit={PAGE_TRANSITION} default="none"><CustomerBreadcrumbs />{children}</ViewTransition></main>
       {/* Preserve footer space only where the mobile chat launcher is visible. */}
       <CustomerSiteFooter variant={customerFooterVariant(pathname)} className={hideMobileChatLauncher ? "pb-0" : "pb-16 sm:pb-0"} />
       <ChatbotWidget hideLauncherOnMobile={hideMobileChatLauncher} />

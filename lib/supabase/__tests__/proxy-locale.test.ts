@@ -169,15 +169,40 @@ describe("Supabase proxy locale resolution", () => {
     expect(response.cookies.has("NEXT_LOCALE")).toBe(false);
   });
 
-  it("keeps account locale precedence for API requests without writing a locale cookie", async () => {
-    setupSupabase({ accountLocale: "zh-CN", claimsSub: "user-123" });
+  // API responses carry no localized copy except one admin report; document
+  // navigations keep the cookie synced to the account locale (D3 of
+  // docs/plans/2026-11-15-1232-api-auth-locale-and-card-images.md).
+  it("skips the account-locale read for API requests and resolves from the cookie", async () => {
+    const { from, getClaims } = setupSupabase({ accountLocale: "zh-CN", claimsSub: "user-123" });
 
     const response = await updateSession(makeRequest({
       path: "/api/customer/promotion-campaigns", cookie: "NEXT_LOCALE=ms", acceptLanguage: "en-US", fetchDestination: "empty",
     }));
 
-    expect(localeFromResponse(response)).toBe("zh-CN");
+    expect(localeFromResponse(response)).toBe("ms");
+    expect(from).not.toHaveBeenCalled();
+    expect(getClaims).toHaveBeenCalled();
     expect(response.cookies.has("NEXT_LOCALE")).toBe(false);
+  });
+
+  it("forwards the request pathname to the root layout, overwriting a client-supplied value", async () => {
+    setupSupabase();
+
+    const response = await updateSession(makeRequest({
+      path: "/customer/explore?q=food", extraHeaders: { "x-app-pathname": "/admin" },
+    }));
+
+    expect(response.headers.get("x-middleware-request-x-app-pathname")).toBe("/customer/explore");
+  });
+
+  it("overwrites a client-supplied x-app-locale on API requests with the resolved locale", async () => {
+    setupSupabase({ accountLocale: "zh-CN", claimsSub: "user-123" });
+
+    const response = await updateSession(makeRequest({
+      path: "/api/customer/promotion-campaigns", cookie: "NEXT_LOCALE=ms", fetchDestination: "empty", extraHeaders: { "x-app-locale": "en" },
+    }));
+
+    expect(localeFromResponse(response)).toBe("ms");
   });
 
   it("cannot revert a saved locale when an older API response finishes later", async () => {

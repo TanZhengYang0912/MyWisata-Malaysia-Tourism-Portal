@@ -9,12 +9,12 @@
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  /* Pages use a very light blue (2026-11-14); cards and popovers keep the warm off-white. No pure-white surfaces anywhere. */
+  /* Pages, cards and popovers share the very light blue (2026-11-16). No pure-white surfaces anywhere. */
   --background: #f7faff;
   --foreground: #0f172a;
-  --card: #faf9f6;
+  --card: #f7faff;
   --card-foreground: #0f172a;
-  --popover: #faf9f6;
+  --popover: #f7faff;
   --popover-foreground: #0f172a;
   --primary: #010066;
   --primary-foreground: #f8fafc;
@@ -346,117 +346,174 @@ body {
 }
 
 /* Home campaign envelope (components/customer/campaign-envelope.tsx). The front
-   is "printed paper", so it keeps its brand colours in dark mode; the letter
+   is "printed paper", so it keeps its kraft colours in dark mode; the letter
    inside follows the theme. Three stacked copies of the front are clipped by the
-   runtime into the part above the tear strip, the part below it, and the strip. */
+   runtime into the part above the tear strip, the part below it, and the strip.
+   No stacking order is set anywhere: the tab, guide and link paint above the pieces
+   by DOM order, and the envelope stays below the carousel arrows. */
 .mw-envelope {
-  --env-navy: #010066;
-  --env-yellow: #ffcc00;
-  --h0: 460px;
-  --a: 264px;
-  --sh: 48px;
+  /* Kraft: mottled tone, long fibres along the grain. The strip takes the border's brick and navy. */
+  --env-bg: #e6d2ae; --ink: #010066; --ink-2: #4a3a26; --eyebrow: #93301f;
+  --chev-1: #93301f; --chev-2: #010066; --chev-3: #efe0c2;
+  --strip: #93301f; --strip-ink: #fbf1dc; --strip-rule: rgba(251, 241, 220, .6); --postmark: rgba(147, 48, 31, .7);
+  --grip-bg: #010066; --grip-ink: #fbf1dc; --grip-ring: #fbf1dc;
+  --stamp-bg: #fffdf8;
+  /* Grayscale grain tile, blended in overlay mode; half its pixel size so it stays sharp on 2x screens. */
+  --paper-tex: url(/customer/envelope-kraft.webp); --strip-tex: var(--paper-tex); --tex-size: 512px 422px;
+  --fold-bg: #efe0c2; --fold-back: #d9c099; --lining-1: #1b1b80; --lining-2: #10106a;
+  --h0: 460px; --a: 264px; --sh: 48px; --ovh: 30px;
   position: relative;
   min-width: 0;
   height: var(--h0);
-  cursor: pointer;
-  touch-action: manipulation;
   user-select: none;
+  -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
-.mw-envelope[data-state="gone"] { cursor: default; }
-.mw-envelope__under { position: absolute; left: 0; right: 0; top: 0; height: var(--h0); }
-/* A piece's own box spans the whole card; only its clipped fold takes pointer events. */
+.mw-envelope__under { position: absolute; left: 0; right: 0; top: 0; height: var(--h0); overflow: hidden; border-radius: 22px; background: repeating-linear-gradient(45deg, var(--lining-1) 0 10px, var(--lining-2) 10px 20px); box-shadow: inset 0 16px 30px rgba(0, 0, 0, .35); }
+/* Pieces, pocket and letter never take pointer events; only the tab and the link do. */
 .mw-envelope__pc { position: absolute; left: 0; right: 0; top: 0; height: var(--h0); pointer-events: none; }
+/* The torn strip curls off past the right edge instead of hanging outside the card. */
+.mw-envelope__pc[data-k="flap"] { clip-path: inset(-200px 0 -200px -200px); }
 .mw-envelope__fold,
 .mw-envelope__artwrap,
 .mw-envelope__art { position: absolute; inset: 0; }
-.mw-envelope__fold { transform-origin: 0 0; background: #fffdf6; pointer-events: auto; }
-.mw-envelope__fold[data-back="true"] { background: #f1dd86; }
-.mw-envelope__fold[data-back="true"] .mw-envelope__artwrap { opacity: .14; filter: grayscale(1) contrast(.7); }
-.mw-envelope__artwrap { filter: drop-shadow(0 0 1.2px rgba(20, 20, 50, .55)); }
+.mw-envelope__fold { transform-origin: 0 0; border-radius: 22px; background: var(--fold-bg); }
+.mw-envelope__fold[data-back="true"] { background: var(--fold-back); }
+.mw-envelope__fold[data-back="true"] .mw-envelope__artwrap { opacity: .12; filter: grayscale(1) contrast(.7); }
+.mw-envelope__artwrap { filter: drop-shadow(0 0 1.2px rgba(20, 20, 50, .45)); }
 .mw-envelope__shade { position: absolute; inset: 0; pointer-events: none; }
 .mw-envelope__roll { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
-/* The torn strip curls off past the right edge instead of hanging outside the card. */
-.mw-envelope__pc[data-k="flap"] { clip-path: inset(-200px 0 -200px -200px); }
-/* Once flown off, the invisible strip must not cover the letter link; the parted halves stay part of the hover area. */
-.mw-envelope[data-state="open"] .mw-envelope__pc[data-k="flap"] .mw-envelope__fold { pointer-events: none; }
 .mw-envelope__bits { position: absolute; inset: 0; pointer-events: none; }
 .mw-envelope__bits i { position: absolute; width: 5px; height: 9px; border: 1px solid rgba(1, 0, 102, .18); border-radius: 1px; background: #fffdf6; }
 
 /* Envelope front */
-.mw-envelope__bg { position: absolute; inset: 0; overflow: hidden; border-radius: 22px; background: repeating-linear-gradient(135deg, rgba(255, 255, 255, .03) 0 2px, transparent 2px 9px), var(--env-navy); }
+.mw-envelope__bg { position: absolute; inset: 0; overflow: hidden; border-radius: 22px; background: var(--paper-tex) 0 0 / var(--tex-size), var(--env-bg); background-blend-mode: overlay; box-shadow: 0 1px 2px rgba(1, 0, 102, .08), 0 18px 40px -18px rgba(1, 0, 102, .28); }
 .mw-envelope__bg::before {
-  content: ""; position: absolute; inset: 0; padding: 9px; border-radius: 22px; pointer-events: none;
-  background: repeating-linear-gradient(135deg, var(--env-yellow) 0 16px, var(--env-navy) 16px 23px, #fff 23px 39px, var(--env-navy) 39px 46px);
+  content: ""; position: absolute; inset: 0; padding: 9px; border-radius: 22px;
+  background: repeating-linear-gradient(135deg, var(--chev-1) 0 16px, var(--chev-3) 16px 23px, var(--chev-2) 23px 39px, var(--chev-3) 39px 46px);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
 }
-.mw-envelope__from { position: absolute; left: 44px; top: 30px; color: #c7c7ff; font-size: 12px; font-weight: 700; letter-spacing: .16em; line-height: 1.7; text-transform: uppercase; }
-.mw-envelope__strip {
-  position: absolute; left: -30px; right: 0; top: var(--a); height: var(--sh); display: flex; align-items: center; gap: 22px; padding-left: 12px;
-  overflow: hidden; white-space: nowrap; border-top: 2px dashed rgba(1, 0, 102, .35); border-bottom: 2px dashed rgba(1, 0, 102, .35); border-radius: 16px 0 0 16px;
-  background: var(--env-yellow); color: var(--env-navy); font-size: 12px; font-weight: 800; letter-spacing: .26em; text-transform: uppercase;
-}
-.mw-envelope__tab { display: grid; flex: none; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--env-navy); color: var(--env-yellow); }
-.mw-envelope__head { position: absolute; left: 44px; right: 300px; bottom: calc(100% - var(--a) + 18px); color: #fff; }
-.mw-envelope__body { position: absolute; left: 44px; right: 300px; top: calc(var(--a) + var(--sh) + 18px); color: #fff; }
-.mw-envelope__eyebrow { color: var(--env-yellow); font-size: 13px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
-.mw-envelope__title {
-  display: -webkit-box; overflow: hidden; margin: 6px 0 0; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
-  font-family: var(--font-display); font-size: clamp(3rem, 5.5vw, 4.5rem); font-weight: 800; line-height: .95; letter-spacing: -.02em; overflow-wrap: anywhere;
-}
-.mw-envelope__row { display: flex; align-items: center; gap: 10px; min-width: 0; margin: 0 0 6px; font-size: 18px; font-weight: 600; }
-.mw-envelope__row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mw-envelope__row svg { flex: none; color: var(--env-yellow); }
-.mw-envelope__hint { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; padding: 8px 14px; border-radius: 999px; background: rgba(255, 255, 255, .1); color: #c7c7ff; font-size: 12px; font-weight: 600; }
-/* Tap copy by default; hover copy where the JS treats the device as hover-capable
-   ((hover: hover) is the exact complement of the runtime's (hover: none) check). */
-.mw-envelope__hint-hover { display: none; }
-@media (hover: hover) {
-  .mw-envelope__hint-hover { display: inline; }
-  .mw-envelope__hint-tap { display: none; }
-}
-.mw-envelope__stamp {
-  position: absolute; right: 54px; top: 34px; width: 132px; height: 162px; padding: 9px; background: #fff; transform: rotate(4deg);
-  -webkit-mask: radial-gradient(circle 5px at 50% 50%, transparent 98%, #000) -5px -5px / 13px 13px, linear-gradient(#000 0 0) content-box;
-  mask: radial-gradient(circle 5px at 50% 50%, transparent 98%, #000) -5px -5px / 13px 13px, linear-gradient(#000 0 0) content-box;
-}
-.mw-envelope__stamp-img { position: relative; height: 112px; overflow: hidden; background: linear-gradient(160deg, #2b2b9e, var(--env-navy)); }
-.mw-envelope__stamp-caption { display: block; margin-top: 6px; color: var(--env-navy); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-align: right; }
-.mw-envelope__postmark {
-  position: absolute; right: 140px; top: calc(var(--a) + var(--sh) + 16px); display: grid; place-content: center; width: 116px; height: 116px; padding: 12px;
-  border: 2px solid rgba(255, 255, 255, .55); border-radius: 50%; color: rgba(255, 255, 255, .55); font-size: 9.5px; font-weight: 800; letter-spacing: .14em;
-  line-height: 1.6; text-align: center; text-transform: uppercase; transform: rotate(-14deg); overflow: hidden;
-}
+.mw-envelope__from { position: absolute; left: 44px; top: 30px; color: var(--ink-2); font-size: 14px; font-weight: 600; line-height: 1.55; letter-spacing: .01em; }
+.mw-envelope__from span { display: block; }
+.mw-envelope__head { position: absolute; left: 44px; right: 260px; bottom: calc(100% - var(--a) + 20px); color: var(--ink); }
+.mw-envelope__eyebrow { display: block; font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: 20px; line-height: 1.1; color: var(--eyebrow); }
+.mw-envelope__title { margin: 4px 0 0; font-family: var(--font-display); font-weight: 650; font-size: clamp(44px, 5.2vw, 68px); line-height: 1.02; letter-spacing: -.015em; overflow-wrap: anywhere; }
+/* Long titles clamp instead of shrinking: 2 lines, or 1 line above a subtitle. The full title stays the heading's text. */
+.mw-envelope__main { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.mw-envelope__title[data-sub="true"] .mw-envelope__main { -webkit-line-clamp: 1; }
+.mw-envelope__subtitle { display: block; margin-top: 8px; overflow: hidden; color: var(--ink-2); font-family: var(--font-sans); font-size: 21px; font-weight: 600; line-height: 1.4; letter-spacing: normal; overflow-wrap: normal; text-overflow: ellipsis; white-space: nowrap; }
 
-/* Inside: the lining and the letter. The runtime positions and clips the letter:
-   a band under the strip while closed, fully out between the halves when open. */
-.mw-envelope__under { overflow: hidden; border-radius: 22px; background: repeating-linear-gradient(45deg, #17178e 0 10px, #0b0b6e 10px 20px); box-shadow: inset 0 16px 30px rgba(0, 0, 0, .35); }
+.mw-envelope__strip {
+  position: absolute; left: calc(-1 * var(--ovh)); right: 0; top: var(--a); height: var(--sh); display: flex; align-items: center; gap: 22px; padding-left: 64px; overflow: hidden; white-space: nowrap;
+  border-block: 2px dashed var(--strip-rule); border-radius: 18px 0 0 18px; background: var(--strip-tex) 0 0 / var(--tex-size), var(--strip); background-blend-mode: overlay; color: var(--strip-ink);
+  font-size: 12.5px; font-weight: 800; letter-spacing: .26em; text-transform: uppercase;
+}
+.mw-envelope__strip span { flex: none; }
+
+.mw-envelope__body { position: absolute; left: 44px; right: 230px; top: calc(var(--a) + var(--sh) + 22px); display: grid; grid-template-columns: repeat(3, minmax(0, max-content)); gap: 12px 40px; color: var(--ink); }
+.mw-envelope__meta small { display: block; color: var(--ink-2); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.mw-envelope__meta b { display: block; margin-top: 4px; overflow: hidden; font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.mw-envelope__meta .t::before { content: " · "; }
+
+/* Postage stamp. Perforations sit on a 13px grid so every edge ends on a half hole. */
+.mw-envelope__stampwrap { position: absolute; right: 48px; top: 26px; width: 143px; height: 169px; transform: rotate(4deg); filter: drop-shadow(0 2px 2.5px rgba(60, 40, 10, .28)); }
+.mw-envelope__stamp {
+  position: absolute; inset: 0; display: flex; flex-direction: column; padding: 9px; background: var(--paper-tex) 0 0 / var(--tex-size), var(--stamp-bg); background-blend-mode: overlay;
+  -webkit-mask: radial-gradient(circle 4.6px, transparent 97%, #000) -6.5px -6.5px / 13px 13px, linear-gradient(#000 0 0) 5px 5px / calc(100% - 10px) calc(100% - 10px) no-repeat;
+  mask: radial-gradient(circle 4.6px, transparent 97%, #000) -6.5px -6.5px / 13px 13px, linear-gradient(#000 0 0) 5px 5px / calc(100% - 10px) calc(100% - 10px) no-repeat;
+}
+.mw-envelope__stamp-pic { position: relative; flex: 1; overflow: hidden; background: var(--stamp-art) center / cover; box-shadow: inset 0 0 0 .75px rgba(1, 0, 102, .18); }
+/* Type set like a Pos Malaysia stamp, inked so it takes the paper grain: caption under the picture, then country + Jawi left and the value right. */
+.mw-envelope__stamp-foot { position: relative; flex: none; height: 33px; padding-top: 3px; color: #14146a; mix-blend-mode: multiply; }
+.mw-envelope__stamp-cap { display: block; overflow: hidden; font-family: var(--font-display); font-size: 6.6px; font-style: italic; line-height: 1.2; white-space: nowrap; }
+.mw-envelope__stamp-cap::before { content: var(--cap); }
+.mw-envelope__stamp-country { position: absolute; left: 0; bottom: 1px; font-family: var(--font-display); font-size: 14px; font-weight: 500; line-height: 1; letter-spacing: -.005em; white-space: nowrap; }
+.mw-envelope__stamp-country::before { content: "Malaysia"; }
+.mw-envelope__stamp-jawi { margin-left: 3px; font-family: "Noto Naskh Arabic", "Geeza Pro", "Times New Roman", serif; font-size: 10.5px; font-weight: 400; }
+.mw-envelope__stamp-jawi::before { content: "مليسيا"; }
+.mw-envelope__stamp-value { position: absolute; right: 0; bottom: 1px; font-family: var(--font-display); font-size: 14px; font-weight: 500; line-height: 1; }
+.mw-envelope__stamp-value small { margin-right: 1px; font-size: 8px; font-weight: 500; }
+.mw-envelope__stamp-value .vs { margin: 0 0 0 1px; }
+.mw-envelope__stamp-value .vp::before { content: var(--vp, ""); }
+.mw-envelope__stamp-value .vn::before { content: var(--vn); }
+.mw-envelope__stamp-value .vs::before { content: var(--vs, ""); }
+/* One set, three frames: classic perforation, engraved double rule, self-adhesive wavy cut. Tilts alternate. */
+.mw-envelope[data-stamp="hibiscus"] { --stamp-art: url(/customer/envelope-stamp-hibiscus.webp); --cap: "BUNGA RAYA • Hibiscus rosa-sinensis"; --vn: "60"; --vs: "sen"; }
+.mw-envelope[data-stamp="hibiscus"] .mw-envelope__stampwrap { transform: rotate(-4deg); }
+.mw-envelope[data-stamp="tiger"] { --stamp-art: url(/customer/envelope-stamp-tiger.webp); --cap: "HARIMAU MALAYA • Panthera tigris"; --vp: "RM"; --vn: "1"; }
+.mw-envelope[data-stamp="tiger"] .mw-envelope__stampwrap { transform: rotate(3.5deg); }
+.mw-envelope[data-stamp="tiger"] .mw-envelope__stamp { --stamp-bg: #f6eedb; padding: 14px; }
+.mw-envelope[data-stamp="tiger"] .mw-envelope__stamp::before,
+.mw-envelope[data-stamp="tiger"] .mw-envelope__stamp::after { content: ""; position: absolute; inset: 8.5px; border: 1.6px solid #14146a; mix-blend-mode: multiply; }
+.mw-envelope[data-stamp="tiger"] .mw-envelope__stamp::after { inset: 11.25px; border-width: .6px; }
+.mw-envelope[data-stamp="stall"] { --stamp-art: url(/customer/envelope-stamp-stall.webp); --cap: "PASAR MALAM • Gerai buah & kuih"; --vp: "RM"; --vn: "2"; }
+.mw-envelope[data-stamp="stall"] .mw-envelope__stampwrap { transform: rotate(-2.5deg); }
+.mw-envelope[data-stamp="stall"] .mw-envelope__stamp {
+  --stamp-bg: #ffd84a;
+  -webkit-mask: radial-gradient(circle 3.25px, #000 96%, #0000) 0 0 / 6.5px 6.5px, linear-gradient(#000 0 0) 3.25px 3.25px / calc(100% - 6.5px) calc(100% - 6.5px) no-repeat;
+  mask: radial-gradient(circle 3.25px, #000 96%, #0000) 0 0 / 6.5px 6.5px, linear-gradient(#000 0 0) 3.25px 3.25px / calc(100% - 6.5px) calc(100% - 6.5px) no-repeat;
+}
+/* Decorative postmark: ringed country legend, hibiscus, peninsula and Borneo. No event data. */
+.mw-envelope__postmark { position: absolute; right: 64px; top: calc(var(--a) + var(--sh) + 6px); width: 130px; height: 130px; color: var(--postmark); transform: rotate(-9deg); }
+.mw-envelope__postmark svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.mw-envelope__postmark text { font-family: var(--font-display); font-size: 14.5px; font-weight: 800; letter-spacing: .06em; }
+
+/* Inside: the letter shows through the tear, then comes out between the halves.
+   The runtime positions and clips it. */
 .mw-envelope__pocket { position: absolute; inset: 0; pointer-events: none; }
-.mw-envelope__letter { position: absolute; left: 4%; right: 4%; top: 0; overflow: hidden; border-radius: 16px; pointer-events: auto; box-shadow: 0 -10px 34px rgba(0, 0, 0, .32); }
-.mw-envelope__lhead { position: relative; height: calc(var(--sh) + 16px); background: linear-gradient(160deg, #2b2b9e, var(--env-navy)); }
-.mw-envelope__band { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 18px; padding: 0 16px; overflow: hidden; white-space: nowrap;
-  background: color-mix(in srgb, var(--env-navy) 72%, transparent); color: #fff; font-size: 13px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
-.mw-envelope__band i { color: var(--env-yellow); font-style: normal; }
-.mw-envelope__lbody { display: grid; grid-template-columns: 1.1fr 1fr; gap: 28px; padding: 22px 28px; }
-.mw-envelope__more-narrow { display: none; }
+.mw-envelope__letter { position: absolute; left: 4%; right: 4%; top: 0; overflow: hidden; border-radius: 16px; box-shadow: 0 -10px 34px rgba(0, 0, 0, .32); }
+.mw-envelope__lphoto { position: relative; height: 230px; overflow: hidden; }
+.mw-envelope__ltitle { margin: 0; padding: 14px 20px 16px; font-family: var(--font-display); font-size: 24px; font-weight: 650; }
+
+/* The pull tab rides the tear front 1:1 with the pointer; vertical swipes on it still scroll the page. */
+.mw-envelope__grip {
+  position: absolute; top: calc(var(--a) + var(--sh) / 2 - 22px); left: calc(4px - var(--ovh)); width: 44px; height: 44px; display: grid; place-items: center; padding: 0;
+  border: 3px solid var(--grip-ring); border-radius: 50%; background: var(--grip-bg); color: var(--grip-ink); cursor: grab; touch-action: pan-y pinch-zoom;
+  box-shadow: 0 4px 12px rgba(1, 0, 102, .35); transform: translateX(var(--drag, 0px));
+}
+.mw-envelope__grip:focus-visible { outline: 3px solid #010066; outline-offset: 4px; }
+.mw-envelope[data-state="drag"] .mw-envelope__grip { cursor: grabbing; }
+.mw-envelope[data-ready="true"] .mw-envelope__grip { border-color: #010066; background: #fbf1dc; color: #010066; }
+.mw-envelope__grip svg { width: 20px; height: 20px; stroke-width: 2.6; }
+.mw-envelope__grip-ok { display: none; }
+.mw-envelope[data-ready="true"] .mw-envelope__grip-go { display: none; }
+.mw-envelope[data-ready="true"] .mw-envelope__grip-ok { display: block; }
+.mw-envelope__guide {
+  position: absolute; left: 44px; top: calc(var(--a) + var(--sh) / 2); padding: 5px 11px; border-radius: 999px; background: #010066; color: #fbf1dc; opacity: 0; pointer-events: none;
+  font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; transform: translateY(-50%); transition: opacity .12s;
+}
+.mw-envelope[data-ready="true"] .mw-envelope__guide { opacity: 1; }
+/* "Open without dragging": visually hidden (sr-only) until keyboard focus shows it here. */
+.mw-envelope__alt { position: absolute; left: 44px; bottom: 22px; padding: 7px 13px; border: 0; border-radius: 999px; background: rgba(1, 0, 102, .08); color: var(--ink); font-size: 13px; font-weight: 700; cursor: pointer; }
+.mw-envelope__alt:focus-visible { outline: 3px solid #010066; outline-offset: 3px; }
+/* Opacity, not display: focus stays put, so the carousel's focus pause holds through the open. */
+.mw-envelope:is([data-state="busy"], [data-state="gone"]) .mw-envelope__alt { opacity: 0; pointer-events: none; transition: opacity .12s; }
+.mw-envelope[data-state="gone"] :is(.mw-envelope__grip, .mw-envelope__alt) { pointer-events: none; }
 
 /* Phone-width card (set by the runtime from the measured width). */
-.mw-envelope[data-narrow="true"] { --h0: 480px; --a: 236px; --sh: 44px; }
-.mw-envelope[data-narrow="true"] .mw-envelope__from { left: 22px; top: 22px; font-size: 10.5px; }
-.mw-envelope[data-narrow="true"] :is(.mw-envelope__head, .mw-envelope__body) { left: 22px; right: 22px; }
-.mw-envelope[data-narrow="true"] .mw-envelope__title { font-size: 3rem; }
-.mw-envelope[data-narrow="true"] .mw-envelope__row { font-size: 15px; }
-.mw-envelope[data-narrow="true"] .mw-envelope__stamp { right: 16px; top: 14px; width: 70px; height: 86px; padding: 6px; }
-.mw-envelope[data-narrow="true"] .mw-envelope__stamp-img { height: 58px; }
-.mw-envelope[data-narrow="true"] .mw-envelope__stamp-caption { display: none; }
-.mw-envelope[data-narrow="true"] .mw-envelope__postmark { right: 54px; top: 22px; width: 64px; height: 64px; font-size: 0; }
-.mw-envelope[data-narrow="true"] .mw-envelope__band { justify-content: flex-start; gap: 12px; font-size: 10.5px; }
-.mw-envelope[data-narrow="true"] .mw-envelope__lbody { grid-template-columns: 1fr; gap: 14px; padding: 16px; }
-.mw-envelope[data-narrow="true"] .mw-envelope__loc ~ .mw-envelope__loc { display: none; }
-.mw-envelope[data-narrow="true"] .mw-envelope__more-wide { display: none; }
-.mw-envelope[data-narrow="true"] .mw-envelope__more-narrow { display: block; }
+.mw-envelope[data-narrow="true"] { --h0: 500px; --a: 250px; --sh: 46px; --ovh: 12px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__guide { left: 24px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__alt { left: 24px; bottom: 16px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__from { left: 24px; top: 24px; font-size: 12.5px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__head { left: 24px; right: 24px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__eyebrow { font-size: 17px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__title { font-size: 38px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__subtitle { margin-top: 6px; font-size: 17px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__strip { gap: 18px; padding-left: 58px; font-size: 11.5px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__body { left: 24px; right: 24px; grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__meta b { font-size: 16px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__meta .t { display: block; color: var(--ink-2); font-weight: 600; }
+.mw-envelope[data-narrow="true"] .mw-envelope__meta .t::before { content: none; }
+.mw-envelope[data-narrow="true"] .mw-envelope__meta.where { grid-column: 1 / -1; }
+.mw-envelope[data-narrow="true"] .mw-envelope__stampwrap { right: 18px; top: 18px; width: 65px; height: 65px; }
+.mw-envelope[data-narrow="true"] .mw-envelope__stamp { padding: 6px; }
+.mw-envelope[data-narrow="true"][data-stamp="tiger"] .mw-envelope__stamp { padding: 9px; }
+.mw-envelope[data-narrow="true"][data-stamp="tiger"] .mw-envelope__stamp::before { inset: 5.5px; border-width: 1px; }
+.mw-envelope[data-narrow="true"][data-stamp="tiger"] .mw-envelope__stamp::after { content: none; }
+.mw-envelope[data-narrow="true"] :is(.mw-envelope__stamp-foot, .mw-envelope__postmark) { display: none; }
+.mw-envelope[data-narrow="true"] .mw-envelope__lphoto { height: 170px; }
 
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
@@ -866,5 +923,62 @@ input[type="checkbox"]:disabled {
   input[type="checkbox"],
   input[type="checkbox"]::before {
     transition-duration: 0ms;
+  }
+}
+
+/* Customer page transitions (React ViewTransition): route changes fade, typed forward steps slide 60px, back always fades. */
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-group(customer-header) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(customer-header) {
+  display: none;
+}
+::view-transition-new(customer-header) {
+  animation: none;
+}
+::view-transition-old(.page-fade) {
+  animation: 150ms ease-in both mw-fade reverse;
+}
+::view-transition-new(.page-fade) {
+  animation: 210ms ease-out 90ms both mw-fade;
+}
+::view-transition-old(.nav-forward) {
+  --mw-slide: -60px;
+  animation:
+    150ms ease-in both mw-fade reverse,
+    400ms ease-in-out both mw-slide reverse;
+}
+::view-transition-new(.nav-forward) {
+  --mw-slide: 60px;
+  animation:
+    210ms ease-out 150ms both mw-fade,
+    400ms ease-in-out both mw-slide;
+}
+@keyframes mw-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes mw-slide {
+  from {
+    translate: var(--mw-slide);
+  }
+  to {
+    translate: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(.nav-forward) {
+    animation: 150ms ease-in both mw-fade reverse;
+  }
+  ::view-transition-new(.nav-forward) {
+    animation: 210ms ease-out 90ms both mw-fade;
   }
 }

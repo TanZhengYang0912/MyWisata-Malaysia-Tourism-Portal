@@ -5,8 +5,9 @@ import { computeProfileVerification } from '@/lib/verification/eligibility';
 
 const mocks = vi.hoisted(() => ({
   user: { id: 'user-a', name: 'Aisha', email: 'a@example.test', city: 'Kuala Lumpur', country: 'Malaysia' },
-  feedback: vi.fn(), refresh: vi.fn(), push: vi.fn(),
+  feedback: vi.fn(), refresh: vi.fn(), push: vi.fn(), addTransitionType: vi.fn(),
 }));
+vi.mock('react', async (importOriginal) => ({ ...(await importOriginal<typeof import('react')>()), addTransitionType: mocks.addTransitionType }));
 vi.mock('@/components/providers/auth', () => ({ useAuth: () => ({ currentUser: mocks.user, refreshUser: mocks.refresh }) }));
 vi.mock('@/components/providers/action-feedback', () => ({ useActionFeedback: () => ({ showFeedback: mocks.feedback }) }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }), useSearchParams: () => new URLSearchParams() }));
@@ -74,7 +75,7 @@ describe('Profile wizard navigation and draft ownership', () => {
   });
   beforeEach(() => {
     mocks.user = { id: 'user-a', name: 'Aisha', email: 'a@example.test', city: 'Kuala Lumpur', country: 'Malaysia' };
-    mocks.feedback.mockReset(); mocks.push.mockReset();
+    mocks.feedback.mockReset(); mocks.push.mockReset(); mocks.addTransitionType.mockReset();
     mocks.refresh.mockReset().mockImplementation(async () => { mocks.user = { ...mocks.user }; });
     saved = initialProfile(); rejectBio = false;
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:avatar-draft');
@@ -107,6 +108,17 @@ describe('Profile wizard navigation and draft ownership', () => {
     expect(findElements(container, (node) => node.tagName === 'BUTTON' && node.textContent === 'ui.profileWizard.steps.survey')).toHaveLength(0);
     expect(writes('/api/profile/identity')).toHaveLength(0);
     expect(writes('/api/profile/bio')).toHaveLength(0);
+  });
+
+  it('slides only forward steps; Previous and earlier steps fade', async () => {
+    await renderPage();
+    await click(button('ui.profileWizard.previous'));
+    await step('identity');
+    expect(mocks.addTransitionType).not.toHaveBeenCalled();
+    await step('avatar');
+    expect(mocks.addTransitionType).toHaveBeenCalledTimes(1);
+    expect(mocks.addTransitionType).toHaveBeenCalledWith('nav-forward');
+    expect(writes('/api/profile/identity')).toHaveLength(0);
   });
 
   it('retains a biography draft when saving Identity and refreshing the same auth account', async () => {

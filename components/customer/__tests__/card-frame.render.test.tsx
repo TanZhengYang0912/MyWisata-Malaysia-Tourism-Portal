@@ -51,6 +51,16 @@ describe("ProductCard on the shared CardFrame", () => {
     expect(markup.indexOf("border-t border-border pt-3")).toBeGreaterThan(markup.indexOf("Brinchang, Pahang"));
   });
 
+  it("serves Supabase photos through the image optimizer and other hosts as-is", () => {
+    const supabasePhoto = "https://abcdefghijklmnop.supabase.co/storage/v1/object/public/product-images/x.jpg";
+    const optimized = renderToStaticMarkup(<ProductCard vendorListing={{ ...product, imageUrl: supabasePhoto }} returnTo="/customer/vendor/v1" />).match(/<img [^>]*>/)?.[0] ?? "";
+    expect(optimized).toContain("/_next/image?url=");
+    expect(optimized).toContain("srcSet=");
+    const external = renderToStaticMarkup(<ProductCard vendorListing={{ ...product, imageUrl: "https://example.test/x.jpg" }} returnTo="/customer/vendor/v1" />).match(/<img [^>]*>/)?.[0] ?? "";
+    expect(external).toContain('src="https://example.test/x.jpg"');
+    expect(external).not.toContain("/_next/image");
+  });
+
   it("marks a count of locations with the Map icon, not the pin", () => {
     const twoOutlets = { ...product, soldAt: [...product.soldAt, { id: "o2", name: "Outlet 2", price: 90, city: "Ipoh", state: "Perak", operatingHours: null }] };
     const markup = renderToStaticMarkup(<ProductCard vendorListing={twoOutlets} returnTo="/customer/vendor/v1" />);
@@ -139,6 +149,12 @@ describe("VendorCard and OutletCard", () => {
     expect(markup).not.toContain("lucide-map-pin");
     expect(markup.indexOf("border-t border-border pt-3")).toBeLessThan(markup.indexOf("ui.vendor.locationCount:2"));
     expect(markup).toContain("border-[3px] border-background");
+  });
+
+  it("serves a Supabase logo through the image optimizer", () => {
+    const logoUrl = "https://abcdefghijklmnop.supabase.co/storage/v1/object/public/vendor-images/entities/vendor/v1/logo.png";
+    const markup = renderToStaticMarkup(<VendorCard vendor={{ ...vendor, logoUrl }} />);
+    expect(markup).toMatch(/<img [^>]*src="\/_next\/image\?url=[^"]*vendor-images/);
   });
 
   it("leaves out the rating and open state when they are unknown", () => {

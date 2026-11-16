@@ -5,6 +5,8 @@ export type Pt = { x: number; y: number };
 export type TearLine = { pts: Pt[]; vx: number; vy: number; n: number };
 export type EnvelopeGeometry = {
   W: number; H: number; a: number; sh: number;
+  /** How far the strip reaches past the card's left edge. */
+  ovh: number;
   L1: TearLine; L2: TearLine;
   c1t: number[]; c1f: number[]; c2f: number[]; c2b: number[];
 };
@@ -14,7 +16,7 @@ export type Piece = {
   inner?: [number, number][];
   fold?: { h1: Pt; h2: Pt; phi: number; toward: Pt };
 };
-export type EnvelopeState = "closed" | "busy" | "open" | "gone";
+export type EnvelopeState = "closed" | "drag" | "returning" | "busy" | "gone";
 
 /** How far untorn edges overlap so no hairline shows between pieces. */
 const OV = 1.5;
@@ -72,11 +74,11 @@ const two = (fn: (inner: boolean) => [number, number][]) => ({ outer: fn(false),
 const shift = (pt: Pt, n: Pt): [number, number] => [pt.x + n.x * OV, pt.y + n.y * OV];
 
 export function createEnvelopeGeometry(W: number, narrow: boolean): EnvelopeGeometry {
-  const H = narrow ? 480 : 460, a = narrow ? 236 : 264, sh = narrow ? 44 : 48;
-  const L1 = rag({ x: -30, y: a }, { x: W, y: a }, 3, 1.6, 11);
-  const L2 = rag({ x: -30, y: a + sh }, { x: W, y: a + sh }, 3, 1.6, 12);
+  const H = narrow ? 500 : 460, a = narrow ? 250 : 264, sh = narrow ? 46 : 48, ovh = narrow ? 12 : 30;
+  const L1 = rag({ x: -ovh, y: a }, { x: W, y: a }, 3, 1.6, 11);
+  const L2 = rag({ x: -ovh, y: a + sh }, { x: W, y: a + sh }, 3, 1.6, 12);
   const n = L1.n;
-  return { W, H, a, sh, L1, L2, c1t: coreOf(n, 2, 10, 41), c1f: coreOf(n, 1, 3, 42), c2f: coreOf(n, 1, 3, 43), c2b: coreOf(n, 2, 10, 44) };
+  return { W, H, a, sh, ovh, L1, L2, c1t: coreOf(n, 2, 10, 41), c1f: coreOf(n, 1, 3, 42), c2f: coreOf(n, 1, 3, 43), c2b: coreOf(n, 2, 10, 44) };
 }
 
 /** The envelope cut into the part above the strip, the part below it, and the torn strip curling back over its hinge. */
@@ -87,7 +89,8 @@ export function buildZipStrip(progress: number, g: EnvelopeGeometry): Piece[] {
   if (k < 0) {
     return [
       { k: "bottom", ...bottom },
-      { k: "top", ...two(() => [[-E, -E], [W + E, -E], [W + E, L2.pts[n].y + OV], [-E, L2.pts[0].y + OV]]) },
+      // The closed top piece follows the same ragged line as the bottom piece; a straight edge left hairline gaps.
+      { k: "top", ...two((inr) => [[-E, -E], [W + E, -E], ...edge(L2, -1, c2b, 0, inr, n, 0), [-E, L2.pts[0].y + OV]]) },
       { k: "flap" },
     ];
   }
@@ -120,11 +123,4 @@ export function splitOpenLayout(o: { tearTop: number; tearBottom: number; letter
   const lo = o.headerBottom + 12 - o.cardTop, hi = o.viewportHeight - 12 - o.letterHeight - o.cardTop;
   const letterTop = Math.round(lo > hi ? lo : Math.min(hi, Math.max(lo, preferred)));
   return { letterTop, topShift: letterTop - 8 - o.tearTop, bottomShift: letterTop + o.letterHeight + 8 - o.tearBottom };
-}
-
-/** What to do once the pointer/focus wish and the animation state disagree. */
-export function nextEnvelopeAction(state: EnvelopeState, wantOpen: boolean): "open" | "close" | null {
-  if (state === "closed" && wantOpen) return "open";
-  if (state === "open" && !wantOpen) return "close";
-  return null;
 }

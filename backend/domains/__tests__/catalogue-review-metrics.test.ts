@@ -292,6 +292,32 @@ describe("getComputedActivity", () => {
     expect(activity?.outlet.id).toBe("o1");
   });
 
+  it("starts the review-metric read before the product read resolves", async () => {
+    let releaseProduct: (value: unknown) => void = () => {};
+    const productRead = new Promise((resolve) => { releaseProduct = resolve; });
+    const tables: string[] = [];
+    const db = {
+      from(table: string) {
+        tables.push(table);
+        const builder: Record<string, unknown> = {
+          select: () => builder,
+          eq: () => builder,
+          in: () => builder,
+          maybeSingle: () => (table === "products" ? productRead : Promise.resolve({ data: null, error: null })),
+          then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: [OUTLET_ROW], error: null }).then(resolve),
+        };
+        return builder;
+      },
+    } as never;
+
+    const pending = getComputedActivity("p1", undefined, db);
+    await Promise.resolve();
+    expect(tables).toContain("product_review_metrics");
+
+    releaseProduct({ data: PRODUCT_ROW, error: null });
+    expect(await pending).not.toBeNull();
+  });
+
   it("returns null for a product that is not active or approved", async () => {
     const db = makeFilterRecordingDb({ products: [], outlets: [OUTLET_ROW] }, []);
     expect(await getComputedActivity("missing", undefined, db)).toBeNull();

@@ -1,19 +1,3 @@
-.eventHeader {
-  align-items: center;
-  gap: clamp(1rem, 2.5vw, 2rem);
-  margin: 0 0 clamp(1.5rem, 3vw, 2.5rem);
-}
-
-.eventHeader h1 {
-  max-width: none;
-  color: var(--foreground);
-  font-size: clamp(2.5rem, 4.2vw, 4.1rem);
-  line-height: 1.02;
-  letter-spacing: -0.028em;
-  overflow-wrap: anywhere;
-  text-wrap: balance;
-}
-
 .backButton {
   color: var(--primary);
   border-color: var(--border);
@@ -26,30 +10,43 @@
   background: var(--secondary);
 }
 
-.eventOverview {
+/* Two columns: the overview stays in view on desktop while the stops and stalls scroll. */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+  gap: 56px;
+  align-items: start;
   margin-bottom: clamp(2.25rem, 4.5vw, 3.75rem);
 }
 
-.overviewGrid {
-  display: grid;
+.left {
   min-width: 0;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 1rem;
 }
 
-.overviewGridWithPoster {
-  grid-template-columns: minmax(0, 1.45fr) minmax(18rem, 0.8fr);
-  align-items: stretch;
-  gap: clamp(1rem, 2vw, 1.75rem);
+@media (min-width: 901px) {
+  .left:not([data-about-open="true"]) {
+    position: sticky;
+    top: calc(var(--customer-header-h, 4.25rem) + 20px);
+  }
+}
+
+.right {
+  min-width: 0;
+}
+
+.poster {
+  position: relative;
+  margin: 0;
+  padding-top: 14px;
 }
 
 .posterFrame {
   position: relative;
-  min-width: 0;
-  margin: 0;
   overflow: hidden;
-  aspect-ratio: 16 / 10;
-  border-radius: 16px;
+  aspect-ratio: 3 / 2;
+  max-height: 30vh;
+  width: 100%;
+  border-radius: 14px;
   background: var(--secondary);
 }
 
@@ -64,244 +61,472 @@
   animation: poster-reveal 720ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
 }
 
-.campaignInfo {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 1.1rem;
-  padding: 1rem 0 0 clamp(1.25rem, 2.6vw, 2.25rem);
-  color: var(--foreground);
-  border-inline-start: 2px solid var(--highlight-yellow);
+.festoon {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: -12px;
+  width: calc(100% + 24px);
+  height: 46px;
+  overflow: visible;
+  pointer-events: none;
 }
 
-.campaignInfoWithoutPoster {
-  max-width: 44rem;
+.festoonWire {
+  fill: none;
+  stroke: color-mix(in oklab, var(--foreground) 80%, transparent);
+  stroke-width: 1.4;
 }
 
-.status {
-  display: inline-flex;
-  min-height: 2rem;
-  align-items: center;
-  gap: 0.55rem;
-  margin: 0;
-  padding: 0.35rem 0.8rem;
-  border-radius: 999px;
-  font-size: 0.84rem;
-  font-weight: 700;
-  line-height: 1.35;
+.festoonSocket {
+  fill: color-mix(in oklab, var(--foreground) 80%, transparent);
 }
 
-.statusOperating {
-  color: var(--nature-green-ink);
-  background: color-mix(in srgb, var(--nature-green) 18%, var(--card));
+.festoonGlow {
+  fill: var(--highlight-yellow);
+  opacity: 0.6;
+  filter: blur(3px);
 }
 
-.statusUpcoming {
-  color: var(--foreground);
-  background: color-mix(in srgb, var(--highlight-yellow) 24%, var(--card));
+.festoonBulb {
+  fill: var(--highlight-yellow);
 }
 
-.statusDot {
-  width: 0.5rem;
-  height: 0.5rem;
-  flex: none;
-  border-radius: 50%;
-  background: var(--nature-green);
+.eyebrow {
+  margin: 22px 0 0;
+  color: var(--primary);
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
-.statusUpcoming .statusDot {
-  background: var(--highlight-yellow-foreground);
-}
-
-.campaignDates {
-  display: grid;
-  min-width: 0;
-  gap: 0.8rem;
-}
-
-.campaignDate {
-  display: flex;
-  min-width: 0;
-  align-items: flex-start;
-  gap: 0.7rem;
-  margin: 0;
-  color: var(--foreground);
-  font-size: 0.96rem;
-  font-weight: 650;
-  line-height: 1.5;
-  font-variant-numeric: tabular-nums;
+.title {
+  margin: 8px 0 0;
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: clamp(38px, 3.8vw, 52px);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
   overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
-.campaignDate svg {
-  flex: none;
-  margin-top: 0.18rem;
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 14px 0 0;
+  color: var(--foreground);
+  font-size: 15.5px;
+  font-weight: 600;
+}
+
+.metaCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.metaCount svg {
   color: var(--primary);
 }
 
 .upcomingNotice {
-  max-width: 34rem;
-  margin: 0;
-  padding: 0.75rem 0.9rem;
-  color: var(--foreground);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--highlight-yellow) 18%, var(--card));
-  font-size: 0.9rem;
+  margin: 10px 0 0;
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-weight: 600;
-  line-height: 1.5;
 }
 
-.programSection {
-  margin: 0 0 clamp(2rem, 4vw, 3.5rem);
+.status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
 }
 
-.programHeading {
-  margin: 0 0 1.15rem;
-  color: var(--foreground);
-  font-family: var(--font-display);
-  font-size: clamp(1.75rem, 3vw, 2.35rem);
-  font-weight: 750;
-  line-height: 1.12;
-  letter-spacing: -0.025em;
-  text-wrap: balance;
+.status[data-tone="running"] {
+  color: var(--nature-green-ink);
 }
 
-.programList {
-  display: grid;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
+.status[data-tone="running"]::before {
+  background: var(--nature-green);
+}
+
+.status[data-tone="upcoming"] {
+  color: var(--primary);
+}
+
+.status[data-tone="ended"] {
+  color: var(--muted-foreground);
+}
+
+.rule {
+  margin: 22px 0 18px;
+  border: 0;
   border-top: 1px solid var(--border);
-  list-style: none;
 }
 
-.programStop {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: minmax(10rem, 0.85fr) minmax(0, 1.8fr) minmax(10rem, 0.8fr);
-  align-items: center;
-  gap: clamp(1rem, 2.3vw, 2.25rem);
-  padding: 1.35rem 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.locationDate {
-  display: flex;
-  min-width: 0;
-  align-items: flex-start;
-  gap: 0.6rem;
+.aboutHeading {
   margin: 0;
-  color: var(--primary);
-  font-size: 0.9rem;
-  font-weight: 700;
-  line-height: 1.5;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
-.locationDate svg,
-.locationName svg,
-.locationHours svg {
-  flex: none;
-  margin-top: 0.12rem;
-  color: var(--primary);
-}
-
-.locationDetails {
-  min-width: 0;
-}
-
-.locationName {
-  display: flex;
-  min-width: 0;
-  align-items: flex-start;
-  gap: 0.6rem;
-  margin: 0;
+.about {
+  display: -webkit-box;
+  margin: 8px 0 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
   color: var(--foreground);
-  font-size: 1.05rem;
-  font-weight: 750;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-
-.locationAddress {
-  margin: 0.35rem 0 0 1.6rem;
-  color: var(--muted-foreground);
-  font-size: 0.88rem;
-  line-height: 1.55;
-  overflow-wrap: anywhere;
-}
-
-.locationHours {
-  display: flex;
-  min-width: 0;
-  align-items: flex-start;
-  justify-self: end;
-  gap: 0.6rem;
-  margin: 0;
-  color: var(--muted-foreground);
-  font-size: 0.88rem;
-  font-weight: 600;
-  line-height: 1.5;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-
-.campaignDetails {
-  margin: 0 0 clamp(2.5rem, 5vw, 4rem);
-  color: var(--foreground);
-  border-block: 1px solid var(--border);
-}
-
-.detailsSummary {
-  display: flex;
-  min-height: 3.5rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.8rem 0.15rem;
-  cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 700;
-  list-style: none;
-}
-
-.detailsSummary::-webkit-details-marker {
-  display: none;
-}
-
-.detailsSummary:focus-visible {
-  outline: 3px solid var(--highlight-yellow);
-  outline-offset: 3px;
-  border-radius: 6px;
-}
-
-.detailsChevron {
-  flex: none;
-  color: var(--primary);
-  transition: transform 180ms ease-out;
-}
-
-.campaignDetails[open] .detailsChevron {
-  transform: rotate(180deg);
-}
-
-.detailsBody {
-  max-width: 72ch;
-  margin: 0;
-  padding: 0 0.15rem 1.2rem;
-  color: var(--muted-foreground);
-  font-size: 0.9rem;
+  font-size: 15.5px;
   line-height: 1.7;
   white-space: pre-line;
+}
+
+.about[data-open="true"] {
+  display: block;
+}
+
+.aboutControl {
+  margin: 4px 0 0;
+}
+
+.moreButton {
+  margin-top: 4px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.moreButton:hover,
+.moreButton:active {
+  color: var(--accent);
+}
+
+.stopsHeading {
+  margin: 0;
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+/* Stops stepper: equal columns joined by a dotted line, ruled off underneath. */
+.stepper {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--stops), minmax(0, 1fr));
+  margin: 22px 0 0;
+  padding: 0 0 16px;
+  list-style: none;
+  border-bottom: 2px solid var(--primary);
+}
+
+.stepper::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  left: calc(50% / var(--stops));
+  right: calc(50% / var(--stops));
+  border-top: 2px dotted color-mix(in oklab, var(--primary) 30%, transparent);
+}
+
+.stepper > li {
+  position: relative;
+  min-width: 0;
+}
+
+/* More than four stops: keep readable columns and scroll sideways. */
+.stepper:has(> li:nth-child(5)) {
+  grid-template-columns: repeat(var(--stops), minmax(120px, 1fr));
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+}
+
+.stepper:has(> li:nth-child(5)) > li {
+  scroll-snap-align: start;
+}
+
+.step {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  width: 100%;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  text-align: center;
+  cursor: pointer;
+}
+
+.step:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.node {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin-bottom: 6px;
+  border: 2px solid var(--primary);
+  border-radius: 50%;
+  background: var(--background);
+  color: var(--primary);
+}
+
+.step[data-phase="ended"] .node {
+  border-color: var(--muted-foreground);
+  color: var(--muted-foreground);
+}
+
+.step[aria-pressed="true"] .node {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 0 0 5px color-mix(in oklab, var(--primary) 12%, transparent);
+}
+
+.stepWhen {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stepName {
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.step[data-phase="ended"] .stepName {
+  color: var(--muted-foreground);
+}
+
+.step:hover .stepName {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.step .status {
+  font-size: 12px;
+}
+
+.stop {
+  margin-top: 26px;
+}
+
+.stopName {
+  margin: 0;
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.facts li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.facts svg {
+  flex: none;
+  color: var(--primary);
+}
+
+.facts .address {
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+
+.stalls {
+  margin-top: 30px;
+  scroll-margin-top: calc(var(--customer-header-h, 4.25rem) + 16px);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 34px 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each stall is a market booth: striped awning with a scalloped edge over an outlined counter. */
+.stall {
+  --stripe: var(--primary);
+  --stripe-alt: color-mix(in oklab, var(--primary) 14%, var(--background));
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.stall[data-phase="ended"] {
+  --stripe: var(--muted-foreground);
+  --stripe-alt: color-mix(in oklab, var(--muted-foreground) 12%, var(--background));
+}
+
+.awning {
+  position: relative;
+  height: 26px;
+  border: 2px solid var(--stripe);
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  background: repeating-linear-gradient(90deg, var(--stripe) 0 22px, var(--stripe-alt) 22px 44px);
+}
+
+.awning::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: -2px;
+  right: -2px;
+  height: 12px;
+  background: repeating-linear-gradient(90deg, var(--stripe) 0 22px, var(--stripe-alt) 22px 44px);
+  -webkit-mask: radial-gradient(circle at 11px 0, #000 10.5px, transparent 11px) 0 0 / 22px 12px repeat-x;
+  mask: radial-gradient(circle at 11px 0, #000 10.5px, transparent 11px) 0 0 / 22px 12px repeat-x;
+  pointer-events: none;
+}
+
+.booth {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 12px 12px;
+  border: 2px solid var(--stripe);
+  border-top: 0;
+  border-radius: 0 0 6px 6px;
+}
+
+.boothPhoto {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  background: var(--secondary);
+}
+
+.vendorLink {
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
   overflow-wrap: anywhere;
 }
 
-.vendorLineup {
+/* The link covers the whole booth so the card is one target. */
+.vendorLink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.vendorLink:focus-visible {
+  outline: none;
+}
+
+.stall:has(.vendorLink:focus-visible) .booth,
+.stall:has(.vendorLink:focus-visible) .awning {
+  outline: 3px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.stall:hover .vendorLink {
+  text-decoration-thickness: 2.5px;
+}
+
+.itemCount {
+  color: var(--muted-foreground);
+  font-size: 13.5px;
+}
+
+.menu {
+  margin: 10px 2px 0;
+  padding: 0;
+  list-style: none;
+  color: var(--foreground);
+  font-size: 14px;
+}
+
+.menu li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.menu span {
   min-width: 0;
-  margin-bottom: 1.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu i {
+  flex: 1;
+  min-width: 12px;
+  border-bottom: 1.5px dotted color-mix(in oklab, var(--primary) 30%, transparent);
+  transform: translateY(-4px);
+}
+
+.menu b {
+  flex: none;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.pager {
+  margin-top: 30px;
+}
+
+.empty {
+  margin: 24px 0 0;
+  color: var(--muted-foreground);
 }
 
 @keyframes poster-reveal {
@@ -319,69 +544,69 @@
 }
 
 @media (max-width: 900px) {
-  .overviewGridWithPoster {
+  .layout {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .programStop {
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.5fr);
-  }
-
-  .locationDetails {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-
-  .locationHours {
-    grid-column: 1;
-    grid-row: 2;
-    justify-self: start;
-  }
-}
-
-@media (max-width: 767px) {
-  .eventHeader {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .eventHeader h1 {
-    font-size: clamp(2.25rem, 9vw, 3.25rem);
+    gap: 40px;
   }
 
   .posterFrame {
     aspect-ratio: 16 / 10;
+    max-height: none;
   }
 
-  .campaignInfo {
-    gap: 1rem;
-    padding: 0.15rem 0 0.15rem 1rem;
+  .title {
+    font-size: 38px;
   }
 
-  .programStop {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.5rem;
-    padding: 1.1rem 0;
+  .about {
+    -webkit-line-clamp: 4;
   }
 
-  .locationDetails,
-  .locationHours {
-    grid-column: 1;
-    grid-row: auto;
+  .stepName {
+    font-size: 14.5px;
   }
 
-  .locationHours {
-    padding-left: 1.6rem;
+  .stepWhen {
+    font-size: 11px;
+  }
+
+  .stopName {
+    font-size: 28px;
+  }
+
+  .facts {
+    flex-direction: column;
+  }
+
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 26px 14px;
+  }
+
+  .booth {
+    padding: 16px 8px 8px;
+  }
+
+  .vendorLink {
+    font-size: 16px;
+  }
+
+  .menu {
+    font-size: 12.5px;
+  }
+
+  .menu i {
+    display: none;
+  }
+
+  .menu li {
+    flex-wrap: wrap;
+    gap: 0 6px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .posterImage {
     animation: none;
-  }
-
-  .detailsChevron {
-    transition: none;
   }
 }

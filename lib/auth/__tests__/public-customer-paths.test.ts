@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPublicCustomerPath } from "@/lib/auth/public-customer-paths";
+import { isCustomerBrowsePath, isPublicCustomerPath } from "@/lib/auth/public-customer-paths";
 
 describe("isPublicCustomerPath", () => {
   it("allows browse, vendor, listing, recommendation, and wallet surfaces", () => {
@@ -38,6 +38,20 @@ describe("isPublicCustomerPath", () => {
       "/customer/wallet/withdrawals/withdrawal-1",
     ]) {
       expect(isPublicCustomerPath(path)).toBe(false);
+    }
+  });
+});
+
+describe("isCustomerBrowsePath", () => {
+  it("covers the home page and catalogue browse surfaces", () => {
+    for (const path of ["/customer", "/customer/explore", "/customer/vendors/vendor-1", "/customer/activity/product-1", "/customer/events", "/customer/events/real-campaign", "/customer/place/place-1", "/customer/outlet/outlet-1"]) {
+      expect(isCustomerBrowsePath(path)).toBe(true);
+    }
+  });
+
+  it("leaves commerce, account and wallet surfaces waiting for sign-in state", () => {
+    for (const path of ["/customer/cart", "/customer/checkout", "/customer/checkout/success", "/customer/orders/access", "/customer/orders/1d4057cf-c821-4b05-a454-61dbdc42d32c", "/customer/checkout/simulator/1d4057cf-c821-4b05-a454-61dbdc42d32c", "/customer/wallet", "/customer/affiliate", "/customer/recommendations", "/customer/for-you", "/customer/profile", "/customerx"]) {
+      expect(isCustomerBrowsePath(path)).toBe(false);
     }
   });
 });

@@ -1,9 +1,7 @@
 // P4 — Member 4: ticket detail (CLAUDE-FIXES.md Fix 2)
 // GET /api/support/tickets/[id] — ticket + explicit reply thread in one
-// payload. Used by BOTH the customer's ticket detail view
-// and the admin ticket dialog (support_tickets' own SELECT RLS policy is
-// already "owner OR is_admin()", so one route naturally serves both — no
-// need for a separate admin-only version of this read).
+// payload. Used by both the customer's ticket detail view and the admin
+// ticket dialog.
 
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -21,6 +19,8 @@ export async function GET(_request: Request, { params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
+  // The session client has column grants for list reads only. Read the detail
+  // through the service client and enforce ownership or admin access below.
   const service = createServiceClient();
   const { data: ticket, error: ticketErr } = await service
     .from('support_tickets')

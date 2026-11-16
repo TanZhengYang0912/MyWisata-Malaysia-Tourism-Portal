@@ -25,6 +25,7 @@ import {
 } from "@/lib/customer/cart-availability";
 import { StayGuestDetailsDialog } from "@/components/customer/stay-guest-details-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { NAV_FORWARD } from "@/lib/customer/page-transitions";
 
 type VoucherOption = {
   voucher: Voucher;
@@ -392,8 +393,11 @@ export default function CartPage() {
   }
 
   if (items.length === 0) {
-    if (itemsLoadError) return <EmptyState icon={<ShoppingCart size={40} />} title={tCustomer("ui.cart.loadErrorTitle")} description={tCustomer("ui.cart.loadErrorDescription")} action={<Button type="button" onClick={reloadItems}>{tCustomer("ui.actions.retry")}</Button>} />;
+    // The empty and error views have no page heading of their own, so screen readers get the cart's h1 here.
+    if (itemsLoadError) return <><h1 className="sr-only">{tCustomer("ui.cart.title")}</h1><EmptyState icon={<ShoppingCart size={40} />} title={tCustomer("ui.cart.loadErrorTitle")} description={tCustomer("ui.cart.loadErrorDescription")} action={<Button type="button" onClick={reloadItems}>{tCustomer("ui.actions.retry")}</Button>} /></>;
     return (
+      <>
+      <h1 className="sr-only">{tCustomer("ui.cart.title")}</h1>
       <EmptyState
         icon={<ShoppingCart size={40} />}
         title={tCustomer("ui.cart.guestTitle")}
@@ -407,6 +411,7 @@ export default function CartPage() {
           </div>
         }
       />
+      </>
     );
   }
 
@@ -715,6 +720,7 @@ export default function CartPage() {
       {selectedKeys.size > 0 ? (
         <Link
           href={appliedVoucher ? `/customer/checkout?voucher=${encodeURIComponent(appliedVoucher.code)}${appliedClaimId ? `&claim=${encodeURIComponent(appliedClaimId)}` : ""}` : "/customer/checkout"}
+          transitionTypes={[NAV_FORWARD]}
           className="inline-flex h-12 w-full items-center justify-center rounded-full bg-primary px-4 text-base font-medium text-primary-foreground transition-all hover:bg-primary/90"
         >
           {tCustomer("strictMigration.cart.proceedSelected", { count: selectedKeys.size })}

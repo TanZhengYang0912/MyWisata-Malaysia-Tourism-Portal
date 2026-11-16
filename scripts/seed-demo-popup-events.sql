@@ -1,5 +1,7 @@
 -- Demo pop-up events covering every event variation.
--- Plan: Docs/plans/2026-10-15-1650-demo-popup-event-variations.md
+-- Copy and photos: docs/plans/2026-11-15-1254-demo-event-content-refresh.md
+-- (photos uploaded by scripts/upload-demo-event-photos.mjs; scripts/refresh-demo-event-content.sql
+-- applies the same values to an already-seeded database).
 -- Remove with scripts/remove-demo-popup-events.sql.
 --
 -- Event guards only let a passkey-verified admin approve stalls and never allow
@@ -20,6 +22,7 @@ DECLARE
   fallback_poster text;
   -- Catalogue covers are bucket-relative (see lib/storage/product-image.ts); stall posters are used as-is, so store full URLs.
   storage_base CONSTANT text := 'https://ncdlaehknicabzjqskvk.supabase.co/storage/v1/object/public/product-images/';
+  events_base CONSTANT text := 'https://ncdlaehknicabzjqskvk.supabase.co/storage/v1/object/public/event-posters/demo-events/';
   v_cover text;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM public.users WHERE id = admin_id) THEN RAISE EXCEPTION 'demo admin missing'; END IF;
@@ -29,54 +32,54 @@ BEGIN
   SELECT poster_url INTO fallback_poster FROM public.promotion_campaigns WHERE slug = 'heritage-walk-kl-current-offers';
 
   INSERT INTO public.promotion_campaigns (slug, title, summary, description, starts_at, ends_at, status, created_by, updated_by, approved_by, approved_at, poster_url, operating_hours)
-  VALUES ('demo-popup-fiesta', 'Demo – Pop-up Fiesta',
-    'Demo event: three locations, multi-location stalls, products, services and every stall status.',
-    'Demo data for testing. A travelling pop-up fair with a night-market stop in Bangsar (already ended), a long-running market at Central Market Annexe KL (open now) and a weekend stop at Penang Esplanade (coming soon, vendor applications open).',
-    '2026-10-03 16:00+08', '2026-12-31 22:00+08', 'approved', admin_id, admin_id, admin_id, now(), fallback_poster, 'Varies by location — see each location''s hours')
+  VALUES ('demo-popup-fiesta', 'Pop-up Fiesta',
+    'A travelling market of Malaysian bakers, tea growers and craft makers — three stops from KL to Penang.',
+    'Pop-up Fiesta starts with a night market in Bangsar, settles in at Central Market Annexe for the season, then heads north for a weekend on the Penang Esplanade. Each stop has its own line-up.',
+    '2026-10-03 16:00+08', '2026-12-31 22:00+08', 'approved', admin_id, admin_id, admin_id, now(), events_base || 'event-01-popup-fiesta-poster.jpg', 'Varies by location — see each location''s hours')
   RETURNING id INTO fiesta;
 
   INSERT INTO public.promotion_campaigns (slug, title, summary, description, starts_at, ends_at, status, created_by, updated_by, approved_by, approved_at, poster_url, operating_hours)
-  VALUES ('demo-coming-soon-market', 'Demo – Coming Soon Craft Market',
-    'Demo event that has not started yet, so customers see the coming-soon preview.',
-    'Demo data for testing. A three-day craft market on Jonker Walk. Stalls stay hidden from customers until the event starts.',
-    '2026-11-20 10:00+08', '2026-11-22 22:00+08', 'approved', admin_id, admin_id, admin_id, now(), fallback_poster, 'Daily, 10:00 AM – 10:00 PM')
+  VALUES ('demo-coming-soon-market', 'Jonker Walk Craft Market',
+    'Three days of batik, heritage desserts and hands-on workshops on Melaka''s Jonker Walk.',
+    'Try batik painting with Desa Murni artisans, cool down with Jonker 88''s cendol, and browse Melaka makers along the heritage street.',
+    '2026-11-20 10:00+08', '2026-11-22 22:00+08', 'approved', admin_id, admin_id, admin_id, now(), events_base || 'event-02-coming-soon-craft-market-poster.jpg', 'Daily, 10:00 AM – 10:00 PM')
   RETURNING id INTO market;
 
     INSERT INTO public.promotion_campaign_locations (campaign_id, name, address, lat, lng, starts_on, ends_on, opens_at, closes_at, max_stalls)
-    VALUES (fiesta, 'Demo – Bangsar Night Market', 'Jalan Telawi 3, Bangsar Baru, 59100 Kuala Lumpur', 3.1302, 101.6712, '2026-10-03', '2026-10-08', '16:00', '23:00', 10)
+    VALUES (fiesta, 'Bangsar Night Market', 'Jalan Telawi 3, Bangsar Baru, 59100 Kuala Lumpur', 3.1302, 101.6712, '2026-10-03', '2026-10-08', '16:00', '23:00', 10)
     RETURNING id INTO v_loc;
   locs := locs || jsonb_build_object('A', v_loc);
     INSERT INTO public.promotion_campaign_locations (campaign_id, name, address, lat, lng, starts_on, ends_on, opens_at, closes_at, max_stalls)
-    VALUES (fiesta, 'Demo – Central Market Annexe, KL', 'Jalan Hang Kasturi, 50050 Kuala Lumpur', 3.1456, 101.6954, '2026-10-10', '2026-12-31', '10:00', '22:00', 20)
+    VALUES (fiesta, 'Central Market Annexe, KL', 'Jalan Hang Kasturi, 50050 Kuala Lumpur', 3.1456, 101.6954, '2026-10-10', '2026-12-31', '10:00', '22:00', 20)
     RETURNING id INTO v_loc;
   locs := locs || jsonb_build_object('B', v_loc);
     INSERT INTO public.promotion_campaign_locations (campaign_id, name, address, lat, lng, starts_on, ends_on, opens_at, closes_at, max_stalls,
       applications_open, applications_close_at, approvals_close_at, setup_starts_at)
-    VALUES (fiesta, 'Demo – Penang Esplanade', 'Jalan Tun Syed Sheh Barakbah, 10200 George Town, Penang', 5.4204, 100.3441, '2026-11-14', '2026-11-16', '10:00', '22:00', 15,
+    VALUES (fiesta, 'Penang Esplanade', 'Jalan Tun Syed Sheh Barakbah, 10200 George Town, Penang', 5.4204, 100.3441, '2026-11-14', '2026-11-16', '10:00', '22:00', 15,
       true, '2026-11-05 23:59+08', '2026-11-10 23:59+08', '2026-11-13 08:00+08')
     RETURNING id INTO v_loc;
   locs := locs || jsonb_build_object('C', v_loc);
     INSERT INTO public.promotion_campaign_locations (campaign_id, name, address, lat, lng, starts_on, ends_on, opens_at, closes_at, max_stalls)
-    VALUES (market, 'Demo – Melaka Jonker Walk', 'Jalan Hang Jebat, 75200 Melaka', 2.1951, 102.2475, '2026-11-20', '2026-11-22', '10:00', '22:00', 10)
+    VALUES (market, 'Jonker Walk, Melaka', 'Jalan Hang Jebat, 75200 Melaka', 2.1951, 102.2475, '2026-11-20', '2026-11-22', '10:00', '22:00', 10)
     RETURNING id INTO v_loc;
   locs := locs || jsonb_build_object('D', v_loc);
 
   FOR stall IN SELECT * FROM (VALUES
-    -- owner email, location, status, stall number, description, review note
-    ('owner.hiap-joo-bakery@demo.local',            'A', 'approved',          'A01', 'Hiap Joo''s charcoal-baked banana cake, fresh from Johor Bahru, at the Bangsar night market.', NULL),
-    ('owner.hiap-joo-bakery@demo.local',            'B', 'approved',          'B01', 'Hiap Joo''s charcoal-baked banana cake and marble cake, baked fresh for the Central Market stop.', NULL),
-    ('owner.hiap-joo-bakery@demo.local',            'C', 'approved',          'C01', 'Hiap Joo''s famous banana cake comes to Penang for the Esplanade weekend.', NULL),
-    ('owner.cameron-valley-tea-shop@demo.local',    'B', 'approved',          'B02', 'Highland teas and strawberry preserves from Cameron Valley — products only.', NULL),
-    ('owner.desa-murni-batik@demo.local',           'B', 'approved',          'B03', 'Hands-on batik sessions with Desa Murni artisans — services only, no retail items.', NULL),
-    ('owner.tanoti-weavers-workshop@demo.local',    'B', 'approved',          'B04', 'Songket samplers to take home plus a short weaving try-out at the loom — products and services.', NULL),
-    ('owner.restoran-nasi-kandar-yasmeen@demo.local','B', 'rejected',         NULL,  'Nasi kandar rice plates with Yasmeen''s signature curries.', 'Hot food stalls at this location are full; please apply for the Penang stop instead.'),
-    ('vendor.owner@demo.local',                     'B', 'removed',           'B05', 'Penang Road famous Teochew chendul served over shaved ice.', 'Stall removed after repeated late openings (demo data).'),
-    ('owner.jonker-88-heritage@demo.local',         'C', 'pending',           NULL,  'Jonker 88''s baba laksa and cendol, travelling from Melaka for the weekend.', NULL),
-    ('owner.gerakbudaya-bookshop-penang@demo.local','C', 'changes_requested', NULL,  'Local authors and Penang history titles from Gerakbudaya.', 'Please upload a clearer stall poster and add prices for each book bundle.'),
-    ('owner.tropical-spice-garden@demo.local',      'C', 'withdrawn',         NULL,  'Spice blends and herb seedlings from Tropical Spice Garden.', 'Vendor withdrew: staff unavailable that weekend (demo data).'),
-    ('owner.jonker-88-heritage@demo.local',         'D', 'approved',          'D01', 'Jonker 88 heritage desserts at their home street market.', NULL),
-    ('owner.desa-murni-batik@demo.local',           'D', 'approved',          'D02', 'Batik painting sessions at the Jonker Walk craft market.', NULL)
-  ) AS s(email, loc, status, stall_no, description, note)
+    -- owner email, location, status, stall number, description, review note, stall photo (NULL = first catalogue cover)
+    ('owner.hiap-joo-bakery@demo.local',            'A', 'approved',          'A01', 'Hiap Joo''s charcoal-baked banana cake, fresh from Johor Bahru, at the Bangsar night market.', NULL, 'event-04-hiap-joo-stall.jpg'),
+    ('owner.hiap-joo-bakery@demo.local',            'B', 'approved',          'B01', 'Hiap Joo''s charcoal-baked banana cake and marble cake, baked fresh for the Central Market stop.', NULL, 'event-04-hiap-joo-stall.jpg'),
+    ('owner.hiap-joo-bakery@demo.local',            'C', 'approved',          'C01', 'Hiap Joo''s famous banana cake comes to Penang for the Esplanade weekend.', NULL, 'event-04-hiap-joo-stall.jpg'),
+    ('owner.cameron-valley-tea-shop@demo.local',    'B', 'approved',          'B02', 'Highland teas and strawberry preserves from Cameron Valley.', NULL, 'event-05-cameron-valley-tea-stall.jpg'),
+    ('owner.desa-murni-batik@demo.local',           'B', 'approved',          'B03', 'Hands-on batik sessions with Desa Murni artisans.', NULL, 'event-06-desa-murni-batik-stall.jpg'),
+    ('owner.tanoti-weavers-workshop@demo.local',    'B', 'approved',          'B04', 'Songket samplers to take home, plus a short try-out at the loom.', NULL, 'event-07-tanoti-weavers-stall.jpg'),
+    ('owner.restoran-nasi-kandar-yasmeen@demo.local','B', 'rejected',         NULL,  'Nasi kandar rice plates with Yasmeen''s signature curries.', 'Hot food stalls at this location are full; please apply for the Penang stop instead.', NULL),
+    ('vendor.owner@demo.local',                     'B', 'removed',           'B05', 'Penang Road famous Teochew chendul served over shaved ice.', 'Stall removed after repeated late openings (demo data).', NULL),
+    ('owner.jonker-88-heritage@demo.local',         'C', 'pending',           NULL,  'Jonker 88''s baba laksa and cendol, travelling from Melaka for the weekend.', NULL, NULL),
+    ('owner.gerakbudaya-bookshop-penang@demo.local','C', 'changes_requested', NULL,  'Local authors and Penang history titles from Gerakbudaya.', 'Please upload a clearer stall poster and add prices for each book bundle.', NULL),
+    ('owner.tropical-spice-garden@demo.local',      'C', 'withdrawn',         NULL,  'Spice blends and herb seedlings from Tropical Spice Garden.', 'Vendor withdrew: staff unavailable that weekend (demo data).', NULL),
+    ('owner.jonker-88-heritage@demo.local',         'D', 'approved',          'D01', 'Jonker 88 heritage desserts at their home street market.', NULL, 'event-08-jonker-88-stall.jpg'),
+    ('owner.desa-murni-batik@demo.local',           'D', 'approved',          'D02', 'Batik painting sessions at the Jonker Walk craft market.', NULL, 'event-06-desa-murni-batik-stall.jpg')
+  ) AS s(email, loc, status, stall_no, description, note, poster)
   LOOP
     SELECT ve.id, u.id INTO v_vendor, v_owner
       FROM public.users u
@@ -89,7 +92,8 @@ BEGIN
     SELECT regexp_replace(p.cover_url, '^/assets/customer/products/', '') INTO v_cover
       FROM public.products p JOIN public.outlets o ON o.id = p.outlet_id
      WHERE o.vendor_id = v_vendor AND p.cover_url IS NOT NULL ORDER BY p.created_at LIMIT 1;
-    v_poster := CASE WHEN v_cover IS NULL THEN fallback_poster
+    v_poster := CASE WHEN stall.poster IS NOT NULL THEN events_base || stall.poster
+                     WHEN v_cover IS NULL THEN fallback_poster
                      WHEN v_cover ~ '^https?://' THEN v_cover
                      WHEN v_cover LIKE '%/%' THEN storage_base || ltrim(v_cover, '/')
                      ELSE storage_base || 'products/' || v_cover END;
@@ -107,24 +111,25 @@ BEGIN
     RETURNING id INTO v_reg;
 
     FOR item IN SELECT * FROM (VALUES
-      -- owner email, location ('*' = every location of that vendor), position, kind, catalogue product, event-only name, price, daily qty
-      ('owner.hiap-joo-bakery@demo.local',            '*', 0, 'product', 'Original Banana Cake',            NULL, NULL::numeric, 30),
-      ('owner.hiap-joo-bakery@demo.local',            '*', 1, 'product', 'Chocolate Marble Cake',           NULL, NULL, 20),
-      ('owner.cameron-valley-tea-shop@demo.local',    '*', 0, 'product', 'Cameron Highlands Tea Gift Set',  NULL, NULL, 15),
-      ('owner.cameron-valley-tea-shop@demo.local',    '*', 1, 'product', 'Strawberry Preserve Jar',         NULL, NULL, 25),
-      ('owner.desa-murni-batik@demo.local',           '*', 0, 'service', NULL, 'Batik painting workshop (1 hour)', 45.00, 8),
-      ('owner.desa-murni-batik@demo.local',           '*', 1, 'service', NULL, 'Batik stamping demo for kids (20 min)', 15.00, 20),
-      ('owner.tanoti-weavers-workshop@demo.local',    '*', 0, 'product', 'Songket Weave Sampler',           NULL, NULL, 10),
-      ('owner.tanoti-weavers-workshop@demo.local',    '*', 1, 'service', NULL, 'Songket weaving try-out at the loom (20 min)', 25.00, 12),
-      ('owner.restoran-nasi-kandar-yasmeen@demo.local','*', 0, 'product', NULL, 'Nasi kandar ayam goreng set', 14.50, 40),
-      ('vendor.owner@demo.local',                     '*', 0, 'product', NULL, 'Teochew chendul (large)', 6.50, 60),
-      ('owner.jonker-88-heritage@demo.local',         '*', 0, 'product', NULL, 'Baba nyonya laksa', 12.90, 30),
-      ('owner.gerakbudaya-bookshop-penang@demo.local','*', 0, 'product', NULL, 'Penang history book bundle', 55.00, 10),
-      ('owner.tropical-spice-garden@demo.local',      '*', 0, 'product', NULL, 'Curry spice blend trio', 28.00, 20)
-    ) AS i(email, loc, pos, kind, catalogue_name, new_name, price, qty)
+      -- owner email, location ('*' = every location of that vendor), position, kind, catalogue product, event-only name, price, daily qty, event-only photo
+      ('owner.hiap-joo-bakery@demo.local',            '*', 0, 'product', 'Original Banana Cake',            NULL, NULL::numeric, 30, NULL::text),
+      ('owner.hiap-joo-bakery@demo.local',            '*', 1, 'product', 'Chocolate Marble Cake',           NULL, NULL, 20, NULL),
+      ('owner.cameron-valley-tea-shop@demo.local',    '*', 0, 'product', 'Cameron Highlands Tea Gift Set',  NULL, NULL, 15, NULL),
+      ('owner.cameron-valley-tea-shop@demo.local',    '*', 1, 'product', 'Strawberry Preserve Jar',         NULL, NULL, 25, NULL),
+      ('owner.desa-murni-batik@demo.local',           '*', 0, 'service', NULL, 'Batik painting workshop (1 hour)', 45.00, 8, 'event-10-batik-painting-workshop.jpg'),
+      ('owner.desa-murni-batik@demo.local',           '*', 1, 'service', NULL, 'Batik stamping demo for kids (20 min)', 15.00, 20, 'event-11-batik-stamping-demo.jpg'),
+      ('owner.tanoti-weavers-workshop@demo.local',    '*', 0, 'product', 'Songket Weave Sampler',           NULL, NULL, 10, NULL),
+      ('owner.tanoti-weavers-workshop@demo.local',    '*', 1, 'service', NULL, 'Songket weaving try-out at the loom (20 min)', 25.00, 12, 'event-12-songket-weaving-tryout.jpg'),
+      ('owner.restoran-nasi-kandar-yasmeen@demo.local','*', 0, 'product', NULL, 'Nasi kandar ayam goreng set', 14.50, 40, NULL),
+      ('vendor.owner@demo.local',                     '*', 0, 'product', NULL, 'Teochew chendul (large)', 6.50, 60, NULL),
+      ('owner.jonker-88-heritage@demo.local',         'C', 0, 'product', NULL, 'Nyonya Laksa', 12.90, 30, NULL),
+      ('owner.jonker-88-heritage@demo.local',         'D', 0, 'product', NULL, 'Nyonya Laksa', 12.90, 30, 'event-13-baba-nyonya-laksa.jpg'),
+      ('owner.gerakbudaya-bookshop-penang@demo.local','*', 0, 'product', NULL, 'Penang history book bundle', 55.00, 10, NULL),
+      ('owner.tropical-spice-garden@demo.local',      '*', 0, 'product', NULL, 'Curry spice blend trio', 28.00, 20, NULL)
+    ) AS i(email, loc, pos, kind, catalogue_name, new_name, price, qty, image)
     WHERE i.email = stall.email AND (i.loc = '*' OR i.loc = stall.loc)
     LOOP
-      v_product := NULL; v_price := item.price; v_image := NULL;
+      v_product := NULL; v_price := item.price; v_image := events_base || item.image;
       IF item.catalogue_name IS NOT NULL THEN
         SELECT p.id, p.base_price INTO v_product, v_price
           FROM public.products p JOIN public.outlets o ON o.id = p.outlet_id

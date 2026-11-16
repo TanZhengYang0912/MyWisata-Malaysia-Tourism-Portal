@@ -60,6 +60,15 @@ export function countLocationStalls(campaign: Pick<PromotionCampaignPublic, "ven
   return campaign.vendors.reduce((count, vendor) => count + vendor.stalls.filter((stall) => stall.locationId === locationId).length, 0);
 }
 
+export type EventLocationPhase = "ended" | "running" | "upcoming";
+
+/** Date-based phase of one location in Malaysia time: ended once its last day has closed, upcoming before its first day. */
+export function getEventLocationPhase(location: Pick<PromotionCampaignPublicLocation, "startsOn" | "endsOn" | "closesAt">, now = new Date()): EventLocationPhase {
+  const local = getMalaysiaDateTimeLocalValue(now), day = local.slice(0, 10), time = local.slice(11, 16);
+  if (day > location.endsOn || (day === location.endsOn && time >= location.closesAt.slice(0, 5))) return "ended";
+  return day < location.startsOn ? "upcoming" : "running";
+}
+
 export function getEventOperationalLabelKey(campaign: Pick<PromotionCampaignPublic, "visibility" | "operationalStatus">): string {
   if (campaign.operationalStatus === "between_sessions") return "ui.promotionCampaigns.betweenSessions";
   if (campaign.operationalStatus === "operating") return "ui.promotionCampaigns.operating";
@@ -79,6 +88,13 @@ export function formatEventDateRange(startsOn: string, endsOn: string, locale: A
   return startsOn === endsOn
     ? formatEventDate(startsOn, locale)
     : `${formatEventDate(startsOn, locale)} – ${formatEventDate(endsOn, locale)}`;
+}
+
+/** Day and month only ("Oct 3 – 8"), for compact lists where the year is shown elsewhere. */
+export function formatEventShortDateRange(startsOn: string, endsOn: string, locale: AppLocale): string {
+  const format = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" });
+  const start = new Date(`${startsOn}T00:00:00Z`);
+  return startsOn === endsOn ? format.format(start) : format.formatRange(start, new Date(`${endsOn}T00:00:00Z`));
 }
 
 export function formatEventTime(hhmm: string, locale: AppLocale): string {

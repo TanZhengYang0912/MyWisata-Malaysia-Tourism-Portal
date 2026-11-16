@@ -32,7 +32,7 @@ export default function ForYouClient() {
       const response = await fetch('/api/personalized-recommendations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(coordinates ?? {}) });
       if (await gate.handleResponse(response, '/customer/for-you')) return;
       const body = await response.json() as { data?: Result; error?: { message?: string } };
-      if (!response.ok || !body.data) throw new Error(body.error?.message ?? t('ui.forYou.loadError'));
+      if (!response.ok || !Array.isArray(body.data?.activities)) throw new Error(body.error?.message ?? t('ui.forYou.loadError'));
       setResult(body.data);
     } catch (err) { setError(err instanceof Error ? err.message : t('ui.forYou.loadError')); }
     finally { setLoading(false); }

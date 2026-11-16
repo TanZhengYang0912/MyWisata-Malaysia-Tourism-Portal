@@ -69,7 +69,10 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   const claims = claimsData?.claims;
   let accountLocale: string | null = null;
 
-  if (typeof claims?.sub === 'string' && claims.sub) {
+  // API routes return data, not localized copy (the admin affiliate report is the
+  // one reader and accepts the cookie), and document navigations below keep the
+  // cookie synced to the account locale, so /api skips this DB round trip.
+  if (typeof claims?.sub === 'string' && claims.sub && !request.nextUrl.pathname.startsWith('/api/')) {
     try {
       const { data: account } = await supabase
         .from('users')
@@ -90,6 +93,8 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   });
 
   forwardedHeaders.set('x-app-locale', locale);
+  // The root layout picks which translations to inline from this; set, never trust the client's.
+  forwardedHeaders.set('x-app-pathname', request.nextUrl.pathname);
   const gate = adminAssuranceGate(request.nextUrl.pathname, claims);
   let supabaseResponse = gate === 'api'
     ? NextResponse.json({ data: null, error: { code: 'MFA_REQUIRED', message: 'Authenticator verification required' } }, { status: 403 })

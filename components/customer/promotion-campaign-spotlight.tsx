@@ -97,7 +97,7 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
         )}
       >
         {displayCampaign ? (
-          <CampaignEnvelope key={displayCampaign.id} campaign={displayCampaign} imagePriority />
+          <CampaignEnvelope key={displayCampaign.id} campaign={displayCampaign} imagePriority position={list.length > 0 ? activeIndex % list.length : 0} />
         ) : (
           <FeaturedSplitCard
             mediaSlot="promotion-campaign-image"

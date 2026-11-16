@@ -9,6 +9,7 @@ vi.mock("@/backend/supabase", () => ({ supabase: {} }));
 
 const {
   filterExploreActivities,
+  getDiscoveryActivityData,
   getOutletActivities,
   getVendorActivities,
   searchActivities,
@@ -635,5 +636,39 @@ describe("related activity discovery reads", () => {
     expect(activities[3].outlet.id).toBe("outlet-johor");
     expect(activities[3].price).toBe(25);
     expect(selectedFields.products?.[0]).not.toMatch(/product_variants|price_rules/);
+  });
+
+  // The product page passes the cached catalogue in; a db read here would mean the cache is bypassed.
+  const untouchedDb = { from: () => { throw new Error("db must not be read when the catalogue is preloaded"); } } as never;
+
+  it("uses a preloaded catalogue for outlet-related products without reading the database", async () => {
+    const rows = [PRODUCTS[1], SHARED_PRODUCT, PRODUCTS[0]];
+    const expected = await getOutletActivities("outlet-johor", "paid-bookable", makeDb(OUTLETS, rows));
+    const preloaded = await getDiscoveryActivityData(makeDb(OUTLETS, rows));
+
+    const activities = await getOutletActivities("outlet-johor", "paid-bookable", untouchedDb, preloaded);
+
+    expect(activities.map((activity) => [activity.id, activity.outlet.id, activity.price])).toEqual(
+      expected.map((activity) => [activity.id, activity.outlet.id, activity.price]),
+    );
+    expect(activities.length).toBeGreaterThan(0);
+  });
+
+  it("uses a preloaded catalogue for vendor-related products, keeping order and the four-card cap", async () => {
+    const rows = [
+      { ...PRODUCTS[0], id: "vendor-direct-1", outlet_id: "outlet-penang" },
+      { ...PRODUCTS[1], id: "vendor-direct-2", outlet_id: "outlet-johor" },
+      { ...PRODUCTS[2], id: "vendor-direct-3", outlet_id: "outlet-kuala-lumpur" },
+      { ...PRODUCTS[3], id: "vendor-direct-4", outlet_id: "outlet-sabah" },
+      { ...PRODUCTS[3], id: "vendor-direct-5", outlet_id: "outlet-sabah" },
+      { ...SHARED_PRODUCT, id: "vendor-shared" },
+    ];
+    const expected = await getVendorActivities("vendor-1", "vendor-direct-1", makeDb(OUTLETS, rows));
+    const preloaded = await getDiscoveryActivityData(makeDb(OUTLETS, rows));
+
+    const activities = await getVendorActivities("vendor-1", "vendor-direct-1", untouchedDb, preloaded);
+
+    expect(activities.map((activity) => activity.id)).toEqual(expected.map((activity) => activity.id));
+    expect(activities).toHaveLength(4);
   });
 });

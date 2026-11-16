@@ -20,7 +20,7 @@ describe("MYLawatan logo contract", () => {
   });
 
   it("renders the master logo with object-contain to prevent image distortion", () => {
-    expect(source).toContain("/branding/mylawatan-logo-transparent.png?v=3");
+    expect(source).toContain("/branding/mylawatan-logo-transparent.png?v=4");
     expect(source).toContain("object-contain");
     expect(existsSync(resolve(process.cwd(), "public/branding/mylawatan-logo-transparent.png"))).toBe(true);
   });

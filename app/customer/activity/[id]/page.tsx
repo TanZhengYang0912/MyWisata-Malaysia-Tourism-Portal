@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import { getBookingSlots, getComputedActivity, getOutletChoices, getProductReviews, getOutletActivities, getVendorActivities } from "@/backend/domains/catalogue";
 import { buildActivityMetadata } from "@/lib/affiliate/activity-metadata";
+import { getCachedDiscoveryActivityData } from "@/lib/cache/catalogue-cache";
 import { ActivityDetailClient } from "./activity-detail-client";
 
 interface Props {
@@ -35,7 +36,7 @@ export default async function ActivityDetailPage({ params, searchParams }: Props
   const activity = await getComputedActivity(id, undefined, db, requestedOutletId);
   // Rooms are booked only from their hotel page; old links to a room land there instead.
   if (activity?.categorySlug === "accommodation") redirect(getOutletShopHref(requestedOutletId ?? activity.outletId));
-  const [slots, reviews, outletChoices] = activity
+  const [slots, reviews, outletChoices, catalogue] = activity
     ? await Promise.all([
         activity.requiresBooking ? getBookingSlots(activity.id, db) : Promise.resolve([]),
         // The client pre-selects activity.outletId (the outlet toComputed()
@@ -44,8 +45,10 @@ export default async function ActivityDetailPage({ params, searchParams }: Props
         // single-outlet header.
         getProductReviews(activity.id, db, { outletId: activity.outletId }),
         getOutletChoices(activity, db),
+        // Related products come from the shared 60 s public catalogue, not a fresh full-catalogue read.
+        getCachedDiscoveryActivityData(),
       ])
-    : [[], [], []];
+    : [[], [], [], undefined];
   const selectedOutletId = requestedOutletId && outletChoices.some((choice) => choice.outletId === requestedOutletId)
     ? requestedOutletId
     : activity?.outletId;
@@ -54,9 +57,9 @@ export default async function ActivityDetailPage({ params, searchParams }: Props
   const vendorId = activity?.outlet.vendorId;
   const relatedProducts = (
     isVendorSource && vendorId
-      ? await getVendorActivities(vendorId, activity!.id, db)
+      ? await getVendorActivities(vendorId, activity!.id, db, catalogue ?? undefined)
       : selectedOutletId && activity
-        ? await getOutletActivities(selectedOutletId, activity.id, db)
+        ? await getOutletActivities(selectedOutletId, activity.id, db, catalogue ?? undefined)
         : []
   ).filter((related) => related.categorySlug !== "accommodation");
   const relatedScope: "vendor" | "outlet" = isVendorSource && vendorId ? "vendor" : "outlet";
