@@ -77,7 +77,7 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
   const spotlight = (
     <section
       aria-labelledby="promotion-campaign-spotlight-heading"
-      className="my-10 sm:my-14"
+      className="mt-12"
     >
       <FeaturedRecommendationsFrame
         headingId="promotion-campaign-spotlight-heading"
@@ -91,6 +91,7 @@ export function PromotionCampaignSpotlight({ campaign, campaigns, unavailable = 
         slideCount={list.length}
         onSelectSlide={moveTo}
         onNext={() => move(1)}
+        onPrevious={() => move(-1)}
         clip={!displayCampaign}
         action={displayCampaign && (
           <SeeMoreLink href="/customer/events" ariaLabel={t("ui.promotionCampaigns.allCampaigns")} />

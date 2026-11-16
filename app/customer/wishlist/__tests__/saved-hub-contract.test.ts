@@ -14,7 +14,9 @@ describe("saved hub UI contract", () => {
   it("uses the bookmark icon for the saved hub shortlist marker", () => {
     const client = readFileSync(clientPath, "utf8");
 
-    expect(client).toContain('<Bookmark size={17} fill="currentColor" />');
+    expect(client).toContain('<CustomerPageHeader icon={<Bookmark size={15} fill="currentColor" aria-hidden="true" />}');
+    // The standard title has no Explore link (the empty state keeps its own).
+    expect(client.match(/ui\.wishlist\.explore/g)).toHaveLength(1);
     expect(client).not.toContain("Heart");
   });
 

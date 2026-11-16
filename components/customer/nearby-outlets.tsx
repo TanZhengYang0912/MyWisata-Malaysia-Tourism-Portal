@@ -8,6 +8,7 @@ import { DISCOVERY_CATEGORIES } from "@/lib/customer/discovery-categories";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import type { Outlet } from "@/backend/core/types";
 import { OutletCard } from "@/components/customer/outlet-card";
+import { CustomerSectionHeader } from "@/components/customer/customer-page-shell";
 
 const PAGE_SIZE = 8;
 
@@ -56,23 +57,23 @@ export function NearbyOutlets({
 
   return (
     <section className="mt-14" aria-labelledby="nearby-businesses-heading">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.nearbyOutlets.eyebrow")}</p>
-          <h2 id="nearby-businesses-heading" className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            {t("ui.nearbyOutlets.title")}
-          </h2>
-          <p aria-live="polite" className="mt-2 text-sm text-muted-foreground">
-            {t("ui.nearbyOutlets.summary", { count: filtered.length, radius })}
-          </p>
-        </div>
-        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-primary">
-          <MapPin size={13} aria-hidden="true" /> {t("ui.nearbyOutlets.approximate")}
-        </span>
-      </div>
+      <CustomerSectionHeader
+        id="nearby-businesses-heading"
+        eyebrow={t("ui.nearbyOutlets.eyebrow")}
+        title={t("ui.nearbyOutlets.title")}
+        action={
+          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-primary">
+            <MapPin size={13} aria-hidden="true" /> {t("ui.nearbyOutlets.approximate")}
+          </span>
+        }
+      >
+        <p aria-live="polite" className="mt-2 text-sm text-muted-foreground">
+          {t("ui.nearbyOutlets.summary", { count: filtered.length, radius })}
+        </p>
+      </CustomerSectionHeader>
 
       {outlets.length > 0 && (
-        <div className="mt-6 rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
+        <div className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(120px,auto)] lg:items-center">
             <div className="min-w-0 flex flex-wrap items-center gap-1.5" aria-label={t("ui.nearbyOutlets.filterType")}>
               <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.labels.type")}</span>

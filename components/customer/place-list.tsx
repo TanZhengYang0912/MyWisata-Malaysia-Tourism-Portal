@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { PlaceCard } from "@/components/customer/place-card";
 import { Pagination } from "@/components/shared/pagination";
+import { CustomerSectionHeader } from "@/components/customer/customer-page-shell";
 import type { Place } from "@/backend/core/types";
 import { filterPlaceListings, getPlaceListingCounts, parsePlaceAreaIds, serializePlaceAreaIds, type PlaceAvailabilityFilter } from "@/lib/customer/place-list";
 
@@ -98,22 +99,22 @@ export function PlaceList({
 
   return (
     <section className="mt-14" aria-labelledby="places-to-visit-heading">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.explore.eyebrow")}</p>
-          <h2 id="places-to-visit-heading" className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            {t("ui.place.placesToVisit", { count: filtered.length })}
-          </h2>
-          <p aria-live="polite" className="mt-2 text-sm text-muted-foreground">
-            {t("ui.place.listingSummary", { shown: filtered.length, total: pois.length })}
-          </p>
-        </div>
-        <span className="inline-flex w-fit rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-primary">
-          {t("ui.place.bookableCount", { count: counts.bookable })}
-        </span>
-      </div>
+      <CustomerSectionHeader
+        id="places-to-visit-heading"
+        eyebrow={t("ui.explore.eyebrow")}
+        title={t("ui.place.placesToVisit", { count: filtered.length })}
+        action={
+          <span className="inline-flex w-fit rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-primary">
+            {t("ui.place.bookableCount", { count: counts.bookable })}
+          </span>
+        }
+      >
+        <p aria-live="polite" className="mt-2 text-sm text-muted-foreground">
+          {t("ui.place.listingSummary", { shown: filtered.length, total: pois.length })}
+        </p>
+      </CustomerSectionHeader>
 
-      <div className="mt-6 rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
+      <div className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-1.5" aria-label={t("ui.place.filterAvailabilityLabel")}>
             <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.place.filterShow")}</span>

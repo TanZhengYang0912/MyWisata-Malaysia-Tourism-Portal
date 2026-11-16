@@ -8,6 +8,7 @@ import { CardLocation } from "@/components/customer/card-frame";
 import { VendorCard } from "@/components/customer/vendor-card";
 import { SeeMoreLink } from "@/components/customer/see-more-link";
 import { CardCarousel } from "@/components/customer/card-carousel";
+import { CustomerSectionHeader } from "@/components/customer/customer-page-shell";
 
 export type EventPartner = {
   id: string;
@@ -28,10 +29,14 @@ export function EventPartnersSection({ partners, featured = false }: { partners:
 
   return (
     <section aria-labelledby="event-partners-heading" className="mx-auto max-w-7xl px-4 pt-12 sm:px-6 lg:px-8">
-      <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.18em] text-primary"><Megaphone size={14} aria-hidden="true" /> {t("ui.eventPartners.eyebrow")}</p>
-      <h2 id="event-partners-heading" className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold">{t("ui.eventPartners.title")}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{t("ui.eventPartners.description")}</p>
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+      <CustomerSectionHeader
+        id="event-partners-heading"
+        eyebrow={<span className="inline-flex items-center gap-1.5"><Megaphone size={14} aria-hidden="true" /> {t("ui.eventPartners.eyebrow")}</span>}
+        title={t("ui.eventPartners.title")}
+      >
+        <p className="mt-1 text-sm text-muted-foreground">{t("ui.eventPartners.description")}</p>
+      </CustomerSectionHeader>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
         {partners.map((partner) => <EventPartnerCard key={partner.id} partner={partner} locale={locale} />)}
       </div>
     </section>
@@ -44,13 +49,12 @@ function FeaturedEventPartnersSection({ partners }: { partners: EventPartner[] }
 
   return (
     <section aria-labelledby="event-featured-partners-heading" className="mt-12">
-      <div className="mb-5 flex items-center justify-between gap-4 border-b border-border/70 pb-4">
-        <h2 id="event-featured-partners-heading" className="flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl font-bold">
-          <Sparkles size={19} className="text-primary" aria-hidden="true" />
-          {t("ui.home.eventFeaturedPartners")}
-        </h2>
-        <SeeMoreLink href="/customer/vendors" />
-      </div>
+      <CustomerSectionHeader
+        id="event-featured-partners-heading"
+        icon={<Sparkles size={19} className="text-primary" aria-hidden="true" />}
+        title={t("ui.home.eventFeaturedPartners")}
+        action={<SeeMoreLink href="/customer/vendors" />}
+      />
       <CardCarousel label={t("ui.home.eventFeaturedPartners")}>
         {partners.map((partner) => (
           <EventPartnerCard key={partner.id} partner={partner} locale={locale} featured />

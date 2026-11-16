@@ -1,6 +1,7 @@
 import { Ticket } from "lucide-react";
 import type { PlaceInformationalActivity } from "@/backend/core/types";
 import { PlaceActivityCard } from "@/components/customer/place-activity-card";
+import { CustomerSectionHeader } from "@/components/customer/customer-page-shell";
 
 type PlaceInformationalActivitySectionProps = {
   activities: PlaceInformationalActivity[];
@@ -24,14 +25,9 @@ export function PlaceInformationalActivitySection({
 
   return (
     <section className="mt-10" aria-labelledby="place-informational-activities-heading">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{eyebrow}</p>
-        <h2 id="place-informational-activities-heading" className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-          {title}
-        </h2>
-      </div>
+      <CustomerSectionHeader id="place-informational-activities-heading" eyebrow={eyebrow} title={title} />
 
-      <div className="mt-6 grid items-start gap-6 lg:gap-8 lg:grid-cols-2">
+      <div className="grid items-start gap-6 lg:gap-8 lg:grid-cols-2">
         {activities.map((activity) => (
           <PlaceActivityCard
             key={activity.id}

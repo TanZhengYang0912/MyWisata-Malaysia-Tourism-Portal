@@ -282,7 +282,7 @@ describe("SponsoredPartnerRail", () => {
     const second = findOne(container, (element) => element.getAttribute("aria-label") === "Slide 2 of 2");
     await click(second);
     expect(container.textContent).toContain("Advertisement activity-2");
-    expect(second.getAttribute("aria-current")).toBe("true");
+    expect(second.getAttribute("aria-current")).toBe("page");
 
     await advanceTimers(2000);
     const first = findOne(container, (element) => element.getAttribute("aria-label") === "Slide 1 of 2");
@@ -294,23 +294,27 @@ describe("SponsoredPartnerRail", () => {
     expect(container.textContent).toContain("Advertisement activity-2");
   });
 
-  it("places compact accessible position dots below the carousel", async () => {
+  it("places the worm and arrows below the carousel, the same controls as Home Featured highlights", async () => {
     await render(root, <SponsoredPartnerRail advertisements={[
       advertisement("activity-1"),
       advertisement("activity-2", SECOND_PLACEMENT_ID),
     ]} />);
 
     const viewport = findOne(container, (element) => element.getAttribute("data-testid") === "sponsored-partner-rail");
-    const controls = findOne(container, (element) => element.getAttribute("role") === "group");
+    const worm = findOne(container, (element) => element.getAttribute("role") === "group");
     const indicators = findElements(container, (element) => element.getAttribute("aria-label")?.startsWith("Slide ") ?? false);
+    const previous = findOne(container, (element) => element.getAttribute("aria-label") === "accessibility.previousPage");
 
     expect(viewport.className).toContain("group/carousel");
-    expect(controls.className).toContain("mt-3");
-    expect(controls.className).toContain("justify-center");
+    expect(worm.getAttribute("aria-label")).toBe("Featured recommendations carousel");
+    expect(worm.parentNode).toBe(previous.parentNode);
+    expect((previous.parentNode as typeof previous).className).toContain("mt-3 flex items-center justify-center");
     expect(indicators).toHaveLength(2);
-    expect(indicators[0].className).toContain("h-6 w-6");
-    expect(findOne(indicators[0], (element) => element.tagName === "SPAN").className).toContain("h-1.5");
-    expect(findElements(container, (element) => element.getAttribute("aria-label") === "Previous advertisement" || element.getAttribute("aria-label") === "Next advertisement")).toHaveLength(0);
+    expect(indicators[0].getAttribute("aria-current")).toBe("page");
+    expect(findElements(container, (element) => element.getAttribute("aria-label") === "accessibility.nextPage")).toHaveLength(1);
+
+    await click(previous);
+    expect(container.textContent).toContain("Advertisement activity-2");
   });
 
   it("returns to the first advertisement when filtering replaces the active placement", async () => {

@@ -174,7 +174,7 @@ export default function CustomerTicketDetailPage() {
 
       <div className="flex items-start justify-between gap-3 mb-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-bold text-foreground font-[family-name:var(--font-display)]">{ticket.subject}</h1>
+          <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl">{ticket.subject}</h1>
           {ticket.muted && (
             <span className="flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[0.625rem] font-semibold text-muted-foreground" title={tCustomer("ui.support.mutedHint")}>
               <BellOff size={10} /> {tCustomer("ui.support.muted")}

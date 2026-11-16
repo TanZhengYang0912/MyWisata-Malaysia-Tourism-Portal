@@ -32,6 +32,7 @@ import { getMalaysiaStateTranslationKey } from "@/lib/i18n/malaysia-states";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { BRAND_NAME, MYR_CODE } from "@/lib/i18n/invariant-tokens";
+import { CustomerSectionHeader } from "@/components/customer/customer-page-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -189,8 +190,8 @@ export default async function PlacePage({ params }: Props) {
       {/* Region: places to visit, flat. */}
       {place.level === "region" && children.length > 0 && (
         <section className="mt-8">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">{t("ui.place.placesToVisit", { count: children.length })}</h2>
-          <div className="mt-3 grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+          <CustomerSectionHeader title={t("ui.place.placesToVisit", { count: children.length })} />
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
             {children.map((child) => (
               <PlaceCard key={child.id} place={child} productCount={productCounts.get(child.id) ?? 0} />
             ))}

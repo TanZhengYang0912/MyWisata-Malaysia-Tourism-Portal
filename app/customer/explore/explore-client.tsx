@@ -9,6 +9,7 @@ import { ActivityCard } from "@/components/customer/activity-card";
 import { toDiscoveryCatalogueCard } from "@/lib/customer/product-catalogue";
 import { CustomerDiscoveryFilterPanel, DiscoveryToolbar } from "@/components/customer/discovery-filters";
 import { Pagination } from "@/components/shared/pagination";
+import { CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ExplorePostcardBoard } from "@/components/customer/explore-postcard-board";
@@ -337,19 +338,13 @@ export function ExploreClient({
           {t("ui.states.loadingError")}
         </p>
       )}
-      {/* Header */}
-      <section className="shrink-0 border-b border-border bg-background">
-        <div className={`mx-auto max-w-7xl px-4 sm:px-6${tab === "destinations" ? " py-4 sm:py-5" : " py-8 sm:py-10"}`}>
-          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.explore.eyebrow")}</p>
-              <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-foreground sm:text-4xl">
-                {tab === "experiences" ? t("ui.explore.experiencePageTitle") : t("ui.explore.title")}
-              </h1>
-            </div>
-
-            {/* Tab switch */}
-            <div className="inline-flex shrink-0 self-end rounded-full border border-border bg-card p-1 md:self-auto">
+      {/* Header: the standard page title; switching tabs keeps it in place. */}
+      <div className="shrink-0">
+        <CustomerPageTitle
+          eyebrow={t("ui.explore.eyebrow")}
+          title={tab === "experiences" ? t("ui.explore.experiencePageTitle") : t("ui.explore.title")}
+          actions={
+            <div className="inline-flex shrink-0 rounded-full border border-border bg-card p-1">
               <button
                 type="button"
                 aria-pressed={tab === "destinations"}
@@ -377,9 +372,9 @@ export function ExploreClient({
                 {t("ui.explore.experiences")}
               </button>
             </div>
-          </div>
-        </div>
-      </section>
+          }
+        />
+      </div>
 
       {/* Destinations tab */}
       {tab === "destinations" && (
@@ -389,7 +384,7 @@ export function ExploreClient({
       {/* Experiences tab */}
       {tab === "experiences" && (
         <Dialog open={experienceFiltersOpen} onOpenChange={setExperienceFiltersOpen}>
-          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+          <div className="mx-auto max-w-7xl px-4 pb-8 sm:px-6">
             <section className="min-w-0">
               <DiscoveryToolbar
                 className="mb-6"

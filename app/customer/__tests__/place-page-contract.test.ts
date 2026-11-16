@@ -95,7 +95,7 @@ describe("place page discovery controls", () => {
     expect(cardSource).not.toContain('t("ui.outletMenu.chooseOptions"');
     expect(cardSource).not.toContain('t("ui.actions.viewDetails")');
     expect(cardSource).not.toContain("productCount === 0");
-    expect(pageSource).toContain('mt-3 grid grid-cols-1 items-start gap-6 lg:grid-cols-2');
+    expect(pageSource).toContain('<CustomerSectionHeader title={t("ui.place.placesToVisit", { count: children.length })} />\n          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">');
   });
 });
 

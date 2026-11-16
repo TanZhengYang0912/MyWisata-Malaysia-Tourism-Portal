@@ -22,8 +22,9 @@ describe("customer discovery filter contract", () => {
     expect(exploreSource).toContain("lg:h-[calc(100svh-var(--customer-header-h,4.3125rem)-2rem)] lg:min-h-0 lg:flex lg:flex-col");
     // Very short desktop screens scroll instead of squeezing the map.
     expect(exploreSource).toContain("[@media(min-width:1024px)_and_(max-height:599.98px)]:h-auto");
-    expect(exploreSource).toMatch(/tab === "destinations" \? " py-4 sm:py-5" : " py-8 sm:py-10"/);
-    expect(exploreSource).toContain('<section className="shrink-0 border-b border-border bg-background">');
+    // Both tabs share the standard page title, so switching tabs does not move it.
+    expect(exploreSource).toContain('<div className="shrink-0">\n        <CustomerPageTitle');
+    expect(exploreSource).not.toMatch(/tab === "destinations" \? " py-4 sm:py-5"/);
   });
 
   it("omits helper copy and promotional description from the Explore header", () => {
@@ -127,8 +128,8 @@ describe("customer discovery filter contract", () => {
     expect(exploreSource).toContain('data-testid="experience-active-filters"');
   });
 
-  it("matches the compact Events pill style while keeping the Explore switch on the right", () => {
-    expect(exploreSource).toMatch(/self-end[^\"]*md:self-auto/);
+  it("matches the compact Events pill style with the Explore switch in the page title's actions", () => {
+    expect(exploreSource).toMatch(/actions=\{\s*<div className="inline-flex shrink-0 rounded-full border border-border bg-card p-1">/);
     expect(exploreSource).toContain("rounded-full border border-border bg-card p-1");
     expect(exploreSource).toContain("min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold");
     expect(exploreSource).toContain('aria-pressed={tab === "destinations"}');

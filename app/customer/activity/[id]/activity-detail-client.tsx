@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { ShareButton } from "@/components/shared/share-button";
 import { Button } from "@/components/ui/button";
 import { SeeMoreLink } from "@/components/customer/see-more-link";
+import { CustomerSectionHeader } from "@/components/customer/customer-page-shell";
 import { ActivityReviews } from "@/components/customer/activity-reviews";
 import { ProductCard } from "@/components/customer/product-card";
 import { toOutletCatalogueCard } from "@/lib/customer/product-catalogue";
@@ -476,26 +477,18 @@ export function ActivityDetailClient({
       </div>
 
       {relatedProducts.length > 0 && selectedOutlet && (
-        <section className="mt-10 border-t border-border pt-8" aria-labelledby="more-from-outlet-heading">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              {relatedScope === "vendor" ? (
-                <h2 id="more-from-outlet-heading" className="text-xl font-black tracking-tight sm:text-2xl">{t("ui.activity.moreFromVendor")}</h2>
-              ) : (
-                <>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("ui.activity.moreFromOutlet")}</p>
-                  <h2 id="more-from-outlet-heading" className="mt-2 text-2xl font-black tracking-tight">{t("ui.activity.moreFromOutlet")}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{t("ui.activity.chooseOutletForMoreProducts", { outlet: selectedOutlet.outletName })}</p>
-                </>
-              )}
-            </div>
-            {relatedScope === "vendor" ? (
-              <SeeMoreLink href={returnTo !== "/customer" ? returnTo : `/customer/vendors/${selectedOutlet.vendorId}`} ariaLabel={t("ui.actions.visitVendor")} />
-            ) : (
-              <SeeMoreLink href={getOutletShopHref(selectedOutlet.outletId)} ariaLabel={t("ui.actions.visitOutlet")} />
-            )}
-          </div>
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
+        <section className="mt-10" aria-labelledby="more-from-outlet-heading">
+          <CustomerSectionHeader
+            id="more-from-outlet-heading"
+            eyebrow={relatedScope === "vendor" ? undefined : t("ui.activity.moreFromOutlet")}
+            title={relatedScope === "vendor" ? t("ui.activity.moreFromVendor") : t("ui.activity.moreFromOutlet")}
+            action={relatedScope === "vendor"
+              ? <SeeMoreLink href={returnTo !== "/customer" ? returnTo : `/customer/vendors/${selectedOutlet.vendorId}`} ariaLabel={t("ui.actions.visitVendor")} />
+              : <SeeMoreLink href={getOutletShopHref(selectedOutlet.outletId)} ariaLabel={t("ui.actions.visitOutlet")} />}
+          >
+            {relatedScope !== "vendor" && <p className="mt-1 text-sm text-muted-foreground">{t("ui.activity.chooseOutletForMoreProducts", { outlet: selectedOutlet.outletName })}</p>}
+          </CustomerSectionHeader>
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
             {relatedProducts.map((product) => (
               <ProductCard
                 key={product.id}

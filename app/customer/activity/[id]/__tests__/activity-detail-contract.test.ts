@@ -78,7 +78,9 @@ describe("related vendor section", () => {
   it("uses one vendor heading and keeps the vendor link and related product cards", () => {
     expect(source).not.toContain('t("ui.activity.moreFromVendorSubtitle"');
     expect(source).not.toContain('<p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t("ui.activity.moreFromVendor")}</p>');
-    expect(source).toContain('id="more-from-outlet-heading" className="text-xl font-black tracking-tight sm:text-2xl">{t("ui.activity.moreFromVendor")}</h2>');
+    expect(source).toContain('id="more-from-outlet-heading"');
+    expect(source).toContain('title={relatedScope === "vendor" ? t("ui.activity.moreFromVendor") : t("ui.activity.moreFromOutlet")}');
+    expect(source).toContain('eyebrow={relatedScope === "vendor" ? undefined : t("ui.activity.moreFromOutlet")}');
     expect(source).toContain('t("ui.actions.visitVendor")');
     expect(source).toContain("relatedProducts.map((product) => (");
     expect(source).toContain("<ProductCard");

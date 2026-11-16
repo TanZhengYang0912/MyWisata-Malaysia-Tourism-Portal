@@ -151,6 +151,7 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const stallsRef = useRef<HTMLDivElement>(null);
   const pagerRef = useRef<HTMLDivElement>(null);
+  const stepperRef = useRef<HTMLOListElement>(null);
   const pendingPageChange = useRef(false);
 
   const orderedLocations = useMemo(() => [...(campaign?.locations ?? [])].sort((a, b) =>
@@ -184,6 +185,17 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
     url.searchParams.set("stop", id);
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   };
+
+  useEffect(() => {
+    // Scroll only the stepper so the chosen stop is fully visible; scrollIntoView could also move the page.
+    const stepper = stepperRef.current;
+    if (!stepper || !(stepper.scrollWidth > stepper.clientWidth)) return;
+    const step = stepper.childNodes[orderedLocations.findIndex((location) => location.id === activeStopId)] as HTMLElement | undefined;
+    if (!step) return;
+    const { offsetLeft: left, offsetWidth: width } = step;
+    if (left < stepper.scrollLeft) stepper.scrollLeft = left;
+    else if (left + width > stepper.scrollLeft + stepper.clientWidth) stepper.scrollLeft = left + width - stepper.clientWidth;
+  }, [activeStopId, orderedLocations]);
 
   const changeStallPage = (page: number) => {
     pendingPageChange.current = true;
@@ -287,7 +299,7 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
               {orderedLocations.length > 1 ? t("ui.promotionCampaigns.stops") : t("ui.promotionCampaigns.locationsSection", { count: 1 })}
             </h2>
             {orderedLocations.length > 1 && (
-              <ol data-slot="event-stops" className={styles.stepper} style={{ "--stops": orderedLocations.length } as CSSProperties}>
+              <ol ref={stepperRef} data-slot="event-stops" className={styles.stepper} style={{ "--stops": orderedLocations.length } as CSSProperties}>
                 {orderedLocations.map((location) => {
                   const phase = phases.get(location.id) ?? "running";
                   return (

@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { HomeDestinationWormIndicator } from "@/components/customer/home-destination-worm-indicator";
 import { useHomeDestinationPager } from "@/components/customer/use-home-destination-pager";
 
-const ARROW_CLASS = "inline-flex h-10 w-8 items-center justify-center text-primary transition-[color,transform] duration-150 hover:text-accent active:scale-[0.85] active:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:text-primary/20 disabled:active:scale-100";
+export const ARROW_CLASS = "inline-flex h-10 w-8 items-center justify-center text-primary transition-[color,transform] duration-150 hover:text-accent active:scale-[0.85] active:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:text-primary/20 disabled:active:scale-100";
 // From 1360px the arrows sit outside the cards at the photo's middle: one card is (100cqw - 5rem) / 4 wide and its photo is 1.3:1.
 const SIDE_ARROW_CLASS = "min-[1360px]:absolute min-[1360px]:top-[calc((100cqw-5rem)/4/2.6)] min-[1360px]:-translate-y-1/2";
 

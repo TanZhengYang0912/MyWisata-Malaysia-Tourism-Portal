@@ -1,6 +1,6 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 
 vi.mock("next/link", () => ({ default: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => <a href={href} {...props}>{children}</a> }));
@@ -57,5 +57,41 @@ describe("EventCard", () => {
       expect(markup).not.toContain("ui.operatingHours.openNow");
       expect(markup).not.toContain("ui.operatingHours.closedNow");
     }
+  });
+});
+
+describe("EventCard for all events", () => {
+  const tour: PromotionCampaignPublic = {
+    ...campaign,
+    locations: [
+      campaign.locations[0],
+      { ...campaign.locations[0], id: "l2", name: "Penang Esplanade", startsOn: "2026-11-28", endsOn: "2026-11-30" },
+    ],
+    vendors: [...campaign.vendors, { vendorId: "v3", vendorName: "V3", vendorLogoUrl: null, vendorKind: "shop", stalls: [stall("l2")] }],
+  };
+  afterEach(() => vi.useRealTimers());
+  const renderOn = (iso: string) => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(iso));
+    return renderToStaticMarkup(<EventCard campaign={tour} day={null} now={null} />);
+  };
+
+  it("shows the whole run, the number of stops with the Map icon, every stall and Live now, on the place layout", () => {
+    const markup = renderOn("2026-11-13T14:30:00+08:00");
+    expect(markup).toContain('data-card-frame="place"');
+    expect(markup).toContain(formatEventDateRange("2026-11-12", "2026-11-30", "en"));
+    expect(markup).toContain("ui.promotionCampaigns.locationCount:2");
+    expect(markup).toContain("lucide-map\"");
+    expect(markup).not.toContain("lucide-map-pin");
+    expect(markup).toContain("ui.promotionCampaigns.stallCount:3");
+    expect(markup).toContain("ui.promotionCampaigns.live");
+    expect(markup).toContain("text-emerald-700");
+    expect(markup).not.toContain("ui.operatingHours.");
+  });
+
+  it("says Coming soon when no stop runs today", () => {
+    const markup = renderOn("2026-11-20T12:00:00+08:00");
+    expect(markup).toContain("ui.promotionCampaigns.upcoming");
+    expect(markup).not.toContain("ui.promotionCampaigns.live");
   });
 });

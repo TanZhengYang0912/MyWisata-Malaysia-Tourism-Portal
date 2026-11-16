@@ -2927,6 +2927,7 @@
       "vendorsLabel": "vendor",
       "exploreCampaign": "Terokai acara",
       "allCampaigns": "Lihat semua acara",
+      "allEvents": "Semua acara",
       "viewDetails": "Lihat butiran",
       "viewAllVendors": "Lihat vendor",
       "viewAllVendors_one": "Lihat vendor",
@@ -3007,7 +3008,9 @@
         "nextDay": "Hari seterusnya",
         "previousMonth": "Bulan sebelumnya",
         "nextMonth": "Bulan seterusnya",
-        "backToToday": "Kembali ke hari ini"
+        "backToToday": "Kembali ke hari ini",
+        "dayEvents_one": "{{date}}, {{count}} acara",
+        "dayEvents_other": "{{date}}, {{count}} acara"
       }
     },
     "recommendationReasons": {

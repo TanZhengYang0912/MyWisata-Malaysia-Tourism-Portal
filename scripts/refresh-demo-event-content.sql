@@ -25,8 +25,8 @@ CREATE TEMP TABLE demo_refresh_log (step text NOT NULL, old jsonb NOT NULL) ON C
 CREATE TEMP TABLE want_campaign (slug text PRIMARY KEY, title text, summary text, description text, poster text) ON COMMIT DROP;
 INSERT INTO want_campaign VALUES
   ('demo-popup-fiesta', 'Pop-up Fiesta',
-   'A travelling market of Malaysian bakers, tea growers and craft makers — three stops from KL to Penang.',
-   'Pop-up Fiesta starts with a night market in Bangsar, settles in at Central Market Annexe for the season, then heads north for a weekend on the Penang Esplanade. Each stop has its own line-up.',
+   'A travelling market of Malaysian bakers, tea growers and craft makers — five stops from KL to Johor Bahru.',
+   'Pop-up Fiesta starts with a night market in Bangsar, settles in at Central Market Annexe for the season, then heads north for a weekend on the Penang Esplanade, stops in Ipoh Old Town and ends in Johor Bahru. Each stop has its own line-up.',
    'event-01-popup-fiesta-poster.jpg'),
   ('demo-coming-soon-market', 'Jonker Walk Craft Market',
    'Three days of batik, heritage desserts and hands-on workshops on Melaka''s Jonker Walk.',

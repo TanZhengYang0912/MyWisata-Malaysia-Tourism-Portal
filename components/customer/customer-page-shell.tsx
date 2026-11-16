@@ -44,7 +44,7 @@ export function CustomerPageHeader({
   const hasEyebrow = eyebrow !== null && eyebrow !== undefined && eyebrow !== false;
 
   return (
-    <header className={cn("mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between", className)}>
+    <header className={cn("mb-8 flex flex-col gap-5 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between", className)}>
       <div className="min-w-0">
         {hasEyebrow && (
           <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
@@ -59,6 +59,34 @@ export function CustomerPageHeader({
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </header>
+  );
+}
+
+type CustomerSectionHeaderProps = {
+  id?: string;
+  title: ReactNode;
+  eyebrow?: ReactNode;
+  icon?: ReactNode;
+  action?: ReactNode;
+  /** Optional meta line under the title, such as a status or a short summary. */
+  children?: ReactNode;
+  className?: string;
+};
+
+/** The Home section title: display font, a line underneath and an optional action (See more) on the right. */
+export function CustomerSectionHeader({ id, title, eyebrow, icon, action, children, className }: CustomerSectionHeaderProps) {
+  return (
+    <div className={cn("mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-4", className)}>
+      <div className="min-w-0">
+        {eyebrow && <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{eyebrow}</p>}
+        <h2 id={id} className={cn(eyebrow && "mt-2", "flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground")}>
+          {icon}
+          {title}
+        </h2>
+        {children}
+      </div>
+      {action && <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div>}
+    </div>
   );
 }
 

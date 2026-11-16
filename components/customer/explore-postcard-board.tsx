@@ -217,7 +217,7 @@ export function ExplorePostcardBoard({
   );
 
   return (
-    <section aria-label={t("ui.explore.destinations")} className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:py-4">
+    <section aria-label={t("ui.explore.destinations")} className="mx-auto w-full max-w-7xl px-4 pb-10 sm:px-6 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:pb-4">
 
       <div
         ref={boardRef}

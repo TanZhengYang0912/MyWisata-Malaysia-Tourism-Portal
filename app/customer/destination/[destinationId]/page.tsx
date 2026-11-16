@@ -11,6 +11,7 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { ProductCard } from "@/components/customer/product-card";
 import { SeeMoreLink } from "@/components/customer/see-more-link";
+import { CustomerSectionHeader } from "@/components/customer/customer-page-shell";
 import { getDestinationProductCards } from "@/backend/domains/destination-products";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
@@ -161,17 +162,11 @@ export default async function DestinationPage({ params }: Props) {
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 space-y-14">
         {/* Popular Experiences */}
         <section>
-          <div className="mb-6 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
-                {t("ui.destination.thingsToDo")}
-              </p>
-              <h2 className="mt-1 text-2xl font-bold text-foreground">
-                {t("ui.destination.popularExperiences", { state: destination.state })}
-              </h2>
-            </div>
-            <SeeMoreLink href="/customer/explore" />
-          </div>
+          <CustomerSectionHeader
+            eyebrow={t("ui.destination.thingsToDo")}
+            title={t("ui.destination.popularExperiences", { state: destination.state })}
+            action={<SeeMoreLink href="/customer/explore" />}
+          />
           {products.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
               {t("ui.destination.noExperiences", { state: destination.state })}
@@ -185,20 +180,15 @@ export default async function DestinationPage({ params }: Props) {
 
         {/* Local Outlets & Partners */}
         <section>
-          <div className="mb-6 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
-                {t("ui.destination.localPartners")}
-              </p>
-              <h2 className="mt-1 text-2xl font-bold text-foreground">
-                {t("ui.destination.outletsIn", { state: destination.state })}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t("ui.destination.vendorOutletsDescription")}
-              </p>
-            </div>
-            <SeeMoreLink href={`/customer/vendors?state=${encodeURIComponent(destination.state)}`} ariaLabel={t("ui.destination.allPartners")} />
-          </div>
+          <CustomerSectionHeader
+            eyebrow={t("ui.destination.localPartners")}
+            title={t("ui.destination.outletsIn", { state: destination.state })}
+            action={<SeeMoreLink href={`/customer/vendors?state=${encodeURIComponent(destination.state)}`} ariaLabel={t("ui.destination.allPartners")} />}
+          >
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("ui.destination.vendorOutletsDescription")}
+            </p>
+          </CustomerSectionHeader>
           {outlets.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
               {t("ui.destination.noVerifiedOutlets", { state: destination.state })}
@@ -242,7 +232,7 @@ export default async function DestinationPage({ params }: Props) {
 
         {/* Other destinations */}
         <section>
-          <h2 className="mb-5 text-xl font-bold text-foreground">{t("ui.destination.exploreMore")}</h2>
+          <CustomerSectionHeader title={t("ui.destination.exploreMore")} />
           <div className="flex flex-wrap gap-2">
             {MALAYSIA_DESTINATIONS.filter((d) => d.state !== destination.state)
               .slice(0, 8)

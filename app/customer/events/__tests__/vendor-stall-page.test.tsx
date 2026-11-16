@@ -98,6 +98,10 @@ describe("customer event vendor stall page", () => {
     expect(card).toContain("Strawberry Preserve Jar");
     expect(card).toContain("RM22.00");
     expect(card).toContain('aria-haspopup="dialog"');
+    // The underline grows on an inline span so a wrapped title is underlined line by line, as on CardFrame links.
+    const button = card.slice(card.indexOf("<button"), card.indexOf("</button>"));
+    expect(button.slice(0, button.indexOf(">"))).not.toContain("bg-[length:0_2px]");
+    expect(button).toMatch(/<span class="[^"]*bg-\[length:0_2px\][^"]*group-hover\/title:bg-\[length:100%_2px\]/);
     expect(markup).not.toContain("ui.reserve.open");
     expect(mocks.reserveProps).toEqual([{
       registrationId: "reg-central",

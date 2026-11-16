@@ -16,7 +16,9 @@ type Props = {
 };
 
 // Same stretched-link look as CardFrame's title link, on a button: the whole card opens the reserve dialog.
-const CARD_BUTTON_CLASS = "cursor-pointer text-left bg-[linear-gradient(currentColor,currentColor)] bg-[length:0_2px] bg-[position:0_100%] bg-no-repeat transition-[background-size] duration-[250ms] after:absolute after:inset-0 after:z-[1] after:rounded-[6px] after:content-[''] hover:bg-[length:100%_2px] focus-visible:bg-[length:100%_2px] focus-visible:outline-none motion-reduce:transition-none";
+// A button is a block box, so the underline sits on an inline span to follow every line of a wrapped title.
+const CARD_BUTTON_CLASS = "group/title cursor-pointer text-left after:absolute after:inset-0 after:z-[1] after:rounded-[6px] after:content-[''] focus-visible:outline-none";
+const CARD_UNDERLINE_CLASS = "bg-[linear-gradient(currentColor,currentColor)] bg-[length:0_2px] bg-[position:0_100%] bg-no-repeat transition-[background-size] duration-[250ms] group-hover/title:bg-[length:100%_2px] group-focus-visible/title:bg-[length:100%_2px] motion-reduce:transition-none";
 // CardFrame zooms the photo only for link cards; the reserve card asks for the same zoom.
 const CARD_ZOOM_CLASS = "[&_img]:transition-transform [&_img]:duration-[450ms] [&_img]:ease-out motion-reduce:[&_img]:transition-none [@media(hover:hover)_and_(pointer:fine)]:group-hover/card:[&_img]:scale-[1.04] motion-reduce:group-hover/card:[&_img]:scale-100";
 
@@ -56,7 +58,7 @@ export function StallProductCard({ product, registrationId, location, isEnded }:
       startsOn={location.startsOn}
       endsOn={location.endsOn}
       trigger={(open) => frame(
-        <button type="button" data-card-link="" aria-haspopup="dialog" onClick={open} className={CARD_BUTTON_CLASS}>{product.name}</button>,
+        <button type="button" data-card-link="" aria-haspopup="dialog" onClick={open} className={CARD_BUTTON_CLASS}><span className={CARD_UNDERLINE_CLASS}>{product.name}</span></button>,
         CARD_ZOOM_CLASS,
       )}
     />

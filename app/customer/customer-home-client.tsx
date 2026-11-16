@@ -23,6 +23,7 @@ import { HomeDestinationWormIndicator } from "@/components/customer/home-destina
 import { useHomeDestinationPager } from "@/components/customer/use-home-destination-pager";
 import { Button } from "@/components/ui/button";
 import { SeeMoreLink } from "@/components/customer/see-more-link";
+import { CustomerSectionHeader } from "@/components/customer/customer-page-shell";
 import { CardCarousel } from "@/components/customer/card-carousel";
 import { HOME_HIGHLIGHT_LIMIT } from "@/lib/customer/discovery-ranking";
 import { useRouter } from "next/navigation";
@@ -375,12 +376,7 @@ export function CustomerHomeClient({
 
         {highlightItems.length > 0 && (
           <section aria-labelledby="featured-highlights-heading" className="mt-12">
-            <div className="mb-5 flex items-center justify-between gap-4 border-b border-border/70 pb-4">
-              <h2 id="featured-highlights-heading" className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
-                {t("ui.home.featuredHighlights")}
-              </h2>
-              <SeeMoreLink href="/customer/explore" />
-            </div>
+            <CustomerSectionHeader id="featured-highlights-heading" title={t("ui.home.featuredHighlights")} action={<SeeMoreLink href="/customer/explore" />} />
             <CardCarousel label={t("ui.home.featuredHighlights")} onPageView={recordHighlightImpressions}>
               {featuredHighlights.map((activity) => (
                 activity.property
@@ -393,12 +389,7 @@ export function CustomerHomeClient({
 
         {!isGuest && forYouItems.length > 0 && (
           <section aria-labelledby="for-you-heading" className="mt-12 rounded-[28px] border border-border/70 bg-secondary/35 p-4 sm:p-6 lg:p-7">
-            <div className="mb-5 flex items-end justify-between gap-4">
-              <h2 id="for-you-heading" className="flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
-                <Sparkles size={19} className="text-primary" aria-hidden="true" /> {t("ui.home.forYou")}
-              </h2>
-              <SeeMoreLink href="/customer/for-you" />
-            </div>
+            <CustomerSectionHeader id="for-you-heading" icon={<Sparkles size={19} className="text-primary" aria-hidden="true" />} title={t("ui.home.forYou")} action={<SeeMoreLink href="/customer/for-you" />} />
             <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
               {forYouItems.map((activity) => (
                 activity.property
@@ -412,16 +403,10 @@ export function CustomerHomeClient({
         <EventPartnersSection partners={eventPartners.slice(0, HOME_HIGHLIGHT_LIMIT)} featured />
 
         <section className="mt-12" aria-labelledby="nearby-partners-heading">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-4">
-            <div>
-              <h2 id="nearby-partners-heading" className="font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
-                {t("ui.home.nearbyPartners")}
-              </h2>
-              {nearbyLocationSource === "browser" && <p role="status" className="mt-2 text-sm text-muted-foreground">{t("ui.home.nearbyFromCurrentLocation")}</p>}
-              {nearbyLocationSource === "city" && <p role="status" className="mt-2 text-sm text-muted-foreground">{t("ui.home.nearbyFromProfile")}</p>}
-              {nearbyPartners === null && <p className="mt-2 text-sm text-muted-foreground">{t("ui.home.nearbyPrompt")}</p>}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
+          <CustomerSectionHeader
+            id="nearby-partners-heading"
+            title={t("ui.home.nearbyPartners")}
+            action={<>
               <button
                 type="button"
                 onClick={useMyLocationForPartners}
@@ -433,8 +418,12 @@ export function CustomerHomeClient({
                 {nearbyLoading ? t("ui.states.loading") : t("ui.map.useCurrentLocation")}
               </button>
               <SeeMoreLink href="/customer/vendors" />
-            </div>
-          </div>
+            </>}
+          >
+            {nearbyLocationSource === "browser" && <p role="status" className="mt-2 text-sm text-muted-foreground">{t("ui.home.nearbyFromCurrentLocation")}</p>}
+            {nearbyLocationSource === "city" && <p role="status" className="mt-2 text-sm text-muted-foreground">{t("ui.home.nearbyFromProfile")}</p>}
+            {nearbyPartners === null && <p className="mt-2 text-sm text-muted-foreground">{t("ui.home.nearbyPrompt")}</p>}
+          </CustomerSectionHeader>
 
           {nearbyError && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{nearbyError}</p>}
           {nearbyLoading ? (
@@ -453,10 +442,7 @@ export function CustomerHomeClient({
 
         {/* 5. Featured Partners */}
         <section className="mt-12">
-          <div className="mb-5 flex items-center justify-between gap-4 border-b border-border/70 pb-4">
-            <h2 className="text-2xl font-bold font-[family-name:var(--font-display)]">{t("ui.home.featuredPartners")}</h2>
-            <SeeMoreLink href="/customer/vendors" />
-          </div>
+          <CustomerSectionHeader title={t("ui.home.featuredPartners")} action={<SeeMoreLink href="/customer/vendors" />} />
           <CardCarousel label={t("ui.home.featuredPartners")}>
             {vendors.slice(0, HOME_HIGHLIGHT_LIMIT).map((vendor, index) => <VendorCard key={vendor.id} vendor={vendor} index={index} />)}
           </CardCarousel>

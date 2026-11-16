@@ -208,6 +208,17 @@ describe("PromotionCampaignDetailClient overview", () => {
     expect(reducedMotion).toContain(".posterImage");
     expect(reducedMotion).toContain("animation: none");
   });
+
+  it("scrolls the stepper sideways from four stops with the dotted line across every stop", () => {
+    const css = readFileSync(resolve(process.cwd(), "app/customer/events/[slug]/promotion-campaign-detail.module.css"), "utf8");
+    const scrolling = css.slice(css.indexOf(".stepper:has(> li:nth-child(4)) {"));
+    const line = css.slice(css.indexOf(".stepper::before"), css.indexOf("}", css.indexOf(".stepper::before")));
+
+    expect(scrolling).toMatch(/^[^}]*overflow-x: auto/);
+    expect(scrolling).toMatch(/^[^}]*max\(120px, calc\(100% \/ 3\.5\)\)/);
+    expect(css).not.toContain("nth-child(5)");
+    expect(line).toContain("grid-column: 1 / -1");
+  });
 });
 
 describe("PromotionCampaignDetailClient stops", () => {

@@ -9,7 +9,8 @@ const featuredCardSource = readFileSync(resolve(process.cwd(), "components/custo
 
 describe("partners first-viewport spacing contract", () => {
   it("keeps the full-width advertising banner compact enough to enter the initial viewport", () => {
-    expect(searchSource).toContain("px-4 pb-8 pt-8 sm:px-6 sm:pb-8 sm:pt-10");
+    expect(searchSource).toContain('<CustomerPageTitle eyebrow={t("ui.search.verifiedPartners")} title={t("ui.search.title")} />');
+    expect(searchSource).toContain("mx-auto max-w-7xl px-4 pb-6 sm:px-6 sm:pb-8");
     expect(searchSource).toContain('bar: "partner-filter-bar"');
     expect(searchSource).toContain('categoryVariant="cards"');
     expect(searchSource).toContain("includeAllCategories={false}");

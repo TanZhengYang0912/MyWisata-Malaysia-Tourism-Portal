@@ -4,7 +4,10 @@ import type { PromotionCampaignPublic, PromotionCampaignPublicVendor } from "@/l
 
 const mocks = vi.hoisted(() => ({ getPublicPromotionCampaigns: vi.fn() }));
 
-vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string, options?: { date?: string }) => options?.date ? `${key} ${options.date}` : key, i18n: { resolvedLanguage: "en" } }) }));
+vi.mock("react-i18next", () => ({ useTranslation: () => ({
+  t: (key: string, options?: { date?: string; count?: number }) => options?.date ? `${key} ${options.date} ${options.count ?? ""}`.trim() : options?.count !== undefined ? `${key}:${options.count}` : key,
+  i18n: { resolvedLanguage: "en" },
+}) }));
 vi.mock("@/lib/i18n/server", () => ({ getServerTranslation: vi.fn(async () => ({ t: (key: string) => key })) }));
 vi.mock("@/components/customer/use-customer-capability-gate", () => ({
   useCustomerCapabilityGate: () => Object.assign(() => true, { handleResponse: vi.fn(async () => false) }),
@@ -54,70 +57,103 @@ const laterCampaign: PromotionCampaignPublic = {
   locations: [{ ...campaign.locations[0], id: "55555555-5555-4555-8555-555555555555", startsOn: "2026-12-01", endsOn: "2026-12-03" }],
 };
 
+const endedCampaign: PromotionCampaignPublic = {
+  ...campaign,
+  id: "66666666-6666-4666-8666-666666666666",
+  slug: "october-fair",
+  title: "October Fair",
+  locations: [{ ...campaign.locations[0], id: "77777777-7777-4777-8777-777777777777", startsOn: "2026-10-01", endsOn: "2026-11-10" }],
+};
+
+const render = async (date?: string) => renderToStaticMarkup(await CustomerEventsPage({ searchParams: Promise.resolve(date === undefined ? {} : { date }) }));
+const titlesIn = (markup: string) => [...markup.matchAll(/<a [^>]*href="\/customer\/events\/([^"]+)"/g)].map((match) => match[1]);
+
 describe("customer promotion campaign listing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // 14:30 on Friday 13 November 2026 in Malaysia.
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-11-13T06:30:00Z"));
-    mocks.getPublicPromotionCampaigns.mockResolvedValue({ campaigns: [campaign, laterCampaign], error: false });
+    mocks.getPublicPromotionCampaigns.mockResolvedValue({ campaigns: [laterCampaign, endedCampaign, campaign], error: false });
   });
   afterEach(() => vi.useRealTimers());
 
-  it("opens on today: the date as the heading and five days with today in the middle", async () => {
-    const markup = renderToStaticMarkup(await CustomerEventsPage());
+  it("titles the page with the standard header, a calendar button and no date heading or List/Map switch", async () => {
+    const markup = await render();
 
-    expect(markup).toMatch(/<h1 [^>]*>Friday 13 Nov<\/h1>/);
-    expect(markup).not.toContain("ui.promotionCampaigns.pageTitle");
-    const strip = [...markup.matchAll(/aria-pressed="(true|false)" aria-label="[A-Za-z]+, November \d+"/g)].map((match) => match[1]);
-    expect(strip).toEqual(["false", "false", "true", "false", "false"]);
+    expect(markup).toMatch(/<h1 [^>]*>ui\.promotionCampaigns\.pageTitle<\/h1>/);
+    expect(markup.match(/<h1 /g)).toHaveLength(1);
+    expect(markup).toContain('aria-label="ui.promotionCampaigns.datePicker.openCalendar"');
+    expect(markup).not.toContain("ui.promotionCampaigns.datePicker.previousDay");
+    expect(markup).not.toContain("ui.promotionCampaigns.views.");
     expect(mocks.getPublicPromotionCampaigns).toHaveBeenCalledOnce();
   });
 
-  it("offers only List and Map, and shows the List of event cards by default", async () => {
-    const markup = renderToStaticMarkup(await CustomerEventsPage());
-    const views = markup.match(/<div role="group" aria-label="ui\.promotionCampaigns\.views\.label"[\s\S]*?<\/div>/)?.[0] ?? "";
+  it("lists every event that has not ended, earliest start first, as place cards", async () => {
+    const markup = await render();
 
-    expect(views).toContain("ui.promotionCampaigns.views.list");
-    expect(views).toContain("ui.promotionCampaigns.views.map");
-    expect(markup).not.toContain("ui.promotionCampaigns.views.calendar");
-    expect(markup).not.toContain("ui.promotionCampaigns.map.stateCountsTitle");
-    expect(markup).toContain('href="/customer/events/heritage-walk-kl-current-offers"');
-    expect(markup).toContain("lucide-tent");
-    expect(markup).toContain("Petaling Street");
-  });
-
-  it("lists only the events running on the chosen day", async () => {
-    const markup = renderToStaticMarkup(await CustomerEventsPage());
-
-    expect(markup).toContain(campaign.title);
-    expect(markup).not.toContain(laterCampaign.title);
+    expect(markup).toMatch(/<h2 id="events-list-heading"[^>]*>ui\.promotionCampaigns\.allEvents<\/h2>/);
+    expect(markup).toContain("ui.promotionCampaigns.map.eventCount:2");
+    expect(titlesIn(markup)).toEqual([campaign.slug, laterCampaign.slug]);
+    expect(markup).not.toContain(endedCampaign.title);
+    expect(markup).toContain("grid grid-cols-1 items-start gap-6 lg:grid-cols-2");
     expect(markup).not.toContain("ui.promotionCampaigns.dateEmpty");
   });
 
-  it("says when nothing runs on the chosen day", async () => {
-    mocks.getPublicPromotionCampaigns.mockResolvedValueOnce({ campaigns: [laterCampaign], error: false });
+  it("shows 8 events a page with the pager", async () => {
+    const many = Array.from({ length: 9 }, (_, index) => ({ ...laterCampaign, id: `later-${index}`, slug: `later-${index}`, title: `Later ${index}` }));
+    mocks.getPublicPromotionCampaigns.mockResolvedValueOnce({ campaigns: many, error: false });
 
-    const markup = renderToStaticMarkup(await CustomerEventsPage());
+    const markup = await render();
+
+    expect(markup.match(/data-card-frame="place"/g)).toHaveLength(8);
+    expect(markup).toContain('aria-label="ui.promotionCampaigns.pageTitle"');
+    expect(markup).not.toContain("later-8");
+  });
+
+  it("has no pager for 8 or fewer events", async () => {
+    expect(await render()).not.toContain('aria-label="ui.promotionCampaigns.pageTitle"');
+  });
+
+  it("opens a shared ?date= link on that day: its events only, with ‹ day ›", async () => {
+    const markup = await render("2026-12-02");
+
+    expect(titlesIn(markup)).toEqual([laterCampaign.slug]);
+    expect(markup).toMatch(/<h2 id="events-list-heading"[^>]*>Wednesday 2 Dec<\/h2>/);
+    expect(markup).toContain("ui.promotionCampaigns.datePicker.dayEvents Wednesday, December 2 1");
+    expect(markup).toContain('aria-label="ui.promotionCampaigns.datePicker.previousDay"');
+    expect(markup).toContain('aria-label="ui.promotionCampaigns.datePicker.nextDay"');
+  });
+
+  it("says when nothing runs on the chosen day", async () => {
+    const markup = await render("2026-11-20");
 
     expect(markup).toContain("ui.promotionCampaigns.dateEmpty");
-    // Already on today, so there is no Back to today.
     expect(markup).not.toContain("ui.promotionCampaigns.datePicker.backToToday");
   });
 
-  it("keeps the page title when there are no events at all", async () => {
-    mocks.getPublicPromotionCampaigns.mockResolvedValueOnce({ campaigns: [], error: false });
+  it("falls back to all events for an invalid or past ?date=", async () => {
+    for (const date of ["2026-02-30", "tomorrow", "2026-11-01"]) {
+      const markup = await render(date);
+      expect(markup, date).toContain("ui.promotionCampaigns.allEvents");
+      expect(markup, date).not.toContain("ui.promotionCampaigns.datePicker.previousDay");
+    }
+  });
 
-    const markup = renderToStaticMarkup(await CustomerEventsPage());
+  it("keeps the page title when there are no events at all", async () => {
+    mocks.getPublicPromotionCampaigns.mockResolvedValueOnce({ campaigns: [endedCampaign], error: false });
+
+    const markup = await render();
 
     expect(markup).toContain("ui.promotionCampaigns.pageTitle");
     expect(markup).toContain("ui.promotionCampaigns.emptyTitle");
+    expect(markup).not.toContain("ui.promotionCampaigns.datePicker.openCalendar");
   });
 
   it("shows a recoverable error when the server projection is unavailable", async () => {
     mocks.getPublicPromotionCampaigns.mockResolvedValueOnce({ campaigns: [], error: true });
 
-    const markup = renderToStaticMarkup(await CustomerEventsPage());
+    const markup = await render();
 
     expect(markup).toContain("ui.promotionCampaigns.pageTitle");
     expect(markup).toContain("ui.promotionCampaigns.loadError");

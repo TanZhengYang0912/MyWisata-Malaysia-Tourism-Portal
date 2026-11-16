@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BackLink } from "@/components/shared/back-link";
+import { CustomerPageHeader } from "@/components/customer/customer-page-shell";
 import { AlertCircle, CalendarClock, ImageOff, ShieldCheck, Ticket } from "lucide-react";
 import { useAuth } from "@/components/providers/auth";
 import { useCart } from "@/components/providers/cart";
@@ -335,10 +336,8 @@ export default function CheckoutPage() {
         ← {tCommon("actions.back")}
       </BackLink>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground font-[family-name:var(--font-display)]">
-          {tCustomer("ui.checkout.title")}
-        </h1>
-        <nav aria-label={tCustomer("ui.checkout.progress")} className="mt-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+        <CustomerPageHeader title={tCustomer("ui.checkout.title")} className="mb-4" />
+        <nav aria-label={tCustomer("ui.checkout.progress")} className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
           <Link href="/customer/cart" className="text-primary hover:underline">{tCustomer("ui.cart.title")}</Link>
           <span aria-hidden="true">→</span>
           <span className="text-foreground" aria-current="step">{tCustomer("ui.checkout.title")}</span>

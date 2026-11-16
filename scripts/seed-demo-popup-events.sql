@@ -33,8 +33,8 @@ BEGIN
 
   INSERT INTO public.promotion_campaigns (slug, title, summary, description, starts_at, ends_at, status, created_by, updated_by, approved_by, approved_at, poster_url, operating_hours)
   VALUES ('demo-popup-fiesta', 'Pop-up Fiesta',
-    'A travelling market of Malaysian bakers, tea growers and craft makers — three stops from KL to Penang.',
-    'Pop-up Fiesta starts with a night market in Bangsar, settles in at Central Market Annexe for the season, then heads north for a weekend on the Penang Esplanade. Each stop has its own line-up.',
+    'A travelling market of Malaysian bakers, tea growers and craft makers — five stops from KL to Johor Bahru.',
+    'Pop-up Fiesta starts with a night market in Bangsar, settles in at Central Market Annexe for the season, then heads north for a weekend on the Penang Esplanade, stops in Ipoh Old Town and ends in Johor Bahru. Each stop has its own line-up.',
     '2026-10-03 16:00+08', '2026-12-31 22:00+08', 'approved', admin_id, admin_id, admin_id, now(), events_base || 'event-01-popup-fiesta-poster.jpg', 'Varies by location — see each location''s hours')
   RETURNING id INTO fiesta;
 
@@ -60,6 +60,14 @@ BEGIN
     RETURNING id INTO v_loc;
   locs := locs || jsonb_build_object('C', v_loc);
     INSERT INTO public.promotion_campaign_locations (campaign_id, name, address, lat, lng, starts_on, ends_on, opens_at, closes_at, max_stalls)
+    VALUES (fiesta, 'Ipoh Old Town', 'Jalan Panglima, 30000 Ipoh, Perak', 4.5975, 101.0790, '2026-11-28', '2026-11-30', '10:00', '22:00', 12)
+    RETURNING id INTO v_loc;
+  locs := locs || jsonb_build_object('E', v_loc);
+    INSERT INTO public.promotion_campaign_locations (campaign_id, name, address, lat, lng, starts_on, ends_on, opens_at, closes_at, max_stalls)
+    VALUES (fiesta, 'Johor Bahru Tebrau', 'Jalan Harmonium, Taman Desa Tebrau, 81100 Johor Bahru', 1.5480, 103.7956, '2026-12-12', '2026-12-14', '10:00', '22:00', 12)
+    RETURNING id INTO v_loc;
+  locs := locs || jsonb_build_object('F', v_loc);
+    INSERT INTO public.promotion_campaign_locations (campaign_id, name, address, lat, lng, starts_on, ends_on, opens_at, closes_at, max_stalls)
     VALUES (market, 'Jonker Walk, Melaka', 'Jalan Hang Jebat, 75200 Melaka', 2.1951, 102.2475, '2026-11-20', '2026-11-22', '10:00', '22:00', 10)
     RETURNING id INTO v_loc;
   locs := locs || jsonb_build_object('D', v_loc);
@@ -77,6 +85,9 @@ BEGIN
     ('owner.jonker-88-heritage@demo.local',         'C', 'pending',           NULL,  'Jonker 88''s baba laksa and cendol, travelling from Melaka for the weekend.', NULL, NULL),
     ('owner.gerakbudaya-bookshop-penang@demo.local','C', 'changes_requested', NULL,  'Local authors and Penang history titles from Gerakbudaya.', 'Please upload a clearer stall poster and add prices for each book bundle.', NULL),
     ('owner.tropical-spice-garden@demo.local',      'C', 'withdrawn',         NULL,  'Spice blends and herb seedlings from Tropical Spice Garden.', 'Vendor withdrew: staff unavailable that weekend (demo data).', NULL),
+    ('owner.cameron-valley-tea-shop@demo.local',    'E', 'approved',          'E01', 'Cameron Valley highland teas and strawberry preserves, down the hill for the Ipoh weekend.', NULL, 'event-05-cameron-valley-tea-stall.jpg'),
+    ('owner.desa-murni-batik@demo.local',           'E', 'approved',          'E02', 'Batik painting and stamping sessions with Desa Murni artisans in Ipoh Old Town.', NULL, 'event-06-desa-murni-batik-stall.jpg'),
+    ('owner.hiap-joo-bakery@demo.local',            'F', 'approved',          'F01', 'Hiap Joo''s charcoal-baked banana cake, back home in Johor Bahru for the final stop.', NULL, 'event-04-hiap-joo-stall.jpg'),
     ('owner.jonker-88-heritage@demo.local',         'D', 'approved',          'D01', 'Jonker 88 heritage desserts at their home street market.', NULL, 'event-08-jonker-88-stall.jpg'),
     ('owner.desa-murni-batik@demo.local',           'D', 'approved',          'D02', 'Batik painting sessions at the Jonker Walk craft market.', NULL, 'event-06-desa-murni-batik-stall.jpg')
   ) AS s(email, loc, status, stall_no, description, note, poster)
