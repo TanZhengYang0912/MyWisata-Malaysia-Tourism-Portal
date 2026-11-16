@@ -25,7 +25,7 @@ export function buildItineraryWeatherPlan(
   const addTarget = (input: Omit<WeatherTarget, "key">) => {
     const latitude = Number(input.latitude.toFixed(4));
     const longitude = Number(input.longitude.toFixed(4));
-    const identity = `${input.date}:${latitude.toFixed(4)}:${longitude.toFixed(4)}`;
+    const identity = `${input.date}:${latitude.toFixed(4)}:${longitude.toFixed(4)}:${input.kind === "item" ? input.itemId : "day"}`;
     const existing = identityToKey.get(identity);
     if (existing) return existing;
     if (targets.length >= 20) return null;
@@ -53,6 +53,7 @@ export function buildItineraryWeatherPlan(
   for (const day of days) {
     for (const item of day.items) {
       if (!item.experience_id || !isValidTripCoordinate(item.lat, item.lng)) continue;
+      if (!item.scheduled_time || !/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(item.scheduled_time)) continue;
       if (classifyWeatherSensitivity(activitiesById.get(item.experience_id)) !== "weather_sensitive") continue;
       const key = addTarget({
         date: day.date,
@@ -61,6 +62,7 @@ export function buildItineraryWeatherPlan(
         label: item.label,
         kind: "item",
         itemId: item.id,
+        scheduledTime: item.scheduled_time,
       });
       if (key) itemTargetKeyById[item.id] = key;
     }

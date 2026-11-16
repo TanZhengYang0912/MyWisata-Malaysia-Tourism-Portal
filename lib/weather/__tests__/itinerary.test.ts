@@ -58,7 +58,7 @@ describe("itinerary weather target planning", () => {
     expect(plan.itemTargetKeyById.unknown).toBeUndefined();
   });
 
-  it("deduplicates rounded coordinate/date targets", () => {
+  it("keeps scheduled destination targets distinct even when coordinates round equally", () => {
     const first = item("first", "2026-09-15", { lat: 5.41411, lng: 100.32881 });
     const second = item("second", "2026-09-15", { sequence: 1, lat: 5.41412, lng: 100.32882 });
     const activities = new Map<string, ComputedActivity>([
@@ -67,9 +67,9 @@ describe("itinerary weather target planning", () => {
     ]);
     const plan = buildItineraryWeatherPlan([{ date: "2026-09-15", items: [first, second] }], activities);
 
-    expect(plan.targets).toHaveLength(1);
-    expect(plan.itemTargetKeyById.first).toBe(plan.dayTargetKeyByDate["2026-09-15"]);
-    expect(plan.itemTargetKeyById.second).toBe(plan.dayTargetKeyByDate["2026-09-15"]);
+    expect(plan.targets).toHaveLength(3);
+    expect(plan.itemTargetKeyById.first).not.toBe(plan.dayTargetKeyByDate["2026-09-15"]);
+    expect(plan.itemTargetKeyById.second).not.toBe(plan.itemTargetKeyById.first);
   });
 
   it("caps unique targets at twenty with day targets first", () => {

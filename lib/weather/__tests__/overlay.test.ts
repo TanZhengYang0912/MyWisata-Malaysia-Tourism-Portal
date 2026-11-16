@@ -6,13 +6,16 @@ import {
 } from "@/lib/weather/overlay";
 import {
   advanceWeatherEffectParticles,
+  advanceRainStreakParticles,
+  buildRainStreaksGeoJson,
   pointInWeatherConditionContours,
   pointInWeatherContours,
   seedRainParticles,
+  seedRainStreakParticles,
   seedWeatherEffectParticles,
   WEATHER_EFFECT_PRESETS,
 } from "@/lib/weather/overlay-particles";
-import { canUseLiveRadar, defaultOverlayHour, malaysiaDateHour } from "@/lib/weather/overlay-time";
+import { canUseLiveRadar, defaultOverlayHour, formatMalaysiaDateTime, malaysiaDateHour } from "@/lib/weather/overlay-time";
 import type { WeatherOverlaySample } from "@/lib/weather/types";
 
 function pointInRing(point: [number, number], ring: number[][]) {
@@ -77,6 +80,8 @@ describe("journey weather overlay domain", () => {
   it("derives a deterministic bounded twenty-point sampling grid", () => {
     const grid = buildWeatherSampleGrid([{ lat: 5.4141, lng: 100.3288 }]);
     expect(grid).toHaveLength(48);
+    expect(grid.at(-1)!.latitude - grid[0].latitude).toBeCloseTo(0.24, 4);
+    expect(grid[7].longitude - grid[0].longitude).toBeCloseTo(0.32, 4);
     expect(grid).toEqual(buildWeatherSampleGrid([{ lat: 5.4141, lng: 100.3288 }]));
     expect(new Set(grid.map((point) => `${point.latitude},${point.longitude}`)).size).toBe(48);
     expect(buildWeatherSampleGrid([{ lat: Number.NaN, lng: 100 }])).toEqual([]);
@@ -109,6 +114,12 @@ describe("journey weather overlay domain", () => {
     expect(canUseLiveRadar(null, now)).toBe(false);
   });
 
+  it("formats UTC radar frames as the correct Malaysia local date and time", () => {
+    const value = formatMalaysiaDateTime("2026-11-15T19:10:00.000Z");
+    expect(value).toContain("03:10");
+    expect(value).toContain("16");
+  });
+
   it("builds geographic rain bands and seeds particles only inside them", () => {
     const result = buildPrecipitationContours(sampleGrid());
     expect(result.bounds).not.toBeNull();
@@ -122,6 +133,31 @@ describe("journey weather overlay domain", () => {
     const particles = seedRainParticles(result.contours, 30, () => values[(cursor++) % values.length]);
     expect(particles).toHaveLength(30);
     for (const point of particles) expect(pointInWeatherContours(point, result.contours)).toBe(true);
+  });
+
+
+  it("builds forecast contours from staggered model cell coordinates", () => {
+    const samples = Array.from({ length: 24 }, (_, index) => {
+      const row = Math.floor(index / 6);
+      const column = index % 6;
+      const distance = Math.hypot(column - 2.5, row - 1.5);
+      return {
+        latitude: 5.3 + row * 0.07,
+        longitude: 100.13 + column * 0.074 + row * 0.008,
+        precipitationMm: distance < 0.8 ? 4 : 0,
+        precipitationProbability: distance < 0.8 ? 80 : 20,
+        weatherCode: distance < 0.8 ? 61 : 0,
+        cloudCover: 20,
+        windSpeedKmh: 10,
+        windDirectionDeg: 0,
+      };
+    });
+
+    const result = buildPrecipitationContours(samples);
+
+    expect(result.bounds).not.toBeNull();
+    expect(result.contours.features.length).toBeGreaterThan(0);
+    expect(result.dominantCenter).not.toBeNull();
   });
 
   it("builds mutually exclusive map regions for every animated weather condition", () => {
@@ -220,6 +256,34 @@ describe("journey weather overlay domain", () => {
     };
 
     expect(seedRainParticles(heavyOnly, 8, () => 0.5)).toHaveLength(8);
+  });
+
+  it("seeds one unified rain animation only inside the precipitation footprint", () => {
+    const contours = buildPrecipitationContours(sampleGrid()).contours;
+    const particles = seedRainStreakParticles(contours, 30, () => 0.5);
+
+    expect(particles).toHaveLength(30);
+    expect(particles.every((particle) => pointInWeatherContours(particle.coordinates, contours))).toBe(true);
+  });
+
+  it("keeps unified rain streaks within precipitation contours while they advance", () => {
+    const contours = buildPrecipitationContours(sampleGrid()).contours;
+    let particles = seedRainStreakParticles(contours, 30, () => 0.5);
+
+    for (let tick = 0; tick < 12; tick += 1) {
+      particles = advanceRainStreakParticles(particles, contours, tick, () => 0.5);
+      expect(particles.every((particle) => pointInWeatherContours(particle.coordinates, contours))).toBe(true);
+    }
+
+    const streaks = buildRainStreaksGeoJson(particles, contours);
+    expect(streaks.features.length).toBeGreaterThan(0);
+    for (const feature of streaks.features) {
+      const [start, end] = feature.geometry.coordinates;
+      const midpoint: [number, number] = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
+      expect(pointInWeatherContours(start as [number, number], contours)).toBe(true);
+      expect(pointInWeatherContours(midpoint, contours)).toBe(true);
+      expect(pointInWeatherContours(end as [number, number], contours)).toBe(true);
+    }
   });
 
   it("does not draw rain when probability or precipitation is untrustworthy", () => {

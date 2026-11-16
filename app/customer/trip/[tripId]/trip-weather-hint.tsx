@@ -227,6 +227,7 @@ export function TripWeatherItemMarker({ result }: { result: WeatherTargetResult 
     >
       <CloudRain size={10} aria-hidden="true" />
       {t("strictMigration.tripPlanner.weather.mayAffectOutdoorPlans")}
+      {result.target.scheduledTime && <time className="tabular-nums">· {result.target.scheduledTime.slice(0, 5)}</time>}
     </Badge>
   );
 }

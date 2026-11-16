@@ -1,5 +1,5 @@
 import type { WeatherEffectCondition } from "@/lib/weather/conditions";
-import type { WeatherEffectParticle, WeatherOverlayResult } from "@/lib/weather/types";
+import type { WeatherEffectParticle, WeatherOverlayResult, WeatherRainParticle } from "@/lib/weather/types";
 
 export const WEATHER_EFFECT_PRESETS = {
   fog: { count: 34, verticalSpeed: 0, horizontalSpeed: 0.45, lateralDrift: 0, cadence: "continuous", flash: false },
@@ -142,4 +142,63 @@ export function seedRainParticles(
   random: () => number = Math.random,
 ) {
   return seedCoordinates(contours, (point) => pointInWeatherContours(point, contours), count, random);
+}
+
+export function seedRainStreakParticles(
+  contours: WeatherOverlayResult["contours"],
+  count = 24,
+  random: () => number = Math.random,
+): WeatherRainParticle[] {
+  return seedRainParticles(contours, count, random).map((coordinates) => ({ coordinates, phase: random() }));
+}
+
+export function advanceRainStreakParticles(
+  particles: WeatherRainParticle[],
+  contours: WeatherOverlayResult["contours"],
+  tick: number,
+  random: () => number = Math.random,
+): WeatherRainParticle[] {
+  const points = contourPoints(contours);
+  if (points.length === 0) return [];
+  const minLng = Math.min(...points.map(([lng]) => lng));
+  const maxLng = Math.max(...points.map(([lng]) => lng));
+  const minLat = Math.min(...points.map(([, lat]) => lat));
+  const maxLat = Math.max(...points.map(([, lat]) => lat));
+  const lngSpan = Math.max(maxLng - minLng, 0.0001);
+  const latSpan = Math.max(maxLat - minLat, 0.0001);
+
+  return particles.map((particle) => {
+    const candidate: [number, number] = [
+      particle.coordinates[0] + lngSpan / 520 + Math.sin(tick * 0.18 + particle.phase * Math.PI * 2) * lngSpan / 6000,
+      particle.coordinates[1] - latSpan / 115,
+    ];
+    if (pointInWeatherContours(candidate, contours)) return { ...particle, coordinates: candidate };
+    const replacement = seedRainParticles(contours, 1, random)[0];
+    return replacement ? { ...particle, coordinates: replacement, phase: random() } : particle;
+  });
+}
+
+export function buildRainStreaksGeoJson(
+  particles: WeatherRainParticle[],
+  contours: WeatherOverlayResult["contours"],
+): GeoJSON.FeatureCollection<GeoJSON.LineString, { phase: number }> {
+  const points = contourPoints(contours);
+  if (points.length === 0) return { type: "FeatureCollection", features: [] };
+  const lngSpan = Math.max(Math.max(...points.map(([lng]) => lng)) - Math.min(...points.map(([lng]) => lng)), 0.0001);
+  const latSpan = Math.max(Math.max(...points.map(([, lat]) => lat)) - Math.min(...points.map(([, lat]) => lat)), 0.0001);
+  const features: GeoJSON.Feature<GeoJSON.LineString, { phase: number }>[] = [];
+
+  for (const particle of particles) {
+    const start: [number, number] = [particle.coordinates[0] - lngSpan / 1400, particle.coordinates[1] + latSpan / 900];
+    const end: [number, number] = [particle.coordinates[0] + lngSpan / 1400, particle.coordinates[1] - latSpan / 900];
+    const midpoint: [number, number] = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
+    if (![start, midpoint, end].every((point) => pointInWeatherContours(point, contours))) continue;
+    features.push({
+      type: "Feature",
+      properties: { phase: particle.phase },
+      geometry: { type: "LineString", coordinates: [start, end] },
+    });
+  }
+
+  return { type: "FeatureCollection", features };
 }

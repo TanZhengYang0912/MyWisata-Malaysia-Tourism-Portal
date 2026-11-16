@@ -13,7 +13,7 @@ import { Pagination } from "@/components/shared/pagination";
 import { CATEGORIES, getBookingSlots, getOutlet } from "@/backend/domains/catalogue";
 import { TRAVEL_MODES, buildGoogleMapsDirectionsUrl, type TravelModeId } from "@/lib/travel-modes";
 import { ROUTE_TRAFFIC_COLORS, buildRouteDepartureTime, type GeoHit } from "@/lib/routing";
-import type { BookingSlot, ComputedActivity, OperatingHours, SponsoredPlacement } from "@/backend/core/types";
+import type { BookingSlot, ComputedActivity, OperatingHours, SponsoredPlacement, TripDiscoveryActivity } from "@/backend/core/types";
 import type { Trip, TripItem } from "@/backend/domains/trips";
 import { getTripLegFeasibility, resolveTripOrigin, getTripDiscoveryAnchor, getTripDiscoveryFingerprint, getTripActivitySublabel, getTripItemTimeBounds, groupTripItemsByDay, formatTripDay, isValidTripCoordinate, hasDistinctTripRoutePoints } from "@/lib/customer/trip-planner";
 import { useTripRoutes } from "./use-trip-routes";
@@ -106,7 +106,7 @@ export function MapClient({
 }: {
   tripData: Trip;
   initialItems: TripItem[];
-  initialActivities: ComputedActivity[];
+  initialActivities: TripDiscoveryActivity[];
   initialDiscoveryFingerprint: string;
   sponsoredPlacements: SponsoredPlacement[];
   suggestedAtByVendor: Record<string, string>;
@@ -119,7 +119,7 @@ export function MapClient({
   const [checkingOut, setCheckingOut] = useState(false);
   const [placeFilters, setPlaceFilters] = useState<TripPlaceFilters>(DEFAULT_TRIP_PLACE_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [activities, setActivities] = useState<ComputedActivity[] | null>(initialActivities);
+  const [activities, setActivities] = useState<TripDiscoveryActivity[] | null>(initialActivities);
   const [discoveryFailed, setDiscoveryFailed] = useState(false);
   const [mode, setMode] = useState<TravelModeId>("DRIVING");
   const [urlPreview, setUrlPreview] = useState<string | null>(null);
@@ -236,6 +236,10 @@ export function MapClient({
       .map((item): TripStop => ({ id: item.id, lat: item.lat, lng: item.lng, label: item.label, sublabel: item.sublabel, source: item.source, locationKind: item.kind }));
     return origin ? [origin, ...datedStops] : datedStops;
   }, [origin, selectedDate, trip.items]);
+  const forecastGeographyKey = useMemo(
+    () => [...new Set(selectedRouteStops.map(({ lat, lng }) => `${lat},${lng}`))].sort().join("|"),
+    [selectedRouteStops],
+  );
   // Places to add are searched around the starting point, or else around the
   // selected day's last stop — where the traveller will be when they add more.
   const dayLastStop = selectedRouteStops.filter((stop) => stop.id !== origin?.id).at(-1);
@@ -259,7 +263,7 @@ export function MapClient({
     fetch(`/api/trips/${encodeURIComponent(tripData.id)}/activities${query}`,{signal:controller.signal,cache:"no-store"})
       .then(async response => {
         if(!response.ok) throw new Error("Trip discovery unavailable");
-        const result = await response.json() as {data:ComputedActivity[]};
+        const result = await response.json() as {data:TripDiscoveryActivity[]};
         if(!controller.signal.aborted) {setActivities(result.data);setDiscoveryFailed(false);}
       }).catch(() => {
         if(!controller.signal.aborted) setDiscoveryFailed(true);
@@ -613,7 +617,7 @@ export function MapClient({
       const bookingActivityIds = [...new Set(
         scheduledItems
           .map((item) => activitiesById.get(item.experience_id!))
-          .filter((activity): activity is ComputedActivity => Boolean(activity?.requiresBooking))
+          .filter((activity): activity is TripDiscoveryActivity => Boolean(activity?.requiresBooking))
           .map((activity) => activity.id),
       )];
       const slotLists = await Promise.all(bookingActivityIds.map((id) => getBookingSlots(id)));
@@ -682,6 +686,7 @@ export function MapClient({
     overlayHour,
     weatherLayerEnabled && activeWeatherMapMode === "forecast" && !simulationActive,
     selectedRouteStops.length > 0,
+    forecastGeographyKey,
   );
   const displayedWeatherOverlay = simulationActive ? simulatedWeatherOverlay : overlayState.result;
   const displayedWeatherOverlayStatus = simulationActive
@@ -1370,7 +1375,7 @@ export function MapClient({
         <section data-trip-route-map aria-label={tCustomer("strictMigration.tripPlanner.mapTab")} className={(activePanel === "map" ? "flex" : "hidden") + " relative min-h-0 flex-col bg-muted pb-16 xl:flex xl:pb-0"}>
           <div className="min-h-0 flex-1">
             <MapView pins={pins} center={center} zoom={near ? 12 : 7} height="100%" cluster radiusCenter={discoveryNear && placeFilters.distanceKm !== null ? [discoveryNear.lat, discoveryNear.lng] : undefined} radiusKm={discoveryNear ? placeFilters.distanceKm ?? undefined : undefined} onAddStop={toggleStop} stopIds={selectedRouteStops.map((stop) => stop.id)} suggestedIds={suggestedPins.map((pin) => pin.id)} routes={activeRoutes.map((route, index) => ({ path: route.geometry, selected: index === selectedRouteIdx, trafficSegments: route.traffic?.segments }))} fitCoordinates={selectedRouteCoordinates} routeColor={MODE_STYLE[mode].color} routeDashed={MODE_STYLE[mode].dashed} focusRequest={focusRequest} onMapMovingChange={setMapMoving}>
-              <TripWeatherMapOverlay result={displayedWeatherOverlay} status={displayedWeatherOverlayStatus} radarResult={radarState.result} radarStatus={radarState.status} mode={activeWeatherMapMode} liveRadarAvailable={liveRadarAvailable} enabled={weatherLayerEnabled} hour={overlayHour} onHourChange={setOverlayHour} onModeChange={setWeatherMapMode} onEnabledChange={setWeatherLayerEnabled} simulationAvailable={simulationAvailable} simulationEnabled={simulationActive} onSimulationEnabledChange={setSimulationEnabled} mapMoving={mapMoving} />
+              <TripWeatherMapOverlay result={displayedWeatherOverlay} status={displayedWeatherOverlayStatus} radarResult={radarState.result} radarStatus={radarState.status} mode={activeWeatherMapMode} date={selectedDate} liveRadarAvailable={liveRadarAvailable} grayShadeCenter={discoveryNear ? [discoveryNear.lat, discoveryNear.lng] : undefined} grayShadeRadiusKm={discoveryNear ? placeFilters.distanceKm : null} enabled={weatherLayerEnabled} hour={overlayHour} onHourChange={setOverlayHour} onModeChange={setWeatherMapMode} onEnabledChange={setWeatherLayerEnabled} simulationAvailable={simulationAvailable} simulationEnabled={simulationActive} onSimulationEnabledChange={setSimulationEnabled} mapMoving={mapMoving} />
             </MapView>
           </div>
         </section>

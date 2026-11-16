@@ -8,6 +8,7 @@ export type WeatherOverlayStatus = "idle" | "loading" | "ready" | "error" | "mis
 type OverlayState = {
   status: WeatherOverlayStatus;
   result: WeatherOverlayResult | null;
+  requestFingerprint: string;
 };
 
 export function useWeatherOverlay(
@@ -15,10 +16,11 @@ export function useWeatherOverlay(
   date: string | null,
   hour: number,
   enabled: boolean,
-  hasCoordinates = true,
-): OverlayState {
-  const requestFingerprint = useMemo(() => `${tripId}|${date ?? ""}|${hour}|${enabled}|${hasCoordinates}`, [date, enabled, hasCoordinates, hour, tripId]);
-  const [state, setState] = useState<OverlayState>({ status: "idle", result: null });
+  hasCoordinates: boolean,
+  geographyKey: string,
+): Omit<OverlayState, "requestFingerprint"> {
+  const requestFingerprint = useMemo(() => `${tripId}|${date ?? ""}|${hour}|${enabled}|${hasCoordinates}|${geographyKey}`, [date, enabled, geographyKey, hasCoordinates, hour, tripId]);
+  const [state, setState] = useState<OverlayState>({ status: "idle", result: null, requestFingerprint: "" });
 
   useEffect(() => {
     if (!enabled || !date || !hasCoordinates) return;
@@ -26,7 +28,7 @@ export function useWeatherOverlay(
     const controller = new AbortController();
     let active = true;
     const timer = window.setTimeout(async () => {
-      setState((current) => ({ status: "loading", result: current.result?.date === date ? current.result : null }));
+      setState({ status: "loading", result: null, requestFingerprint });
       try {
         const response = await fetch("/api/weather/overlay", {
           method: "POST",
@@ -41,16 +43,16 @@ export function useWeatherOverlay(
         };
         if (!response.ok || !body.data) {
           if (body.error?.code === "NO_VALID_COORDINATES") {
-            if (active) setState({ status: "missing_coordinates", result: null });
+            if (active) setState({ status: "missing_coordinates", result: null, requestFingerprint });
             return;
           }
           throw new Error("Weather overlay unavailable");
         }
         if (!active) return;
-        setState({ status: "ready", result: body.data });
+        setState({ status: "ready", result: body.data, requestFingerprint });
       } catch {
         if (controller.signal.aborted || !active) return;
-        setState({ status: "error", result: null });
+        setState({ status: "error", result: null, requestFingerprint });
       }
     }, 220);
 
@@ -63,5 +65,7 @@ export function useWeatherOverlay(
 
   if (!enabled || !date) return { status: "idle", result: null };
   if (!hasCoordinates) return { status: "missing_coordinates", result: null };
-  return state;
+  return state.requestFingerprint === requestFingerprint
+    ? state
+    : { status: "loading", result: null };
 }

@@ -11,6 +11,8 @@ import {
 } from "@/lib/weather/open-meteo";
 import { startSharedProviderRequest, subscribeToSharedProviderRequest, type SharedProviderRequest } from "@/lib/weather/shared-provider-request";
 import type { WeatherOverlayResult, WeatherOverlaySample } from "@/lib/weather/types";
+import { hasBoundedForecastRain, hasCompleteForecastGrid } from "@/lib/weather/rain-mask";
+import { TRIP_WEATHER_TIME_ZONE } from "@/lib/weather/overlay-time";
 
 type OverlayInput = {
   coordinates: Array<{ latitude: number; longitude: number }>;
@@ -69,6 +71,7 @@ function emptyResult(input: OverlayInput, fetchedAt: string, availability: Weath
     timezone: "",
     fetchedAt,
     stale: false,
+    spatialCoverageComplete: false,
     bounds: null,
     samples: [],
     contours: { type: "FeatureCollection", features: [] },
@@ -114,7 +117,7 @@ function metricAt(values: Array<number | null>, index: number) {
 function normalizeSamples(input: OverlayInput, payload: z.infer<typeof payloadSchema>) {
   const locations = Array.isArray(payload) ? payload : [payload];
   if (locations.length !== input.coordinates.length) throw new Error("Open-Meteo location count mismatch");
-  const samples: WeatherOverlaySample[] = locations.map((location, locationIndex) => {
+  const requestedSamples: WeatherOverlaySample[] = locations.map((location, locationIndex) => {
     const requested = input.coordinates[locationIndex];
     if (Math.abs(location.latitude - requested.latitude) > 0.25 || Math.abs(location.longitude - requested.longitude) > 0.25) {
       throw new Error("Open-Meteo coordinate mismatch");
@@ -122,8 +125,10 @@ function normalizeSamples(input: OverlayInput, payload: z.infer<typeof payloadSc
     const timeIndex = location.hourly.time.indexOf(`${input.date}T${String(input.hour).padStart(2, "0")}:00`);
     if (timeIndex < 0 || typeof location.hourly.precipitation[timeIndex] !== "number") throw new Error("Open-Meteo hour mismatch");
     return {
-      latitude: rounded(requested.latitude),
-      longitude: rounded(requested.longitude),
+      // Open-Meteo snaps coordinates to its model grid; retain those actual
+      // cell coordinates so the browser does not imply street-level precision.
+      latitude: rounded(location.latitude),
+      longitude: rounded(location.longitude),
       precipitationMm: Math.max(0, location.hourly.precipitation[timeIndex]),
       precipitationProbability: metricAt(location.hourly.precipitation_probability, timeIndex),
       weatherCode: metricAt(location.hourly.weather_code, timeIndex),
@@ -132,7 +137,17 @@ function normalizeSamples(input: OverlayInput, payload: z.infer<typeof payloadSc
       windDirectionDeg: metricAt(location.hourly.wind_direction_10m, timeIndex),
     };
   });
-  return { samples, timezone: locations[0].timezone };
+  if (locations.some((location) => location.timezone !== TRIP_WEATHER_TIME_ZONE)) {
+    throw new Error("Open-Meteo overlay timezone mismatch");
+  }
+  // Multiple nearby requested points can resolve to the same returned model
+  // cell. Keep one forecast value per actual cell so the browser interpolates
+  // the provider's grid rather than treating duplicate cells as distinct data.
+  const modelCells = new Map<string, WeatherOverlaySample>();
+  for (const sample of requestedSamples) {
+    modelCells.set(`${sample.latitude}:${sample.longitude}`, sample);
+  }
+  return { samples: [...modelCells.values()], timezone: locations[0].timezone };
 }
 
 function pruneCache() {
@@ -187,7 +202,8 @@ export async function getOpenMeteoOverlay(
       url.searchParams.set("longitude", input.coordinates.map(({ longitude }) => longitude.toFixed(4)).join(","));
       url.searchParams.set("start_date", input.date);
       url.searchParams.set("end_date", input.date);
-      url.searchParams.set("timezone", "auto");
+      url.searchParams.set("timezone", TRIP_WEATHER_TIME_ZONE);
+      url.searchParams.set("cell_selection", "nearest");
       url.searchParams.set("wind_speed_unit", "kmh");
       url.searchParams.set("precipitation_unit", "mm");
       url.searchParams.set("hourly", [
@@ -204,8 +220,19 @@ export async function getOpenMeteoOverlay(
       const parsed = payloadSchema.safeParse(JSON.parse(await readResponseTextWithLimit(response)));
       if (!parsed.success) throw new Error("Open-Meteo overlay response is malformed");
       const normalized = normalizeSamples(input, parsed.data);
-      const geometry = buildPrecipitationContours(normalized.samples);
-      const conditionContours = buildWeatherConditionContours(normalized.samples);
+      const spatialCoverageComplete = hasCompleteForecastGrid(normalized.samples);
+      const hasBoundedRain = spatialCoverageComplete && hasBoundedForecastRain(normalized.samples);
+      const geometry = hasBoundedRain
+        ? buildPrecipitationContours(normalized.samples)
+        : {
+          bounds: null,
+          contours: { type: "FeatureCollection" as const, features: [] },
+          rainBoundary: { type: "FeatureCollection" as const, features: [] },
+          dominantCenter: null,
+        };
+      const conditionContours = spatialCoverageComplete
+        ? buildWeatherConditionContours(normalized.samples)
+        : { type: "FeatureCollection" as const, features: [] };
       const value: WeatherOverlayResult = {
         availability: "forecast",
         provider: OPEN_METEO_PROVIDER,
@@ -214,6 +241,7 @@ export async function getOpenMeteoOverlay(
         timezone: normalized.timezone,
         fetchedAt,
         stale: false,
+        spatialCoverageComplete,
         samples: normalized.samples,
         ...geometry,
         conditionContours,

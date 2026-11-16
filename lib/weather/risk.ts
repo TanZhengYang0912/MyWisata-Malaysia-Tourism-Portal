@@ -106,3 +106,38 @@ export function evaluateForecastRisk(forecast: NormalizedForecast): ForecastRisk
 
   return { level, reasons, ruleVersion: "2026-09-v1", window: deriveForecastRiskWindow(forecast.hours) };
 }
+
+export function evaluateForecastRiskAtHour(forecast: NormalizedForecast, hour: number): ForecastRisk {
+  if (forecast.availability !== "forecast" || !Number.isInteger(hour) || hour < 0 || hour > 23) {
+    return { level: "unknown", reasons: [], ruleVersion: "2026-09-v1", window: null };
+  }
+
+  const evidence = forecast.hours.find((entry) => entry.hour === hour);
+  if (!evidence) return { level: "unknown", reasons: [], ruleVersion: "2026-09-v1", window: null };
+
+  const reasons: ForecastRisk["reasons"] = [];
+  let level: ForecastRisk["level"] = "none";
+  const weatherCode = evidence.weatherCode;
+  const rainfall = evidence.precipitationMm;
+  const probability = evidence.precipitationProbability;
+
+  if (weatherCode !== null && THUNDERSTORM_CODES.has(weatherCode)) {
+    reasons.push("thunderstorm");
+    level = "high";
+  }
+
+  if (weatherCode !== null && HIGH_RAIN_CODES.has(weatherCode)) {
+    reasons.push("heavy_rain");
+    level = "high";
+  } else if (weatherCode !== null && !THUNDERSTORM_CODES.has(weatherCode)
+    && rainfall !== null && rainfall >= 0.1 && probability !== null && probability >= 40) {
+    reasons.push("rain");
+    level = "caution";
+  }
+
+  if (reasons.length === 0 && weatherCode === null && (rainfall === null || probability === null)) {
+    level = "unknown";
+  }
+
+  return { level, reasons, ruleVersion: "2026-09-v1", window: null };
+}

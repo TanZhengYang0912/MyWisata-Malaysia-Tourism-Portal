@@ -18,7 +18,16 @@ export const weatherTargetSchema = z.object({
   label: z.string().trim().min(1).max(240),
   kind: z.enum(["day", "item"]),
   itemId: safeIdentifier,
-}).strict();
+  scheduledTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/).nullable().optional(),
+}).strict().superRefine((target, context) => {
+  if (target.kind === "item" && !target.scheduledTime) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Item weather targets require a scheduled arrival time",
+      path: ["scheduledTime"],
+    });
+  }
+});
 
 export const weatherBatchRequestSchema = z.object({
   tripId: safeIdentifier,

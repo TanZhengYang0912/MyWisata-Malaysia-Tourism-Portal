@@ -8,7 +8,7 @@ import {
   type TripPlaceSort,
 } from "../trip-place-discovery";
 
-function activity(id: string, overrides: Partial<ComputedActivity> = {}): ComputedActivity {
+function activity(id: string, overrides: Partial<ComputedActivity> & { tripDiscoveryAvailable?: boolean } = {}): ComputedActivity & { tripDiscoveryAvailable?: boolean } {
   return {
     id,
     outletId: `${id}-outlet`,
@@ -96,6 +96,22 @@ describe("trip place discovery", () => {
     });
 
     expect(results.map((item) => item.id)).toEqual(["matching"]);
+  });
+
+  it("excludes confirmed unavailable candidates before sponsored ranking", () => {
+    const results = filterAndRankTripPlaces({
+      activities: [
+        activity("sold-out", { tripDiscoveryAvailable: false }),
+        activity("public-place", { tripDiscoveryAvailable: true }),
+      ],
+      filters: DEFAULT_TRIP_PLACE_FILTERS,
+      hasOrigin: false,
+      placements: [placement("sold-out")],
+      suggestedAtByVendor: {},
+      now: "2026-09-15T12:00:00.000Z",
+    });
+
+    expect(results.map((item) => item.id)).toEqual(["public-place"]);
   });
 
   it("supports organic popularity and suggestion ordering with unsuggested vendors last", () => {

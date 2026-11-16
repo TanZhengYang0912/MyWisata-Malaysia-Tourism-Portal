@@ -5,11 +5,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/backend/supabase";
 import { postgrestSearchTerm } from "@/lib/validation/postgrest-filter";
 import { haversineKm } from "@/backend/core/helpers";
-import type { Activity, BookingSlot, ComputedActivity, OperatingHourWeekday, OperatingHours, Outlet, PlaceLocation, PriceRule, ProductReview, VendorSummary, Voucher } from "@/backend/core/types";
+import type { Activity, BookingSlot, ComputedActivity, OperatingHourWeekday, OperatingHours, Outlet, PlaceLocation, PriceRule, ProductReview, TripDiscoveryActivity, VendorSummary, Voucher } from "@/backend/core/types";
 import type { ReviewMetric } from "@/backend/domains/review-metrics";
 import { toProductReview } from "@/backend/domains/review-presenter";
 import { filterActivitiesByVendor } from "@/backend/domains/catalogue-filters";
-import { CATEGORY_DETAILS } from "@/lib/customer/category-details";
+import { CATEGORY_DETAILS, getActivityCommerceMode } from "@/lib/customer/category-details";
 import {
   canonicalCategorySlug,
   DISCOVERY_CATEGORIES,
@@ -471,6 +471,15 @@ type ProductRow = {
   categories: { name: string; slug: string } | null;
   product_variants?: { id: string; name: string; price_offset: number; is_default?: boolean; is_active?: boolean; inventory?: { outlet_id: string; quantity: number; reserved: number; low_stock_threshold: number }[] }[];
   price_rules?: { id: string; rule_type: PriceRule["ruleType"]; label: string | null; multiplier: number | null; fixed_amount: number | null; valid_from: string | null; valid_until: string | null; min_quantity: number | null; bundle_product_ids: string[] | null; priority: number; is_active: boolean }[];
+};
+
+type TripPurchaseRow = {
+  id: string;
+  requires_booking: boolean;
+  product_variants?: Array<{
+    is_active?: boolean | null;
+    inventory?: Array<{ outlet_id: string; quantity?: number | string | null; reserved?: number | string | null }> | null;
+  }> | null;
 };
 
 const ACTIVITY_SELECT = "id,vendor_id,outlet_id,name,description,cover_url,base_price,requires_booking,status,review_status,tags,created_at,attributes,is_hidden_gem,type_slugs,is_family_friendly,is_couple_friendly,place_state,place_district,place_lat,place_lng,categories(name,slug),outlet_offers(outlet_id,price,status),product_variants(id,name,price_offset,is_default,is_active,inventory(outlet_id,quantity,reserved,low_stock_threshold)),price_rules(id,rule_type,label,multiplier,fixed_amount,valid_from,valid_until,min_quantity,bundle_product_ids,priority,is_active)";
@@ -1373,7 +1382,7 @@ export async function searchTripActivities(
   productIds: string[],
   db: SupabaseClient = supabase,
   discoveryData?: DiscoveryActivityData,
-): Promise<ComputedActivity[]> {
+): Promise<TripDiscoveryActivity[]> {
   const [activities, products] = await Promise.all([
     discoveryData
       ? Promise.resolve(filterComputedActivities(filters, computeDiscoveryActivities(discoveryData, filters.near)))
@@ -1381,13 +1390,33 @@ export async function searchTripActivities(
     getActivitiesByIds(productIds, db),
   ]);
   const productsById = new Map(products.map((product) => [product.id, product]));
-  return activities.map((activity) => {
+  const vendorIds = [...new Set(activities
+    .filter((activity) => getActivityCommerceMode(activity) === "vendor")
+    .map((activity) => activity.id))].sort();
+  const { data: purchaseRows, error: purchaseError } = vendorIds.length > 0
+    ? await readInBatches<TripPurchaseRow>(vendorIds, (batch) => db
+      .from("products")
+      .select("id,requires_booking,product_variants(id,is_active,inventory(outlet_id,quantity,reserved))")
+      .in("id", batch)
+      .eq("status", "active")
+      .eq("review_status", "approved"))
+    : { data: [], error: null };
+  if (purchaseError) throw purchaseError;
+  const purchaseById = new Map(purchaseRows.map((row) => [row.id, row]));
+
+  return activities.map((activity): TripDiscoveryActivity => {
     const product = productsById.get(activity.id);
-    if (!product) return activity;
+    const commerceMode = getActivityCommerceMode(activity);
+    const purchaseRow = purchaseById.get(activity.id);
+    const tripDiscoveryAvailable = commerceMode === "public"
+      || Boolean(purchaseRow && (purchaseRow.requires_booking
+        || getOutletStock(purchaseRow.product_variants ?? [], [activity.outlet.id]).availableStock > 0));
+    if (!product) return { ...activity, tripDiscoveryAvailable };
     // Preserve the discovery outlet, price, distance and review metrics. Raw
     // inventory and checkout pricing rules do not belong in the Trip payload.
     return {
       ...activity,
+      tripDiscoveryAvailable,
       variants: product.variants,
       availableStock: product.stockByOutlet?.[activity.outlet.id] ?? product.availableStock,
       stockByOutlet: product.stockByOutlet,
