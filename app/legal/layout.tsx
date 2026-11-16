@@ -13,7 +13,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <Link href="/customer/explore" className="flex items-center gap-2">
+          <Link href="/customer/explore" className="flex shrink-0 items-center gap-2">
             <MyLawatanLogo
               markSize={32}
               wordmarkClassName="font-[family-name:var(--font-plus-jakarta-sans)] text-lg font-bold tracking-tight text-foreground"
