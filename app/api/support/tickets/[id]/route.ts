@@ -6,6 +6,7 @@
 // need for a separate admin-only version of this read).
 
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { apiOk, apiFail } from '@/lib/validation/schemas';
 import { isSuperAdmin } from '@/lib/affiliate/admin-guard';
 
@@ -19,7 +20,10 @@ export async function GET(_request: Request, { params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  const { data: ticket, error: ticketErr } = await supabase
+  // Signed-in users may only SELECT a few support_tickets columns (column
+  // grants), so body/session_id/assigned_to/resolved_at need the service client.
+  // Ownership or admin is enforced right below, before anything is returned.
+  const { data: ticket, error: ticketErr } = await createServiceClient()
     .from('support_tickets')
     .select('id, user_id, session_id, withdrawal_id, subject, body, category, status, assigned_to, created_at, resolved_at, last_reply_at')
     .eq('id', id)
