@@ -36,11 +36,15 @@ describe('GET /api/support/tickets/[id]', () => {
     expect(res.status).toBe(200);
     expect(mocks.serviceFrom).toHaveBeenCalledWith('support_tickets');
     expect(mocks.sessionFrom).not.toHaveBeenCalledWith('support_tickets');
+    // Reply text is not readable by signed-in users either; it is read after the ownership check.
+    expect(mocks.serviceFrom).toHaveBeenCalledWith('support_ticket_replies');
+    expect(mocks.sessionFrom).not.toHaveBeenCalledWith('support_ticket_replies');
     expect((await res.json()).data.body).toBe('B');
   });
 
   it("refuses another customer's ticket", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'someone-else' } } });
     expect((await call()).status).toBe(403);
+    expect(mocks.serviceFrom).not.toHaveBeenCalledWith('support_ticket_replies');
   });
 });

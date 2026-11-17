@@ -20,10 +20,12 @@ export async function GET(_request: Request, { params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return apiFail('UNAUTHORIZED', 'Sign in required', 401);
 
-  // Signed-in users may only SELECT a few support_tickets columns (column
-  // grants), so body/session_id/assigned_to/resolved_at need the service client.
-  // Ownership or admin is enforced right below, before anything is returned.
-  const { data: ticket, error: ticketErr } = await createServiceClient()
+  // Signed-in users may only SELECT a few support_tickets columns, no reply text
+  // and no chatbot messages (live column grants), so every read here uses the
+  // service client. Ownership or admin is enforced right below, before anything
+  // else is read or returned.
+  const service = createServiceClient();
+  const { data: ticket, error: ticketErr } = await service
     .from('support_tickets')
     .select('id, user_id, session_id, withdrawal_id, subject, body, category, status, assigned_to, created_at, resolved_at, last_reply_at')
     .eq('id', id)
@@ -37,11 +39,8 @@ export async function GET(_request: Request, { params }: Props) {
 
   let transcript: { id: string; role: string; body: string; created_at: string; kbRefs: { title: string; score: number | null }[] }[] = [];
   if (ticket.session_id) {
-    // chatbot_sessions_own now ORs in is_admin() (migration 014's Feature A
-    // RLS fix), and chatbot_messages_own's EXISTS subquery reads through
-    // that — so this works for both the owner and an admin without needing
-    // the service-role client.
-    const { data: messages } = await supabase
+    // Scoped to this ticket's own session, after the owner/admin check above.
+    const { data: messages } = await service
       .from('chatbot_messages')
       .select('id, role, body, created_at')
       .eq('session_id', ticket.session_id)
@@ -54,7 +53,7 @@ export async function GET(_request: Request, { params }: Props) {
     const messageIds = (messages ?? []).map((m) => m.id);
     const refsByMessage = new Map<string, { title: string; score: number | null }[]>();
     if (messageIds.length > 0) {
-      const { data: refs } = await supabase
+      const { data: refs } = await service
         .from('chatbot_message_kb_refs')
         .select('message_id, score, chatbot_kb_documents(title)')
         .in('message_id', messageIds);
@@ -69,7 +68,7 @@ export async function GET(_request: Request, { params }: Props) {
     transcript = (messages ?? []).map((m) => ({ ...m, kbRefs: refsByMessage.get(m.id) ?? [] }));
   }
 
-  const { data: replies } = await supabase
+  const { data: replies } = await service
     .from('support_ticket_replies')
     .select('id, sender_id, sender_role, body, attachment_url, created_at')
     .eq('ticket_id', id)
