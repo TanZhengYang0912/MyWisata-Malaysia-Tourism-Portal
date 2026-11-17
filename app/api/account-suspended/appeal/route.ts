@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { cleanUserContent } from "@/lib/moderation/clean";
@@ -18,24 +19,34 @@ export async function POST(request: Request) {
   if (!parsed.ok) return parsed.response;
   // Appeals can contain identity/bank information. Keep the entire free-text
   // path local; pattern redaction alone cannot make arbitrary text public.
+  const service = createServiceClient();
   let body: string;
-  try { body = (await cleanUserContent(parsed.data.body, createServiceClient())).display; }
+  try { body = (await cleanUserContent(parsed.data.body, service)).display.trim(); }
   catch { return apiFail("CONTENT_PROCESSING_UNAVAILABLE", "Unable to prepare your appeal; please try again", 503); }
+  if (body.length < 10) return apiFail("APPEAL_TOO_SHORT", "Please add more details after sensitive numbers are hidden.", 422);
+  if (body.length > 2000) return apiFail("APPEAL_TOO_LONG", "Please shorten your appeal after sensitive information is hidden.", 422);
   const category = classifyTicket(`Account suspension appeal ${body}`);
-  const { data, error } = await supabase
-    .from("support_tickets")
-    .insert({
-      user_id: user.id,
-      session_id: null,
-      subject: "Account suspension appeal",
-      body,
-      category,
-      classification_method: "keyword",
-      status: "open",
-    })
-    .select("id")
-    .single();
 
-  if (error) return apiFail("DB_ERROR", error.message, 500);
-  return apiOk({ id: data.id, category }, { status: 201 });
+  // Signed-in users can no longer insert support tickets directly; the live
+  // service-only function checks the account is suspended and writes the ticket.
+  // ponytail: a fresh operation id per request (the form sends none), so a retried
+  // submit can still make a second appeal, same as before; send one from the form
+  // to make retries idempotent.
+  const { data, error } = await service.rpc("create_account_suspension_appeal", {
+    p_user_id: user.id,
+    p_operation_id: randomUUID(),
+    p_payload_hash: createHash("sha256").update(JSON.stringify({ userId: user.id, body }), "utf8").digest("hex"),
+    p_body: body,
+    p_category: category,
+  });
+  if (error) {
+    if (error.message.includes("account_not_suspended")) {
+      return apiFail("ACCOUNT_NOT_SUSPENDED", "This account is not currently suspended. Refresh your account status before submitting an appeal.", 409);
+    }
+    if (error.message.includes("account_appeal_user_not_found")) return apiFail("NOT_FOUND", "This account could not be verified.", 404);
+    return apiFail("WRITE_UNAVAILABLE", "We could not confirm the appeal submission. Check its status before trying again.", 503);
+  }
+  const id = (data as { id?: unknown } | null)?.id;
+  if (typeof id !== "string") return apiFail("WRITE_UNAVAILABLE", "We could not confirm the appeal submission. Check its status before trying again.", 503);
+  return apiOk({ id, category }, { status: 201 });
 }

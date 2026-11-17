@@ -102,7 +102,10 @@ export async function POST(request: Request) {
   // categories all fall through to the keyword version automatically.
   const { category, method } = await classifyTicketSmart(cleanedSubject.display, cleanedBody.display);
 
-  const { data, error } = await supabase
+  // Signed-in and guest users can no longer insert support tickets directly
+  // (live column/write lockdown). The owner comes from the session above, never
+  // from the request body, so writing through the service client is safe.
+  const { data, error } = await moderationService
     .from('support_tickets')
     .insert({
       user_id: user?.id ?? null,
