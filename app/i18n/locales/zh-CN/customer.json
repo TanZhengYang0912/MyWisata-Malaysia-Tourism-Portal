@@ -2992,12 +2992,38 @@
         "unlocatedCount_other": "有 {{count}} 个活动无法对应到具体州。",
         "emptyStateTitle": "{{state}}暂时没有即将开始的活动",
         "emptyMalaysiaTitle": "目前没有即将开始的活动",
-        "emptyDescription": "请选择其他州，或查看全马活动。"
+        "emptyDescription": "请选择其他州，或查看全马活动。",
+        "peninsularLabel": "马来西亚半岛",
+        "eastLabel": "东马来西亚",
+        "seaLabel": "南中国海",
+        "northLabel": "北",
+        "regions": {
+          "north": {
+            "name": "北部",
+            "title": "北部地区"
+          },
+          "central": {
+            "name": "中部",
+            "title": "中部地区"
+          },
+          "south": {
+            "name": "南部",
+            "title": "南部地区"
+          },
+          "east-coast": {
+            "name": "东海岸",
+            "title": "东海岸"
+          },
+          "east-malaysia": {
+            "name": "东马",
+            "title": "东马"
+          }
+        }
       },
       "views": {
         "label": "选择活动查看方式",
         "list": "列表",
-        "map": "地图与活动",
+        "map": "地图",
         "unpinned_one": "{{count}} 个地点尚未设置地图标记，请在列表视图中查看地址。",
         "unpinned_other": "{{count}} 个地点尚未设置地图标记，请在列表视图中查看地址。"
       },

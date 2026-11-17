@@ -2987,12 +2987,38 @@
         "unlocatedCount_other": "{{count}} events could not be matched to a state.",
         "emptyStateTitle": "No upcoming events in {{state}}",
         "emptyMalaysiaTitle": "No upcoming events to show",
-        "emptyDescription": "Choose another state or view all Malaysia."
+        "emptyDescription": "Choose another state or view all Malaysia.",
+        "peninsularLabel": "PENINSULAR MALAYSIA",
+        "eastLabel": "EAST MALAYSIA",
+        "seaLabel": "South China Sea",
+        "northLabel": "N",
+        "regions": {
+          "north": {
+            "name": "Northern",
+            "title": "Northern region"
+          },
+          "central": {
+            "name": "Central",
+            "title": "Central region"
+          },
+          "south": {
+            "name": "Southern",
+            "title": "Southern region"
+          },
+          "east-coast": {
+            "name": "East Coast",
+            "title": "East Coast"
+          },
+          "east-malaysia": {
+            "name": "East Malaysia",
+            "title": "East Malaysia"
+          }
+        }
       },
       "views": {
         "label": "Choose how to view events",
         "list": "List",
-        "map": "Map & events",
+        "map": "Map",
         "unpinned_one": "{{count}} location has no map pin yet. See the List view for its address.",
         "unpinned_other": "{{count}} locations have no map pin yet. See the List view for their addresses."
       },

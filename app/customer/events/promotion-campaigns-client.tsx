@@ -2,15 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Megaphone, RefreshCw } from "lucide-react";
+import { CalendarDays, LayoutList, Map as MapIcon, Megaphone, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { CustomerPageHeader, CustomerPageShell, CustomerSectionHeader } from "@/components/customer/customer-page-shell";
 import { EventCard } from "@/components/customer/event-card";
 import { Pagination } from "@/components/shared/pagination";
 import { EventsDateFilter, headingFor } from "./events-date-header";
+import { EventsMap } from "./events-map";
 import { getMalaysiaDateInputValue } from "@/lib/datetime/date-input";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
+import { EVENT_MAP_REGION_IDS, eventMapRegionIds, eventMapStateIds, type EventMapRegionId } from "@/lib/promotion-campaigns/event-state-counts";
 import { campaignRunsOn, getEventSessionOn } from "@/lib/promotion-campaigns/locations";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 
@@ -31,6 +33,8 @@ export function PromotionCampaignsClient({ initialCampaigns, initialError, initi
   // A shared ?date= link opens on that day; a past day falls back to all events.
   const [date, setDate] = useState<string | null>(() => (initialDate && initialDate >= today ? initialDate : null));
   const [page, setPage] = useState(1);
+  const [view, setView] = useState<"list" | "map">("list");
+  const [region, setRegion] = useState<EventMapRegionId | null>(null);
   // The clock is read after mount so server and client markup agree; until then cards show no Open now.
   const [now, setNow] = useState<Date | null>(null);
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -77,9 +81,26 @@ export function PromotionCampaignsClient({ initialCampaigns, initialError, initi
       ))
       .map(({ campaign }) => campaign)
     : upcomingCampaigns;
-  const totalPages = Math.max(1, Math.ceil(listed.length / PAGE_SIZE));
+  // Map view: each listed event's regions from its active stops (that day's stops when a day is picked).
+  const regionMap = useMemo(() => {
+    const regionIds = new Map<string, Set<EventMapRegionId>>();
+    const eventStates = new Set<string>();
+    const regionCounts = Object.fromEntries(EVENT_MAP_REGION_IDS.map((id) => [id, 0])) as Record<EventMapRegionId, number>;
+    if (view !== "map") return { regionIds, eventStates, regionCounts };
+    for (const campaign of listed) {
+      const states = eventMapStateIds(campaign, today, date);
+      const regions = eventMapRegionIds(states);
+      regionIds.set(campaign.id, regions);
+      states.forEach((state) => eventStates.add(state));
+      regions.forEach((id) => { regionCounts[id] += 1; });
+    }
+    return { regionIds, eventStates, regionCounts };
+  }, [view, listed, today, date]);
+  const shown = view === "map" && region ? listed.filter((campaign) => regionMap.regionIds.get(campaign.id)?.has(region)) : listed;
+  const regionTitle = region ? t(`ui.promotionCampaigns.map.regions.${region}.title`) : null;
+  const totalPages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const visible = listed.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const visible = shown.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
   const browsing = !loading && !error && upcomingCampaigns.length > 0;
 
   const selectDate = (value: string | null) => {
@@ -92,13 +113,44 @@ export function PromotionCampaignsClient({ initialCampaigns, initialError, initi
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   };
 
+  const selectRegion = (value: EventMapRegionId | null) => {
+    setRegion(value);
+    setPage(1);
+  };
+
+  const selectView = (value: "list" | "map") => {
+    setView(value);
+    if (value === "list") selectRegion(null);
+  };
+
   return (
     <CustomerPageShell wide>
       <CustomerPageHeader
         eyebrow={t("ui.promotionCampaigns.eyebrow")}
         title={t("ui.promotionCampaigns.pageTitle")}
         icon={<Megaphone size={15} />}
-        actions={browsing ? <EventsDateFilter date={date} today={today} countOn={countOn} onSelect={selectDate} /> : undefined}
+        actions={browsing ? (
+          <div className="ml-auto flex items-center gap-2 lg:ml-0">
+            {/* Same pill switch as Explore's Destinations / Experiences. */}
+            <div role="group" aria-label={t("ui.promotionCampaigns.views.label")} className="inline-flex shrink-0 rounded-full border border-border bg-card p-1">
+              {(["list", "map"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={view === value}
+                  onClick={() => selectView(value)}
+                  className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${
+                    view === value ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {value === "list" ? <LayoutList size={16} aria-hidden="true" /> : <MapIcon size={16} aria-hidden="true" />}
+                  {t(`ui.promotionCampaigns.views.${value}`)}
+                </button>
+              ))}
+            </div>
+            <EventsDateFilter date={date} today={today} countOn={countOn} onSelect={selectDate} />
+          </div>
+        ) : undefined}
       />
       {error && (
         <div role="alert" className="mb-6 rounded-2xl border border-destructive/25 bg-destructive/5 p-5">
@@ -122,25 +174,28 @@ export function PromotionCampaignsClient({ initialCampaigns, initialError, initi
           </Button>
         </div>
       ) : error ? null : (
+        <>
+        {view === "map" && <EventsMap regionCounts={regionMap.regionCounts} eventStates={regionMap.eventStates} selected={region} onSelect={selectRegion} />}
         <section aria-labelledby="events-list-heading">
           <CustomerSectionHeader
             id="events-list-heading"
-            title={date ? headingFor(date, locale) : t("ui.promotionCampaigns.allEvents")}
-            action={<p role="status" className="text-[13px] text-muted-foreground">{t("ui.promotionCampaigns.map.eventCount", { count: listed.length })}</p>}
+            title={regionTitle ?? (date ? headingFor(date, locale) : t("ui.promotionCampaigns.allEvents"))}
+            action={<p role="status" className="text-[13px] text-muted-foreground">{t("ui.promotionCampaigns.map.eventCount", { count: shown.length })}</p>}
           />
-          {listed.length > 0 ? (
+          {shown.length > 0 ? (
             <>
               <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
                 {visible.map((campaign) => <EventCard key={campaign.id} campaign={campaign} day={date} now={now} />)}
               </div>
-              {totalPages > 1 && <Pagination ariaLabel={t("ui.promotionCampaigns.pageTitle")} currentPage={safePage} onPageChange={setPage} pageSize={PAGE_SIZE} totalItems={listed.length} totalPages={totalPages} />}
+              {totalPages > 1 && <Pagination ariaLabel={t("ui.promotionCampaigns.pageTitle")} currentPage={safePage} onPageChange={setPage} pageSize={PAGE_SIZE} totalItems={shown.length} totalPages={totalPages} />}
             </>
           ) : (
             <div className="rounded-2xl border border-dashed border-border p-10 text-center">
-              <p className="text-sm text-muted-foreground">{t("ui.promotionCampaigns.dateEmpty")}</p>
+              <p className="text-sm text-muted-foreground">{regionTitle ? t("ui.promotionCampaigns.map.emptyStateTitle", { state: regionTitle }) : t("ui.promotionCampaigns.dateEmpty")}</p>
             </div>
           )}
         </section>
+        </>
       )}
     </CustomerPageShell>
   );

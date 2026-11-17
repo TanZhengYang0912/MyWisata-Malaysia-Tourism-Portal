@@ -2992,12 +2992,38 @@
         "unlocatedCount_other": "{{count}} acara tidak dapat dipadankan dengan negeri atau wilayah persekutuan.",
         "emptyStateTitle": "Belum ada acara akan datang di {{state}}",
         "emptyMalaysiaTitle": "Tiada acara akan datang untuk dipaparkan",
-        "emptyDescription": "Pilih negeri lain atau lihat seluruh Malaysia."
+        "emptyDescription": "Pilih negeri lain atau lihat seluruh Malaysia.",
+        "peninsularLabel": "SEMENANJUNG MALAYSIA",
+        "eastLabel": "MALAYSIA TIMUR",
+        "seaLabel": "Laut China Selatan",
+        "northLabel": "U",
+        "regions": {
+          "north": {
+            "name": "Utara",
+            "title": "Wilayah Utara"
+          },
+          "central": {
+            "name": "Tengah",
+            "title": "Wilayah Tengah"
+          },
+          "south": {
+            "name": "Selatan",
+            "title": "Wilayah Selatan"
+          },
+          "east-coast": {
+            "name": "Pantai Timur",
+            "title": "Pantai Timur"
+          },
+          "east-malaysia": {
+            "name": "Malaysia Timur",
+            "title": "Malaysia Timur"
+          }
+        }
       },
       "views": {
         "label": "Pilih cara melihat acara",
         "list": "Senarai",
-        "map": "Peta & acara",
+        "map": "Peta",
         "unpinned_one": "{{count}} lokasi belum ada pin peta. Lihat paparan Senarai untuk alamatnya.",
         "unpinned_other": "{{count}} lokasi belum ada pin peta. Lihat paparan Senarai untuk alamatnya."
       },
