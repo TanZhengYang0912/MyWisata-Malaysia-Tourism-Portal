@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import {randomUUID} from "node:crypto";
+import sharp from "sharp";
 import {installTripFixtureCleanup,createTestCustomer,signInTestCustomer,rest} from "./helpers/trip-fixture";
 
 test.setTimeout(120_000);
@@ -72,6 +73,8 @@ test("journey canvas assigns a real activity to a day and anchors route weather 
   }));
   let forecastOverlayRequests = 0;
   let radarMetadataRequests = 0;
+  const radarEchoTile = await sharp({ create: { width: 256, height: 256, channels: 4, background: { r: 206, g: 192, b: 135, alpha: 1 } } }).png().toBuffer();
+  const radarCoverageTile = await sharp({ create: { width: 256, height: 256, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).png().toBuffer();
   await page.route("**/api/weather/overlay", async (route) => {
     forecastOverlayRequests += 1;
     await route.fulfill({
@@ -107,16 +110,23 @@ test("journey canvas assigns a real activity to a day and anchors route weather 
   });
   await page.route("**/api/weather/radar?*", async (route) => {
     radarMetadataRequests += 1;
+    const latestFrameTime = new Date().toISOString();
+    const earlierFrameTime = new Date(Date.now() - 10 * 60 * 1000).toISOString();
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ data: {
         availability: "radar",
         provider: "rainviewer",
-        observedAt: new Date().toISOString(),
+        frameTime: latestFrameTime,
         fetchedAt: new Date().toISOString(),
         stale: false,
-        tileUrlTemplate: "https://tilecache.rainviewer.com/v2/radar/ae786c325270/256/{z}/{x}/{y}/2/1_0.png",
+        frames: [earlierFrameTime, latestFrameTime].map((frameTime) => ({
+          frameTime,
+          tileUrlTemplate: "https://tilecache.rainviewer.com/v2/radar/ae786c325270/256/{z}/{x}/{y}/2/1_0.png",
+          intensityTileUrlTemplate: "https://tilecache.rainviewer.com/v2/radar/ae786c325270/256/{z}/{x}/{y}/2/1_0.png",
+          coverageTileUrlTemplate: "https://tilecache.rainviewer.com/v2/coverage/0/256/{z}/{x}/{y}/0/0_0.png",
+        })),
         maxZoom: 7,
         attributionLabel: "RainViewer",
         attributionUrl: "https://www.rainviewer.com/",
@@ -126,7 +136,7 @@ test("journey canvas assigns a real activity to a day and anchors route weather 
   await page.route("https://tilecache.rainviewer.com/**", async (route) => route.fulfill({
     status: 200,
     contentType: "image/png",
-    body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+Xw3gAAAAAElFTkSuQmCC", "base64"),
+    body: route.request().url().includes("/coverage/") ? radarCoverageTile : radarEchoTile,
   }));
   await page.route("**/api/route", async (route) => {
     const request = route.request().postDataJSON() as { mode?: string; points?: Array<[number, number]> };
@@ -182,9 +192,10 @@ test("journey canvas assigns a real activity to a day and anchors route weather 
   }).toBeGreaterThan(300);
   await expect(page.locator("[data-weather-overlay-ready]")).toHaveAttribute("data-weather-overlay-ready", "true");
   await page.locator('button[aria-expanded="false"]').filter({hasText:"路线天气"}).click();
-  await expect(page.getByText("实时降雨雷达", { exact: true })).toBeVisible();
-  await expect(page.getByText("雷达数据由 RainViewer 提供", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "天气预报", exact: true })).toBeVisible();
+  await expect(page.getByText("天气数据由 Open-Meteo 提供", { exact: true })).toBeVisible();
   expect(forecastOverlayRequests).toBe(0);
+  expect(radarMetadataRequests).toBe(0);
 
   await page.getByRole("button", { name: "天气预报", exact: true }).click();
   await expect(page.getByText("预报时间", { exact: true })).toBeVisible();
@@ -208,12 +219,27 @@ test("journey canvas assigns a real activity to a day and anchors route weather 
   await expect(page.getByText("拥堵", { exact: true })).toBeVisible();
   await expect(page.getByText("无路况数据", { exact: true })).toBeVisible();
   await expect(page.getByText(/虚线内有雨|虚线外无雨/)).toHaveCount(0);
-  expect(radarMetadataRequests).toBe(1);
+  expect(radarMetadataRequests).toBe(0);
   expect(forecastOverlayRequests).toBe(1);
 
-  await page.getByRole("button", { name: "现在", exact: true }).click();
-  await expect(page.getByText("实时降雨雷达", { exact: true })).toBeVisible();
-  await expect.poll(() => radarMetadataRequests).toBe(2);
+  const weatherCard = page.locator("[data-weather-status-card]");
+  const nearbyRadar = weatherCard.getByRole("button", { name: "查看附近雷达", exact: true });
+  await expect(nearbyRadar).toBeVisible();
+  await nearbyRadar.click();
+  const returnToTrip = weatherCard.getByRole("button", { name: "返回行程地图", exact: true });
+  await expect(returnToTrip).toBeVisible();
+  await expect(weatherCard.getByText(/缩小地图以查看雷达/)).toHaveCount(0);
+  await expect.poll(() => radarMetadataRequests).toBe(1);
+  await expect(weatherCard.locator("[data-radar-echo-legend]")).toBeVisible();
+  const radarTimeline = weatherCard.getByRole("slider", { name: /历史雷达/ });
+  await expect(radarTimeline).toHaveValue("1");
+  await radarTimeline.focus();
+  await radarTimeline.press("Home");
+  await expect(radarTimeline).toHaveValue("0");
+  expect(radarMetadataRequests).toBe(1);
+  await returnToTrip.click();
+  await expect(nearbyRadar).toBeVisible();
+  await expect(weatherCard.getByRole("slider", { name: "预报时间" })).toBeVisible();
 
   const mapRegion = page.locator('[aria-label="互动地图"]');
   const plannerGrid = page.locator('[style*="--planner-ai-width"]');

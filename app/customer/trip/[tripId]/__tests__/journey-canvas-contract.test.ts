@@ -31,7 +31,8 @@ describe("journey canvas integration contract", () => {
   it("uses live radar only for today and forecast for future times", () => {
     expect(source).toContain("canUseLiveRadar");
     expect(source).toContain("useWeatherRadar");
-    expect(source).toContain("useState<WeatherMapMode>(() => canUseLiveRadar");
+    expect(source).toContain('useState<WeatherMapMode>("forecast")');
+    expect(source).toContain('setWeatherMapMode("forecast")');
     expect(source).toContain('weatherMapMode === "now"');
     expect(source).toContain('activeWeatherMapMode === "now"');
     expect(source).toContain('activeWeatherMapMode === "forecast"');

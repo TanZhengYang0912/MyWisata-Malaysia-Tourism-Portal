@@ -2,7 +2,7 @@ import React, {act} from "react";
 import {beforeAll, describe, expect, it, vi} from "vitest";
 import {installTestDom, type TestDocument} from "@/components/shared/__tests__/render-test-dom";
 import type {TripItem} from "@/backend/domains/trips";
-const actions = vi.hoisted(()=>({getTripItemsStateAction:vi.fn(),addTripItemAction:vi.fn(), deleteTripItemAction:vi.fn(), reorderTripItemsAction:vi.fn(), updateTripItemLocationAction:vi.fn(), updateTripItemScheduleAction:vi.fn(), clearTripItemsAction:vi.fn(), replaceTripItemAction:vi.fn(), alert:vi.fn()}));
+const actions = vi.hoisted(()=>({getTripItemsStateAction:vi.fn(),addTripItemAction:vi.fn(),addTripItemsBatchAction:vi.fn(), deleteTripItemAction:vi.fn(), reorderTripItemsAction:vi.fn(), updateTripItemLocationAction:vi.fn(), updateTripItemScheduleAction:vi.fn(), clearTripItemsAction:vi.fn(), replaceTripItemAction:vi.fn(), alert:vi.fn()}));
 vi.mock("../../actions",()=>actions);
 vi.mock("react-i18next",()=>({useTranslation:()=>({t:(key:string)=>key})}));
 vi.mock("@/components/providers/app-dialog",()=>({useAppDialog:()=>({alert:actions.alert,confirm:async()=>true})}));
@@ -46,6 +46,42 @@ describe("canonical trip state",()=>{
     await act(async()=>{await trip.setLocation({label:"Hotel",lat:4,lng:102},"2026-09-16");});
 
     expect(trip.items.map(item=>[item.id,item.sequence])).toEqual([["origin",0],["stop",1]]);
+    await act(async()=>root.unmount());
+  });
+  it("applies a server-ordered batch in one mutation and adopts the returned canonical state",async()=>{
+    let trip!:ReturnType<typeof useTripItems>;
+    const existing={...row,id:"existing",scheduled_date:"2026-09-16",sequence:0};
+    const added={...row,id:"added",experience_id:"product-1",source:"vendor" as const,scheduled_date:"2026-09-16",sequence:1};
+    function Probe(){trip=useTripItems("trip",[existing],"initial-version");return null;}
+    const container=document.createElement("div");const root=createRoot(container as unknown as Element);
+    await act(async()=>root.render(<Probe/>));
+    actions.addTripItemsBatchAction.mockResolvedValueOnce(saved({items:[existing,added],skipped_product_ids:[]}));
+
+    let receipt!:Awaited<ReturnType<typeof trip.addBatch>>;
+    await act(async()=>{receipt=await trip.addBatch({selections:[{productId:"product-1",outletId:"outlet-1"}],date:"2026-09-16",order:["item:existing","product:product-1"]});});
+
+    expect(actions.addTripItemsBatchAction).toHaveBeenCalledWith({trip_id:"trip",selections:[{product_id:"product-1",outlet_id:"outlet-1"}],scheduled_date:"2026-09-16",order:["item:existing","product:product-1"]},"initial-version");
+    expect(trip.items.map(item=>item.id)).toEqual(["existing","added"]);
+    expect(receipt?.skipped_product_ids).toEqual([]);
+    await act(async()=>root.unmount());
+  });
+  it("reconciles an unknown batch receipt by product ID before allowing another write",async()=>{
+    let trip!:ReturnType<typeof useTripItems>;
+    const existing={...row,id:"existing",scheduled_date:"2026-09-16",sequence:0};
+    const added={...row,id:"added",experience_id:"product-1",source:"vendor" as const,scheduled_date:"2026-09-16",sequence:1};
+    function Probe(){trip=useTripItems("trip",[existing],"initial-version");return null;}
+    const container=document.createElement("div");const root=createRoot(container as unknown as Element);
+    await act(async()=>root.render(<Probe/>));
+    actions.addTripItemsBatchAction.mockResolvedValueOnce({ok:false,code:"TRIP_RESULT_UNKNOWN"});
+    actions.getTripItemsStateAction.mockResolvedValueOnce({ok:true,items:[existing,added],version:"verified-version"});
+
+    let receipt!:Awaited<ReturnType<typeof trip.addBatch>>;
+    await act(async()=>{receipt=await trip.addBatch({selections:[{productId:"product-1",outletId:"outlet-1"}],date:"2026-09-16",order:["item:existing","product:product-1"]});});
+
+    expect(actions.getTripItemsStateAction).toHaveBeenCalledWith("trip");
+    expect(receipt?.reconciled).toBe(true);
+    expect(receipt?.resolved_product_ids).toEqual(["product-1"]);
+    expect(trip.items.map(item=>item.experience_id).filter(Boolean)).toEqual(["product-1"]);
     await act(async()=>root.unmount());
   });
   it("serializes quick edits, preserves failed deletes and clears only after success",async()=>{

@@ -98,6 +98,7 @@
     "approved": "Diluluskan",
     "rejected": "Ditolak",
     "completed": "Selesai",
+    "refunded": "Dibayar balik",
     "cancelled": "Dibatalkan",
     "failed": "Gagal"
   },
@@ -323,6 +324,8 @@
     "ticketCreatedSuffix": " telah dicipta. Pasukan kami akan membalas; anda boleh lihat di bawah Tiket Saya.",
     "viewMyTickets": "Lihat tiket saya",
     "ticketError": "Tidak dapat mencipta tiket sekarang. Sila cuba lagi.",
+    "ticketSignInRequired": "Log masuk sebelum membuka tiket sokongan.",
+    "signIn": "Log masuk",
     "somethingWrong": "Maaf, sesuatu tidak kena. Sila cuba lagi.",
     "privacyBlocked": "Mesej penuh anda tidak dihantar kepada AI kerana mungkin mengandungi nombor telefon, e-mel, nombor pengenalan, butiran bank atau alamat peribadi. Buang butiran tersebut dan hantar semula, atau teruskan menggunakan FAQ tempatan tanpa AI.",
     "supportRequest": "Permintaan sokongan",
@@ -365,6 +368,14 @@
         "done": "Bayaran balik diminta. Jejakinya di halaman pesanan.",
         "cancelled": "Dibatalkan",
         "failed": "Gagal"
+      },
+      "order": {
+        "contextPrompt": "Tanya tentang pesanan ini. Status terkini akan disemak.",
+        "title": "Pesanan",
+        "status": "Status",
+        "checked": "Disemak pada {{time}}",
+        "open": "Buka pesanan",
+        "ticketDisclosure": "Tiket akan menyertakan pesanan {{reference}} dan soalan anda."
       }
     }
   },

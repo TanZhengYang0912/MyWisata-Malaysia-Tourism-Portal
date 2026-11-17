@@ -1,16 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), classify: vi.fn(), clean: vi.fn() }));
-function query(result: unknown) {
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), customerFrom: vi.fn(), classify: vi.fn(), clean: vi.fn(), insertedTicket: null as Record<string, unknown> | null }));
+function query(result: unknown, captureInsert = false) {
   const terminal = Promise.resolve(result);
   const builder: Record<string, ReturnType<typeof vi.fn>> = {};
-  for (const method of ['select', 'eq', 'insert']) builder[method] = vi.fn(() => builder);
+  for (const method of ['select', 'eq', 'insert']) builder[method] = vi.fn((...args: unknown[]) => {
+    if (captureInsert && method === 'insert') mocks.insertedTicket = args[0] as Record<string, unknown>;
+    return builder;
+  });
   builder.maybeSingle = vi.fn(() => terminal);
   builder.single = vi.fn(() => terminal);
   builder.then = terminal.then.bind(terminal) as ReturnType<typeof vi.fn>;
   return builder;
 }
-vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, from: vi.fn() })) }));
+vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ auth: { getUser: mocks.getUser }, from: mocks.customerFrom })) }));
 vi.mock('@/lib/supabase/service', () => ({ createServiceClient: () => ({ from: mocks.from }) }));
 vi.mock('@/lib/chatbot/classify-ai', () => ({ classifyTicketSmart: mocks.classify }));
 vi.mock('@/lib/moderation/clean', () => ({ cleanUserContent: mocks.clean }));
@@ -22,6 +25,7 @@ import { POST } from '../route';
 describe('POST /api/support/tickets session ownership', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.insertedTicket = null;
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'attacker' } } });
     mocks.from.mockImplementation((table: string) => table === 'chatbot_sessions'
       ? query({ data: { id: 'session-1', session_key: 'victim-session', user_id: 'victim' }, error: null })
@@ -38,5 +42,58 @@ describe('POST /api/support/tickets session ownership', () => {
     expect(mocks.classify).not.toHaveBeenCalled();
     expect(mocks.clean).not.toHaveBeenCalled();
     expect(mocks.from).toHaveBeenCalledTimes(1);
+  });
+
+  it('stores a server-verified order reference on a customer ticket', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'owner-1' } } });
+    mocks.customerFrom.mockImplementation(() => query({ data: { id: '123e4567-e89b-42d3-a456-426614174000', display_id: 'MW-ORDER-42' }, error: null }));
+    mocks.from.mockImplementation((table: string) => table === 'support_tickets'
+      ? query({ data: { id: '123e4567-e89b-42d3-a456-426614174001' }, error: null }, true)
+      : query({ data: null, error: null }));
+    mocks.classify.mockResolvedValue({ category: 'general', method: 'keyword' });
+    mocks.clean.mockImplementation(async (text: string) => ({ display: text, original: text, hadSlur: false }));
+
+    const response = await POST(new Request('http://localhost/api/support/tickets', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ orderId: '123e4567-e89b-42d3-a456-426614174000', subject: 'Where is my order?', body: 'Please check this order.' }),
+    }));
+
+    expect(response.status).toBe(201);
+    expect(mocks.insertedTicket?.body).toBe('Order reference: MW-ORDER-42\n\nPlease check this order.');
+    expect(mocks.classify).toHaveBeenCalledWith('Where is my order?', 'Please check this order.');
+  });
+
+  it('does not create a ticket for an order owned by another account', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'attacker' } } });
+    mocks.customerFrom.mockImplementation(() => query({ data: null, error: null }));
+
+    const response = await POST(new Request('http://localhost/api/support/tickets', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ orderId: '123e4567-e89b-42d3-a456-426614174000', subject: 'Where is my order?', body: 'Please check this order.' }),
+    }));
+
+    expect(response.status).toBe(404);
+    expect(mocks.classify).not.toHaveBeenCalled();
+  });
+
+  it('returns the existing ticket when the same chat handoff is retried', async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: 'owner-1' } } });
+    mocks.from.mockImplementation((table: string) => table === 'chatbot_sessions'
+      ? query({ data: { id: 'session-1', session_key: 'owner-session', user_id: 'owner-1' }, error: null })
+      : table === 'chatbot_messages'
+        ? query({ data: { id: '123e4567-e89b-42d3-a456-426614174000', role: 'bot' }, error: null })
+        : query({ data: { id: '123e4567-e89b-42d3-a456-426614174001', category: 'general' }, error: null }));
+
+    const response = await POST(new Request('http://localhost/api/support/tickets', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionKey: 'owner-session', messageId: '123e4567-e89b-42d3-a456-426614174000', subject: 'Help', body: 'Need help.' }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data).toMatchObject({ id: '123e4567-e89b-42d3-a456-426614174001', replayed: true });
+    expect(mocks.customerFrom).not.toHaveBeenCalled();
+    expect(mocks.classify).not.toHaveBeenCalled();
+    expect(mocks.insertedTicket).toBeNull();
   });
 });

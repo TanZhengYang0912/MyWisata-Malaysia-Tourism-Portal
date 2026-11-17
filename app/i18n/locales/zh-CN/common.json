@@ -98,6 +98,7 @@
     "approved": "已批准",
     "rejected": "已拒绝",
     "completed": "已完成",
+    "refunded": "已退款",
     "cancelled": "已取消",
     "failed": "失败"
   },
@@ -323,6 +324,8 @@
     "ticketCreatedSuffix": " 已创建。我们的团队会回复；你可以在“我的工单”中查看。",
     "viewMyTickets": "查看我的工单",
     "ticketError": "暂时无法创建工单，请重试。",
+    "ticketSignInRequired": "登录后才能创建支持工单。",
+    "signIn": "登录",
     "somethingWrong": "抱歉，出了点问题，请重试。",
     "privacyBlocked": "这条完整消息可能含有电话号码、邮箱、身份证件、银行资料或私人地址，因此没有发送给 AI。请删除这些资料后重新提问；也可以继续使用本地常见问题，不调用 AI。",
     "supportRequest": "支持请求",
@@ -365,6 +368,14 @@
         "done": "已申请退款，可在订单页面查看进度。",
         "cancelled": "已取消",
         "failed": "失败"
+      },
+      "order": {
+        "contextPrompt": "你可以询问这笔订单；系统会查询最新状态。",
+        "title": "订单",
+        "status": "状态",
+        "checked": "查询时间：{{time}}",
+        "open": "查看订单",
+        "ticketDisclosure": "工单会附上订单 {{reference}} 和你的问题。"
       }
     }
   },

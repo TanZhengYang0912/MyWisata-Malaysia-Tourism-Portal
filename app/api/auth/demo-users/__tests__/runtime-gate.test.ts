@@ -14,7 +14,7 @@ describe('GET /api/auth/demo-users runtime gate', () => {
   });
 
   it('returns an empty account list without touching service-role data outside demo runtimes', async () => {
-    const response = await GET();
+    const response = await GET(new Request('http://localhost/api/auth/demo-users'));
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual([]);
     expect(createServiceClient).not.toHaveBeenCalled();

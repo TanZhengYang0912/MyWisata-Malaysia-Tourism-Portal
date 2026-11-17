@@ -43,9 +43,9 @@ function realForecast(date: string, weatherCode: number): NormalizedForecast {
 }
 
 const CANDIDATES: TripCopilotCandidate[] = [
-  { productId: 'p1', name: 'Penang Hill Funicular', category: 'Activity', price: 30, rating: 4.6, reviews: 120, description: 'Ride to the summit.', image: null, requiresBooking: true, state: 'Penang', isHiddenGem: false, lat: 5.4141, lng: 100.3288, weatherSensitivity: 'weather_sensitive' },
-  { productId: 'p2', name: 'Asam Laksa', category: 'Food', price: 8, rating: 4.8, reviews: 300, description: 'Tangy fish broth noodles.', image: null, requiresBooking: false, state: 'Penang', isHiddenGem: false, lat: 5.42, lng: 100.33, weatherSensitivity: 'not_weather_sensitive' },
-  { productId: 'p3', name: 'Kek Lok Si Temple', category: 'Activity', price: 0, rating: 4.5, reviews: 50, description: 'A large Buddhist temple.', image: null, requiresBooking: false, state: 'Penang', isHiddenGem: true, lat: 5.4, lng: 100.27, weatherSensitivity: 'unknown' },
+  { productId: 'p1', outletId: 'o1', name: 'Penang Hill Funicular', category: 'Activity', price: 30, rating: 4.6, reviews: 120, description: 'Ride to the summit.', image: null, requiresBooking: true, state: 'Penang', isHiddenGem: false, lat: 5.4141, lng: 100.3288, weatherSensitivity: 'weather_sensitive' },
+  { productId: 'p2', outletId: 'o2', name: 'Asam Laksa', category: 'Food', price: 8, rating: 4.8, reviews: 300, description: 'Tangy fish broth noodles.', image: null, requiresBooking: false, state: 'Penang', isHiddenGem: false, lat: 5.42, lng: 100.33, weatherSensitivity: 'not_weather_sensitive' },
+  { productId: 'p3', outletId: 'o3', name: 'Kek Lok Si Temple', category: 'Activity', price: 0, rating: 4.5, reviews: 50, description: 'A large Buddhist temple.', image: null, requiresBooking: false, state: 'Penang', isHiddenGem: true, lat: 5.4, lng: 100.27, weatherSensitivity: 'unknown' },
 ];
 
 describe('generateTripSuggestions', () => {
@@ -140,7 +140,7 @@ describe('generateTripSuggestions', () => {
 
   it('caps at 5 suggestions even if the model returns more', async () => {
     const manyCandidates: TripCopilotCandidate[] = Array.from({ length: 8 }, (_, i) => ({
-      productId: `p${i}`, name: `Listing ${i}`, category: 'Activity', price: 10, rating: 4.5, reviews: 10, description: '', image: null, requiresBooking: false, state: 'Penang', isHiddenGem: false, lat: 5.4, lng: 100.3, weatherSensitivity: 'unknown' as const,
+      productId: `p${i}`, outletId: `o${i}`, name: `Listing ${i}`, category: 'Activity', price: 10, rating: 4.5, reviews: 10, description: '', image: null, requiresBooking: false, state: 'Penang', isHiddenGem: false, lat: 5.4, lng: 100.3, weatherSensitivity: 'unknown' as const,
     }));
     mocks.callGemini.mockResolvedValue(JSON.stringify({
       suggestions: manyCandidates.map((c) => ({ productId: c.productId, message: 'fits' })),
@@ -234,7 +234,7 @@ describe('ruleBasedTripSuggestions', () => {
 
   it('caps at 5 even with more candidates', () => {
     const manyCandidates: TripCopilotCandidate[] = Array.from({ length: 8 }, (_, i) => ({
-      productId: `p${i}`, name: `Listing ${i}`, category: 'Activity', price: 10, rating: 4.5, reviews: 10, description: '', image: null, requiresBooking: false, state: 'Penang', isHiddenGem: false, lat: 5.4, lng: 100.3, weatherSensitivity: 'unknown' as const,
+      productId: `p${i}`, outletId: `o${i}`, name: `Listing ${i}`, category: 'Activity', price: 10, rating: 4.5, reviews: 10, description: '', image: null, requiresBooking: false, state: 'Penang', isHiddenGem: false, lat: 5.4, lng: 100.3, weatherSensitivity: 'unknown' as const,
     }));
 
     expect(ruleBasedTripSuggestions(manyCandidates)).toHaveLength(5);

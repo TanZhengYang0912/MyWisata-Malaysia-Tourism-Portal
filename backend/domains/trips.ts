@@ -127,7 +127,7 @@ export async function writeTrip<T>(db: SupabaseClient, tripId: string, expectedV
     const code: TripMutationCode = message.includes("trip_changed") ? "TRIP_CHANGED"
       : /authentication_required/.test(message) || error.code === "42501" ? "TRIP_ACCESS_DENIED"
       : /trip_(not_found|item_not_found|activity_unavailable|outlet_unavailable|schedule_unavailable)/.test(message) ? "TRIP_NOT_AVAILABLE"
-      : /trip_.*(invalid|limit|non_chronological)/.test(message) || error.code?.startsWith("22") ? "TRIP_INVALID"
+      : /trip_.*(invalid|limit|non_chronological|batch_duplicate)/.test(message) || error.code?.startsWith("22") ? "TRIP_INVALID"
       : error.code ? "TRIP_UNAVAILABLE" : "TRIP_RESULT_UNKNOWN";
     Object.assign(failure, { code });
     throw failure;
@@ -139,8 +139,71 @@ export async function writeTrip<T>(db: SupabaseClient, tripId: string, expectedV
 export async function createTrip(input: {name:string;start_date?:string;end_date?:string}, db: SupabaseClient): Promise<Trip | null> {
   return (await writeTrip<Trip>(db, "", "", "create", input)).value;
 }
+export async function updateTripDates(
+  tripId: string,
+  updates: { start_date: string; end_date: string },
+  db: SupabaseClient,
+  version: string,
+) {
+  const { data, error } = await db.rpc("update_customer_trip_dates", {
+    p_trip_id: tripId,
+    p_expected_version: version || null,
+    p_start_date: updates.start_date,
+    p_end_date: updates.end_date,
+  });
+  if (error) {
+    const failure = new Error("Trip date update rejected");
+    const message = error.message ?? "";
+    const code: TripMutationCode = message.includes("trip_changed") ? "TRIP_CHANGED"
+      : /authentication_required/.test(message) || error.code === "42501" ? "TRIP_ACCESS_DENIED"
+      : /trip_not_found/.test(message) ? "TRIP_NOT_AVAILABLE"
+      : /trip_.*(invalid|limit|non_chronological)/.test(message) || error.code?.startsWith("22") ? "TRIP_INVALID"
+      : error.code ? "TRIP_UNAVAILABLE" : "TRIP_RESULT_UNKNOWN";
+    Object.assign(failure, { code });
+    throw failure;
+  }
+  if (!data || typeof data.version !== "string") {
+    throw Object.assign(new Error("Trip receipt unavailable"), { code: "TRIP_RESULT_UNKNOWN" as const });
+  }
+  return data as TripWrite<Trip>;
+}
 export async function addTripItem(input: AddTripItemInput, db: SupabaseClient, version: string) {
   return writeTrip<TripItem>(db, input.trip_id, version, "add", input);
+}
+
+export interface AddTripItemsBatchInput {
+  trip_id: string;
+  selections: Array<{ product_id: string; outlet_id: string }>;
+  scheduled_date: string;
+  order: string[];
+}
+
+export interface AddTripItemsBatchReceipt {
+  items: TripItem[];
+  skipped_product_ids: string[];
+}
+
+export async function addTripItemsBatch(input: AddTripItemsBatchInput, db: SupabaseClient, version: string) {
+  const { data, error } = await db.rpc("mutate_customer_trip_batch", {
+    p_trip_id: input.trip_id,
+    p_expected_version: version || null,
+    p_input: { selections: input.selections, scheduled_date: input.scheduled_date, order: input.order },
+  });
+  if (error) {
+    const message = error.message ?? "";
+    const failure = new Error("Trip batch mutation rejected");
+    const code: TripMutationCode = message.includes("trip_changed") ? "TRIP_CHANGED"
+      : /authentication_required/.test(message) || error.code === "42501" ? "TRIP_ACCESS_DENIED"
+      : /trip_(not_found|activity_unavailable|outlet_unavailable|schedule_unavailable)/.test(message) ? "TRIP_NOT_AVAILABLE"
+      : /trip_.*(invalid|limit|non_chronological|batch_duplicate)/.test(message) || error.code?.startsWith("22") ? "TRIP_INVALID"
+      : error.code ? "TRIP_UNAVAILABLE" : "TRIP_RESULT_UNKNOWN";
+    Object.assign(failure, { code });
+    throw failure;
+  }
+  if (!data || typeof data.version !== "string" || !data.value || typeof data.value !== "object") {
+    throw Object.assign(new Error("Trip batch receipt unavailable"), { code: "TRIP_RESULT_UNKNOWN" });
+  }
+  return data as TripWrite<AddTripItemsBatchReceipt>;
 }
 
 export async function getTripById(tripId: string, db: SupabaseClient): Promise<Trip | null> {

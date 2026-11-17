@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Trip } from "@/backend/domains/trips";
 import { ArrowUpRight, Calendar, Filter, Navigation, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { DiscoverySearchField } from "@/components/customer/discovery-filters";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { createTripAction, deleteTripAction, restoreLegacyTripsAction } from "./actions";
+import { createTripAction, deleteTripAction, restoreLegacyTripsAction, updateTripDatesAction } from "./actions";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { filterTrips, type TripFilters, type TripFilterStatus, type TripSort } from "@/lib/customer/trip-filters";
 import { getMalaysiaDateRangeDefaults } from "@/lib/datetime/date-input";
@@ -24,6 +24,10 @@ export function TripHubClient({ initialTrips, initialTripNameSequence, hasLegacy
   const [legacyVisible,setLegacyVisible]=useState(hasLegacyTrips);
   const [restoring,setRestoring]=useState(false);
   const [trips, setTrips] = useState<Trip[]>(initialTrips);
+  const [editingTripId, setEditingTripId] = useState<string | null>(null);
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editEndDate, setEditEndDate] = useState("");
+  const [savingDatesTripId, setSavingDatesTripId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const initialDateRange = useMemo(() => getMalaysiaDateRangeDefaults(), []);
   const initialDefaultTripName = useMemo(
@@ -149,6 +153,40 @@ export function TripHubClient({ initialTrips, initialTripNameSequence, hasLegacy
     const result=await deleteTripAction(tripId,target.updated_at);
     if(result.ok) setTrips(current=>current.filter(trip=>trip.id !== tripId));
     else await alert(t(result.code === "TRIP_CHANGED" ? "ui.trip.versionConflict" : "strictMigration.tripPlanner.scheduleFailed"));
+  };
+
+  const openDateEditor = (trip: Trip) => {
+    setEditingTripId(trip.id);
+    setEditStartDate(trip.start_date ?? "");
+    setEditEndDate(trip.end_date ?? "");
+  };
+
+  const saveTripDates = async (event: FormEvent<HTMLFormElement>, trip: Trip) => {
+    event.preventDefault();
+    if (!editStartDate || !editEndDate || editEndDate < editStartDate || savingDatesTripId) return;
+    if (editStartDate === trip.start_date && editEndDate === trip.end_date) {
+      setEditingTripId(null);
+      return;
+    }
+
+    setSavingDatesTripId(trip.id);
+    try {
+      const result = await updateTripDatesAction(trip.id, { start_date: editStartDate, end_date: editEndDate }, trip.updated_at);
+      if (result.ok) {
+        setTrips((current) => current.map((currentTrip) => currentTrip.id === trip.id ? result.value : currentTrip));
+        setEditingTripId(null);
+      } else {
+        const messageKey = result.code === "TRIP_CHANGED" ? "ui.trip.versionConflict"
+          : result.code === "TRIP_INVALID" ? "ui.trip.dateRangeConflict"
+          : "ui.trip.dateUpdateFailed";
+        await alert(t(messageKey));
+        if (result.code === "TRIP_CHANGED") window.location.reload();
+      }
+    } catch {
+      await alert(t("ui.trip.dateUpdateFailed"));
+    } finally {
+      setSavingDatesTripId(null);
+    }
   };
 
   return (
@@ -329,13 +367,41 @@ export function TripHubClient({ initialTrips, initialTripNameSequence, hasLegacy
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-primary">
                       <Navigation size={11} /> {t("accountGroups.myTravel")}
                     </span>
-                    <Calendar size={16} className="text-muted-foreground" aria-hidden="true" />
+                    <button
+                      type="button"
+                      onClick={() => openDateEditor(trip)}
+                      disabled={savingDatesTripId !== null}
+                      aria-label={t("ui.trip.editDates")}
+                      className="grid h-11 w-11 place-items-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    >
+                      <Calendar size={16} aria-hidden="true" />
+                    </button>
                   </div>
                   <h3 className="text-xl font-bold text-foreground">{trip.name}</h3>
                   <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground md:mt-2">
                     <Calendar size={13} />
                     {trip.start_date ? (trip.end_date ? t("ui.trip.dateRange", { start: trip.start_date, end: trip.end_date }) : trip.start_date) : t("ui.trip.datesPending")}
                   </p>
+                  {editingTripId === trip.id && (
+                    <form onSubmit={(event) => void saveTripDates(event, trip)} className="mt-4 rounded-xl border border-border bg-background p-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
+                          {t("ui.trip.startDate")}
+                          <input type="date" required value={editStartDate} onChange={(event) => setEditStartDate(event.target.value)} className="min-h-10 w-full rounded-lg border border-border bg-card px-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                        </label>
+                        <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
+                          {t("ui.trip.endDate")}
+                          <input type="date" required min={editStartDate || undefined} value={editEndDate} onChange={(event) => setEditEndDate(event.target.value)} className="min-h-10 w-full rounded-lg border border-border bg-card px-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
+                        </label>
+                      </div>
+                      <div className="mt-3 flex justify-end gap-2">
+                        <Button type="button" size="sm" variant="ghost" disabled={savingDatesTripId === trip.id} onClick={() => setEditingTripId(null)}>{t("ui.actions.cancel")}</Button>
+                        <Button type="submit" size="sm" disabled={!editStartDate || !editEndDate || editEndDate < editStartDate || savingDatesTripId === trip.id}>
+                          {savingDatesTripId === trip.id ? t("ui.trip.savingDates") : t("ui.trip.saveDates")}
+                        </Button>
+                      </div>
+                    </form>
+                  )}
                 </div>
                 <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4 md:mt-7">
                   <Link href={`/customer/trip/${trip.id}`} className="group/open inline-flex min-h-11 flex-1 items-center justify-between rounded-xl border border-primary/15 bg-secondary/40 px-3.5 py-2 text-sm font-bold text-primary transition hover:border-primary/30 hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/30 md:min-h-10">

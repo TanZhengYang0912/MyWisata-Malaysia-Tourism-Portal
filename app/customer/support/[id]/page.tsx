@@ -48,6 +48,7 @@ export default function CustomerTicketDetailPage() {
   const { currentUser } = useAuth();
   const { showFeedback } = useActionFeedback();
   const [ticket, setTicket] = useState<TicketDetail | null | undefined>(undefined);
+  const [ticketLoadError, setTicketLoadError] = useState(false);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const [reopening, setReopening] = useState(false);
@@ -57,24 +58,36 @@ export default function CustomerTicketDetailPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const speech = useSpeechInput({ lang: resolveRecognitionLangFromLocale(i18n.resolvedLanguage), onTranscriptChange: setReply });
 
-  async function loadTicket() {
+  async function loadTicket(): Promise<boolean> {
     try {
       const res = await fetch(`/api/support/tickets/${id}`);
       const body = (await res.json()) as { data: TicketDetail | null };
-      setTicket(res.ok && body.data ? body.data : null);
+      if (res.ok && body.data) {
+        setTicket(body.data);
+        setTicketLoadError(false);
+        return true;
+      }
+      if (res.status === 404 || res.status === 403) {
+        setTicket(null);
+        setTicketLoadError(false);
+      } else {
+        setTicketLoadError(true);
+      }
+      return false;
     } catch {
-      setTicket(null);
+      setTicketLoadError(true);
+      return false;
     }
   }
 
   useEffect(() => {
     (async () => {
-      await loadTicket();
+      const loaded = await loadTicket();
       // Marks read on actually opening the thread, not just when a list
       // row renders (CLAUDE-FIXES-2.md item 1's own instruction). Fire and
       // forget — the badge will just stay stale for one more poll cycle if
       // this happens to fail.
-      await fetch(`/api/support/tickets/${id}/read`, { method: "PATCH" });
+      if (loaded) await fetch(`/api/support/tickets/${id}/read`, { method: "PATCH" });
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -159,6 +172,9 @@ export default function CustomerTicketDetailPage() {
     }
   }
 
+  if (ticketLoadError) {
+    return <EmptyState title={tCustomer("ui.support.ticketLoadError")} description={tCustomer("ui.support.ticketLoadRetry")} action={<Button variant="outline" onClick={() => { setTicket(undefined); void loadTicket(); }}>{tCustomer("ui.actions.retry")}</Button>} />;
+  }
   if (ticket === undefined || !currentUser) {
     return <div role="status" aria-live="polite" className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-sm text-muted-foreground">{tCustomer("ui.states.loading")}</div>;
   }

@@ -13,36 +13,34 @@ import { updateSession } from "../proxy";
 
 type ProxySetup = {
   accountLocale?: string | null;
+  accountLocaleError?: unknown;
   claimsSub?: string;
+  isAnonymous?: boolean;
   authCookies?: Array<{ name: string; value: string; options?: Record<string, unknown> }>;
   authHeaders?: Record<string, string>;
 };
 
 function setupSupabase({
   accountLocale = null,
+  accountLocaleError = null,
   claimsSub,
+  isAnonymous = false,
   authCookies = [],
   authHeaders = {},
 }: ProxySetup = {}) {
-  const maybeSingle = vi.fn(async () => ({
-    data: accountLocale === undefined ? null : { preferred_locale: accountLocale },
-    error: null,
-  }));
-  const eq = vi.fn(() => ({ maybeSingle }));
-  const select = vi.fn(() => ({ eq }));
-  const from = vi.fn(() => ({ select }));
+  const rpc = vi.fn(async () => ({ data: accountLocale, error: accountLocaleError }));
   const getClaims = vi.fn(async () => {
     const cookies = mocks.createServerClient.mock.calls.at(-1)?.[2]?.cookies;
     await cookies?.setAll(authCookies, authHeaders);
-    return { data: claimsSub ? { claims: { sub: claimsSub } } : { claims: null }, error: null };
+    return { data: claimsSub ? { claims: { sub: claimsSub, is_anonymous: isAnonymous } } : { claims: null }, error: null };
   });
 
   mocks.createServerClient.mockReturnValue({
     auth: { getClaims },
-    from,
+    rpc,
   });
 
-  return { eq, from, getClaims, maybeSingle, select };
+  return { getClaims, rpc };
 }
 
 type ProxyRequest = {
@@ -103,8 +101,8 @@ describe("Supabase proxy locale resolution", () => {
     await expect(response.json()).resolves.toMatchObject({ error: { code: "MFA_REQUIRED" } });
   });
 
-  it("keeps a signed-in visitor's cookie language and never reads the account locale", async () => {
-    const { from } = setupSupabase({
+  it("uses the saved language when another browser already has a different locale cookie", async () => {
+    const { rpc } = setupSupabase({
       accountLocale: "ms",
       claimsSub: "user-123",
     });
@@ -113,22 +111,49 @@ describe("Supabase proxy locale resolution", () => {
       makeRequest({ cookie: "NEXT_LOCALE=zh-CN", acceptLanguage: "en-US" }),
     );
 
-    expect(localeFromResponse(response)).toBe("zh-CN");
-    expect(response.cookies.has("NEXT_LOCALE")).toBe(false);
-    expect(from).not.toHaveBeenCalled();
+    expect(localeFromResponse(response)).toBe("ms");
+    expect(response.cookies.get("NEXT_LOCALE")?.value).toBe("ms");
+    expect(rpc).toHaveBeenCalledExactlyOnceWith("get_my_preferred_locale");
   });
 
-  it("uses the browser language, not the account locale, for a signed-in visitor without a cookie", async () => {
+  it("uses the saved language for a signed-in visitor without a cookie", async () => {
     setupSupabase({ accountLocale: "zh-CN", claimsSub: "user-123" });
 
     const response = await updateSession(makeRequest({ acceptLanguage: "en-US" }));
 
+    expect(localeFromResponse(response)).toBe("zh-CN");
+    expect(response.cookies.get("NEXT_LOCALE")?.value).toBe("zh-CN");
+  });
+
+  it("applies the signed-in account language on a router refresh without writing a cookie", async () => {
+    setupSupabase({ accountLocale: "ms", claimsSub: "user-123" });
+    const response = await updateSession(makeRequest({ cookie: "NEXT_LOCALE=en", fetchDestination: "empty", extraHeaders: { rsc: "1" } }));
+
+    expect(localeFromResponse(response)).toBe("ms");
+    expect(response.cookies.has("NEXT_LOCALE")).toBe(false);
+  });
+
+  it("uses the browser preference when the account lookup is unavailable", async () => {
+    setupSupabase({ claimsSub: "user-123", accountLocaleError: { code: "PGRST202" } });
+    const response = await updateSession(makeRequest({ cookie: "NEXT_LOCALE=zh-CN", acceptLanguage: "en-US" }));
+
+    expect(localeFromResponse(response)).toBe("zh-CN");
+    expect(response.cookies.has("NEXT_LOCALE")).toBe(false);
+  });
+
+  it.each([
+    { fetchDestination: "empty", extraHeaders: { rsc: "1", "next-router-prefetch": "1" } },
+    { path: "/maplibre/maplibre-gl-csp-worker.js", fetchDestination: "worker" },
+  ])("does not read the account locale for a prefetch or an asset", async (request) => {
+    const { rpc } = setupSupabase({ accountLocale: "ms", claimsSub: "user-123" });
+    const response = await updateSession(makeRequest({ cookie: "NEXT_LOCALE=en", ...request }));
+
     expect(localeFromResponse(response)).toBe("en");
-    expect(response.cookies.get("NEXT_LOCALE")?.value).toBe("en");
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it("uses the anonymous visitor cookie before the browser", async () => {
-    const { from, getClaims } = setupSupabase();
+    const { rpc, getClaims } = setupSupabase();
 
     const response = await updateSession(
       makeRequest({ cookie: "NEXT_LOCALE=zh-CN", acceptLanguage: "ms-MY" }),
@@ -136,7 +161,15 @@ describe("Supabase proxy locale resolution", () => {
 
     expect(localeFromResponse(response)).toBe("zh-CN");
     expect(getClaims).toHaveBeenCalledOnce();
-    expect(from).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("uses the browser language for a Supabase anonymous session with a subject", async () => {
+    const { rpc } = setupSupabase({ accountLocale: "ms", claimsSub: "guest-1", isAnonymous: true });
+    const response = await updateSession(makeRequest({ cookie: "NEXT_LOCALE=zh-CN" }));
+
+    expect(localeFromResponse(response)).toBe("zh-CN");
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it("falls back to the browser language when no account or cookie exists", async () => {
@@ -176,14 +209,14 @@ describe("Supabase proxy locale resolution", () => {
   });
 
   it("resolves API requests from the cookie without an account read", async () => {
-    const { from, getClaims } = setupSupabase({ accountLocale: "zh-CN", claimsSub: "user-123" });
+    const { rpc, getClaims } = setupSupabase({ accountLocale: "zh-CN", claimsSub: "user-123" });
 
     const response = await updateSession(makeRequest({
       path: "/api/customer/promotion-campaigns", cookie: "NEXT_LOCALE=ms", acceptLanguage: "en-US", fetchDestination: "empty",
     }));
 
     expect(localeFromResponse(response)).toBe("ms");
-    expect(from).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
     expect(getClaims).toHaveBeenCalled();
     expect(response.cookies.has("NEXT_LOCALE")).toBe(false);
   });
