@@ -68,9 +68,23 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   const { data: claimsData } = await supabase.auth.getClaims();
   const claims = claimsData?.claims;
 
-  // The page language is this browser's choice: the locale cookie, then the browser language.
+  const fetchDestination = request.headers.get('sec-fetch-dest');
+  const isPageRead = request.method === 'GET'
+    && !request.nextUrl.pathname.startsWith('/api/')
+    && (fetchDestination === 'document' || !fetchDestination || request.headers.get('rsc') === '1');
+  const isPrefetch = request.headers.has('next-router-prefetch') || request.headers.get('purpose') === 'prefetch';
   const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
+  let accountLocale: unknown;
+  if (typeof claims?.sub === 'string' && claims.sub && isPageRead && !isPrefetch) {
+    try {
+      const { data, error } = await supabase.rpc('get_my_preferred_locale');
+      if (!error) accountLocale = data;
+    } catch {
+      // Keep navigation available if the account preference cannot be read.
+    }
+  }
   const locale = resolveAppLocale({
+    accountLocale,
     cookieLocale,
     acceptLanguage: request.headers.get('accept-language'),
   });
@@ -108,9 +122,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   // Background responses may finish after /api/locale saves a newer preference.
   // Only full document navigations initialize/sync this cookie; RSC and API
   // reads still receive x-app-locale without persisting an older request snapshot.
-  const isDocumentNavigation = request.method === 'GET'
-    && request.headers.get('sec-fetch-dest') === 'document'
-    && !request.nextUrl.pathname.startsWith('/api/');
+  const isDocumentNavigation = isPageRead && !isPrefetch && fetchDestination === 'document';
   if (isDocumentNavigation && cookieLocale !== locale) {
     supabaseResponse.cookies.set(LOCALE_COOKIE, locale, localeCookieOptions);
   }

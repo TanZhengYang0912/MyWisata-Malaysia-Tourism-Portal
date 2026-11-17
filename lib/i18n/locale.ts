@@ -4,6 +4,7 @@ export const DEFAULT_LOCALE: AppLocale = "en";
 export const LOCALE_COOKIE = "NEXT_LOCALE";
 
 export type ResolveLocaleInput = {
+  accountLocale?: unknown;
   cookieLocale?: string | null;
   acceptLanguage?: string | null;
 };
@@ -71,6 +72,10 @@ export function matchAcceptedLocale(header: string | null | undefined): AppLocal
 }
 
 export function resolveAppLocale(input: ResolveLocaleInput): AppLocale {
+  if (isAppLocale(input.accountLocale)) {
+    return input.accountLocale;
+  }
+
   if (isAppLocale(input.cookieLocale)) {
     return input.cookieLocale;
   }

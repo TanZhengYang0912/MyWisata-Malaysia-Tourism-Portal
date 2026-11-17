@@ -1,13 +1,13 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { isAppLocale, LOCALE_COOKIE, type AppLocale } from "@/lib/i18n/locale";
+import { createClient } from "@/lib/supabase/server";
 
 type LocaleRequest = { locale?: unknown };
 type LocaleResponse = { data: { locale: AppLocale } };
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
-// The page language is this browser's choice only; it is never saved to the account.
 export async function POST(request: Request) {
   let body: LocaleRequest | null;
   try {
@@ -22,6 +22,23 @@ export async function POST(request: Request) {
 
   const locale = body.locale;
   const cookieStore = await cookies();
+  const hasAuthCookie = cookieStore.getAll().some(({ name }) => (
+    name.startsWith("sb-") && /-auth-token(?:\.\d+)?$/.test(name)
+  ));
+  if (hasAuthCookie) {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError && authError.name !== "AuthSessionMissingError" && authError.status !== 401) {
+      return NextResponse.json({ error: "Unable to verify session" }, { status: 503 });
+    }
+    if (user) {
+      const { error } = await supabase.rpc("set_my_preferred_locale", { p_locale: locale });
+      if (error) {
+        return NextResponse.json({ error: "Unable to save language preference" }, { status: 500 });
+      }
+    }
+  }
+
   cookieStore.set(LOCALE_COOKIE, locale, {
     path: "/",
     sameSite: "lax",
