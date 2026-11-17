@@ -5,6 +5,18 @@ ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_preferred_locale_check;
 ALTER TABLE public.users ADD CONSTRAINT users_preferred_locale_check
   CHECK (preferred_locale IS NULL OR preferred_locale IN ('en', 'zh-CN', 'ms'));
 
+DO $$
+BEGIN
+  IF to_regclass('app_private.account_ui_language_migration_backup') IS NOT NULL THEN
+    UPDATE public.users AS account
+    SET preferred_locale = backup.preferred_locale
+    FROM app_private.account_ui_language_migration_backup AS backup
+    WHERE account.id = backup.user_id AND account.preferred_locale IS NULL;
+    DROP TABLE app_private.account_ui_language_migration_backup;
+  END IF;
+END;
+$$;
+
 CREATE FUNCTION app_private.get_my_preferred_locale()
 RETURNS text
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$

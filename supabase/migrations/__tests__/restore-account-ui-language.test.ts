@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const sql = readFileSync(new URL("../20261117112128_restore_account_ui_language.sql", import.meta.url), "utf8");
+const snapshot = readFileSync(new URL("../20261116193729_preserve_account_ui_language.sql", import.meta.url), "utf8");
 
 describe("restore account interface language migration", () => {
   it("restores the locale field without changing Auth mail and metadata", () => {
@@ -19,5 +20,13 @@ describe("restore account interface language migration", () => {
     expect(sql).toMatch(/REVOKE ALL ON FUNCTION[\s\S]+FROM PUBLIC, anon, authenticated, service_role;/);
     expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION[\s\S]+TO authenticated;/);
     expect(sql).toContain("NOTIFY pgrst, 'reload schema'");
+  });
+
+  it("keeps existing languages in a private backup until the UI column is restored", () => {
+    expect(snapshot).toContain("SELECT id, preferred_locale FROM public.users");
+    expect(snapshot).toContain("ENABLE ROW LEVEL SECURITY");
+    expect(snapshot).toMatch(/REVOKE ALL ON TABLE[\s\S]+FROM PUBLIC, anon, authenticated, service_role;/);
+    expect(sql).toContain("account.id = backup.user_id AND account.preferred_locale IS NULL");
+    expect(sql).toContain("DROP TABLE app_private.account_ui_language_migration_backup");
   });
 });
