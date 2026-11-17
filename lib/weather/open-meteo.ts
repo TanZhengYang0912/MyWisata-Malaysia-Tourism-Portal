@@ -3,6 +3,7 @@ import "server-only";
 import { z } from "zod";
 import type { NormalizedForecast } from "@/lib/weather/types";
 import { withWeatherForecastProviderSlot } from "@/lib/weather/provider-slot";
+import { TRIP_WEATHER_TIME_ZONE } from "@/lib/weather/overlay-time";
 
 export const OPEN_METEO_PROVIDER = "open_meteo" as const;
 export const FORECAST_TTL_SECONDS = 30 * 60;
@@ -148,7 +149,7 @@ export async function getOpenMeteoForecast(
       url.searchParams.set("longitude", rounded(input.longitude).toString());
       url.searchParams.set("start_date", input.date);
       url.searchParams.set("end_date", input.date);
-      url.searchParams.set("timezone", "auto");
+      url.searchParams.set("timezone", TRIP_WEATHER_TIME_ZONE);
       url.searchParams.set("temperature_unit", "celsius");
       url.searchParams.set("wind_speed_unit", "kmh");
       url.searchParams.set("precipitation_unit", "mm");
@@ -180,7 +181,7 @@ export async function getOpenMeteoForecast(
       }, signal);
       if (text === null) throw new Error('Weather provider busy');
       const parsed = payloadSchema.safeParse(JSON.parse(text));
-      if (!parsed.success || parsed.data.daily.time[0] !== input.date) {
+      if (!parsed.success || parsed.data.timezone !== TRIP_WEATHER_TIME_ZONE || parsed.data.daily.time[0] !== input.date) {
         throw new Error("Open-Meteo response did not match the requested date");
       }
       const daily = parsed.data.daily;

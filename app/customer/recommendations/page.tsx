@@ -271,8 +271,8 @@ function RecommendationsContent() {
 
       {currentUser && <RecommendationEarningsPanel showEmpty />}
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <label className="text-sm text-muted-foreground">{tCustomer("ui.recommendations.historyStatus")}
-          <select className="ml-2 rounded-xl border border-border bg-background px-3 py-2 text-foreground" value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }}>
+        <label className="flex max-w-full flex-wrap items-center gap-2 text-sm text-muted-foreground">{tCustomer("ui.recommendations.historyStatus")}
+          <select className="min-w-0 max-w-full rounded-xl border border-border bg-background px-3 py-2 text-foreground" value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }}>
             <option value="all">{tCustomer("ui.recommendations.allStatuses")}</option>
             {RECOMMENDATION_STATUSES.map((status) => <option key={status} value={status}>{tCustomer(`ui.recommendations.status.${status}`)}</option>)}
           </select>

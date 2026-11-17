@@ -1,5 +1,5 @@
 import { getTripById, getTripItems } from "@/backend/domains/trips";
-import { getTripDayDates, isValidTripCoordinate } from "@/lib/customer/trip-planner";
+import { getTripDayDates, isValidTripCoordinate, resolveTripOrigin } from "@/lib/customer/trip-planner";
 import { createClient } from "@/lib/supabase/server";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 import { buildWeatherSampleGrid } from "@/lib/weather/overlay";
@@ -67,7 +67,10 @@ export async function POST(request: Request) {
   }
 
   const items = await getTripItems(parsed.data.tripId, db);
-  const origin = items.find((item) => item.source === "location" && isValidTripCoordinate(item.lat, item.lng));
+  const resolvedOrigin = resolveTripOrigin(items, parsed.data.date);
+  const origin = resolvedOrigin && isValidTripCoordinate(resolvedOrigin.lat, resolvedOrigin.lng)
+    ? resolvedOrigin
+    : null;
   const dated = items.filter((item) => item.scheduled_date === parsed.data.date && isValidTripCoordinate(item.lat, item.lng));
   const coordinateItems = [...(origin ? [origin] : []), ...dated.filter((item) => item.id !== origin?.id)];
   const coordinates = buildWeatherSampleGrid(coordinateItems.map((item) => ({ lat: item.lat, lng: item.lng })));

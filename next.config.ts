@@ -191,6 +191,11 @@ const nextConfig: NextConfig = {
     localPatterns: [
       { pathname: '/branding/mylawatan-logo-transparent.png', search: '?v=2' },
       { pathname: '/branding/mylawatan-logo-transparent.png', search: '?v=3' },
+      { pathname: '/branding/mylawatan-logo-transparent.png', search: '?v=4' },
+      { pathname: '/branding/mylawatan-logo-transparent.png', search: '?v=5' },
+      { pathname: '/branding/mylawatan-logo-transparent.png', search: '?v=6' },
+      { pathname: '/branding/mylawatan-logo-transparent.png', search: '?v=7' },
+      { pathname: '/branding/mylawatan-logo-stacked.png', search: '?v=1' },
       { pathname: '**', search: '' },
     ],
     minimumCacheTTL: 2592000,

@@ -308,7 +308,8 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
 
         <EventPartnersSection partners={eventPartners.filter((partner) => !filters.q.trim() || partner.name.toLowerCase().includes(filters.q.trim().toLowerCase()))} />
 
-        <section className="mx-auto max-w-7xl px-4 pb-10 sm:px-6">
+        {/* Directly under the sponsored rail's bottom line (no event partners between), leave the same 40px gap as above the footer line. */}
+        <section className="mx-auto max-w-7xl px-4 pb-10 sm:px-6 [.border-b+&]:pt-10">
           <h2 className="sr-only">{partnerView === "featured" ? t("ui.search.searchResults") : t("ui.search.allPartners")}</h2>
           {visibleVendors.length ? (
             <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">

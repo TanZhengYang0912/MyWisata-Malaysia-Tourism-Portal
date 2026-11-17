@@ -39,7 +39,8 @@ describe("RainViewer radar adapter", () => {
     expect(result).toMatchObject({
       availability: "radar",
       provider: "rainviewer",
-      observedAt: "2026-09-15T11:30:00.000Z",
+      frameTime: "2026-09-15T11:30:00.000Z",
+      frames: expect.arrayContaining([expect.objectContaining({ frameTime: "2026-09-15T11:30:00.000Z" })]),
       maxZoom: 7,
       attributionLabel: "RainViewer",
       attributionUrl: "https://www.rainviewer.com/",

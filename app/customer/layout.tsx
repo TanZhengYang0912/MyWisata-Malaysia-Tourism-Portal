@@ -209,13 +209,22 @@ function CustomerLayoutInner({ children }: { children: React.ReactNode }) {
       <nav ref={headerRef} className="group/header sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md print:hidden" style={{ viewTransitionName: "customer-header" }}>
         <div className={`max-w-7xl mx-auto px-2 sm:px-6 flex items-center gap-1 sm:gap-8 ${isTripRoute ? "h-14 md:h-17" : "h-17"}`}>
           <Link href="/customer" className="group flex items-center gap-2.5 shrink-0">
+              {/* Phones get the stacked two-line logo; the horizontal one would be about 12px tall there. */}
               <Image
-                src="/branding/mylawatan-logo-transparent.png?v=3"
+                src="/branding/mylawatan-logo-stacked.png?v=1"
                 alt={LOGO_BRAND_NAME}
-                width={758}
-                height={306}
+                width={1009}
+                height={331}
                 priority
-                className={`block h-auto ${isTripRoute ? "w-[62px] min-[360px]:w-[76px] min-[420px]:w-[84px] sm:w-[118px]" : "w-[62px] min-[360px]:w-[84px] min-[420px]:w-[94px] sm:w-[118px]"}`}
+                className={`block h-auto sm:hidden ${isTripRoute ? "w-[62px] min-[360px]:w-[76px] min-[420px]:w-[84px]" : "w-[62px] min-[360px]:w-[84px] min-[420px]:w-[94px]"}`}
+              />
+              <Image
+                src="/branding/mylawatan-logo-transparent.png?v=7"
+                alt={LOGO_BRAND_NAME}
+                width={1880}
+                height={271}
+                priority
+                className="hidden h-auto sm:block sm:w-[240px] lg:w-[140px] xl:w-[320px]"
               />
           </Link>
 

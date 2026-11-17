@@ -36,25 +36,37 @@ export function MyLawatanLogo({
   className,
   priority = false,
 }: MyLawatanLogoProps) {
-  // Master logo natural dimensions: 758 x 306 (ratio ~2.477:1)
+  // Two artworks, both cropped tight: the horizontal lockup (1880 x 271, ~6.94:1) from `sm` up, and the
+  // stacked two-line lockup (1009 x 331, ~3.05:1) on phones, where the horizontal one would be unreadably small.
+  // `markSize` is the target height; each image only sets its width and scales down to fit a narrower slot.
   const renderedHeight = height ?? markSize;
-  const renderedWidth = width ?? Math.round(renderedHeight * (758 / 306));
+  const wideWidth = width ?? Math.round(renderedHeight * (1880 / 271));
+  const stackedWidth = width ?? Math.round(renderedHeight * (1009 / 331));
 
   return (
     <span
       aria-label={LOGO_BRAND_NAME}
-      className={`inline-flex shrink-0 items-center gap-4 ${className ?? ""}`}
+      className={`inline-flex min-w-0 max-w-full shrink items-center gap-4 ${className ?? ""}`}
       data-brand-logo="mylawatan"
       role="img"
     >
       <Image
-        src="/branding/mylawatan-logo-transparent.png?v=3"
+        src="/branding/mylawatan-logo-stacked.png?v=1"
         alt={LOGO_BRAND_NAME}
-        width={758}
-        height={306}
+        width={1009}
+        height={331}
         priority={priority}
-        className="block h-auto w-auto max-w-full object-contain"
-        style={{ height: `${renderedHeight}px`, width: `${renderedWidth}px` }}
+        className="block h-auto max-w-full sm:hidden"
+        style={{ width: `${stackedWidth}px` }}
+      />
+      <Image
+        src="/branding/mylawatan-logo-transparent.png?v=7"
+        alt={LOGO_BRAND_NAME}
+        width={1880}
+        height={271}
+        priority={priority}
+        className="hidden h-auto max-w-full sm:block"
+        style={{ width: `${wideWidth}px` }}
       />
     </span>
   );

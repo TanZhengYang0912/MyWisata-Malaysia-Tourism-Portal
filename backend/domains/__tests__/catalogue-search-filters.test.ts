@@ -542,7 +542,7 @@ describe("Trip purchase details", () => {
         metrics: [{ product_id: food.id, rating: 4.8, reviews: 12 }],
       }));
     const foodActivity = activities.find((activity) => activity.id === food.id)!;
-    expect(batches).toEqual([[food.id]]);
+    expect(batches).toEqual([[food.id], ["free-bookable", food.id]]);
     expect(foodActivity.variants).toEqual([{ id: "food-variant", label: "Standard", priceDelta: 0 }]);
     expect(foodActivity.stockByOutlet?.["outlet-kuala-lumpur"]).toBe(6);
     expect(foodActivity.outlet.id).toBe("outlet-kuala-lumpur");
@@ -571,9 +571,11 @@ describe("Trip purchase details", () => {
     const selectedFields: Record<string, string[]> = {};
     const db = makeDb(OUTLETS, [food, { ...food, id: "pending", review_status: "pending" }], selectedFields, { productIdBatches: batches });
     expect((await searchTripActivities({}, [], db)).map((activity) => activity.id)).toEqual([food.id]);
-    expect(batches).toEqual([]);
-    expect(selectedFields.products).toHaveLength(1);
+    expect(batches).toEqual([[food.id]]);
+    expect(selectedFields.products).toHaveLength(2);
     expect(selectedFields.products[0]).not.toMatch(/product_variants|price_rules/);
+    expect(selectedFields.products[1]).toMatch(/product_variants/);
+    expect(selectedFields.products[1]).not.toMatch(/price_rules/);
     expect((await searchTripActivities({}, [food.id, "pending"], db)).map((activity) => activity.id)).toEqual([food.id]);
   });
 

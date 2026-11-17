@@ -186,6 +186,7 @@ export default function CheckoutPage() {
   if (selectedItems.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h1 className="sr-only">{tCustomer("ui.checkout.title")}</h1>
         <EmptyState
           title={tCustomer("ui.checkout.nothing")}
           description={tCustomer("ui.checkout.selectItems")}

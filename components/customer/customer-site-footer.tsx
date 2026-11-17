@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { LegalFooterLinks } from "@/components/legal/legal-footer-links";
 import { CUSTOMER_FOOTER_GROUPS, type CustomerFooterVariant } from "@/lib/customer/footer-navigation";
+import { OPERATOR_NAME } from "@/lib/i18n/invariant-tokens";
 import { cn } from "@/lib/utils";
 
 /**
@@ -20,11 +21,13 @@ export function CustomerSiteFooter({ variant = "full", className }: { variant?: 
   if (variant === "none") return null;
 
   const copyright = tCommon("brand.copyright", { year: new Date().getFullYear() });
+  const poweredBy = tCommon("brand.poweredBy", { name: OPERATOR_NAME });
 
   if (variant === "slim") {
     return (
       <footer data-site-footer="slim" className={cn("w-full border-t border-border px-4 py-5 text-center text-xs text-muted-foreground print:hidden", className)}>
         <p>{copyright}</p>
+        <p className="mt-1">{poweredBy}</p>
         <LegalFooterLinks className="mt-2" />
       </footer>
     );
@@ -59,7 +62,10 @@ export function CustomerSiteFooter({ variant = "full", className }: { variant?: 
         ))}
       </div>
       <div className="border-t border-border">
-        <p className="mx-auto max-w-7xl px-4 py-3 text-center text-xs text-muted-foreground sm:px-6 lg:px-8">{copyright}</p>
+        <div className="mx-auto max-w-7xl space-y-1 px-4 py-3 text-center text-xs text-muted-foreground sm:px-6 lg:px-8">
+          <p>{copyright}</p>
+          <p>{poweredBy}</p>
+        </div>
       </div>
     </footer>
   );

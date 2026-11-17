@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WeatherOverlayResult } from "@/lib/weather/types";
+import { buildWeatherSampleGrid } from "@/lib/weather/overlay";
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
@@ -42,7 +43,7 @@ const item = {
 };
 const overlay: WeatherOverlayResult = {
   availability: "forecast", provider: "open_meteo", date: "2026-09-16", hour: 16,
-  timezone: "Asia/Kuala_Lumpur", fetchedAt: "2026-09-15T00:00:00.000Z", stale: false,
+  timezone: "Asia/Kuala_Lumpur", fetchedAt: "2026-09-15T00:00:00.000Z", stale: false, spatialCoverageComplete: true,
   bounds: null, samples: [], contours: { type: "FeatureCollection", features: [] }, conditionContours: { type: "FeatureCollection", features: [] }, dominantCenter: null,
   rainBoundary: { type: "FeatureCollection", features: [] },
 };
@@ -77,6 +78,34 @@ describe("POST /api/weather/overlay", () => {
     expect(JSON.stringify(providerInput)).not.toContain("user-1");
     expect(JSON.stringify(providerInput)).not.toContain("Secret activity label");
     expect(JSON.stringify(providerInput)).not.toContain("Penang Sentral");
+  });
+
+  it("uses the selected date's day origin instead of another date's custom origin", async () => {
+    const otherDayOrigin = {
+      ...origin,
+      id: "other-day-origin",
+      is_day_origin: true,
+      scheduled_date: "2026-09-15",
+      lat: 3.14,
+      lng: 101.69,
+    };
+    const selectedDayOrigin = {
+      ...origin,
+      id: "selected-day-origin",
+      is_day_origin: true,
+      scheduled_date: "2026-09-16",
+      lat: 5.45,
+      lng: 100.31,
+    };
+    mocks.getTripItems.mockResolvedValue([otherDayOrigin, origin, selectedDayOrigin, item]);
+
+    const response = await POST(request({ tripId: trip.id, date: "2026-09-16", hour: 16 }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.getOverlay.mock.calls[0][0].coordinates).toEqual(buildWeatherSampleGrid([
+      { lat: selectedDayOrigin.lat, lng: selectedDayOrigin.lng },
+      { lat: item.lat, lng: item.lng },
+    ]));
   });
 
   it("requires authentication and strict trip ownership", async () => {

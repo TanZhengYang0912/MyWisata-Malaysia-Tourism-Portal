@@ -3,7 +3,7 @@ import { getTripDayDates } from "@/lib/customer/trip-planner";
 import { createClient } from "@/lib/supabase/server";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 import { getOpenMeteoForecast } from "@/lib/weather/open-meteo";
-import { evaluateForecastRisk } from "@/lib/weather/risk";
+import { evaluateForecastRisk, evaluateForecastRiskAtHour } from "@/lib/weather/risk";
 import { weatherBatchRequestSchema } from "@/lib/weather/schema";
 import type { NormalizedForecast, WeatherBatchResponse, WeatherTarget, WeatherTargetResult } from "@/lib/weather/types";
 import { consumeWeatherForecastRateLimit } from "./route-state";
@@ -55,10 +55,11 @@ function targetIdentity(target: WeatherTarget) {
   return `${target.date}:${target.latitude.toFixed(4)}:${target.longitude.toFixed(4)}`;
 }
 
-function matchesItem(target: WeatherTarget, item: { id: string; lat: number; lng: number }) {
+function matchesItem(target: WeatherTarget, item: { id: string; lat: number; lng: number; scheduled_date: string | null; scheduled_time: string | null }) {
   return target.itemId === item.id
     && target.latitude.toFixed(4) === item.lat.toFixed(4)
-    && target.longitude.toFixed(4) === item.lng.toFixed(4);
+    && target.longitude.toFixed(4) === item.lng.toFixed(4)
+    && (target.kind !== "item" || (target.date === item.scheduled_date && target.scheduledTime === item.scheduled_time));
 }
 
 function unavailableFor(target: WeatherTarget): NormalizedForecast {
@@ -124,11 +125,17 @@ export async function POST(request: Request) {
     } catch {
       forecast = unavailableFor(representative);
     }
-    const risk = evaluateForecastRisk(forecast);
-    return group.map((target): [string, WeatherTargetResult] => [
-      target.key,
-      { target: { ...target, label: itemsById.get(target.itemId)?.label ?? target.label }, forecast, risk },
-    ]);
+    return group.map((target): [string, WeatherTargetResult] => {
+      const scheduledHour = target.scheduledTime ? Number(target.scheduledTime.slice(0, 2)) : null;
+      const risk = target.kind === "item" && scheduledHour !== null
+        ? evaluateForecastRiskAtHour(forecast, scheduledHour)
+        : evaluateForecastRisk(forecast);
+      return [target.key, {
+        target: { ...target, label: itemsById.get(target.itemId)?.label ?? target.label },
+        forecast,
+        risk,
+      }];
+    });
   };
   const entries: Array<Array<[string, WeatherTargetResult]>> = [];
   const groupList = [...groups.values()];

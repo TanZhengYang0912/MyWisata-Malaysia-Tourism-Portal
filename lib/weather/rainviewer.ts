@@ -3,7 +3,7 @@ import "server-only";
 import { z } from "zod";
 import { FORECAST_MAX_RESPONSE_BYTES, FORECAST_TIMEOUT_MS } from "@/lib/weather/open-meteo";
 import { startSharedProviderRequest, subscribeToSharedProviderRequest, type SharedProviderRequest } from "@/lib/weather/shared-provider-request";
-import type { RadarOverlayResult } from "@/lib/weather/types";
+import type { RadarFrame, RadarOverlayResult } from "@/lib/weather/types";
 
 export const RAINVIEWER_METADATA_URL = "https://api.rainviewer.com/public/weather-maps.json";
 
@@ -11,6 +11,7 @@ const RADAR_FRESH_MS = 5 * 60 * 1000;
 const RADAR_STALE_MS = 15 * 60 * 1000;
 const MAX_CLOCK_SKEW_SECONDS = 10 * 60;
 const MAX_FRAME_AGE_SECONDS = 130 * 60;
+const MAX_PLAYBACK_FRAMES = 12;
 
 const frameSchema = z.object({
   time: z.number().int().positive(),
@@ -36,10 +37,11 @@ function unavailable(now: Date): RadarOverlayResult {
   return {
     availability: "unavailable",
     provider: "rainviewer",
-    observedAt: null,
+    frameTime: null,
     fetchedAt: now.toISOString(),
     stale: false,
     tileUrlTemplate: null,
+    frames: [],
     maxZoom: 7,
     attributionLabel: "RainViewer",
     attributionUrl: "https://www.rainviewer.com/",
@@ -80,24 +82,42 @@ function validatedHost(value: string) {
 
 function normalizedResult(payload: z.infer<typeof metadataSchema>, now: Date): RadarOverlayResult {
   const host = validatedHost(payload.host);
-  const frame = [...payload.radar.past].sort((left, right) => right.time - left.time)[0];
   const nowSeconds = Math.floor(now.getTime() / 1000);
-  if (payload.generated > nowSeconds + MAX_CLOCK_SKEW_SECONDS
-    || !frame
-    || frame.time > nowSeconds + MAX_CLOCK_SKEW_SECONDS
-    || frame.time < nowSeconds - MAX_FRAME_AGE_SECONDS) {
+  if (payload.generated > nowSeconds + MAX_CLOCK_SKEW_SECONDS) {
     throw new Error("RainViewer frame is unavailable");
   }
-  if (!/^\/v2\/radar\/[A-Za-z0-9_-]{8,64}$/.test(frame.path)) {
-    throw new Error("RainViewer frame path is unsafe");
+
+  const validFrames = new Map<number, RadarFrame>();
+  for (const frame of payload.radar.past) {
+    if (frame.time > nowSeconds + MAX_CLOCK_SKEW_SECONDS) {
+      throw new Error("RainViewer frame time is unsafe");
+    }
+    if (!/^\/v2\/radar\/[A-Za-z0-9_-]{8,64}$/.test(frame.path)) {
+      throw new Error("RainViewer frame path is unsafe");
+    }
+    if (frame.time < nowSeconds - MAX_FRAME_AGE_SECONDS || frame.time > nowSeconds) continue;
+    validFrames.set(frame.time, {
+      frameTime: new Date(frame.time * 1000).toISOString(),
+      tileUrlTemplate: `${host}${frame.path}/256/{z}/{x}/{y}/2/1_0.png`,
+      intensityTileUrlTemplate: `${host}${frame.path}/256/{z}/{x}/{y}/2/0_0.png`,
+      coverageTileUrlTemplate: `${host}/v2/coverage/0/256/{z}/{x}/{y}/0/0_0.png`,
+    });
   }
+  const frames = [...validFrames.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([, frame]) => frame)
+    .slice(-MAX_PLAYBACK_FRAMES);
+  const latest = frames.at(-1);
+  if (!latest) throw new Error("RainViewer frame is unavailable");
+
   return {
     availability: "radar",
     provider: "rainviewer",
-    observedAt: new Date(frame.time * 1000).toISOString(),
+    frameTime: latest.frameTime,
     fetchedAt: now.toISOString(),
     stale: false,
-    tileUrlTemplate: `${host}${frame.path}/256/{z}/{x}/{y}/2/1_0.png`,
+    tileUrlTemplate: latest.tileUrlTemplate,
+    frames,
     maxZoom: 7,
     attributionLabel: "RainViewer",
     attributionUrl: "https://www.rainviewer.com/",

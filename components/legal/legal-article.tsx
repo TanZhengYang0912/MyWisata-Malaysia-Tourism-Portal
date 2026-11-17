@@ -22,7 +22,11 @@ export function LegalArticle({
       <article>
         <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{title}</h1>
         <p className="mt-2 text-xs text-muted-foreground">{updated}</p>
-        <p className="mt-6 text-sm leading-relaxed text-foreground">{intro}</p>
+        <div className="mt-6 space-y-3 text-sm leading-relaxed text-foreground">
+          {intro.split(/\n+/).map((para, paraIndex) => (
+            <p key={paraIndex}>{para.trim()}</p>
+          ))}
+        </div>
 
         <div className="mt-8 space-y-8">
           {sections.map((section, index) => (

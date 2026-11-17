@@ -1,3 +1,5 @@
+export const TRIP_WEATHER_TIME_ZONE = "Asia/Kuala_Lumpur";
+
 function localParts(now: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone,
@@ -12,7 +14,20 @@ function localParts(now: Date, timeZone: string) {
 }
 
 export function malaysiaDateHour(now: Date) {
-  return localParts(now, "Asia/Kuala_Lumpur");
+  return localParts(now, TRIP_WEATHER_TIME_ZONE);
+}
+
+export function formatMalaysiaDateTime(value: string | Date) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) return "—";
+  return new Intl.DateTimeFormat(undefined, {
+    timeZone: TRIP_WEATHER_TIME_ZONE,
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
 }
 
 export function canUseLiveRadar(selectedDate: string | null, now: Date) {
@@ -25,7 +40,7 @@ export function defaultOverlayHour(input: {
   now: Date;
   timeZone?: string;
 }) {
-  const local = localParts(input.now, input.timeZone ?? "Asia/Kuala_Lumpur");
+  const local = localParts(input.now, input.timeZone ?? TRIP_WEATHER_TIME_ZONE);
   if (local.date === input.date && Number.isInteger(local.hour)) return local.hour;
   const hours = input.scheduledTimes
     .map((time) => time?.match(/^(\d{2}):[0-5]\d/)?.[1])

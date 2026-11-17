@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerTranslation('customer');
   const title = `${t('legal.about.title')} · ${BRAND_NAME}`;
-  const description = t('legal.about.intro');
+  // The intro has two paragraphs; the first one states who runs the platform.
+  const description = t('legal.about.intro').split(/\n+/)[0];
   return { title, description, openGraph: { title, description } };
 }
 
@@ -24,7 +25,8 @@ export default async function AboutPage() {
         updated={t('legal.updated', { date: LEGAL_LAST_UPDATED })}
         sections={[
           { heading: t('legal.about.what.heading'), body: t('legal.about.what.body') },
-          { heading: t('legal.about.prototype.heading'), body: t('legal.about.prototype.body') },
+          { heading: t('legal.about.company.heading'), body: t('legal.about.company.body') },
+          { heading: t('legal.about.vision.heading'), body: t('legal.about.vision.body') },
           { heading: t('legal.about.contact.heading'), body: t('legal.about.contact.body') },
         ]}
       />

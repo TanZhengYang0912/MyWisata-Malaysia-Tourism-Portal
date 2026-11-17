@@ -40,10 +40,16 @@ const item = {
 const radar: RadarOverlayResult = {
   availability: "radar",
   provider: "rainviewer",
-  observedAt: "2026-09-15T10:20:00.000Z",
+  frameTime: "2026-09-15T10:20:00.000Z",
   fetchedAt: "2026-09-15T10:21:00.000Z",
   stale: false,
   tileUrlTemplate: "https://tilecache.rainviewer.com/v2/radar/1789467600/256/{z}/{x}/{y}/2/1_0.png",
+  frames: [{
+    frameTime: "2026-09-15T10:20:00.000Z",
+    tileUrlTemplate: "https://tilecache.rainviewer.com/v2/radar/1789467600/256/{z}/{x}/{y}/2/1_0.png",
+    intensityTileUrlTemplate: "https://tilecache.rainviewer.com/v2/radar/1789467600/256/{z}/{x}/{y}/2/0_0.png",
+    coverageTileUrlTemplate: "https://tilecache.rainviewer.com/v2/coverage/0/256/{z}/{x}/{y}/0/0_0.png",
+  }],
   maxZoom: 7,
   attributionLabel: "RainViewer",
   attributionUrl: "https://www.rainviewer.com/",

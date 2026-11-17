@@ -3,6 +3,7 @@ import {
   __resetOpenMeteoOverlayCacheForTests,
   getOpenMeteoOverlay,
 } from "@/lib/weather/open-meteo-overlay";
+import { hasBoundedForecastRain } from "@/lib/weather/rain-mask";
 
 const coordinates = [
   { latitude: 5.4, longitude: 100.3 },
@@ -49,7 +50,8 @@ describe("Open-Meteo spatial overlay adapter", () => {
     expect(url.searchParams.get("latitude")).toBe("5.4000,5.4100");
     expect(url.searchParams.get("longitude")).toBe("100.3000,100.3100");
     expect(url.searchParams.get("hourly")).toContain("precipitation");
-    expect(url.searchParams.get("timezone")).toBe("auto");
+    expect(url.searchParams.get("timezone")).toBe("Asia/Kuala_Lumpur");
+    expect(url.searchParams.get("cell_selection")).toBe("nearest");
     expect(result.samples).toEqual([
       expect.objectContaining({ latitude: 5.4, longitude: 100.3, precipitationMm: 2.8 }),
       expect.objectContaining({ latitude: 5.41, longitude: 100.31, precipitationMm: 8.2 }),
@@ -64,6 +66,135 @@ describe("Open-Meteo spatial overlay adapter", () => {
       { fetcher: fetcher as typeof fetch, now: () => new Date("2026-09-15T00:00:00.000Z") },
     );
     expect(result.samples).toHaveLength(1);
+  });
+
+  it("retains the model-returned grid coordinate instead of implying requested-place precision", async () => {
+    const fetcher = vi.fn(async () => jsonResponse(locationPayload(5.375, 100.25)));
+    const result = await getOpenMeteoOverlay(
+      { coordinates: [{ latitude: 5.4, longitude: 100.3 }], date: "2026-09-16", hour: 16 },
+      { fetcher: fetcher as typeof fetch, now: () => new Date("2026-09-15T00:00:00.000Z") },
+    );
+    expect(result.samples[0]).toMatchObject({ latitude: 5.375, longitude: 100.25 });
+    expect(result.spatialCoverageComplete).toBe(false);
+  });
+
+  it("deduplicates repeated Open-Meteo model cells before building the forecast grid", async () => {
+    const requested = [
+      { latitude: 5.40, longitude: 100.30 },
+      { latitude: 5.41, longitude: 100.31 },
+      { latitude: 5.49, longitude: 100.39 },
+      { latitude: 5.50, longitude: 100.40 },
+      { latitude: 5.42, longitude: 100.32 },
+      { latitude: 5.48, longitude: 100.38 },
+    ];
+    const returnedCells = [
+      [5.4, 100.3], [5.4, 100.3], [5.4, 100.4], [5.4, 100.4], [5.5, 100.3], [5.5, 100.4],
+    ];
+    const fetcher = vi.fn(async () => jsonResponse(returnedCells.map(([latitude, longitude]) => locationPayload(latitude, longitude))));
+    const result = await getOpenMeteoOverlay(
+      { coordinates: requested, date: "2026-09-16", hour: 16 },
+      { fetcher: fetcher as typeof fetch, now: () => new Date("2026-09-15T00:00:00.000Z") },
+    );
+    expect(result.samples).toHaveLength(4);
+    expect(result.spatialCoverageComplete).toBe(true);
+  });
+
+  it("accepts complete staggered model cells instead of requiring a rectangular coordinate matrix", async () => {
+    const requested = Array.from({ length: 48 }, (_, index) => {
+      const cellIndex = index % 24;
+      const row = Math.floor(cellIndex / 6);
+      const column = cellIndex % 6;
+      return {
+        latitude: 5.3 + row * 0.07 + (index >= 24 ? 0.001 : 0),
+        longitude: 100.13 + column * 0.074 + row * 0.008 + (index >= 24 ? 0.001 : 0),
+      };
+    });
+    const returned = Array.from({ length: 48 }, (_, index) => {
+      const cellIndex = index % 24;
+      const row = Math.floor(cellIndex / 6);
+      const column = cellIndex % 6;
+      const isInteriorRain = row === 1 && column === 2;
+      return locationPayload(
+        5.3 + row * 0.07,
+        100.13 + column * 0.074 + row * 0.008,
+        isInteriorRain ? 2.5 : 0,
+      );
+    });
+    const fetcher = vi.fn(async () => jsonResponse(returned));
+    const result = await getOpenMeteoOverlay(
+      { coordinates: requested, date: "2026-09-16", hour: 16 },
+      { fetcher: fetcher as typeof fetch, now: () => new Date("2026-09-15T00:00:00.000Z") },
+    );
+
+    expect(result.samples).toHaveLength(24);
+    expect(result.spatialCoverageComplete).toBe(true);
+    expect(hasBoundedForecastRain(result.samples)).toBe(true);
+    expect(result.contours.features.length).toBeGreaterThan(0);
+  });
+
+  it("marks spatial coverage incomplete and suppresses contours when probability data is missing", async () => {
+    const location = locationPayload(5.4, 100.3);
+    const fetcher = vi.fn(async () => jsonResponse({
+      ...location,
+      hourly: { ...location.hourly, precipitation_probability: [null, 80, 70] },
+    }));
+    const result = await getOpenMeteoOverlay(
+      { coordinates: [coordinates[0]], date: "2026-09-16", hour: 15 },
+      { fetcher: fetcher as typeof fetch, now: () => new Date("2026-09-15T00:00:00.000Z") },
+    );
+
+    expect(result.availability).toBe("forecast");
+    expect(result.spatialCoverageComplete).toBe(false);
+    expect(result.contours.features).toEqual([]);
+  });
+
+  it("suppresses rain geometry and the precise center when model cells are too sparse", async () => {
+    const requested = [
+      { latitude: 5.4, longitude: 100.3 },
+      { latitude: 5.405, longitude: 100.3 },
+      { latitude: 5.4, longitude: 100.305 },
+      { latitude: 5.405, longitude: 100.305 },
+      { latitude: 5.45, longitude: 100.35 },
+    ];
+    const returned = [
+      locationPayload(5.4, 100.3, 2),
+      locationPayload(5.405, 100.3, 2),
+      locationPayload(5.4, 100.305, 2),
+      locationPayload(5.405, 100.305, 2),
+      locationPayload(5.45, 100.35, 2),
+    ];
+    const fetcher = vi.fn(async () => jsonResponse(returned));
+    const result = await getOpenMeteoOverlay(
+      { coordinates: requested, date: "2026-09-16", hour: 16 },
+      { fetcher: fetcher as typeof fetch, now: () => new Date("2026-09-15T00:00:00.000Z") },
+    );
+
+    expect(result.spatialCoverageComplete).toBe(false);
+    expect(result.contours.features).toEqual([]);
+    expect(result.rainBoundary.features).toEqual([]);
+    expect(result.dominantCenter).toBeNull();
+  });
+
+  it("keeps sample-edge rain status but emits no false closed rain region", async () => {
+    const requested = [
+      { latitude: 5.4, longitude: 100.3 },
+      { latitude: 5.4, longitude: 100.4 },
+      { latitude: 5.5, longitude: 100.3 },
+      { latitude: 5.5, longitude: 100.4 },
+    ];
+    const fetcher = vi.fn(async () => jsonResponse(requested.map(({ latitude, longitude }) => (
+      locationPayload(latitude, longitude, 2)
+    ))));
+    const result = await getOpenMeteoOverlay(
+      { coordinates: requested, date: "2026-09-16", hour: 16 },
+      { fetcher: fetcher as typeof fetch, now: () => new Date("2026-09-15T00:00:00.000Z") },
+    );
+
+    expect(result.spatialCoverageComplete).toBe(true);
+    expect(hasBoundedForecastRain(result.samples)).toBe(false);
+    expect(result.contours.features).toEqual([]);
+    expect(result.rainBoundary.features).toEqual([]);
+    expect(result.dominantCenter).toBeNull();
   });
 
   it("fails closed on coordinate, hour, and response-size mismatches", async () => {
@@ -89,6 +220,21 @@ describe("Open-Meteo spatial overlay adapter", () => {
       { coordinates: [coordinates[0]], date: "2026-09-16", hour: 16 },
       { fetcher: oversized as typeof fetch, now: () => new Date("2026-09-15T00:00:00.000Z") },
     )).availability).toBe("unavailable");
+  });
+
+  it("rejects samples returned in a timezone that could shift the selected local hour", async () => {
+    const fetcher = vi.fn(async () => jsonResponse({
+      ...locationPayload(5.4, 100.3),
+      timezone: "UTC",
+    }));
+    const result = await getOpenMeteoOverlay(
+      { coordinates: [coordinates[0]], date: "2026-09-16", hour: 16 },
+      { fetcher: fetcher as typeof fetch, now: () => new Date("2026-09-15T00:00:00.000Z") },
+    );
+
+    expect(result.availability).toBe("unavailable");
+    expect(result.spatialCoverageComplete).toBe(false);
+    expect(result.contours.features).toEqual([]);
   });
 
   it("does not call the provider outside the live forecast horizon", async () => {
