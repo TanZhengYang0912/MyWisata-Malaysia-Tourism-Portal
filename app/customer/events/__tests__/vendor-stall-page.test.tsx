@@ -1,21 +1,43 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 
-const mocks = vi.hoisted(() => ({ getPublicPromotionCampaigns: vi.fn(), notFound: vi.fn(), reserveProps: null as Record<string, unknown> | null }));
+const mocks = vi.hoisted(() => ({
+  getPublicPromotionCampaigns: vi.fn(),
+  notFound: vi.fn(() => { throw new Error("NEXT_NOT_FOUND"); }),
+  reserveProps: [] as Record<string, unknown>[],
+}));
 
-vi.mock("@/lib/i18n/server", () => ({ getServerTranslation: vi.fn(async () => ({ t: (key: string) => key, locale: "en" })) }));
+const translate = (key: string, options?: Record<string, unknown>) => key === "ui.promotionCampaigns.stallNumber" ? `Stall ${String(options?.number)}` : key;
+
+vi.mock("@/lib/i18n/server", () => ({ getServerTranslation: vi.fn(async () => ({ t: translate, locale: "en" })) }));
+vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: translate, i18n: { resolvedLanguage: "en" } }) }));
 vi.mock("@/lib/promotion-campaigns/public", () => ({ getPublicPromotionCampaigns: mocks.getPublicPromotionCampaigns }));
 vi.mock("next/navigation", () => ({ notFound: mocks.notFound }));
-vi.mock("@/components/customer/event-reserve-dialog", async () => {
+vi.mock("next/image", async () => {
   const { createElement } = await import("react");
-  return { EventReserveButton: (props: Record<string, unknown>) => {
-    mocks.reserveProps = props;
-    return createElement("button", null, "Reserve");
-  } };
+  return { default: ({ src, alt }: { src: string; alt: string }) => createElement("img", { src, alt }) };
 });
+vi.mock("@/components/shared/reference-price", async () => {
+  const { createElement } = await import("react");
+  return { ReferencePrice: ({ amountMYR }: { amountMYR: number }) => createElement("span", null, `RM${amountMYR.toFixed(2)}`) };
+});
+vi.mock("@/components/customer/event-reserve-dialog", () => ({
+  EventReserveButton: ({ trigger, ...props }: Record<string, unknown> & { trigger: (open: () => void) => unknown }) => {
+    mocks.reserveProps.push(props);
+    return trigger(() => {});
+  },
+}));
 
 import EventVendorStallPage from "@/app/customer/events/[slug]/[vendorId]/page";
+
+const BANGSAR = "33333333-3333-4333-8333-333333333331";
+const CENTRAL = "33333333-3333-4333-8333-333333333332";
+const product = { id: "a2880dc7-4c89-b498-131e-964430c836a9", name: "Strawberry Preserve Jar", kind: "product" as const, price: 22, imageUrl: "https://example.com/preserve.jpg" };
+const location = (id: string, name: string, startsOn: string, endsOn: string) => ({ id, name, address: `${name} address`, lat: null, lng: null, startsOn, endsOn, opensAt: "10:00", closesAt: "22:00" });
+const stall = (registrationId: string, locationId: string, stallNumber: string) => ({
+  registrationId, locationId, stallNumber, stallDescription: `${stallNumber} description`, stallPosterUrl: `https://example.com/${stallNumber}.jpg`, products: [product],
+});
 
 const campaign: PromotionCampaignPublic = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -25,72 +47,103 @@ const campaign: PromotionCampaignPublic = {
   description: "Discover local food.",
   posterUrl: null,
   operatingHours: null,
-  startsAt: "2026-10-09T00:00:00.000Z",
-  endsAt: "2026-10-12T00:00:00.000Z",
+  startsAt: "2026-10-03T00:00:00.000Z",
+  endsAt: "2026-12-31T00:00:00.000Z",
   visibility: "live",
-  locations: [{
-    id: "33333333-3333-4333-8333-333333333333",
-    name: "Central Market Annex",
-    address: "Stall B02, Kuala Lumpur",
-    lat: null,
-    lng: null,
-    startsOn: "2026-10-10",
-    endsOn: "2026-10-12",
-    opensAt: "10:00",
-    closesAt: "22:00",
-  }],
+  locations: [location(BANGSAR, "Bangsar Night Market", "2026-10-03", "2026-10-08"), location(CENTRAL, "Central Market Annex", "2026-10-10", "2026-12-31")],
   vendors: [{
     vendorId: "4f774340-2bce-de7d-dc27-8208f1286b59",
     vendorName: "Baboon House",
     vendorLogoUrl: null,
     vendorKind: "shop",
-    stalls: [{
-      registrationId: "22222222-2222-4222-8222-222222222222",
-      locationId: "33333333-3333-4333-8333-333333333333",
-      stallNumber: "B02",
-      stallDescription: "Local favourites, made fresh.",
-      stallPosterUrl: "https://example.com/stall.jpg",
-      products: [{
-        id: "a2880dc7-4c89-b498-131e-964430c836a9",
-        name: "Strawberry Preserve Jar",
-        kind: "product",
-        price: 22,
-        imageUrl: "https://example.com/preserve.jpg",
-      }],
-    }],
+    stalls: [stall("reg-bangsar", BANGSAR, "A01"), stall("reg-central", CENTRAL, "B01"), stall("reg-gone", "missing-location", "Z99")],
   }],
 };
+const vendorId = campaign.vendors[0].vendorId;
+
+async function renderPage(stop?: string, data: PromotionCampaignPublic = campaign) {
+  mocks.getPublicPromotionCampaigns.mockResolvedValue({ campaigns: [data], error: false });
+  const page = await EventVendorStallPage({
+    params: Promise.resolve({ slug: data.slug, vendorId }),
+    searchParams: Promise.resolve(stop === undefined ? {} : { stop }),
+  });
+  return renderToStaticMarkup(page);
+}
 
 describe("customer event vendor stall page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getPublicPromotionCampaigns.mockResolvedValue({ campaigns: [campaign], error: false });
+    mocks.reserveProps = [];
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-20T12:00:00+08:00"));
   });
+  afterEach(() => vi.useRealTimers());
 
-  it("keeps product name, price, and reservation action while hiding repeated card details", async () => {
-    const page = await EventVendorStallPage({
-      params: Promise.resolve({ slug: campaign.slug, vendorId: campaign.vendors[0].vendorId }),
-    });
-    const markup = renderToStaticMarkup(page);
-    const itemCard = markup.slice(markup.indexOf('<li class="mw-card'), markup.indexOf("</li>") + 5);
+  it("shows only the chosen stop, lists the others under Also at and reserves by tapping the product", async () => {
+    const markup = await renderPage(CENTRAL);
 
-    expect(itemCard).toContain("Strawberry Preserve Jar");
-    expect(itemCard).toContain("RM22.00");
-    expect(itemCard).toContain("Reserve");
-    expect(itemCard).not.toContain("ui.vendor.eventItems.kinds.product");
-    expect(itemCard).not.toContain("Central Market Annex");
-    expect(itemCard).not.toContain("Oct 10, 2026");
-    expect(itemCard).not.toContain("10:00 AM");
-    expect(markup).toContain("Central Market Annex");
-    expect(markup).toContain("Stall B02, Kuala Lumpur");
-    expect(mocks.reserveProps).toEqual({
-      registrationId: "22222222-2222-4222-8222-222222222222",
-      listingId: "a2880dc7-4c89-b498-131e-964430c836a9",
+    expect(markup).toContain("Central Market Annex address");
+    expect(markup).toContain("B01 description");
+    expect(markup).toContain("https://example.com/B01.jpg");
+    expect(markup).not.toContain("A01 description");
+    expect(markup).not.toContain("Z99");
+    expect(markup).not.toContain("ui.promotionCampaigns.locationCount");
+
+    expect(markup).toContain("ui.promotionCampaigns.alsoAt");
+    expect(markup).toContain(`href="/customer/events/penang-food-week/${vendorId}?stop=${BANGSAR}"`);
+    expect(markup).toContain("ui.promotionCampaigns.locationEnded");
+
+    const card = markup.slice(markup.indexOf("data-stall-product="), markup.indexOf("</article>"));
+    expect(card).toContain('data-stall-product="open"');
+    expect(card).toContain("Strawberry Preserve Jar");
+    expect(card).toContain("RM22.00");
+    expect(card).toContain('aria-haspopup="dialog"');
+    // The underline grows on an inline span so a wrapped title is underlined line by line, as on CardFrame links.
+    const button = card.slice(card.indexOf("<button"), card.indexOf("</button>"));
+    expect(button.slice(0, button.indexOf(">"))).not.toContain("bg-[length:0_2px]");
+    expect(button).toMatch(/<span class="[^"]*bg-\[length:0_2px\][^"]*group-hover\/title:bg-\[length:100%_2px\]/);
+    expect(markup).not.toContain("ui.reserve.open");
+    expect(mocks.reserveProps).toEqual([{
+      registrationId: "reg-central",
+      listingId: product.id,
       itemName: "Strawberry Preserve Jar",
       price: 22,
       locationName: "Central Market Annex",
       startsOn: "2026-10-10",
-      endsOn: "2026-10-12",
-    });
+      endsOn: "2026-12-31",
+    }]);
+
+    expect(markup).toContain(`href="/customer/events/penang-food-week?stop=${CENTRAL}"`);
+    expect(markup).toContain(`href="/customer/vendors/${vendorId}"`);
+    expect(markup).toContain("ui.actions.visitVendor");
+  });
+
+  it("shows Ended instead of the price at an ended stop, with nothing to tap", async () => {
+    const markup = await renderPage(BANGSAR);
+
+    expect(markup).toContain("A01 description");
+    expect(markup).toContain('data-stall-product="ended"');
+    expect(markup).toContain("ui.reserve.ended");
+    expect(markup).not.toContain("RM22.00");
+    expect(markup).not.toContain('aria-haspopup="dialog"');
+    expect(mocks.reserveProps).toEqual([]);
+  });
+
+  it("falls back to the running stop for a missing or unknown stop", async () => {
+    for (const stop of [undefined, "not-a-stop"]) {
+      const markup = await renderPage(stop);
+      expect(markup).toContain("B01 description");
+      expect(markup).not.toContain("A01 description");
+    }
+  });
+
+  it("is not found when none of the vendor's stalls has a location", async () => {
+    const onlyMissing = { ...campaign, vendors: [{ ...campaign.vendors[0], stalls: [stall("reg-gone", "missing-location", "Z99")] }] };
+    await expect(renderPage(undefined, onlyMissing)).rejects.toThrow("NEXT_NOT_FOUND");
+  });
+
+  it("hides Also at when the vendor has a single stall", async () => {
+    const single = { ...campaign, vendors: [{ ...campaign.vendors[0], stalls: [stall("reg-central", CENTRAL, "B01")] }] };
+    expect(await renderPage(CENTRAL, single)).not.toContain("ui.promotionCampaigns.alsoAt");
   });
 });

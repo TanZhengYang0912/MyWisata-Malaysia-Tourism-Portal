@@ -103,8 +103,8 @@ describe("Supabase proxy locale resolution", () => {
     await expect(response.json()).resolves.toMatchObject({ error: { code: "MFA_REQUIRED" } });
   });
 
-  it("uses the authenticated account locale before the cookie and browser", async () => {
-    const { eq, from, maybeSingle, select } = setupSupabase({
+  it("keeps a signed-in visitor's cookie language and never reads the account locale", async () => {
+    const { from } = setupSupabase({
       accountLocale: "ms",
       claimsSub: "user-123",
     });
@@ -113,12 +113,18 @@ describe("Supabase proxy locale resolution", () => {
       makeRequest({ cookie: "NEXT_LOCALE=zh-CN", acceptLanguage: "en-US" }),
     );
 
-    expect(localeFromResponse(response)).toBe("ms");
-    expect(response.cookies.get("NEXT_LOCALE")?.value).toBe("ms");
-    expect(from).toHaveBeenCalledWith("users");
-    expect(select).toHaveBeenCalledWith("preferred_locale");
-    expect(eq).toHaveBeenCalledWith("id", "user-123");
-    expect(maybeSingle).toHaveBeenCalledOnce();
+    expect(localeFromResponse(response)).toBe("zh-CN");
+    expect(response.cookies.has("NEXT_LOCALE")).toBe(false);
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("uses the browser language, not the account locale, for a signed-in visitor without a cookie", async () => {
+    setupSupabase({ accountLocale: "zh-CN", claimsSub: "user-123" });
+
+    const response = await updateSession(makeRequest({ acceptLanguage: "en-US" }));
+
+    expect(localeFromResponse(response)).toBe("en");
+    expect(response.cookies.get("NEXT_LOCALE")?.value).toBe("en");
   });
 
   it("uses the anonymous visitor cookie before the browser", async () => {
@@ -169,10 +175,7 @@ describe("Supabase proxy locale resolution", () => {
     expect(response.cookies.has("NEXT_LOCALE")).toBe(false);
   });
 
-  // API responses carry no localized copy except one admin report; document
-  // navigations keep the cookie synced to the account locale (D3 of
-  // docs/plans/2026-11-15-1232-api-auth-locale-and-card-images.md).
-  it("skips the account-locale read for API requests and resolves from the cookie", async () => {
+  it("resolves API requests from the cookie without an account read", async () => {
     const { from, getClaims } = setupSupabase({ accountLocale: "zh-CN", claimsSub: "user-123" });
 
     const response = await updateSession(makeRequest({

@@ -1,34 +1,36 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, List, Map as MapIcon, Megaphone, RefreshCw } from "lucide-react";
+import { CalendarDays, Megaphone, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
+import { CustomerPageHeader, CustomerPageShell, CustomerSectionHeader } from "@/components/customer/customer-page-shell";
 import { EventCard } from "@/components/customer/event-card";
-import { EventsDateHeader, SEE_MORE_TEXT } from "./events-date-header";
-import { EventsMap } from "./events-map";
+import { Pagination } from "@/components/shared/pagination";
+import { EventsDateFilter, headingFor } from "./events-date-header";
 import { getMalaysiaDateInputValue } from "@/lib/datetime/date-input";
+import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import { campaignRunsOn, getEventSessionOn } from "@/lib/promotion-campaigns/locations";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 
-type Props = { initialCampaigns: PromotionCampaignPublic[]; initialError: boolean };
+type Props = { initialCampaigns: PromotionCampaignPublic[]; initialError: boolean; initialDate?: string | null };
 
-const VIEWS = [
-  { id: "list", icon: List },
-  { id: "map", icon: MapIcon },
-] as const;
-type EventsView = (typeof VIEWS)[number]["id"];
+const PAGE_SIZE = 8;
 
-export function PromotionCampaignsClient({ initialCampaigns, initialError }: Props) {
-  const { t } = useTranslation("customer");
+/** Earliest stop start, or "" when the event has no stops. */
+const firstStart = (campaign: PromotionCampaignPublic) => campaign.locations.reduce((first, location) => (!first || location.startsOn < first ? location.startsOn : first), "");
+
+export function PromotionCampaignsClient({ initialCampaigns, initialError, initialDate = null }: Props) {
+  const { t, i18n } = useTranslation("customer");
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const [campaigns, setCampaigns] = useState(initialCampaigns);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(initialError);
-  const [view, setView] = useState<EventsView>("list");
   const [today] = useState(() => getMalaysiaDateInputValue());
-  const [day, setDay] = useState(today);
+  // A shared ?date= link opens on that day; a past day falls back to all events.
+  const [date, setDate] = useState<string | null>(() => (initialDate && initialDate >= today ? initialDate : null));
+  const [page, setPage] = useState(1);
   // The clock is read after mount so server and client markup agree; until then cards show no Open now.
   const [now, setNow] = useState<Date | null>(null);
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -55,59 +57,49 @@ export function PromotionCampaignsClient({ initialCampaigns, initialError }: Pro
     await load();
   }, [load]);
 
-  const sortedCampaigns = [...campaigns].sort((left, right) => {
-    if (left.visibility !== right.visibility) return left.visibility === "live" ? -1 : 1;
-    return left.visibility === "live"
-      ? Date.parse(left.endsAt) - Date.parse(right.endsAt)
-      : Date.parse(left.startsAt) - Date.parse(right.startsAt);
-  });
+  // Every event with a stop that has not ended, earliest start first. "Ended" is by date, so server and client agree.
+  const upcomingCampaigns = useMemo(() => campaigns
+    .filter((campaign) => campaign.locations.some((location) => location.endsOn >= today))
+    .sort((left, right) => firstStart(left).localeCompare(firstStart(right)) || left.title.localeCompare(right.title)), [campaigns, today]);
 
-  // Events running on the chosen day: open now first, then by that day's opening time, then by title.
-  const campaignsOnDay = sortedCampaigns
-    .filter((campaign) => campaignRunsOn(campaign, day))
-    .map((campaign) => ({ campaign, session: getEventSessionOn(campaign.locations, day, now ?? undefined) }))
-    .sort((left, right) => (
-      Number(right.session?.openNow === true) - Number(left.session?.openNow === true)
-      || (left.session?.location.opensAt ?? "").localeCompare(right.session?.location.opensAt ?? "")
-      || left.campaign.title.localeCompare(right.campaign.title)
-    ))
-    .map(({ campaign }) => campaign);
-  const browsing = !loading && !error && sortedCampaigns.length > 0;
+  // ponytail: counts filter the in-memory list per day (about 35 days × events when the calendar opens); cache by day if the list grows.
+  const countOn = useCallback((day: string) => upcomingCampaigns.filter((campaign) => campaignRunsOn(campaign, day)).length, [upcomingCampaigns]);
+
+  // With a date: the events running that day, open now first, then by that day's opening time, then by title.
+  const listed = date
+    ? upcomingCampaigns
+      .filter((campaign) => campaignRunsOn(campaign, date))
+      .map((campaign) => ({ campaign, session: getEventSessionOn(campaign.locations, date, now ?? undefined) }))
+      .sort((left, right) => (
+        Number(right.session?.openNow === true) - Number(left.session?.openNow === true)
+        || (left.session?.location.opensAt ?? "").localeCompare(right.session?.location.opensAt ?? "")
+        || left.campaign.title.localeCompare(right.campaign.title)
+      ))
+      .map(({ campaign }) => campaign)
+    : upcomingCampaigns;
+  const totalPages = Math.max(1, Math.ceil(listed.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const visible = listed.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const browsing = !loading && !error && upcomingCampaigns.length > 0;
+
+  const selectDate = (value: string | null) => {
+    setDate(value);
+    setPage(1);
+    // Keep the day in the URL so a shared link opens on it; replaceState adds no history entry (as ?stop= on the event page).
+    const url = new URL(window.location.href);
+    if (value) url.searchParams.set("date", value);
+    else url.searchParams.delete("date");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  };
 
   return (
     <CustomerPageShell wide>
-      {browsing ? (
-        <>
-          <EventsDateHeader
-            day={day}
-            today={today}
-            hasEvents={(value) => sortedCampaigns.some((campaign) => campaignRunsOn(campaign, value))}
-            onSelect={setDay}
-          />
-          <div className="mb-5 mt-4 flex items-center justify-between gap-3">
-            <p role="status" className="text-[13px] text-muted-foreground">{t("ui.promotionCampaigns.map.eventCount", { count: campaignsOnDay.length })}</p>
-            <div role="group" aria-label={t("ui.promotionCampaigns.views.label")} className="inline-flex rounded-full border border-border bg-card p-1">
-              {VIEWS.map(({ id, icon: Icon }) => (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={view === id}
-                  onClick={() => setView(id)}
-                  className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${view === id ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  <Icon size={15} aria-hidden="true" /> {t(`ui.promotionCampaigns.views.${id}`)}
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
-      ) : (
-        <CustomerPageHeader
-          eyebrow={t("ui.promotionCampaigns.eyebrow")}
-          title={t("ui.promotionCampaigns.pageTitle")}
-          icon={<Megaphone size={15} />}
-        />
-      )}
+      <CustomerPageHeader
+        eyebrow={t("ui.promotionCampaigns.eyebrow")}
+        title={t("ui.promotionCampaigns.pageTitle")}
+        icon={<Megaphone size={15} />}
+        actions={browsing ? <EventsDateFilter date={date} today={today} countOn={countOn} onSelect={selectDate} /> : undefined}
+      />
       {error && (
         <div role="alert" className="mb-6 rounded-2xl border border-destructive/25 bg-destructive/5 p-5">
           <p className="font-semibold text-foreground">{t("ui.promotionCampaigns.loadError")}</p>
@@ -116,7 +108,7 @@ export function PromotionCampaignsClient({ initialCampaigns, initialError }: Pro
           </Button>
         </div>
       )}
-      {loading ? <p role="status" className="py-12 text-center text-sm text-muted-foreground">{t("ui.promotionCampaigns.loading")}</p> : !error && sortedCampaigns.length === 0 ? (
+      {loading ? <p role="status" className="py-12 text-center text-sm text-muted-foreground">{t("ui.promotionCampaigns.loading")}</p> : !error && upcomingCampaigns.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-border bg-card p-10 text-center">
           <CalendarDays size={30} className="mx-auto text-primary" />
           <h2 className="mt-4 font-[family-name:var(--font-display)] text-xl font-bold text-foreground">
@@ -129,17 +121,27 @@ export function PromotionCampaignsClient({ initialCampaigns, initialError }: Pro
             <Link href="/customer">{t("ui.promotionCampaigns.home")}</Link>
           </Button>
         </div>
-      ) : error ? null : view === "map" ? <EventsMap campaigns={campaignsOnDay} />
-        : campaignsOnDay.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-            {campaignsOnDay.map((campaign) => <EventCard key={campaign.id} campaign={campaign} day={day} now={now} />)}
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-border p-10 text-center">
-            <p className="text-sm text-muted-foreground">{t("ui.promotionCampaigns.dateEmpty")}</p>
-            {day !== today && <button type="button" onClick={() => setDay(today)} className={`${SEE_MORE_TEXT} mt-2`}>{t("ui.promotionCampaigns.datePicker.backToToday")}</button>}
-          </div>
-        )}
+      ) : error ? null : (
+        <section aria-labelledby="events-list-heading">
+          <CustomerSectionHeader
+            id="events-list-heading"
+            title={date ? headingFor(date, locale) : t("ui.promotionCampaigns.allEvents")}
+            action={<p role="status" className="text-[13px] text-muted-foreground">{t("ui.promotionCampaigns.map.eventCount", { count: listed.length })}</p>}
+          />
+          {listed.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+                {visible.map((campaign) => <EventCard key={campaign.id} campaign={campaign} day={date} now={now} />)}
+              </div>
+              {totalPages > 1 && <Pagination ariaLabel={t("ui.promotionCampaigns.pageTitle")} currentPage={safePage} onPageChange={setPage} pageSize={PAGE_SIZE} totalItems={listed.length} totalPages={totalPages} />}
+            </>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border p-10 text-center">
+              <p className="text-sm text-muted-foreground">{t("ui.promotionCampaigns.dateEmpty")}</p>
+            </div>
+          )}
+        </section>
+      )}
     </CustomerPageShell>
   );
 }

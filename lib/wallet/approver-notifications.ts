@@ -1,4 +1,3 @@
-import { emailLocale } from '@/lib/email/copy';
 import { createServiceClient } from '@/lib/supabase/service';
 import { enqueueEmail } from '@/lib/email/outbox';
 import { z } from 'zod';
@@ -24,7 +23,7 @@ const jobSchema = z.object({
   token: z.string().uuid(), customerUserId: z.string().uuid(),
 });
 const recipientsSchema = z.array(z.object({
-  id: z.string().uuid(), email: z.string().nullable(), full_name: z.string().nullable(), preferred_locale: z.string().nullable(),
+  id: z.string().uuid(), email: z.string().nullable(), full_name: z.string().nullable(),
 })).max(25);
 const deliveryBatchSchema = z.object({ stale: z.boolean(), recipients: recipientsSchema });
 
@@ -60,7 +59,7 @@ export async function processWithdrawalApproverNotifications() {
       const eventKey = (id: string) => `${eventPrefix}:${job.withdrawalId}:cycle:${job.cycle}:approver:${id}${stageSuffix}`;
       const emails = await Promise.allSettled(users.filter((user) => user.email?.trim()).map((user) => enqueueEmail({
         eventKey: eventKey(user.id), userId: user.id, toEmail: user.email!.trim(),
-        locale: emailLocale(user.preferred_locale), eventType: 'staff_withdrawal_approval', recipientName: user.full_name,
+        eventType: 'staff_withdrawal_approval', recipientName: user.full_name,
         reason: job.stage === 'overdue'
           ? 'An overdue withdrawal needs Super Admin attention in the protected Admin workspace.'
           : 'A withdrawal approval task is waiting in the protected Admin workspace.',

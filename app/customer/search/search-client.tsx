@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { ArrowRight, MapPin } from "lucide-react";
 import type { ComputedActivity, SponsoredPlacement, VendorSummary } from "@/backend/core/types";
 import { Pagination } from "@/components/shared/pagination";
+import { CustomerPageTitle } from "@/components/customer/customer-page-shell";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PromotionSpotlight } from "@/components/customer/promotion-spotlight";
 import { getActivityCommerceMode, getActivityDiscoveryMode } from "@/lib/customer/category-details";
@@ -237,16 +238,9 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
   return (
     <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
       <div className="min-h-screen overflow-x-clip bg-background text-foreground">
-        <section className="border-b border-border bg-background">
-          <div className="mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 sm:pb-8 sm:pt-10">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.search.verifiedPartners")}</p>
-            <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold text-foreground sm:text-4xl">
-              {t("ui.search.title")}
-            </h1>
-          </div>
-        </section>
+        <CustomerPageTitle eyebrow={t("ui.search.verifiedPartners")} title={t("ui.search.title")} />
 
-        <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+        <section className="mx-auto max-w-7xl px-4 pb-6 sm:px-6 sm:pb-8">
           <DiscoveryToolbar
             testIds={{ bar: "partner-filter-bar", filters: "partner-filters-trigger", sort: "partner-sort-control" }}
             query={filters.q}

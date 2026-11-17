@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(), isSuperAdmin: vi.fn(), createServiceClient: vi.fn(),
   getAffiliateAdminStats: vi.fn(), getFraudCounters: vi.fn(), getFraudAnalytics: vi.fn(),
-  generateAffiliateReportPdf: vi.fn(), getRequestLocale: vi.fn(),
+  generateAffiliateReportPdf: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { getUser: mocks.getUser } }) }));
@@ -13,14 +13,12 @@ vi.mock('@/lib/affiliate/admin-stats', () => ({ getAffiliateAdminAttributionPage
 vi.mock('@/lib/affiliate/fraud', () => ({ getFraudCounters: mocks.getFraudCounters }));
 vi.mock('@/lib/affiliate/fraud-analytics', () => ({ getFraudAnalytics: mocks.getFraudAnalytics }));
 vi.mock('@/lib/pdf/affiliate-report', () => ({ generateAffiliateReportPdf: mocks.generateAffiliateReportPdf }));
-vi.mock('@/lib/i18n/server', () => ({ getRequestLocale: mocks.getRequestLocale }));
 
 import { GET } from '../route';
 
-describe('affiliate report route locale', () => {
+describe('affiliate report route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getRequestLocale.mockResolvedValue('ms');
     mocks.getUser.mockResolvedValue({ data: { user: { id: 'admin-id' } } });
     mocks.isSuperAdmin.mockResolvedValue(true);
     mocks.createServiceClient.mockReturnValue({});
@@ -35,10 +33,10 @@ describe('affiliate report route locale', () => {
     mocks.generateAffiliateReportPdf.mockResolvedValue(Buffer.from('%PDF-test'));
   });
 
-  it('uses the request locale without changing the download contract', async () => {
+  it('renders the English report without changing the download contract', async () => {
     const response = await GET(new Request('https://example.test/api/admin/affiliate/report?range=7d'));
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('application/pdf');
-    expect(mocks.generateAffiliateReportPdf).toHaveBeenCalledWith(expect.objectContaining({ stats: expect.any(Object) }), 'ms');
+    expect(mocks.generateAffiliateReportPdf).toHaveBeenCalledWith(expect.objectContaining({ stats: expect.any(Object) }));
   });
 });

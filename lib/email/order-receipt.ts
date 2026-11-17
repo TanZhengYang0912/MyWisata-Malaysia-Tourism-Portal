@@ -4,9 +4,8 @@ import QRCode from 'qrcode';
 import { getEmailConfig } from '@/lib/email/config';
 import { classifyEmailDeliveryError, emailTransportTimeouts, type EmailDelivery } from '@/lib/email/delivery';
 import { generateReceiptPdf, type ReceiptData } from '@/lib/pdf/receipt';
-import { emailCopy, emailLocale } from './copy';
+import { emailCopy } from './copy';
 import { formatMYR } from '@/lib/i18n/format';
-import type { AppLocale } from '@/lib/i18n/locale';
 import { ensureCustomEmailDeliveryEnabled } from '@/lib/platform/operations-settings';
 
 export type OrderReceiptPickupPass = {
@@ -17,7 +16,7 @@ export type OrderReceiptPickupPass = {
   qrUrl: string;
 };
 
-export type OrderReceiptPayload = ReceiptData & { recipientEmail: string; locale?: AppLocale; accessUrl?: string; pickupPasses?: OrderReceiptPickupPass[]; delivery?: EmailDelivery };
+export type OrderReceiptPayload = ReceiptData & { recipientEmail: string; accessUrl?: string; pickupPasses?: OrderReceiptPickupPass[]; delivery?: EmailDelivery };
 
 function redactError(error: unknown): Error {
   const message = error instanceof Error ? error.message : 'Unknown SMTP error';
@@ -28,7 +27,7 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
   if (!payload.delivery) await ensureCustomEmailDeliveryEnabled();
   const pdfBuffer = await generateReceiptPdf(payload);
 
-  const copy = emailCopy(payload.locale);
+  const copy = emailCopy();
   const pickupPasses = await Promise.all((payload.pickupPasses ?? []).map(async (pass, index) => ({
     ...pass,
     instructions: pass.kind === 'event' ? copy.eventPickupQrInstructions : pass.kind === 'retail' ? copy.retailPickupQrInstructions : copy.pickupQrInstructions,
@@ -48,7 +47,7 @@ export async function sendOrderReceiptEmail(payload: OrderReceiptPayload): Promi
 
   const html = `
 <!DOCTYPE html>
-<html lang="${emailLocale(payload.locale)}">
+<html lang="en">
 <body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;padding:20px">
   <h2 style="color:#1a7f5a">${copy.confirmed}</h2>
   <p>${copy.greeting} ${escapeHtml(payload.recipientName)},</p>

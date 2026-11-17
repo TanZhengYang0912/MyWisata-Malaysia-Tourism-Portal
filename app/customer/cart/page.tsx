@@ -4,6 +4,7 @@ import { formatStayRange } from "@/lib/customer/booking-view";
 import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 import { SeeMoreLink } from "@/components/customer/see-more-link";
 import { useAuth } from "@/components/providers/auth";
 import { useActionFeedback } from "@/components/providers/action-feedback";
@@ -428,13 +429,11 @@ export default function CartPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-display)]">{tCustomer("ui.cart.title")}</h1>
-          <Link href="/customer" className="mt-1 inline-flex text-sm font-semibold text-primary hover:underline">{tCustomer("ui.cart.continueShopping")}</Link>
-        </div>
-      </div>
+    <CustomerPageShell wide>
+      <CustomerPageHeader
+        title={tCustomer("ui.cart.title")}
+        description={<Link href="/customer" className="inline-flex font-semibold text-primary hover:underline">{tCustomer("ui.cart.continueShopping")}</Link>}
+      />
       {itemsLoadError && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm"><span>{tCustomer("ui.cart.refreshError")}</span><Button type="button" size="sm" variant="outline" onClick={reloadItems}>{tCustomer("ui.actions.retry")}</Button></div>}
       {itemsLoading && items.length > 0 && <p role="status" className="mb-4 text-xs text-muted-foreground">{tCustomer("ui.cart.refreshing")}</p>}
       {cartActionError && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm"><span>{tCustomer("ui.cart.actionError")}</span><Button type="button" size="sm" variant="outline" onClick={reloadItems}>{tCustomer("ui.actions.retry")}</Button></div>}
@@ -763,6 +762,6 @@ export default function CartPage() {
           onSave={(details) => saveStayDetails(stayEditIndex, details)}
         />
       )}
-    </div>
+    </CustomerPageShell>
   );
 }

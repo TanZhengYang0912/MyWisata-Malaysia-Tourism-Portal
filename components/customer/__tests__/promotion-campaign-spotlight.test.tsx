@@ -160,9 +160,12 @@ describe("promotion campaign home spotlight", () => {
     expect(multiple).not.toContain("Second event");
     const indicators = multiple.match(/<button(?=[^>]*aria-label="ui\.accessibility\.carouselSlide [^"]+")[^>]*>/g) ?? [];
     expect(indicators).toHaveLength(2);
-    expect(indicators[0]).toContain('aria-current="true"');
+    expect(indicators[0]).toContain('aria-current="page"');
     expect(indicators[1]).not.toContain("aria-current");
-    expect(multiple).toContain("mt-3 flex justify-center");
+    // The Featured highlights controls: ‹ worm › under the slide, arrows beside it from 1360px.
+    expect(multiple).toContain('aria-label="accessibility.previousPage"');
+    expect(multiple).toContain('aria-label="accessibility.nextPage"');
+    expect(single).not.toContain("accessibility.previousPage");
   });
 
   it("renders the event poster without requiring a global image host allowlist", () => {
@@ -191,21 +194,31 @@ describe("promotion campaign home spotlight", () => {
 
   it("keeps clipping slides by default for the other featured carousels", () => {
     const markup = renderToStaticMarkup(
-      <FeaturedRecommendationsFrame headingId="h" eyebrow={null} title="t" description={null} carouselLabel="c" slideLabel={(page, total) => `${page}/${total}`} carouselTestId="frame" activeSlideIndex={0} slideCount={1} onSelectSlide={() => {}} onNext={() => {}}>
+      <FeaturedRecommendationsFrame headingId="h" eyebrow={null} title="t" description={null} carouselLabel="c" slideLabel={(page, total) => `${page}/${total}`} carouselTestId="frame" activeSlideIndex={0} slideCount={1} onSelectSlide={() => {}} onNext={() => {}} onPrevious={() => {}}>
         <div />
       </FeaturedRecommendationsFrame>,
     );
     expect(markup.match(/<div(?=[^>]*data-testid="frame")[^>]*>/)?.[0]).toContain("overflow-hidden");
   });
 
-  it("keeps the slide dots navy at rest and turns them yellow on hover or press", () => {
+  it("uses the section title with a line, and navy arrows that turn yellow only on hover or press", () => {
     const markup = renderToStaticMarkup(
-      <FeaturedRecommendationsFrame headingId="h" eyebrow={null} title="t" description={null} carouselLabel="c" slideLabel={(page, total) => `${page}/${total}`} carouselTestId="frame" activeSlideIndex={0} slideCount={2} onSelectSlide={() => {}} onNext={() => {}}>
+      <FeaturedRecommendationsFrame headingId="h" eyebrow={null} title="t" description={null} carouselLabel="c" slideLabel={(page, total) => `${page}/${total}`} carouselTestId="frame" activeSlideIndex={0} slideCount={2} onSelectSlide={() => {}} onNext={() => {}} onPrevious={() => {}}>
         <div />
       </FeaturedRecommendationsFrame>,
     );
-    expect(markup).toContain("w-3.5 bg-primary");
-    expect(markup.match(/group-hover:bg-accent group-active:bg-accent/g)).toHaveLength(2);
+    expect(markup).toMatch(/<div class="[^"]*border-b border-border\/70 pb-4[^"]*"><div class="min-w-0"><h2 id="h"/);
+    const arrows = markup.match(/<button(?=[^>]*aria-label="accessibility\.(?:previous|next)Page")[^>]*>/g) ?? [];
+    expect(arrows).toHaveLength(2);
+    for (const arrow of arrows) {
+      expect(arrow).toContain("text-primary");
+      expect(arrow).toContain("hover:text-accent");
+      expect(arrow).toContain("min-[1360px]:absolute min-[1360px]:top-[calc((100%-36px)/2)]");
+      expect(arrow).not.toContain(" disabled=\"\"");
+    }
+    expect(arrows[0]).toContain("min-[1360px]:-left-11");
+    expect(arrows[1]).toContain("min-[1360px]:-right-11");
+    expect(markup).toContain('role="group" aria-label="c"');
   });
 });
 
@@ -250,7 +263,7 @@ describe("campaign carousel interactions", () => {
     // The envelope's pull tab is a button too; the dots are the buttons named after a slide.
     const indicators = findElements(container, (element) => element.tagName === "BUTTON" && (element.getAttribute("aria-label") ?? "").startsWith("ui.accessibility.carouselSlide"));
     expect(indicators.map((indicator) => indicator.getAttribute("aria-label"))).toHaveLength(3);
-    expect(indicators[0].getAttribute("aria-current")).toBe("true");
+    expect(indicators[0].getAttribute("aria-current")).toBe("page");
     expect(container.textContent).toContain("Sample event");
     expect(container.textContent).not.toContain("Second event");
 
@@ -265,7 +278,7 @@ describe("campaign carousel interactions", () => {
       await Promise.resolve();
     });
     expect(container.textContent).toContain("Second event");
-    expect(indicators[1].getAttribute("aria-current")).toBe("true");
+    expect(indicators[1].getAttribute("aria-current")).toBe("page");
 
     const thirdIndicator = findOne(container, (element) => element.getAttribute("aria-label") === "ui.accessibility.carouselSlide 3 3");
     await act(async () => {
@@ -283,6 +296,27 @@ describe("campaign carousel interactions", () => {
       await Promise.resolve();
     });
     expect(container.textContent).toContain("Sample event");
+  });
+
+  it("steps with the arrows, wrapping both ways", async () => {
+    const second = { ...campaign, id: "campaign-2", slug: "second-event", title: "Second event" };
+    await act(async () => {
+      root.render(<PromotionCampaignSpotlight campaign={campaign} campaigns={[campaign, second]} />);
+      await Promise.resolve();
+    });
+    const arrow = (name: string) => findOne(container, (element) => element.getAttribute("aria-label") === `accessibility.${name}Page`);
+    const click = async (name: string) => {
+      await act(async () => {
+        arrow(name).dispatchEvent(new TestEvent("click", { bubbles: true }));
+        await Promise.resolve();
+      });
+    };
+    await click("previous");
+    expect(container.textContent).toContain("Second event");
+    await click("next");
+    expect(container.textContent).toContain("Sample event");
+    await click("next");
+    expect(container.textContent).toContain("Second event");
   });
 
   it("gives each slide's envelope the stamp for its position", async () => {

@@ -1,7 +1,1 @@
-{{ if eq .Data.preferred_locale "zh-CN" }}
-<!doctype html><html lang="zh-CN"><body style="font-family:Arial,sans-serif;line-height:1.6;color:#183b35"><h2>已移除身份验证方式</h2><p>验证方式: {{ .FactorType }}</p><p>您的账户已移除身份验证方式。如果不是您本人操作，请立即联系客服。</p><p>请勿回复密码或身份证明文件。</p></body></html>
-{{ else if eq .Data.preferred_locale "ms" }}
-<!doctype html><html lang="ms"><body style="font-family:Arial,sans-serif;line-height:1.6;color:#183b35"><h2>Kaedah pengesahan dibuang</h2><p>Kaedah pengesahan: {{ .FactorType }}</p><p>Kaedah pengesahan telah dibuang daripada akaun anda. Jika bukan anda, hubungi sokongan dengan segera.</p><p>Jangan balas dengan kata laluan atau dokumen pengenalan.</p></body></html>
-{{ else }}
 <!doctype html><html lang="en"><body style="font-family:Arial,sans-serif;line-height:1.6;color:#183b35"><h2>A verification method was removed</h2><p>Verification method: {{ .FactorType }}</p><p>A verification method was removed from your account. If this was not you, contact support immediately.</p><p>Never reply with passwords or identity documents.</p></body></html>
-{{ end }}

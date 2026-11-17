@@ -1,6 +1,7 @@
 import { Compass } from "lucide-react";
 import type { PlaceAccess } from "@/backend/core/types";
 import { PlaceActivityCard } from "@/components/customer/place-activity-card";
+import { CustomerSectionHeader } from "@/components/customer/customer-page-shell";
 
 type PlaceAccessSectionProps = {
   accesses: PlaceAccess[];
@@ -14,14 +15,9 @@ export function PlaceAccessSection({ accesses, title, freeLabel }: PlaceAccessSe
 
   return (
     <section className="mt-10" aria-labelledby="place-access-heading">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{freeLabel}</p>
-        <h2 id="place-access-heading" className="mt-2 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-          {title}
-        </h2>
-      </div>
+      <CustomerSectionHeader id="place-access-heading" eyebrow={freeLabel} title={title} />
 
-      <div className="mt-6 grid items-start gap-6 lg:gap-8 lg:grid-cols-2">
+      <div className="grid items-start gap-6 lg:gap-8 lg:grid-cols-2">
         {accesses.map((access) => (
           <PlaceActivityCard
             key={access.id}

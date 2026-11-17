@@ -1,7 +1,1 @@
-{{ if eq .Data.preferred_locale "zh-CN" }}
-<!doctype html><html lang="zh-CN"><body style="font-family:Arial,sans-serif;line-height:1.6;color:#183b35"><h2>您的电话号码已更改</h2><p>原电话号码: {{ .OldPhone }}</p><p>新电话号码: {{ .Phone }}</p><p>您的账户电话号码已更改。如果不是您本人操作，请立即联系客服。</p><p>请勿回复密码或身份证明文件。</p></body></html>
-{{ else if eq .Data.preferred_locale "ms" }}
-<!doctype html><html lang="ms"><body style="font-family:Arial,sans-serif;line-height:1.6;color:#183b35"><h2>Nombor telefon anda telah ditukar</h2><p>Telefon terdahulu: {{ .OldPhone }}</p><p>Telefon baharu: {{ .Phone }}</p><p>Nombor telefon akaun anda telah ditukar. Jika bukan anda, hubungi sokongan dengan segera.</p><p>Jangan balas dengan kata laluan atau dokumen pengenalan.</p></body></html>
-{{ else }}
 <!doctype html><html lang="en"><body style="font-family:Arial,sans-serif;line-height:1.6;color:#183b35"><h2>Your phone number was changed</h2><p>Previous phone: {{ .OldPhone }}</p><p>New phone: {{ .Phone }}</p><p>Your account phone number was changed. If this was not you, contact support immediately.</p><p>Never reply with passwords or identity documents.</p></body></html>
-{{ end }}

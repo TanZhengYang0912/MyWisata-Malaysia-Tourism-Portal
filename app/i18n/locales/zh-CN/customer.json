@@ -2927,6 +2927,7 @@
       "vendorsLabel": "商家",
       "exploreCampaign": "查看活动",
       "allCampaigns": "浏览全部活动",
+      "allEvents": "全部活动",
       "viewDetails": "查看详情",
       "viewAllVendors": "查看商家",
       "viewAllVendors_one": "查看商家",
@@ -2945,6 +2946,7 @@
       "stallCount": "{{count}} 个摊位",
       "stallCount_one": "{{count}} 个摊位",
       "stallCount_other": "{{count}} 个摊位",
+      "alsoAt": "也在这些地点",
       "stallProducts": "此摊位售卖的商品",
       "productCount": "{{count}} 件商品",
       "productCount_one": "{{count}} 件商品",
@@ -3006,7 +3008,9 @@
         "nextDay": "后一天",
         "previousMonth": "上个月",
         "nextMonth": "下个月",
-        "backToToday": "回到今天"
+        "backToToday": "回到今天",
+        "dayEvents_one": "{{date}}，{{count}} 个活动",
+        "dayEvents_other": "{{date}}，{{count}} 个活动"
       }
     },
     "recommendationReasons": {

@@ -5,7 +5,7 @@ import { BackLink } from "@/components/shared/back-link";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/providers/auth";
-import { CustomerPageShell } from "@/components/customer/customer-page-shell";
+import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
 import { AffiliateEarningsHistory } from "@/components/customer/affiliate-earnings-history";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { AffiliateCommission } from "@/lib/affiliate/stats";
@@ -39,8 +39,7 @@ export default function AffiliateEarningsPage() {
       <BackLink fallbackHref="/customer/affiliate" className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft size={16} aria-hidden="true" /> {tCustomer("actions.back", { ns: "common" })}
       </BackLink>
-      <h1 className="text-2xl font-bold text-foreground">{tCustomer("strictMigration.affiliate.earnings.allTitle")}</h1>
-      <p className="mt-1 mb-6 text-sm text-muted-foreground">{tCustomer("strictMigration.affiliate.earnings.allDescription")}</p>
+      <CustomerPageHeader title={tCustomer("strictMigration.affiliate.earnings.allTitle")} description={tCustomer("strictMigration.affiliate.earnings.allDescription")} />
       {commissions === undefined ? (
         <div className="py-8 text-sm text-muted-foreground">{tCustomer("ui.affiliate.loadingDashboard")}</div>
       ) : commissions === null ? (

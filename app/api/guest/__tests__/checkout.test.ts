@@ -17,12 +17,13 @@ beforeEach(()=>{
 describe('guest reserve-now entry boundary',()=>{
  it('prepares with a separate subject and snapshots contact without creating Auth users',async()=>{
   const response=await POST(request());expect(response.status).toBe(200);
-  expect(mocks.rpc).toHaveBeenCalledWith('guest_prepare_event_checkout',expect.objectContaining({p_guest_subject_id:ID,p_contact:{email:'same.email+trip@gmail.com',name:null,phone:null,locale:'en'}}));expect(mocks.capability).not.toHaveBeenCalled();
+  expect(mocks.rpc).toHaveBeenCalledWith('guest_prepare_event_checkout',expect.objectContaining({p_guest_subject_id:ID,p_contact:{email:'same.email+trip@gmail.com',name:null,phone:null}}));expect(mocks.capability).not.toHaveBeenCalled();
  });
- it('freezes the selected Guest language before a later payment callback',async()=>{
+ it('does not snapshot the page language on the guest contact',async()=>{
   const req=request();req.headers.set('cookie',req.headers.get('cookie')+'; NEXT_LOCALE=zh-CN');
   expect((await POST(req)).status).toBe(200);
-  expect(mocks.rpc).toHaveBeenCalledWith('guest_prepare_event_checkout',expect.objectContaining({p_contact:expect.objectContaining({locale:'zh-CN'})}));
+  const call=mocks.rpc.mock.calls.find(([name])=>name==='guest_prepare_event_checkout')!;
+  expect(call[1].p_contact).not.toHaveProperty('locale');
  });
  it('requires valid contact without OTP or phone for a free guest reservation',async()=>{
   expect((await POST(request({contact:{email:'invalid'}}))).status).toBe(422);

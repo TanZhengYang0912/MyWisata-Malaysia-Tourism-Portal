@@ -12,20 +12,19 @@ describe("envelope zip-strip geometry", () => {
     expect(buildZipStrip(1.2, desktop)).toEqual(buildZipStrip(1, desktop));
   });
 
-  it("has no flap until the strip starts tearing", () => {
-    const flap = buildZipStrip(0, desktop).find((piece) => piece.k === "flap");
-    expect(flap?.outer).toBeUndefined();
-  });
+  it("opens only the part of the strip behind the tab without a folded piece", () => {
+    const pieces = buildZipStrip(0.5, desktop);
+    expect(pieces.map((piece) => piece.k)).toEqual(["bottom", "top"]);
 
-  it("folds the torn strip fully back once torn all the way", () => {
-    const flap = buildZipStrip(1, desktop).find((piece) => piece.k === "flap");
-    expect(flap?.fold?.phi).toBe(150);
-  });
-
-  it("puts the tear front halfway along the strip at half progress", () => {
-    const flap = buildZipStrip(0.5, desktop).find((piece) => piece.k === "flap");
-    // The strip runs from x = -30 to x = W.
-    expect(Math.abs((flap?.fold?.h1.x ?? 0) - (1200 / 2 - 15))).toBeLessThanOrEqual(10);
+    const frontX = (desktop.W - desktop.ovh) / 2;
+    const middleY = desktop.a + desktop.sh / 2;
+    const covers = (x: number, y: number) => pieces.some(({ outer = [] }) =>
+      outer.filter(([ax, ay], index) => {
+        const [bx, by] = outer[(index + 1) % outer.length];
+        return (ay > y) !== (by > y) && ax + (bx - ax) * (y - ay) / (by - ay) > x;
+      }).length % 2 === 1);
+    expect(covers(frontX - 12, middleY)).toBe(false);
+    expect(covers(frontX + 12, middleY)).toBe(true);
   });
 
   it("is deterministic for the same width", () => {

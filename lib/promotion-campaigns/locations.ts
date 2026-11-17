@@ -69,6 +69,21 @@ export function getEventLocationPhase(location: Pick<PromotionCampaignPublicLoca
   return day < location.startsOn ? "upcoming" : "running";
 }
 
+/** Status label for a location's phase (stops stepper, stall page "Also at"). */
+export const PHASE_LABEL_KEY: Record<EventLocationPhase, string> = {
+  ended: "ui.promotionCampaigns.locationEnded",
+  running: "ui.promotionCampaigns.live",
+  upcoming: "ui.promotionCampaigns.upcoming",
+};
+
+/** Running stop first, else the next stop to start, else the last one (every stop has ended). `locations` must be in date order. */
+export function getDefaultStopId(locations: Pick<PromotionCampaignPublicLocation, "id">[], phases: Map<string, EventLocationPhase>): string | null {
+  return locations.find((location) => phases.get(location.id) === "running")?.id
+    ?? locations.find((location) => phases.get(location.id) === "upcoming")?.id
+    ?? locations.at(-1)?.id
+    ?? null;
+}
+
 export function getEventOperationalLabelKey(campaign: Pick<PromotionCampaignPublic, "visibility" | "operationalStatus">): string {
   if (campaign.operationalStatus === "between_sessions") return "ui.promotionCampaigns.betweenSessions";
   if (campaign.operationalStatus === "operating") return "ui.promotionCampaigns.operating";

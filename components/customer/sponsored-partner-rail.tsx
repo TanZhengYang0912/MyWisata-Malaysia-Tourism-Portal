@@ -153,6 +153,7 @@ export function SponsoredPartnerRail({ advertisements, eventPromotions = [] }: {
           slideCount={slides.length}
           onSelectSlide={moveTo}
           onNext={moveNext}
+          onPrevious={() => moveBy(-1)}
         >
           {activeSlide.kind === "event" ? (
             <FeaturedSplitCard

@@ -93,14 +93,14 @@ describe("campaign envelope markup", () => {
     expect(markup.match(/<h2/g)).toHaveLength(1);
     expect(markup.match(/id="campaign-envelope-campaign-title"/g)).toHaveLength(1);
     // The title sits on the top half and the dates on the bottom half, so each is read from where it shows.
-    expect(markup.match(/data-k="flap" aria-hidden="true"/g)).toHaveLength(1);
+    expect(markup).not.toContain('data-k="flap"');
     expect(markup).not.toMatch(/data-k="(top|bottom)" aria-hidden/);
     expect(markup.match(/class="mw-envelope__head"(?! aria-hidden)/g)).toHaveLength(1);
     expect(markup.match(/class="mw-envelope__body"(?! aria-hidden)/g)).toHaveLength(1);
     expect(markup.match(/class="mw-envelope__from"(?! aria-hidden)/g)).toHaveLength(1);
   });
 
-  it("keeps translation controls out of the two hidden copies", () => {
+  it("keeps translation controls in the visible heading only", () => {
     const markup = renderToStaticMarkup(<CampaignEnvelope campaign={campaign} />);
     expect(markup.match(/data-show-original/g)).toHaveLength(1);
   });
@@ -275,6 +275,21 @@ describe("campaign envelope interactions", () => {
     // offsetHeight is 0 in the test DOM: rest = a + sh / 2 = 288, band = a..a + sh.
     expect(letter.style.transform).toBe("translateY(288px)");
     expect(letter.style.clipPath).toBe("inset(-24px 0px -24px 0px round 16px)");
+  });
+
+  it("reveals the poster by clipping two flat pieces while the tab moves", async () => {
+    window.matchMedia = ((query: string) => ({ matches: false, media: query })) as typeof window.matchMedia;
+    await render();
+    const top = findOne(container, (element) => element.getAttribute("data-k") === "top");
+    const fold = findOne(top, (element) => element.getAttribute("class") === "mw-envelope__fold");
+    const closedClip = fold.style.clipPath;
+    await fire(grip(), "pointerdown", pointer(0));
+    await fire(grip(), "pointermove", pointer(600));
+
+    expect(state()).toBe("drag");
+    expect(fold.style.clipPath).not.toBe(closedClip);
+    expect(Array.from(article().children).map((child) => child.getAttribute("data-k")).filter(Boolean)).toEqual(["bottom", "top"]);
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("springs back below the threshold and ignores the click that ends the drag", async () => {

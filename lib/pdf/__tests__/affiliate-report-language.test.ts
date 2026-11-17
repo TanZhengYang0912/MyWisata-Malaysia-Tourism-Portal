@@ -16,20 +16,25 @@ const data = {
   },
 } as unknown as AffiliateReportData;
 
-describe('affiliate report PDF locale', () => {
-  it.each(['en', 'zh-CN', 'ms'] as const)('renders a report and selects local fonts for %s', async (locale) => {
-    const bytes = await generateAffiliateReportPdf(data, locale);
+describe('affiliate report PDF', () => {
+  it('renders an English report without the CJK font for Latin data', async () => {
+    const bytes = await generateAffiliateReportPdf(data);
     const pdf = bytes.toString('latin1');
     expect(pdf).toContain('%PDF');
-    if (locale === 'zh-CN') {
-      expect(pdf).toContain('NotoSansCJKsc-Regular');
-      expect(pdf).toContain('/ToUnicode');
-    } else {
-      expect(pdf).not.toContain('NotoSansCJKsc-Regular');
-    }
+    expect(pdf).not.toContain('NotoSansCJKsc-Regular');
     if (process.env.AFFILIATE_REPORT_SAMPLE_DIR) {
       mkdirSync(process.env.AFFILIATE_REPORT_SAMPLE_DIR, { recursive: true });
-      writeFileSync(path.join(process.env.AFFILIATE_REPORT_SAMPLE_DIR, `affiliate-${locale}.pdf`), bytes);
+      writeFileSync(path.join(process.env.AFFILIATE_REPORT_SAMPLE_DIR, 'affiliate.pdf'), bytes);
     }
+  });
+
+  it('still embeds the CJK font when an affiliate name is Chinese', async () => {
+    const withChineseName = {
+      ...data,
+      stats: { ...data.stats, topEarners: [{ userId: 'u1', userName: '陈小明', affiliateCode: 'CHEN01', referrals: 1, commission: 5, tierName: 'bronze' }] },
+    } as AffiliateReportData;
+    const pdf = (await generateAffiliateReportPdf(withChineseName)).toString('latin1');
+    expect(pdf).toContain('NotoSansCJKsc-Regular');
+    expect(pdf).toContain('/ToUnicode');
   });
 });

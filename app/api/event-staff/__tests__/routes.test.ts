@@ -94,7 +94,7 @@ describe("POST /api/event-staff/auth/email/send", () => {
     expect(response.status).toBe(200);
     expect(mocks.signInWithOtp).toHaveBeenCalledWith({
       email: "staff@example.com",
-      options: { shouldCreateUser: true, captchaToken: "proof", data: { full_name: "Aina", preferred_locale: "en" } },
+      options: { shouldCreateUser: true, captchaToken: "proof", data: { full_name: "Aina" } },
     });
   });
 

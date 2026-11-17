@@ -7,14 +7,14 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 import { ArrowRight, CalendarDays, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { LocalizedContent } from "@/components/customer/localized-content";
-import { buildZipStrip, createEnvelopeGeometry, foldMatrix, splitOpenLayout, toPolygon, type EnvelopeGeometry, type EnvelopeState } from "@/lib/customer/envelope-tear";
+import { buildZipStrip, createEnvelopeGeometry, splitOpenLayout, toPolygon, type EnvelopeGeometry, type EnvelopeState } from "@/lib/customer/envelope-tear";
 import { isMalaysiaFullDayRange } from "@/lib/datetime/malaysia";
 import { formatDate } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
 import { isOptimizableImageUrl } from "@/lib/storage/optimizable-image";
 
-const PIECES = ["bottom", "top", "flap"] as const;
+const PIECES = ["bottom", "top"] as const;
 /** One stamp per carousel position, cycling. */
 const STAMPS = ["hibiscus", "tiger", "stall"] as const;
 /** Postal legend on the postmark ring: the same in every locale, like a real cancellation. */
@@ -24,7 +24,8 @@ const OPEN_AT = 0.76;
 /** A press that moves no further than this before release is a tap, which opens the envelope. */
 const TAP_SLOP_PX = 6;
 const SPRING_BACK_MS = 210;
-const SPLIT_MS = 300;
+const FINISH_TEAR_MS = 180;
+const SPLIT_MS = 230;
 
 /** "Main – Subtitle" splits at its first spaced dash; "Pop-up" (no spaces) stays whole. */
 function splitEnvelopeTitle(text: string): [string, string | null] {
@@ -52,10 +53,9 @@ export function CampaignEnvelope({ campaign, imagePriority = false, position = 0
   const rootRef = useRef<HTMLElement>(null);
   const underRef = useRef<HTMLDivElement>(null);
   const letterRef = useRef<HTMLDivElement>(null);
-  const bitsRef = useRef<HTMLDivElement>(null);
   const gripRef = useRef<HTMLButtonElement>(null);
   const altRef = useRef<HTMLAnchorElement>(null);
-  // Each piece's parts, keyed "<piece>:<part>" (pc, fold, art, shade, svg, roll, gradient).
+  // Each piece's parts, keyed "<piece>:<part>" (pc, fold, art).
   const partRefs = useRef<Record<string, Element | null>>({});
   const partRef = (key: string) => (el: Element | null) => { partRefs.current[key] = el; };
 
@@ -73,17 +73,16 @@ export function CampaignEnvelope({ campaign, imagePriority = false, position = 0
   const unoptimized = !isOptimizableImageUrl(image);
 
   useEffect(() => {
-    const root = rootRef.current, under = underRef.current, letter = letterRef.current, bits = bitsRef.current, grip = gripRef.current, alt = altRef.current;
+    const root = rootRef.current, under = underRef.current, letter = letterRef.current, grip = gripRef.current, alt = altRef.current;
     const part = <T extends Element>(k: string, name: string) => partRefs.current[`${k}:${name}`] as T | null | undefined;
-    const captureParts = (k: string) => {
-      const pc = part<HTMLElement>(k, "pc"), fold = part<HTMLElement>(k, "fold"), art = part<HTMLElement>(k, "art"), shade = part<HTMLElement>(k, "shade");
-      const svg = part<SVGElement>(k, "svg"), roll = part<SVGElement>(k, "roll"), gradient = part<SVGElement>(k, "gradient");
-      return pc && fold && art && shade && svg && roll && gradient ? { pc, fold, art, shade, svg, roll, gradient } : null;
+    const captureParts = (k: (typeof PIECES)[number]) => {
+      const pc = part<HTMLElement>(k, "pc"), fold = part<HTMLElement>(k, "fold"), art = part<HTMLElement>(k, "art");
+      return pc && fold && art ? { pc, fold, art } : null;
     };
-    const bottom = captureParts("bottom"), top = captureParts("top"), flap = captureParts("flap");
-    if (!root || !under || !letter || !bits || !grip || !alt || !bottom || !top || !flap) return;
+    const bottom = captureParts("bottom"), top = captureParts("top");
+    if (!root || !under || !letter || !grip || !alt || !bottom || !top) return;
     // Callback refs can be cleared on re-render or unmount; one effect owns one complete snapshot.
-    const parts = { bottom, top, flap };
+    const parts = { bottom, top };
     const reduce = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
     let geo: EnvelopeGeometry, progress = 0, state: EnvelopeState = "closed", raf = 0, distance = 1;
@@ -95,41 +94,17 @@ export function CampaignEnvelope({ campaign, imagePriority = false, position = 0
       progress = Math.max(0, Math.min(1, value));
       // Reduced motion: only the tab follows the pointer; the strip tears in one step when it opens.
       const tear = reduce() && progress < 1 ? 0 : progress;
-      for (const piece of buildZipStrip(tear, geo)) {
-        const { pc: el, fold, art, shade, svg, roll, gradient } = parts[piece.k];
-        if (!piece.outer || !piece.inner) { el.style.display = "none"; continue; }
-        el.style.display = "";
-        fold.style.clipPath = toPolygon(piece.outer);
-        art.style.clipPath = toPolygon(piece.inner);
-        const f = piece.fold;
-        if (f && f.phi > 0.5) {
-          const phi = f.phi * Math.PI / 180, c = Math.cos(phi), s = Math.sin(phi), d = f.toward;
-          fold.style.transform = foldMatrix(f.h1, f.h2, phi);
-          fold.setAttribute("data-back", String(c < 0));
-          const angle = Math.atan2(d.x, -d.y) * 180 / Math.PI, span = Math.abs(geo.W * d.x) + Math.abs(geo.H * d.y);
-          const at = (x: number, y: number) => 50 + ((x - geo.W / 2) * d.x + (y - geo.H / 2) * d.y) / span * 100;
-          const hinge = at(f.h1.x, f.h1.y), far = Math.max(...piece.outer.map(([x, y]) => at(x, y)));
-          shade.style.background = c < 0
-            ? `linear-gradient(${angle}deg, transparent ${hinge - 0.5}%, rgba(40,30,0,.34) ${hinge}%, rgba(40,30,0,.08) ${hinge + (far - hinge) * 0.3}%, rgba(255,255,255,.28) ${far}%)`
-            : `linear-gradient(${angle}deg, transparent ${hinge - 0.5}%, rgba(0,0,30,${0.45 * s}) ${hinge}%, rgba(0,0,30,${0.12 * s}) ${far}%)`;
-          el.style.filter = `drop-shadow(${3 + 5 * s}px ${8 + 10 * s}px ${8 + 12 * s}px rgba(10,10,40,${0.22 + 0.16 * s}))`;
-          const m = c < 0 ? { x: -d.x, y: -d.y } : d, w = 5 + 11 * s;
-          roll.setAttribute("points", [f.h1, f.h2, { x: f.h2.x + m.x * w, y: f.h2.y + m.y * w }, { x: f.h1.x + m.x * w, y: f.h1.y + m.y * w }].map((pt) => `${pt.x},${pt.y}`).join(" "));
-          gradient.setAttribute("x1", String(f.h1.x)); gradient.setAttribute("y1", String(f.h1.y));
-          gradient.setAttribute("x2", String(f.h1.x + m.x * w)); gradient.setAttribute("y2", String(f.h1.y + m.y * w));
-          svg.style.display = "";
-        } else {
-          fold.style.transform = ""; fold.setAttribute("data-back", "false"); shade.style.background = ""; el.style.filter = "";
-          svg.style.display = "none";
-        }
+      for (const { k, outer, inner } of buildZipStrip(tear, geo)) {
+        const { fold, art } = parts[k];
+        fold.style.clipPath = toPolygon(outer);
+        art.style.clipPath = toPolygon(inner);
       }
       placeGrip();
     }
 
-    /** The tab rides the tear front; it fades out over the last tenth and swaps its arrow for a tick once ready. */
+    /** The tab rides the tear front and swaps its arrow for a tick once ready. */
     function placeGrip() {
       grip!.style.setProperty("--drag", `${progress * distance}px`);
-      grip!.style.opacity = progress > 0.9 ? String(Math.max(0, (1 - progress) * 10)) : "1";
       const ready = String(progress >= OPEN_AT);
       if (root!.getAttribute("data-ready") !== ready) root!.setAttribute("data-ready", ready);
     }
@@ -171,17 +146,6 @@ export function CampaignEnvelope({ campaign, imagePriority = false, position = 0
     const play = (el: Element, frames: Keyframe[]) =>
       el.animate(frames, { duration: reduce() ? 1 : SPLIT_MS, fill: "forwards", easing: "cubic-bezier(.22,.8,.35,1)" });
 
-    function burst(x: number, y: number) {
-      if (reduce()) return;
-      for (let i = 0; i < 14; i++) {
-        const bit = document.createElement("i");
-        bit.style.left = `${x}px`; bit.style.top = `${y - 10}px`;
-        bits!.append(bit);
-        bit.animate([{ transform: "none", opacity: 1 }, { transform: `translate(${(Math.random() - 0.5) * 160}px,${60 + Math.random() * 140}px) rotate(${(Math.random() - 0.5) * 720}deg)`, opacity: 0 }],
-          { duration: 700 + Math.random() * 500, easing: "cubic-bezier(.2,.6,.5,1)", fill: "forwards" }).finished.then(() => bit.remove(), () => bit.remove());
-      }
-    }
-
     // Cancelled animations reject `finished`; an unmount mid-animation must not surface that.
     const run = (task: Promise<void>) => { task.catch(() => {}); };
 
@@ -189,14 +153,11 @@ export function CampaignEnvelope({ campaign, imagePriority = false, position = 0
     async function finishTear() {
       if (disposed || (state !== "closed" && state !== "drag")) return;
       setState("busy");
-      await tween(1, Math.max(120, 420 * (1 - progress)));
+      await tween(1, FINISH_TEAR_MS);
       if (disposed) return;
-      const end = geo.L1.pts[geo.L1.n];
-      burst(end.x - 10, end.y);
       const headerBottom = parseFloat(window.getComputedStyle?.(document.documentElement)?.getPropertyValue?.("--customer-header-h") ?? "") || 0;
       const rest = restingLetter();
       const split = splitOpenLayout({ tearTop: geo.a, tearBottom: geo.a + geo.sh, letterHeight: letter!.offsetHeight || 0, cardTop: root!.getBoundingClientRect?.().top ?? 0, headerBottom, viewportHeight: window.innerHeight });
-      // The flap is already torn off, so only the halves, the lining and the letter move.
       const animations = [
         play(parts.top.pc, [{ transform: "none" }, { transform: `translateY(${split.topShift}px)` }]),
         play(parts.bottom.pc, [{ transform: "none" }, { transform: `translateY(${split.bottomShift}px)` }]),
@@ -378,18 +339,12 @@ export function CampaignEnvelope({ campaign, imagePriority = false, position = 0
         </div>
       </div>
       {PIECES.map((k) => (
-        <div key={k} ref={partRef(`${k}:pc`)} className="mw-envelope__pc" data-k={k} aria-hidden={k === "flap" ? true : undefined}>
+        <div key={k} ref={partRef(`${k}:pc`)} className="mw-envelope__pc" data-k={k}>
           <div ref={partRef(`${k}:fold`)} className="mw-envelope__fold">
             <div className="mw-envelope__artwrap">{front(k)}</div>
-            <div ref={partRef(`${k}:shade`)} className="mw-envelope__shade" />
           </div>
-          <svg ref={partRef(`${k}:svg`)} className="mw-envelope__roll" aria-hidden="true" style={{ display: "none" }}>
-            <defs><linearGradient ref={partRef(`${k}:gradient`)} id={`${svgId}-${k}`} gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#b9b09c" /><stop offset=".35" stopColor="#fffdf6" /><stop offset=".7" stopColor="#f1ebdc" /><stop offset="1" stopColor="#a99f8a" stopOpacity=".9" /></linearGradient></defs>
-            <polygon ref={partRef(`${k}:roll`)} fill={`url(#${svgId}-${k})`} />
-          </svg>
         </div>
       ))}
-      <div ref={bitsRef} className="mw-envelope__bits" aria-hidden="true" />
       <span className="mw-envelope__guide" aria-hidden="true">{t("ui.promotionCampaigns.releaseToOpen")}</span>
       <button ref={gripRef} type="button" className="mw-envelope__grip" aria-label={t("ui.promotionCampaigns.pullToOpen")} aria-describedby={titleId}>
         <ArrowRight className="mw-envelope__grip-go" aria-hidden="true" />

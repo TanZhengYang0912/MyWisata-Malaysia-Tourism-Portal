@@ -2922,6 +2922,7 @@
       "vendorsLabel": "vendors",
       "exploreCampaign": "Explore event",
       "allCampaigns": "Browse all events",
+      "allEvents": "All events",
       "viewDetails": "View details",
       "viewAllVendors": "View vendor",
       "viewAllVendors_one": "View vendor",
@@ -2940,6 +2941,7 @@
       "stallCount": "{{count}} stall",
       "stallCount_one": "{{count}} stall",
       "stallCount_other": "{{count}} stalls",
+      "alsoAt": "Also at",
       "stallProducts": "What this stall sells",
       "productCount": "{{count}} item",
       "productCount_one": "{{count}} item",
@@ -3001,7 +3003,9 @@
         "nextDay": "Next day",
         "previousMonth": "Previous month",
         "nextMonth": "Next month",
-        "backToToday": "Back to today"
+        "backToToday": "Back to today",
+        "dayEvents_one": "{{date}}, {{count}} event",
+        "dayEvents_other": "{{date}}, {{count}} events"
       }
     },
     "recommendationReasons": {

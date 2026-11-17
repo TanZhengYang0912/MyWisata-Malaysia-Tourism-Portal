@@ -248,6 +248,9 @@
   top: 18px;
   left: calc(50% / var(--stops));
   right: calc(50% / var(--stops));
+  /* Placed on the whole grid so it spans tracks scrolled out of view. */
+  grid-column: 1 / -1;
+  grid-row: 1;
   border-top: 2px dotted color-mix(in oklab, var(--primary) 30%, transparent);
 }
 
@@ -256,14 +259,15 @@
   min-width: 0;
 }
 
-/* More than four stops: keep readable columns and scroll sideways. */
-.stepper:has(> li:nth-child(5)) {
-  grid-template-columns: repeat(var(--stops), minmax(120px, 1fr));
+/* Four or more stops: 3.5 columns show at any width, so the cut-off fourth hints at the sideways scroll. */
+.stepper:has(> li:nth-child(4)) {
+  grid-template-columns: repeat(var(--stops), max(120px, calc(100% / 3.5)));
   overflow-x: auto;
   scroll-snap-type: x mandatory;
+  mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
 }
 
-.stepper:has(> li:nth-child(5)) > li {
+.stepper:has(> li:nth-child(4)) > li {
   scroll-snap-align: start;
 }
 

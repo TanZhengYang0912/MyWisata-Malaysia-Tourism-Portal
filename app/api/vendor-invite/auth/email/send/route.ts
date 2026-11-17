@@ -3,7 +3,6 @@ import { resolveActiveVendorInvite } from '@/lib/recommendations/vendor-invite-a
 import { createServiceClient } from '@/lib/supabase/service';
 import { createClient } from '@/lib/supabase/server';
 import { normalizeEmail } from '@/lib/validation/postgrest-filter';
-import { checkoutEmailLocale } from '@/lib/email/locale';
 import { apiFail, apiOk, parseBody } from '@/lib/validation/schemas';
 
 export const dynamic = 'force-dynamic';
@@ -38,13 +37,11 @@ export async function POST(request: Request) {
   }
 
   const db = await createClient();
-  const locale = checkoutEmailLocale(request);
   const { error } = await db.auth.signInWithOtp({
     email: resolution.invite.email,
     options: {
       shouldCreateUser: profileExists !== true,
       captchaToken: parsed.data.captchaToken,
-      ...(profileExists === true ? {} : { data: { preferred_locale: locale } }),
     },
   });
   if (error) return mapOtpSendError(error);

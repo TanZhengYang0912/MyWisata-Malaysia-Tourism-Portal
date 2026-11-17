@@ -23,6 +23,9 @@ describe("customer page dimensions", () => {
     expect(shellSource).toContain("export function CustomerPageTitle");
     expect(shellSource).toContain("export function CustomerPageHeader");
     expect(shellSource).toContain("text-3xl font-bold leading-tight tracking-tight");
+    expect(shellSource).toContain("mb-8 flex flex-col gap-5 border-b border-border pb-5");
+    expect(shellSource).toContain("export function CustomerSectionHeader");
+    expect(shellSource).toContain("mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-4");
     expect(shellSource).toContain("rounded-2xl border border-border bg-card");
     expect(shellSource).toContain("p-5 shadow-[0_8px_24px_rgba(1,0,102,0.06)] sm:p-6");
   });

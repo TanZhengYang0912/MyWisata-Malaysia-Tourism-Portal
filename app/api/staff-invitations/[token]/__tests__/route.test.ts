@@ -65,6 +65,16 @@ describe("staff invitation recipient API", () => {
     expect(JSON.stringify(body)).not.toContain("admin.kyc.review");
   });
 
+  it("keeps the acceptance page permission labels in the page language", async () => {
+    const response = await GET(new Request(`https://mylawatan.test/api/staff-invitations/${TOKEN}?locale=zh-CN`), {
+      params: Promise.resolve({ token: TOKEN }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.permissions).toEqual(["审核 KYC 申请"]);
+  });
+
   it("marks changed role templates unavailable", async () => {
     mocks.serviceFrom.mockReturnValue(singleQuery({
       invited_email: "staff@example.com",

@@ -12,11 +12,12 @@ vi.mock('../config', () => ({ getEmailConfig: () => ({ host: 'smtp.example.test'
 vi.mock('@/lib/pdf/receipt', () => ({ generateReceiptPdf: mocks.pdf }));
 import { sendOrderReceiptEmail } from '../order-receipt';
 
-describe('receipt email recipient language', () => {
+describe('receipt email language', () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.send.mockResolvedValue({ messageId: 'test-only', accepted: ['test@example.test'], rejected: [] }); mocks.pdf.mockResolvedValue(Buffer.from('test-pdf')); });
-  it.each([['en', 'Order Receipt', 'Total'], ['zh-CN', '订单收据', '总额'], ['ms', 'Resit Pesanan', 'Jumlah']] as const)('uses %s in mail and the attached receipt', async (locale, subject, total) => {
-    await sendOrderReceiptEmail({ locale, recipientEmail: 'test@example.test', recipientName: '陈小明', orderId: 'MW-12345678', createdAt: '2026-10-14T00:00:00Z', paymentMethod: 'stripe_card', items: [{ activityName: 'Cake <Shop>', variantLabel: '原味', unitPrice: 25, qty: 1 }], subtotal: 25, total: 25, discount: 0 });
-    expect(mocks.pdf).toHaveBeenLastCalledWith(expect.objectContaining({ locale }));
+  it('uses English in mail and the attached receipt, even for a Chinese name', async () => {
+    const [locale, subject, total] = ['en', 'Order Receipt', 'Total'];
+    await sendOrderReceiptEmail({ recipientEmail: 'test@example.test', recipientName: '陈小明', orderId: 'MW-12345678', createdAt: '2026-10-14T00:00:00Z', paymentMethod: 'stripe_card', items: [{ activityName: 'Cake <Shop>', variantLabel: '原味', unitPrice: 25, qty: 1 }], subtotal: 25, total: 25, discount: 0 });
+    expect(mocks.pdf.mock.calls.at(-1)![0]).not.toHaveProperty('locale');
     const mail = mocks.send.mock.calls.at(-1)![0];
     expect(mail.subject).toContain(subject);
     expect(mail.subject).toContain('MYLawatan');
@@ -42,7 +43,7 @@ describe('receipt email recipient language', () => {
     const token = signRetailPickupToken(claims, secret);
     const qrUrl = `https://preview.invalid/customer/orders/${orderId}?retail_t=${token}`;
     const payload = {
-      locale: 'zh-CN' as const, recipientEmail: 'test@example.test', recipientName: '示例顾客', orderId, orderReference: 'ORD-DEMO-1000',
+      recipientEmail: 'test@example.test', recipientName: '示例顾客', orderId, orderReference: 'ORD-DEMO-1000',
       createdAt: '2026-10-28T00:00:00+08:00', paymentMethod: 'ewallet',
       items: [{ activityName: 'Beh Teh Saw (Box of 12)', variantLabel: 'Default', unitPrice: 16, qty: 2 }], subtotal: 32, total: 32, discount: 0,
       pickupPasses: [{ kind: 'retail' as const, title: 'Jalan Macalister', subtitle: 'Ghee Hiang', details: ['2 × Beh Teh Saw (Box of 12) · Default'], qrUrl }],
@@ -50,9 +51,9 @@ describe('receipt email recipient language', () => {
     await sendOrderReceiptEmail(payload);
     const mail = mocks.send.mock.calls.at(-1)![0];
     expect(mail.from).toBe('MYLawatan <test@example.test>');
-    expect(mail.subject).toBe('您的 MYLawatan 订单收据 – ORD-DEMO-1000');
+    expect(mail.subject).toBe('Your MYLawatan Order Receipt – ORD-DEMO-1000');
     expect(mail.html).toContain('cid:pickup-qr-0@mylawatan.my');
-    expect(mail.html).toContain('一次领取下方所列全部数量');
+    expect(mail.html).toContain('collect all quantities listed below in one pickup');
     expect(mail.text).toContain('2 × Beh Teh Saw');
     expect(mail.attachments).toHaveLength(2);
     const attachment = mail.attachments[1];

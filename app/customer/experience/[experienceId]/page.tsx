@@ -7,6 +7,7 @@ import { ArrowLeft, Clock, MapPin, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getComputedActivity, getBookingSlots, getProductReviews } from "@/backend/domains/catalogue";
 import { ActivityReviews } from "@/components/customer/activity-reviews";
+import { CustomerSectionHeader } from "@/components/customer/customer-page-shell";
 import { ProductChatButton } from "@/components/customer/product-chat-button";
 import { formatMYR } from "@/lib/i18n/format";
 import { ExperienceBookingSidebar } from "./experience-booking-sidebar";
@@ -199,8 +200,8 @@ export default async function ExperiencePage({ params }: Props) {
             </section>
             
             {/* Reviews Section */}
-            <section className="mt-10 pt-10 border-t border-border">
-              <h2 className="text-2xl font-bold text-foreground font-[family-name:var(--font-display)] mb-6">{t("ui.experience.guestReviews")}</h2>
+            <section className="mt-10">
+              <CustomerSectionHeader title={t("ui.experience.guestReviews")} />
               <ActivityReviews 
                 productId={experience.id} 
                 rating={experience.rating} 

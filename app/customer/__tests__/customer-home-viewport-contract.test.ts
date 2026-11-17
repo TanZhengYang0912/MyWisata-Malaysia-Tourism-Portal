@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
+const shellSource = readFileSync(resolve(process.cwd(), "components/customer/customer-page-shell.tsx"), "utf8");
 const homeSource = readFileSync(
   resolve(process.cwd(), "app/customer/customer-home-client.tsx"),
   "utf8",
@@ -287,9 +288,9 @@ describe("customer home first viewport", () => {
     expect(highlightsSection).not.toContain("detailsRevealStyle");
     expect(featuredVendorCall).toContain("<VendorCard");
     expect(featuredVendorCall).not.toContain("detailsRevealStyle");
-    expect(homeSource).toContain('id="featured-highlights-heading" className="font-[family-name:var(--font-display)] text-2xl');
-    expect(homeSource).toContain('id="for-you-heading" className="flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl');
-    expect(homeSource).toContain('text-2xl font-bold font-[family-name:var(--font-display)]');
+    expect(homeSource).toContain('<CustomerSectionHeader id="featured-highlights-heading" title={t("ui.home.featuredHighlights")}');
+    expect(homeSource).toContain('<CustomerSectionHeader id="for-you-heading" icon={<Sparkles');
+    expect(shellSource).toContain('"flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground"');
   });
 
   it("pages Featured Highlights in a card carousel and records impressions only for the page it settles on", () => {
@@ -302,10 +303,13 @@ describe("customer home first viewport", () => {
   });
 
   it("puts a line under every card-carousel section header, with See more centred on the title", () => {
-    const header = "flex items-center justify-between gap-4 border-b border-border/70 pb-4";
-    expect(homeSource.split(header).length - 1).toBe(2);
-    expect(homeSource).toContain(`flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-4`);
-    expect(eventPartnersSource).toContain(header);
+    // Every Home section uses the shared section header, which centres See more and draws the line.
+    expect(shellSource).toContain("mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-4");
+    expect(homeSource.match(/<CustomerSectionHeader\b/g)).toHaveLength(4);
+    for (const id of ["featured-highlights-heading", "for-you-heading", "nearby-partners-heading"]) {
+      expect(homeSource).toContain(`<CustomerSectionHeader${id === "nearby-partners-heading" ? "\n            " : " "}id="${id}"`);
+    }
+    expect(eventPartnersSource).toContain("<CustomerSectionHeader");
     expect(homeSource.match(/<CardCarousel /g)).toHaveLength(3);
     expect(eventPartnersSource).toContain("<CardCarousel ");
   });

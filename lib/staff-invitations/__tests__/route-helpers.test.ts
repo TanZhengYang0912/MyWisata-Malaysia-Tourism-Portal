@@ -17,49 +17,28 @@ const prepared = {
   expires_at: "2026-10-20T04:30:00.000Z",
 };
 
-function database(preferredLocale: string | null, queryError: { message: string } | null = null) {
-  const query = {
-    select: vi.fn(() => query),
-    eq: vi.fn(() => query),
-    maybeSingle: vi.fn(async () => ({ data: preferredLocale === null ? null : { preferred_locale: preferredLocale }, error: queryError })),
-  };
+function database() {
   return {
     rpc: vi.fn(async () => ({ data: null, error: null })),
-    from: vi.fn(() => query),
+    from: vi.fn(),
   };
 }
 
-describe("staff invitation email locale", () => {
+describe("staff invitation email delivery", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.NEXT_PUBLIC_SITE_URL = "https://mywisata.test";
     mocks.sendEmail.mockResolvedValue({ id: "message-1" });
   });
 
-  it.each([["zh-CN"], ["ms"], ["en"]])("uses the recipient's saved %s preference", async (locale) => {
-    const db = database(locale);
+  it("sends the English invitation without reading a recipient language", async () => {
+    const db = database();
 
-    await deliverPreparedInvitation(db as unknown as SupabaseClient, prepared, "secret-token", "a".repeat(64));
-
-    expect(db.from).toHaveBeenCalledWith("users");
-    expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ locale }));
-  });
-
-  it.each([
-    [null, null],
-    ["unsupported", null],
-  ] as const)("falls back to English for missing or invalid preference", async (preferredLocale, queryError) => {
-    const db = database(preferredLocale, queryError);
-
-    await deliverPreparedInvitation(db as unknown as SupabaseClient, prepared, "secret-token", "a".repeat(64));
-
-    expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ locale: "en" }));
-  });
-  it("does not send the wrong language when a saved preference cannot be read", async () => {
-    const db = database("zh-CN", {message: "lookup unavailable"});
     const result = await deliverPreparedInvitation(db as unknown as SupabaseClient, prepared, "secret-token", "a".repeat(64));
-    expect(result.sent).toBe(false);
-    expect(mocks.sendEmail).not.toHaveBeenCalled();
-  });
 
+    expect(result.sent).toBe(true);
+    expect(db.from).not.toHaveBeenCalledWith("users");
+    expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "staff@example.com", roleName: "KYC Reviewer" }));
+    expect(mocks.sendEmail.mock.calls[0][0]).not.toHaveProperty("locale");
+  });
 });

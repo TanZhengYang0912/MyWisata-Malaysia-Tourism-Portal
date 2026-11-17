@@ -38,7 +38,6 @@ type ProfileRow = {
   profile_completed_at: string | null;
   city: string | null;
   country: string | null;
-  preferred_locale: string | null;
   phone: string | null;
   status: string | null;
 };
@@ -49,7 +48,7 @@ export async function GET() {
   if (!authUser) return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
 
   const [{ data: profile, error: profileError }, { data: roleRows, error: rolesError }, { data: managerRows, error: managerError }] = await Promise.all([
-    supabase.from('users').select('id,email,full_name,avatar_url,bio,kyc_status,tier,email_verified_at,phone_verified_at,profile_completed_at,city,country,preferred_locale,phone,status').eq('id', authUser.id).maybeSingle(),
+    supabase.from('users').select('id,email,full_name,avatar_url,bio,kyc_status,tier,email_verified_at,phone_verified_at,profile_completed_at,city,country,phone,status').eq('id', authUser.id).maybeSingle(),
     supabase.from('user_roles').select('vendor_id,outlet_id,roles(name),outlets(vendor_id,name)').eq('user_id', authUser.id),
     supabase.from('outlet_managers').select('outlet_id,outlets(vendor_id,name)').eq('user_id', authUser.id),
   ]);
@@ -168,7 +167,6 @@ export async function GET() {
       activeOutletName: assignedOutletRelation?.name || null,
       city: profileRow?.city || null,
       country: profileRow?.country || null,
-      preferredLocale: profileRow?.preferred_locale || null,
       phone: profileRow?.phone || null,
       status: verificationFacts.accountStatus,
       capabilities,

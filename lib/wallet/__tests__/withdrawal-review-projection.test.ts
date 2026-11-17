@@ -2,10 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { buildWithdrawalNotificationReason } from '../withdrawal-review-projection';
 
 describe('withdrawal review projection', () => {
-  it.each(['zh-CN', 'ms'] as const)('localizes system snapshot labels in %s without exposing contact email', locale => {
-    const summary = buildWithdrawalNotificationReason({ customer: { id: 'one', displayName: '陈先生', email: 'private@example.test' }, requestTime: '2026-10-14T12:00:00Z', kycStatus: 'approved', risk: { level: 'review', reasons: ['recent_failed_withdrawal'] }, sourceTotals: { rewardSen: 2500, affiliateSen: 0, otherSen: 0 }, destination: { type: 'e_wallet', maskedReference: '+60••••6789' } }, locale);
-    expect(summary).toContain(locale === 'zh-CN' ? '顾客: 陈先生' : 'Pelanggan: 陈先生');
-    expect(summary).toContain(locale === 'zh-CN' ? '风险: 待审核' : 'Risiko: Perlu semakan');
+  it('keeps the customer name as entered without exposing contact email', () => {
+    const summary = buildWithdrawalNotificationReason({ customer: { id: 'one', displayName: '陈先生', email: 'private@example.test' }, requestTime: '2026-10-14T12:00:00Z', kycStatus: 'approved', risk: { level: 'review', reasons: ['recent_failed_withdrawal'] }, sourceTotals: { rewardSen: 2500, affiliateSen: 0, otherSen: 0 }, destination: { type: 'e_wallet', maskedReference: '+60••••6789' } });
+    expect(summary).toContain('Customer: 陈先生');
     expect(summary).toContain('RM25.00');
     expect(summary).not.toContain('private@example.test');
   });

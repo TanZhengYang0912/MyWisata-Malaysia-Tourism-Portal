@@ -2798,14 +2798,6 @@
   "email": {
     "draft": {
       "advisory": "AI drafts the message below — edit anything before sending.",
-      "recipientLanguage": "Recipient language: {{language}}",
-      "languageUnavailable": "Enter a valid recipient email to check their saved language.",
-      "languageReview": "Review the subject and message in the recipient’s language. Changing the address keeps your edits; regenerate the draft if needed. No saved preference uses English.",
-      "languages": {
-        "en": "English",
-        "zh-CN": "Chinese",
-        "ms": "Malay"
-      },
       "close": "Close",
       "recipient": "Recipient email",
       "recipientPlaceholder": "vendor@example.com",

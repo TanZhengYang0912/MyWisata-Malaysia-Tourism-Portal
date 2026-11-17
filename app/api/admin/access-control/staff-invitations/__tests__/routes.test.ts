@@ -142,25 +142,7 @@ describe("staff invitation administration routes", () => {
     expect(body.error).toBeNull();
   });
 
-  it("uses the invited account's saved locale instead of the administrator's locale", async () => {
-    const preferenceQuery = listQuery([{ preferred_locale: "zh-CN" }]);
-    mocks.serviceFrom.mockImplementation((table: string) => table === "users"
-      ? preferenceQuery
-      : listQuery(table === "audit_logs" ? [{ id: "audit-1" }] : []));
-
-    const response = await invitationsRoute.POST(request("/api/admin/access-control/staff-invitations", {
-      email: "staff@example.com",
-      staffRoleId: ROLE_ID,
-      reason: "Invite a dedicated employee to review KYC applications",
-    }));
-
-    expect(response.status).toBe(201);
-    expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ locale: "zh-CN" }));
-    expect(preferenceQuery.select).toHaveBeenCalledWith("preferred_locale");
-    expect(preferenceQuery.eq).toHaveBeenCalledWith("email", "staff@example.com");
-  });
-
-  it("defaults to English when the invited address has no saved account preference", async () => {
+  it("sends the invitation in English without reading the invited account", async () => {
     mocks.serviceFrom.mockImplementation((table: string) => listQuery(table === "audit_logs" ? [{ id: "audit-1" }] : []));
 
     const response = await invitationsRoute.POST(request("/api/admin/access-control/staff-invitations", {
@@ -170,7 +152,8 @@ describe("staff invitation administration routes", () => {
     }));
 
     expect(response.status).toBe(201);
-    expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ locale: "en" }));
+    expect(mocks.serviceFrom).not.toHaveBeenCalledWith("users");
+    expect(mocks.sendEmail.mock.calls[0][0]).not.toHaveProperty("locale");
   });
 
   it("rejects a caller-supplied locale instead of letting the administrator choose recipient copy", async () => {
@@ -186,7 +169,7 @@ describe("staff invitation administration routes", () => {
     expect(mocks.sendEmail).not.toHaveBeenCalled();
   });
 
-  it("does not look up recipient preferences when the governed invite preparation rejects the address", async () => {
+  it("sends nothing when the governed invite preparation rejects the address", async () => {
     mocks.rpc.mockReset().mockResolvedValue({ data: null, error: { message: "staff_invitation_identity_has_role" } });
 
     const response = await invitationsRoute.POST(request("/api/admin/access-control/staff-invitations", {
@@ -238,17 +221,16 @@ describe("staff invitation administration routes", () => {
     });
   });
 
-  it("uses the recipient preference when resending an invitation", async () => {
-    mocks.serviceFrom.mockImplementation((table: string) => table === "users"
-      ? listQuery([{ preferred_locale: "ms" }])
-      : listQuery(table === "audit_logs" ? [{ id: "audit-1" }] : []));
+  it("resends the invitation in English without reading the invited account", async () => {
+    mocks.serviceFrom.mockImplementation((table: string) => listQuery(table === "audit_logs" ? [{ id: "audit-1" }] : []));
 
     const response = await resend(request(`/api/admin/access-control/staff-invitations/${INVITATION_ID}/resend`, {}), {
       params: Promise.resolve({ invitationId: INVITATION_ID }),
     });
 
     expect(response.status).toBe(200);
-    expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ locale: "ms" }));
+    expect(mocks.serviceFrom).not.toHaveBeenCalledWith("users");
+    expect(mocks.sendEmail.mock.calls[0][0]).not.toHaveProperty("locale");
   });
 
   it("lists only safe invitation summaries", async () => {

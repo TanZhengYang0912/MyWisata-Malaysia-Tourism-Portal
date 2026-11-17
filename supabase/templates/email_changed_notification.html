@@ -1,7 +1,1 @@
-{{ if eq .Data.preferred_locale "zh-CN" }}
-<!doctype html><html lang="zh-CN"><body style="font-family:Arial,sans-serif;line-height:1.6;color:#183b35"><h2>您的电子邮箱已更改</h2><p>原邮箱: {{ .OldEmail }}</p><p>新邮箱: {{ .Email }}</p><p>您的账户邮箱已更改。如果不是您本人操作，请立即联系客服。</p><p>请勿回复密码或身份证明文件。</p></body></html>
-{{ else if eq .Data.preferred_locale "ms" }}
-<!doctype html><html lang="ms"><body style="font-family:Arial,sans-serif;line-height:1.6;color:#183b35"><h2>Alamat e-mel anda telah ditukar</h2><p>E-mel terdahulu: {{ .OldEmail }}</p><p>E-mel baharu: {{ .Email }}</p><p>Alamat e-mel akaun anda telah ditukar. Jika bukan anda, hubungi sokongan dengan segera.</p><p>Jangan balas dengan kata laluan atau dokumen pengenalan.</p></body></html>
-{{ else }}
 <!doctype html><html lang="en"><body style="font-family:Arial,sans-serif;line-height:1.6;color:#183b35"><h2>Your email address was changed</h2><p>Previous email: {{ .OldEmail }}</p><p>New email: {{ .Email }}</p><p>Your account email address was changed. If this was not you, contact support immediately.</p><p>Never reply with passwords or identity documents.</p></body></html>
-{{ end }}

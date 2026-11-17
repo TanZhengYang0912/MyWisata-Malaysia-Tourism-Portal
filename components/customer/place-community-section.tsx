@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { CustomerSectionHeader } from "@/components/customer/customer-page-shell";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FeedbackCollection, type FeedbackTipItem } from "@/components/customer/feedback/feedback-collection";
 import type { PlaceComment, PlaceCommentsPage } from "@/backend/core/types";
@@ -176,22 +177,20 @@ export function PlaceCommunitySection({ placeId, placeName }: { placeId: string;
 
   return (
     <section className="mt-10 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6 lg:p-7" aria-labelledby="local-notes-heading">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{t("ui.place.localNotes.eyebrow")}</p>
-          <h2 id="local-notes-heading" className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            {t("ui.place.localNotes.title")}
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t("ui.place.localNotes.description", { place: placeName })}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+      <CustomerSectionHeader
+        id="local-notes-heading"
+        eyebrow={t("ui.place.localNotes.eyebrow")}
+        title={t("ui.place.localNotes.title")}
+        action={
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-primary">
             <MessageCircle size={14} aria-hidden="true" /> {t("ui.place.localNotes.count", { count: total })}
           </span>
-        </div>
-      </div>
+        }
+      >
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t("ui.place.localNotes.description", { place: placeName })}</p>
+      </CustomerSectionHeader>
 
-      <form onSubmit={submitNote} className="mt-4 rounded-2xl border border-border bg-secondary/25 p-3 sm:p-4">
+      <form onSubmit={submitNote} className="rounded-2xl border border-border bg-secondary/25 p-3 sm:p-4">
         {!isComposerExpanded ? (
           <button
             type="button"

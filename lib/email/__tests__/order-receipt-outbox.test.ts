@@ -31,7 +31,7 @@ describe('durable PDF receipt dispatch', () => {
     expect(mocks.rpc).toHaveBeenCalledWith('claim_email_outbox_delivery_v2', { p_limit: 2 });
     expect(filters).toContainEqual(['eq', 'id', orderId]);
     expect(filters).toContainEqual(['eq', 'user_id', owner]);
-    expect(mocks.receipt).toHaveBeenCalledWith(expect.objectContaining({ recipientEmail: row.to_email, orderId, locale: 'ms', total: 25, accessUrl: `https://portal.example.test/customer/orders/${orderId}` }));
+    expect(mocks.receipt).toHaveBeenCalledWith(expect.objectContaining({ recipientEmail: row.to_email, orderId, total: 25, accessUrl: `https://portal.example.test/customer/orders/${orderId}` }));
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
   it.each(['pending_payment', 'cancelled', 'refunded'])('never emails a receipt for %s', async (status) => {

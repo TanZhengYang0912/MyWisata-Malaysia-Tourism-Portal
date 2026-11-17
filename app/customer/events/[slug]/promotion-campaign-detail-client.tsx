@@ -20,11 +20,13 @@ import {
   formatEventHours,
   formatEventShortDateRange,
   getEventLocationPhase,
+  getDefaultStopId,
   getEventOperationalLabelKey,
+  PHASE_LABEL_KEY,
   type EventLocationPhase,
 } from "@/lib/promotion-campaigns/locations";
 import { isOptimizableImageUrl } from "@/lib/storage/optimizable-image";
-import type { PromotionCampaignPublic, PromotionCampaignPublicLocation, PromotionCampaignPublicStall, PromotionCampaignPublicVendor } from "@/lib/promotion-campaigns/types";
+import type { PromotionCampaignPublic, PromotionCampaignPublicStall, PromotionCampaignPublicVendor } from "@/lib/promotion-campaigns/types";
 import styles from "./promotion-campaign-detail.module.css";
 
 type Props = {
@@ -45,20 +47,6 @@ const FESTOON_BULBS = Array.from({ length: 12 }, (_, index) => {
   const t = (index + 1) / 13;
   return { x: FESTOON_WIDTH * t, y: (1 - t) ** 2 * 6 + 2 * (1 - t) * t * 41 + t ** 2 * 6 };
 });
-
-const PHASE_LABEL_KEY: Record<EventLocationPhase, string> = {
-  ended: "ui.promotionCampaigns.locationEnded",
-  running: "ui.promotionCampaigns.live",
-  upcoming: "ui.promotionCampaigns.upcoming",
-};
-
-/** Running stop first, else the next stop to start, else the last one (every stop has ended). */
-function getDefaultStopId(locations: PromotionCampaignPublicLocation[], phases: Map<string, EventLocationPhase>): string | null {
-  return locations.find((location) => phases.get(location.id) === "running")?.id
-    ?? locations.find((location) => phases.get(location.id) === "upcoming")?.id
-    ?? locations.at(-1)?.id
-    ?? null;
-}
 
 function StatusLabel({ tone, children }: { tone: "running" | "upcoming" | "ended"; children: ReactNode }) {
   return <span className={styles.status} data-tone={tone}>{children}</span>;
@@ -128,7 +116,7 @@ function StallBooth({ campaignSlug, entry, phase, locale }: { campaignSlug: stri
             />
           )}
         </div>
-        <Link href={`/customer/events/${encodeURIComponent(campaignSlug)}/${encodeURIComponent(vendor.vendorId)}`} className={styles.vendorLink}>
+        <Link href={`/customer/events/${encodeURIComponent(campaignSlug)}/${encodeURIComponent(vendor.vendorId)}?stop=${encodeURIComponent(stall.locationId)}`} className={styles.vendorLink}>
           {vendor.vendorName}
         </Link>
         {vendor.vendorKind === "event" && (
@@ -163,6 +151,7 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const stallsRef = useRef<HTMLDivElement>(null);
   const pagerRef = useRef<HTMLDivElement>(null);
+  const stepperRef = useRef<HTMLOListElement>(null);
   const pendingPageChange = useRef(false);
 
   const orderedLocations = useMemo(() => [...(campaign?.locations ?? [])].sort((a, b) =>
@@ -196,6 +185,17 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
     url.searchParams.set("stop", id);
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   };
+
+  useEffect(() => {
+    // Scroll only the stepper so the chosen stop is fully visible; scrollIntoView could also move the page.
+    const stepper = stepperRef.current;
+    if (!stepper || !(stepper.scrollWidth > stepper.clientWidth)) return;
+    const step = stepper.childNodes[orderedLocations.findIndex((location) => location.id === activeStopId)] as HTMLElement | undefined;
+    if (!step) return;
+    const { offsetLeft: left, offsetWidth: width } = step;
+    if (left < stepper.scrollLeft) stepper.scrollLeft = left;
+    else if (left + width > stepper.scrollLeft + stepper.clientWidth) stepper.scrollLeft = left + width - stepper.clientWidth;
+  }, [activeStopId, orderedLocations]);
 
   const changeStallPage = (page: number) => {
     pendingPageChange.current = true;
@@ -299,7 +299,7 @@ export function PromotionCampaignDetailClient({ slug, initialCampaign, initialEr
               {orderedLocations.length > 1 ? t("ui.promotionCampaigns.stops") : t("ui.promotionCampaigns.locationsSection", { count: 1 })}
             </h2>
             {orderedLocations.length > 1 && (
-              <ol data-slot="event-stops" className={styles.stepper} style={{ "--stops": orderedLocations.length } as CSSProperties}>
+              <ol ref={stepperRef} data-slot="event-stops" className={styles.stepper} style={{ "--stops": orderedLocations.length } as CSSProperties}>
                 {orderedLocations.map((location) => {
                   const phase = phases.get(location.id) ?? "running";
                   return (

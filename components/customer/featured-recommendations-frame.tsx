@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { ARROW_CLASS } from "@/components/customer/card-carousel";
+import { CustomerSectionHeader } from "@/components/customer/customer-page-shell";
+import { HomeDestinationWormIndicator } from "@/components/customer/home-destination-worm-indicator";
 
 type FeaturedRecommendationsFrameProps = {
   headingId: string;
@@ -15,6 +20,7 @@ type FeaturedRecommendationsFrameProps = {
   slideCount: number;
   onSelectSlide: (index: number) => void;
   onNext: () => void;
+  onPrevious: () => void;
   action?: ReactNode;
   /** Clip slides to the rounded frame. The home campaign envelope turns this off so its letter can float out. */
   clip?: boolean;
@@ -35,10 +41,12 @@ export function FeaturedRecommendationsFrame({
   slideCount,
   onSelectSlide,
   onNext,
+  onPrevious,
   action,
   clip = true,
   children,
 }: FeaturedRecommendationsFrameProps) {
+  const { t } = useTranslation("common");
   const [isPointerPaused, setIsPointerPaused] = useState(false);
   const [isFocusPaused, setIsFocusPaused] = useState(false);
   const [isDocumentVisible, setIsDocumentVisible] = useState(
@@ -87,26 +95,25 @@ export function FeaturedRecommendationsFrame({
     prefersReducedMotion,
   ]);
 
+  // Any manual move restarts the autoplay countdown.
   function selectSlide(index: number) {
     onSelectSlide(index);
     setAutoplayEpoch((epoch) => epoch + 1);
   }
 
+  function step(move: () => void) {
+    move();
+    setAutoplayEpoch((epoch) => epoch + 1);
+  }
+
   return (
     <>
-      <div className="mb-6 flex items-end justify-between gap-4">
-        <div className="min-w-0">
-          {eyebrow && <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{eyebrow}</p>}
-          <h2 id={headingId} className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold text-foreground">
-            {title}
-          </h2>
-          {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
-        </div>
-        {action}
-      </div>
+      <CustomerSectionHeader id={headingId} eyebrow={eyebrow} title={title} action={action}>
+        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+      </CustomerSectionHeader>
 
       <div
-        className="w-full"
+        className="relative w-full"
         onMouseEnter={() => setIsPointerPaused(true)}
         onMouseLeave={() => setIsPointerPaused(false)}
         onFocusCapture={() => setIsFocusPaused(true)}
@@ -122,25 +129,35 @@ export function FeaturedRecommendationsFrame({
           {children}
         </div>
         {hasMultipleSlides && (
-          <div role="group" aria-label={carouselLabel} className="mt-3 flex justify-center">
-            {Array.from({ length: slideCount }, (_, index) => {
-              const isActive = activeSlideIndex === index;
-              return (
-                <button
-                  key={index}
-                  type="button"
-                  aria-label={slideLabel(index + 1, slideCount)}
-                  aria-current={isActive ? "true" : undefined}
-                  onClick={() => selectSlide(index)}
-                  className="group flex h-6 w-6 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                >
-                  <span
-                    aria-hidden="true"
-                    className={`block h-1.5 rounded-full transition-[width,background-color] duration-200 group-hover:bg-accent group-active:bg-accent motion-reduce:transition-none ${isActive ? "w-3.5 bg-primary" : "w-1.5 bg-muted-foreground/35"}`}
-                  />
-                </button>
-              );
-            })}
+          // Same controls as CardCarousel. From 1360px the arrows sit beside the slide at its middle: the row
+          // under it then holds only the 24px worm after a 12px gap, so the slide is the wrapper minus 36px.
+          <div className="mt-3 flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => step(onPrevious)}
+              aria-label={t("accessibility.previousPage")}
+              className={`${ARROW_CLASS} min-[1360px]:absolute min-[1360px]:top-[calc((100%-36px)/2)] min-[1360px]:-translate-y-1/2 min-[1360px]:-left-11`}
+            >
+              <ChevronLeft size={24} aria-hidden="true" />
+            </button>
+            <HomeDestinationWormIndicator
+              appearance="dots"
+              count={slideCount}
+              progress={activeSlideIndex}
+              current={activeSlideIndex}
+              sizes={{ dot: 6, pill: 14, gap: 18 }}
+              label={carouselLabel}
+              pageLabel={slideLabel}
+              onSelect={selectSlide}
+            />
+            <button
+              type="button"
+              onClick={() => step(onNext)}
+              aria-label={t("accessibility.nextPage")}
+              className={`${ARROW_CLASS} min-[1360px]:absolute min-[1360px]:top-[calc((100%-36px)/2)] min-[1360px]:-translate-y-1/2 min-[1360px]:-right-11`}
+            >
+              <ChevronRight size={24} aria-hidden="true" />
+            </button>
           </div>
         )}
       </div>

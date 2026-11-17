@@ -1,6 +1,5 @@
 "use client";
 
-import { resolveAppLocale } from "@/lib/i18n/locale";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Building2, CheckCircle2, Globe, LockKeyhole, Mail } from "lucide-react";
@@ -25,7 +24,7 @@ export default function OutletManagerInvitationPage() {
   const params = useParams<{ token: string }>();
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const { t, i18n } = useTranslation("auth");
+  const { t } = useTranslation("auth");
   const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [sessionEmail, setSessionEmail] = useState("");
   const [mode, setMode] = useState<"sign_in" | "register">("sign_in");
@@ -81,7 +80,7 @@ export default function OutletManagerInvitationPage() {
     if (!captchaToken) { setBusy(false); setError(t("humanVerification.required")); return; }
     const result = mode === "sign_in"
       ? await supabase.auth.signInWithPassword({ email: invitation.email, password, options: { captchaToken } })
-      : await supabase.auth.signUp({ email: invitation.email, password, options: { captchaToken, emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(`/outlet-manager-invitations/${params.token}`)}`, data: { full_name: fullName.trim(), preferred_locale: resolveAppLocale({ accountLocale: i18n.resolvedLanguage }) } } });
+      : await supabase.auth.signUp({ email: invitation.email, password, options: { captchaToken, emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(`/outlet-manager-invitations/${params.token}`)}`, data: { full_name: fullName.trim() } } });
     if (result.error) {
       setBusy(false);
       setError(result.error.code === "captcha_failed" ? t("humanVerification.invalid") : result.error.message);

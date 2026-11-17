@@ -10,6 +10,7 @@ import { toDiscoveryCatalogueCard } from '@/lib/customer/product-catalogue';
 import type { ComputedActivity, DiscoveryPropertySummary } from '@/backend/core/types';
 import type { PersonalizationReason } from '@/lib/personalization/scorer';
 import { Button } from '@/components/ui/button';
+import { CustomerPageHeader, CustomerPageShell } from '@/components/customer/customer-page-shell';
 import { groupRankedByProperty } from '@/lib/customer/discovery-ranking';
 import { useCustomerCapabilityGate } from '@/components/customer/use-customer-capability-gate';
 import { CUSTOMER_CAPABILITY } from '@/lib/auth/customer-capabilities';
@@ -50,17 +51,22 @@ export default function ForYouClient() {
   }
 
   const personalized = result?.mode === 'personalized';
-  return <div className="mx-auto max-w-7xl px-5 py-10">
+  return <CustomerPageShell wide>
     <Link href="/customer" className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition hover:text-primary/75 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20">
       <ArrowLeft size={16} aria-hidden="true" />
       {t('ui.forYou.backHome')}
     </Link>
-    <p className="mt-8 text-xs font-semibold tracking-[0.18em] text-primary">{personalized ? t('ui.forYou.personalised') : t('ui.forYou.title')}</p>
-    <div className="mt-2 flex flex-wrap items-end justify-between gap-4"><div><h1 className="font-[family-name:var(--font-display)] text-4xl font-bold text-foreground">{t('ui.forYou.heading')}</h1><p className="mt-2 text-muted-foreground">{personalized ? t('ui.forYou.personalisedDescription') : t('ui.forYou.genericDescription')}</p></div><div className="flex flex-wrap gap-2"><Button type="button" onClick={() => void load()} disabled={loading}>{loading ? t('ui.states.loading') : t('ui.forYou.generate')}</Button><button type="button" onClick={useMyLocation} disabled={locationBusy || loading} aria-busy={locationBusy} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-semibold text-primary hover:bg-secondary disabled:opacity-50"><MapPin size={16} aria-hidden="true" />{locationBusy ? t('ui.states.loading') : t('ui.map.useCurrentLocation')}</button></div></div>
+    <CustomerPageHeader
+      className="mt-8"
+      eyebrow={personalized ? t('ui.forYou.personalised') : t('ui.forYou.title')}
+      title={t('ui.forYou.heading')}
+      description={personalized ? t('ui.forYou.personalisedDescription') : t('ui.forYou.genericDescription')}
+      actions={<><Button type="button" onClick={() => void load()} disabled={loading}>{loading ? t('ui.states.loading') : t('ui.forYou.generate')}</Button><button type="button" onClick={useMyLocation} disabled={locationBusy || loading} aria-busy={locationBusy} className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-semibold text-primary hover:bg-secondary disabled:opacity-50"><MapPin size={16} aria-hidden="true" />{locationBusy ? t('ui.states.loading') : t('ui.map.useCurrentLocation')}</button></>}
+    />
     {error && <p className="mt-5 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
     {result?.locationSource === 'city' && <p className="mt-4 text-xs text-muted-foreground">{t('ui.forYou.profileCityDistance')}</p>}
     {!personalized && !loading && <p className="mt-5 rounded-xl bg-secondary p-4 text-sm text-muted-foreground">{t('ui.forYou.unlock')} <Link href="/customer/profile" className="font-semibold text-primary">{t('ui.forYou.continueVerification')}</Link></p>}
     {loading ? <div role="status" aria-live="polite" className="flex min-h-64 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 animate-spin" size={18} aria-hidden="true" /> {t('ui.states.loading')}</div> : result && <div className="mt-8 grid items-stretch grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">{groupRankedByProperty(result.activities).map(({ activity }) => activity.property ? <ActivityCard key={activity.id} activity={activity} returnTo="/customer/for-you" /> : <ProductCard key={activity.id} listing={toDiscoveryCatalogueCard(activity, { labels: false })} returnTo="/customer/for-you" />)}</div>}
     <Link href="/customer/profile#preferences" className="mt-8 inline-block font-semibold text-primary">{t('ui.forYou.editPreferences')}</Link>
-  </div>;
+  </CustomerPageShell>;
 }

@@ -1,6 +1,4 @@
 import 'server-only';
-import { checkoutEmailLocale } from '@/lib/email/locale';
-import type { AppLocale } from '@/lib/i18n/locale';
 import { checkoutContactSchema } from './contact';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -9,7 +7,7 @@ import { customerCapabilityFailure, resolveServerCustomerCapability } from '@/li
 import { guestPrivateResponse, isSameOriginMutation, reserveGuestRateLimit, resolveGuestSession } from './guest-session';
 
 export type CheckoutSubject = { kind: 'account'; userId: string } | { kind: 'guest'; guestSubjectId: string };
-export type CheckoutContact = { email: string; name: string | null; phone: string | null; locale?: AppLocale };
+export type CheckoutContact = { email: string; name: string | null; phone: string | null };
 export type CheckoutBuyer = { subject: CheckoutSubject; contact: CheckoutContact };
 
 
@@ -28,13 +26,13 @@ export async function resolveCheckoutSubject(request: Request) {
   const guest = await resolveGuestSession(request);
   if (!guest) return { ok: false as const, response: guestPrivateResponse(null, 401) };
   if (!await reserveGuestRateLimit(`checkout:${guest.guestSubjectId}`, 20, 900)) return { ok: false as const, response: guestPrivateResponse(null, 429) };
-  return { ok: true as const, db: createServiceClient(), subject: { kind: 'guest' as const, guestSubjectId: guest.guestSubjectId }, user: null, emailLocale: checkoutEmailLocale(request) };
+  return { ok: true as const, db: createServiceClient(), subject: { kind: 'guest' as const, guestSubjectId: guest.guestSubjectId }, user: null };
 }
 export async function resolveCheckoutContact(context: Awaited<ReturnType<typeof resolveCheckoutSubject>>, input: unknown): Promise<CheckoutContact | null> {
   if (!context.ok) return null;
   if (context.subject.kind === 'guest') {
     const parsed = checkoutContactSchema.safeParse(input);
-    return parsed.success ? { email: parsed.data.email, name: parsed.data.name ?? null, phone: parsed.data.phone ?? null, locale: 'emailLocale' in context ? context.emailLocale : 'en' } : null;
+    return parsed.success ? { email: parsed.data.email, name: parsed.data.name ?? null, phone: parsed.data.phone ?? null } : null;
   }
   // A signed-in buyer may book under another name or email; it is stored on this order only, never on the profile.
   const user = context.user;

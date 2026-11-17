@@ -3,7 +3,6 @@ import type { StaffPermissionKey } from "@/lib/staff-permissions/types";
 export type StaffInvitationLocale = "en" | "ms" | "zh-CN";
 
 export type StaffInvitationEmailInput = {
-  locale: StaffInvitationLocale;
   roleName: string;
   permissionKeys: StaffPermissionKey[];
   invitationUrl: string;

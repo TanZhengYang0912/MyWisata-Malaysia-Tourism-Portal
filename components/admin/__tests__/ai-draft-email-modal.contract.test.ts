@@ -14,16 +14,14 @@ describe('AI draft email response handoff', () => {
     expect(modalSource).toContain('onSent(target.id, responseBody.data)');
   });
 
-  it('passes the actual recipient into drafts and resolves language without replacing edits', () => {
+  it('drafts in English without a recipient-language lookup', () => {
     const modalSource = source('components/admin/ai-draft-email-modal.tsx');
-    expect(modalSource).toContain('runDraft(initialEmail)');
-    expect(modalSource).toContain('email: recipient.trim()');
-    expect(modalSource).toContain('localeOnly: true');
-    expect(modalSource).toContain('email.draft.recipientLanguage');
-    const lookup = modalSource.slice(modalSource.indexOf('async function resolveRecipientLanguage'), modalSource.indexOf('async function runDraft'));
-    expect(lookup).not.toContain('setSubject(');
-    expect(lookup).not.toContain('setBody(');
-    expect(lookup).toContain('recipientRef.current');
+    expect(modalSource).toContain('body: JSON.stringify(extraBody)');
+    expect(modalSource).not.toContain('localeOnly');
+    expect(modalSource).not.toContain('recipientLanguage');
+    expect(modalSource).not.toContain('resolveRecipientLanguage');
+    // Late draft responses still cannot overwrite a newer draft request.
+    expect(modalSource).toContain('if (requestId !== draftRequest.current) return;');
   });
 
   it('warns when a delivered recommendation invite did not synchronize status', () => {

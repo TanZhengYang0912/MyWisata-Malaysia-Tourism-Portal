@@ -8,6 +8,10 @@ const listingSource = readFileSync(resolve(process.cwd(), "components/customer/v
 const locationSource = readFileSync(resolve(process.cwd(), "components/customer/vendor-location-list.tsx"), "utf8");
 
 describe("customer vendor profile image contract", () => {
+  it("passes the vendor id to Event items so each stop row can open the vendor's stall page", () => {
+    expect(pageSource).toContain("<EventItemsTable items={eventItems} vendorId={vendor.id} />");
+  });
+
   it("uses only the vendor cover for the vendor hero", () => {
     expect(pageSource).toContain("const vendorVisual = getVendorVisual({ name: vendor.name, coverUrl: vendor.cover_url, logoUrl: vendor.logo_url });");
     expect(pageSource).toContain("const heroImage = vendorVisual.coverUrl;");
@@ -99,7 +103,8 @@ describe("customer vendor mobile layout", () => {
     expect(pageSource).toContain("h-[200px]");
     expect(pageSource).toContain("sm:h-[300px]");
     expect(pageSource).toContain("space-y-12 sm:space-y-16");
-    expect(pageSource).toContain("mb-4 mt-2 max-w-2xl text-sm leading-5 text-muted-foreground sm:mb-6 sm:leading-6");
+    expect(pageSource).toContain("mt-2 max-w-2xl text-sm leading-5 text-muted-foreground sm:leading-6");
+    expect(pageSource).toContain('<CustomerSectionHeader id="event-items-heading"');
   });
 
   it("removes redundant experience and location introductions", () => {

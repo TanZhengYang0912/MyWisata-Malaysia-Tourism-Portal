@@ -9,6 +9,7 @@ import { ShareButton } from '@/components/shared/share-button';
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { VendorListingGrid } from "@/components/customer/vendor-listing-grid";
+import { CustomerSectionHeader } from "@/components/customer/customer-page-shell";
 import { VendorLocationList, type VendorLocationRow } from "@/components/customer/vendor-location-list";
 import { VendorOperatingHours } from "@/components/customer/vendor-operating-hours";
 import { VendorSectionNav } from "@/components/customer/vendor-section-nav";
@@ -281,7 +282,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-primary">{t('ui.vendor.partnerProfile')}</p>
-          <h1 className="mt-1 break-words font-[family-name:var(--font-display)] text-[26px] font-bold leading-[1.15] text-foreground sm:text-[34px]">{vendor.name}</h1>
+          <h1 className="mt-1 break-words font-[family-name:var(--font-display)] text-3xl font-bold leading-[1.15] text-foreground sm:text-4xl">{vendor.name}</h1>
           <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-bold text-primary">
             <CheckCircle2 size={14} aria-hidden="true" />
             {isEventVendor ? t('ui.vendor.eventItems.eventPartner') : t('ui.labels.verifiedVendor')}
@@ -343,17 +344,16 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
       <div className="space-y-12 sm:space-y-16">
         {showEventItems && (
           <section id="event-items" aria-labelledby="event-items-heading" className={sectionScroll}>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.eventItems.eyebrow')}</p>
-            <h2 id="event-items-heading" className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t('ui.vendor.eventItems.title')}</h2>
-            <p className="mb-4 mt-2 max-w-2xl text-sm leading-5 text-muted-foreground sm:mb-6 sm:leading-6">{t('ui.vendor.eventItems.description')}</p>
-            <EventItemsTable items={eventItems} />
+            <CustomerSectionHeader id="event-items-heading" eyebrow={t('ui.vendor.eventItems.eyebrow')} title={t('ui.vendor.eventItems.title')}>
+              <p className="mt-2 max-w-2xl text-sm leading-5 text-muted-foreground sm:leading-6">{t('ui.vendor.eventItems.description')}</p>
+            </CustomerSectionHeader>
+            <EventItemsTable items={eventItems} vendorId={vendor.id} />
           </section>
         )}
 
         {!isEventVendor && <>
         <section id="experiences" aria-labelledby="experiences-heading" className={sectionScroll}>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.featuredExperiences')}</p>
-          <h2 id="experiences-heading" className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t('ui.vendor.memorableDay')}</h2>
+          <CustomerSectionHeader id="experiences-heading" eyebrow={t('ui.vendor.featuredExperiences')} title={t('ui.vendor.memorableDay')} />
           {listingCards.length ? (
             <VendorListingGrid products={listingCards} vendorName={vendor.name} returnTo={`/customer/vendors/${vendor.id}`} />
           ) : (
@@ -362,12 +362,7 @@ export default async function VendorBrandPage({ params }: { params: Promise<{ ve
         </section>
 
         <section id="locations" aria-labelledby="locations-heading" className={sectionScroll}>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{t('ui.vendor.findAcrossMalaysia')}</p>
-              <h2 id="locations-heading" className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t('ui.vendor.chooseLocationTitle')}</h2>
-            </div>
-          </div>
+          <CustomerSectionHeader id="locations-heading" eyebrow={t('ui.vendor.findAcrossMalaysia')} title={t('ui.vendor.chooseLocationTitle')} />
           {locations.length ? <VendorLocationList locations={locationRows} /> : <div className="mt-6 rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">{t('ui.vendor.noPublicOutlets')}</div>}
         </section>
         </>}
