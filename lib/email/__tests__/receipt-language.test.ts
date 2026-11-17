@@ -2,10 +2,6 @@ vi.mock('@/lib/platform/operations-settings', () => ({ ensureCustomEmailDelivery
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import sharp from 'sharp';
-import { BinaryBitmap, HybridBinarizer, QRCodeReader, RGBLuminanceSource } from '@zxing/library';
-import { signRetailPickupToken, verifyRetailPickupToken } from '@/lib/orders/retail-pickup-token';
-import { escapeHtml } from '../templates';
 const mocks = vi.hoisted(() => ({ send: vi.fn(), pdf: vi.fn() }));
 vi.mock('nodemailer', () => ({ default: { createTransport: () => ({ sendMail: mocks.send, close: vi.fn() }) } }));
 vi.mock('../config', () => ({ getEmailConfig: () => ({ host: 'smtp.example.test', port: 587, user: 'test', pass: 'test', from: 'MYLawatan <test@example.test>' }) }));
@@ -36,46 +32,16 @@ describe('receipt email language', () => {
     }
   });
 
-  it('embeds a scannable retail QR matching the signed order line without printing the token', async () => {
-    const orderId = '10000000-0000-4000-8000-000000000001';
-    const claims = { orderId, orderItemId: '10000000-0000-4000-8000-000000000002', vendorId: 'bbbbbbbb-2222-accc-3ddd-000000000003', outletId: 'cccccccc-dddd-aeee-3fff-111111111111', issuedAt: 1793124000 };
-    const secret = 'synthetic-preview-only-not-a-shared-signing-secret';
-    const token = signRetailPickupToken(claims, secret);
-    const qrUrl = `https://preview.invalid/customer/orders/${orderId}?retail_t=${token}`;
-    const payload = {
-      recipientEmail: 'test@example.test', recipientName: '示例顾客', orderId, orderReference: 'ORD-DEMO-1000',
-      createdAt: '2026-10-28T00:00:00+08:00', paymentMethod: 'ewallet',
-      items: [{ activityName: 'Beh Teh Saw (Box of 12)', variantLabel: 'Default', unitPrice: 16, qty: 2 }], subtotal: 32, total: 32, discount: 0,
-      pickupPasses: [{ kind: 'retail' as const, title: 'Jalan Macalister', subtitle: 'Ghee Hiang', details: ['2 × Beh Teh Saw (Box of 12) · Default'], qrUrl }],
-    };
-    await sendOrderReceiptEmail(payload);
+  it('never embeds a QR image or pickup QR section in the receipt email', async () => {
+    await sendOrderReceiptEmail({
+      recipientEmail: 'test@example.test', recipientName: 'Synthetic buyer', orderId: '10000000-0000-4000-8000-000000000001', orderReference: 'ORD-DEMO-1000',
+      createdAt: '2026-10-28T00:00:00+08:00', paymentMethod: 'ewallet', accessUrl: 'https://preview.invalid/customer/orders/10000000-0000-4000-8000-000000000001',
+      items: [{ activityName: 'Original Banana Cake', variantLabel: 'Central Market Annexe, KL · 17:00–19:00', unitPrice: 15, qty: 1 }], subtotal: 15, total: 15, discount: 0,
+    });
     const mail = mocks.send.mock.calls.at(-1)![0];
-    expect(mail.from).toBe('MYLawatan <test@example.test>');
-    expect(mail.subject).toBe('Your MYLawatan Order Receipt – ORD-DEMO-1000');
-    expect(mail.html).toContain('cid:pickup-qr-0@mylawatan.my');
-    expect(mail.html).toContain('collect all quantities listed below in one pickup');
-    expect(mail.text).toContain('2 × Beh Teh Saw');
-    expect(mail.attachments).toHaveLength(2);
-    const attachment = mail.attachments[1];
-    expect(attachment).toMatchObject({ contentType: 'image/png', contentDisposition: 'inline', cid: 'pickup-qr-0@mylawatan.my' });
-    expect(mail.html).not.toContain(token);
-    expect(mail.text).not.toContain(token);
-    expect(attachment.filename).not.toContain(token);
-    const image = await sharp(attachment.content).removeAlpha().greyscale().raw().toBuffer({ resolveWithObject: true });
-    const decoded = new QRCodeReader().decode(new BinaryBitmap(new HybridBinarizer(new RGBLuminanceSource(new Uint8ClampedArray(image.data), image.info.width, image.info.height)))).getText();
-    expect(decoded).toBe(qrUrl);
-    expect(verifyRetailPickupToken(new URL(decoded).searchParams.get('retail_t')!, secret)).toMatchObject({ valid: true, claims });
-
-    // Opt-in offline preview uses only synthetic identities and a non-production signing key.
-    if (process.env.RECEIPT_EMAIL_PREVIEW_DIR) {
-      const directory = process.env.RECEIPT_EMAIL_PREVIEW_DIR;
-      mkdirSync(directory, { recursive: true });
-      const { generateReceiptPdf } = await vi.importActual<typeof import('@/lib/pdf/receipt')>('@/lib/pdf/receipt');
-      writeFileSync(path.join(directory, 'receipt.pdf'), await generateReceiptPdf(payload));
-      writeFileSync(path.join(directory, 'pickup-qr.png'), attachment.content);
-      const previewHtml = mail.html.replace(`cid:${attachment.cid}`, `data:image/png;base64,${attachment.content.toString('base64')}`)
-        .replace('<h2', `<p style="padding:12px;background:#eef2ff">合成数据预览 · 非真实订单或领取凭证<br>From: ${escapeHtml(mail.from)}<br>${escapeHtml(mail.subject)}</p><h2`);
-      writeFileSync(path.join(directory, 'receipt.html'), previewHtml);
-    }
+    expect(mail.attachments).toEqual([expect.objectContaining({ contentType: 'application/pdf' })]);
+    expect(mail.html).not.toMatch(/<img|cid:|QR/i);
+    expect(mail.text).not.toMatch(/QR|inline image/i);
+    expect(mail.html).toContain('View your order');
   });
 });

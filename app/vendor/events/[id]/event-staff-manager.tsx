@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Loader2, RotateCcw } from 'lucide-react';
+import { ChevronDown, Copy, Loader2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useActionFeedback } from '@/components/providers/action-feedback';
@@ -11,12 +11,18 @@ import { formatDate } from '@/lib/i18n/format';
 import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
 
 interface StaffLink { token: string; expiresAt: string }
-interface StaffMember { id: string; displayName: string; email: string; joinedAt: string }
+type MemberStatus = 'pending' | 'active' | 'removed';
+interface StaffMember { id: string; displayName: string; email: string; joinedAt: string; status: MemberStatus }
 
-interface Props { vendorId: string; campaignId: string }
+interface Props { vendorId: string; locationId: string }
 
-/** Owner card: one join link per vendor × event, and the staff who joined through it. */
-export function EventStaffManager({ vendorId, campaignId }: Props) {
+/**
+ * Owner panel inside one stall: that stall's join link and the staff who joined
+ * through it. Staff scan only at this stall.
+ * Joining only requests access: the owner approves before anyone can scan, and
+ * only the owner can restore someone who was removed.
+ */
+export function EventStaffManager({ vendorId, locationId }: Props) {
   const { t, i18n } = useTranslation('vendor');
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const { showFeedback } = useActionFeedback();
@@ -26,7 +32,7 @@ export function EventStaffManager({ vendorId, campaignId }: Props) {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [busy, setBusy] = useState(false);
-  const endpoint = `/api/vendors/${vendorId}/event-staff/${campaignId}`;
+  const endpoint = `/api/vendors/${vendorId}/event-staff/${locationId}`;
   const date = (value: string) => formatDate(value, locale, { timeZone: 'Asia/Kuala_Lumpur' });
   const joinUrl = link && typeof window !== 'undefined' ? `${window.location.origin}/event-staff/join/${link.token}` : '';
 
@@ -81,15 +87,50 @@ export function EventStaffManager({ vendorId, campaignId }: Props) {
     }
   }
 
+  const setStatus = (memberId: string, status: MemberStatus) =>
+    setMembers((current) => current.map((entry) => (entry.id === memberId ? { ...entry, status } : entry)));
+
   async function remove(member: StaffMember) {
-    if (!(await confirm(t('ui.events.staff.removeConfirm', { name: member.displayName })))) return;
+    const message = member.status === 'pending'
+      ? t('ui.events.staff.declineConfirm', { name: member.displayName })
+      : t('ui.events.staff.removeConfirm', { name: member.displayName });
+    if (!(await confirm(message))) return;
     const response = await run(() => fetch(`${endpoint}/members/${member.id}`, { method: 'DELETE' }));
-    if (response) setMembers((current) => current.filter((entry) => entry.id !== member.id));
+    if (response) setStatus(member.id, 'removed');
   }
 
+  async function grant(member: StaffMember, action: 'approve' | 'restore') {
+    const response = await run(() => fetch(`${endpoint}/members/${member.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    }));
+    if (!response) {
+      // A 409 means another tab changed this member; show the current state.
+      void load();
+      return;
+    }
+    setStatus(member.id, 'active');
+    showFeedback('success', t(action === 'approve' ? 'ui.events.staff.approved' : 'ui.events.staff.restored', { name: member.displayName }));
+  }
+
+  const pending = members.filter((member) => member.status === 'pending');
+  const active = members.filter((member) => member.status === 'active');
+  const removed = members.filter((member) => member.status === 'removed');
+
+  const memberRow = (member: StaffMember, actions: ReactNode) => (
+    <li key={member.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-lg border border-border p-3">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-foreground">{member.displayName}</p>
+        <p className="truncate text-xs text-muted-foreground">{member.email} · {t('ui.events.staff.joinedAt', { date: date(member.joinedAt) })}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">{actions}</div>
+    </li>
+  );
+
   return (
-    <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-      <h2 className="text-sm font-semibold text-foreground">{t('ui.events.staff.title')}</h2>
+    <section className="space-y-3 border-t border-border pt-4">
+      <h3 className="text-xs font-semibold text-muted-foreground">{t('ui.events.staff.title')}</h3>
       {loading ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 size={14} className="animate-spin" aria-hidden="true" /> {t('ui.events.loading')}
@@ -114,20 +155,45 @@ export function EventStaffManager({ vendorId, campaignId }: Props) {
           ) : (
             <Button type="button" size="sm" disabled={busy} onClick={() => void saveLink(false)}>{t('ui.events.staff.createLink')}</Button>
           )}
-          {members.length === 0 ? (
+          {pending.length > 0 && (
+            <div className="space-y-1.5">
+              <h3 className="text-xs font-semibold text-muted-foreground">{t('ui.events.staff.pendingTitle', { count: pending.length })}</h3>
+              <ul className="space-y-1.5">
+                {pending.map((member) => memberRow(member, (
+                  <>
+                    <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => void remove(member)}>{t('ui.events.staff.decline')}</Button>
+                    <Button type="button" size="sm" disabled={busy} onClick={() => void grant(member, 'approve')}>{t('ui.events.staff.approve')}</Button>
+                  </>
+                )))}
+              </ul>
+            </div>
+          )}
+          {active.length === 0 && pending.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('ui.events.staff.membersEmpty')}</p>
-          ) : (
-            <ul className="space-y-1.5">
-              {members.map((member) => (
-                <li key={member.id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">{member.displayName}</p>
-                    <p className="truncate text-xs text-muted-foreground">{member.email} · {t('ui.events.staff.joinedAt', { date: date(member.joinedAt) })}</p>
-                  </div>
+          ) : active.length > 0 && (
+            <div className="space-y-1.5">
+              {pending.length > 0 && <h3 className="text-xs font-semibold text-muted-foreground">{t('ui.events.staff.activeTitle', { count: active.length })}</h3>}
+              <ul className="space-y-1.5">
+                {active.map((member) => memberRow(member, (
                   <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => void remove(member)}>{t('ui.events.staff.remove')}</Button>
-                </li>
-              ))}
-            </ul>
+                )))}
+              </ul>
+            </div>
+          )}
+          {removed.length > 0 && (
+            <details className="group">
+              <summary className="cursor-pointer list-none text-xs font-semibold text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 [&::-webkit-details-marker]:hidden">
+                <span className="inline-flex items-center gap-1">
+                  <ChevronDown size={14} aria-hidden="true" className="transition-transform group-open:rotate-180 motion-reduce:transition-none" />
+                  {t('ui.events.staff.removedTitle', { count: removed.length })}
+                </span>
+              </summary>
+              <ul className="mt-1.5 space-y-1.5">
+                {removed.map((member) => memberRow(member, (
+                  <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void grant(member, 'restore')}>{t('ui.events.staff.restore')}</Button>
+                )))}
+              </ul>
+            </details>
           )}
         </>
       )}

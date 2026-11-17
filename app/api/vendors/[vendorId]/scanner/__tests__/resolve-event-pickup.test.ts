@@ -55,22 +55,20 @@ function codeFor(pickupSlotId?: string) {
   return `http://localhost/customer/orders/${ORDER_ID}?event_t=${eventToken}`;
 }
 
-const STAFF_CAMPAIGN = "77777777-7777-4777-8777-777777777777";
-
-function setupRows(rows: unknown[], locationCampaignId = STAFF_CAMPAIGN) {
+function setupRows(rows: unknown[]) {
   mocks.from.mockImplementation((table: string) => {
     if (table === "orders") return query({ status: "paid" });
     if (table === "vendors") return query({ id: VENDOR_ID, name: "Event Vendor", status: "approved", kind: "event" });
-    if (table === "promotion_campaign_locations") return query({ campaign_id: locationCampaignId });
     if (table === "audit_logs") return query(null, null, "audit_logs");
     return query(rows);
   });
 }
 
-function asStaff(eventCampaignIds = [STAFF_CAMPAIGN]) {
+// Staff scope is a list of stalls (event locations) they joined.
+function asStaff(eventLocationIds = [LOCATION_ID]) {
   mocks.authorizeVendor.mockResolvedValue({
     ok: true,
-    access: { userId: "staff-1", role: "event_staff", eventCampaignIds, outletIds: [], serviceDb: { from: mocks.from } },
+    access: { userId: "staff-1", role: "event_staff", eventLocationIds, outletIds: [], serviceDb: { from: mocks.from } },
   });
 }
 
@@ -92,7 +90,7 @@ describe("event pickup scanner preview", () => {
     mocks.auditError = null;
     mocks.authorizeVendor.mockResolvedValue({
       ok: true,
-      access: { userId: "owner-1", role: "vendor_owner", eventCampaignIds: [], serviceDb: { from: mocks.from }, outletIds: [] },
+      access: { userId: "owner-1", role: "vendor_owner", eventLocationIds: [], serviceDb: { from: mocks.from }, outletIds: [] },
     });
   });
 
@@ -193,7 +191,7 @@ describe("event pickup scanner preview", () => {
     await expect(response.json()).resolves.toMatchObject({ error: { code: "SCAN_NOT_RECORDED" } });
   });
 
-  it("lets staff resolve a pickup at a location of their event and records them", async () => {
+  it("lets staff resolve a pickup at their stall and records them", async () => {
     vi.setSystemTime(new Date(MORNING_START));
     asStaff();
     setupRows([eventLine("Kuih", MORNING_SLOT_ID, MORNING_START)]);
@@ -204,10 +202,10 @@ describe("event pickup scanner preview", () => {
     expect(mocks.inserts).toMatchObject([{ table: "audit_logs", row: { actor_id: "staff-1", after_data: { role: "event_staff" } } }]);
   });
 
-  it("rejects staff at a location outside their event before reading the order", async () => {
+  it("rejects staff at another stall of the same vendor before reading the order", async () => {
     vi.setSystemTime(new Date(MORNING_START));
-    asStaff();
-    setupRows([eventLine("Kuih", MORNING_SLOT_ID, MORNING_START)], "88888888-8888-4888-8888-888888888888");
+    asStaff(["88888888-8888-4888-8888-888888888888"]);
+    setupRows([eventLine("Kuih", MORNING_SLOT_ID, MORNING_START)]);
 
     const response = await resolve(codeFor(MORNING_SLOT_ID), LOCATION_ID, PICKUP_DATE);
 
@@ -225,7 +223,7 @@ describe("event pickup scanner preview", () => {
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({ error: { code: "EVENT_CONTEXT_REQUIRED" } });
-    expect(mocks.from).not.toHaveBeenCalledWith("promotion_campaign_locations");
+    expect(mocks.from).not.toHaveBeenCalledWith("order_items");
   });
 
   it("keeps non-event codes closed to staff", async () => {

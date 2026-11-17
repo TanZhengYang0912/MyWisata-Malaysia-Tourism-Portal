@@ -94,6 +94,15 @@ function malaysiaToday(now: number) {
 
 const EMPTY_FORM = { stallNumber: '', stallDescription: '', stallPosterUrl: '' as string | null };
 
+type Phase = 'upcoming' | 'live' | 'ended';
+// One phase palette for the event hero and every stall, so "now / next / done" reads the same everywhere.
+const PHASE_BADGE: Record<Phase, string> = {
+  live: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200',
+  upcoming: 'bg-highlight-yellow text-highlight-yellow-foreground',
+  ended: 'bg-muted text-muted-foreground',
+};
+const phaseOf = (startsOn: string, endsOn: string, today: string): Phase => (today < startsOn ? 'upcoming' : today > endsOn ? 'ended' : 'live');
+
 export default function VendorEventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { t, i18n } = useTranslation('vendor');
@@ -174,6 +183,23 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
 
   useEffect(() => { (async () => { await load(); })(); }, [load]);
 
+  // Pickups still to hand over at this event; feeds the Reservations shortcut.
+  const hasApprovedRegistration = registrations.some((entry) => entry.status === 'approved');
+  const [toCollectCount, setToCollectCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (!vendorId || !hasApprovedRegistration) return;
+    let active = true;
+    void fetch(`/api/vendors/${vendorId}/event-orders?campaignId=${encodeURIComponent(id)}`, { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const body = await response.json() as { data?: { items?: Array<{ status: string }> } };
+        if (active) setToCollectCount((body.data?.items ?? []).filter((item) => item.status !== 'fulfilled').length);
+      })
+      // A shortcut only: on failure it stays hidden and Reservations remains in the sidebar.
+      .catch(() => {});
+    return () => { active = false; };
+  }, [vendorId, id, hasApprovedRegistration]);
+
   useEffect(() => {
     if (!vendorId || !selectedLocationId) return;
     const raw = window.localStorage.getItem(eventDraftStorageKey(vendorId, id, selectedLocationId));
@@ -226,8 +252,8 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
   }
 
   function selectLocation(locationId: string) {
-    if (locationId === selectedLocationId) return;
-    setChosenLocationId(locationId);
+    // Accordion: the open stall collapses on a second click.
+    setChosenLocationId(locationId === selectedLocationId ? null : locationId);
     setEditing(false);
     setDraftBanner(null);
   }
@@ -419,217 +445,40 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
     return <div className="p-8 text-sm text-muted-foreground">{t('ui.events.noVendor')}</div>;
   }
 
-  return (
-    <div className="w-full space-y-6">
-      <VendorPageHeader eyebrow={<><PartyPopper size={15} aria-hidden="true" /> {t('navigationSections.promotion')}</>} title={t('ui.events.title')} />
-
-      <Link href="/vendor/events" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
-        <ArrowLeft size={16} aria-hidden="true" /> {t('ui.events.backToEvents')}
-      </Link>
-
-      {loading ? (
-        <p className="text-sm text-muted-foreground">{t('ui.events.loading')}</p>
-      ) : error || !campaign ? (
-        <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error ?? t('ui.events.notFound')}</p>
-      ) : (
+  // The open stall's details render inside its own card, right under what was clicked.
+  const stallEnded = Boolean(selectedLocation && selectedLocation.endsOn < today);
+  const stallPanel = selectedLocation ? (
         <>
-          {(() => {
-            // Event phase from the campaign's own dates in Malaysia time.
-            const startsOn = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date(campaign.startsAt));
-            const endsOn = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date(campaign.endsAt));
-            const phase = today < startsOn ? 'upcoming' : today > endsOn ? 'ended' : 'live';
-            const joinedCount = campaign.locations.filter((location) => registrations.some((entry) => entry.locationId === location.id)).length;
-            const isLongDescription = campaign.description.length > 280;
-            const phaseClassName = phase === 'live'
-              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200'
-              : phase === 'upcoming'
-                ? 'bg-highlight-yellow text-highlight-yellow-foreground'
-                : 'bg-muted text-muted-foreground';
-            return (
-              <section aria-labelledby="event-detail-title" className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                {/* Hero: the event's own poster carries the title; without one a brand panel keeps the same hierarchy. */}
-                <div className={`relative isolate flex min-h-52 flex-col justify-end p-5 sm:min-h-64 sm:p-7 ${campaign.posterUrl ? 'text-white' : 'bg-primary text-primary-foreground'}`}>
-                  {campaign.posterUrl && (
-                    <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={campaign.posterUrl} alt="" className="absolute inset-0 -z-10 size-full object-cover" />
-                      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-t from-black/80 via-black/40 to-black/5" />
-                    </>
-                  )}
-                  <span className={`mb-3 inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-bold ${phaseClassName}`}>{t(`ui.events.phase.${phase}`)}</span>
-                  <h2 id="event-detail-title" className="max-w-3xl text-balance text-2xl font-bold leading-tight sm:text-3xl">{campaign.title}</h2>
-                  {campaign.summary && campaign.summary !== campaign.description && (
-                    <p className="mt-2 max-w-2xl text-sm opacity-90">{campaign.summary}</p>
-                  )}
-                </div>
-
-                <dl className="grid grid-cols-1 divide-y divide-border border-b border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-                  <div className="flex items-start gap-3 px-5 py-4">
-                    <CalendarDays size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
-                    <div className="min-w-0">
-                      <dt className="text-xs font-semibold text-muted-foreground">{t('ui.events.facts.dates')}</dt>
-                      <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{formatDate(campaign.startsAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })} – {formatDate(campaign.endsAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })}</dd>
-                      {campaign.operatingHours && <dd className="mt-0.5 text-xs text-muted-foreground">{campaign.operatingHours}</dd>}
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 px-5 py-4">
-                    <MapPin size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
-                    <div className="min-w-0">
-                      <dt className="text-xs font-semibold text-muted-foreground">{t('ui.events.locations.title')}</dt>
-                      <dd className="mt-0.5 text-sm font-semibold text-foreground">{t('ui.events.locations.count', { count: campaign.locations.length })}</dd>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 px-5 py-4">
-                    <Check size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
-                    <div className="min-w-0">
-                      <dt className="text-xs font-semibold text-muted-foreground">{t('ui.events.facts.yourStalls')}</dt>
-                      <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{t('ui.events.locations.joined', { joined: joinedCount, total: campaign.locations.length })}</dd>
-                    </div>
-                  </div>
-                </dl>
-
-                {campaign.description && (
-                  <div className="px-5 py-4 sm:px-7">
-                    <p className={`max-w-3xl whitespace-pre-line text-sm leading-6 text-foreground/85 ${isLongDescription && !descriptionExpanded ? 'line-clamp-3' : ''}`}>{campaign.description}</p>
-                    {isLongDescription && (
-                      <button type="button" aria-expanded={descriptionExpanded} onClick={() => setDescriptionExpanded((value) => !value)} className="mt-1.5 text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
-                        {descriptionExpanded ? t('ui.events.showLess') : t('ui.events.readMore')}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </section>
-            );
-          })()}
-
-          {vendorId && isVendorOwner && registrations.some((entry) => entry.status === 'approved') && (
-            <EventStaffManager vendorId={vendorId} campaignId={id} />
-          )}
-
-          <section aria-labelledby="event-locations-title" className="space-y-3">
-            <div>
-              <h2 id="event-locations-title" className="text-base font-semibold text-foreground">{t('ui.events.locations.title')}</h2>
-              {hasMultipleLocations && <p className="mt-0.5 text-sm text-muted-foreground">{t('ui.events.locations.description')}</p>}
-            </div>
-            {campaign.locations.length === 0 ? (
-              <p className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">{t('ui.events.locations.empty')}</p>
-            ) : (
-              <ul className="space-y-2">
-                {campaign.locations.map((location) => {
-                  const mine = registrations.find((entry) => entry.locationId === location.id);
-                  const ended = location.endsOn < today;
-                  const intake = location.intake;
-                  const applicationsOpen = !ended && Boolean(intake?.applicationsOpen)
-                    && (!intake?.applicationsCloseAt || Date.parse(intake.applicationsCloseAt) > clock);
-                  const selected = location.id === selectedLocationId;
-                  const nameId = `event-location-name-${location.id}`;
-                  const statusId = `event-location-status-${location.id}`;
-                  const schedule = [
-                    { key: 'applicationDeadline', value: intake?.applicationsCloseAt },
-                    { key: 'approvalDeadline', value: intake?.approvalsCloseAt },
-                    { key: 'setupStarts', value: intake?.setupStartsAt },
-                  ].filter(({ value }) => value);
-                  const showDraft = selected && draftBanner && !editing;
-                  const showApply = !mine && applicationsOpen && !editing && !showDraft;
-                  const noConfirmedSpaces = intake?.remainingStalls === 0;
-                  const terminalStatus = mine?.status === 'withdrawn' || mine?.status === 'removed'
-                    ? t(`ui.events.registrationStatus.${mine.status}`)
-                    : undefined;
-                  const locationSummary = (
-                    <>
-                      <MapPin size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
-                      <LocationSummaryBody className="min-w-0 flex-1">
-                        {hasMultipleLocations ? (
-                          <span id={nameId} className="block break-words text-sm font-semibold text-foreground">{location.name}</span>
-                        ) : (
-                          <h3 className="break-words text-sm font-semibold text-foreground">{location.name}</h3>
-                        )}
-                        <span className="mt-0.5 block break-words text-sm text-muted-foreground">{location.address ?? t('ui.events.locations.addressTba')}</span>
-                        <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                          <span className="inline-flex items-center gap-1.5"><CalendarDays size={14} className="shrink-0" aria-hidden="true" />{formatEventDateRange(location.startsOn, location.endsOn, locale)}</span>
-                          <span className="inline-flex items-center gap-1.5"><Clock size={14} className="shrink-0" aria-hidden="true" />{formatEventHours(location.opensAt, location.closesAt, locale)}</span>
-                        </span>
-                        <span id={statusId} className="mt-2 block">
-                          {mine ? <StatusBadge status={mine.status} label={terminalStatus} className="inline-flex text-xs" /> : (
-                            <Badge variant="secondary" className={applicationsOpen ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200' : 'bg-muted text-muted-foreground'}>
-                              {t(ended ? 'ui.events.locations.ended' : applicationsOpen ? 'ui.events.intakeOpen' : 'ui.events.intakeClosed')}
-                            </Badge>
-                          )}
-                        </span>
-                      </LocationSummaryBody>
-                    </>
-                  );
-                  return (
-                    <li key={location.id} className={`rounded-xl border bg-card ${hasMultipleLocations && selected ? 'border-primary' : 'border-border'}`}>
-                      {hasMultipleLocations ? (
-                        <button
-                          type="button"
-                          onClick={() => selectLocation(location.id)}
-                          disabled={uploading || submitting || withdrawing}
-                          aria-pressed={selected}
-                          aria-labelledby={nameId}
-                          aria-describedby={statusId}
-                          className={`flex w-full items-start gap-3 rounded-xl px-4 py-3.5 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed sm:px-5 ${selected ? 'bg-primary/5' : 'hover:bg-muted/50'}`}
-                        >
-                          {locationSummary}
-                          {selected ? <Check size={18} className="shrink-0 text-primary" aria-hidden="true" /> : <ChevronDown size={18} className="shrink-0 text-muted-foreground" aria-hidden="true" />}
-                        </button>
-                      ) : (
-                        <div className="flex items-start gap-3 px-4 py-3.5 sm:px-5">{locationSummary}</div>
-                      )}
-
-                      {selected && (schedule.length > 0 || noConfirmedSpaces || showApply || showDraft) && (
-                        <div className="space-y-3 border-t border-border px-4 py-3.5 sm:px-5">
-                          {schedule.length > 0 && (
-                            <dl className="flex flex-wrap gap-x-8 gap-y-2">
-                              {schedule.map(({ key, value }) => value && (
-                                <div key={key}>
-                                  <dt className="text-xs font-medium text-muted-foreground">{t(`ui.events.${key}`)}</dt>
-                                  <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">
-                                    <time dateTime={value}>{formatDateTime(value, locale, { timeZone: 'Asia/Kuala_Lumpur' })}</time>
-                                  </dd>
-                                </div>
-                              ))}
-                            </dl>
-                          )}
-                          {noConfirmedSpaces && <p className="text-sm text-muted-foreground">{t('ui.events.noConfirmedSpaces')}</p>}
-                          {showDraft && (
-                            <div className="space-y-2">
-                              <p role="status" className="text-sm text-foreground">{t('ui.events.draftFound')}</p>
-                              <div className="flex flex-wrap gap-2">
-                                <Button type="button" onClick={resumeDraft}>{t('ui.events.actions.resumeDraft')}</Button>
-                                <Button type="button" variant="outline" onClick={discardDraft}>{t('ui.events.actions.discardDraft')}</Button>
-                              </div>
-                            </div>
-                          )}
-                          {showApply && (
-                            <Button type="button" className="min-h-11 w-full sm:w-auto" onClick={() => startForm()}>{t('ui.events.actions.register')}</Button>
-                          )}
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
-
-          {selectedLocation && <>
           {registration && !editing && (
-            <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-              <h2 className="text-sm font-semibold text-foreground">{t('ui.events.yourRegistration')} · {selectedLocation.name}</h2>
-              <p className="text-sm text-foreground">{t(registration.status === 'approved' ? 'ui.events.fields.stallNumber' : 'ui.events.fields.preferredStallNumber')}: {registration.status === 'approved' ? registration.stallNumber : registration.requestedStallNumber || t('ui.events.adminAllocate')}</p>
-              <p className="text-sm text-muted-foreground">{registration.stallDescription}</p>
-              {vendorId && (registration.status === 'pending' || registration.status === 'approved') && registration.products.length > 0 && (
-                <EventListingsManager vendorId={vendorId} listings={registration.products} onSaved={load} />
-              )}
-              {vendorId && (registration.status === 'pending' || registration.status === 'approved') && (
-                <PickupSlotsManager vendorId={vendorId} registrationId={registration.id} slots={registration.pickupSlots ?? []} location={selectedLocation} onSaved={load} />
-              )}
-              {(registration.status === 'pending' || registration.status === 'approved' || registration.status === 'changes_requested') && (
-                <Button type="button" size="sm" variant="outline" className="text-destructive" disabled={withdrawing} onClick={() => void withdraw(registration.id)}>
-                  {t('ui.events.withdraw.action')}
-                </Button>
+            <div className="space-y-4 border-t border-border px-4 py-4 sm:px-5">
+              <div className="space-y-1">
+                {/* An approved stall's number is already on the card header. */}
+                {registration.status !== 'approved' && (
+                  <p className="text-sm text-muted-foreground">
+                    {t('ui.events.fields.preferredStallNumber')}{' '}
+                    <span className="font-semibold text-foreground">{registration.requestedStallNumber || t('ui.events.adminAllocate')}</span>
+                  </p>
+                )}
+                {registration.stallDescription && <p className="max-w-3xl text-sm text-muted-foreground">{registration.stallDescription}</p>}
+              </div>
+              {stallEnded ? (
+                // Nothing left to manage once the stall's last day has passed.
+                <p role="status" className="text-sm text-muted-foreground">{t('ui.events.stallEnded')}</p>
+              ) : vendorId && (registration.status === 'pending' || registration.status === 'approved') && (
+                <>
+                  {registration.products.length > 0 && (
+                    <div className="border-t border-border pt-4">
+                      <EventListingsManager vendorId={vendorId} listings={registration.products} onSaved={load} />
+                    </div>
+                  )}
+                  <div className="border-t border-border pt-4">
+                    <PickupSlotsManager vendorId={vendorId} registrationId={registration.id} slots={registration.pickupSlots ?? []} location={selectedLocation} onSaved={load} />
+                  </div>
+                  {/* One staff link per stall: people who join here scan only at this location, until its last day. */}
+                  {isVendorOwner && registration.status === 'approved' && (
+                    <EventStaffManager key={selectedLocation.id} vendorId={vendorId} locationId={selectedLocation.id} />
+                  )}
+                </>
               )}
               {(registration.status === 'withdrawn' || registration.status === 'removed') && (
                 <p className="rounded-lg bg-destructive/5 p-3 text-xs text-destructive">{t(`ui.events.withdraw.closed.${registration.status}`)}</p>
@@ -647,12 +496,20 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
                   )}
                 </>
               )}
-            </section>
+              {/* The one destructive action sits last and quiet, away from everyday edits. */}
+              {!stallEnded && (registration.status === 'pending' || registration.status === 'approved' || registration.status === 'changes_requested') && (
+                <div className="border-t border-border pt-3">
+                  <Button type="button" size="sm" variant="ghost" className="-ml-3 text-destructive hover:bg-destructive/5 hover:text-destructive" disabled={withdrawing} onClick={() => void withdraw(registration.id)}>
+                    {t('ui.events.withdraw.action')}
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
 
           {editing && (
-            <form onSubmit={(event) => void submit(event)} className="space-y-4 rounded-xl border border-border bg-card p-5">
-              <h2 ref={focusFormHeading} tabIndex={-1} className="scroll-mt-24 text-sm font-semibold text-foreground">{registration ? t('ui.events.editHeading') : t('ui.events.registerHeading')}</h2>
+            <form onSubmit={(event) => void submit(event)} className="space-y-4 border-t border-border px-4 py-4 sm:px-5">
+              <h3 ref={focusFormHeading} tabIndex={-1} className="scroll-mt-24 text-sm font-semibold text-foreground">{registration ? t('ui.events.editHeading') : t('ui.events.registerHeading')}</h3>
 
               <div>
                 <label htmlFor="stall-number" className="mb-1 block text-xs font-semibold text-muted-foreground">{t('ui.events.fields.preferredStallNumber')}</label>
@@ -797,7 +654,213 @@ export default function VendorEventDetailPage({ params }: { params: Promise<{ id
               {!canSubmitRegistration && <p id="registration-submit-unavailable" role="status" className="text-sm text-muted-foreground">{t('ui.events.draftSubmissionClosed')}</p>}
             </form>
           )}
-          </>}
+        </>
+  ) : null;
+
+  return (
+    <div className="w-full space-y-6">
+      <VendorPageHeader eyebrow={<><PartyPopper size={15} aria-hidden="true" /> {t('navigationSections.promotion')}</>} title={t('ui.events.title')} />
+
+      <Link href="/vendor/events" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
+        <ArrowLeft size={16} aria-hidden="true" /> {t('ui.events.backToEvents')}
+      </Link>
+
+      {loading ? (
+        <p className="text-sm text-muted-foreground">{t('ui.events.loading')}</p>
+      ) : error || !campaign ? (
+        <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error ?? t('ui.events.notFound')}</p>
+      ) : (
+        <>
+          {(() => {
+            // Event phase from the campaign's own dates in Malaysia time.
+            const startsOn = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date(campaign.startsAt));
+            const endsOn = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date(campaign.endsAt));
+            const phase = phaseOf(startsOn, endsOn, today);
+            const joinedCount = campaign.locations.filter((location) => registrations.some((entry) => entry.locationId === location.id)).length;
+            const isLongDescription = campaign.description.length > 280;
+            return (
+              <section aria-labelledby="event-detail-title" className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+                {/* Hero: the event's own poster carries the title; without one a brand panel keeps the same hierarchy. */}
+                <div className={`relative isolate flex min-h-52 flex-col justify-end p-5 sm:min-h-64 sm:p-7 ${campaign.posterUrl ? 'text-white' : 'bg-primary text-primary-foreground'}`}>
+                  {campaign.posterUrl && (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={campaign.posterUrl} alt="" className="absolute inset-0 -z-10 size-full object-cover" />
+                      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-t from-black/80 via-black/40 to-black/5" />
+                    </>
+                  )}
+                  <span className={`mb-3 inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-bold ${PHASE_BADGE[phase]}`}>{t(`ui.events.phase.${phase}`)}</span>
+                  <h2 id="event-detail-title" className="max-w-3xl text-balance text-2xl font-bold leading-tight sm:text-3xl">{campaign.title}</h2>
+                  {campaign.summary && campaign.summary !== campaign.description && (
+                    <p className="mt-2 max-w-2xl text-sm opacity-90">{campaign.summary}</p>
+                  )}
+                </div>
+
+                <dl className="grid grid-cols-1 divide-y divide-border border-b border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                  <div className="flex items-start gap-3 px-5 py-4">
+                    <CalendarDays size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <dt className="text-xs font-semibold text-muted-foreground">{t('ui.events.facts.dates')}</dt>
+                      <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{formatDate(campaign.startsAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })} – {formatDate(campaign.endsAt, locale, { timeZone: 'Asia/Kuala_Lumpur' })}</dd>
+                      {campaign.operatingHours && <dd className="mt-0.5 text-xs text-muted-foreground">{campaign.operatingHours}</dd>}
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 px-5 py-4">
+                    <MapPin size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <dt className="text-xs font-semibold text-muted-foreground">{t('ui.events.locations.title')}</dt>
+                      <dd className="mt-0.5 text-sm font-semibold text-foreground">{t('ui.events.locations.count', { count: campaign.locations.length })}</dd>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 px-5 py-4">
+                    <Check size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <dt className="text-xs font-semibold text-muted-foreground">{t('ui.events.facts.yourStalls')}</dt>
+                      <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{t('ui.events.locations.joined', { joined: joinedCount, total: campaign.locations.length })}</dd>
+                      {hasApprovedRegistration && toCollectCount !== null && toCollectCount > 0 && (
+                        <dd className="mt-0.5 text-xs">
+                          <Link href={`/vendor/event-orders?event=${encodeURIComponent(id)}&eventName=${encodeURIComponent(campaign.title)}`} className="font-semibold tabular-nums text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                            {t('ui.eventOrders.toCollectCount', { count: toCollectCount })}
+                          </Link>
+                        </dd>
+                      )}
+                    </div>
+                  </div>
+                </dl>
+
+                {campaign.description && (
+                  <div className="px-5 py-4 sm:px-7">
+                    <p className={`max-w-3xl whitespace-pre-line text-sm leading-6 text-foreground/85 ${isLongDescription && !descriptionExpanded ? 'line-clamp-3' : ''}`}>{campaign.description}</p>
+                    {isLongDescription && (
+                      <button type="button" aria-expanded={descriptionExpanded} onClick={() => setDescriptionExpanded((value) => !value)} className="mt-1.5 text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                        {descriptionExpanded ? t('ui.events.showLess') : t('ui.events.readMore')}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </section>
+            );
+          })()}
+
+          <section aria-labelledby="event-locations-title" className="space-y-3">
+            <div>
+              <h2 id="event-locations-title" className="text-base font-semibold text-foreground">{t('ui.events.locations.title')}</h2>
+              {hasMultipleLocations && <p className="mt-0.5 text-sm text-muted-foreground">{t('ui.events.locations.description')}</p>}
+            </div>
+            {campaign.locations.length === 0 ? (
+              <p className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">{t('ui.events.locations.empty')}</p>
+            ) : (
+              <ul className="space-y-2">
+                {campaign.locations.map((location) => {
+                  const mine = registrations.find((entry) => entry.locationId === location.id);
+                  const ended = location.endsOn < today;
+                  const intake = location.intake;
+                  const applicationsOpen = !ended && Boolean(intake?.applicationsOpen)
+                    && (!intake?.applicationsCloseAt || Date.parse(intake.applicationsCloseAt) > clock);
+                  const selected = location.id === selectedLocationId;
+                  const phase = phaseOf(location.startsOn, location.endsOn, today);
+                  const panelId = `event-location-panel-${location.id}`;
+                  const nameId = `event-location-name-${location.id}`;
+                  const statusId = `event-location-status-${location.id}`;
+                  const schedule = [
+                    { key: 'applicationDeadline', value: intake?.applicationsCloseAt },
+                    { key: 'approvalDeadline', value: intake?.approvalsCloseAt },
+                    { key: 'setupStarts', value: intake?.setupStartsAt },
+                  ].filter(({ value }) => value);
+                  // Deadlines matter to applicants, not to a stall that is already approved.
+                  const showSchedule = schedule.length > 0 && mine?.status !== 'approved' && !ended;
+                  const showDraft = selected && draftBanner && !editing;
+                  const showApply = !mine && applicationsOpen && !editing && !showDraft;
+                  const noConfirmedSpaces = intake?.remainingStalls === 0;
+                  const terminalStatus = mine?.status === 'withdrawn' || mine?.status === 'removed'
+                    ? t(`ui.events.registrationStatus.${mine.status}`)
+                    : undefined;
+                  const locationSummary = (
+                    <>
+                      <MapPin size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+                      <LocationSummaryBody className="min-w-0 flex-1">
+                        {hasMultipleLocations ? (
+                          <span id={nameId} className="block break-words text-sm font-semibold text-foreground">{location.name}</span>
+                        ) : (
+                          <h3 className="break-words text-sm font-semibold text-foreground">{location.name}</h3>
+                        )}
+                        <span className="mt-0.5 block break-words text-sm text-muted-foreground">{location.address ?? t('ui.events.locations.addressTba')}</span>
+                        <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1.5"><CalendarDays size={14} className="shrink-0" aria-hidden="true" />{formatEventDateRange(location.startsOn, location.endsOn, locale)}</span>
+                          <span className="inline-flex items-center gap-1.5"><Clock size={14} className="shrink-0" aria-hidden="true" />{formatEventHours(location.opensAt, location.closesAt, locale)}</span>
+                        </span>
+                        <span id={statusId} className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                          {mine?.status === 'approved' ? (
+                            <>
+                              <Badge variant="secondary" className={PHASE_BADGE[phase]}>{t(`ui.events.phase.${phase}`)}</Badge>
+                              {mine.stallNumber && <span className="text-xs font-medium text-muted-foreground">{t('ui.events.locations.stallShort', { stall: mine.stallNumber })}</span>}
+                            </>
+                          ) : mine ? <StatusBadge status={mine.status} label={terminalStatus} className="inline-flex text-xs" /> : (
+                            <Badge variant="secondary" className={applicationsOpen ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200' : 'bg-muted text-muted-foreground'}>
+                              {t(ended ? 'ui.events.locations.ended' : applicationsOpen ? 'ui.events.intakeOpen' : 'ui.events.intakeClosed')}
+                            </Badge>
+                          )}
+                        </span>
+                      </LocationSummaryBody>
+                    </>
+                  );
+                  return (
+                    <li key={location.id} className={`rounded-xl border bg-card transition-colors motion-reduce:transition-none ${hasMultipleLocations && selected ? 'border-primary/50 shadow-sm' : 'border-border'}`}>
+                      {hasMultipleLocations ? (
+                        <button
+                          type="button"
+                          onClick={() => selectLocation(location.id)}
+                          disabled={uploading || submitting || withdrawing}
+                          aria-expanded={selected}
+                          aria-controls={panelId}
+                          aria-labelledby={nameId}
+                          aria-describedby={statusId}
+                          className={`flex w-full items-start gap-3 rounded-xl px-4 py-3.5 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed sm:px-5 ${selected ? 'bg-primary/5' : 'hover:bg-muted/50'}`}
+                        >
+                          {locationSummary}
+                          <ChevronDown size={18} className={`mt-0.5 shrink-0 transition-transform duration-200 motion-reduce:transition-none ${selected ? 'rotate-180 text-primary' : 'text-muted-foreground'}`} aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <div className="flex items-start gap-3 px-4 py-3.5 sm:px-5">{locationSummary}</div>
+                      )}
+
+                      {selected && (showSchedule || noConfirmedSpaces || showApply || showDraft) && (
+                        <div className="space-y-3 border-t border-border px-4 py-3.5 sm:px-5">
+                          {showSchedule && (
+                            <dl className="flex flex-wrap gap-x-8 gap-y-2">
+                              {schedule.map(({ key, value }) => value && (
+                                <div key={key}>
+                                  <dt className="text-xs font-medium text-muted-foreground">{t(`ui.events.${key}`)}</dt>
+                                  <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">
+                                    <time dateTime={value}>{formatDateTime(value, locale, { timeZone: 'Asia/Kuala_Lumpur' })}</time>
+                                  </dd>
+                                </div>
+                              ))}
+                            </dl>
+                          )}
+                          {noConfirmedSpaces && <p className="text-sm text-muted-foreground">{t('ui.events.noConfirmedSpaces')}</p>}
+                          {showDraft && (
+                            <div className="space-y-2">
+                              <p role="status" className="text-sm text-foreground">{t('ui.events.draftFound')}</p>
+                              <div className="flex flex-wrap gap-2">
+                                <Button type="button" onClick={resumeDraft}>{t('ui.events.actions.resumeDraft')}</Button>
+                                <Button type="button" variant="outline" onClick={discardDraft}>{t('ui.events.actions.discardDraft')}</Button>
+                              </div>
+                            </div>
+                          )}
+                          {showApply && (
+                            <Button type="button" className="min-h-11 w-full sm:w-auto" onClick={() => startForm()}>{t('ui.events.actions.register')}</Button>
+                          )}
+                        </div>
+                      )}
+                      {selected && <div id={panelId}>{stallPanel}</div>}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
 
           <Dialog open={Boolean(previewUrl)} onOpenChange={(open) => { if (!open) setPreviewUrl(null); }}>
             <DialogContent className="sm:max-w-xl">

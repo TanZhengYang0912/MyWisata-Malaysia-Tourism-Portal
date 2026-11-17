@@ -122,7 +122,7 @@ describe("customer discovery filter contract", () => {
   it("uses an Experiences-only checkbox facet mode and keeps search beside sorting", () => {
     expect(exploreSource).toContain('mode="experiences"');
     expect(exploreSource).toContain('bar: "experience-toolbar"');
-    expect(filterSource).toContain("<DiscoverySearchField value={query} onChange={onQueryChange} placeholder={placeholder} />");
+    expect(filterSource).toContain("<DiscoverySearchField value={query} onChange={onQueryChange} placeholder={placeholder} maxLength={maxLength} />");
     expect(filterSource).toContain('mode === "experiences"');
     expect(filterSource).toContain("Checkbox");
     expect(exploreSource).toContain('data-testid="experience-active-filters"');

@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Test-only Supabase stand-in for the event staff helpers and routes: filters
-// seeded rows with eq/is/in/neq and records every write. Embedded relations
+// seeded rows with eq/is/not.is/in/neq and records every write. Embedded relations
 // are returned exactly as seeded.
 export type Row = Record<string, unknown>;
 export type Write = { table: string; op: "insert" | "update" | "upsert"; values: unknown; filters: Array<[string, string, unknown]> };
@@ -19,6 +19,7 @@ export function makeFakeDb(seed: Record<string, Row[]>, options: { failTables?: 
         if (kind === "eq") return row[column] === value;
         if (kind === "neq") return row[column] !== value;
         if (kind === "is") return (row[column] ?? null) === value;
+        if (kind === "not.is") return (row[column] ?? null) !== value;
         if (kind === "in") return (value as unknown[]).includes(row[column]);
         return true;
       });
@@ -51,6 +52,7 @@ export function makeFakeDb(seed: Record<string, Row[]>, options: { failTables?: 
         eq: (column: string, value: unknown) => { filters.push(["eq", column, value]); return query; },
         neq: (column: string, value: unknown) => { filters.push(["neq", column, value]); return query; },
         is: (column: string, value: unknown) => { filters.push(["is", column, value]); return query; },
+        not: (column: string, operator: string, value: unknown) => { filters.push([`not.${operator}`, column, value]); return query; },
         in: (column: string, value: unknown[]) => { filters.push(["in", column, value]); return query; },
         order: () => query,
         limit: (count: number) => { max = count; return query; },

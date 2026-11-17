@@ -116,33 +116,27 @@ describe('POST fulfil-event-pickup', () => {
   });
 
   describe('event staff', () => {
-    const STAFF_CAMPAIGN = '77777777-7777-4777-8777-777777777777';
     const token = () => signEventPickupToken({ orderId: ORDER_ID, vendorId: VENDOR_ID, locationId: LOCATION_ID, pickupDate: futureDate, issuedAt: 1 });
 
-    function asStaff(locationCampaignId: string) {
-      const builder: Record<string, unknown> = {};
-      builder.select = vi.fn(() => builder);
-      builder.eq = vi.fn(() => builder);
-      builder.maybeSingle = vi.fn(async () => ({ data: { campaign_id: locationCampaignId }, error: null }));
-      mocks.from.mockReturnValue(builder);
+    // Staff scope is the list of stalls (event locations) they joined.
+    function asStaff(eventLocationIds: string[]) {
       mocks.authorizeVendor.mockResolvedValue({
         ok: true,
-        access: { userId: 'staff-1', role: 'event_staff', eventCampaignIds: [STAFF_CAMPAIGN], serviceDb: { rpc: mocks.rpc, from: mocks.from } },
+        access: { userId: 'staff-1', role: 'event_staff', eventLocationIds, serviceDb: { rpc: mocks.rpc, from: mocks.from } },
       });
     }
 
-    it('records a collection by staff at a location of their event as that staff member', async () => {
-      asStaff(STAFF_CAMPAIGN);
+    it('records a collection by staff at their stall as that staff member', async () => {
+      asStaff([LOCATION_ID]);
 
       const response = await POST(request(token()), params);
 
       expect(response.status).toBe(200);
-      expect(mocks.from).toHaveBeenCalledWith('promotion_campaign_locations');
       expect(mocks.rpc).toHaveBeenCalledWith('fulfil_event_pickup', expect.objectContaining({ p_operator_id: 'staff-1', p_location_id: LOCATION_ID }));
     });
 
-    it('rejects staff at a location outside their event without calling the RPC', async () => {
-      asStaff('88888888-8888-4888-8888-888888888888');
+    it('rejects staff from another stall of the same vendor without calling the RPC', async () => {
+      asStaff(['88888888-8888-4888-8888-888888888888']);
 
       const response = await POST(request(token()), params);
 

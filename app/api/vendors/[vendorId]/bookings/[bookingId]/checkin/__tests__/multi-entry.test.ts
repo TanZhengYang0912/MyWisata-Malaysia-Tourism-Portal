@@ -31,7 +31,7 @@ describe("POST /api/vendors/[vendorId]/bookings/[bookingId]/checkin (Multi-Entry
         outletIds: [outletId],
         isOwner: true,
         isOutletManager: false,
-        eventCampaignIds: [],
+        eventLocationIds: [],
         authDb: {} as unknown as SupabaseClient,
         serviceDb: {
           from: vi.fn().mockImplementation((table: string) => {

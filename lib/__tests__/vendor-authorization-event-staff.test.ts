@@ -15,14 +15,14 @@ import { authorizeVendor } from "../vendor-authorization";
 
 // authorizeVendor rejects ids that are not UUIDs before it queries anything.
 const V1 = "5f2c1a7e-2026-4123-8123-0123456789ab";
-const LIVE = { ends_at: "2999-01-01T00:00:00Z" };
-const ENDED = { ends_at: "2000-01-01T00:00:00Z" };
+const LIVE = { ends_on: "2999-01-01", status: "active" };
+const ENDED = { ends_on: "2000-01-01", status: "active" };
 
 function setup({
   kind = "shop",
   visibleToCaller = true,
   status = "approved",
-  members = [{ user_id: "staff-1", vendor_id: V1, campaign_id: "c1", removed_at: null, promotion_campaigns: LIVE }] as Row[],
+  members = [{ user_id: "staff-1", vendor_id: V1, event_location_id: "loc-1", removed_at: null, approved_at: "2026-11-18T00:00:00Z", promotion_campaign_locations: LIVE }] as Row[],
   managers = [] as Row[],
 } = {}) {
   const vendor = { id: V1, owner_id: "owner-1", status, kind };
@@ -38,7 +38,7 @@ describe("authorizeVendor event staff", () => {
     const allowed = await authorizeVendor(V1, undefined, { allowEventVendor: true, allowEventStaff: true });
     expect(allowed.ok).toBe(true);
     if (allowed.ok) {
-      expect(allowed.access).toMatchObject({ role: "event_staff", outletIds: [], eventCampaignIds: ["c1"], isOwner: false, isOutletManager: false });
+      expect(allowed.access).toMatchObject({ role: "event_staff", outletIds: [], eventLocationIds: ["loc-1"], isOwner: false, isOutletManager: false });
     }
 
     const closed = await authorizeVendor(V1, undefined, { allowEventVendor: true });
@@ -65,9 +65,10 @@ describe("authorizeVendor event staff", () => {
   });
 
   it.each([
-    ["removed", [{ user_id: "staff-1", vendor_id: V1, campaign_id: "c1", removed_at: "2026-11-19T00:00:00Z", promotion_campaigns: LIVE }]],
-    ["after the event ends", [{ user_id: "staff-1", vendor_id: V1, campaign_id: "c1", removed_at: null, promotion_campaigns: ENDED }]],
-    ["for another vendor", [{ user_id: "staff-1", vendor_id: "v2", campaign_id: "c1", removed_at: null, promotion_campaigns: LIVE }]],
+    ["removed", [{ user_id: "staff-1", vendor_id: V1, event_location_id: "loc-1", removed_at: "2026-11-19T00:00:00Z", approved_at: "2026-11-18T00:00:00Z", promotion_campaign_locations: LIVE }]],
+    ["after the event ends", [{ user_id: "staff-1", vendor_id: V1, event_location_id: "loc-1", removed_at: null, approved_at: "2026-11-18T00:00:00Z", promotion_campaign_locations: ENDED }]],
+    ["for another vendor", [{ user_id: "staff-1", vendor_id: "v2", event_location_id: "loc-1", removed_at: null, approved_at: "2026-11-18T00:00:00Z", promotion_campaign_locations: LIVE }]],
+    ["still waiting for owner approval", [{ user_id: "staff-1", vendor_id: V1, event_location_id: "loc-1", removed_at: null, approved_at: null, promotion_campaign_locations: LIVE }]],
   ])("rejects staff %s", async (_label, members) => {
     setup({ members });
     const result = await authorizeVendor(V1, undefined, { allowEventVendor: true, allowEventStaff: true });
@@ -79,12 +80,12 @@ describe("authorizeVendor event staff", () => {
     mocks.userId = "owner-1";
     setup();
     const result = await authorizeVendor(V1, undefined, { allowEventVendor: true, allowEventStaff: true });
-    expect(result.ok && result.access).toMatchObject({ role: "vendor_owner", eventCampaignIds: [] });
+    expect(result.ok && result.access).toMatchObject({ role: "vendor_owner", eventLocationIds: [] });
   });
 
   it("keeps an outlet manager as manager even when also staff", async () => {
     setup({ managers: [{ user_id: "staff-1", outlet_id: "o1", outlets: { vendor_id: V1 } }] });
     const result = await authorizeVendor(V1, undefined, { allowEventVendor: true, allowEventStaff: true });
-    expect(result.ok && result.access).toMatchObject({ role: "outlet_manager", outletIds: ["o1"], eventCampaignIds: [] });
+    expect(result.ok && result.access).toMatchObject({ role: "outlet_manager", outletIds: ["o1"], eventLocationIds: [] });
   });
 });

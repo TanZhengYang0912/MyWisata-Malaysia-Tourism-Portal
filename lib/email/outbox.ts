@@ -1,8 +1,7 @@
-import { emailCopy, emailTime } from './copy';
+import { emailCopy } from './copy';
 import { EmailDeliveryError, type EmailDelivery } from '@/lib/email/delivery';
 import { sendOrderReceiptEmail } from '@/lib/email/order-receipt';
 import { isPlatformOperationEnabled, PLATFORM_OPERATION_KEYS } from '@/lib/platform/operations-settings';
-import { loadOrderPickupPasses } from '@/lib/checkout/order-pickup-passes';
 import { resolvePaymentAppUrl } from '@/lib/payments/app-url';
 import { createServiceClient } from '@/lib/supabase/service';
 import {
@@ -172,42 +171,7 @@ export async function processEmailOutbox(limit = 2): Promise<{ sent: number; fai
           recipient = account?.email?.trim();
         }
         if (!recipient || recipient.toLowerCase() !== row.to_email.trim().toLowerCase()) throw new Error('receipt_recipient_unavailable');
-        const pickupPasses = await loadOrderPickupPasses(db, order.id);
         const orderUrl = new URL(`/customer/orders/${encodeURIComponent(order.id)}`, resolvePaymentAppUrl());
-        const foodPickupPasses = pickupPasses.foodOrders.map((pass) => {
-          const url = new URL(orderUrl);
-          url.searchParams.set('food_t', pass.foodToken);
-          return {
-            kind: 'food' as const,
-            title: pass.outletName,
-            subtitle: pass.vendorName,
-            details: [pass.mode === 'dine_in' ? copy.foodDineIn : copy.foodTakeaway, ...pass.items.map((item) => `${item.quantity} × ${item.name}${item.variant ? ` · ${item.variant}` : ''}`)],
-            qrUrl: url.toString(),
-          };
-        });
-        const eventPickupPasses = pickupPasses.eventPickups.map((pass) => {
-          const url = new URL(orderUrl);
-          url.searchParams.set('event_t', pass.eventToken);
-          return {
-            kind: 'event' as const,
-            title: pass.pickupLabels.join(', '),
-            subtitle: `${pass.vendorName} · ${emailTime(`${pass.pickupDate}T00:00:00+08:00`)}`,
-            details: pass.items.map((item) => `${item.quantity} × ${item.name}`),
-            qrUrl: url.toString(),
-          };
-        });
-        const retailPickupPasses = pickupPasses.retailPickups.flatMap((pass) => {
-          if (pass.status !== 'pending' || !pass.retailToken) return [];
-          const url = new URL(orderUrl);
-          url.searchParams.set('retail_t', pass.retailToken);
-          return [{
-            kind: 'retail' as const,
-            title: pass.outletName,
-            subtitle: pass.vendorName,
-            details: [`${pass.quantity} × ${pass.name}${pass.variant ? ` · ${pass.variant}` : ''}`],
-            qrUrl: url.toString(),
-          }];
-        });
         accepted = await sendOrderReceiptEmail({
           delivery,
           recipientEmail:row.to_email,recipientName:order.contact_name ?? copy.guest,orderId:order.id,orderReference:order.display_id ?? order.id,createdAt:order.created_at,paymentMethod:order.payment_method ?? 'free_reservation',
@@ -215,7 +179,6 @@ export async function processEmailOutbox(limit = 2): Promise<{ sent: number; fai
           subtotal:Number(order.subtotal),discount:Number(order.discount_amount),total:Number(order.total_amount),
           accessUrl: isGuest ? `${resolvePaymentAppUrl()}/customer/orders/access#token=${row.payload.guestAccessToken}` : orderUrl.toString(),
           voucherCode: order.voucher_code ?? undefined,
-          pickupPasses: [...foodPickupPasses, ...eventPickupPasses, ...retailPickupPasses],
         });
       } else if (row.event_type === 'kyc_security_alert') {
         accepted = await sendKycSecurityEmail({

@@ -1893,7 +1893,8 @@
         "count": "{{count}} 个地点",
         "count_one": "{{count}} 个地点",
         "count_other": "{{count}} 个地点",
-        "joined": "已参加 {{joined}}/{{total}}"
+        "joined": "已参加 {{joined}}/{{total}}",
+        "stallShort": "摊位 {{stall}}"
       },
       "registrationStatus": {
         "withdrawn": "已退出",
@@ -1980,9 +1981,22 @@
         "membersEmpty": "还没有员工加入",
         "joinedAt": "加入于 {{date}}",
         "remove": "移除",
-        "removeConfirm": "移除 {{name}}?此人将无法再扫这场活动的码,即使持有链接也不行。",
-        "loadError": "无法加载员工名单"
-      }
+        "removeConfirm": "移除 {{name}}?此人将无法再在这个摊位扫码,即使持有链接也不行。",
+        "loadError": "无法加载员工名单",
+        "pendingTitle_one": "待批准 · {{count}}",
+        "pendingTitle_other": "待批准 · {{count}}",
+        "activeTitle_one": "在职 · {{count}}",
+        "activeTitle_other": "在职 · {{count}}",
+        "removedTitle_one": "已移除 · {{count}}",
+        "removedTitle_other": "已移除 · {{count}}",
+        "approve": "批准",
+        "decline": "拒绝",
+        "restore": "恢复",
+        "approved": "{{name}} 现在可以扫码了",
+        "restored": "{{name}} 已恢复扫码权限",
+        "declineConfirm": "拒绝 {{name}}？除非你恢复，否则对方无法在这个摊位扫码。"
+      },
+      "stallEnded": "这个摊位已结束。"
     },
     "eventOrders": {
       "title": "活动预订",
@@ -2005,7 +2019,11 @@
       "showAll": "全部预订",
       "viewFilter": "预订视图",
       "allCollected": "这里的预订都已取货。",
-      "retry": "重试"
+      "retry": "重试",
+      "thisEvent": "此活动",
+      "clearEvent": "显示全部活动，取消筛选 {{name}}",
+      "toCollectCount_one": "{{count}} 单待交货",
+      "toCollectCount_other": "{{count}} 单待交货"
     },
     "eventStaff": {
       "join": {
@@ -2020,13 +2038,19 @@
         "signedInAs": "当前账号 {{email}}",
         "useAnotherEmail": "换一个邮箱",
         "invalidLink": "此链接无效或已过期。",
-        "removed": "你已被移出这场活动的员工名单。"
+        "removed": "你已被移出这场活动的员工名单。",
+        "removedNext": "请联系 {{vendor}} 恢复你的权限。",
+        "pendingTitle": "申请已发送",
+        "pendingBody": "{{vendor}} 批准后你才能扫码。",
+        "goToStaffHome": "前往活动员工页面",
+        "codeSent": "验证码已发送到 {{email}}"
       },
       "home": {
         "title": "活动扫码",
         "empty": "没有进行中的活动",
         "scan": "扫码",
-        "notToday": "今天没有"
+        "notToday": "今天没有",
+        "pending": "待批准"
       },
       "scan": {
         "back": "返回活动列表"

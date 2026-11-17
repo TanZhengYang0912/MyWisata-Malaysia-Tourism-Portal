@@ -19,6 +19,8 @@ const approvedForwardMigrations = [
   "20261114072629_vendor_media_objects.sql",
   "20261114072657_vendor_media_cleanup_sweep.sql",
   "20261116193730_drop_account_language_preference.sql",
+  "20261117070806_event_staff_member_approval.sql",
+  "20261117073833_event_staff_location_scope.sql",
   "20261106014314_chat_thread_summaries.sql",
   "20261107120518_repair_tng_ewallet_destination_label.sql",
   "20261107124912_vendor_outlet_listing_summary.sql",

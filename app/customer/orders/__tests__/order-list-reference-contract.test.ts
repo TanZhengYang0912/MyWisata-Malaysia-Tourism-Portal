@@ -14,7 +14,7 @@ describe('customer order list references', () => {
 
   it('returns to the first page when the order filters change or clear', () => {
     expect(pageSource).toContain('setStatus(event.target.value as OrderFilterStatus); setPage(1);');
-    expect(pageSource).toContain('setQuery(event.target.value); setPage(1);');
+    expect(pageSource).toContain('setQuery(value); setPage(1);');
     expect(pageSource).toContain('function clearFilters() { setPage(1);');
   });
 

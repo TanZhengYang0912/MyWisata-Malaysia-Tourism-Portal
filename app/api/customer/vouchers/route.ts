@@ -3,12 +3,13 @@ import { apiFail, apiOk } from "@/lib/validation/schemas";
 import type { CustomerVoucher, CustomerVoucherClaim, CustomerVoucherTab } from "@/lib/customer/voucher-claims";
 import { resolveOutletImage, type ManagedPlaceImage, type OutletGalleryImage } from "@/lib/outlet-images";
 import { vendorImageUrl } from "@/lib/storage/vendor-image";
+import { productImageUrl } from "@/lib/storage/product-image";
 import { signVoucherStoreToken } from "@/lib/vouchers/store-token";
 
 type Relation<T> = T | T[] | null;
 type OutletSummary = { id: string; name: string; city: string | null; state: string | null; status?: string; review_status?: string; outlet_pages: Relation<{ hero_url: string | null }>; media_assets: OutletGalleryImage[] | null };
 type ProductOffer = { outlet_id: string; status: string | null; outlets: Relation<OutletSummary> };
-type EligibleProduct = { id: string; name: string; status: string | null; review_status: string | null };
+type EligibleProduct = { id: string; name: string; status: string | null; review_status: string | null; cover_url: string | null };
 type EligibleOfferRow = { outlet_id: string; product_id: string; status: string | null; products: Relation<EligibleProduct> };
 type VoucherRow = {
   id: string;
@@ -27,7 +28,7 @@ type VoucherRow = {
   product_id: string | null;
   vendors: Relation<{ id: string; name: string; logo_url: string | null; cover_url: string | null }>;
   outlets: Relation<OutletSummary>;
-  products: Relation<{ id: string; name: string; status: string | null; review_status: string | null; outlet_offers: ProductOffer[] | null }>;
+  products: Relation<{ id: string; name: string; status: string | null; review_status: string | null; cover_url: string | null; outlet_offers: ProductOffer[] | null }>;
 };
 type ClaimRow = { id: string; voucher_id: string; status: CustomerVoucherClaim["status"]; claimed_at: string; redeemed_at: string | null; expires_at: string | null };
 
@@ -59,7 +60,7 @@ function mapVoucher(row: VoucherRow, claim: ClaimRow | undefined, eligibleProduc
   const eligibleProducts = row.outlet_id
     ? eligibleProductsByOutlet.get(row.outlet_id) ?? []
     : product
-      ? [{ id: product.id, name: product.name, status: product.status, review_status: product.review_status }]
+      ? [{ id: product.id, name: product.name, status: product.status, review_status: product.review_status, cover_url: product.cover_url }]
       : [];
   return {
     id: row.id,
@@ -75,6 +76,8 @@ function mapVoucher(row: VoucherRow, claim: ClaimRow | undefined, eligibleProduc
     productName: product?.name ?? null,
     eligibleProductCount: eligibleProducts.length,
     eligibleProductNames: eligibleProducts.map((eligibleProduct) => eligibleProduct.name),
+    // Thumbnails for the ticket's product strip; same bounded list as the names.
+    eligibleProducts: eligibleProducts.map((eligibleProduct) => ({ name: eligibleProduct.name, imageUrl: productImageUrl(eligibleProduct.cover_url) })),
     code: row.code,
     name: row.name,
     voucherType: row.voucher_type,
@@ -110,7 +113,7 @@ export async function GET(request: Request) {
   const tab = rawTab as CustomerVoucherTab;
 
   const voucherQuery = db.from("vouchers")
-    .select("id,vendor_id,outlet_id,product_id,code,name,voucher_type,discount_value,min_spend,valid_from,valid_until,max_uses,uses_count,redemption_mode,vendors(id,name,logo_url,cover_url),outlets(id,name,city,state,status,review_status,outlet_pages(hero_url),media_assets(url,alt_text,media_type,sort_order)),products(id,name,status,review_status,outlet_offers(outlet_id,status,outlets(id,name,city,state,outlet_pages(hero_url),media_assets(url,alt_text,media_type,sort_order))))");
+    .select("id,vendor_id,outlet_id,product_id,code,name,voucher_type,discount_value,min_spend,valid_from,valid_until,max_uses,uses_count,redemption_mode,vendors(id,name,logo_url,cover_url),outlets(id,name,city,state,status,review_status,outlet_pages(hero_url),media_assets(url,alt_text,media_type,sort_order)),products(id,name,status,review_status,cover_url,outlet_offers(outlet_id,status,outlets(id,name,city,state,outlet_pages(hero_url),media_assets(url,alt_text,media_type,sort_order))))");
   const filteredVoucherQuery = tab === "deals"
     ? voucherQuery.eq("is_active", true).eq("review_status", "approved").eq("is_claimable", true).in("redemption_mode", ["online", "in_store", "both"])
     : voucherQuery.eq("review_status", "approved");
@@ -141,7 +144,7 @@ export async function GET(request: Request) {
   const outletIds = [...new Set((rows ?? []).map((row) => row.outlet_id).filter((outletId): outletId is string => Boolean(outletId)))];
   const { data: offerRows, error: offerError } = outletIds.length
     ? await db.from("outlet_offers")
-      .select("outlet_id,product_id,status,products(id,name,status,review_status)")
+      .select("outlet_id,product_id,status,products(id,name,status,review_status,cover_url)")
       .in("outlet_id", outletIds)
       .eq("status", "active")
     : { data: [], error: null };

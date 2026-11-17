@@ -2892,7 +2892,8 @@
       "productsAvailable_one": "{{count}} produk tersedia",
       "productsAvailable_other": "{{count}} produk tersedia",
       "moreProducts_one": "+{{count}} lagi",
-      "moreProducts_other": "+{{count}} lagi"
+      "moreProducts_other": "+{{count}} lagi",
+      "endsShort": "Tamat"
     },
     "promotionCampaigns": {
       "locationVendorSummary": "{{locations}} · {{vendors}}",

@@ -2892,7 +2892,8 @@
       "productsAvailable_one": "{{count}} 件商品适用",
       "productsAvailable_other": "{{count}} 件商品适用",
       "moreProducts_one": "另有 {{count}} 件",
-      "moreProducts_other": "另有 {{count}} 件"
+      "moreProducts_other": "另有 {{count}} 件",
+      "endsShort": "截止"
     },
     "promotionCampaigns": {
       "locationVendorSummary": "{{locations}} · {{vendors}}",

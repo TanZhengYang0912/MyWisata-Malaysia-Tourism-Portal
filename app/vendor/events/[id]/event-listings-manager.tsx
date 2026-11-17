@@ -68,7 +68,6 @@ export function EventListingsManager({ vendorId, listings, onSaved }: Props) {
   return (
     <div className="space-y-2">
       <h3 className="text-xs font-semibold text-muted-foreground">{t('ui.events.listing.manageTitle')}</h3>
-      <p className="text-xs text-muted-foreground">{t('ui.events.listing.manageHint')}</p>
       <ul className="space-y-2">
         {listings.map((listing) => {
           const draft = quantities[listing.id];
