@@ -2,7 +2,6 @@ import { z } from "zod";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 import { authorizeVendor } from "@/lib/vendor-authorization";
 import { verifyEventPickupToken } from "@/lib/events/event-pickup-token";
-import { isEventLocationInCampaigns } from "@/lib/events/event-staff";
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -29,10 +28,10 @@ export async function POST(request: Request, { params }: Props) {
     return apiFail("EVENT_CONTEXT_MISMATCH", "This pickup code belongs to a different event location or date", 409);
   }
   if (access.access.role === "event_staff") {
-    // The signed location is mapped to its campaign; staff collect only for their own events.
-    const scope = await isEventLocationInCampaigns(access.access.serviceDb, claims.locationId, access.access.eventCampaignIds);
-    if (scope.error) return apiFail("DB_ERROR", "Unable to verify your event access", 500);
-    if (!scope.inScope) return apiFail("FORBIDDEN", "This location is outside your event", 403);
+    // Staff collect only at the stalls they joined (the signed location is checked directly).
+    if (!access.access.eventLocationIds.includes(claims.locationId)) {
+      return apiFail("FORBIDDEN", "This location is outside your stall", 403);
+    }
   }
 
   const { data, error } = await access.access.serviceDb.rpc("fulfil_event_pickup", {

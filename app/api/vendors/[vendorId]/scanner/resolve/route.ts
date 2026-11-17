@@ -12,7 +12,6 @@ import { signRetailPickupToken } from "@/lib/orders/retail-pickup-token";
 import { normalizeRetailPickupCode } from "@/lib/orders/retail-pickup-code";
 import { normalizePickupCode } from "@/lib/pickup-code";
 import { getMalaysiaDateInputValue } from "@/lib/datetime/date-input";
-import { isEventLocationInCampaigns } from "@/lib/events/event-staff";
 
 interface Props { params: Promise<{ vendorId: string }> }
 
@@ -93,16 +92,16 @@ export async function POST(request: Request, { params }: Props) {
   const parsed = await parseBody(request, scanSchema);
   if (!parsed.ok) return parsed.response;
 
-  // Event staff only ever scan from one of their event's locations. With an
+  // Event staff only ever scan at one of the stalls they joined. With an
   // event context set, every non-event code already stops at EVENT_CODE_REQUIRED
   // below, and staff have no outlets for the other branches.
   if (access.access.role === "event_staff") {
     if (!parsed.data.eventLocationId || !parsed.data.pickupDate) {
       return apiFail("EVENT_CONTEXT_REQUIRED", "Open event scanning from a reservation at the selected location and date", 409);
     }
-    const scope = await isEventLocationInCampaigns(access.access.serviceDb, parsed.data.eventLocationId, access.access.eventCampaignIds);
-    if (scope.error) return apiFail("DB_ERROR", "Unable to verify your event access", 500);
-    if (!scope.inScope) return apiFail("FORBIDDEN", "This location is outside your event", 403);
+    if (!access.access.eventLocationIds.includes(parsed.data.eventLocationId)) {
+      return apiFail("FORBIDDEN", "This location is outside your stall", 403);
+    }
   }
 
   let eventPickup = parseEventPickupPayload(parsed.data.rawValue);

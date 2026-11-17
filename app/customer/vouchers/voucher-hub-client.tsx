@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatMYRNumber } from "@/lib/i18n/format";
 import Link from "next/link";
-import { ArrowRight, Check, ChevronDown, Gift, MessageCircle, QrCode, SlidersHorizontal, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Gift, MessageCircle, Package, QrCode } from "lucide-react";
 import { useActionFeedback } from "@/components/providers/action-feedback";
 import { useSupportChat } from "@/components/providers/support-chat";
 import { Button } from "@/components/ui/button";
 import { CustomerPageHeader, CustomerPageShell } from "@/components/customer/customer-page-shell";
-import { DiscoverySearchField } from "@/components/customer/discovery-filters";
+import { DiscoveryToolbar } from "@/components/customer/discovery-filters";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { VoucherTicket } from "@/components/vouchers/voucher-ticket";
 import { VoucherRedeemDialog } from "@/components/customer/voucher-redeem-dialog";
 import { Pagination } from "@/components/shared/pagination";
@@ -26,6 +27,21 @@ const FILTERS: Array<{ value: VoucherFilter; labelKey: string }> = [
   { value: "fixed", labelKey: "ui.voucherHub.filters.fixed" },
   { value: "bogo", labelKey: "ui.voucherHub.filters.bogo" },
 ];
+
+/** Small product photo for the strip; a quiet tile when there is no photo or it fails to load. */
+function ProductThumb({ src }: { src: string | null }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <span className="relative size-10 shrink-0 overflow-hidden rounded-lg bg-secondary">
+      {src && !failed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" width={80} height={80} loading="lazy" onError={() => setFailed(true)} className="absolute inset-0 h-full w-full object-cover" />
+      ) : (
+        <Package size={16} aria-hidden="true" className="absolute inset-0 m-auto text-muted-foreground/60" />
+      )}
+    </span>
+  );
+}
 
 function VoucherCard({
   voucher,
@@ -48,8 +64,9 @@ function VoucherCard({
   const branchBadge = isOutletVoucher && branchName
     ? tCustomer("ui.voucherHub.branchBadge", { branch: branchName })
     : null;
-  const visibleProductNames = voucher.eligibleProductNames.slice(0, 3);
-  const remainingProductCount = Math.max(0, voucher.eligibleProductCount - visibleProductNames.length);
+  // Four thumbnails fit the strip on desktop; the rest open on demand.
+  const visibleProducts = voucher.eligibleProducts.slice(0, 4);
+  const remainingProductCount = Math.max(0, voucher.eligibleProductCount - visibleProducts.length);
   const imageAlt = tCustomer("ui.voucherHub.outletImageAlt", { name: voucher.outletName ?? voucher.vendorName });
   const discountLabel = voucher.voucherType === "percent"
     ? tCustomer("ui.voucherHub.percentOff", { value: voucher.discountValue })
@@ -80,52 +97,36 @@ function VoucherCard({
         expiryLabel,
         availabilityLabel: remainingLabel,
         scopeLabel: isOutletVoucher ? tCustomer("ui.voucherHub.outletVoucher") : voucher.voucherType === "bogo" ? tCustomer("ui.voucherHub.freebie") : tCustomer("ui.voucherHub.partnerVoucher"),
-        scopeDetail: isOutletVoucher ? (
-          <div className="rounded-2xl bg-secondary/55 p-3 max-sm:p-2.5">
-            <p className="text-xs font-semibold text-primary">{tCustomer("ui.voucherHub.allEligibleProducts")}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{tCustomer("ui.voucherHub.productsAvailable", { count: voucher.eligibleProductCount })}</p>
-            {visibleProductNames.length > 0 && (
-              <>
-                <div className="mt-2 hidden flex-wrap gap-1.5 sm:flex">
-                {(expandedProducts ? voucher.eligibleProductNames : visibleProductNames).map((productName) => (
-                  <span key={productName} className="max-w-full break-words whitespace-normal rounded-xl border border-border bg-card px-2 py-1 text-[11px] font-medium text-foreground">
-                    {productName}
-                  </span>
-                ))}
-                {remainingProductCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setExpandedProducts((prev) => !prev)}
-                    aria-expanded={expandedProducts}
-                    className="rounded-full border border-primary/30 bg-card px-2.5 py-1 text-[11px] font-semibold text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                  >
-                    {expandedProducts ? tCustomer("ui.voucherHub.showLess", "Show less") : tCustomer("ui.voucherHub.moreProducts", { count: remainingProductCount })}
-                  </button>
-                )}
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5 sm:hidden">
-                  {expandedProducts && voucher.eligibleProductNames.map((productName) => (
-                    <span key={productName} className="max-w-full break-words whitespace-normal rounded-xl border border-border bg-card px-2 py-1 text-[11px] font-medium text-foreground">
-                      {productName}
-                    </span>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setExpandedProducts((prev) => !prev)}
-                    aria-expanded={expandedProducts}
-                    className="min-h-9 rounded-full border border-primary/30 bg-card px-3 py-1 text-[11px] font-semibold text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                  >
-                    {expandedProducts ? tCustomer("ui.voucherHub.showLess", "Show less") : tCustomer("ui.voucherHub.moreProducts", { count: voucher.eligibleProductCount })}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        ) : voucher.productName ? (
-          <p className="text-xs font-semibold text-primary">{tCustomer("ui.voucherHub.eligibleProduct", { name: voucher.productName })}</p>
+        scopeDetail: !isOutletVoucher && voucher.productName ? (
+          <p className="text-sm font-semibold text-primary">{tCustomer("ui.voucherHub.eligibleProduct", { name: voucher.productName })}</p>
         ) : undefined,
+        // Outlet vouchers list what they cover along the bottom, like an event's stall strip.
+        strip: isOutletVoucher && voucher.eligibleProductCount > 0 ? (
+          <section aria-label={tCustomer("ui.voucherHub.allEligibleProducts")} className="flex items-center gap-4 px-5 py-3 sm:gap-6 sm:px-7">
+            <span className="shrink-0 text-sm font-bold text-foreground">{tCustomer("ui.voucherHub.productsAvailable", { count: voucher.eligibleProductCount })}</span>
+            <ul className={`min-w-0 flex-1 gap-x-6 gap-y-3 ${expandedProducts ? "grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]" : "flex overflow-x-auto"}`}>
+              {(expandedProducts ? voucher.eligibleProducts : visibleProducts).map((product, index) => (
+                <li key={`${product.name}-${index}`} className="flex min-w-[10rem] flex-1 items-center gap-3">
+                  <ProductThumb src={product.imageUrl} />
+                  <span className="min-w-0 break-words text-sm font-medium leading-snug text-foreground">{product.name}</span>
+                </li>
+              ))}
+            </ul>
+            {remainingProductCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setExpandedProducts((prev) => !prev)}
+                aria-expanded={expandedProducts}
+                className="min-h-9 shrink-0 self-start rounded-full px-2 text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 sm:self-center"
+              >
+                {expandedProducts ? tCustomer("ui.voucherHub.showLess", "Show less") : tCustomer("ui.voucherHub.moreProducts", { count: remainingProductCount })}
+              </button>
+            )}
+          </section>
+        ) : undefined,
+        expiry: { label: tCustomer("ui.voucherHub.endsShort"), endsAt: voucher.validUntil, noEndLabel: tCustomer("ui.voucherHub.noExpiry"), locale: i18n.resolvedLanguage ?? "en" },
         locationLabel: voucher.locationLabel ?? tCustomer("ui.voucherHub.malaysia"),
-        identityLabel: <><Sparkles size={12} aria-hidden="true" className="text-[#FFCC00]" /> {tCustomer("ui.labels.verified")}</>,
+        identityLabel: tCustomer("ui.labels.verified"),
         image: voucher.outletImageUrl
           ? { src: voucher.outletImageUrl, alt: imageAlt }
           : voucher.vendorCoverUrl
@@ -134,15 +135,8 @@ function VoucherCard({
         fallback: { logoUrl: voucher.vendorLogoUrl, logoAlt: tCustomer("ui.voucherHub.vendorLogoAlt", { name: voucher.vendorName }), initials: voucher.vendorName.slice(0, 2).toUpperCase() },
       }}
     >
-      {voucher.claim?.status === "claimed" && canUse ? (
-        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-200">
-          <Check size={14} aria-hidden="true" /> {tCustomer("ui.voucherHub.saved")}
-        </span>
-      ) : (
-        <span className="text-xs font-semibold text-muted-foreground">{redemptionLabel}</span>
-      )}
       {canUse && (
-        <Button asChild size="sm" className="max-sm:min-h-11 w-full rounded-full px-4">
+        <Button asChild className="min-h-11 w-full rounded-full px-5">
           <Link href={buildVoucherUseHref(voucher.code, voucher.claim!.id)}>
             {tCustomer("ui.voucherHub.useNow")} <ArrowRight size={14} aria-hidden="true" />
           </Link>
@@ -151,26 +145,31 @@ function VoucherCard({
       {canShowInStore && (
         <Button
           type="button"
-          size="sm"
           variant={canUse ? "outline" : "default"}
           onClick={() => onShowInStore(voucher)}
-          className="max-sm:min-h-11 w-full rounded-full border-primary/30 px-4 text-xs font-bold text-primary hover:bg-secondary"
+          className={`min-h-11 w-full rounded-full px-5 ${canUse ? "border-primary/30 text-primary hover:bg-secondary" : ""}`}
         >
-          <QrCode size={13} aria-hidden="true" className="mr-1" />
+          <QrCode size={15} aria-hidden="true" />
           {tCustomer("ui.voucherHub.showAtOutlet")}
         </Button>
       )}
       {!canUse && !canShowInStore && (
         <Button
           type="button"
-          size="sm"
           variant={actionKey === "claim" ? "default" : "outline"}
-          className="max-sm:min-h-11 w-full rounded-full px-4"
+          className="min-h-11 w-full rounded-full px-6"
           disabled={claiming || actionKey !== "claim"}
           onClick={() => onClaim(voucher)}
         >
           {tCustomer(`ui.voucherHub.actions.${actionKey}`)}
         </Button>
+      )}
+      {voucher.claim?.status === "claimed" && canUse ? (
+        <span className="inline-flex items-center justify-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-200">
+          <Check size={14} aria-hidden="true" /> {tCustomer("ui.voucherHub.saved")}
+        </span>
+      ) : (
+        <span className="text-xs font-semibold text-muted-foreground">{redemptionLabel}</span>
       )}
     </VoucherTicket>
   );
@@ -247,24 +246,6 @@ export default function VoucherHubClient() {
   const safePage = Math.min(page, totalPages);
   const pageStart = (safePage - 1) * VOUCHER_PAGE_SIZE;
 
-  const activeFilterLabel = tCustomer(FILTERS.find((item) => item.value === filter)?.labelKey ?? FILTERS[0].labelKey);
-  const renderFilterButtons = (mobile: boolean) => FILTERS.map((item) => (
-    <button
-      key={item.value}
-      type="button"
-      aria-pressed={filter === item.value}
-      onClick={() => {
-        setFilter(item.value);
-        setFilterOpen(false);
-      }}
-      className={mobile
-        ? `inline-flex min-h-11 items-center justify-center rounded-full border px-3 py-2 text-center text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${filter === item.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-primary"}`
-        : `inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border px-4 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${filter === item.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/30 hover:bg-muted/40 hover:text-primary"}`}
-    >
-      {tCustomer(item.labelKey)}
-    </button>
-  ));
-
   return (
     <CustomerPageShell wide className="min-h-full">
       <CustomerPageHeader
@@ -289,37 +270,48 @@ export default function VoucherHubClient() {
         )}
       />
 
-      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex w-full items-center gap-2 lg:order-2 lg:w-auto">
-          <div className="min-w-0 flex-1 lg:w-80 lg:flex-initial">
-            <DiscoverySearchField
-              value={search}
-              onChange={setSearch}
-              placeholder={tCustomer("ui.voucherHub.searchPlaceholder")}
-              ariaLabel={tCustomer("ui.voucherHub.searchLabel")}
-            />
+      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+        <DiscoveryToolbar
+          className="mb-6"
+          query={search}
+          onQueryChange={setSearch}
+          placeholder={tCustomer("ui.voucherHub.searchPlaceholder")}
+          searchLabel={tCustomer("ui.voucherHub.searchLabel")}
+          filterCount={filter === "all" ? 0 : 1}
+        />
+        <DialogContent
+          id="voucher-type-filter-panel"
+          aria-describedby={undefined}
+          className="fixed inset-y-0 right-0 left-auto top-0 z-50 flex h-dvh max-h-dvh w-full max-w-[430px] translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-y-0 border-r-0 p-0 shadow-xl duration-200 data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right sm:max-w-[430px]"
+        >
+          <DialogHeader className="shrink-0 border-b border-border px-5 py-5 pr-14">
+            <DialogTitle className="text-primary">{tCustomer("ui.voucherHub.filterLabel")}</DialogTitle>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto p-5">
+            <div role="group" aria-label={tCustomer("ui.voucherHub.filterLabel")} className="flex flex-wrap gap-2">
+              {FILTERS.map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  aria-pressed={filter === item.value}
+                  onClick={() => setFilter(item.value)}
+                  className={`inline-flex min-h-10 items-center justify-center rounded-full border px-4 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 ${filter === item.value ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:border-primary/30 hover:bg-muted/40 hover:text-primary"}`}
+                >
+                  {tCustomer(item.labelKey)}
+                </button>
+              ))}
+            </div>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            aria-label={tCustomer("ui.voucherHub.filterLabel")}
-            aria-expanded={filterOpen}
-            aria-controls="voucher-type-filter-panel"
-            onClick={() => setFilterOpen((open) => !open)}
-            className="min-h-11 shrink-0 rounded-full border-border bg-card px-3 text-xs font-semibold text-foreground hover:border-primary/30 lg:hidden"
-          >
-            <SlidersHorizontal size={15} aria-hidden="true" />
-            <span className="max-w-24 truncate">{activeFilterLabel}</span>
-            <ChevronDown size={14} aria-hidden="true" className={`transition-transform ${filterOpen ? "rotate-180" : ""}`} />
-          </Button>
-        </div>
-        <div className="hidden gap-2 overflow-x-auto pb-1 lg:order-1 lg:flex" role="group" aria-label={tCustomer("ui.voucherHub.filterLabel")}>
-          {renderFilterButtons(false)}
-        </div>
-        <div id="voucher-type-filter-panel" role="group" aria-label={tCustomer("ui.voucherHub.filterLabel")} className={`${filterOpen ? "grid" : "hidden"} grid-cols-2 gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm lg:hidden`}>
-          {renderFilterButtons(true)}
-        </div>
-      </div>
+          <div className="flex shrink-0 items-center gap-4 border-t border-border bg-background px-5 py-4">
+            <button type="button" onClick={() => setFilter("all")} className="px-0.5 py-1.5 text-[13px] font-bold text-primary underline underline-offset-4 hover:text-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+              {tCustomer("ui.actions.clearFilters")}
+            </button>
+            <Button type="button" className="h-11 flex-1 rounded-xl font-bold" onClick={() => setFilterOpen(false)}>
+              {loading ? tCustomer("ui.actions.apply") : tCustomer("ui.explore.showResultsCount", { count: visibleVouchers.length })}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
         {loading ? <div className="space-y-5">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-64 animate-pulse rounded-[1.75rem] bg-secondary/50" />)}</div> : error ? <div className="rounded-3xl border border-destructive/20 bg-card p-8 text-center"><Gift className="mx-auto text-destructive" /><p className="mt-3 text-sm font-semibold text-destructive">{error}</p><button type="button" onClick={() => window.location.reload()} className="mt-4 text-sm font-bold text-primary hover:underline">{tCustomer("ui.voucherHub.tryAgain")}</button></div> : visibleVouchers.length === 0 ? <div className="rounded-3xl border border-border bg-card p-10 text-center"><Gift className="mx-auto text-primary" /><h2 className="mt-3 text-lg font-bold text-foreground">{tCustomer(tab === "mine" ? "ui.voucherHub.emptyMineTitle" : "ui.voucherHub.emptyDealsTitle")}</h2><p className="mt-2 text-sm text-muted-foreground">{tCustomer(tab === "mine" ? "ui.voucherHub.emptyMineDescription" : "ui.voucherHub.emptyDealsDescription")}</p>{tab === "mine" && <button type="button" onClick={() => setTab("deals")} className="mt-4 text-sm font-bold text-primary hover:underline">{tCustomer("ui.voucherHub.browseDeals")}</button>}</div> : <><div className="space-y-5">{visibleVouchers.slice(pageStart, pageStart + VOUCHER_PAGE_SIZE).map((voucher) => <VoucherCard key={voucher.id} voucher={voucher} onClaim={claim} claiming={claimingId === voucher.id} onShowInStore={setRedeemVoucher} />)}</div><Pagination currentPage={safePage} onPageChange={(next) => setPageState({ key: listKey, page: next })} pageSize={VOUCHER_PAGE_SIZE} totalItems={visibleVouchers.length} totalPages={totalPages} /></>}
         <VoucherRedeemDialog open={Boolean(redeemVoucher)} onOpenChange={(open) => { if (!open) setRedeemVoucher(null); }} voucher={redeemVoucher} />

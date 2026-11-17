@@ -1893,7 +1893,8 @@
         "count": "{{count}} lokasi",
         "count_one": "{{count}} lokasi",
         "count_other": "{{count}} lokasi",
-        "joined": "Menyertai {{joined}} daripada {{total}}"
+        "joined": "Menyertai {{joined}} daripada {{total}}",
+        "stallShort": "Gerai {{stall}}"
       },
       "registrationStatus": {
         "withdrawn": "Menarik diri",
@@ -1980,9 +1981,22 @@
         "membersEmpty": "Belum ada kakitangan",
         "joinedAt": "Menyertai {{date}}",
         "remove": "Keluarkan",
-        "removeConfirm": "Keluarkan {{name}}? Mereka tidak lagi boleh mengimbas untuk acara ini, walaupun dengan pautan.",
-        "loadError": "Tidak dapat memuatkan kakitangan"
-      }
+        "removeConfirm": "Keluarkan {{name}}? Mereka tidak lagi boleh mengimbas di gerai ini, walaupun dengan pautan.",
+        "loadError": "Tidak dapat memuatkan kakitangan",
+        "pendingTitle_one": "Menunggu kelulusan · {{count}}",
+        "pendingTitle_other": "Menunggu kelulusan · {{count}}",
+        "activeTitle_one": "Aktif · {{count}}",
+        "activeTitle_other": "Aktif · {{count}}",
+        "removedTitle_one": "Dikeluarkan · {{count}}",
+        "removedTitle_other": "Dikeluarkan · {{count}}",
+        "approve": "Luluskan",
+        "decline": "Tolak",
+        "restore": "Pulihkan",
+        "approved": "{{name}} kini boleh mengimbas",
+        "restored": "{{name}} boleh mengimbas semula",
+        "declineConfirm": "Tolak {{name}}? Mereka tidak boleh mengimbas di gerai ini melainkan anda memulihkan mereka."
+      },
+      "stallEnded": "Gerai ini telah tamat."
     },
     "eventOrders": {
       "title": "Tempahan acara",
@@ -2005,7 +2019,11 @@
       "showAll": "Semua tempahan",
       "viewFilter": "Paparan tempahan",
       "allCollected": "Semua di sini telah diambil.",
-      "retry": "Cuba lagi"
+      "retry": "Cuba lagi",
+      "thisEvent": "Acara ini",
+      "clearEvent": "Tunjukkan semua acara, bukan {{name}}",
+      "toCollectCount_one": "{{count}} untuk diambil",
+      "toCollectCount_other": "{{count}} untuk diambil"
     },
     "eventStaff": {
       "join": {
@@ -2020,13 +2038,19 @@
         "signedInAs": "Log masuk sebagai {{email}}",
         "useAnotherEmail": "Guna e-mel lain",
         "invalidLink": "Pautan ini tidak sah atau telah tamat tempoh.",
-        "removed": "Anda telah dikeluarkan daripada kakitangan acara ini."
+        "removed": "Anda telah dikeluarkan daripada kakitangan acara ini.",
+        "removedNext": "Minta {{vendor}} memulihkan akses anda.",
+        "pendingTitle": "Permintaan dihantar",
+        "pendingBody": "{{vendor}} perlu meluluskan anda sebelum anda boleh mengimbas.",
+        "goToStaffHome": "Pergi ke kakitangan acara",
+        "codeSent": "Kod dihantar ke {{email}}"
       },
       "home": {
         "title": "Imbasan acara",
         "empty": "Tiada acara aktif",
         "scan": "Imbas",
-        "notToday": "Bukan hari ini"
+        "notToday": "Bukan hari ini",
+        "pending": "Menunggu kelulusan"
       },
       "scan": {
         "back": "Kembali ke acara"

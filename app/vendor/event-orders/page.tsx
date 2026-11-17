@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { ClipboardList, Loader2, ScanLine } from 'lucide-react';
+import { ClipboardList, Loader2, ScanLine, X } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +36,11 @@ export default function VendorEventOrdersPage() {
   const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const { user } = useAuth();
   const vendorId = user?.activeVendorId;
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // Set by the Event Detail shortcut: narrow the queue to one event.
+  const eventId = searchParams.get('event');
+  const eventName = searchParams.get('eventName');
   const [date, setDate] = useState('');
   const [items, setItems] = useState<Reservation[] | null>(null);
   const [error, setError] = useState(false);
@@ -45,7 +51,10 @@ export default function VendorEventOrdersPage() {
     if (!vendorId) return;
     setError(false);
     try {
-      const query = date ? `?date=${date}` : '';
+      const params = new URLSearchParams();
+      if (date) params.set('date', date);
+      if (eventId) params.set('campaignId', eventId);
+      const query = params.size ? `?${params.toString()}` : '';
       const response = await fetch(`/api/vendors/${vendorId}/event-orders${query}`, { cache: 'no-store' });
       const body = await response.json() as { data?: { items?: Reservation[] } };
       if (!response.ok) throw new Error('load');
@@ -54,7 +63,7 @@ export default function VendorEventOrdersPage() {
       setItems([]);
       setError(true);
     }
-  }, [date, vendorId]);
+  }, [date, eventId, vendorId]);
 
   useEffect(() => { (async () => { await load(); })(); }, [load]);
 
@@ -93,6 +102,15 @@ export default function VendorEventOrdersPage() {
         eyebrow={<><ClipboardList size={15} aria-hidden="true" /> {t('navigationSections.promotion')}</>}
         title={t('ui.eventOrders.title')}
       />
+
+      {eventId && (
+        <div className="flex">
+          <Button type="button" variant="outline" size="sm" className="max-w-full" onClick={() => router.replace('/vendor/event-orders')} aria-label={t('ui.eventOrders.clearEvent', { name: eventName || t('ui.eventOrders.thisEvent') })}>
+            <span className="truncate">{eventName || t('ui.eventOrders.thisEvent')}</span>
+            <X size={14} aria-hidden="true" />
+          </Button>
+        </div>
+      )}
 
       {/* One toolbar: what to show (status view) on the left, which day on the right. */}
       <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">

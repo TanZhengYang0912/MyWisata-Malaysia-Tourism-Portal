@@ -1,4 +1,4 @@
-import { apiFail, apiOk } from '@/lib/validation/schemas';
+import { apiFail, apiOk, databaseUuidSchema } from '@/lib/validation/schemas';
 import { authorizeVendor } from '@/lib/vendor-authorization';
 import { getMalaysiaDateInputValue } from '@/lib/datetime/date-input';
 
@@ -18,18 +18,25 @@ type Row = {
   orders: { display_id: string; status: string } | { display_id: string; status: string }[] | null;
 };
 
-/** GET ?date=YYYY-MM-DD — paid event reservations to hand over; without a date, everything from today on. */
+/**
+ * GET ?date=YYYY-MM-DD&campaignId=<uuid> — paid event reservations to hand over;
+ * without a date, everything from today on; with campaignId, only that event's locations.
+ */
 export async function GET(request: Request, { params }: Props) {
   const { vendorId } = await params;
   const access = await authorizeVendor(vendorId, undefined, { allowEventVendor: true });
   if (!access.ok) return access.response;
 
-  const date = new URL(request.url).searchParams.get('date');
+  const searchParams = new URL(request.url).searchParams;
+  const date = searchParams.get('date');
   if (date !== null && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return apiFail('VALIDATION_FAILED', 'Date must be YYYY-MM-DD', 422);
+  const campaignId = searchParams.get('campaignId');
+  if (campaignId !== null && !databaseUuidSchema.safeParse(campaignId).success) return apiFail('VALIDATION_FAILED', 'Invalid event', 422);
 
   let query = access.access.serviceDb
     .from('order_items')
-    .select('id,order_id,event_location_id,promotion_campaign_locations(id,name),pickup_date,variant_name,product_name,quantity,line_total,fulfil_status,orders!inner(display_id,status)')
+    // The location embed is inner only when filtering by event, so the unfiltered list keeps every row.
+    .select(`id,order_id,event_location_id,promotion_campaign_locations${campaignId ? '!inner' : ''}(id,name,campaign_id),pickup_date,variant_name,product_name,quantity,line_total,fulfil_status,orders!inner(display_id,status)`)
     .eq('vendor_id', vendorId)
     .not('event_location_id', 'is', null)
     .in('orders.status', ['paid', 'completed'])
@@ -37,6 +44,7 @@ export async function GET(request: Request, { params }: Props) {
     .order('slot_starts_at', { ascending: true })
     .limit(500);
   query = date ? query.eq('pickup_date', date) : query.gte('pickup_date', getMalaysiaDateInputValue());
+  if (campaignId) query = query.eq('promotion_campaign_locations.campaign_id', campaignId);
 
   const { data, error } = await query;
   if (error) return apiFail('DB_ERROR', 'Reservations could not be loaded', 500);

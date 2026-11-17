@@ -7,7 +7,9 @@ const CAMPAIGN_ID = "77777777-7777-4777-8777-777777777777";
 const LINK_ID = "88888888-8888-4888-8888-888888888888";
 const LOCATION_ID = "33333333-3333-4333-8333-333333333333";
 const TOKEN = signEventStaffLinkToken(LINK_ID);
-const LIVE = "2999-01-01T00:00:00Z";
+const OTHER_LOCATION_ID = "44444444-4444-4444-8444-444444444444";
+const HALL_A = { name: "Hall A", ends_on: "2999-01-01", status: "active" };
+const STALL_ENDS_AT = "2999-01-01T15:59:59.999Z";
 
 const mocks = vi.hoisted(() => ({
   service: null as unknown,
@@ -29,9 +31,9 @@ import { GET as assignments } from "../assignments/route";
 
 function link(overrides: Row = {}): Row {
   return {
-    id: LINK_ID, vendor_id: VENDOR_ID, campaign_id: CAMPAIGN_ID, revoked_at: null,
+    id: LINK_ID, vendor_id: VENDOR_ID, campaign_id: CAMPAIGN_ID, event_location_id: LOCATION_ID, revoked_at: null,
     vendors: { name: "Kopi Stall", status: "approved" },
-    promotion_campaigns: { title: "Night Market", ends_at: LIVE },
+    promotion_campaigns: { title: "Night Market" },
     ...overrides,
   };
 }
@@ -39,7 +41,7 @@ function link(overrides: Row = {}): Row {
 function setup(seed: Record<string, Row[]> = {}) {
   const fake = makeFakeDb({
     event_staff_links: [link()],
-    promotion_campaign_vendors: [{ id: "r1", vendor_id: VENDOR_ID, campaign_id: CAMPAIGN_ID, status: "approved", location: { id: LOCATION_ID, name: "Hall A", starts_on: "2026-11-13", ends_on: "2026-11-15", status: "active" } }],
+    promotion_campaign_vendors: [{ id: "r1", vendor_id: VENDOR_ID, campaign_id: CAMPAIGN_ID, event_location_id: LOCATION_ID, status: "approved", promotion_campaign_locations: HALL_A }],
     event_staff_members: [],
     ...seed,
   });
@@ -65,18 +67,18 @@ beforeEach(() => {
 });
 
 describe("GET /api/event-staff/links/[token]", () => {
-  it("shows only the vendor, event and expiry for a live link", async () => {
+  it("shows only the vendor, event, stall and expiry for a live link", async () => {
     setup();
     const response = await getLink(new Request("http://localhost/x"), tokenParams(TOKEN));
-    await expect(response.json()).resolves.toEqual({ data: { vendorName: "Kopi Stall", campaignTitle: "Night Market", expiresAt: LIVE }, error: null });
+    await expect(response.json()).resolves.toEqual({ data: { vendorName: "Kopi Stall", campaignTitle: "Night Market", locationName: "Hall A", expiresAt: STALL_ENDS_AT }, error: null });
   });
 
   it.each([
     ["a forged token", {}, `esl1.${LINK_ID}.AAAA`],
     ["a revoked link", { event_staff_links: [link({ revoked_at: "2026-01-01T00:00:00Z" })] }, TOKEN],
-    ["an ended event", { event_staff_links: [link({ promotion_campaigns: { title: "Night Market", ends_at: "2000-01-01T00:00:00Z" } })] }, TOKEN],
+    ["a stall whose last day has passed", { promotion_campaign_vendors: [{ id: "r1", vendor_id: VENDOR_ID, campaign_id: CAMPAIGN_ID, event_location_id: LOCATION_ID, status: "approved", promotion_campaign_locations: { ...HALL_A, ends_on: "2000-01-01" } }] }, TOKEN],
     ["an unapproved vendor", { event_staff_links: [link({ vendors: { name: "Kopi Stall", status: "suspended" } })] }, TOKEN],
-    ["a vendor without an approved registration", { promotion_campaign_vendors: [] }, TOKEN],
+    ["a vendor without an approved stall there", { promotion_campaign_vendors: [] }, TOKEN],
   ])("answers %s with the same 404", async (_label, seed, token) => {
     setup(seed as Record<string, Row[]>);
     const response = await getLink(new Request("http://localhost/x"), tokenParams(token));
@@ -160,25 +162,45 @@ describe("POST /api/event-staff/join", () => {
     await expect(response.json()).resolves.toMatchObject({ error: { code: "EMAIL_UNVERIFIED" } });
   });
 
-  it("joins once, however many times it is submitted", async () => {
+  it("joins once as pending, however many times it is submitted", async () => {
     const fake = setup();
     signedIn();
     const first = await join(post({ token: TOKEN, displayName: "Aina" }));
     const second = await join(post({ token: TOKEN, displayName: "Someone else" }));
     expect(first.status).toBe(200);
-    await expect(second.json()).resolves.toEqual({ data: { vendorId: VENDOR_ID, campaignId: CAMPAIGN_ID }, error: null });
+    await expect(first.json()).resolves.toEqual({ data: { vendorId: VENDOR_ID, vendorName: "Kopi Stall", campaignId: CAMPAIGN_ID, locationId: LOCATION_ID, status: "pending" }, error: null });
+    await expect(second.json()).resolves.toEqual({ data: { vendorId: VENDOR_ID, vendorName: "Kopi Stall", campaignId: CAMPAIGN_ID, locationId: LOCATION_ID, status: "pending" }, error: null });
     expect(fake.writes.filter((write) => write.table === "event_staff_members")).toHaveLength(1);
     expect(fake.writes.filter((write) => write.table === "audit_logs")).toHaveLength(1);
-    expect(fake.writes[0].values).toMatchObject({ vendor_id: VENDOR_ID, campaign_id: CAMPAIGN_ID, user_id: "staff-1", display_name: "Aina", joined_via: LINK_ID });
+    expect(fake.writes[0].values).toMatchObject({ vendor_id: VENDOR_ID, campaign_id: CAMPAIGN_ID, event_location_id: LOCATION_ID, user_id: "staff-1", display_name: "Aina", joined_via: LINK_ID });
+    // The link never grants access by itself: approval is the owner's write.
+    expect(fake.writes[0].values).not.toHaveProperty("approved_at");
   });
 
-  it("refuses a removed member, even through a new link", async () => {
-    const fake = setup({ event_staff_members: [{ id: "m1", vendor_id: VENDOR_ID, campaign_id: CAMPAIGN_ID, user_id: "staff-1", removed_at: "2026-11-13T00:00:00Z" }] });
+  it("reports an approved member as active without writing", async () => {
+    const fake = setup({ event_staff_members: [{ id: "m1", vendor_id: VENDOR_ID, campaign_id: CAMPAIGN_ID, event_location_id: LOCATION_ID, user_id: "staff-1", removed_at: null, approved_at: "2026-11-13T00:00:00Z" }] });
+    signedIn();
+    const response = await join(post({ token: TOKEN, displayName: "Aina" }));
+    await expect(response.json()).resolves.toMatchObject({ data: { status: "active" } });
+    expect(fake.writes).toHaveLength(0);
+  });
+
+  it("refuses a removed member, even through a new link, until the owner restores them", async () => {
+    const fake = setup({ event_staff_members: [{ id: "m1", vendor_id: VENDOR_ID, campaign_id: CAMPAIGN_ID, event_location_id: LOCATION_ID, user_id: "staff-1", removed_at: "2026-11-13T00:00:00Z", approved_at: "2026-11-12T00:00:00Z" }] });
     signedIn();
     const response = await join(post({ token: TOKEN, displayName: "Aina" }));
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toMatchObject({ error: { code: "MEMBER_REMOVED" } });
     expect(fake.writes).toHaveLength(0);
+  });
+
+  it("joins this stall separately from the person's other stalls of the vendor", async () => {
+    const fake = setup({ event_staff_members: [{ id: "m9", vendor_id: VENDOR_ID, campaign_id: CAMPAIGN_ID, event_location_id: OTHER_LOCATION_ID, user_id: "staff-1", removed_at: "2026-11-13T00:00:00Z", approved_at: "2026-11-12T00:00:00Z" }] });
+    signedIn();
+    const response = await join(post({ token: TOKEN, displayName: "Aina" }));
+    // Removal at another stall does not block this one, and this join does not touch it.
+    await expect(response.json()).resolves.toMatchObject({ data: { locationId: LOCATION_ID, status: "pending" } });
+    expect(fake.writes.filter((write) => write.table === "event_staff_members")).toHaveLength(1);
   });
 
   it("refuses a revoked link", async () => {
@@ -194,23 +216,48 @@ describe("GET /api/event-staff/assignments", () => {
     expect((await assignments()).status).toBe(401);
   });
 
-  it("lists live memberships with their approved active locations", async () => {
-    const OTHER = "99999999-9999-4999-8999-999999999999";
+  it("lists each joined stall that is still running, with its approval status", async () => {
+    const OLD = "99999999-9999-4999-8999-999999999999";
+    const stallRow = (id: string, extra: Row) => ({
+      id, vendor_id: VENDOR_ID, campaign_id: CAMPAIGN_ID, user_id: "staff-1", removed_at: null, approved_at: "2026-11-12T00:00:00Z",
+      vendors: { name: "Kopi Stall", status: "approved" }, promotion_campaigns: { title: "Night Market" }, ...extra,
+    });
     setup({
+      promotion_campaign_vendors: [
+        { id: "r1", vendor_id: VENDOR_ID, event_location_id: LOCATION_ID, status: "approved" },
+        { id: "r2", vendor_id: VENDOR_ID, event_location_id: OTHER_LOCATION_ID, status: "approved" },
+      ],
       event_staff_members: [
-        { id: "m1", vendor_id: VENDOR_ID, campaign_id: CAMPAIGN_ID, user_id: "staff-1", removed_at: null, vendors: { name: "Kopi Stall", status: "approved" }, promotion_campaigns: { title: "Night Market", ends_at: LIVE } },
-        { id: "m2", vendor_id: VENDOR_ID, campaign_id: OTHER, user_id: "staff-1", removed_at: null, vendors: { name: "Kopi Stall", status: "approved" }, promotion_campaigns: { title: "Old Fair", ends_at: "2000-01-01T00:00:00Z" } },
-        { id: "m3", vendor_id: VENDOR_ID, campaign_id: OTHER, user_id: "staff-1", removed_at: "2026-11-13T00:00:00Z", vendors: { name: "Kopi Stall", status: "approved" }, promotion_campaigns: { title: "Removed", ends_at: LIVE } },
+        stallRow("m1", { event_location_id: LOCATION_ID, promotion_campaign_locations: { id: LOCATION_ID, name: "Hall A", starts_on: "2026-11-13", ends_on: "2999-01-01", status: "active" } }),
+        stallRow("m2", { event_location_id: OTHER_LOCATION_ID, approved_at: null, promotion_campaign_locations: { id: OTHER_LOCATION_ID, name: "Hall B", starts_on: "2026-11-13", ends_on: "2999-01-01", status: "active" } }),
+        stallRow("m3", { event_location_id: OLD, promotion_campaign_locations: { id: OLD, name: "Old Hall", starts_on: "2000-01-01", ends_on: "2000-01-02", status: "active" } }),
+        stallRow("m4", { event_location_id: OLD, removed_at: "2026-11-13T00:00:00Z", promotion_campaign_locations: { id: OLD, name: "Removed", starts_on: "2026-11-13", ends_on: "2999-01-01", status: "active" } }),
       ],
     });
     signedIn();
     const response = await assignments();
     await expect(response.json()).resolves.toEqual({
       data: [{
-        vendorId: VENDOR_ID, vendorName: "Kopi Stall", campaignId: CAMPAIGN_ID, campaignTitle: "Night Market", expiresAt: LIVE,
-        locations: [{ id: LOCATION_ID, name: "Hall A", startsOn: "2026-11-13", endsOn: "2026-11-15" }],
+        vendorId: VENDOR_ID, vendorName: "Kopi Stall", campaignId: CAMPAIGN_ID, campaignTitle: "Night Market", expiresAt: STALL_ENDS_AT, status: "active",
+        location: { id: LOCATION_ID, name: "Hall A", startsOn: "2026-11-13", endsOn: "2999-01-01" },
+      }, {
+        vendorId: VENDOR_ID, vendorName: "Kopi Stall", campaignId: CAMPAIGN_ID, campaignTitle: "Night Market", expiresAt: STALL_ENDS_AT, status: "pending",
+        location: { id: OTHER_LOCATION_ID, name: "Hall B", startsOn: "2026-11-13", endsOn: "2999-01-01" },
       }],
       error: null,
     });
+  });
+
+  it("drops a stall whose registration is no longer approved", async () => {
+    setup({
+      promotion_campaign_vendors: [{ id: "r1", vendor_id: VENDOR_ID, event_location_id: LOCATION_ID, status: "withdrawn" }],
+      event_staff_members: [{
+        id: "m1", vendor_id: VENDOR_ID, campaign_id: CAMPAIGN_ID, event_location_id: LOCATION_ID, user_id: "staff-1", removed_at: null, approved_at: "2026-11-12T00:00:00Z",
+        vendors: { name: "Kopi Stall", status: "approved" }, promotion_campaigns: { title: "Night Market" },
+        promotion_campaign_locations: { id: LOCATION_ID, name: "Hall A", starts_on: "2026-11-13", ends_on: "2999-01-01", status: "active" },
+      }],
+    });
+    signedIn();
+    await expect((await assignments()).json()).resolves.toEqual({ data: [], error: null });
   });
 });

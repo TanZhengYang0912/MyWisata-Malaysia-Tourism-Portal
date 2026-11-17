@@ -2887,7 +2887,8 @@
       "productsAvailable_one": "{{count}} products available",
       "productsAvailable_other": "{{count}} products available",
       "moreProducts_one": "+{{count}} more",
-      "moreProducts_other": "+{{count}} more"
+      "moreProducts_other": "+{{count}} more",
+      "endsShort": "Ends"
     },
     "promotionCampaigns": {
       "locationVendorSummary": "{{locations}} · {{vendors}}",

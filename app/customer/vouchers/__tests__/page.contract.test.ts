@@ -97,10 +97,10 @@ describe("customer voucher hub UI contract", () => {
     expect(source).not.toContain("mineDescription");
   });
 
-  it("uses the shared customer search field in the voucher toolbar", () => {
+  it("uses the shared customer discovery toolbar in the voucher hub", () => {
     const source = read("app/customer/vouchers/voucher-hub-client.tsx");
-    expect(source).toContain("DiscoverySearchField");
-    expect(source).toContain('ariaLabel={tCustomer("ui.voucherHub.searchLabel")}');
+    expect(source).toContain("<DiscoveryToolbar");
+    expect(source).toContain('searchLabel={tCustomer("ui.voucherHub.searchLabel")}');
   });
 
   it("keeps My Vouchers in the account menu instead of a standalone header link", () => {
