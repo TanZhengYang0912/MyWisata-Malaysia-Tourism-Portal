@@ -129,7 +129,7 @@ describe("customer discovery filter contract", () => {
   });
 
   it("matches the compact Events pill style with the Explore switch in the page title's actions", () => {
-    expect(exploreSource).toMatch(/actions=\{\s*<div className="inline-flex shrink-0 rounded-full border border-border bg-card p-1">/);
+    expect(exploreSource).toMatch(/actions=\{\s*<div className="ml-auto inline-flex shrink-0 rounded-full border border-border bg-card p-1 lg:ml-0">/);
     expect(exploreSource).toContain("rounded-full border border-border bg-card p-1");
     expect(exploreSource).toContain("min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold");
     expect(exploreSource).toContain('aria-pressed={tab === "destinations"}');

@@ -1,4 +1,4 @@
-import { emailCopy, emailLocale, emailTime, type EventEmailReasonCode } from './copy';
+import { emailCopy, emailTime } from './copy';
 import { EmailDeliveryError, type EmailDelivery } from '@/lib/email/delivery';
 import { sendOrderReceiptEmail } from '@/lib/email/order-receipt';
 import { isPlatformOperationEnabled, PLATFORM_OPERATION_KEYS } from '@/lib/platform/operations-settings';
@@ -50,9 +50,6 @@ type OutboxRow = {
   to_email: string;
   event_type: EmailEventType;
   payload: {
-    locale?: string;
-    reasonCode?: EventEmailReasonCode;
-    reasonDetails?: string;
     recipientName?: string | null;
     amountRm?: number;
     vendorName?: string;
@@ -79,7 +76,6 @@ class EmailOutboxCancelledError extends Error {}
 
 export async function enqueueEmail(input: EmailOutboxInput, db = createServiceClient()): Promise<{ inserted: boolean; id?: string }> {
   const payload: OutboxRow['payload'] = {
-    locale: emailLocale(input.locale),
     recipientName: input.recipientName ?? null,
     occurredAt: input.occurredAt,
   };
@@ -87,8 +83,6 @@ export async function enqueueEmail(input: EmailOutboxInput, db = createServiceCl
   if ('vendorName' in input) payload.vendorName = input.vendorName;
   if ('reference' in input) payload.reference = input.reference ?? undefined;
   if ('reason' in input) payload.reason = input.reason;
-  if ('reasonCode' in input) payload.reasonCode = input.reasonCode;
-  if ('reasonDetails' in input) payload.reasonDetails = input.reasonDetails;
   if ('eventChange' in input) payload.eventChange = input.eventChange;
   if ('kind' in input) payload.kind = input.kind;
   if ('count' in input) payload.count = input.count;
@@ -123,8 +117,7 @@ export async function processEmailOutbox(limit = 2): Promise<{ sent: number; fai
   let failed = 0;
   let reviewRequired = Number(claimed.reviewRequired ?? 0);
   for (const row of claimed.rows as OutboxRow[]) {
-    const locale = emailLocale(row.payload?.locale);
-    const copy = emailCopy(locale);
+    const copy = emailCopy();
     let started = false;
     let stateUnavailable = false;
     let cancelled = false;
@@ -198,7 +191,7 @@ export async function processEmailOutbox(limit = 2): Promise<{ sent: number; fai
           return {
             kind: 'event' as const,
             title: pass.pickupLabels.join(', '),
-            subtitle: `${pass.vendorName} · ${emailTime(`${pass.pickupDate}T00:00:00+08:00`, locale)}`,
+            subtitle: `${pass.vendorName} · ${emailTime(`${pass.pickupDate}T00:00:00+08:00`)}`,
             details: pass.items.map((item) => `${item.quantity} × ${item.name}`),
             qrUrl: url.toString(),
           };
@@ -216,7 +209,7 @@ export async function processEmailOutbox(limit = 2): Promise<{ sent: number; fai
           }];
         });
         accepted = await sendOrderReceiptEmail({
-          delivery, locale,
+          delivery,
           recipientEmail:row.to_email,recipientName:order.contact_name ?? copy.guest,orderId:order.id,orderReference:order.display_id ?? order.id,createdAt:order.created_at,paymentMethod:order.payment_method ?? 'free_reservation',
           items:(order.order_items ?? []).map(item=>({activityName:item.product_name,variantLabel:item.variant_name ?? copy.standard,unitPrice:Number(item.unit_price),qty:item.quantity})),
           subtotal:Number(order.subtotal),discount:Number(order.discount_amount),total:Number(order.total_amount),
@@ -226,7 +219,7 @@ export async function processEmailOutbox(limit = 2): Promise<{ sent: number; fai
         });
       } else if (row.event_type === 'kyc_security_alert') {
         accepted = await sendKycSecurityEmail({
-          delivery, locale,
+          delivery,
           eventType: 'kyc_security_alert',
           kind: row.payload?.kind as KycSecurityEmailInput['kind'],
           count: Number(row.payload?.count),
@@ -235,7 +228,7 @@ export async function processEmailOutbox(limit = 2): Promise<{ sent: number; fai
         });
       } else if (row.event_type === 'recommendation_approved') {
         accepted = await sendRecommendationEmail({
-          delivery, locale,
+          delivery,
           eventType: row.event_type,
           recipientName: row.payload?.recipientName ?? null,
           vendorName: String(row.payload?.vendorName ?? copy.recommendation),
@@ -244,13 +237,11 @@ export async function processEmailOutbox(limit = 2): Promise<{ sent: number; fai
         });
       } else if (row.event_type.startsWith('vendor_')) {
         accepted = await sendVendorEmail({
-          delivery, locale,
+          delivery,
           eventType: row.event_type as VendorEmailType,
           recipientName: row.payload?.recipientName ?? null,
           vendorName: String(row.payload?.vendorName ?? copy.vendor),
           reason: String(row.payload?.reason ?? ''),
-          reasonCode: row.payload?.reasonCode,
-          reasonDetails: row.payload?.reasonDetails,
           reference: row.payload?.reference ?? null,
           occurredAt: String(row.payload?.occurredAt ?? new Date().toISOString()),
           eventChange: row.payload?.eventChange,
@@ -260,7 +251,7 @@ export async function processEmailOutbox(limit = 2): Promise<{ sent: number; fai
         });
       } else if (row.event_type.startsWith('account_') || row.event_type === 'staff_withdrawal_approval') {
         accepted = await sendAccountEmail({
-          delivery, locale,
+          delivery,
           eventType: row.event_type as AccountEmailType,
           recipientName: row.payload?.recipientName ?? null,
           reason: String(row.payload?.reason ?? copy.account),
@@ -281,7 +272,7 @@ export async function processEmailOutbox(limit = 2): Promise<{ sent: number; fai
           reference = order.display_id ?? order.id;
         }
         accepted = await sendTransactionEmail({
-          delivery, locale,
+          delivery,
           eventType: row.event_type as TransactionEmailType,
           recipientName: row.payload?.recipientName ?? null,
           amountRm: Number(row.payload?.amountRm ?? 0),

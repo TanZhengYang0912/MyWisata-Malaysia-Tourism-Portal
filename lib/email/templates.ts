@@ -1,11 +1,9 @@
-import type { AppLocale } from '@/lib/i18n/locale';
-import { emailCopy, emailLocale, emailReason, emailSubject, emailTime, eventFieldLabel, securityDescription, type EventEmailReasonCode } from './copy';
+import { emailCopy, emailSubject, emailTime, eventFieldLabel, securityDescription } from './copy';
 import { formatMYR } from '@/lib/i18n/format';
 import { KYC_SECURITY_KINDS, type KycSecurityKind } from '@/lib/kyc/types';
 import { resolvePaymentAppUrl } from '@/lib/payments/app-url';
 
 export type KycSecurityEmailInput = {
-  locale?: AppLocale;
   eventType: 'kyc_security_alert';
   kind: KycSecurityKind;
   count: number;
@@ -18,10 +16,10 @@ export function renderKycSecurityEmail(input: KycSecurityEmailInput): RenderedEm
   if (!KYC_SECURITY_KINDS.includes(input.kind) || !Number.isSafeInteger(input.count) || input.count < 0 || !Number.isFinite(Date.parse(input.occurredAt))) {
     throw new Error('Invalid KYC security alert');
   }
-  const copy = emailCopy(input.locale);
-  return renderSystemEmail(input.locale, copy.security, [
-    securityDescription(input.kind, input.locale), `${copy.count}: ${input.count}`,
-    `${copy.time}: ${emailTime(input.occurredAt, input.locale)} (${copy.malaysiaTime})`, copy.securityGuidance,
+  const copy = emailCopy();
+  return renderSystemEmail(copy.security, [
+    securityDescription(input.kind), `${copy.count}: ${input.count}`,
+    `${copy.time}: ${emailTime(input.occurredAt)} (${copy.malaysiaTime})`, copy.securityGuidance,
   ], { label: copy.reviewSecurity, url: `${resolvePaymentAppUrl()}/admin/kyc` });
 }
 
@@ -79,7 +77,6 @@ export type EventVendorChange = {
 export type RecommendationEmailType = 'recommendation_approved';
 
 export type TransactionEmailInput = {
-  locale?: AppLocale;
   eventType: TransactionEmailType;
   recipientName?: string | null;
   amountRm: number;
@@ -90,7 +87,6 @@ export type TransactionEmailInput = {
 };
 
 export type AccountEmailInput = {
-  locale?: AppLocale;
   eventType: AccountEmailType;
   recipientName?: string | null;
   reason: string;
@@ -98,13 +94,10 @@ export type AccountEmailInput = {
 };
 
 export type VendorEmailInput = {
-  locale?: AppLocale;
   eventType: VendorEmailType;
   recipientName?: string | null;
   vendorName: string;
   reason: string;
-  reasonCode?: EventEmailReasonCode;
-  reasonDetails?: string;
   reference?: string | null;
   occurredAt: string;
   eventChange?: EventVendorChange;
@@ -112,7 +105,6 @@ export type VendorEmailInput = {
 };
 
 export type RecommendationEmailInput = {
-  locale?: AppLocale;
   eventType: RecommendationEmailType;
   recipientName?: string | null;
   vendorName: string;
@@ -172,56 +164,56 @@ function sanitizeVendorText(value: string): string {
 }
 
 /** Escape data only at the HTML boundary; the plain-text alternative stays readable. */
-function renderSystemEmail(locale: AppLocale | undefined, subject: string, lines: string[], action?: { label: string; url: string; note?: string }): RenderedEmail {
+function renderSystemEmail(subject: string, lines: string[], action?: { label: string; url: string; note?: string }): RenderedEmail {
   return {
     subject,
     text: [subject, ...lines, ...(action ? [`${action.label}: ${action.url}`, action.note ?? ''] : [])].filter(Boolean).join('\n'),
-    html: `<!doctype html><html lang="${emailLocale(locale)}"><body style="font-family:Arial,sans-serif;color:#183b35;line-height:1.5"><h2>${escapeHtml(subject)}</h2>${lines.filter(Boolean).map(line => `<p>${escapeHtml(line)}</p>`).join('')}${action ? `<p><a href="${escapeHtml(action.url)}">${escapeHtml(action.label)}</a>${action.note ? ` — ${escapeHtml(action.note)}` : ''}</p>` : ''}</body></html>`,
+    html: `<!doctype html><html lang="en"><body style="font-family:Arial,sans-serif;color:#183b35;line-height:1.5"><h2>${escapeHtml(subject)}</h2>${lines.filter(Boolean).map(line => `<p>${escapeHtml(line)}</p>`).join('')}${action ? `<p><a href="${escapeHtml(action.url)}">${escapeHtml(action.label)}</a>${action.note ? ` — ${escapeHtml(action.note)}` : ''}</p>` : ''}</body></html>`,
   };
 }
 
-function greeting(input: { locale?: AppLocale; recipientName?: string | null }): string {
-  const copy = emailCopy(input.locale);
+function greeting(input: { recipientName?: string | null }): string {
+  const copy = emailCopy();
   return `${copy.greeting} ${input.recipientName?.trim() || copy.there},`;
 }
 
 export function renderTransactionEmail(input: TransactionEmailInput): RenderedEmail {
-  const copy = emailCopy(input.locale);
-  const reason = emailReason(input.reason?.trim() || '', input.locale);
-  return renderSystemEmail(input.locale, emailSubject(input.eventType, input.locale), [
+  const copy = emailCopy();
+  const reason = input.reason?.trim() || '';
+  return renderSystemEmail(emailSubject(input.eventType), [
     greeting(input), copy.transaction, `${copy.amount}: ${formatMYR(input.amountRm)}`,
-    `${copy.reference}: ${input.reference.trim()}`, `${copy.time}: ${emailTime(input.occurredAt, input.locale)} (${copy.malaysiaTime})`,
+    `${copy.reference}: ${input.reference.trim()}`, `${copy.time}: ${emailTime(input.occurredAt)} (${copy.malaysiaTime})`,
     reason ? `${copy.reason}: ${reason}` : '', copy.automated,
   ], input.accessUrl ? { label: copy.viewOrder, url: input.accessUrl, note: copy.privateLink } : undefined);
 }
 
 export function renderAccountEmail(input: AccountEmailInput): RenderedEmail {
-  const copy = emailCopy(input.locale);
+  const copy = emailCopy();
   if (input.eventType === 'staff_withdrawal_approval') {
-    return renderSystemEmail(input.locale, emailSubject(input.eventType, input.locale), [
+    return renderSystemEmail(emailSubject(input.eventType), [
       greeting(input), copy.withdrawalReviewNotice,
-      `${copy.time}: ${emailTime(input.occurredAt, input.locale)} (${copy.malaysiaTime})`, copy.automated,
+      `${copy.time}: ${emailTime(input.occurredAt)} (${copy.malaysiaTime})`, copy.automated,
     ], { label: copy.reviewWithdrawals, url: `${resolvePaymentAppUrl()}/admin/withdrawals` });
   }
-  return renderSystemEmail(input.locale, emailSubject(input.eventType, input.locale), [
-    greeting(input), copy.account, `${copy.reason}: ${emailReason(input.reason.trim(), input.locale)}`,
-    `${copy.time}: ${emailTime(input.occurredAt, input.locale)} (${copy.malaysiaTime})`, copy.support,
+  return renderSystemEmail(emailSubject(input.eventType), [
+    greeting(input), copy.account, `${copy.reason}: ${input.reason.trim()}`,
+    `${copy.time}: ${emailTime(input.occurredAt)} (${copy.malaysiaTime})`, copy.support,
   ]);
 }
 
 export function renderRecommendationEmail(input: RecommendationEmailInput): RenderedEmail {
-  const copy = emailCopy(input.locale);
-  return renderSystemEmail(input.locale, emailSubject(input.eventType, input.locale), [
+  const copy = emailCopy();
+  return renderSystemEmail(emailSubject(input.eventType), [
     greeting(input), `${copy.recommendation}: ${sanitizeVendorText(input.vendorName.trim())}`, copy.recommended,
-    copy.reachOut, `${copy.time}: ${emailTime(input.occurredAt, input.locale)} (${copy.malaysiaTime})`, copy.viewRecommendations,
+    copy.reachOut, `${copy.time}: ${emailTime(input.occurredAt)} (${copy.malaysiaTime})`, copy.viewRecommendations,
   ]);
 }
 
 export function renderVendorEmail(input: VendorEmailInput): RenderedEmail {
   if (input.eventType === 'vendor_event_update') return renderEventVendorEmail(input);
-  const copy = emailCopy(input.locale);
+  const copy = emailCopy();
   const vendorName = sanitizeVendorText(input.vendorName.trim());
-  const reason = sanitizeVendorText(emailReason(input.reason.trim(), input.locale, input.reasonCode, input.reasonDetails));
+  const reason = sanitizeVendorText(input.reason.trim());
   const reference = input.reference ? sanitizeVendorText(input.reference.trim()) : '';
   // Only server-owned Vendor Portal paths may become actionable email links.
   let actionUrl = '';
@@ -232,10 +224,10 @@ export function renderVendorEmail(input: VendorEmailInput): RenderedEmail {
         && ['/vendor/orders', '/vendor/wallet'].includes(url.pathname) && !url.search && !url.hash) actionUrl = url.href;
     } catch { /* Invalid links remain non-actionable. */ }
   }
-  return renderSystemEmail(input.locale, emailSubject(input.eventType, input.locale), [
+  return renderSystemEmail(emailSubject(input.eventType), [
     greeting(input), `${copy.vendorUpdate} ${vendorName}.`, `${copy.vendor}: ${vendorName}`,
     `${copy.reason}: ${reason}`, reference ? `${copy.reference}: ${reference}` : '',
-    `${copy.time}: ${emailTime(input.occurredAt, input.locale)} (${copy.malaysiaTime})`, copy.automated,
+    `${copy.time}: ${emailTime(input.occurredAt)} (${copy.malaysiaTime})`, copy.automated,
   ], actionUrl ? { label: copy.viewVendor, url: actionUrl } : undefined);
 }
 
@@ -248,16 +240,16 @@ function renderEventVendorEmail(input: VendorEmailInput): RenderedEmail {
     .replace(/\b(?:sk|rk|pk|pi|ch|cs|cus|acct|tok|whsec)_[A-Za-z0-9_-]+\b/g, '[redacted]')
     .replace(/(?:https?:\/\/\S+\/storage\/\S+|(?:\/Users\/|\/var\/|\/tmp\/)\S+)/gi, '[redacted]')
     .replace(/\b(?:password|token|secret|auth)\s*[:=]\s*[^\s,;]+/gi, '[redacted]');
-  const copy = emailCopy(input.locale);
+  const copy = emailCopy();
   const display = (value: string, field: string) => {
     if (field === 'applicationsOpen' && ['true', 'false'].includes(value)) return value === 'true' ? copy.yes : copy.no;
-    return clean(value || (input.locale ? copy.notSet : ''));
+    return clean(value || copy.notSet);
   };
   const actionUrl = input.actionUrl || '/vendor/events';
-  return renderSystemEmail(input.locale, change.kind === 'approval' ? copy.approval : emailSubject('vendor_event_update', input.locale), [
+  return renderSystemEmail(change.kind === 'approval' ? copy.approval : emailSubject('vendor_event_update'), [
     clean(greeting(input)), `${copy.vendor}: ${clean(input.vendorName)}`, `${copy.event}: ${clean(change.eventTitle)}`,
     `${copy.venue}: ${clean(change.locationName)}`, `${copy.dates}: ${clean(change.startsOn)} – ${clean(change.endsOn)}`,
-    ...change.changes.map(item => `${eventFieldLabel(item.field, input.locale)}: ${display(item.before, item.field)} → ${display(item.after, item.field)}`),
-    `${copy.reason}: ${clean(emailReason(change.reason, input.locale))}`, `${copy.arrangements}: ${actionUrl}`,
+    ...change.changes.map(item => `${eventFieldLabel(item.field)}: ${display(item.before, item.field)} → ${display(item.after, item.field)}`),
+    `${copy.reason}: ${clean(change.reason)}`, `${copy.arrangements}: ${actionUrl}`,
   ], { label: copy.viewEvent, url: actionUrl });
 }

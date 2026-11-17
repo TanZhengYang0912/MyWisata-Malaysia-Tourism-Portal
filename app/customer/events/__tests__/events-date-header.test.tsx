@@ -82,10 +82,10 @@ describe("EventsDateFilter calendar", () => {
   };
   const dayButton = (dialog: TestElement, label: string) => findOne(dialog, (element) => element.getAttribute("aria-label") === label);
 
-  it("opens on today's month, left-aligned on phones and right-aligned from lg, with counts and past days disabled", async () => {
+  it("opens on today's month from the filter's right edge, with counts and past days disabled", async () => {
     const dialog = await open(null);
-    expect(dialog.className).toContain("left-0");
-    expect(dialog.className).toContain("lg:left-auto lg:right-0");
+    expect(dialog.className).toContain("absolute right-0");
+    expect(dialog.className).not.toMatch(/\bleft-0\b|lg:left-auto/);
     expect(dialog.textContent).toContain("November 2026");
 
     const past = dayButton(dialog, "Thursday, November 12, 2026");

@@ -13,7 +13,7 @@ vi.mock('@/lib/supabase/service', () => ({
     rpc: mocks.rpc,
     from: (table: string) => {
       const single = table === 'users'
-        ? { data: { email: 'account@example.com', full_name: 'Account Holder', preferred_locale: 'zh-CN' }, error: null }
+        ? { data: { email: 'account@example.com', full_name: 'Account Holder' }, error: null }
         : { data: mocks.orderLookupError ? null : { contact_email: mocks.orderContactEmail }, error: mocks.orderLookupError ? new Error('order_lookup_failed') : null };
       const chain = { select: () => chain, eq: () => chain, single: async () => single, maybeSingle: async () => single };
       return chain;
@@ -45,9 +45,10 @@ describe('signed-in order email recipient', () => {
     expect(mocks.enqueueEmail).toHaveBeenCalledWith(expect.objectContaining({ toEmail: 'account@example.com' }));
   });
 
-  it('retains the recipient language for ordinary notifications', async () => {
+  it('queues ordinary notifications without a recipient language', async () => {
     await send();
-    expect(mocks.enqueueEmail).toHaveBeenCalledWith(expect.objectContaining({ locale: 'zh-CN' }));
+    expect(mocks.enqueueEmail).not.toHaveBeenCalledWith(expect.objectContaining({ locale: expect.anything() }));
+    expect(mocks.enqueueEmail).toHaveBeenCalled();
   });
 
   it('reports receipt persistence failure instead of creating an untracked notice', async () => {

@@ -22,7 +22,7 @@ beforeEach(()=>{
  mocks.rpc.mockImplementation((name:string,args?:Record<string,unknown>)=>{
   let data:unknown=true;
   if(name==='claim_withdrawal_approver_job')data={withdrawalId:id(1),cycle:1,stage:'overdue',cursor:null,token:id(2),customerUserId:id(3)};
-  if(name==='deliver_withdrawal_approver_notifications')data={stale:false,recipients:[{id:id(4),email:'synthetic-admin@example.invalid',full_name:'Synthetic Admin',preferred_locale:'zh-CN'}]};
+  if(name==='deliver_withdrawal_approver_notifications')data={stale:false,recipients:[{id:id(4),email:'synthetic-admin@example.invalid',full_name:'Synthetic Admin'}]};
   if(name==='claim_email_outbox_delivery_v2')data={rows:mail.filter(row=>row.status==='pending'),reviewRequired:0};
   if(name==='finish_email_outbox_delivery')mail.find(row=>row.id===args?.p_id)!.status=String(args?.p_outcome);
   const result={data,error:null};return Object.assign(Promise.resolve(result),{abortSignal:async()=>result});
@@ -35,7 +35,7 @@ describe('overdue intent through the durable mail worker',()=>{
   expect(mail).toHaveLength(1);
   expect(mail[0].event_key).toBe(`withdrawal_overdue:${id(1)}:cycle:1:approver:${id(4)}`);
   expect(await processEmailOutbox()).toEqual({sent:1,failed:0,reviewRequired:0});
-  expect(mocks.smtp).toHaveBeenCalledWith(expect.objectContaining({eventType:'staff_withdrawal_approval',locale:'zh-CN',to:'synthetic-admin@example.invalid',reason:expect.stringContaining('Super Admin')}));
+  expect(mocks.smtp).toHaveBeenCalledWith(expect.objectContaining({eventType:'staff_withdrawal_approval',to:'synthetic-admin@example.invalid',reason:expect.stringContaining('Super Admin')}));
   expect(mail[0].status).toBe('sent');
   expect(await processEmailOutbox()).toEqual({sent:0,failed:0,reviewRequired:0});
   expect(mocks.smtp).toHaveBeenCalledTimes(1);

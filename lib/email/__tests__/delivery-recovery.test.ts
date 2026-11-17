@@ -35,12 +35,16 @@ describe('email delivery interruption boundaries', () => {
     await processEmailOutbox(20);
     expect(mocks.rpc).toHaveBeenCalledWith('claim_email_outbox_delivery_v2', { p_limit: 2 });
   });
-  it('dispatches the persisted recipient language and structured exception without a sender-language override', async () => {
+  it('sends a stale persisted locale or reason code as English with the reason verbatim', async () => {
     mocks.rpc.mockImplementation(async (name) => ({ data: name === 'claim_email_outbox_delivery_v2'
       ? { rows: [{ ...row, payload: { ...row.payload, locale: 'zh-CN', reasonCode: 'pickup_review', reasonDetails: 'MW-TEST · 2 × Cake' } }], reviewRequired: 0 }
       : true, error: null }));
     await processEmailOutbox();
-    expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({ locale: 'zh-CN', reasonCode: 'pickup_review', reasonDetails: 'MW-TEST · 2 × Cake' }));
+    const sent = mocks.send.mock.calls.at(-1)![0];
+    expect(sent).toMatchObject({ reason: row.payload.reason });
+    expect(sent).not.toHaveProperty('locale');
+    expect(sent).not.toHaveProperty('reasonCode');
+    expect(sent).not.toHaveProperty('reasonDetails');
   });
   it('retries only acknowledgement after SMTP acceptance; never converts it to failed', async () => {
     const original = mocks.rpc.getMockImplementation()!;

@@ -6,13 +6,13 @@ vi.mock('../config', () => ({ getEmailConfig: () => ({host:'smtp.example.test',p
 import { sendCustomVendorEmail } from '../sender';
 import { vendorInviteCopy } from '../copy';
 
-describe('admin-reviewed outreach recipient language', () => {
-  it('localizes system invitation text and leaves the reviewed prose unchanged', async () => {
-    const copy = vendorInviteCopy('Cake House','zh-CN');
-    expect(copy.subject).toContain('商家');
+describe('admin-reviewed outreach', () => {
+  it('uses English invitation text and leaves the reviewed prose unchanged', async () => {
+    const copy = vendorInviteCopy('Cake House', true);
+    expect(copy.subject).toBe("You're invited to sell at events as Cake House");
     expect(copy.introduction).toContain('Cake House');
-    await sendCustomVendorEmail({to:'test@example.test',locale:'zh-CN',subject:'Reviewed subject',body:'Reviewed <prose>'});
-    expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({subject:'Reviewed subject',text:'Reviewed <prose>',html:expect.stringContaining('lang="zh-CN"')}));
+    await sendCustomVendorEmail({to:'test@example.test',subject:'Reviewed subject',body:'Reviewed <prose>'});
+    expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({subject:'Reviewed subject',text:'Reviewed <prose>',html:expect.stringContaining('lang="en"')}));
     expect(mocks.send.mock.calls[0][0].html).toContain('Reviewed &lt;prose&gt;');
   });
 });

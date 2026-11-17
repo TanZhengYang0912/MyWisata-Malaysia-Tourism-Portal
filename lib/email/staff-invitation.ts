@@ -2,46 +2,16 @@ import { escapeHtml, type RenderedEmail } from "@/lib/email/templates";
 import type { StaffInvitationEmailInput, StaffInvitationLocale } from "@/lib/staff-invitations/types";
 import type { StaffPermissionKey } from "@/lib/staff-permissions/types";
 
-const COPY: Record<StaffInvitationLocale, {
-  subject: string;
-  heading: string;
-  introduction: string;
-  role: string;
-  permissions: string;
-  expires: string;
-  action: string;
-  ignore: string;
-}> = {
-  en: {
-    subject: "Invitation to join the MYLawatan team",
-    heading: "You are invited to join the MYLawatan team",
-    introduction: "Hello, please review the role, permissions, and expiry below. If everything looks right, use the button to review and accept your invitation.",
-    role: "Role",
-    permissions: "Permissions",
-    expires: "This invitation expires",
-    action: "Review and accept invitation",
-    ignore: "If you were not expecting this invitation, please do not accept it. You may ignore this email or contact a MYLawatan administrator through an official channel.",
-  },
-  ms: {
-    subject: "Jemputan menyertai pasukan MYLawatan",
-    heading: "Anda dijemput menyertai pasukan MYLawatan",
-    introduction: "Salam, sila semak peranan, kebenaran dan tarikh tamat tempoh di bawah. Jika semuanya tepat, gunakan butang untuk menyemak dan menerima jemputan.",
-    role: "Peranan",
-    permissions: "Kebenaran",
-    expires: "Jemputan ini tamat tempoh",
-    action: "Semak dan terima jemputan",
-    ignore: "Jika anda tidak menjangkakan jemputan ini, sila jangan menerimanya. Anda boleh mengabaikan e-mel ini atau menghubungi pentadbir MYLawatan melalui saluran rasmi.",
-  },
-  "zh-CN": {
-    subject: "邀请您加入 MYLawatan 团队",
-    heading: "您受邀加入 MYLawatan 团队",
-    introduction: "您好，请查看以下角色、权限和邀请有效期限。确认无误后，您可以点击下方按钮查看并接受邀请。",
-    role: "角色",
-    permissions: "权限",
-    expires: "邀请有效至",
-    action: "查看并接受邀请",
-    ignore: "如果您没有预期收到此邀请，请勿接受。您可以忽略此邮件，或通过 MYLawatan 官方渠道联系管理员确认。",
-  },
+// The invitation email is English; PERMISSION_LABELS below also serve the acceptance page in its own language.
+const COPY = {
+  subject: "Invitation to join the MYLawatan team",
+  heading: "You are invited to join the MYLawatan team",
+  introduction: "Hello, please review the role, permissions, and expiry below. If everything looks right, use the button to review and accept your invitation.",
+  role: "Role",
+  permissions: "Permissions",
+  expires: "This invitation expires",
+  action: "Review and accept invitation",
+  ignore: "If you were not expecting this invitation, please do not accept it. You may ignore this email or contact a MYLawatan administrator through an official channel.",
 };
 
 const PERMISSION_LABELS: Record<StaffInvitationLocale, Record<StaffPermissionKey, string>> = {
@@ -69,9 +39,8 @@ export function staffPermissionLabel(locale: StaffInvitationLocale, key: StaffPe
   return PERMISSION_LABELS[locale][key];
 }
 
-function formatExpiry(expiresAt: string, locale: StaffInvitationLocale): string {
-  const localeName = locale === "zh-CN" ? "zh-CN" : locale === "ms" ? "ms-MY" : "en-MY";
-  return new Intl.DateTimeFormat(localeName, {
+function formatExpiry(expiresAt: string): string {
+  return new Intl.DateTimeFormat("en-MY", {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "Asia/Kuala_Lumpur",
@@ -79,10 +48,10 @@ function formatExpiry(expiresAt: string, locale: StaffInvitationLocale): string 
 }
 
 export function renderStaffInvitationEmail(input: StaffInvitationEmailInput): RenderedEmail {
-  const copy = COPY[input.locale];
+  const copy = COPY;
   const roleName = input.roleName.trim();
-  const permissionLabels = input.permissionKeys.map((key) => staffPermissionLabel(input.locale, key));
-  const expiry = formatExpiry(input.expiresAt, input.locale);
+  const permissionLabels = input.permissionKeys.map((key) => staffPermissionLabel("en", key));
+  const expiry = formatExpiry(input.expiresAt);
   const text = [
     copy.heading,
     copy.introduction,
@@ -95,7 +64,7 @@ export function renderStaffInvitationEmail(input: StaffInvitationEmailInput): Re
   ].join("\n");
 
   const safeUrl = escapeHtml(input.invitationUrl);
-  const html = `<!doctype html><html lang="${escapeHtml(input.locale)}"><body style="font-family:Arial,sans-serif;color:#172033;line-height:1.5"><h1>${escapeHtml(copy.heading)}</h1><p>${escapeHtml(copy.introduction)}</p><p><strong>${escapeHtml(copy.role)}:</strong> ${escapeHtml(roleName)}</p><p><strong>${escapeHtml(copy.permissions)}:</strong></p><ul>${permissionLabels.map((label) => `<li>${escapeHtml(label)}</li>`).join("")}</ul><p><strong>${escapeHtml(copy.expires)}:</strong> ${escapeHtml(expiry)}</p><p><a href="${safeUrl}" rel="noreferrer" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#2436c7;color:#fff;text-decoration:none">${escapeHtml(copy.action)}</a></p><p>${escapeHtml(copy.ignore)}</p></body></html>`;
+  const html = `<!doctype html><html lang="en"><body style="font-family:Arial,sans-serif;color:#172033;line-height:1.5"><h1>${escapeHtml(copy.heading)}</h1><p>${escapeHtml(copy.introduction)}</p><p><strong>${escapeHtml(copy.role)}:</strong> ${escapeHtml(roleName)}</p><p><strong>${escapeHtml(copy.permissions)}:</strong></p><ul>${permissionLabels.map((label) => `<li>${escapeHtml(label)}</li>`).join("")}</ul><p><strong>${escapeHtml(copy.expires)}:</strong> ${escapeHtml(expiry)}</p><p><a href="${safeUrl}" rel="noreferrer" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#2436c7;color:#fff;text-decoration:none">${escapeHtml(copy.action)}</a></p><p>${escapeHtml(copy.ignore)}</p></body></html>`;
 
   return { subject: copy.subject, html, text };
 }

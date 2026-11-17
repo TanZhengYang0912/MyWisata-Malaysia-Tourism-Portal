@@ -1,5 +1,4 @@
 import PDFDocument from 'pdfkit';
-import type { AppLocale } from '@/lib/i18n/locale';
 import { emailCopy, emailTime, emailPaymentMethod } from '@/lib/email/copy';
 import { formatMYR } from '@/lib/i18n/format';
 import { registerPdfFonts } from '@/lib/pdf/font';
@@ -12,7 +11,6 @@ export type ReceiptItem = {
 };
 
 export type ReceiptData = {
-  locale?: AppLocale;
   orderId: string;
   orderReference?: string;
   recipientName: string;
@@ -27,10 +25,10 @@ export type ReceiptData = {
 
 export function generateReceiptPdf(data: ReceiptData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const copy = emailCopy(data.locale);
+    const copy = emailCopy();
     const doc = new PDFDocument({ margin: 50, size: 'A4' });
     // Embed CJK glyphs for Chinese copy and Chinese names in any language.
-    const { regular, bold } = registerPdfFonts(doc, data.locale ?? 'en', JSON.stringify(data), 'Receipt');
+    const { regular, bold } = registerPdfFonts(doc, JSON.stringify(data), 'Receipt');
     const chunks: Buffer[] = [];
 
     doc.on('data', (chunk: Buffer) => chunks.push(chunk));
@@ -46,8 +44,8 @@ export function generateReceiptPdf(data: ReceiptData): Promise<Buffer> {
 
     // Order details
     doc.fontSize(10).font(bold).text(copy.orderId + ':', { continued: true }).font(regular).text(`  ${data.orderReference ?? data.orderId}`);
-    doc.font(bold).text(copy.date + ':', { continued: true }).font(regular).text(`  ${emailTime(data.createdAt, data.locale)}`);
-    doc.font(bold).text(copy.payment + ':', { continued: true }).font(regular).text(`  ${emailPaymentMethod(data.paymentMethod, data.locale)}`);
+    doc.font(bold).text(copy.date + ':', { continued: true }).font(regular).text(`  ${emailTime(data.createdAt)}`);
+    doc.font(bold).text(copy.payment + ':', { continued: true }).font(regular).text(`  ${emailPaymentMethod(data.paymentMethod)}`);
     doc.font(bold).text(copy.customer + ':', { continued: true }).font(regular).text(`  ${data.recipientName}`);
     doc.moveDown(0.8);
 

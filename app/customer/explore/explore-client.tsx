@@ -344,7 +344,7 @@ export function ExploreClient({
           eyebrow={t("ui.explore.eyebrow")}
           title={tab === "experiences" ? t("ui.explore.experiencePageTitle") : t("ui.explore.title")}
           actions={
-            <div className="inline-flex shrink-0 rounded-full border border-border bg-card p-1">
+            <div className="ml-auto inline-flex shrink-0 rounded-full border border-border bg-card p-1 lg:ml-0">
               <button
                 type="button"
                 aria-pressed={tab === "destinations"}

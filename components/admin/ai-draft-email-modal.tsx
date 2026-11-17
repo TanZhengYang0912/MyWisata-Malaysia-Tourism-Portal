@@ -18,8 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-import { isAppLocale, type AppLocale } from "@/lib/i18n/locale";
-
 type Target = { id: string; name: string; defaultEmail?: string };
 
 type Props = {
@@ -56,27 +54,9 @@ export function AiDraftEmailModal({
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
-  const [recipientLocale, setRecipientLocale] = useState<AppLocale | null>(null);
-  const recipientRef = useRef("");
   const draftRequest = useRef(0);
 
-  async function resolveRecipientLanguage(recipient: string) {
-    if (!recipient.trim()) return;
-    try {
-      const res = await fetch(draftUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...extraBody, email: recipient.trim(), localeOnly: true }),
-      });
-      const result = await res.json() as { data?: { locale?: unknown } };
-      if (recipientRef.current !== recipient) return;
-      setRecipientLocale(res.ok && isAppLocale(result.data?.locale) ? result.data.locale : null);
-    } catch {
-      if (recipientRef.current === recipient) setRecipientLocale(null);
-    }
-  }
-
-  async function runDraft(recipient = email) {
+  async function runDraft() {
     const requestId = ++draftRequest.current;
     setDrafting(true);
     setDraftError(null);
@@ -84,18 +64,17 @@ export function AiDraftEmailModal({
       const res = await fetch(draftUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...extraBody, ...(recipient.trim() ? { email: recipient.trim() } : {}) }),
+        body: JSON.stringify(extraBody),
       });
       const responseBody = (await res.json()) as {
-        data: { subject: string; body: string; locale?: unknown } | null;
+        data: { subject: string; body: string } | null;
         error: { message: string } | null;
       };
-      if (requestId !== draftRequest.current || recipientRef.current !== recipient) return;
+      if (requestId !== draftRequest.current) return;
       if (!res.ok || !responseBody.data) {
         setDraftError(responseBody.error?.message ?? t("email.draft.errors.unavailable"));
         return;
       }
-      setRecipientLocale(isAppLocale(responseBody.data.locale) ? responseBody.data.locale : null);
       setSubject(responseBody.data.subject);
       setBody(responseBody.data.body);
     } catch {
@@ -109,13 +88,10 @@ export function AiDraftEmailModal({
     if (!open || !target) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setEmail(target.defaultEmail ?? "");
-    const initialEmail = target.defaultEmail ?? "";
-    recipientRef.current = initialEmail;
-    setRecipientLocale(null);
     setSubject("");
     setBody("");
     setSendError(null);
-    runDraft(initialEmail);
+    runDraft();
     return () => { draftRequest.current += 1; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, target?.id]);
@@ -191,23 +167,10 @@ export function AiDraftEmailModal({
             <Input
               type="email"
               value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                recipientRef.current = e.target.value;
-                setRecipientLocale(null);
-                draftRequest.current += 1;
-                setDrafting(false);
-              }}
-              onBlur={() => void resolveRecipientLanguage(email)}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder={t("email.draft.recipientPlaceholder")}
               disabled={sending}
             />
-            <p className="mt-1 text-xs text-muted-foreground" aria-live="polite">
-              {recipientLocale
-                ? t("email.draft.recipientLanguage", { language: t(`email.draft.languages.${recipientLocale}`) })
-                : t("email.draft.languageUnavailable")}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">{t("email.draft.languageReview")}</p>
           </div>
 
           <div>

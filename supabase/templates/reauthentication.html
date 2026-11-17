@@ -1,7 +1,1 @@
-{{ if eq .Data.preferred_locale "zh-CN" }}
-<!doctype html><html lang="zh-CN"><body style="font-family:Arial,sans-serif;line-height:1.6;color:#183b35"><h2>您的验证码</h2><p>请使用下方验证码确认身份。请勿向他人提供验证码。</p><p style="font-size:24px;letter-spacing:4px">{{ .Token }}</p><p>请勿回复密码或身份证明文件。</p></body></html>
-{{ else if eq .Data.preferred_locale "ms" }}
-<!doctype html><html lang="ms"><body style="font-family:Arial,sans-serif;line-height:1.6;color:#183b35"><h2>Kod pengesahan anda</h2><p>Gunakan kod pengesahan di bawah untuk mengesahkan identiti anda. Jangan kongsikan kod ini.</p><p style="font-size:24px;letter-spacing:4px">{{ .Token }}</p><p>Jangan balas dengan kata laluan atau dokumen pengenalan.</p></body></html>
-{{ else }}
 <!doctype html><html lang="en"><body style="font-family:Arial,sans-serif;line-height:1.6;color:#183b35"><h2>Your verification code</h2><p>Use the verification code below to confirm your identity. Never share this code.</p><p style="font-size:24px;letter-spacing:4px">{{ .Token }}</p><p>Never reply with passwords or identity documents.</p></body></html>
-{{ end }}

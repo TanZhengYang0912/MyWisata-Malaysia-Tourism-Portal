@@ -117,7 +117,6 @@ describe('POST /api/admin/vendors/[id]/approval-email/draft', () => {
       data: { subject: 'Congratulations!', body: 'Welcome aboard.' },
     });
     expect(draftVendorApprovalEmail).toHaveBeenCalledWith({
-      locale: 'en',
       vendorName: 'Rasa Malaysia Kitchen',
       businessType: 'restaurant',
       description: 'A cozy local eatery.',

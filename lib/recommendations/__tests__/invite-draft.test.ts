@@ -35,17 +35,17 @@ describe('draftVendorInviteEmail', () => {
     });
   });
 
-  it('instructs the model to write in the recipient language', async () => {
+  it('instructs the model to write in English', async () => {
     process.env.LLM_API_KEY = 'test-key';
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'SUBJECT: Jemputan\nBODY: Sila sertai kami.' }] } }] }), { status: 200 }),
+      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'SUBJECT: Join us\nBODY: Please join us.' }] } }] }), { status: 200 }),
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    await draftVendorInviteEmail({ ...context, locale: 'zh-CN' });
+    await draftVendorInviteEmail(context);
 
     const requestBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
-    expect(requestBody.systemInstruction.parts[0].text).toContain('Simplified Chinese');
+    expect(requestBody.systemInstruction.parts[0].text).toContain('Write the subject and body in English.');
     expect(requestBody.systemInstruction.parts[0].text).toContain('Keep the SUBJECT: and BODY: parser labels unchanged.');
   });
 

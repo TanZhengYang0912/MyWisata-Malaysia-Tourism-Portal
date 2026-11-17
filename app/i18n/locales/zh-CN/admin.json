@@ -2798,14 +2798,6 @@
   "email": {
     "draft": {
       "advisory": "AI 会起草以下消息——发送前请编辑确认。",
-      "recipientLanguage": "收件人语言：{{language}}",
-      "languageUnavailable": "请输入有效收件人邮箱，以检查其已保存的语言。",
-      "languageReview": "请按收件人语言检查主题和正文。更换邮箱会保留你的编辑，需要时请重新生成草稿。没有语言偏好则使用英文。",
-      "languages": {
-        "en": "英文",
-        "zh-CN": "华语",
-        "ms": "马来文"
-      },
       "close": "关闭",
       "recipient": "收件人邮箱",
       "recipientPlaceholder": "vendor@example.com",

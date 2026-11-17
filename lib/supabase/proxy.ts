@@ -67,27 +67,10 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   // getClaims validates the access token and refreshes it when necessary.
   const { data: claimsData } = await supabase.auth.getClaims();
   const claims = claimsData?.claims;
-  let accountLocale: string | null = null;
 
-  // API routes return data, not localized copy (the admin affiliate report is the
-  // one reader and accepts the cookie), and document navigations below keep the
-  // cookie synced to the account locale, so /api skips this DB round trip.
-  if (typeof claims?.sub === 'string' && claims.sub && !request.nextUrl.pathname.startsWith('/api/')) {
-    try {
-      const { data: account } = await supabase
-        .from('users')
-        .select('preferred_locale')
-        .eq('id', claims.sub)
-        .maybeSingle();
-      accountLocale = account?.preferred_locale ?? null;
-    } catch {
-      // A missing account preference should not block auth refresh or rendering.
-    }
-  }
-
+  // The page language is this browser's choice: the locale cookie, then the browser language.
   const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
   const locale = resolveAppLocale({
-    accountLocale,
     cookieLocale,
     acceptLanguage: request.headers.get('accept-language'),
   });

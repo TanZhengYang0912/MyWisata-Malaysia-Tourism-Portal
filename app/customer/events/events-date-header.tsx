@@ -48,9 +48,8 @@ export function EventsDateFilter({
   const count = date ? countOn(date) : 0;
 
   return (
-    // The calendar opens under the whole row: from its left edge on phones (the row starts the line), from its right edge
-    // from lg, where the page header puts the row at the right end of the title.
-    <div className="relative flex items-center gap-1.5">
+    // Right-aligned under the title on phones and at the end of the title row from lg; the calendar opens from its right edge.
+    <div className="relative ml-auto flex items-center gap-1.5 lg:ml-0">
       {date && (
         <>
           <button type="button" onClick={() => onSelect(addMalaysiaCalendarDays(date, -1))} disabled={date <= today} aria-label={t("ui.promotionCampaigns.datePicker.previousDay")} className={`${ICON_BUTTON} w-8 disabled:cursor-not-allowed disabled:text-primary/20 disabled:active:scale-100`}>
@@ -163,7 +162,7 @@ function EventsMonthPicker({
           onClose(true);
         }
       }}
-      className="absolute left-0 top-[calc(100%+8px)] lg:left-auto lg:right-0 z-30 w-[min(284px,calc(100vw-32px))] rounded-[8px] border border-border bg-card p-2.5 shadow-[0_10px_26px_rgba(1,0,102,0.12)]"
+      className="absolute right-0 top-[calc(100%+8px)] z-30 w-[min(284px,calc(100vw-32px))] rounded-[8px] border border-border bg-card p-2.5 shadow-[0_10px_26px_rgba(1,0,102,0.12)]"
     >
       <div className="flex items-center justify-between">
         <button type="button" onClick={() => shiftMonth(-1)} disabled={month <= `${today.slice(0, 7)}-01`} aria-label={t("ui.promotionCampaigns.datePicker.previousMonth")} className={`${ICON_BUTTON} w-8 disabled:cursor-not-allowed disabled:text-primary/20 disabled:active:scale-100`}>

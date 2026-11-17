@@ -1,4 +1,3 @@
-import { recipientEmailLocale } from '@/lib/email/locale';
 import { vendorInviteCopy } from '@/lib/email/copy';
 import { z } from 'zod';
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
@@ -37,10 +36,7 @@ export async function POST(request: Request) {
     if (ownedVendor) return apiFail('OWNER_ALREADY_HAS_VENDOR', 'This email already owns a vendor. Event vendors need their own login.', 409);
   }
 
-  let locale;
-  try { locale = await recipientEmailLocale(service, email); }
-  catch { return apiFail('EMAIL_LANGUAGE_UNAVAILABLE', 'Unable to resolve recipient language.', 503); }
-  const copy = vendorInviteCopy(businessName, locale, true, BRAND_NAME);
+  const copy = vendorInviteCopy(businessName, true, BRAND_NAME);
 
   const { token, tokenHash } = createRecommendationInviteToken();
   const origin = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
@@ -57,7 +53,7 @@ export async function POST(request: Request) {
 
   try {
     // Sent synchronously so the raw one-time token lives only in memory and the email.
-    await sendCustomVendorEmail({ to: email, subject, body, locale });
+    await sendCustomVendorEmail({ to: email, subject, body });
   } catch (emailError) {
     console.error('[event-vendor-invite] email delivery failed:', emailError);
     const { error: cancelError } = await service.from('vendor_recommendation_invites').update({ status: 'cancelled' }).eq('id', data.id);

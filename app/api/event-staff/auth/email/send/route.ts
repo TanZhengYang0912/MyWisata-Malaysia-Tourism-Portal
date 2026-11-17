@@ -3,7 +3,6 @@ import { resolveActiveStaffLink } from "@/lib/events/event-staff";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeEmail } from "@/lib/validation/postgrest-filter";
-import { checkoutEmailLocale } from "@/lib/email/locale";
 import { apiFail, apiOk, parseBody } from "@/lib/validation/schemas";
 
 export const dynamic = "force-dynamic";
@@ -49,8 +48,8 @@ export async function POST(request: Request) {
     options: {
       shouldCreateUser: !profileExists,
       captchaToken: parsed.data.captchaToken,
-      // Only a brand-new account takes the typed name and current language.
-      ...(profileExists ? {} : { data: { full_name: parsed.data.displayName, preferred_locale: checkoutEmailLocale(request) } }),
+      // Only a brand-new account takes the typed name.
+      ...(profileExists ? {} : { data: { full_name: parsed.data.displayName } }),
     },
   });
   if (error) return mapOtpSendError(error);

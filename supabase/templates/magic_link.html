@@ -1,7 +1,1 @@
-{{ if eq .Data.preferred_locale "zh-CN" }}
-<!doctype html><html lang="zh-CN"><body style="font-family:Arial,sans-serif;line-height:1.6;color:#183b35"><h2>您的登录链接</h2><p>请使用下方验证码或安全链接登录。请勿分享验证码或链接。</p><p style="font-size:24px;letter-spacing:4px">{{ .Token }}</p><p><a href="{{ .ConfirmationURL }}">安全继续</a></p><p>请勿回复密码或身份证明文件。</p></body></html>
-{{ else if eq .Data.preferred_locale "ms" }}
-<!doctype html><html lang="ms"><body style="font-family:Arial,sans-serif;line-height:1.6;color:#183b35"><h2>Pautan log masuk anda</h2><p>Gunakan kod atau pautan selamat di bawah untuk log masuk. Jangan kongsikan kod atau pautan ini.</p><p style="font-size:24px;letter-spacing:4px">{{ .Token }}</p><p><a href="{{ .ConfirmationURL }}">Teruskan dengan selamat</a></p><p>Jangan balas dengan kata laluan atau dokumen pengenalan.</p></body></html>
-{{ else }}
 <!doctype html><html lang="en"><body style="font-family:Arial,sans-serif;line-height:1.6;color:#183b35"><h2>Your sign-in link</h2><p>Use the code or secure link below to sign in. Never share this code or link.</p><p style="font-size:24px;letter-spacing:4px">{{ .Token }}</p><p><a href="{{ .ConfirmationURL }}">Continue securely</a></p><p>Never reply with passwords or identity documents.</p></body></html>
-{{ end }}

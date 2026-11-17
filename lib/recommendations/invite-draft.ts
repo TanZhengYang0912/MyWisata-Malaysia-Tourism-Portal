@@ -1,5 +1,3 @@
-import type { AppLocale } from '@/lib/i18n/locale';
-import { emailLocale } from '@/lib/email/copy';
 // P4 — Member 4: AI-drafted vendor recommendation invite emails.
 // Same provider/key/model/timeout convention as lib/chatbot/kb-draft.ts
 // (Gemini, process.env.LLM_API_KEY, gemini-flash-lite-latest) — a different
@@ -64,7 +62,6 @@ export interface VendorInviteDraft {
 }
 
 export interface VendorInviteDraftContext {
-  locale?: AppLocale;
   vendorName: string;
   description: string | null;
   vendorAddress: string | null;
@@ -84,12 +81,6 @@ export async function draftVendorInviteEmail(context: VendorInviteDraftContext):
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) return null;
 
-  const language = {
-    en: 'English',
-    'zh-CN': 'Simplified Chinese',
-    ms: 'Bahasa Melayu',
-  }[emailLocale(context.locale)];
-
   const userText = [
     `BUSINESS NAME: ${context.vendorName}`,
     context.category ? `CATEGORY: ${context.category}` : null,
@@ -108,7 +99,7 @@ export async function draftVendorInviteEmail(context: VendorInviteDraftContext):
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT}\nWrite the subject and body in ${language}. Keep the SUBJECT: and BODY: parser labels unchanged.` }] },
+        systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT}\nWrite the subject and body in English. Keep the SUBJECT: and BODY: parser labels unchanged.` }] },
         contents: [{ role: 'user', parts: [{ text: preparedText.clean }] }],
         generationConfig: { temperature: 0.3, maxOutputTokens: 400 },
       }),

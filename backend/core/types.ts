@@ -1,4 +1,3 @@
-import type { AppLocale } from "@/lib/i18n/locale";
 import type { CustomerCapabilitySnapshot } from "@/lib/auth/customer-capabilities";
 import type { VerificationFacts } from "@/lib/entitlements/types";
 
@@ -25,7 +24,6 @@ export interface User {
   avatarUrl?: string | null;
   city?: string;
   country?: string;
-  preferredLocale?: AppLocale;
   phone?: string;
   status?: "active" | "suspended" | "deleted";
   verificationTier: "email_unverified" | "email_verified" | "phone_verified" | "profile_complete" | "kyc_verified";

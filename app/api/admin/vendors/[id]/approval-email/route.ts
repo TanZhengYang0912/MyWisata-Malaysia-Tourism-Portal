@@ -1,4 +1,3 @@
-import { recipientEmailLocale } from '@/lib/email/locale';
 import { vendorInviteCopy } from '@/lib/email/copy';
 // P4 — Member 4: send a vendor approval (welcome) email.
 // POST /api/admin/vendors/[id]/approval-email — body { email, subject,
@@ -58,17 +57,14 @@ export async function POST(request: Request, { params }: Props) {
     return apiFail('ALREADY_SENT', 'An approval email has already been sent to this vendor', 409);
   }
 
-  let locale;
-  try { locale = await recipientEmailLocale(service, parsed.data.email); }
-  catch { return apiFail('EMAIL_LANGUAGE_UNAVAILABLE', 'Unable to resolve recipient language.', 503); }
-  const copy = vendorInviteCopy('', locale);
+  const copy = vendorInviteCopy('');
 
   const origin = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
   const dashboardUrl = `${origin}/vendor/dashboard`;
   const finalBody = `${parsed.data.body}\n\n${copy.dashboard}: ${dashboardUrl}`;
 
   try {
-    await sendCustomVendorEmail({ to: parsed.data.email, subject: parsed.data.subject, body: finalBody, locale });
+    await sendCustomVendorEmail({ to: parsed.data.email, subject: parsed.data.subject, body: finalBody });
   } catch (emailError) {
     console.error('[vendor-approval-email] send failed:', emailError);
     return apiFail('EMAIL_SEND_FAILED', 'Could not send the approval email. Please try again.', 502);

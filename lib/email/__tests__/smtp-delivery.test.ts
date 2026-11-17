@@ -23,7 +23,7 @@ describe('SMTP is behind the durable delivery boundary', () => {
   ])('rejects unconfirmed direct staff invitation delivery: %j', async (result) => {
     mocks.sendMail.mockResolvedValue({ ...result, messageId: '<test@example.test>' });
     await expect(sendStaffInvitationEmail({
-      to: 'synthetic@example.test', locale: 'en', roleName: 'Wallet Reviewer',
+      to: 'synthetic@example.test', roleName: 'Wallet Reviewer',
       permissionKeys: ['admin.withdrawal.approve'],
       invitationUrl: 'https://example.test/staff-invitations/synthetic',
       expiresAt: '2026-10-30T00:00:00Z',

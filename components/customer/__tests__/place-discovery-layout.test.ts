@@ -22,6 +22,14 @@ describe("place discovery section layout", () => {
     expect(card).not.toContain('t("ui.place.cardFallback")');
   });
 
+  it("opens the area filter inside the screen: from the Location row's left edge on phones, under the button from lg", () => {
+    const source = read("components/customer/place-list.tsx");
+
+    expect(source).toContain('<div className="lg:relative" aria-label={t("ui.place.filterAreaLabel")}>');
+    expect(source).toContain('className="absolute left-0 z-20 mt-2 w-[min(20rem,calc(100vw-3rem))] rounded-2xl border border-border bg-card p-3 shadow-xl lg:left-auto lg:right-0"');
+    expect(source).toContain('className="relative flex flex-wrap items-center gap-1.5 lg:border-l lg:border-border lg:pl-4"');
+  });
+
   it("gives Nearby businesses a local-partner summary and recoverable empty state", () => {
     const source = read("components/customer/nearby-outlets.tsx");
 

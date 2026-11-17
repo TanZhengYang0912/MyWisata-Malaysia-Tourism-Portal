@@ -1,5 +1,4 @@
 import { sendStaffInvitationEmail } from "@/lib/email/sender";
-import { recipientEmailLocale } from "@/lib/email/locale";
 import {
   buildStaffInvitationUrl,
   staffInvitationOrigin,
@@ -58,13 +57,8 @@ export async function deliverPreparedInvitation(
 ) {
   let sent = false;
   try {
-    // This runs only after the governed prepare RPC accepts the invitee, so
-    // rejected existing identities are never probed for account preferences.
-    const locale = await recipientEmailLocale(db, prepared.invited_email);
-
     await sendStaffInvitationEmail({
       to: prepared.invited_email,
-      locale,
       roleName: prepared.role_name,
       permissionKeys: prepared.permission_keys.filter(isStaffPermissionKey),
       invitationUrl: buildStaffInvitationUrl(staffInvitationOrigin(), token),

@@ -1,4 +1,3 @@
-import { recipientEmailLocale } from '@/lib/email/locale';
 // P4 — Member 4: AI-drafted vendor approval (welcome) email.
 // POST /api/admin/vendors/[id]/approval-email/draft — no body (vendor id
 // comes from the URL). Returns a draft { subject, body } for the admin's
@@ -12,7 +11,7 @@ import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { draftVendorApprovalEmail } from '@/lib/vendors/approval-draft';
 
-const schema = z.object({ email: z.string().trim().email().optional(), localeOnly: z.boolean().optional() }).strict();
+const schema = z.object({}).strict();
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -41,13 +40,7 @@ export async function POST(request: Request, { params }: Props) {
     ? vendor.vendor_onboarding_profiles[0]
     : vendor.vendor_onboarding_profiles;
 
-  let locale;
-  try { locale = await recipientEmailLocale(service, parsed.data.email ?? owner?.email ?? ''); }
-  catch { return apiFail('EMAIL_LANGUAGE_UNAVAILABLE', 'Unable to resolve recipient language.', 503); }
-  if (parsed.data.localeOnly) return apiOk({ locale });
-
   const draft = await draftVendorApprovalEmail({
-    locale,
     vendorName: vendor.name,
     businessType: vendor.business_type,
     description: vendor.description,
@@ -57,5 +50,5 @@ export async function POST(request: Request, { params }: Props) {
   if (draft && 'error' in draft) return apiFail('PERSONAL_DATA_WITHHELD', 'The full draft request was not sent to AI because it may contain personal details. Remove phone, email, identity, bank, or private-address details, or write the email manually.', 422);
   if (!draft) return apiFail('DRAFT_UNAVAILABLE', 'Could not draft an approval email right now — try again, or write one manually.', 502);
 
-  return apiOk({ ...draft, locale });
+  return apiOk(draft);
 }

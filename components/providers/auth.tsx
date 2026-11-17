@@ -10,7 +10,6 @@ import { pickDemoRole } from "@/lib/auth/demo-user-role";
 import { DEMO_SIGN_IN_CAPTCHA_FAILED_CODE, DemoSignInCaptchaError } from "@/lib/auth/demo-signin-error";
 import { accountGate, canSuspendedAccessPath } from "@/lib/account/lifecycle";
 import { resolveCustomerCapabilities, type CustomerCapabilitySnapshot } from "@/lib/auth/customer-capabilities";
-import { isAppLocale } from "@/lib/i18n/locale";
 import { staffMfaDestination, staffVerificationDestination } from '@/lib/auth/staff-route-boundaries';
 import type { VerificationFacts } from "@/lib/entitlements/types";
 import type { Role, User } from "@/backend/core/types";
@@ -62,7 +61,6 @@ type AuthMeUser = {
   activeOutletName: string | null;
   city: string | null;
   country: string | null;
-  preferredLocale: string | null;
   phone: string | null;
   status: User["status"];
   capabilities: CustomerCapabilitySnapshot;
@@ -160,7 +158,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       avatarUrl: row.avatarUrl ?? null,
       city: row.city ?? undefined,
       country: row.country ?? undefined,
-      preferredLocale: isAppLocale(row.preferredLocale) ? row.preferredLocale : undefined,
       phone: row.phone ?? undefined,
       status: (row.status ?? "active") as User["status"],
       verificationTier: (row.tier ?? "email_unverified") as User["verificationTier"],

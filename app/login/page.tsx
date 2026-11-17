@@ -1,6 +1,5 @@
 "use client";
 
-import { resolveAppLocale } from "@/lib/i18n/locale";
 import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Trans, useTranslation } from "react-i18next";
@@ -37,7 +36,7 @@ export default function LoginPage() {
 
 function LoginContent() {
   const { switchUser } = useAuth();
-  const { t: tAuth, i18n } = useTranslation("auth");
+  const { t: tAuth } = useTranslation("auth");
   const { t: tCommon } = useTranslation("common");
   const { t: tCustomer } = useTranslation("customer");
   const GENERIC_ERROR = tAuth("errors.generic");
@@ -213,7 +212,6 @@ function LoginContent() {
       password,
       options: {
         captchaToken,
-        data: { preferred_locale: resolveAppLocale({ accountLocale: i18n.resolvedLanguage }) },
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });

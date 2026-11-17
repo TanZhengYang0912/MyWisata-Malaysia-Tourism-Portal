@@ -7,8 +7,6 @@ export type WithdrawalNotificationSnapshot = {
   destination: { type: string; maskedReference: string };
 };
 
-import { emailLocale, emailTime } from "@/lib/email/copy";
-import type { AppLocale } from "@/lib/i18n/locale";
 import { formatMYRFromSen } from "@/lib/i18n/format";
 
 function safeLabel(value: string): string {
@@ -19,30 +17,7 @@ function formatSen(value: number): string {
   return formatMYRFromSen(Math.max(0, value));
 }
 
-export function buildWithdrawalNotificationReason(snapshot: WithdrawalNotificationSnapshot, locale?: AppLocale): string {
-  const selected = emailLocale(locale);
-  if (selected !== 'en') {
-    const zh = selected === 'zh-CN';
-    const labels = zh ? ['顾客','KYC 状态','风险','推荐奖励来源','联盟奖励来源','其他来源','收款去向','申请时间'] : ['Pelanggan','Status KYC','Risiko','Sumber ganjaran','Sumber afiliasi','Sumber lain','Destinasi','Masa permohonan'];
-    const terms: Record<string, readonly [string,string]> = {
-      approved:['已批准','Diluluskan'], pending:['待处理','Tertunda'], rejected:['已拒绝','Ditolak'],
-      low:['低','Rendah'],review:['待审核','Perlu semakan'],high:['高','Tinggi'],
-      e_wallet:['电子钱包','E-dompet'],bank:['银行','Bank'],stripe:['Stripe','Stripe'],
-      recent_failed_withdrawal:['近期有失败提现','Pengeluaran terkini gagal'],
-    };
-    const term = (value: string) => terms[value]?.[zh ? 0 : 1] ?? safeLabel(value);
-    const risk = snapshot.risk.reasons.map(term).join(', ') || (zh ? '无额外风险因素' : 'Tiada faktor risiko tambahan');
-    return [
-      `${labels[0]}: ${safeLabel(snapshot.customer.displayName)}`,
-      `${labels[1]}: ${term(snapshot.kycStatus)}`,
-      `${labels[2]}: ${term(snapshot.risk.level)} (${risk})`,
-      `${labels[3]}: ${formatSen(snapshot.sourceTotals.rewardSen)}`,
-      `${labels[4]}: ${formatSen(snapshot.sourceTotals.affiliateSen)}`,
-      `${labels[5]}: ${formatSen(snapshot.sourceTotals.otherSen)}`,
-      `${labels[6]}: ${term(snapshot.destination.type)} ${safeLabel(snapshot.destination.maskedReference)}`,
-      `${labels[7]}: ${emailTime(snapshot.requestTime, selected)}`,
-    ].join(' | ');
-  }
+export function buildWithdrawalNotificationReason(snapshot: WithdrawalNotificationSnapshot): string {
   const reasons = snapshot.risk.reasons.map(safeLabel).join(', ') || 'No elevated factors';
   return [
     `Customer: ${safeLabel(snapshot.customer.displayName)}`,

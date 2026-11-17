@@ -42,15 +42,19 @@ describe("POST /api/locale", () => {
     mocks.rpc.mockResolvedValue({ error: null });
   });
 
-  it("writes only the cookie for an anonymous visitor", async () => {
+  it.each([
+    ["an anonymous visitor", []],
+    ["a signed-in visitor", [{ name: "sb-project-auth-token", value: "session" }]],
+  ])("writes only the cookie for %s", async (_label, cookies) => {
+    mocks.cookieGetAll.mockReturnValue(cookies);
+
     const response = await POST(request({ locale: "ms" }));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      data: { locale: "ms", persistedToAccount: false },
-    });
+    expect(await response.json()).toEqual({ data: { locale: "ms" } });
     expect(mocks.createClient).not.toHaveBeenCalled();
     expect(mocks.getUser).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
     expect(mocks.from).not.toHaveBeenCalled();
     expect(mocks.cookieSet).toHaveBeenCalledWith(
       LOCALE_COOKIE,
@@ -62,25 +66,6 @@ describe("POST /api/locale", () => {
         secure: process.env.NODE_ENV === "production",
       }),
     );
-  });
-
-  it("updates only the authenticated user's preferred_locale before writing the cookie", async () => {
-    const user = { id: "user-123" };
-    mocks.cookieGetAll.mockReturnValue([
-      { name: "sb-project-auth-token", value: "session" },
-    ]);
-    mocks.getUser.mockResolvedValue({ data: { user }, error: null });
-
-    const response = await POST(request({ locale: "zh-CN" }));
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      data: { locale: "zh-CN", persistedToAccount: true },
-    });
-    expect(mocks.rpc).toHaveBeenCalledWith("set_my_preferred_locale", { p_locale: "zh-CN" });
-    expect(mocks.from).not.toHaveBeenCalled();
-    expect(mocks.cookieSet).toHaveBeenCalled();
-    expect(mocks.cookieSet.mock.invocationCallOrder[0]).toBeGreaterThan(mocks.rpc.mock.invocationCallOrder[0]);
   });
 
   it("rejects zh-TW and arbitrary locale values with 400", async () => {
@@ -100,20 +85,6 @@ describe("POST /api/locale", () => {
     expect(response.status).toBe(400);
     expect(mocks.getUser).not.toHaveBeenCalled();
     expect(mocks.from).not.toHaveBeenCalled();
-    expect(mocks.cookieSet).not.toHaveBeenCalled();
-  });
-
-  it("does not change the cookie when the authenticated database update fails", async () => {
-    mocks.cookieGetAll.mockReturnValue([
-      { name: "sb-project-auth-token.0", value: "session-part" },
-    ]);
-    mocks.getUser.mockResolvedValue({ data: { user: { id: "user-123" } }, error: null });
-    mocks.rpc.mockResolvedValue({ error: { message: "database unavailable" } });
-
-    const response = await POST(request({ locale: "en" }));
-
-    expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({ error: "Unable to save language preference" });
     expect(mocks.cookieSet).not.toHaveBeenCalled();
   });
 });

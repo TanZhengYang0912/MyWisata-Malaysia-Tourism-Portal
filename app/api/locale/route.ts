@@ -1,19 +1,13 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { isAppLocale, LOCALE_COOKIE, type AppLocale } from "@/lib/i18n/locale";
-import { createClient } from "@/lib/supabase/server";
 
 type LocaleRequest = { locale?: unknown };
-type LocaleResponse = { data: { locale: AppLocale; persistedToAccount: boolean } };
+type LocaleResponse = { data: { locale: AppLocale } };
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
-function hasSupabaseAuthCookie(cookieStore: Awaited<ReturnType<typeof cookies>>) {
-  return cookieStore.getAll().some(({ name }) => (
-    name.startsWith("sb-") && name.includes("-auth-token")
-  ));
-}
-
+// The page language is this browser's choice only; it is never saved to the account.
 export async function POST(request: Request) {
   let body: LocaleRequest | null;
   try {
@@ -28,26 +22,6 @@ export async function POST(request: Request) {
 
   const locale = body.locale;
   const cookieStore = await cookies();
-  let persistedToAccount = false;
-
-  // Anonymous visitors have no account preference to update. Avoid an
-  // unnecessary network auth lookup so their language cookie is saved even
-  // when the authentication service is unavailable.
-  if (hasSupabaseAuthCookie(cookieStore)) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (user) {
-      const { error } = await supabase.rpc("set_my_preferred_locale", { p_locale: locale });
-
-      if (error) {
-        return NextResponse.json({ error: "Unable to save language preference" }, { status: 500 });
-      }
-
-      persistedToAccount = true;
-    }
-  }
-
   cookieStore.set(LOCALE_COOKIE, locale, {
     path: "/",
     sameSite: "lax",
@@ -55,8 +29,6 @@ export async function POST(request: Request) {
     secure: process.env.NODE_ENV === "production",
   });
 
-  const response: LocaleResponse = {
-    data: { locale, persistedToAccount },
-  };
+  const response: LocaleResponse = { data: { locale } };
   return NextResponse.json(response);
 }

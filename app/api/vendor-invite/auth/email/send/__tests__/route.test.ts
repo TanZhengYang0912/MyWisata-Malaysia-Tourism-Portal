@@ -41,13 +41,13 @@ describe('POST /api/vendor-invite/auth/email/send', () => {
     expect(response.status).toBe(200);
     expect(mocks.signInWithOtp).toHaveBeenCalledWith({
       email: 'owner@example.com',
-      options: { shouldCreateUser: true, captchaToken: 'valid-proof', data: { preferred_locale: 'zh-CN' } },
+      options: { shouldCreateUser: true, captchaToken: 'valid-proof' },
     });
     expect(body).toEqual({ data: { sent: true }, error: null });
     expect(JSON.stringify(body)).not.toContain('owner@example.com');
   });
 
-  it('does not replace an existing profile preference with the current browser language', async () => {
+  it('does not create a second account for an existing profile', async () => {
     mocks.profileExists.mockResolvedValue({ data: true, error: null });
     const inviteRequest = request({ token: 'valid-invite-token-value', captchaToken: 'valid-proof' });
     inviteRequest.headers.set('cookie', 'NEXT_LOCALE=ms');
@@ -74,22 +74,6 @@ describe('POST /api/vendor-invite/auth/email/send', () => {
     expect(mocks.signInWithOtp).toHaveBeenCalledWith({
       email: 'Owner@Example.com',
       options: { shouldCreateUser: false, captchaToken: 'valid-proof' },
-    });
-  });
-
-  it.each([
-    ['NEXT_LOCALE=ms', 'ms'],
-    ['NEXT_LOCALE=invalid', 'en'],
-    ['', 'en'],
-  ])('uses validated cookie locale %s for a new invited user', async (cookie, locale) => {
-    const inviteRequest = request({ token: 'valid-invite-token-value', captchaToken: 'valid-proof' });
-    if (cookie) inviteRequest.headers.set('cookie', cookie);
-    const response = await POST(inviteRequest);
-
-    expect(response.status).toBe(200);
-    expect(mocks.signInWithOtp).toHaveBeenCalledWith({
-      email: 'owner@example.com',
-      options: { shouldCreateUser: true, captchaToken: 'valid-proof', data: { preferred_locale: locale } },
     });
   });
 

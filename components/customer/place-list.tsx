@@ -27,13 +27,13 @@ function AreaPicker({ areas, selected, onChange }: { areas: Area[]; selected: Re
   }
 
   return (
-    <div className="relative" aria-label={t("ui.place.filterAreaLabel")}>
+    <div className="lg:relative" aria-label={t("ui.place.filterAreaLabel")}>
       <button type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)} className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
         {selected.size === 0 ? t("ui.place.allAreas") : t("ui.place.selectedAreas", { count: selected.size })}
         <span aria-hidden="true">⌄</span>
       </button>
       {open && (
-        <div className="absolute right-0 z-20 mt-2 w-[min(20rem,calc(100vw-3rem))] rounded-2xl border border-border bg-card p-3 shadow-xl" role="dialog" aria-label={t("ui.place.filterAreaLabel")}>
+        <div className="absolute left-0 z-20 mt-2 w-[min(20rem,calc(100vw-3rem))] rounded-2xl border border-border bg-card p-3 shadow-xl lg:left-auto lg:right-0" role="dialog" aria-label={t("ui.place.filterAreaLabel")}>
           <div className="flex items-center gap-2">
             <input aria-label={t("ui.place.searchAreas")} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("ui.place.searchAreas")} className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40" />
             <button type="button" onClick={() => onChange(new Set())} className="text-xs font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">{t("ui.actions.clearFilters")}</button>
@@ -141,7 +141,7 @@ export function PlaceList({
           </div>
 
           {regions.length > 1 && (
-            <div className="flex flex-wrap items-center gap-1.5 lg:border-l lg:border-border lg:pl-4">
+            <div className="relative flex flex-wrap items-center gap-1.5 lg:border-l lg:border-border lg:pl-4">
               <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{t("ui.labels.location")}</span>
               <AreaPicker areas={regions} selected={selectedRegions} onChange={setSelectedRegions} />
             </div>

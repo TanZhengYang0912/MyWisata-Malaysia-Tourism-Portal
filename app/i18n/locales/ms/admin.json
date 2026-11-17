@@ -2798,14 +2798,6 @@
   "email": {
     "draft": {
       "advisory": "AI merangka mesej di bawah — sunting sebelum menghantar.",
-      "recipientLanguage": "Bahasa penerima: {{language}}",
-      "languageUnavailable": "Masukkan e-mel penerima yang sah untuk menyemak bahasa tersimpan.",
-      "languageReview": "Semak subjek dan mesej dalam bahasa penerima. Menukar alamat mengekalkan suntingan anda; jana semula draf jika perlu. Tanpa pilihan tersimpan, bahasa Inggeris digunakan.",
-      "languages": {
-        "en": "Inggeris",
-        "zh-CN": "Cina",
-        "ms": "Melayu"
-      },
       "close": "Tutup",
       "recipient": "E-mel penerima",
       "recipientPlaceholder": "vendor@example.com",

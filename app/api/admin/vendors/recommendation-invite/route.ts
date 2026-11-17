@@ -1,4 +1,3 @@
-import { recipientEmailLocale } from '@/lib/email/locale';
 import { vendorInviteCopy } from '@/lib/email/copy';
 import { requireStaffPermission } from '@/lib/staff-permissions/server';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -41,10 +40,7 @@ export async function POST(request: Request) {
     return apiFail('RECOMMENDATION_NOT_READY', 'Only approved recommendations can invite a vendor', 409);
   }
 
-  let locale;
-  try { locale = await recipientEmailLocale(service, parsed.data.email); }
-  catch { return apiFail('EMAIL_LANGUAGE_UNAVAILABLE', 'Unable to resolve recipient language.', 503); }
-  const copy = vendorInviteCopy(recommendation.vendor_name, locale);
+  const copy = vendorInviteCopy(recommendation.vendor_name);
 
   const { token, tokenHash } = createRecommendationInviteToken();
   const origin = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
@@ -77,7 +73,6 @@ export async function POST(request: Request) {
     // the outbound message. A durable outbox would persist the token.
     await sendCustomVendorEmail({
       to: parsed.data.email,
-      locale,
       subject: parsed.data.subject ?? copy.subject,
       body: finalBody
         ?? `${copy.introduction}\n\n${copy.action}: ${claimUrl}`,
