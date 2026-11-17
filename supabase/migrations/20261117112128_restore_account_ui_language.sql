@@ -20,7 +20,8 @@ $$;
 CREATE FUNCTION app_private.get_my_preferred_locale()
 RETURNS text
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
-  SELECT preferred_locale FROM public.users WHERE id = (SELECT auth.uid());
+  SELECT preferred_locale FROM public.users
+  WHERE id = (SELECT auth.uid()) AND (SELECT auth.jwt()->>'is_anonymous') IS DISTINCT FROM 'true';
 $$;
 
 CREATE FUNCTION app_private.set_my_preferred_locale(p_locale text)
@@ -28,7 +29,7 @@ RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE caller uuid := auth.uid();
 BEGIN
-  IF caller IS NULL THEN
+  IF caller IS NULL OR auth.jwt()->>'is_anonymous' = 'true' THEN
     RAISE EXCEPTION 'authentication_required' USING ERRCODE = '42501';
   END IF;
   IF p_locale IS NULL OR p_locale NOT IN ('en', 'zh-CN', 'ms') THEN

@@ -93,6 +93,15 @@ describe("POST /api/locale", () => {
     expect(mocks.cookieSet).toHaveBeenCalledWith(LOCALE_COOKIE, "ms", expect.any(Object));
   });
 
+  it("keeps a Supabase anonymous session's language in its browser", async () => {
+    mocks.cookieGetAll.mockReturnValue([{ name: "sb-project-auth-token", value: "guest-session" }]);
+    mocks.getUser.mockResolvedValue({ data: { user: { id: "guest-1", is_anonymous: true } }, error: null });
+
+    expect((await POST(request({ locale: "ms" }))).status).toBe(200);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.cookieSet).toHaveBeenCalledWith(LOCALE_COOKIE, "ms", expect.any(Object));
+  });
+
   it("reports an unavailable auth service without claiming an account save", async () => {
     mocks.cookieGetAll.mockReturnValue([{ name: "sb-project-auth-token", value: "session" }]);
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: { status: 503 } });

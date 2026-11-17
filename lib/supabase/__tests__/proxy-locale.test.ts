@@ -15,6 +15,7 @@ type ProxySetup = {
   accountLocale?: string | null;
   accountLocaleError?: unknown;
   claimsSub?: string;
+  isAnonymous?: boolean;
   authCookies?: Array<{ name: string; value: string; options?: Record<string, unknown> }>;
   authHeaders?: Record<string, string>;
 };
@@ -23,6 +24,7 @@ function setupSupabase({
   accountLocale = null,
   accountLocaleError = null,
   claimsSub,
+  isAnonymous = false,
   authCookies = [],
   authHeaders = {},
 }: ProxySetup = {}) {
@@ -30,7 +32,7 @@ function setupSupabase({
   const getClaims = vi.fn(async () => {
     const cookies = mocks.createServerClient.mock.calls.at(-1)?.[2]?.cookies;
     await cookies?.setAll(authCookies, authHeaders);
-    return { data: claimsSub ? { claims: { sub: claimsSub } } : { claims: null }, error: null };
+    return { data: claimsSub ? { claims: { sub: claimsSub, is_anonymous: isAnonymous } } : { claims: null }, error: null };
   });
 
   mocks.createServerClient.mockReturnValue({
@@ -159,6 +161,14 @@ describe("Supabase proxy locale resolution", () => {
 
     expect(localeFromResponse(response)).toBe("zh-CN");
     expect(getClaims).toHaveBeenCalledOnce();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("uses the browser language for a Supabase anonymous session with a subject", async () => {
+    const { rpc } = setupSupabase({ accountLocale: "ms", claimsSub: "guest-1", isAnonymous: true });
+    const response = await updateSession(makeRequest({ cookie: "NEXT_LOCALE=zh-CN" }));
+
+    expect(localeFromResponse(response)).toBe("zh-CN");
     expect(rpc).not.toHaveBeenCalled();
   });
 

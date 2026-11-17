@@ -75,7 +75,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   const isPrefetch = request.headers.has('next-router-prefetch') || request.headers.get('purpose') === 'prefetch';
   const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
   let accountLocale: unknown;
-  if (typeof claims?.sub === 'string' && claims.sub && isPageRead && !isPrefetch) {
+  if (typeof claims?.sub === 'string' && claims.sub && claims.is_anonymous !== true && isPageRead && !isPrefetch) {
     try {
       const { data, error } = await supabase.rpc('get_my_preferred_locale');
       if (!error) accountLocale = data;

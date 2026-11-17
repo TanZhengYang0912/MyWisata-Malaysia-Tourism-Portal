@@ -13,7 +13,9 @@ describe("restore account interface language migration", () => {
 
   it("limits reads and updates to the authenticated caller and skips unchanged writes", () => {
     expect(sql).toContain("WHERE id = (SELECT auth.uid())");
+    expect(sql).toContain("(SELECT auth.jwt()->>'is_anonymous') IS DISTINCT FROM 'true'");
     expect(sql).toContain("caller uuid := auth.uid()");
+    expect(sql).toContain("caller IS NULL OR auth.jwt()->>'is_anonymous' = 'true'");
     expect(sql).toContain("WHERE id = caller AND preferred_locale IS DISTINCT FROM p_locale");
     expect(sql.match(/SECURITY INVOKER SET search_path = ''/g)).toHaveLength(2);
     expect(sql.match(/SECURITY DEFINER SET search_path = ''/g)).toHaveLength(2);

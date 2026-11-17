@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     if (authError && authError.name !== "AuthSessionMissingError" && authError.status !== 401) {
       return NextResponse.json({ error: "Unable to verify session" }, { status: 503 });
     }
-    if (user) {
+    if (user && !user.is_anonymous) {
       const { error } = await supabase.rpc("set_my_preferred_locale", { p_locale: locale });
       if (error) {
         return NextResponse.json({ error: "Unable to save language preference" }, { status: 500 });
