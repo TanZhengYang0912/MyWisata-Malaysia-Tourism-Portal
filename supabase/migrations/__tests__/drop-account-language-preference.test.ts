@@ -69,4 +69,13 @@ describe('drop account language preference migration', () => {
       sql.indexOf('DROP TRIGGER IF EXISTS snapshot_recipient_email_locale'),
     );
   });
+
+  it('retires the temporarily restored account RPC in a later migration', () => {
+    const retirement = readFileSync(
+      resolve(process.cwd(), 'supabase/migrations/20261117111226_retire_legacy_account_locale_rpc.sql'),
+      'utf8',
+    );
+    expect(retirement).toContain('DROP FUNCTION IF EXISTS public.set_my_preferred_locale(text);');
+    expect(retirement).toContain("NOTIFY pgrst, 'reload schema';");
+  });
 });

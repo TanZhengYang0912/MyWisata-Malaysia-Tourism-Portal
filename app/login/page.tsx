@@ -83,8 +83,9 @@ function LoginContent() {
     if (process.env.NODE_ENV === "production" || !human.hasVerifiedOnce) return;
 
     const controller = new AbortController();
+    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)]);
     const generation = ++demoRequestGeneration.current;
-    fetch("/api/auth/demo-users", { signal: controller.signal })
+    fetch("/api/auth/demo-users", { signal })
       .then(async (response) => {
         if (!response.ok) throw new Error("Demo account lookup failed");
         const payload: unknown = await response.json();

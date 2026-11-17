@@ -53,11 +53,11 @@ vi.mock("@/lib/supabase/client", () => ({
 
 import { AdminConfirmDialog } from "@/components/admin/confirm-dialog";
 import { AdminSegmentedFilter } from "@/components/admin/segmented-filter";
-import { ChatbotWidget, createBotMessage, resolveTicketSubject } from "@/components/shared/chatbot-widget";
+import { ChatbotWidget, chatSessionStorageKey, createBotMessage, resolveTicketSubject } from "@/components/shared/chatbot-widget";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import { NotificationCenter } from "@/components/shared/notification-center";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { SupportChatProvider } from "@/components/providers/support-chat";
+import { SupportChatProvider, useSupportChat } from "@/components/providers/support-chat";
 
 type TranslationOptions = { defaultValue?: string; count?: number };
 
@@ -70,6 +70,8 @@ const translations: Record<string, string> = {
   "common:chatbot.myTickets": "Translated my tickets",
   "common:chatbot.no": "No translated",
   "common:chatbot.send": "Send translated message",
+  "common:chatbot.ticketSignInRequired": "Sign in before opening a support ticket",
+  "common:chatbot.signIn": "Sign in translated",
   "common:chatbot.somethingWrong": "Translated network fallback",
   "common:chatbot.title": "Translated support title",
   "common:chatbot.list.supportLabel": "Translated support label",
@@ -132,6 +134,11 @@ function setInputValue(input: TestElement, value: string) {
   const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), "value")?.set;
   setter?.call(input, value);
   input.dispatchEvent(new TestEvent("input", { bubbles: true }));
+}
+
+function TestOrderSupportEntry() {
+  const { selectChat } = useSupportChat();
+  return <button onClick={() => selectChat({ kind: "support" }, { type: "order", orderId: "123e4567-e89b-42d3-a456-426614174000" })}>Order help</button>;
 }
 
 async function render(element: React.ReactElement) {
@@ -333,11 +340,18 @@ describe("Task 5 shared runtime behavior", () => {
     expect(resolveTicketSubject(undefined, "Translated support request")).toBe("Translated support request");
   });
 
+  it("isolates stored chatbot sessions by signed-in account", () => {
+    expect(chatSessionStorageKey(null)).toBe("mw_chatbot_session:guest");
+    expect(chatSessionStorageKey("customer-1")).toBe("mw_chatbot_session:customer-1");
+    expect(chatSessionStorageKey(null)).not.toBe(chatSessionStorageKey("customer-1"));
+  });
+
   it("drives the real chatbot send and ticket handlers without translating API answers or ticket subjects", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
     const question = "Why is my wallet withdrawal still pending?";
     const answer = "API answer [zh]: withdrawals can take two business days.";
     let askPayload: { question?: string } | undefined;
-    let ticketPayload: { sessionKey?: string; subject?: string; body?: string } | undefined;
+    let ticketPayload: { sessionKey?: string; messageId?: string; subject?: string; body?: string } | undefined;
     mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === "/api/chatbot/ask") {
         askPayload = JSON.parse(String(init?.body)) as { question?: string };
@@ -360,7 +374,7 @@ describe("Task 5 shared runtime behavior", () => {
     // the pinned Support row before the AI-chat pane (and its composer) exists.
     await click(findButton("Translated support label"));
 
-    const input = findOne(container, (element) => element.tagName === "INPUT");
+    const input = findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question");
     expect(input.getAttribute("placeholder")).toBe("Translated question");
     setInputValue(input, question);
     const send = findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message");
@@ -374,7 +388,56 @@ describe("Task 5 shared runtime behavior", () => {
     expect(container.textContent).toContain("Translated ticket offer");
 
     await click(findButton("Yes translated"));
-    expect(ticketPayload).toEqual({ sessionKey: "chat-session-1", subject: question, body: question });
+    expect(ticketPayload).toEqual({ sessionKey: "chat-session-1", messageId: "message-zh-1", subject: question, body: question });
+    expect(findElements(container, (element) => element.tagName === "A" && element.getAttribute("href") === "/customer/support/ticket-zh-1")).toHaveLength(1);
+  });
+
+  it("requires sign-in before a guest can create a ticket with no accessible owner", async () => {
+    mocks.fetch.mockImplementation(async (url: string) => {
+      if (url === "/api/chatbot/ask") return response({ data: { sessionKey: "guest-session", answer: "I could not find an answer.", botAnswered: false, messageId: "message-guest-1", language: "en" }, error: null });
+      if (url === "/api/chatbot/feedback") return response({ data: null, error: null });
+      throw new Error(`Unexpected guest chatbot request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><ChatbotWidget /></SupportChatProvider>);
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Open translated chat"));
+    await click(findButton("Translated support label"));
+    setInputValue(findOne(container, (element) => element.tagName === "INPUT"), "I need help");
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+    expect(container.textContent).toContain("Sign in before opening a support ticket");
+    expect(findElements(container, (element) => element.tagName === "A" && element.getAttribute("href") === "/login?next=%2Fcustomer%2Fsupport")).toHaveLength(1);
+    expect(mocks.fetch.mock.calls.some(([url]) => url === "/api/support/tickets")).toBe(false);
+  });
+
+  it("carries a selected order into the assistant and links the created ticket by its saved ID", async () => {
+    mocks.useAuth.mockReturnValue({ currentUser: { id: "customer-1", role: "customer" } });
+    let askPayload: { orderId?: string } | undefined;
+    let ticketPayload: { orderId?: string } | undefined;
+    mocks.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === "/api/chat/unread-count") return response({ data: { count: 0 } });
+      if (url === "/api/chatbot/ask") {
+        askPayload = JSON.parse(String(init?.body)) as { orderId?: string };
+        return response({ data: { sessionKey: "order-session", answer: "I could not answer yet.", botAnswered: false, messageId: "message-order-1", language: "en", orderContext: { id: "123e4567-e89b-42d3-a456-426614174000", displayId: "MW-ORDER-42", status: "PAID", checkedAt: "2026-11-17T07:00:00.000Z" } }, error: null });
+      }
+      if (url === "/api/chatbot/feedback") return response({ data: null, error: null });
+      if (url === "/api/support/tickets") {
+        ticketPayload = JSON.parse(String(init?.body)) as { orderId?: string };
+        return response({ data: { id: "123e4567-e89b-42d3-a456-426614174001", category: "support" }, error: null });
+      }
+      throw new Error(`Unexpected order support request: ${url}`);
+    });
+
+    await render(<SupportChatProvider><TestOrderSupportEntry /><ChatbotWidget /></SupportChatProvider>);
+    await click(findButton("Order help"));
+    setInputValue(findOne(container, (element) => element.tagName === "INPUT" && element.getAttribute("placeholder") === "Translated question"), "Where is my order?");
+    await click(findOne(container, (element) => element.getAttribute("aria-label") === "Send translated message"));
+
+    expect(askPayload?.orderId).toBe("123e4567-e89b-42d3-a456-426614174000");
+    expect(container.textContent).toContain("MW-ORDER-42");
+    expect(findElements(container, (element) => element.tagName === "A" && element.getAttribute("href") === "/customer/orders/123e4567-e89b-42d3-a456-426614174000")).toHaveLength(1);
+    await click(findButton("Yes translated"));
+    expect(ticketPayload?.orderId).toBe("123e4567-e89b-42d3-a456-426614174000");
+    expect(findElements(container, (element) => element.tagName === "A" && element.getAttribute("href") === "/customer/support/123e4567-e89b-42d3-a456-426614174001")).toHaveLength(1);
   });
 
   it("opens a vendor thread from the merged widget's left pane", async () => {

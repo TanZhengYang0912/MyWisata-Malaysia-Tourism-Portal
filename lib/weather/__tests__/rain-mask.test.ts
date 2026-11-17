@@ -5,6 +5,7 @@ import {
   hasBoundedForecastRain,
   hasCompleteForecastGrid,
   isRadarCoverageAvailable,
+  radarEchoShade,
   retainRainParticleCandidate,
   rainViewerDbzForPixel,
   sampleRadarIntensity,
@@ -13,6 +14,16 @@ import {
 } from "@/lib/weather/rain-mask";
 
 describe("georeferenced weather mask helpers", () => {
+  it("colours stronger observed returns more prominently and leaves dry or unknown transparent", () => {
+    expect(radarEchoShade(null)).toBeNull();
+    expect(radarEchoShade(0)).toBeNull();
+    expect(radarEchoShade(Number.NaN)).toBeNull();
+    const weak = radarEchoShade(0.05)!;
+    const strong = radarEchoShade(1)!;
+    expect(strong[0]).toBeLessThan(weak[0]);
+    expect(strong[3]).toBeGreaterThan(weak[3]);
+  });
+
   it("fades a fixed map atmosphere at the nearby-radius edge without using rain intensity", () => {
     expect(weatherAtmosphereFade(0, 10)).toBe(1);
     expect(weatherAtmosphereFade(8.5, 10)).toBe(1);
@@ -144,10 +155,15 @@ describe("georeferenced weather mask helpers", () => {
       };
     });
     expect(hasBoundedForecastRain(grid)).toBe(true);
-    expect(hasBoundedForecastRain(grid.map((sample) => ({
+    const edgeRain = grid.map((sample) => ({
       ...sample,
       precipitationMm: 2,
       precipitationProbability: 80,
-    })))).toBe(false);
+    }));
+    expect(hasCompleteForecastGrid(edgeRain)).toBe(true);
+    expect(hasBoundedForecastRain(edgeRain)).toBe(false);
+    const sampleRain = buildForecastIntensitySampler(edgeRain);
+    expect(sampleRain(6, 101)).toBeGreaterThan(0);
+    expect(sampleRain(4.9, 101)).toBeNull();
   });
 });

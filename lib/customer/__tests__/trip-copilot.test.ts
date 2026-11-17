@@ -38,6 +38,7 @@ describe('getTripCopilotCandidates', () => {
     expect(mocks.searchExploreActivities).toHaveBeenCalledWith({ state: 'Penang', categorySlug: null, sort: 'rating_desc' }, {});
     expect(result).toEqual([{
       productId: 'p1',
+      outletId: 'o1',
       name: 'Penang Hill Funicular',
       category: 'Nature',
       categorySlug: 'activity',
@@ -86,12 +87,44 @@ describe('getTripCopilotCandidates', () => {
     expect(result[0].productId).toBe('p2');
   });
 
+  it('excludes catalogue entries without valid real coordinates from map batches', async () => {
+    mocks.searchActivities.mockResolvedValue([
+      activity({ id: 'valid' }),
+      activity({ id: 'invalid', place: { state: 'Penang', lat: 91, lng: 100 } }),
+    ]);
+
+    const result = await getTripCopilotCandidates({}, {} as never);
+
+    expect(result.map((candidate) => candidate.productId)).toEqual(['valid']);
+  });
+
   it('caps candidates at 12 even if the catalogue query returns more', async () => {
     mocks.searchActivities.mockResolvedValue(Array.from({ length: 20 }, (_, i) => activity({ id: `p${i}`, name: `Listing ${i}` })));
 
     const result = await getTripCopilotCandidates({}, {} as never);
 
     expect(result).toHaveLength(12);
+  });
+
+  it('allows a bounded batch request to retrieve up to 30 grounded candidates', async () => {
+    mocks.searchActivities.mockResolvedValue(Array.from({ length: 30 }, (_, i) => activity({ id: `p${i}`, name: `Listing ${i}` })));
+
+    const result = await getTripCopilotCandidates({ limit: 30 }, {} as never);
+
+    expect(result).toHaveLength(30);
+  });
+
+  it('splits one bounded catalogue result across requested categories', async () => {
+    mocks.searchActivities.mockResolvedValue([
+      activity({ id: 'activity-1', categorySlug: 'activity' }),
+      activity({ id: 'food-1', category: 'Food', categorySlug: 'food' }),
+      activity({ id: 'hotel-1', category: 'Accommodation', categorySlug: 'accommodation' }),
+    ]);
+
+    const result = await getTripCopilotCandidates({ categorySlugs: ['activity', 'food'], limit: 30 }, {} as never);
+
+    expect(mocks.searchActivities).toHaveBeenCalledTimes(1);
+    expect(result.map((candidate) => candidate.productId)).toEqual(['activity-1', 'food-1']);
   });
 
   it('returns an empty list when nothing real matches', async () => {
@@ -110,6 +143,15 @@ describe('getTripCopilotCandidates', () => {
     expect(mocks.searchExploreActivities).toHaveBeenCalledWith({ state: 'Penang', categorySlug: 'food', sort: 'rating_desc' }, {});
     expect(mocks.searchActivities).not.toHaveBeenCalled();
     expect(result[0].state).toBe('Penang');
+  });
+
+  it('searches near the current day anchor before ranking batch candidates', async () => {
+    const near = { lat: 5.42, lng: 100.33 };
+    mocks.searchActivities.mockResolvedValue([activity()]);
+
+    await getTripCopilotCandidates({ near, categorySlug: 'food' }, {} as never);
+
+    expect(mocks.searchActivities).toHaveBeenCalledWith({ state: null, categorySlug: 'food', sort: 'distance_asc', near }, {});
   });
 });
 

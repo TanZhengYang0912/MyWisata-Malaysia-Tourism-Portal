@@ -33,6 +33,7 @@ import Link from "next/link";
 import { ChevronLeft, HelpCircle, MessageCircle, Mic, MicOff, Minimize2, Maximize2, Send, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/shared/status-badge";
 import type { FaqCategory } from "@/app/api/chatbot/faq/route";
 import type { ChatLanguage } from "@/lib/chatbot/language";
 import { useAuth } from "@/components/providers/auth";
@@ -96,11 +97,12 @@ interface ChatMessage {
   listings?: ChatListing[];
   comparison?: ChatListing[] | null;
   refunds?: RefundProposal[];
+  orderContext?: { id: string; displayId: string | null; status: string; checkedAt: string } | null;
   ticketId?: string;
   ticketError?: string;
 }
 
-type ChatbotAnswerData = Pick<ChatMessage, "text" | "messageId" | "language" | "privacyBlocked" | "listings" | "comparison" | "refunds"> & {
+type ChatbotAnswerData = Pick<ChatMessage, "text" | "messageId" | "language" | "privacyBlocked" | "listings" | "comparison" | "refunds" | "orderContext"> & {
   botAnswered: boolean;
 };
 
@@ -115,6 +117,7 @@ export function createBotMessage(data: ChatbotAnswerData, question: string): Cha
     listings: data.listings,
     comparison: data.comparison,
     refunds: data.refunds,
+    orderContext: data.orderContext,
     feedbackStage: data.botAnswered ? "awaiting_helpful" : "awaiting_ticket",
   };
 }
@@ -124,6 +127,9 @@ export function resolveTicketSubject(question: string | undefined, fallback: str
 }
 
 const SESSION_STORAGE_KEY = "mw_chatbot_session";
+export function chatSessionStorageKey(userId: string | null): string {
+  return `${SESSION_STORAGE_KEY}:${userId ?? "guest"}`;
+}
 
 async function postFeedback(payload: Record<string, unknown>) {
   try {
@@ -140,7 +146,7 @@ async function postFeedback(payload: Record<string, unknown>) {
 export function ChatbotWidget(props: { hideLauncherOnMobile?: boolean }) {
   const { currentUser } = useAuth();
   if (currentUser && currentUser.role !== "customer") return null;
-  return <CustomerChatbotWidget {...props} />;
+  return <CustomerChatbotWidget key={currentUser?.id ?? "guest"} {...props} />;
 }
 
 function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherOnMobile?: boolean }) {
@@ -148,16 +154,16 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
   // entry points — the profile page's "Contact Support" button, outlet and
   // activity page "Message vendor" buttons — can open this same widget
   // instance instead of building a second chat surface.
-  const { open, setOpen, selected, selectChat, unreadChatCount } = useSupportChat();
+  const { open, setOpen, selected, selectChat, pendingContext, clearPendingContext, unreadChatCount } = useSupportChat();
   const { currentUser } = useAuth();
-  const { t } = useTranslation("common");
+  const { t, i18n } = useTranslation("common");
   const { t: tCustomer } = useTranslation("customer");
   // Lazy initializer, not an effect: reading localStorage here is
   // synchronous and doesn't need a render cycle. Guarded for SSR, where
   // `window` doesn't exist — sessionKey is never rendered into JSX, so a
   // server/client value mismatch here can't cause a hydration warning.
   const [sessionKey, setSessionKey] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : window.localStorage.getItem(SESSION_STORAGE_KEY),
+    typeof window === "undefined" ? null : window.localStorage.getItem(chatSessionStorageKey(currentUser?.id ?? null)),
   );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -264,6 +270,7 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
   async function sendMessage(explicitQuestion?: string) {
     const question = (explicitQuestion ?? input).trim();
     if (!question || sending) return;
+    const selectedOrderId = pendingContext?.type === "order" ? pendingContext.orderId : undefined;
     setSending(true);
     setMessages((m) => [...m, { role: "user", text: question }]);
     if (explicitQuestion === undefined) setInput("");
@@ -272,12 +279,13 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
       const res = await fetch("/api/chatbot/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionKey: sessionKey ?? undefined, question }),
+        body: JSON.stringify({ sessionKey: sessionKey ?? undefined, question, orderId: selectedOrderId }),
       });
       const body = (await res.json()) as {
         data: {
           sessionKey: string; answer: string; botAnswered: boolean; messageId: string; language: ChatLanguage; privacyBlocked: boolean;
           listings?: ChatListing[]; comparison?: ChatListing[] | null; refunds?: RefundProposal[];
+          orderContext?: ChatMessage["orderContext"];
         } | null;
         error: { message: string } | null;
       };
@@ -285,15 +293,16 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
         setMessages((m) => [...m, { role: "bot", text: t("chatbot.somethingWrong") }]);
         return;
       }
-      const { answer, botAnswered, messageId, language, privacyBlocked, listings, comparison, refunds } = body.data;
+      const { answer, botAnswered, messageId, language, privacyBlocked, listings, comparison, refunds, orderContext } = body.data;
       let effectiveSessionKey = sessionKey;
       if (body.data.sessionKey && body.data.sessionKey !== sessionKey) {
         effectiveSessionKey = body.data.sessionKey;
         setSessionKey(body.data.sessionKey);
-        window.localStorage.setItem(SESSION_STORAGE_KEY, body.data.sessionKey);
+        window.localStorage.setItem(chatSessionStorageKey(currentUser?.id ?? null), body.data.sessionKey);
       }
 
-      setMessages((m) => [...m, createBotMessage({ text: answer, messageId, language, privacyBlocked, botAnswered, listings, comparison, refunds }, question)]);
+      setMessages((m) => [...m, createBotMessage({ text: answer, messageId, language, privacyBlocked, botAnswered, listings, comparison, refunds, orderContext }, question)]);
+      if (selectedOrderId) clearPendingContext();
 
       // Flow 2: the bot already knows it didn't help — there's no yes/no
       // helpfulness question to ask, so this is recorded automatically
@@ -325,6 +334,10 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
   async function createTicket(index: number) {
     const msg = messages[index];
     if (!msg.messageId || creatingTicketFor) return;
+    if (!currentUser) {
+      setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, feedbackStage: "ticket_declined" } : m)));
+      return;
+    }
     setCreatingTicketFor(msg.messageId);
     setMessages((prev) => prev.map((m, i) => (i === index ? { ...m, ticketError: undefined } : m)));
 
@@ -333,7 +346,7 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
       const res = await fetch("/api/support/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionKey: sessionKey ?? undefined, subject, body: subject }),
+        body: JSON.stringify({ sessionKey: sessionKey ?? undefined, messageId: msg.messageId, subject, body: subject, orderId: msg.orderContext?.id }),
       });
       const result = (await res.json()) as { data: { id: string; category: string } | null };
       const ticketErrorText = t("chatbot.ticketError");
@@ -370,7 +383,7 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
               <button onClick={() => setExpanded((current) => !current)} aria-label={expanded ? t("chatbot.collapseChat") : t("chatbot.expandChat")}>
                 {expanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
               </button>
-              <button onClick={() => { setOpen(false); setExpanded(false); }} aria-label={t("chatbot.closeChat")}>
+              <button onClick={() => { selectChat(null); setOpen(false); setExpanded(false); }} aria-label={t("chatbot.closeChat")}>
                 <X size={16} />
               </button>
             </div>
@@ -402,6 +415,9 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
                 </button>
 
                 <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+                  {pendingContext?.type === "order" && (
+                    <div className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">{t("chatbot.agent.order.contextPrompt")}</div>
+                  )}
                   {messages.length === 0 && (
                     <div className="mt-8 flex flex-col items-center gap-2.5">
                       <p className="text-xs text-muted-foreground text-center">
@@ -429,6 +445,14 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
                       {m.listings && m.listings.length > 0 && <ChatbotListingLinks listings={m.listings} />}
                       {m.comparison && <ChatbotComparisonTable rows={m.comparison} />}
                       {m.refunds?.map((refund) => <ChatbotRefundCard key={refund.id} refund={refund} />)}
+                      {m.orderContext && (
+                        <div className="mt-2 max-w-[85%] rounded-lg border border-border bg-background px-3 py-2 text-xs">
+                          <p className="font-semibold">{t("chatbot.agent.order.title")}: {m.orderContext.displayId ?? m.orderContext.id.slice(0, 8).toUpperCase()}</p>
+                          <p className="mt-1 text-muted-foreground">{t("chatbot.agent.order.status")}: <StatusBadge status={m.orderContext.status} label={m.orderContext.status === "REFUNDED" ? t("statuses.refunded") : undefined} /></p>
+                          <p className="mt-1 text-muted-foreground">{t("chatbot.agent.order.checked", { time: new Date(m.orderContext.checkedAt).toLocaleTimeString(i18n.resolvedLanguage ?? undefined, { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kuala_Lumpur" }) })}</p>
+                          <Link href={`/customer/orders/${m.orderContext.id}`} className="mt-1 inline-block text-primary underline">{t("chatbot.agent.order.open")}</Link>
+                        </div>
+                      )}
                       {m.role === "bot" && m.privacyBlocked && (
                         <p role="status" className="mt-1 max-w-[85%] rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-2 text-xs leading-5 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
                           {t("chatbot.privacyBlocked")}
@@ -452,7 +476,7 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
                             <div className="rounded-lg border border-border bg-background px-2.5 py-1.5">
                               <div className="flex items-center gap-2">
                                 <span className="text-xs text-muted-foreground flex-1">{t("chatbot.wantTicket")}</span>
-                                <Button
+                                {currentUser ? <><Button
                                   size="sm"
                                   variant="outline"
                                   className="h-7 px-2.5 text-xs"
@@ -469,8 +493,10 @@ function CustomerChatbotWidget({ hideLauncherOnMobile = false }: { hideLauncherO
                                   disabled={creatingTicketFor === m.messageId}
                                 >
                                   {t("chatbot.no")}
-                                </Button>
+                                </Button></> : <Link href="/login?next=%2Fcustomer%2Fsupport" className="text-xs text-primary underline">{t("chatbot.signIn")}</Link>}
                               </div>
+                              {m.orderContext && <p className="mt-1 text-[0.6875rem] text-muted-foreground">{t("chatbot.agent.order.ticketDisclosure", { reference: m.orderContext.displayId ?? m.orderContext.id.slice(0, 8).toUpperCase() })}</p>}
+                              {!currentUser && <p className="mt-1 text-[0.6875rem] text-muted-foreground">{t("chatbot.ticketSignInRequired")}</p>}
                               {m.ticketError && <p className="text-[0.6875rem] text-destructive mt-1">{m.ticketError}</p>}
                             </div>
                           )}

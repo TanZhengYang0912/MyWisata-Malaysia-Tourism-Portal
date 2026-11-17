@@ -33,6 +33,7 @@ import { formatMYR } from "@/lib/i18n/format";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
 import { RefundRequestDialog } from "@/components/customer/refund-request-dialog";
 import { useAuth } from "@/components/providers/auth";
+import { useSupportChat } from "@/components/providers/support-chat";
 import { formatOrderReference } from "@/lib/checkout/order-reference";
 
 function dateLabel(value: string, locale: string) {
@@ -127,6 +128,7 @@ export default function OrderDetailPage() {
   const { t: tCustomer, i18n } = useTranslation("customer");
   const params = useParams<{ id: string }>();
   const { currentUser } = useAuth();
+  const { selectChat } = useSupportChat();
 
   const [order, setOrder] = useState<Order | null | undefined>(undefined);
   const [orderLoadError, setOrderLoadError] = useState(false);
@@ -355,6 +357,7 @@ export default function OrderDetailPage() {
                   {tCustomer("actions.back", { ns: "common" })}
                 </Button>
               </BackLink>
+              {currentUser?.role === "customer" && order && <Button variant="outline" className="rounded-full" onClick={() => selectChat({ kind: "support" }, { type: "order", orderId: order.id })}>{tCustomer("ui.orders.askSupport")}</Button>}
               <Link href="/customer">
                 <Button className="rounded-full bg-primary px-5 hover:bg-primary/90">
                   {tCustomer("ui.actions.continueExploring")}

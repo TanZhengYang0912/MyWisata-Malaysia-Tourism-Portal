@@ -7,7 +7,7 @@ import type {TripStop} from "./trip-planner-client";
 import {applyTripOrder,resolveTripOrigin} from "@/lib/customer/trip-planner";
 import {useAppDialog} from "@/components/providers/app-dialog";
 import type {TripMutationResult} from "../actions";
-import {getTripItemsStateAction, addTripItemAction, clearTripItemsAction, deleteTripItemAction, reorderTripItemsAction, replaceTripItemAction, updateTripItemLocationAction, updateTripItemScheduleAction} from "../actions";
+import {getTripItemsStateAction, addTripItemAction, addTripItemsBatchAction, clearTripItemsAction, deleteTripItemAction, reorderTripItemsAction, replaceTripItemAction, updateTripItemLocationAction, updateTripItemScheduleAction} from "../actions";
 
 type StopInput = Omit<TripStop, "id"> & {id?: string};
 
@@ -31,6 +31,15 @@ export function useTripItems(tripId: string, initialItems: TripItem[], initialVe
   const {alert, confirm} = useAppDialog();
   function commit(rows: TripItem[]) {current.current = rows; setItems(rows);}
   function reconcile(row: TripItem) {commit(current.current.map(item=>item.id === row.id ? row : item));}
+  async function reconcileFromServer() {
+    const result = await getTripItemsStateAction(tripId);
+    if (!result.ok) return null;
+    commit(result.items);
+    version.current=result.version;
+    blocked.current=null;
+    setError(null);
+    return result.items;
+  }
   // One queue per mounted Trip: failed earlier writes cannot roll back later saves.
   function run<T>(operation:()=>Promise<T>):Promise<T | undefined> {
     setPending(count=>count+1);
@@ -63,9 +72,8 @@ export function useTripItems(tripId: string, initialItems: TripItem[], initialVe
       if (pending > 0) return;
       setPending(count=>count+1);
       try {
-        const result = await getTripItemsStateAction(tripId);
-        if (!result.ok) { setError(t("ui.trip.verifyFailed")); return; }
-        commit(result.items); version.current=result.version; blocked.current=null; setError(null);
+        const items = await reconcileFromServer();
+        if (!items) { setError(t("ui.trip.verifyFailed")); return; }
       } catch { setError(t("ui.trip.verifyFailed")); }
       finally { setPending(count=>count-1); }
     },
@@ -73,6 +81,18 @@ export function useTripItems(tripId: string, initialItems: TripItem[], initialVe
     add:(stop:StopInput,schedule?:{date:string | null;time?:string | null})=>run(async()=>{
       const row=stored(await addTripItemAction(input(stop,schedule?.date,schedule?.time),version.current));
       commit([...current.current,row]);return row;
+    }),
+    addBatch:(input:{selections:Array<{productId:string;outletId:string}>;date:string;order:string[]})=>run(async()=>{
+      const result=await addTripItemsBatchAction({trip_id:tripId,selections:input.selections.map(({productId,outletId})=>({product_id:productId,outlet_id:outletId})),scheduled_date:input.date,order:input.order},version.current);
+      if (!result.ok && result.code === "TRIP_RESULT_UNKNOWN") {
+        const items=await reconcileFromServer();
+        if (!items) throw Object.assign(new Error("Trip batch receipt unavailable"),{code:"TRIP_RESULT_UNKNOWN"});
+        const present=new Set(items.flatMap(item=>item.experience_id ? [item.experience_id] : []));
+        return {items,skipped_product_ids:[],reconciled:true,resolved_product_ids:input.selections.filter(selection=>present.has(selection.productId)).map(selection=>selection.productId)};
+      }
+      const receipt=stored(result);
+      commit(receipt.items);
+      return {...receipt,reconciled:false,resolved_product_ids:[] as string[]};
     }),
     remove:(id:string)=>run(async()=>{
       const target=current.current.find(item=>item.id === id || item.experience_id === id);

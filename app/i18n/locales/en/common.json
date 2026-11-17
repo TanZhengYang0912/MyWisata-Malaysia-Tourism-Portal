@@ -98,6 +98,7 @@
     "approved": "Approved",
     "rejected": "Rejected",
     "completed": "Completed",
+    "refunded": "Refunded",
     "cancelled": "Cancelled",
     "failed": "Failed"
   },
@@ -323,6 +324,8 @@
     "ticketCreatedSuffix": " created. Our team will reply; you'll see it under My Tickets.",
     "viewMyTickets": "View my tickets",
     "ticketError": "Couldn't create a ticket right now. Please try again.",
+    "ticketSignInRequired": "Sign in before opening a support ticket.",
+    "signIn": "Sign in",
     "somethingWrong": "Sorry, something went wrong. Please try again.",
     "privacyBlocked": "Your full message was kept from the AI because it may contain a phone number, email, ID, bank detail, or private address. Remove those details and send it again. You can also keep using the local FAQ without AI.",
     "supportRequest": "Support request",
@@ -365,6 +368,14 @@
         "done": "Refund requested. Track it on the order page.",
         "cancelled": "Cancelled",
         "failed": "Failed"
+      },
+      "order": {
+        "contextPrompt": "Ask a question about this order. Its current status will be checked.",
+        "title": "Order",
+        "status": "Status",
+        "checked": "Checked at {{time}}",
+        "open": "Open order",
+        "ticketDisclosure": "The ticket will include order {{reference}} and your question."
       }
     }
   },

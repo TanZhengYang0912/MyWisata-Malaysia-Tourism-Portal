@@ -20,10 +20,24 @@ import { prepareExternalText } from '@/lib/chatbot/pii';
 export async function POST(request: Request) {
   const parsed = await parseBody(request, chatbotAskSchema);
   if (!parsed.ok) return parsed.response;
-  const { sessionKey, question } = parsed.data;
+  const { sessionKey, question, orderId } = parsed.data;
 
   const authClient = await createClient();
   const { data: { user } } = await authClient.auth.getUser();
+
+  let orderContext: { id: string; displayId: string | null; status: string; checkedAt: string } | null = null;
+  if (orderId) {
+    if (!user) return apiFail('UNAUTHORIZED', 'Sign in to view an order.', 401);
+    const { data: order, error: orderError } = await authClient
+      .from('orders')
+      .select('id, display_id, status')
+      .eq('id', orderId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (orderError) return apiFail('DB_ERROR', 'Unable to check this order right now.', 503);
+    if (!order) return apiFail('NOT_FOUND', 'Order not found.', 404);
+    orderContext = { id: order.id, displayId: order.display_id ?? null, status: order.status, checkedAt: new Date().toISOString() };
+  }
 
   const service = createServiceClient();
 
@@ -119,6 +133,6 @@ export async function POST(request: Request) {
   // feedback-flow chrome (see lib/chatbot/strings.ts) to match this reply.
   return apiOk({
     sessionKey: session.session_key, answer: result.answer, botAnswered: result.kbMatched, messageId: botMsg.id, language: result.language, privacyBlocked,
-    listings: result.listings ?? [], comparison: result.comparison ?? null, refunds: result.refunds ?? [],
+    listings: result.listings ?? [], comparison: result.comparison ?? null, refunds: result.refunds ?? [], orderContext,
   });
 }

@@ -5,6 +5,8 @@ const RAINVIEWER_UNIVERSAL_BLUE = "63615966635a69665c6c685d6f6b5f726e61757062787
 const FIRST_RAIN_DBZ = -10;
 const MIN_RAIN_DBZ = 10;
 const DBZ_RANGE = 60;
+export const RADAR_ECHO_WEAK = [104, 185, 214] as const;
+export const RADAR_ECHO_STRONG = [36, 80, 158] as const;
 
 const rainPalette = Array.from({ length: 81 }, (_, index) => {
   const offset = index * 6;
@@ -61,11 +63,15 @@ export function hasBoundedForecastRain(samples: WeatherOverlaySample[]) {
   let hasInteriorRain = false;
   for (let index = 0; index < samples.length; index += 1) {
     const sample = samples[index];
-    if (sample.precipitationProbability === null || sample.precipitationProbability < 40 || sample.precipitationMm < 0.1) continue;
+    if (!isForecastRainSample(sample)) continue;
     if (distanceToWeatherGridBoundary(grid, index) <= interiorClearance) return false;
     hasInteriorRain = true;
   }
   return hasInteriorRain;
+}
+
+export function isForecastRainSample(sample: WeatherOverlaySample) {
+  return sample.precipitationProbability !== null && sample.precipitationProbability >= 40 && sample.precipitationMm >= 0.1;
 }
 
 function rainViewerDbzForRgb(red: number, green: number, blue: number) {
@@ -112,6 +118,15 @@ export function sampleRadarIntensityAt(rgba: Uint8ClampedArray, pixelIndex: numb
   if (rgba[pixelIndex + 3] === 0) return 0;
   const dbz = rainViewerDbzForRgb(rgba[pixelIndex], rgba[pixelIndex + 1], rgba[pixelIndex + 2]);
   return radarIntensityForDbz(dbz);
+}
+
+export function radarEchoShade(intensity: number | null): readonly [number, number, number, number] | null {
+  if (intensity === null || !Number.isFinite(intensity) || intensity <= 0) return null;
+  const blend = Math.sqrt(Math.min(intensity, 1));
+  const mix = (index: 0 | 1 | 2) => Math.round(
+    RADAR_ECHO_WEAK[index] + (RADAR_ECHO_STRONG[index] - RADAR_ECHO_WEAK[index]) * blend,
+  );
+  return [mix(0), mix(1), mix(2), Math.round(46 + blend * 112)];
 }
 
 export function tilePixelForCoordinate(latitude: number, longitude: number, zoom: number) {
