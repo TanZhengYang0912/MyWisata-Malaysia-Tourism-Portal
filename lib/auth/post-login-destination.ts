@@ -13,6 +13,10 @@ const HOME_BY_ROLE: Record<Role, string> = {
   super_admin: "/admin/dashboard",
 };
 
+export function roleHomePath(role: Role): string {
+  return HOME_BY_ROLE[role];
+}
+
 export function isWalletApproverPath(pathname: string): boolean {
   return pathname === "/admin/withdrawals" || pathname.startsWith("/admin/withdrawals/");
 }

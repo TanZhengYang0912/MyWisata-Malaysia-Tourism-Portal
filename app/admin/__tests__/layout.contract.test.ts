@@ -20,7 +20,9 @@ describe('admin navigation shell', () => {
     expect(layoutSource).toContain('if (!staffAccessReady || !currentUser || currentUser.role === "approver") return;');
     expect(layoutSource).toContain('router.replace(currentUser.role === "staff" ? "/staff" : navigationHrefs[0] ?? "/login")');
     expect(moduleMigrationSource).toContain("('withdrawals', 'approver', TRUE)");
-    expect(readFileSync(resolve(process.cwd(), 'app/page.tsx'), 'utf8')).toContain('approver: "/admin/withdrawals"');
+    // The role-home table moved out of app/page.tsx into the shared helper both root redirects use.
+    expect(readFileSync(resolve(process.cwd(), 'lib/auth/post-login-destination.ts'), 'utf8')).toContain('approver: "/admin/withdrawals"');
+    expect(readFileSync(resolve(process.cwd(), 'app/page.tsx'), 'utf8')).toContain('roleHomePath(currentUser.role)');
   });
 
   it('keeps the sidebar fixed while the navigation list can scroll independently', () => {

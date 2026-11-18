@@ -4,6 +4,8 @@ import { LOCALE_COOKIE, resolveAppLocale } from '@/lib/i18n/locale';
 import { staffAssurance } from '@/lib/auth/staff-assurance';
 import { staffPasskeyEnforcementEnabled } from '@/lib/auth/staff-passkey-config';
 import { isStaffProtectedPath, staffMfaDestination, staffVerificationDestination } from '@/lib/auth/staff-route-boundaries';
+import { pickDemoRole } from '@/lib/auth/demo-user-role';
+import { roleHomePath } from '@/lib/auth/post-login-destination';
 
 const localeCookieOptions = {
   path: '/',
@@ -28,6 +30,22 @@ export function adminAssuranceGate(pathname: string, claims: { sub?: unknown; aa
   if (ADMIN_API.test(pathname)) return 'api';
   if (ADMIN_PAGE.test(pathname) && !MFA_SETUP_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`))) return 'page';
   return null;
+}
+
+/**
+ * Where `/` sends a visitor, or null to fall through to the client fallback in
+ * app/page.tsx. `roleRows` is null when the role lookup failed. Matches that
+ * fallback and the auth callback: guests and role-less accounts browse
+ * /customer; everyone else goes to the home of their highest-priority role.
+ */
+export function rootEntryDestination(
+  isSignedIn: boolean,
+  roleRows: Array<{ role_name?: string | null }> | null,
+): string | null {
+  if (!isSignedIn) return '/customer';
+  if (!roleRows) return null;
+  if (roleRows.length === 0) return '/customer';
+  return roleHomePath(pickDemoRole(roleRows.map((row) => ({ roles: { name: row.role_name } }))));
 }
 
 /**
@@ -98,6 +116,23 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
         : NextResponse.redirect(new URL(staffVerificationDestination(request.nextUrl.pathname + request.nextUrl.search), request.url));
     }
     supabaseResponse.headers.set('Cache-Control', 'private, no-store');
+  }
+  // `/` is redirected here rather than with redirect() in app/page.tsx: the root
+  // loading.tsx makes a page redirect a streamed client-side meta refresh, while
+  // this is a 307 sent before any HTML or JavaScript.
+  if (!gate && request.nextUrl.pathname === '/' && (request.method === 'GET' || request.method === 'HEAD')) {
+    const isSignedIn = typeof claims?.sub === 'string' && claims.sub.length > 0;
+    let roleRows: Array<{ role_name?: string | null }> | null = null;
+    if (isSignedIn) {
+      const { data, error } = await supabase.rpc('get_my_roles');
+      roleRows = error ? null : (data ?? []) as Array<{ role_name?: string | null }>;
+    }
+    const destination = rootEntryDestination(isSignedIn, roleRows);
+    if (destination) {
+      supabaseResponse = NextResponse.redirect(new URL(destination, request.url));
+      // The destination depends on the session cookie; never let a shared cache keep it.
+      supabaseResponse.headers.set('Cache-Control', 'private, no-store');
+    }
   }
 
 
