@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
 import { getClaimsUserId } from "@/lib/auth/claims-user";
-import { getComputedActivity } from "@/backend/domains/catalogue";
 import { getCachedComputedActivities } from "@/lib/cache/catalogue-cache";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SavedHubClient } from "../wishlist/wishlist-client";
@@ -43,15 +42,24 @@ export default async function SavedPage() {
     return <EmptyState title={t("ui.wishlist.unavailable")} description={t("ui.wishlist.tryAgain")} />;
   }
 
-  const activities = (await Promise.all((rows ?? []).map((row) => getComputedActivity(row.product_id, undefined, supabase))))
-    .filter((activity): activity is NonNullable<typeof activity> => activity !== null);
+  const savedProductRows = rows ?? [];
+  const savedOutletIds = new Set((savedOutletRows ?? []).map((row) => row.outlet_id));
+  // Cards come from the shared 60 s public catalogue, read once for products and
+  // hotels. A per-row product read fired ~3 requests per saved item at once and
+  // exhausted the database pool for a 432-item wishlist (2026-11-18 incident).
+  const catalogue = savedProductRows.length > 0 || savedOutletIds.size > 0 ? await getCachedComputedActivities() : [];
+  const catalogueById = new Map(catalogue.map((activity) => [activity.id, activity]));
+
+  // Wishlist order (newest first); products that are no longer public drop out.
+  const activities = savedProductRows
+    .map((row) => catalogueById.get(row.product_id))
+    .filter((activity): activity is NonNullable<typeof activity> => activity !== undefined);
 
   const destinations = destinationError ? [] : (destinationRows ?? []).map((row) => ({ state: row.destination_state, savedAt: row.created_at }));
 
   // Saved hotels (D10): the rooms of each saved hotel, grouped into one hotel card on the client.
-  const savedOutletIds = new Set((savedOutletRows ?? []).map((row) => row.outlet_id));
   const hotelRooms = savedOutletIds.size
-    ? (await getCachedComputedActivities()).filter((activity) => activity.categorySlug === "accommodation" && savedOutletIds.has(activity.outlet.id))
+    ? catalogue.filter((activity) => activity.categorySlug === "accommodation" && savedOutletIds.has(activity.outlet.id))
     : [];
 
   return <SavedHubClient ownerId={userId} activities={activities} destinations={destinations} hotelRooms={hotelRooms} />;
