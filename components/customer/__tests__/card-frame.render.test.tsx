@@ -51,11 +51,17 @@ describe("ProductCard on the shared CardFrame", () => {
     expect(markup.indexOf("border-t border-border pt-3")).toBeGreaterThan(markup.indexOf("Brinchang, Pahang"));
   });
 
-  it("serves Supabase photos through the image optimizer and other hosts as-is", () => {
+  it("serves this project's Supabase photos through Supabase's resizer, other projects through /_next/image, and other hosts as-is", () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://abcdefghijklmnop.supabase.co");
     const supabasePhoto = "https://abcdefghijklmnop.supabase.co/storage/v1/object/public/product-images/x.jpg";
-    const optimized = renderToStaticMarkup(<ProductCard vendorListing={{ ...product, imageUrl: supabasePhoto }} returnTo="/customer/vendor/v1" />).match(/<img [^>]*>/)?.[0] ?? "";
-    expect(optimized).toContain("/_next/image?url=");
-    expect(optimized).toContain("srcSet=");
+    const resized = renderToStaticMarkup(<ProductCard vendorListing={{ ...product, imageUrl: supabasePhoto }} returnTo="/customer/vendor/v1" />).match(/<img [^>]*>/)?.[0] ?? "";
+    expect(resized).toContain("https://abcdefghijklmnop.supabase.co/storage/v1/render/image/public/product-images/x.jpg?width=");
+    expect(resized).toContain("resize=contain");
+    expect(resized).toContain("srcSet=");
+    expect(resized).not.toContain("/_next/image");
+    const otherProject = renderToStaticMarkup(<ProductCard vendorListing={{ ...product, imageUrl: "https://otherprojectabcdef.supabase.co/storage/v1/object/public/product-images/x.jpg" }} returnTo="/customer/vendor/v1" />).match(/<img [^>]*>/)?.[0] ?? "";
+    expect(otherProject).toContain("/_next/image?url=");
+    vi.unstubAllEnvs();
     const external = renderToStaticMarkup(<ProductCard vendorListing={{ ...product, imageUrl: "https://example.test/x.jpg" }} returnTo="/customer/vendor/v1" />).match(/<img [^>]*>/)?.[0] ?? "";
     expect(external).toContain('src="https://example.test/x.jpg"');
     expect(external).not.toContain("/_next/image");
@@ -151,10 +157,12 @@ describe("VendorCard and OutletCard", () => {
     expect(markup).toContain("border-[3px] border-background");
   });
 
-  it("serves a Supabase logo through the image optimizer", () => {
+  it("serves a Supabase logo through Supabase's resizer", () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://abcdefghijklmnop.supabase.co");
     const logoUrl = "https://abcdefghijklmnop.supabase.co/storage/v1/object/public/vendor-images/entities/vendor/v1/logo.png";
     const markup = renderToStaticMarkup(<VendorCard vendor={{ ...vendor, logoUrl }} />);
-    expect(markup).toMatch(/<img [^>]*src="\/_next\/image\?url=[^"]*vendor-images/);
+    vi.unstubAllEnvs();
+    expect(markup).toMatch(/<img [^>]*src="https:\/\/abcdefghijklmnop\.supabase\.co\/storage\/v1\/render\/image\/public\/vendor-images\/[^"]*resize=contain/);
   });
 
   it("leaves out the rating and open state when they are unknown", () => {

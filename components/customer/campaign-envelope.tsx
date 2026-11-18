@@ -12,7 +12,7 @@ import { isMalaysiaFullDayRange } from "@/lib/datetime/malaysia";
 import { formatDate } from "@/lib/i18n/format";
 import { DEFAULT_LOCALE, isAppLocale } from "@/lib/i18n/locale";
 import type { PromotionCampaignPublic } from "@/lib/promotion-campaigns/types";
-import { isOptimizableImageUrl } from "@/lib/storage/optimizable-image";
+import { isOptimizableImageUrl, storageImageLoader } from "@/lib/storage/optimizable-image";
 
 const PIECES = ["bottom", "top"] as const;
 /** One stamp per carousel position, cycling. */
@@ -332,7 +332,7 @@ export function CampaignEnvelope({ campaign, imagePriority = false, position = 0
         <div ref={letterRef} data-slot="campaign-envelope-letter" className="mw-envelope__letter bg-card text-foreground">
           <div className={image ? "mw-envelope__lphoto" : "mw-envelope__lphoto bg-secondary"}>
             {image
-              ? <Image src={image} alt="" fill sizes="(max-width: 767px) 100vw, 1200px" loading={imagePriority ? "eager" : "lazy"} unoptimized={unoptimized} className="object-cover" />
+              ? <Image src={image} alt="" fill sizes="(max-width: 767px) 100vw, 1200px" loading={imagePriority ? "eager" : "lazy"} unoptimized={unoptimized} loader={storageImageLoader(image)} className="object-cover" />
               : <span className="absolute inset-0 flex items-center justify-center text-muted-foreground/50"><CalendarDays size={56} strokeWidth={1} /></span>}
           </div>
           <p className="mw-envelope__ltitle text-primary">{localizedTitle((text) => splitEnvelopeTitle(text)[0])}</p>

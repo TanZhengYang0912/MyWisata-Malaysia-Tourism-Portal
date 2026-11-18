@@ -74,6 +74,14 @@ describe("vendor-to-outlet commerce boundary", () => {
   });
 });
 
+describe("product hero image", () => {
+  it("resizes the hero instead of downloading the original, through Supabase's resizer for Storage photos", () => {
+    expect(source).not.toContain("<img");
+    expect(source).toContain("const heroImage = placeBound ? getPlaceActivityImage(activity) : activity.image;");
+    expect(source).toContain('<Image src={heroImage} alt={activity.name} fill sizes="(min-width: 1024px) 820px, 100vw" loading="eager" fetchPriority="high" unoptimized={!isOptimizableImageUrl(heroImage)} loader={storageImageLoader(heroImage)}');
+  });
+});
+
 describe("related vendor section", () => {
   it("uses one vendor heading and keeps the vendor link and related product cards", () => {
     expect(source).not.toContain('t("ui.activity.moreFromVendorSubtitle"');

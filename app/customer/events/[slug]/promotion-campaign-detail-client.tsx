@@ -25,7 +25,7 @@ import {
   PHASE_LABEL_KEY,
   type EventLocationPhase,
 } from "@/lib/promotion-campaigns/locations";
-import { isOptimizableImageUrl } from "@/lib/storage/optimizable-image";
+import { isOptimizableImageUrl, storageImageLoader } from "@/lib/storage/optimizable-image";
 import type { PromotionCampaignPublic, PromotionCampaignPublicStall, PromotionCampaignPublicVendor } from "@/lib/promotion-campaigns/types";
 import styles from "./promotion-campaign-detail.module.css";
 
@@ -112,6 +112,7 @@ function StallBooth({ campaignSlug, entry, phase, locale }: { campaignSlug: stri
               fill
               sizes="(max-width: 900px) 50vw, 260px"
               unoptimized={!isOptimizableImageUrl(stall.stallPosterUrl)}
+              loader={storageImageLoader(stall.stallPosterUrl)}
               className="object-cover"
             />
           )}

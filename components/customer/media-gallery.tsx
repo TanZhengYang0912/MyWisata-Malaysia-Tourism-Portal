@@ -1,7 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Image from "next/image";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { isOptimizableImageUrl, storageImageLoader } from "@/lib/storage/optimizable-image";
 import type { GalleryItem } from "@/lib/vendor/outlet-page-schema";
 
 type MediaGalleryProps = {
@@ -33,10 +35,8 @@ export function MediaGallery({ items, label, previousLabel, nextLabel, slideLabe
         if (first) setActiveIndex(Math.round(target.scrollLeft / Math.max(first.offsetWidth, 1)));
       }}>
         {items.map((item, index) => (
-          <figure key={item.url} role="group" aria-roledescription={slideLabel} aria-label={`${slideLabel} ${index + 1} / ${items.length}`} className="relative min-w-full snap-start overflow-hidden rounded-2xl">
-            {/* Runtime-configured Storage URLs are intentionally rendered as img. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={item.url} alt={item.alt || label} loading={index === 0 ? "eager" : "lazy"} decoding="async" className="h-[240px] w-full object-cover sm:h-[320px] lg:h-[400px]" />
+          <figure key={item.url} role="group" aria-roledescription={slideLabel} aria-label={`${slideLabel} ${index + 1} / ${items.length}`} className="relative h-[240px] min-w-full snap-start overflow-hidden rounded-2xl sm:h-[320px] lg:h-[400px]">
+            <Image src={item.url} alt={item.alt || label} fill sizes="(min-width: 1280px) 1200px, 100vw" loading={index === 0 ? "eager" : "lazy"} unoptimized={!isOptimizableImageUrl(item.url)} loader={storageImageLoader(item.url)} className="object-cover" />
           </figure>
         ))}
       </div>

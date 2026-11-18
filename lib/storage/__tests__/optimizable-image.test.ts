@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isOptimizableImageUrl } from "@/lib/storage/optimizable-image";
+import { isOptimizableImageUrl, storageImageLoader, supabaseImageLoader } from "@/lib/storage/optimizable-image";
 
 const PUBLIC_PATH = "/storage/v1/object/public/product-images/x.jpg";
 
@@ -49,5 +49,51 @@ describe("isOptimizableImageUrl", () => {
     expect(isOptimizableImageUrl(null)).toBe(false);
     expect(isOptimizableImageUrl(undefined)).toBe(false);
     expect(isOptimizableImageUrl("")).toBe(false);
+  });
+});
+
+describe("storageImageLoader", () => {
+  const project = "https://abcdefghijklmnop.supabase.co";
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("routes this project's public Storage objects through Supabase's resizer", () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", project);
+    const src = `${project}${PUBLIC_PATH}`;
+    const loader = storageImageLoader(src);
+    expect(loader).toBe(supabaseImageLoader);
+    expect(loader?.({ src, width: 640, quality: 90 })).toBe(
+      `${project}/storage/v1/render/image/public/product-images/x.jpg?width=640&quality=90&resize=contain`,
+    );
+  });
+
+  it("caps the width at Supabase's 2500 limit and defaults the quality to 75", () => {
+    const src = `${project}${PUBLIC_PATH}`;
+    expect(supabaseImageLoader({ src, width: 3840 })).toBe(
+      `${project}/storage/v1/render/image/public/product-images/x.jpg?width=2500&quality=75&resize=contain`,
+    );
+  });
+
+  it("keeps an encoded object path intact", () => {
+    const src = `${project}/storage/v1/object/public/vendor-images/a%20b/caf%C3%A9.jpg`;
+    expect(supabaseImageLoader({ src, width: 384 })).toContain("/storage/v1/render/image/public/vendor-images/a%20b/caf%C3%A9.jpg?");
+  });
+
+  it("leaves every other image on the default loader", () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", project);
+    expect(storageImageLoader(`https://otherprojectabcdef.supabase.co${PUBLIC_PATH}`)).toBeUndefined();
+    expect(storageImageLoader(`${project}/storage/v1/object/sign/product-images/x.jpg?token=t`)).toBeUndefined();
+    expect(storageImageLoader("https://example.test/x.jpg")).toBeUndefined();
+    expect(storageImageLoader("/customer/x.webp")).toBeUndefined();
+    expect(storageImageLoader(`http://abcdefghijklmnop.supabase.co${PUBLIC_PATH}`)).toBeUndefined();
+    expect(storageImageLoader(null)).toBeUndefined();
+    expect(storageImageLoader("")).toBeUndefined();
+  });
+
+  it("leaves local Supabase Storage on the default loader", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "http://127.0.0.1:54321");
+    expect(storageImageLoader(`http://127.0.0.1:54321${PUBLIC_PATH}`)).toBeUndefined();
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://localhost");
+    expect(storageImageLoader(`https://localhost${PUBLIC_PATH}`)).toBeUndefined();
   });
 });
