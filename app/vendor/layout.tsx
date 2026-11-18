@@ -3,11 +3,12 @@ import VendorHeader from '@/components/layout/vendor-header';
 import VendorAccessGate from '@/components/layout/vendor-access-gate';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getClaimsUserId } from '@/lib/auth/claims-user';
 
 export default async function VendorLayout({ children }: { children: React.ReactNode }) {
   const db = await createClient();
-  const { data: { user } } = await db.auth.getUser();
-  if (!user) redirect('/login');
+  // Sign-in redirect only: VendorAccessGate and every vendor API authorize with getUser().
+  if (!(await getClaimsUserId(db))) redirect('/login');
 
   return (
     <>

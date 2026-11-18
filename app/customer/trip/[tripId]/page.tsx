@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { getClaimsUserId } from "@/lib/auth/claims-user";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { getTripById, getTripItems } from "@/backend/domains/trips";
 import { searchTripActivities } from "@/backend/domains/catalogue";
@@ -22,21 +23,22 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function TripPlannerPage({ params }: { params: Promise<{ tripId: string }> }) {
   const db = await createClient();
-  const { data: { user } } = await db.auth.getUser();
+  // Sign-in redirect only; the trip reads below still check the owner with getUser().
+  const userId = await getClaimsUserId(db);
 
   const resolvedParams = await params;
   const tripId = resolvedParams.tripId;
 
-  if (!user) {
+  if (!userId) {
     redirect(`/auth/sign-in?redirect_to=/customer/trip/${tripId}`);
   }
 
-  const trip = await getTripById(tripId, db);
+  // Loaded together: getTripItems returns [] without reading stops when the trip is not the caller's.
+  const [trip, items] = await Promise.all([getTripById(tripId, db), getTripItems(tripId, db)]);
   if (!trip) {
     notFound();
   }
 
-  const items = await getTripItems(tripId, db);
   const anchor = getTripDiscoveryAnchor(items, trip.start_date);
   const [discoveryData, placementsResult, suggestionsResult] = await Promise.all([
     getCachedDiscoveryActivityData(),

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
+import { getClaimsUserId } from "@/lib/auth/claims-user";
 import { getComputedActivity } from "@/backend/domains/catalogue";
 import { getCachedComputedActivities } from "@/lib/cache/catalogue-cache";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -14,9 +15,10 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function SavedPage() {
   const { t } = await getServerTranslation("customer");
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Own saved rows only (RLS-scoped), so the proxy-verified claims are enough.
+  const userId = await getClaimsUserId(supabase);
 
-  if (!user) {
+  if (!userId) {
     return <EmptyState title={t("ui.saved.signInTitle")} description={t("ui.saved.signInDescription")} />;
   }
 
@@ -24,17 +26,17 @@ export default async function SavedPage() {
     supabase
       .from("customer_wishlists")
       .select("product_id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false }),
     supabase
       .from("customer_saved_destinations")
       .select("destination_state,created_at")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false }),
     supabase
       .from("customer_saved_outlets")
       .select("outlet_id")
-      .eq("user_id", user.id),
+      .eq("user_id", userId),
   ]);
 
   if (error) {
@@ -52,5 +54,5 @@ export default async function SavedPage() {
     ? (await getCachedComputedActivities()).filter((activity) => activity.categorySlug === "accommodation" && savedOutletIds.has(activity.outlet.id))
     : [];
 
-  return <SavedHubClient ownerId={user.id} activities={activities} destinations={destinations} hotelRooms={hotelRooms} />;
+  return <SavedHubClient ownerId={userId} activities={activities} destinations={destinations} hotelRooms={hotelRooms} />;
 }

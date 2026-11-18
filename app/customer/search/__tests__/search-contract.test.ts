@@ -15,7 +15,7 @@ describe("customer vendor search contract", () => {
   it("reuses the directory catalogue for the no-query recommendation feed", () => {
     expect(pageSource).toContain("const resultsPromise = getCachedComputedActivities()");
     expect(pageSource).toContain("filterComputedActivities({ q: q || undefined }");
-    expect(pageSource).toContain("resultsPromise.then((results) => getRecommendedFeed");
+    expect(pageSource).toContain("Promise.all([userIdPromise, resultsPromise]).then(([userId, results]) => getRecommendedFeed");
     expect(pageSource).toContain("candidates: results");
   });
 
@@ -40,6 +40,12 @@ describe("customer vendor search contract", () => {
     expect(pageSource).not.toContain("approved_by");
     expect(clientSource).toContain("<SponsoredPartnerRail");
     expect(filterSource).toContain("categoryOptions.map");
+  });
+
+  it("reads the visitor id from verified claims without holding up the other reads", () => {
+    expect(pageSource).toContain("const userIdPromise = getClaimsUserId(db)");
+    expect(pageSource).toContain("Promise.all([userIdPromise, resultsPromise])");
+    expect(pageSource).not.toContain("auth.getUser()");
   });
 
   it("sends per-vendor filter facts instead of every product to the browser", () => {

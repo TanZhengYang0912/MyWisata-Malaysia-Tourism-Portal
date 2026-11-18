@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getClaimsUserId } from "@/lib/auth/claims-user";
 import { getRecommendedFeed } from "@/backend/domains/recommend";
 import { rankFeaturedVendors } from "@/backend/domains/vendor-recommend";
 import {
@@ -38,7 +39,8 @@ export default async function CustomerHomePage() {
   const requestedAt = new Date().toISOString();
   // Each read waits only for the result it needs. Public reads are shared by
   // every visitor and cached for up to 60 s; a failed read degrades its section.
-  const userPromise = db.auth.getUser();
+  // The proxy already verified the session; the feed only needs the id.
+  const userIdPromise = getClaimsUserId(db);
   // Cached for 60 s — same data for all visitors, no user-specific filtering
   const activitiesPromise = getCachedComputedActivities();
   const vendorRowsPromise = getCachedHomeVendors().catch(() => null);
@@ -52,7 +54,7 @@ export default async function CustomerHomePage() {
     vendorRowsPromise,
     campaignsPromise,
     getCachedSponsoredPlacements().catch(() => null),
-    Promise.all([userPromise, activitiesPromise]).then(([{ data: { user } }, candidates]) => getRecommendedFeed(user?.id ?? null, { limit: 8, candidates }, db)),
+    Promise.all([userIdPromise, activitiesPromise]).then(([userId, candidates]) => getRecommendedFeed(userId, { limit: 8, candidates }, db)),
     Promise.all([vendorRowsPromise, eventVendorIdsPromise]).then(([rows, eventVendorIds]) => {
       const vendorIds = Array.from(new Set([...(rows ?? []).map((vendor) => vendor.id), ...eventVendorIds])).sort();
       return vendorIds.length ? getCachedVendorMedia(vendorIds).catch(() => null) : null;
