@@ -1,10 +1,9 @@
 import type { Metadata } from 'next';
 import type { TFunction } from 'i18next';
-import type { ReactNode } from 'react';
+import { cache, type ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { ArrowRight, CheckCircle2, Clock3, ShieldCheck, Star } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
-import { createServiceClient } from '@/lib/supabase/service';
+import { getCachedOutletRatings, getCachedPublicVendorPage } from '@/lib/cache/catalogue-cache';
 import { ShareButton } from '@/components/shared/share-button';
 import { ReferencePrice } from "@/components/shared/reference-price";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
@@ -19,7 +18,6 @@ import { resolveOutletImage, type ManagedPlaceImage } from '@/lib/outlet-images'
 import { productImageUrl } from '@/lib/storage/product-image';
 import { getServerTranslation } from '@/lib/i18n/server';
 import type { OperatingHours } from '@/backend/core/types';
-import { getReviewRatingSummary, getScopeRatingSummaries, getScopedReviewPage } from '@/backend/domains/vendor-reviews';
 import { VendorReviewsList } from '@/components/customer/vendor-reviews-list';
 import { BRAND_NAME } from '@/lib/i18n/invariant-tokens';
 import { MediaGallery } from '@/components/customer/media-gallery';
@@ -68,56 +66,11 @@ function formatBusinessType(value: string | null, t: TFunction) {
   return translated === key ? value.split(/[_-]/).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' & ') : translated;
 }
 
-async function getVendor(vendorId: string) {
-  const db = await createClient();
-  type VendorDetail = {
-    id: string;
-    name: string;
-    slug: string;
-    description: string | null;
-    logo_url: string | null;
-    cover_url: string | null;
-    business_type: string | null;
-    featured_product_ids?: string[] | null;
-    /** 'event' vendors sell only at events and are shown as event partners. */
-    kind?: 'shop' | 'event';
-  };
-
-  let vendor: VendorDetail | null = null;
-
-  const { data: vendorWithFeatured, error: featuredErr } = await db
-    .from('vendors')
-    .select('id,name,slug,description,logo_url,cover_url,business_type,featured_product_ids,kind')
-    .eq('id', vendorId)
-    .eq('status', 'approved')
-    .maybeSingle();
-
-  if (featuredErr || !vendorWithFeatured) {
-    const { data: standardVendor } = await db
-      .from('vendors')
-      .select('id,name,slug,description,logo_url,cover_url,business_type,kind')
-      .eq('id', vendorId)
-      .eq('status', 'approved')
-      .maybeSingle();
-    vendor = (standardVendor as unknown as VendorDetail) || null;
-  } else {
-    vendor = (vendorWithFeatured as unknown as VendorDetail) || null;
-  }
-  if (!vendor) return null;
-
-  const [{ data: outlets }, { data: products }, { data: managedPlaces }] = await Promise.all([
-    db.from('outlets').select('id,name,city,state,address,lat,lng,operating_hours,outlet_pages(hero_url)').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
-    db.from('products').select('id,name,product_type,requires_booking,base_price,cover_url,outlet_id,tags,outlet_offers(outlet_id,price,status)').eq('vendor_id', vendorId).eq('status', 'active').eq('review_status', 'approved').order('name'),
-    db.from('places').select('name,image_url').eq('managed_by_vendor_id', vendorId).eq('level', 'poi').eq('status', 'active'),
-  ]);
-
-  const outletIds = (outlets ?? []).map((outlet) => outlet.id);
-  const [{ data: vendorMedia }, { data: outletMedia }] = await Promise.all([
-    db.from('media_assets').select('url,alt_text,media_type,sort_order').eq('vendor_id', vendorId).is('outlet_id', null).is('product_id', null).order('sort_order'),
-    outletIds.length
-      ? db.from('media_assets').select('outlet_id,url,alt_text,media_type,sort_order').in('outlet_id', outletIds).is('product_id', null).order('sort_order')
-      : Promise.resolve({ data: [] as Array<{ outlet_id: string; url: string; alt_text: string | null; media_type: string | null; sort_order: number | null }> }),
-  ]);
+// One read per request: generateMetadata and the page share it. The rows come from the 60 s public cache.
+const getVendor = cache(async (vendorId: string) => {
+  const rows = await getCachedPublicVendorPage(vendorId);
+  if (!rows) return null;
+  const { vendor, outlets, products, managedPlaces, vendorMedia, outletMedia, metricRows, reviewPage, reviewSummary } = rows;
 
   const toMediaRows = (rows: unknown): EntityMediaRow[] => (Array.isArray(rows) ? rows : []).map((row) => {
     const value = row as { url?: string; alt_text?: string | null; media_type?: string | null; sort_order?: number | null };
@@ -140,10 +93,7 @@ async function getVendor(vendorId: string) {
     return { ...outlet, operatingHours: outlet.operating_hours as OperatingHours | null, logoUrl: selectEntityLogo(mediaRows), gallery: safeGallery, coverUrl: safeGallery[0]?.url ?? resolveOutletImage({ outletName: outlet.name, outletHeroUrl: outletPage?.hero_url, managedPlaceImages }) };
   }) as OutletRecord[];
   const outletNames = new Map(outletRows.map((outlet) => [outlet.id, outlet.name]));
-  const productRows = products ?? [];
-  const metricRows = productRows.length
-    ? (await db.from('product_review_metrics').select('product_id,rating,reviews').in('product_id', productRows.map((product) => product.id))).data ?? []
-    : [];
+  const productRows = products;
   const reviewMetrics = new Map((metricRows as { product_id: string; rating: number | string; reviews: number | string }[]).map((row) => [row.product_id, { rating: Number(row.rating), reviews: Number(row.reviews) }]));
 
   const catalogue = productRows.map((product) => {
@@ -180,12 +130,9 @@ async function getVendor(vendorId: string) {
   const featured = selectFeaturedVendorProducts(catalogue, catalogue.length, explicitFeaturedIds);
   const featuredIds = new Set(featured.map((product) => product.id));
 
-  const [reviewPage, reviewSummary, outletRatings] = await Promise.all([
-    getScopedReviewPage("vendor", vendorId, { page: 1, pageSize: 6 }, db),
-    getReviewRatingSummary("vendor", vendorId, createServiceClient()),
-    // One batched lookup for the location cards; outlets without reviews show none.
-    getScopeRatingSummaries("outlet", locations.map((location) => location.id), createServiceClient()).catch(() => null),
-  ]);
+  // One batched lookup for the location cards; outlets without reviews show none, and a failed read shows no ratings.
+  const outletRatingEntries = await getCachedOutletRatings(locations.map((location) => location.id).sort()).catch(() => null);
+  const outletRatings = outletRatingEntries ? new Map(outletRatingEntries) : null;
 
   return {
     vendor,
@@ -198,7 +145,7 @@ async function getVendor(vendorId: string) {
     reviews: reviewPage.items,
     reviewRatingBuckets: reviewSummary.buckets,
   };
-}
+});
 
 export async function generateMetadata({ params }: { params: Promise<{ vendorId: string }> }): Promise<Metadata> {
   const { vendorId } = await params;
