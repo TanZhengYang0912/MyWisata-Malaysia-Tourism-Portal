@@ -8,7 +8,16 @@ import { getActivities, getVoucherByCode } from "./catalogue";
 import type { PaymentMethod } from "@/lib/constants";
 import type { Booking, CartItem, LegacyStayBookingDetails, Order, OrderItem, StayBookingDetails, WalletTransaction, WithdrawalRequest } from "@/backend/core/types";
 import { buildCustomerHistoryQuery, type CustomerHistoryFilters } from "@/lib/wallet/customer-transaction-filters";
-import { stayBookingDetailsSchema } from "@/lib/validation/schemas";
+
+/**
+ * CartProvider imports this module on every page, so the stay schema is loaded
+ * only when a stay is validated. A static import would ship zod and
+ * libphonenumber-js (via lib/validation/schemas.ts) in every page's first load.
+ */
+async function parseStayBookingDetails(input: unknown) {
+  const { stayBookingDetailsSchema } = await import("@/lib/validation/schemas");
+  return stayBookingDetailsSchema.parse(input);
+}
 
 
 // ─── Supabase cart ──────────────────────────────────────────────────────────
@@ -66,7 +75,7 @@ export async function getCart(userId: string): Promise<CartItem[]> {
 
 export async function addToCart(userId: string, item: CartItem): Promise<{ items: CartItem[]; cartItemId: string }> {
   assertCartItemHasBackingRecord(item);
-  const parsedDetails = item.stayDetails ? stayBookingDetailsSchema.parse(item.stayDetails) : null;
+  const parsedDetails = item.stayDetails ? await parseStayBookingDetails(item.stayDetails) : null;
   const { data: product, error: productError } = await supabase.from("products").select("id,categories(slug)").eq("id", item.activityId).maybeSingle();
   if (productError) throw productError;
   if (!product) throw new Error("cart_product_unavailable");
@@ -98,7 +107,7 @@ export async function addToCart(userId: string, item: CartItem): Promise<{ items
 }
 
 export async function updateCartStayDetails(userId: string, cartItemId: string, input: StayBookingDetails): Promise<CartItem[]> {
-  const details = stayBookingDetailsSchema.parse(input);
+  const details = await parseStayBookingDetails(input);
   const cart = await getOrCreateCart(userId);
   const { data: row, error: rowError } = await supabase.from("cart_items")
     .select("id,variant_id,slot_id,stay_details,product_variants(product_id),booking_slots(product_id)")

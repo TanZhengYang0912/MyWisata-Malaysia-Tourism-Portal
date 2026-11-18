@@ -15,6 +15,15 @@ describe("journey canvas weather overlay contract", () => {
     expect(source).not.toContain('<Layer id="trip-weather-boundary"');
   });
 
+  it("leaves the maplibre worker setup to the lazy map so the planner's first load skips maplibre-gl", () => {
+    const overlay = fs.readFileSync(path.join(routeDir, "trip-weather-map-overlay.tsx"), "utf8");
+    const map = fs.readFileSync(path.resolve(process.cwd(), "components/map/maplibre-map.tsx"), "utf8");
+    const mapView = fs.readFileSync(path.resolve(process.cwd(), "components/map/map-view.tsx"), "utf8");
+    expect(overlay).not.toContain('import "@/lib/maplibre-worker"');
+    expect(map).toContain('import "@/lib/maplibre-worker"');
+    expect(mapView).toContain('dynamic(() => import("./maplibre-map")');
+  });
+
   it("keeps the map atmosphere scoped to the existing nearby-place radius", () => {
     const planner = fs.readFileSync(path.join(routeDir, "trip-planner-client.tsx"), "utf8");
     const overlay = fs.readFileSync(path.join(routeDir, "trip-weather-map-overlay.tsx"), "utf8");
