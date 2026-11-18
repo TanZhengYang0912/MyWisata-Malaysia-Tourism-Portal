@@ -9,6 +9,7 @@ const exploreSource = read("app/customer/explore/explore-client.tsx");
 const vendorCardSource = read("components/customer/vendor-card.tsx");
 const catalogueSource = read("backend/domains/catalogue.ts");
 const filterSource = read("components/customer/discovery-filters.tsx");
+const directorySource = read("lib/customer/partner-directory.ts");
 
 describe("customer vendor search contract", () => {
   it("reuses the directory catalogue for the no-query recommendation feed", () => {
@@ -30,14 +31,24 @@ describe("customer vendor search contract", () => {
     expect(pageSource).toContain("getRecommendedFeed");
     expect(pageSource).toContain("rankVendorsByPersonalizedFeed");
     expect(pageSource).toContain('rpc("list_active_sponsored_discovery_placements")');
-    expect(pageSource).toContain("initialResults={partnerResults}");
+    expect(pageSource).toContain("selectPartnerAdvertisements({");
+    expect(pageSource).toContain("activities: partnerResults");
     expect(pageSource).toContain("initialVendors=");
     expect(pageSource).toContain("recommendedVendors=");
-    expect(pageSource).toContain("sponsoredPlacements=");
+    expect(pageSource).toContain("advertisements={advertisements}");
     expect(pageSource).not.toContain("review_note");
     expect(pageSource).not.toContain("approved_by");
     expect(clientSource).toContain("<SponsoredPartnerRail");
     expect(filterSource).toContain("categoryOptions.map");
+  });
+
+  it("sends per-vendor filter facts instead of every product to the browser", () => {
+    expect(pageSource).toContain("buildPartnerFilterFacts(results)");
+    expect(pageSource).not.toContain("initialResults=");
+    expect(pageSource).not.toContain("sponsoredPlacements=");
+    expect(pageSource).not.toContain("popularProducts");
+    expect(clientSource).not.toContain("initialResults");
+    expect(clientSource).toContain("matchesPartnerFilters(vendor, filters)");
   });
 
   it("renders vendors as the primary search result", () => {
@@ -75,8 +86,8 @@ describe("customer vendor search contract", () => {
     expect(clientSource).toContain("timeTo");
     expect(filterSource).toContain('type="time"');
     expect(filterSource).toContain('t("ui.labels.openNow")');
-    expect(clientSource).toContain("isOperatingHoursWindowAvailable");
-    expect(clientSource).toContain("operatingHours");
+    expect(directorySource).toContain("isOperatingHoursWindowAvailable");
+    expect(directorySource).toContain("operatingHours");
   });
 
   it("uses the same customer discovery filter panel as Explore", () => {
