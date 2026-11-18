@@ -10,6 +10,8 @@ const pageSource = readFileSync(
   resolve(process.cwd(), "app/customer/vendor/[vendorId]/page.tsx"),
   "utf8",
 );
+// The vendor page's review reads live in the shared public cache.
+const cacheSource = readFileSync(resolve(process.cwd(), "lib/cache/catalogue-cache.ts"), "utf8");
 
 describe("vendor reviews list and contract", () => {
   it("renders review cards with star rating, verified badge, and product links", () => {
@@ -28,7 +30,8 @@ describe("vendor reviews list and contract", () => {
   it("integrates VendorReviewsList into the vendor page", () => {
     expect(pageSource).toContain("import { VendorReviewsList");
     expect(pageSource).toContain("<VendorReviewsList reviews={reviews} ratingBuckets={reviewRatingBuckets} totalReviews={reviewSummary.reviews} vendorId={vendor.id} />");
-    expect(pageSource).toContain("getScopedReviewPage(\"vendor\", vendorId");
+    expect(cacheSource).toContain("getScopedReviewPage('vendor', vendorId");
     expect(pageSource).not.toContain("users(full_name)");
+    expect(cacheSource).not.toContain("users(full_name)");
   });
 });
