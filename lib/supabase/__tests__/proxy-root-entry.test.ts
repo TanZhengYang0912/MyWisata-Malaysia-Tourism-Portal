@@ -27,9 +27,14 @@ function setupSupabase({
     await cookies?.setAll(authCookies, {});
     return { data: claimsSub ? { claims: { sub: claimsSub, aal: "aal1" } } : { claims: null }, error: null };
   });
-  const rpc = vi.fn(async () => roles);
+  // The proxy also reads the account's preferred language on signed-in page loads.
+  const rpc = vi.fn(async (name: string) => (name === "get_my_roles" ? roles : { data: null, error: null }));
   mocks.createServerClient.mockReturnValue({ auth: { getClaims }, rpc });
   return { getClaims, rpc };
+}
+
+function roleLookups(rpc: ReturnType<typeof setupSupabase>["rpc"]) {
+  return rpc.mock.calls.filter(([name]) => name === "get_my_roles").length;
 }
 
 function makeRequest(path = "/", method = "GET") {
@@ -93,7 +98,7 @@ describe("Supabase proxy root entry redirect", () => {
     expect(response.status).toBe(307);
     expect(new URL(response.headers.get("location")!).pathname).toBe(expected);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
-    expect(rpc).toHaveBeenCalledExactlyOnceWith("get_my_roles");
+    expect(roleLookups(rpc)).toBe(1);
   });
 
   it("falls through to the client fallback when the role lookup fails", async () => {
@@ -128,6 +133,6 @@ describe("Supabase proxy root entry redirect", () => {
     const response = await updateSession(makeRequest(path, method));
 
     expect(response.headers.get("location")).toBeNull();
-    expect(rpc).not.toHaveBeenCalled();
+    expect(roleLookups(rpc)).toBe(0);
   });
 });
