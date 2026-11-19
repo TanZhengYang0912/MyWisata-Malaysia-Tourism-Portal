@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { getClaimsUserId } from "@/lib/auth/claims-user";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { filterComputedActivities, getVendors } from "@/backend/domains/catalogue";
 import { getCachedComputedActivities, getCachedVendorRatings } from "@/lib/cache/catalogue-cache";
 import { getRecommendedFeed } from "@/backend/domains/recommend";
 import { rankFeaturedVendors, rankVendorsByPersonalizedFeed } from "@/backend/domains/vendor-recommend";
-import { popularVendorProducts } from "@/lib/customer/vendor-page";
 import { isOperatingHoursOpenNow } from "@/lib/customer/operating-hours";
 import type { SponsoredPlacement, VendorSummary } from "@/backend/core/types";
-import { attachSponsoredOutletGalleryCovers } from "@/lib/customer/partner-directory";
+import { attachSponsoredOutletGalleryCovers, buildPartnerFilterFacts, selectPartnerAdvertisements } from "@/lib/customer/partner-directory";
 import { SearchClient } from "../search/search-client";
 import { BRAND_NAME } from "@/lib/i18n/invariant-tokens";
 import { getFeaturedEventPromotions } from "@/lib/customer/event-promotions";
@@ -38,13 +38,14 @@ interface Props {
 export default async function PartnersPage({ searchParams }: Props) {
   const { q } = await searchParams;
   const db = await createClient();
-  const { data: { user } } = await db.auth.getUser();
+  // Only the recommendations need the visitor, so no other read waits for it.
+  const userIdPromise = getClaimsUserId(db);
   // Public catalogue from the shared 60 s cache (same as Home and Explore), filtered per request.
   const resultsPromise = getCachedComputedActivities().then((activities) => filterComputedActivities({ q: q || undefined }, activities));
   const recommendationPromise = q
     ? Promise.resolve([])
-    : resultsPromise.then((results) => getRecommendedFeed(
-      user?.id ?? null,
+    : Promise.all([userIdPromise, resultsPromise]).then(([userId, results]) => getRecommendedFeed(
+      userId,
       { limit: 12, candidates: results },
       db,
     ));
@@ -64,11 +65,14 @@ export default async function PartnersPage({ searchParams }: Props) {
   ]);
   // Event vendors never appear in the normal directory — only under "Event partners".
   const directoryVendors = vendors.filter(isDirectoryVendor);
+  // The browser filters vendors from these per-vendor facts instead of receiving every product.
+  const factsByVendor = buildPartnerFilterFacts(results);
   const approvedVendors = directoryVendors.map((vendor) => ({
     ...vendor,
     rating: vendorRatings ? vendorRatings.get(vendor.id) ?? null : undefined,
     openNow: vendor.outlets.some((outlet) => outlet.currentlyOpen ?? isOperatingHoursOpenNow(outlet.operatingHours)),
-    popularProducts: popularVendorProducts(results, vendor.id),
+    categories: factsByVendor.get(vendor.id)?.categories ?? [],
+    activityFacts: factsByVendor.get(vendor.id)?.activityFacts ?? [],
   }));
   const today = getMalaysiaDateInputValue();
   const eventPartners: EventPartner[] = vendors
@@ -133,13 +137,22 @@ export default async function PartnersPage({ searchParams }: Props) {
     }
   }
 
+  // The rail ignores the visitor's filters, so it is ranked once here and only its cards are sent.
+  const advertisements = selectPartnerAdvertisements({
+    activities: partnerResults,
+    placements: sponsoredPlacements,
+    query: "",
+    state: null,
+    category: null,
+    now: new Date().toISOString(),
+  });
+
   return (
     <SearchClient
       initialQuery={q ?? ""}
-      initialResults={partnerResults}
       initialVendors={approvedVendors}
       recommendedVendors={recommendedVendors}
-      sponsoredPlacements={sponsoredPlacements}
+      advertisements={advertisements}
       eventPromotions={q ? [] : eventPromotions}
       eventPartners={eventPartners}
     />

@@ -6,6 +6,8 @@ import { vendorProductDetailHref } from "@/lib/customer/vendor-page";
 const pageSource = readFileSync(resolve(process.cwd(), "app/customer/vendor/[vendorId]/page.tsx"), "utf8");
 const listingSource = readFileSync(resolve(process.cwd(), "components/customer/vendor-listing-grid.tsx"), "utf8");
 const locationSource = readFileSync(resolve(process.cwd(), "components/customer/vendor-location-list.tsx"), "utf8");
+// The vendor page's rows are read in the shared public cache.
+const cacheSource = readFileSync(resolve(process.cwd(), "lib/cache/catalogue-cache.ts"), "utf8");
 
 describe("customer vendor profile image contract", () => {
   it("passes the vendor id to Event items so each stop row can open the vendor's stall page", () => {
@@ -21,7 +23,7 @@ describe("customer vendor profile image contract", () => {
   it("keeps outlet identity cards scoped to the outlet page image", () => {
     expect(pageSource).toContain("getVendorVisual");
     expect(pageSource).not.toContain("const outletImages = new Map");
-    expect(pageSource).toContain("outlet_pages(hero_url)");
+    expect(cacheSource).toContain("outlet_pages(hero_url)");
   });
 
   it("shows each location as an OutletCard: vendor, outlet, location and open state, no hours or directions", () => {
@@ -30,7 +32,8 @@ describe("customer vendor profile image contract", () => {
     expect(rowSource).toContain("isOperatingHoursOpenNow(location.operatingHours, now)");
     expect(rowSource).not.toContain("formatPeriods");
     expect(rowSource).not.toContain("ui.vendor.directions");
-    expect(pageSource).toContain('getScopeRatingSummaries("outlet"');
+    expect(pageSource).toContain("getCachedOutletRatings(locations.map((location) => location.id).sort())");
+    expect(cacheSource).toContain("getScopeRatingSummaries('outlet', outletIds, createServiceClient())");
     expect(pageSource).not.toContain("ui.vendor.chooseLocationDescription");
     expect(pageSource).not.toContain("ui.vendor.activeOutletCount");
   });
@@ -38,6 +41,7 @@ describe("customer vendor profile image contract", () => {
 describe("customer vendor commerce boundary", () => {
   it("keeps listing cards focused on product names, prices, and key facts", () => {
     expect(pageSource).not.toContain("id,name,description,product_type");
+    expect(cacheSource).not.toContain("id,name,description,product_type");
     expect(pageSource).toContain("imageUrl: product.coverUrl, description: null");
     expect(listingSource).toContain("<ProductCard key={product.id}");
   });
@@ -64,6 +68,14 @@ describe("customer vendor commerce boundary", () => {
   it("keeps the vendor gallery distinct from the cover hero", () => {
     expect(pageSource).toContain("const visibleVendorGallery = vendorGallery.filter((item) => item.url !== heroImage);");
     expect(pageSource).toContain("visibleVendorGallery.length > 0");
+  });
+});
+
+describe("customer vendor page reads", () => {
+  it("shares one cached read between the metadata and the page", () => {
+    expect(pageSource).toContain("const getVendor = cache(async (vendorId: string) => {");
+    expect(pageSource).toContain("await getCachedPublicVendorPage(vendorId)");
+    expect(pageSource).not.toContain("createClient");
   });
 });
 

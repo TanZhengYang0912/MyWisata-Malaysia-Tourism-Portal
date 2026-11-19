@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Map as MapIcon } from "lucide-react";
 import { getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
 import { getVendorVisual } from "@/lib/customer/vendor-visual";
-import { isOptimizableImageUrl } from "@/lib/storage/optimizable-image";
+import { isOptimizableImageUrl, storageImageLoader } from "@/lib/storage/optimizable-image";
 import { CardFrame, CardLocationStatus } from "@/components/customer/card-frame";
 import { ShareButton } from "@/components/shared/share-button";
 import { PhotoRatingBadge } from "@/components/customer/photo-rating-badge";
@@ -77,7 +77,7 @@ export function VendorCard({ vendor, categories = [], destinationHref, index = 0
         closedLabel={t("ui.operatingHours.closedNow")}
       />}
       brandMark={visual.logoUrl
-        ? <Image src={visual.logoUrl} alt="" fill sizes="38px" unoptimized={!isOptimizableImageUrl(visual.logoUrl)} className="h-full w-full bg-card object-cover" />
+        ? <Image src={visual.logoUrl} alt="" fill sizes="38px" unoptimized={!isOptimizableImageUrl(visual.logoUrl)} loader={storageImageLoader(visual.logoUrl)} className="h-full w-full bg-card object-cover" />
         : visual.initials}
     />
   );

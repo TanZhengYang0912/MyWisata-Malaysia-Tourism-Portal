@@ -105,12 +105,14 @@ describe("campaign envelope markup", () => {
     expect(markup.match(/data-show-original/g)).toHaveLength(1);
   });
 
-  it("serves a Supabase poster through the image optimizer", () => {
+  it("serves this project's Supabase poster through Supabase's resizer", () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://abcdefghijklmnop.supabase.co");
     const posterUrl = "https://abcdefghijklmnop.supabase.co/storage/v1/object/public/campaign-posters/p.jpg";
     const markup = renderToStaticMarkup(<CampaignEnvelope campaign={{ ...campaign, posterUrl }} />);
+    vi.unstubAllEnvs();
     const images = markup.match(/<img [^>]*>/g) ?? [];
     expect(images.length).toBeGreaterThan(0);
-    for (const image of images) expect(image).toContain("/_next/image?url=");
+    for (const image of images) expect(image).toContain("/storage/v1/render/image/public/campaign-posters/p.jpg?width=");
   });
 });
 

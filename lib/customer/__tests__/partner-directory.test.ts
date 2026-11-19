@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { ComputedActivity, SponsoredPlacement, VendorSummary } from "@/backend/core/types";
+import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
 import {
   attachSponsoredOutletGalleryCovers,
+  buildPartnerFilterFacts,
+  matchesPartnerFilters,
   rankPartnerDirectory,
   selectPartnerAdvertisements,
+  type PartnerActivityFacts,
 } from "@/lib/customer/partner-directory";
 
 function vendor(id: string, name: string, outletCount: number): VendorSummary {
@@ -199,6 +203,135 @@ describe("selectPartnerAdvertisements", () => {
       category: "hidden_gem",
       now,
     }).map((item) => item.id)).toEqual(["hidden"]);
+  });
+});
+
+describe("buildPartnerFilterFacts", () => {
+  function vendorActivity(id: string, vendorId: string | undefined, overrides: Partial<ComputedActivity> = {}, badgeSlugs?: string[]) {
+    const base = activity(id, overrides);
+    return { ...base, outlet: { ...base.outlet, vendorId: vendorId as string, badgeSlugs } };
+  }
+
+  it("lists card categories from vendor-mode products in first-seen order with the hidden gem label", () => {
+    const facts = buildPartnerFilterFacts([
+      vendorActivity("a", "v1", { categorySlug: "retail", category: "Retail" }),
+      vendorActivity("b", "v1", { categorySlug: "food", category: "Food" }, ["hidden_gem"]),
+      vendorActivity("c", "v1", { categorySlug: "retail", category: "Retail" }),
+    ]);
+
+    expect(facts.get("v1")?.categories).toEqual(["retail", "food", "hidden_gem"]);
+  });
+
+  it("keeps place-bound products out of card categories but in the filter facts", () => {
+    const facts = buildPartnerFilterFacts([
+      vendorActivity("guided", "v1", { categorySlug: "activity", typeSlugs: ["nature"], price: 0, requiresBooking: false }),
+      vendorActivity("meal", "v1", { categorySlug: "food", category: "Food", price: 12 }),
+    ]);
+
+    expect(facts.get("v1")?.categories).toEqual(["food"]);
+    expect(facts.get("v1")?.activityFacts).toEqual<PartnerActivityFacts[]>([
+      { category: "activity", typeSlugs: ["nature"], price: 0, requiresBooking: false, hiddenGem: false },
+      { category: "food", typeSlugs: [], price: 12, requiresBooking: true, hiddenGem: false },
+    ]);
+  });
+
+  it("falls back to the raw category when the slug is missing and skips products without a vendor", () => {
+    const facts = buildPartnerFilterFacts([
+      vendorActivity("raw", "v1", { categorySlug: undefined, category: "Workshop" }),
+      vendorActivity("place", undefined),
+    ]);
+
+    expect(facts.get("v1")?.categories).toEqual(["Workshop"]);
+    expect([...facts.keys()]).toEqual(["v1"]);
+  });
+});
+
+describe("matchesPartnerFilters", () => {
+  const noFilters: DiscoveryQuery = {
+    q: "",
+    state: null,
+    categories: [],
+    types: [],
+    priceMax: null,
+    operatingDays: [],
+    hoursMode: "during",
+    timeAt: null,
+    timeFrom: null,
+    timeTo: null,
+    overnight: false,
+    openNow: false,
+    freeOnly: false,
+    bookableOnly: false,
+    hiddenGemOnly: false,
+    familyFriendlyOnly: false,
+    coupleFriendlyOnly: false,
+  };
+  const weekdayHours = { mon: { open: "09:00", close: "17:00" } };
+  const lateHours = { mon: { open: "20:00", close: "02:00" } };
+  const facts = (overrides: Partial<PartnerActivityFacts> = {}): PartnerActivityFacts => ({
+    category: "food",
+    typeSlugs: ["malay"],
+    price: 20,
+    requiresBooking: false,
+    hiddenGem: false,
+    ...overrides,
+  });
+  const partner = {
+    name: "Kedai Kopi",
+    outlets: [
+      { id: "o1", name: "Main", city: "George Town", state: "Penang", operatingHours: weekdayHours, currentlyOpen: true, badgeSlugs: ["family_friendly"] },
+      { id: "o2", name: "Night", city: "Ipoh", state: "Perak", operatingHours: lateHours, currentlyOpen: false, badgeSlugs: ["hidden_gem"] },
+    ],
+    categories: ["food", "retail", "hidden_gem"],
+    activityFacts: [facts(), facts({ category: "retail", typeSlugs: [], price: 0, requiresBooking: true, hiddenGem: true })],
+  };
+  const match = (patch: Partial<DiscoveryQuery>, vendorOverride: Partial<typeof partner> = {}) =>
+    matchesPartnerFilters({ ...partner, ...vendorOverride }, { ...noFilters, ...patch });
+
+  it.each<[string, Partial<DiscoveryQuery>, boolean]>([
+    ["no filters", {}, true],
+    ["query on vendor name", { q: "kopi" }, true],
+    ["query on outlet city", { q: "ipoh" }, true],
+    ["query with no match", { q: "langkawi" }, false],
+    ["state with an outlet", { state: "Perak" }, true],
+    ["state without an outlet", { state: "Sabah" }, false],
+    ["All Malaysia ignores state", { state: "All Malaysia" }, true],
+    ["open now", { openNow: true }, true],
+    ["time at inside hours", { hoursMode: "at", timeAt: "10:00", operatingDays: ["mon"] }, true],
+    ["time at outside hours", { hoursMode: "at", timeAt: "18:30", operatingDays: ["mon"] }, false],
+    ["time window inside hours", { timeFrom: "10:00", timeTo: "12:00", operatingDays: ["mon"] }, true],
+    ["overnight window needs the overnight flag", { timeFrom: "21:00", timeTo: "01:00", operatingDays: ["mon"] }, false],
+    ["overnight window with the flag", { timeFrom: "21:00", timeTo: "01:00", operatingDays: ["mon"], overnight: true }, true],
+    ["single category from card categories", { categories: ["food"] }, true],
+    ["single category the vendor lacks", { categories: ["accommodation"] }, false],
+    ["hidden gem collection", { hiddenGemOnly: true }, true],
+    ["type within the category", { categories: ["food"], types: ["food:malay"] }, true],
+    ["type the vendor lacks", { categories: ["food"], types: ["food:chinese"] }, false],
+    ["maximum price", { priceMax: 5 }, true],
+    ["maximum price below every product", { priceMax: -1 }, false],
+    ["free only", { freeOnly: true }, true],
+    ["bookable only", { bookableOnly: true }, true],
+    ["family friendly outlet", { familyFriendlyOnly: true }, true],
+    ["couple friendly outlet missing", { coupleFriendlyOnly: true }, false],
+    ["combined filters on one product", { categories: ["retail"], freeOnly: true, bookableOnly: true }, true],
+    ["combined filters split across products", { categories: ["food"], freeOnly: true }, false],
+  ])("%s → %s", (_label, patch, expected) => {
+    expect(match(patch)).toBe(expected);
+  });
+
+  it("matches hidden-gem categories through the outlet badge, not the card labels", () => {
+    expect(match({ categories: ["hidden_gem"] }, { categories: [] })).toBe(true);
+    expect(match({ categories: ["hidden_gem"] }, { outlets: [partner.outlets[0]] })).toBe(false);
+  });
+
+  it("requires a single selected category to be one of the card categories", () => {
+    expect(match({ categories: ["retail"] }, { categories: ["food"] })).toBe(false);
+  });
+
+  it("rejects bookable-only and free-only filters when no product qualifies", () => {
+    const vendor = { activityFacts: [facts({ requiresBooking: false, price: 10 })] };
+    expect(match({ bookableOnly: true }, vendor)).toBe(false);
+    expect(match({ freeOnly: true }, vendor)).toBe(false);
   });
 });
 

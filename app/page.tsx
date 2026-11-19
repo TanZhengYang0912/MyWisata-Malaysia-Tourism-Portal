@@ -3,25 +3,17 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth";
+import { roleHomePath } from "@/lib/auth/post-login-destination";
 
-const HOME_BY_ROLE: Record<string, string> = {
-  customer: "/customer",
-  vendor_owner: "/vendor/announcements",
-  outlet_manager: "/vendor/announcements",
-  event_vendor: "/vendor/announcements",
-  admin: "/admin/dashboard",
-  approver: "/admin/withdrawals",
-  staff: "/staff",
-  super_admin: "/admin/dashboard",
-};
-
+// The proxy normally redirects `/` before this renders; this client redirect
+// remains the fallback when its role lookup fails.
 export default function RootEntry() {
   const { currentUser, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (loading) return;
-    router.replace(currentUser ? HOME_BY_ROLE[currentUser.role] ?? "/login" : "/customer");
+    router.replace(currentUser ? roleHomePath(currentUser.role) ?? "/login" : "/customer");
   }, [loading, currentUser, router]);
 
   return null;

@@ -15,7 +15,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import QRCode from "qrcode";
 import { Download, QrCode as QrCodeIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -59,9 +58,18 @@ export function AffiliateQrCode({ resolveUrl, label, variant = "text" }: Affilia
 
   useEffect(() => {
     if (!open || !url || !canvasRef.current) return;
-    QRCode.toCanvas(canvasRef.current, url, { width: 240, margin: 2 }).catch(() => {
-      setError(t("affiliate.qr.errors.render"));
-    });
+    let cancelled = false;
+    // Loaded on first open: share buttons sit on every browse card, the QR is rarely drawn.
+    import("qrcode")
+      .then(({ default: QRCode }) => {
+        const canvas = canvasRef.current;
+        if (cancelled || !canvas) return;
+        return QRCode.toCanvas(canvas, url, { width: 240, margin: 2 });
+      })
+      .catch(() => {
+        if (!cancelled) setError(t("affiliate.qr.errors.render"));
+      });
+    return () => { cancelled = true; };
   }, [open, t, url]);
 
   function download() {

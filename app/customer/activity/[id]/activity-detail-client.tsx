@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { BackLink } from "@/components/shared/back-link";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
@@ -26,6 +27,7 @@ import { getOutletShopHref } from "@/lib/customer/shop-navigation";
 import { getActivityCommerceMode, getCategoryChips, getPriceUnit, isPlaceBound } from "@/lib/customer/category-details";
 import { outletRepeatsVendor, outletShortName } from "@/lib/outlet-display";
 import { getPlaceActivityImage } from "@/lib/customer/place-activity";
+import { isOptimizableImageUrl, storageImageLoader } from "@/lib/storage/optimizable-image";
 import { buildActivityPath, getCustomerReturnPath } from "@/lib/customer/navigation-context";
 import { getEffectiveOutletCount } from "@/lib/customer/activity-commerce";
 import { getSelectedOutletStock } from "@/lib/customer/outlet-shop";
@@ -200,6 +202,8 @@ export function ActivityDetailClient({
   }
 
 
+  const heroImage = placeBound ? getPlaceActivityImage(activity) : activity.image;
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7">
       <Breadcrumbs className="mb-3" label={t("ui.place.breadcrumb")} items={[
@@ -216,9 +220,8 @@ export function ActivityDetailClient({
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
       <div className="min-w-0">
       <div className="relative mb-4 h-44 shrink-0 overflow-hidden rounded-2xl sm:h-52 lg:h-64">
-        {placeBound || activity.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={placeBound ? getPlaceActivityImage(activity) : activity.image!} alt={activity.name} className="w-full h-full object-cover" />
+        {heroImage ? (
+          <Image src={heroImage} alt={activity.name} fill sizes="(min-width: 1024px) 820px, 100vw" loading="eager" fetchPriority="high" unoptimized={!isOptimizableImageUrl(heroImage)} loader={storageImageLoader(heroImage)} className="w-full h-full object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-secondary text-muted-foreground">
             <ImageOff size={32} strokeWidth={1.5} aria-hidden="true" />

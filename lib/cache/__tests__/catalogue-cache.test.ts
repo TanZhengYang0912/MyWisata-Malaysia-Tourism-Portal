@@ -178,6 +178,21 @@ describe("public Home reads", () => {
     await expect(getCachedPublicPromotionCampaigns()).resolves.toEqual([{ name: "get_public_promotion_campaigns", args: { p_slug: null } }]);
   });
 
+  it("stores outlet ratings as plain entries that survive cache serialisation", async () => {
+    const { getCachedOutletRatings } = await import("@/lib/cache/catalogue-cache");
+    const rows = [{ scope_id: "o1", rating: 5, review_count: 3 }];
+    const builder: Record<string, unknown> = {
+      select: () => builder, eq: () => builder, in: () => builder,
+      then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: rows, error: null }).then(resolve),
+    };
+    cacheState.db = { from: () => builder };
+
+    const entries = await getCachedOutletRatings(["o1"]);
+
+    expect(JSON.parse(JSON.stringify(entries))).toEqual(entries);
+    expect(new Map(entries).get("o1")).toEqual({ value: 5, count: 3 });
+  });
+
   it("stores vendor ratings as plain entries that survive cache serialisation", async () => {
     const { getCachedVendorRatings } = await import("@/lib/cache/catalogue-cache");
     const rows = [{ scope_id: "v1", rating: 4, review_count: 2 }];
@@ -191,5 +206,124 @@ describe("public Home reads", () => {
 
     expect(JSON.parse(JSON.stringify(entries))).toEqual(entries);
     expect(new Map(entries).get("v1")).toMatchObject({ count: expect.any(Number) });
+  });
+});
+
+const VENDOR_ID = "11111111-1111-4111-8111-111111111111";
+const PRODUCT_ID = "22222222-2222-4222-8222-222222222222";
+
+type Call = { table: string; method: string; args: unknown[] };
+
+/** A recording Supabase fake: lists for awaited queries, single rows for maybeSingle(), and an optional failing table. */
+function recordingDb(options: { rows?: Record<string, unknown[]>; single?: Record<string, unknown>; failTable?: string }) {
+  const calls: Call[] = [];
+  const db = {
+    from(table: string) {
+      const result = () => table === options.failTable
+        ? { data: null, error: { message: `${table} failed` }, count: null }
+        : { data: options.rows?.[table] ?? [], error: null, count: (options.rows?.[table] ?? []).length };
+      const builder: Record<string, unknown> = {};
+      for (const method of ["select", "eq", "is", "in", "order", "range", "limit"]) {
+        builder[method] = (...args: unknown[]) => {
+          calls.push({ table, method, args });
+          return builder;
+        };
+      }
+      builder.maybeSingle = async () => table === options.failTable
+        ? { data: null, error: { message: `${table} failed` } }
+        : { data: options.single?.[table] ?? null, error: null };
+      builder.then = (resolve: (value: unknown) => unknown) => Promise.resolve(result()).then(resolve);
+      return builder;
+    },
+  };
+  return { db, calls };
+}
+
+function filtersOn(calls: Call[], table: string) {
+  return calls.filter((call) => call.table === table && call.method !== "select").map((call) => [call.method, ...call.args]);
+}
+
+describe("public vendor page cache", () => {
+  beforeEach(() => {
+    cacheState.entries = [];
+  });
+
+  it("reads only guest-visible rows and stores them as one entry per vendor", async () => {
+    const { getCachedPublicVendorPage } = await import("@/lib/cache/catalogue-cache");
+    const { db, calls } = recordingDb({
+      single: { vendors: { id: VENDOR_ID, name: "Vendor", slug: "vendor", description: null, logo_url: null, cover_url: null, business_type: null, featured_product_ids: null, kind: "shop" } },
+      rows: {
+        outlets: [{ id: "o1", name: "Outlet", city: null, state: null, address: null, lat: null, lng: null, operating_hours: null, outlet_pages: null }],
+        products: [{ id: "p1", name: "Product", product_type: null, requires_booking: false, base_price: 10, cover_url: null, outlet_id: "o1", tags: [], outlet_offers: [] }],
+        product_review_metrics: [{ product_id: "p1", rating: 4, reviews: 1 }],
+      },
+    });
+    cacheState.db = db;
+
+    const rows = await getCachedPublicVendorPage(VENDOR_ID);
+
+    expect(rows).toMatchObject({ vendor: { id: VENDOR_ID }, outlets: [{ id: "o1" }], products: [{ id: "p1" }], metricRows: [{ product_id: "p1" }] });
+    expect(cacheState.entries).toHaveLength(1);
+    expect(cacheState.entries[0]).toMatchObject({ keyParts: ["public-vendor-page"], args: [VENDOR_ID] });
+    expect(JSON.parse(JSON.stringify(rows))).toEqual(rows);
+    expect(filtersOn(calls, "vendors")).toContainEqual(["eq", "status", "approved"]);
+    expect(filtersOn(calls, "outlets")).toEqual(expect.arrayContaining([["eq", "status", "active"], ["eq", "review_status", "approved"]]));
+    expect(filtersOn(calls, "products")).toEqual(expect.arrayContaining([["eq", "status", "active"], ["eq", "review_status", "approved"]]));
+    expect(filtersOn(calls, "places")).toContainEqual(["eq", "status", "active"]);
+    // Entity media only: never product media, and outlet media only for the approved outlets just read.
+    const media = filtersOn(calls, "media_assets");
+    expect(media.filter(([method, column]) => method === "is" && column === "product_id")).toHaveLength(2);
+    expect(media).toContainEqual(["in", "outlet_id", ["o1"]]);
+    expect(filtersOn(calls, "reviews")).toContainEqual(["eq", "is_visible", true]);
+  });
+
+  it("does not store an unknown vendor, and skips the database for a malformed id", async () => {
+    const { getCachedPublicVendorPage } = await import("@/lib/cache/catalogue-cache");
+    const { db, calls } = recordingDb({});
+    cacheState.db = db;
+
+    await expect(getCachedPublicVendorPage(VENDOR_ID)).resolves.toBeNull();
+    expect(cacheState.entries).toHaveLength(0);
+
+    calls.length = 0;
+    await expect(getCachedPublicVendorPage("not-a-uuid")).resolves.toBeNull();
+    expect(calls).toHaveLength(0);
+  });
+
+  it("throws a failed read so the cache never stores a partial page", async () => {
+    const { getCachedPublicVendorPage } = await import("@/lib/cache/catalogue-cache");
+    cacheState.db = recordingDb({ single: { vendors: { id: VENDOR_ID, name: "Vendor" } }, failTable: "products" }).db;
+
+    await expect(getCachedPublicVendorPage(VENDOR_ID)).rejects.toMatchObject({ message: "products failed" });
+    expect(cacheState.entries).toHaveLength(0);
+  });
+});
+
+describe("public product page cache", () => {
+  beforeEach(() => {
+    cacheState.entries = [];
+  });
+
+  it("does not store a product that is not publicly listed, and reads it with the public filters", async () => {
+    const { getCachedPublicProductPage } = await import("@/lib/cache/catalogue-cache");
+    const { db, calls } = recordingDb({});
+    cacheState.db = db;
+
+    await expect(getCachedPublicProductPage(PRODUCT_ID, undefined)).resolves.toBeNull();
+    expect(cacheState.entries).toHaveLength(0);
+    expect(filtersOn(calls, "products")).toEqual(expect.arrayContaining([["eq", "status", "active"], ["eq", "review_status", "approved"]]));
+  });
+
+  it("keeps share-preview rows to the product and its visible reviews", async () => {
+    const { getCachedProductMetadataRows } = await import("@/lib/cache/catalogue-cache");
+    const { db, calls } = recordingDb({
+      single: { products: { name: "Walk", description: "Guided", cover_url: null } },
+      rows: { reviews: [{ rating: 5 }] },
+    });
+    cacheState.db = db;
+
+    await expect(getCachedProductMetadataRows(PRODUCT_ID)).resolves.toEqual({ product: { name: "Walk", description: "Guided", cover_url: null }, reviewRows: [{ rating: 5 }] });
+    expect(filtersOn(calls, "reviews")).toContainEqual(["eq", "is_visible", true]);
+    await expect(getCachedProductMetadataRows("bad")).resolves.toBeNull();
   });
 });

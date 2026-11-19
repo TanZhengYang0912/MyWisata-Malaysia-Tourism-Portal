@@ -36,6 +36,7 @@ export const VENDOR_I18N_FILES = [
   'components/vendor/batch-action-bar.tsx',
   'components/vendor/compact-thumbnail.tsx',
   'components/vendor/dashboard-filter.tsx',
+  'components/vendor/dashboard-charts.tsx',
   'components/vendor/dashboard-realtime.tsx',
   'components/vendor/event-promotion-availability-calendar.tsx',
   'components/vendor/order-quick-action.tsx',
@@ -147,6 +148,8 @@ const priorTaskFiles = new Set([
 const pureHelperFiles = new Set([
   'components/layout/vendor-access-gate.tsx',
   'components/vendor/outlet-action-group.tsx',
+  // Lazy chart loaders; the charts they load own the visible copy.
+  'components/vendor/dashboard-charts.tsx',
   'components/vendor/dashboard-realtime.tsx',
   'components/vendor/outlet-builder-editing.ts',
   'components/vendor/outlet-builder-history.ts',

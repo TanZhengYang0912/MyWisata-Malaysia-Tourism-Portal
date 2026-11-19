@@ -7,8 +7,7 @@ import {
 } from 'lucide-react';
 import { getVendorDashboardData, formatGrowth, type DashboardFilter } from '@/lib/vendor-dashboard';
 import { formatMYR } from '@/lib/i18n/format';
-import SalesChart from '@/components/vendor/sales-chart';
-import OutletPieChart from '@/components/vendor/outlet-pie-chart';
+import { LazyOutletPieChart, LazySalesChart } from '@/components/vendor/dashboard-charts';
 import DashboardFilterControl from '@/components/vendor/dashboard-filter';
 import DashboardRealtime from '@/components/vendor/dashboard-realtime';
 import RecentTransactions from '@/components/vendor/recent-transactions';
@@ -90,8 +89,8 @@ export default async function VendorDashboard({ searchParams }: Props) {
       {data.stats.totalOrders === 0 && <section className="flex flex-col gap-3 rounded-2xl border border-primary/10 bg-secondary/70 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-primary">{t('ui.dashboard.noOrdersPeriod')}</p><p className="mt-1 text-sm text-primary">{data.stats.activeProducts > 0 ? t('ui.dashboard.checkAnotherRange') : t('ui.dashboard.publishListing')}</p></div><div className="flex gap-2"><Link href="/vendor/products" className="rounded-lg bg-card px-3 py-2 text-sm font-semibold text-primary ring-1 ring-primary/20">{t('ui.dashboard.manageListings')}</Link><Link href="/vendor/orders" className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white">{t('ui.dashboard.viewOrders')}</Link></div></section>}
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-6 shadow-sm lg:col-span-2"><SalesChart key={salesMode} data={data.chart} salesMode={salesMode} /></div>
-        <OutletPieChart key={salesMode} data={data.salesByProduct} total={data.totalProductSales} salesMode={salesMode} />
+        <div className="rounded-2xl border border-gray-100 dark:border-border bg-card p-6 shadow-sm lg:col-span-2"><LazySalesChart key={salesMode} data={data.chart} salesMode={salesMode} /></div>
+        <LazyOutletPieChart key={salesMode} data={data.salesByProduct} total={data.totalProductSales} salesMode={salesMode} />
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">

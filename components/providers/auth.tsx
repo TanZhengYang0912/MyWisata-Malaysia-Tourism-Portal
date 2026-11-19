@@ -199,7 +199,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const request = beginRequest();
 
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
+      // The local session only supplies the id to ask for. /api/auth/me
+      // verifies it with getUser() on the server and must return that same id,
+      // so a stale session still ends signed out, without a second Auth trip.
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user ?? null;
       if (!active || !isCurrentRequest(request)) return;
       if (!user) {
         // Do not trust the old localStorage-only demo selection. Server pages

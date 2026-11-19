@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, Cloud, CloudOff, CloudRain, Loader2, LocateFixed, Pause, Play } from "lucide-react";
-import "@/lib/maplibre-worker";
+// No maplibre-worker import here: it would pull maplibre-gl into the planner's
+// first load. This overlay renders only inside MapView, whose lazy
+// maplibre-map.tsx sets the worker URL before any map exists.
 import { useMap } from "react-map-gl/maplibre";
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";

@@ -4,11 +4,12 @@ import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowRight, MapPin } from "lucide-react";
-import type { ComputedActivity, SponsoredPlacement, VendorSummary } from "@/backend/core/types";
+import type { ComputedActivity, DiscoveryResult, VendorSummary } from "@/backend/core/types";
 import { Pagination } from "@/components/shared/pagination";
 import { CustomerPageTitle } from "@/components/customer/customer-page-shell";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PromotionSpotlight } from "@/components/customer/promotion-spotlight";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getActivityCommerceMode, getActivityDiscoveryMode } from "@/lib/customer/category-details";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { canonicalCategorySlug, getDiscoverySearchFilter, getOptionalDiscoveryCategoryLabelKey } from "@/lib/customer/discovery-categories";
@@ -18,8 +19,9 @@ import { CustomerDiscoveryFilterPanel, DiscoveryToolbar } from "@/components/cus
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { VendorCard } from "@/components/customer/vendor-card";
 import {
+  matchesPartnerFilters,
   rankPartnerDirectory,
-  selectPartnerAdvertisements,
+  type PartnerFilterFacts,
   type PartnerSort,
   type PartnerView,
 } from "@/lib/customer/partner-directory";
@@ -27,7 +29,6 @@ import { SponsoredPartnerRail } from "@/components/customer/sponsored-partner-ra
 import { EventPartnersSection, type EventPartner } from "@/components/customer/event-partners-section";
 import type { FeaturedEventPromotion } from "@/lib/customer/event-promotions";
 import type { DiscoveryQuery } from "@/lib/customer/discovery-query";
-import { isOperatingHoursAtAvailable, isOperatingHoursWindowAvailable } from "@/lib/customer/operating-hours";
 import { LocalizedContent } from "@/components/customer/localized-content";
 import { buildActivityPath } from "@/lib/customer/navigation-context";
 import { getOutletShopHref } from "@/lib/customer/shop-navigation";
@@ -99,7 +100,13 @@ function PlaceActivityCard({ activity, index }: { activity: ComputedActivity; in
   );
 }
 
-export function SearchClient({ initialQuery, initialResults, initialVendors, recommendedVendors, sponsoredPlacements, eventPromotions = [], eventPartners = [] }: { initialQuery: string; initialResults: ComputedActivity[]; initialVendors: VendorSummary[]; recommendedVendors: VendorSummary[]; sponsoredPlacements: SponsoredPlacement[]; eventPromotions?: FeaturedEventPromotion[]; eventPartners?: EventPartner[] }) {
+/** A directory vendor with the server-built facts its filters and card need. */
+type PartnerDirectoryVendor = VendorSummary & PartnerFilterFacts & {
+  rating?: { value: number; count: number } | null;
+  openNow?: boolean;
+};
+
+export function SearchClient({ initialQuery, initialVendors, recommendedVendors, advertisements, eventPromotions = [], eventPartners = [] }: { initialQuery: string; initialVendors: PartnerDirectoryVendor[]; recommendedVendors: VendorSummary[]; advertisements: DiscoveryResult[]; eventPromotions?: FeaturedEventPromotion[]; eventPartners?: EventPartner[] }) {
   const { t } = useTranslation("customer");
   const [filters, setFilters] = useState<DiscoveryQuery>(() => ({
     q: initialQuery,
@@ -124,69 +131,11 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
   const [partnerView, setPartnerView] = useState<PartnerView>("all");
   const [partnerSort, setPartnerSort] = useState<PartnerSort>("featured");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [advertisementRankingTimestamp] = useState(() => new Date().toISOString());
 
-  const categoriesByVendor = useMemo(() => {
-    const map = new Map<string, Set<string>>();
-    for (const activity of initialResults.filter((item) => getActivityDiscoveryMode(item) === "vendor")) {
-      const vendorId = activity.outlet.vendorId;
-      const labels = map.get(vendorId) ?? new Set<string>();
-      const canonicalSlug = canonicalCategorySlug(activity.categorySlug);
-      labels.add(canonicalSlug ?? activity.categorySlug ?? activity.category);
-      if (activity.outlet.badgeSlugs?.includes("hidden_gem")) labels.add("hidden_gem");
-      map.set(vendorId, labels);
-    }
-    return map;
-  }, [initialResults]);
-
-  const matchingVendors = useMemo(() => initialVendors.filter((vendor) => {
-    const normalizedQuery = filters.q.trim().toLowerCase();
-    const matchesQuery = !normalizedQuery || `${vendor.name} ${vendor.outlets.map((outlet) => `${outlet.city} ${outlet.state}`).join(" ")}`.toLowerCase().includes(normalizedQuery);
-    const hasTimeFilter = filters.openNow ||
-      (filters.hoursMode === "at" && Boolean(filters.timeAt)) ||
-      (filters.hoursMode !== "at" && Boolean(filters.timeFrom && filters.timeTo));
-    const hasStateFilter = Boolean(filters.state && filters.state !== "All Malaysia");
-    const matchesOutlets = (!hasStateFilter && !hasTimeFilter) || vendor.outlets.some((outlet) => {
-      const matchesState = !hasStateFilter || outlet.state === filters.state;
-      const hours = outlet.operatingHours ?? null;
-      const matchesOpenNow = !filters.openNow || outlet.currentlyOpen === true;
-      const matchesTime = filters.hoursMode === "at" && filters.timeAt
-        ? Boolean(hours && isOperatingHoursAtAvailable(filters.timeAt, hours, filters.operatingDays))
-        : filters.hoursMode !== "at" && filters.timeFrom && filters.timeTo
-          ? Boolean(hours && isOperatingHoursWindowAvailable(filters.timeFrom, filters.timeTo, hours, filters.operatingDays, { overnight: filters.overnight }))
-          : true;
-      return matchesState && matchesOpenNow && matchesTime;
-    });
-    const labels = categoriesByVendor.get(vendor.id) ?? new Set<string>();
-    const category = filters.categories.length === 1 ? filters.categories[0] : filters.hiddenGemOnly ? "hidden_gem" : null;
-    const matchesCategory = !category || (category === "hidden_gem"
-      ? vendor.outlets.some((outlet) => outlet.badgeSlugs?.includes("hidden_gem"))
-      : labels.has(category));
-    const vendorActivities = initialResults.filter((activity) => activity.outlet.vendorId === vendor.id);
-    const selectedBadgeSlugs = [
-      filters.hiddenGemOnly && "hidden_gem",
-      filters.familyFriendlyOnly && "family_friendly",
-      filters.coupleFriendlyOnly && "couple_friendly",
-    ].filter(Boolean) as string[];
-    const matchesOutletBadges = selectedBadgeSlugs.length === 0 || vendor.outlets.some((outlet) =>
-      selectedBadgeSlugs.some((slug) => outlet.badgeSlugs?.includes(slug)),
-    );
-    const hasActivityFilters = filters.categories.length > 0 || filters.types.length > 0 || filters.priceMax !== null ||
-      filters.freeOnly || filters.bookableOnly;
-    const matchesActivities = !hasActivityFilters || vendorActivities.some((activity) => {
-      const activityCategory = canonicalCategorySlug(activity.categorySlug) ?? activity.categorySlug ?? activity.category;
-      const matchesTypes = filters.types.length === 0 || filters.types.some((token) => {
-        const [selectedCategory, selectedType] = token.split(":", 2);
-        return selectedCategory === activityCategory && Boolean(selectedType && activity.typeSlugs?.includes(selectedType));
-      });
-      const matchesCategoryBranch = filters.categories.length === 0 || filters.categories.includes(activityCategory) ||
-        (filters.categories.includes("hidden_gem") && activity.outlet.badgeSlugs?.includes("hidden_gem"));
-      const matchesPrice = filters.priceMax === null || activity.price <= filters.priceMax;
-      const matchesCommerce = (!filters.freeOnly || activity.price === 0) && (!filters.bookableOnly || activity.requiresBooking);
-      return matchesCategoryBranch && matchesTypes && matchesPrice && matchesCommerce;
-    });
-    return matchesQuery && matchesOutlets && matchesCategory && matchesActivities && matchesOutletBadges;
-  }), [categoriesByVendor, filters, initialResults, initialVendors]);
+  const matchingVendors = useMemo(
+    () => initialVendors.filter((vendor) => matchesPartnerFilters(vendor, filters)),
+    [filters, initialVendors],
+  );
 
   const featuredVendorIds = useMemo(
     () => new Set(recommendedVendors.map((vendor) => vendor.id)),
@@ -199,15 +148,6 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
     view: partnerView,
     sort: partnerSort,
   }), [featuredVendorIds, matchingVendors, partnerSort, partnerView]);
-
-  const advertisements = useMemo(() => selectPartnerAdvertisements({
-    activities: initialResults,
-    placements: sponsoredPlacements,
-    query: "",
-    state: null,
-    category: null,
-    now: advertisementRankingTimestamp,
-  }), [advertisementRankingTimestamp, initialResults, sponsoredPlacements]);
 
   const category = filters.categories.length === 1 ? filters.categories[0] : filters.hiddenGemOnly ? "hidden_gem" : null;
 
@@ -329,7 +269,7 @@ export function SearchClient({ initialQuery, initialResults, initialVendors, rec
                       : undefined;
                     return matchingOutlet ? getOutletShopHref(matchingOutlet.id) : undefined;
                   })()}
-                  categories={[...(categoriesByVendor.get(vendor.id) ?? new Set<string>())]}
+                  categories={vendor.categories}
                   index={index}
                 />
               ))}

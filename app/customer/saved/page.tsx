@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
-import { getComputedActivity } from "@/backend/domains/catalogue";
+import { getClaimsUserId } from "@/lib/auth/claims-user";
 import { getCachedComputedActivities } from "@/lib/cache/catalogue-cache";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SavedHubClient } from "../wishlist/wishlist-client";
@@ -14,9 +14,10 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function SavedPage() {
   const { t } = await getServerTranslation("customer");
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Own saved rows only (RLS-scoped), so the proxy-verified claims are enough.
+  const userId = await getClaimsUserId(supabase);
 
-  if (!user) {
+  if (!userId) {
     return <EmptyState title={t("ui.saved.signInTitle")} description={t("ui.saved.signInDescription")} />;
   }
 
@@ -24,33 +25,42 @@ export default async function SavedPage() {
     supabase
       .from("customer_wishlists")
       .select("product_id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false }),
     supabase
       .from("customer_saved_destinations")
       .select("destination_state,created_at")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false }),
     supabase
       .from("customer_saved_outlets")
       .select("outlet_id")
-      .eq("user_id", user.id),
+      .eq("user_id", userId),
   ]);
 
   if (error) {
     return <EmptyState title={t("ui.wishlist.unavailable")} description={t("ui.wishlist.tryAgain")} />;
   }
 
-  const activities = (await Promise.all((rows ?? []).map((row) => getComputedActivity(row.product_id, undefined, supabase))))
-    .filter((activity): activity is NonNullable<typeof activity> => activity !== null);
+  const savedProductRows = rows ?? [];
+  const savedOutletIds = new Set((savedOutletRows ?? []).map((row) => row.outlet_id));
+  // Cards come from the shared 60 s public catalogue, read once for products and
+  // hotels. A per-row product read fired ~3 requests per saved item at once and
+  // exhausted the database pool for a 432-item wishlist (2026-11-18 incident).
+  const catalogue = savedProductRows.length > 0 || savedOutletIds.size > 0 ? await getCachedComputedActivities() : [];
+  const catalogueById = new Map(catalogue.map((activity) => [activity.id, activity]));
+
+  // Wishlist order (newest first); products that are no longer public drop out.
+  const activities = savedProductRows
+    .map((row) => catalogueById.get(row.product_id))
+    .filter((activity): activity is NonNullable<typeof activity> => activity !== undefined);
 
   const destinations = destinationError ? [] : (destinationRows ?? []).map((row) => ({ state: row.destination_state, savedAt: row.created_at }));
 
   // Saved hotels (D10): the rooms of each saved hotel, grouped into one hotel card on the client.
-  const savedOutletIds = new Set((savedOutletRows ?? []).map((row) => row.outlet_id));
   const hotelRooms = savedOutletIds.size
-    ? (await getCachedComputedActivities()).filter((activity) => activity.categorySlug === "accommodation" && savedOutletIds.has(activity.outlet.id))
+    ? catalogue.filter((activity) => activity.categorySlug === "accommodation" && savedOutletIds.has(activity.outlet.id))
     : [];
 
-  return <SavedHubClient ownerId={user.id} activities={activities} destinations={destinations} hotelRooms={hotelRooms} />;
+  return <SavedHubClient ownerId={userId} activities={activities} destinations={destinations} hotelRooms={hotelRooms} />;
 }

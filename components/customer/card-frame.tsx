@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import { MapPin } from "lucide-react";
-import { isOptimizableImageUrl } from "@/lib/storage/optimizable-image";
+import { isOptimizableImageUrl, storageImageLoader } from "@/lib/storage/optimizable-image";
 
 /**
  * The look shared by every discovery card (product, vendor, outlet, place activity): photo with
@@ -74,7 +74,7 @@ export function CardFrame({
     >
       <div className={`relative overflow-hidden rounded-[6px] bg-secondary ${place ? "aspect-[4/3]" : "aspect-[1.3]"}`}>
         {src && !imageFailed
-          ? <Image src={src} alt={imageAlt} fill sizes={place ? "(min-width: 768px) 45vw, 100vw" : "(min-width: 1280px) 300px, (min-width: 1024px) 33vw, 50vw"} unoptimized={!isOptimizableImageUrl(src)} onError={() => setImageFailed(true)} className={`h-full w-full object-cover ${href ? "transition-transform duration-[450ms] ease-out motion-reduce:transition-none [@media(hover:hover)_and_(pointer:fine)]:group-hover/card:scale-[1.04] motion-reduce:group-hover/card:scale-100" : ""}`} />
+          ? <Image src={src} alt={imageAlt} fill sizes={place ? "(min-width: 768px) 45vw, 100vw" : "(min-width: 1280px) 300px, (min-width: 1024px) 33vw, 50vw"} unoptimized={!isOptimizableImageUrl(src)} loader={storageImageLoader(src)} onError={() => setImageFailed(true)} className={`h-full w-full object-cover ${href ? "transition-transform duration-[450ms] ease-out motion-reduce:transition-none [@media(hover:hover)_and_(pointer:fine)]:group-hover/card:scale-[1.04] motion-reduce:group-hover/card:scale-100" : ""}`} />
           : fallback ?? <div role="img" aria-label={imageAlt} className="h-full w-full bg-secondary" />}
         {topLeft && <div className="pointer-events-none absolute left-3 top-3 z-10">{topLeft}</div>}
         {brandMark && <div aria-hidden="true" className="pointer-events-none absolute bottom-[11px] left-3 z-10 grid size-[38px] place-items-center overflow-hidden rounded-[10px] border-[3px] border-background bg-primary text-xs font-bold text-primary-foreground">{brandMark}</div>}

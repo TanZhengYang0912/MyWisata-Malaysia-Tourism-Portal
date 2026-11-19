@@ -7,6 +7,7 @@ const authMocks = vi.hoisted(() => ({
   initialUser: null,
   translate: (key: string) => key,
   signOut: vi.fn(async () => ({ error: null })),
+  getUser: vi.fn(),
   replace: vi.fn(),
 }));
 const sharedAuthMocks = authMocks as unknown as {
@@ -19,7 +20,11 @@ vi.mock("next/navigation", () => ({ usePathname: () => "/", useRouter: () => ({ 
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({
     auth: {
-      getUser: async () => ({ data: { user: authMocks.initialUser } }),
+      getUser: async () => {
+        authMocks.getUser();
+        return { data: { user: authMocks.initialUser } };
+      },
+      getSession: async () => ({ data: { session: authMocks.initialUser ? { user: authMocks.initialUser } : null } }),
       onAuthStateChange: (listener: typeof authMocks.listener) => {
         sharedAuthMocks.listener = listener;
         return { data: { subscription: { unsubscribe: vi.fn() } } };
@@ -126,6 +131,7 @@ describe("AuthProvider request ownership", () => {
     sharedAuthMocks.listener = null;
     sharedAuthMocks.initialUser = { id: "user-a" };
     authMocks.signOut.mockClear();
+    authMocks.getUser.mockClear();
     Object.defineProperties(document.defaultView.localStorage, {
       getItem: { configurable: true, value: (key: string) => storedValues.get(key) ?? null },
       setItem: { configurable: true, value: (key: string, value: string) => storedValues.set(key, value) },
@@ -144,6 +150,42 @@ describe("AuthProvider request ownership", () => {
     root = null;
     container = null;
     vi.unstubAllGlobals();
+  });
+
+  it("boots from the local session and lets /api/auth/me verify it, without a browser getUser trip", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(profile("user-a")), { status: 200 }));
+    await act(async () => {
+      root?.render(<AuthProvider><AuthSnapshot /></AuthProvider>);
+      await settle();
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toBe("/api/auth/me");
+    expect(authMocks.getUser).not.toHaveBeenCalled();
+    expect(latestAuth.currentUser?.id).toBe("user-a");
+    expect(latestAuth.loading).toBe(false);
+  });
+
+  it("ends signed out when the server rejects a stale local session", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ error: "Sign in required" }), { status: 401 }));
+    await act(async () => {
+      root?.render(<AuthProvider><AuthSnapshot /></AuthProvider>);
+      await settle();
+      await settle();
+    });
+    expect(latestAuth.currentUser).toBeNull();
+    expect(latestAuth.loading).toBe(false);
+    expect(storedValues.has("tp_current_user_id")).toBe(false);
+  });
+
+  it("stays signed out without asking the server when there is no local session", async () => {
+    sharedAuthMocks.initialUser = null;
+    await act(async () => {
+      root?.render(<AuthProvider><AuthSnapshot /></AuthProvider>);
+      await settle();
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(latestAuth.currentUser).toBeNull();
+    expect(latestAuth.loading).toBe(false);
   });
 
   it.each(["SIGNED_IN", "TOKEN_REFRESHED", "USER_UPDATED"])("keeps the current step and draft mounted during same-account %s", async (event) => {
