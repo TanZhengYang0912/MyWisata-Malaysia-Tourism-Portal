@@ -2,7 +2,7 @@ import { type SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { apiFail, databaseUuidSchema } from '@/lib/validation/schemas';
-import { activeEventStaffCampaignIds } from '@/lib/events/event-staff';
+import { activeEventStaffLocationIds } from '@/lib/events/event-staff';
 
 export type VendorRole = 'vendor_owner' | 'outlet_manager' | 'event_staff';
 
@@ -16,7 +16,7 @@ export interface VendorAuthorizationOptions {
   /** Require an approved merchant before exposing operational data or mutations. */
   requireApproved?: boolean;
   /**
-   * Event staff (event_staff_members) may scan one vendor's event pickups.
+   * Event staff (event_staff_members) may scan one vendor's event pickups at their stalls.
    * Only the scanner resolve and fulfil-event-pickup routes opt in; the
    * allowlist is pinned by app/api/__tests__/event-staff-access.contract.test.ts.
    */
@@ -32,8 +32,8 @@ export interface VendorAccess {
   outletIds: string[];
   isOwner: boolean;
   isOutletManager: boolean;
-  /** Campaigns an event_staff caller may scan for; empty for owners and managers. */
-  eventCampaignIds: string[];
+  /** Stalls (event locations) an event_staff caller may scan for; empty for owners and managers. */
+  eventLocationIds: string[];
   authDb: SupabaseClient;
   serviceDb: SupabaseClient;
 }
@@ -72,9 +72,9 @@ async function eventStaffAccess(
   options: VendorAuthorizationOptions,
 ): Promise<AccessResult | null> {
   const serviceDb = createServiceClient() as SupabaseClient;
-  const staff = await activeEventStaffCampaignIds(serviceDb, userId, vendorId);
+  const staff = await activeEventStaffLocationIds(serviceDb, userId, vendorId);
   if (staff.error) return { ok: false, response: apiFail('DB_ERROR', staff.error.message, 500) };
-  if (!staff.campaignIds.length) return null;
+  if (!staff.locationIds.length) return null;
   const { data: vendor, error } = await serviceDb.from('vendors').select('id,status,kind').eq('id', vendorId).maybeSingle();
   if (error) return { ok: false, response: apiFail('DB_ERROR', error.message, 500) };
   if (vendor?.kind === 'event' && !options.allowEventVendor) return { ok: false, response: EVENT_VENDOR_FORBIDDEN() };
@@ -88,7 +88,7 @@ async function eventStaffAccess(
       outletIds: [],
       isOwner: false,
       isOutletManager: false,
-      eventCampaignIds: staff.campaignIds,
+      eventLocationIds: staff.locationIds,
       authDb,
       serviceDb,
     },
@@ -150,7 +150,7 @@ export async function authorizeVendor(
         outletIds: managerScope.outletIds,
         isOwner: false,
         isOutletManager: true,
-        eventCampaignIds: [],
+        eventLocationIds: [],
         authDb,
         serviceDb,
       },
@@ -171,7 +171,7 @@ export async function authorizeVendor(
         outletIds: (outlets || []).map((outlet: { id: string }) => outlet.id),
         isOwner: true,
         isOutletManager: false,
-        eventCampaignIds: [],
+        eventLocationIds: [],
         authDb,
         serviceDb: createServiceClient() as SupabaseClient,
       },
@@ -200,7 +200,7 @@ export async function authorizeVendor(
       outletIds: managerScope.outletIds,
       isOwner: false,
       isOutletManager: true,
-      eventCampaignIds: [],
+      eventLocationIds: [],
       authDb,
       serviceDb: createServiceClient() as SupabaseClient,
     },

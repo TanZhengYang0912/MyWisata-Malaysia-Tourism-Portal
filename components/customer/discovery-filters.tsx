@@ -28,9 +28,10 @@ interface DiscoverySearchFieldProps {
   placeholder?: string;
   ariaLabel?: string;
   autoFocus?: boolean;
+  maxLength?: number;
 }
 
-export function DiscoverySearchField({ value, onChange, placeholder, ariaLabel, autoFocus }: DiscoverySearchFieldProps) {
+export function DiscoverySearchField({ value, onChange, placeholder, ariaLabel, autoFocus, maxLength }: DiscoverySearchFieldProps) {
   const { t } = useTranslation(ariaLabel !== undefined && placeholder !== undefined ? NO_TRANSLATION_NAMESPACES : "customer");
   const searchLabel = ariaLabel ?? t("ui.discovery.searchLabel", { ns: "customer" });
   return (
@@ -41,6 +42,7 @@ export function DiscoverySearchField({ value, onChange, placeholder, ariaLabel, 
         value={value}
         onChange={(event) => onChange(event.target.value)}
         autoFocus={autoFocus}
+        maxLength={maxLength}
         placeholder={placeholder ?? t("ui.discovery.searchPlaceholder", { ns: "customer" })}
         aria-label={searchLabel}
         className="min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
@@ -103,13 +105,15 @@ function DiscoverySortSelect<T extends string>({
  * the page passes its own sort options and owns the filter drawer; render it inside that drawer's <Dialog>.
  */
 export function DiscoveryToolbar<T extends string>({
-  query, onQueryChange, placeholder, searchLabel, filterCount = 0, filtersActive, sort, defaultSort, sortOptions, onSortChange, labels, trailing, testIds = {}, className = "",
+  query, onQueryChange, placeholder, searchLabel, maxLength, filterCount = 0, filtersActive, sort, defaultSort, sortOptions, onSortChange, labels, trailing, testIds = {}, className = "",
 }: {
   query: string;
   onQueryChange: (query: string) => void;
   /** Defaults to the shared "Type any keyword…" hint. */
   placeholder?: string;
   searchLabel?: string;
+  /** Mirrors the server-side query length limit when the page has one. */
+  maxLength?: number;
   filterCount?: number;
   filtersActive?: boolean;
   sort?: T;
@@ -129,8 +133,8 @@ export function DiscoveryToolbar<T extends string>({
   return (
     <div data-testid={testIds.bar} className={`flex flex-col gap-1 ${layout} ${className}`}>
       {searchLabel === undefined
-        ? <DiscoverySearchField value={query} onChange={onQueryChange} placeholder={placeholder} />
-        : <DiscoverySearchField value={query} onChange={onQueryChange} placeholder={placeholder} ariaLabel={searchLabel} />}
+        ? <DiscoverySearchField value={query} onChange={onQueryChange} placeholder={placeholder} maxLength={maxLength} />
+        : <DiscoverySearchField value={query} onChange={onQueryChange} placeholder={placeholder} ariaLabel={searchLabel} maxLength={maxLength} />}
       <div className={controlsLayout}>
         <DialogTrigger asChild>
           <DiscoveryFilterButton data-testid={testIds.filters} count={filterCount} active={filtersActive ?? filterCount > 0} label={labels?.filters} />

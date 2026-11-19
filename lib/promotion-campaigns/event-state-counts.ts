@@ -104,3 +104,28 @@ export function buildEventStateBreakdown(
 
   return { allCampaigns, campaignsByState, unlocatedCampaigns };
 }
+
+/** The five regions of the Events map (approved Events Atlas sample, with Pahang on the East Coast). */
+export const EVENT_MAP_REGION_IDS = ["north", "central", "south", "east-coast", "east-malaysia"] as const;
+export type EventMapRegionId = (typeof EVENT_MAP_REGION_IDS)[number];
+export const EVENT_MAP_REGION_STATES: Record<EventMapRegionId, readonly string[]> = {
+  north: ["perlis", "kedah", "penang", "perak"],
+  central: ["selangor", "kuala-lumpur", "putrajaya"],
+  south: ["negeri-sembilan", "melaka", "johor"],
+  "east-coast": ["kelantan", "terengganu", "pahang"],
+  "east-malaysia": ["sarawak", "sabah", "labuan"],
+};
+
+/**
+ * State ids of the event's active stops; unresolved stops are skipped.
+ * Active: running on `day` when a day is picked, otherwise not ended by `today` (as buildEventStateBreakdown).
+ */
+export function eventMapStateIds(campaign: PromotionCampaignPublic, today: string, day: string | null): Set<string> {
+  const isActive = (location: PromotionCampaignPublicLocation) => (day ? location.startsOn <= day && day <= location.endsOn : location.endsOn >= today);
+  return new Set(campaign.locations.filter(isActive).map(resolveEventLocationState).filter((id): id is string => id !== null));
+}
+
+/** The map regions containing these states. */
+export function eventMapRegionIds(stateIds: ReadonlySet<string>): Set<EventMapRegionId> {
+  return new Set(EVENT_MAP_REGION_IDS.filter((region) => EVENT_MAP_REGION_STATES[region].some((state) => stateIds.has(state))));
+}

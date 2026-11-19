@@ -20,14 +20,16 @@ import { supabase } from "@/backend/supabase";
 export type SelectedChat = { kind: "support" } | { kind: "vendor"; threadId: string };
 
 /** The product a customer opened a vendor chat to ask about — carried until the next message is sent or the banner is dismissed. */
-export interface PendingChatContext {
-  type: "product";
-  productId: string;
-  title: string;
-  subtitle?: string;
-  imageUrl?: string | null;
-  href: string;
-}
+export type PendingChatContext =
+  | {
+      type: "product";
+      productId: string;
+      title: string;
+      subtitle?: string;
+      imageUrl?: string | null;
+      href: string;
+    }
+  | { type: "order"; orderId: string };
 
 interface SupportChatContextValue {
   open: boolean;
@@ -50,14 +52,16 @@ export function SupportChatProvider({ children, countUnread = true }: { children
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<SelectedChat | null>(null);
   const [pendingContext, setPendingContext] = useState<PendingChatContext | null>(null);
+  const [pendingContextUserId, setPendingContextUserId] = useState<string | null>(null);
   const { currentUser } = useAuth();
   const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   const selectChat = useCallback((chat: SelectedChat | null, context: PendingChatContext | null = null) => {
     setSelected(chat);
     setPendingContext(context);
+    setPendingContextUserId(context ? currentUser?.id ?? null : null);
     if (chat) setOpen(true);
-  }, []);
+  }, [currentUser?.id]);
   const clearPendingContext = useCallback(() => setPendingContext(null), []);
 
   // Deep-link: a chat notification's "Open" links to /customer?chat=<threadId>.
@@ -140,8 +144,8 @@ export function SupportChatProvider({ children, countUnread = true }: { children
   }, [currentUser, countUnread]);
 
   const value = useMemo(
-    () => ({ open, setOpen, selected, selectChat, pendingContext, clearPendingContext, unreadChatCount }),
-    [open, selected, selectChat, pendingContext, clearPendingContext, unreadChatCount],
+    () => ({ open, setOpen, selected, selectChat, pendingContext: pendingContextUserId === (currentUser?.id ?? null) ? pendingContext : null, clearPendingContext, unreadChatCount }),
+    [open, selected, selectChat, pendingContext, pendingContextUserId, currentUser?.id, clearPendingContext, unreadChatCount],
   );
 
   return <SupportChatContext.Provider value={value}>{children}</SupportChatContext.Provider>;

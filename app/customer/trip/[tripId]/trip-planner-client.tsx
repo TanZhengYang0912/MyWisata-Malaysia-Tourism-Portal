@@ -53,6 +53,7 @@ export interface TripStop {
 
 interface TripPlanSuggestion {
   productId: string;
+  outletId: string;
   productName: string;
   message: string;
   lat: number;
@@ -61,6 +62,7 @@ interface TripPlanSuggestion {
   rating: number;
   image: string | null;
   category: string;
+  categorySlug: string;
 }
 
 interface TripPlanScope {
@@ -166,6 +168,7 @@ export function MapClient({
   useEffect(() => () => { aiRequestRef.current?.abort(); aiRequestRef.current = null; }, [tripData.id]);
   const [timeEditingId, setTimeEditingId] = useState<string | null>(null);
   const [aiPreference, setAiPreference] = useState("");
+  const aiInputRef = useRef<HTMLInputElement | null>(null);
   const [aiSuggestions, setAiSuggestions] = useState<TripPlanSuggestion[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMode, setAiMode] = useState("");
@@ -184,7 +187,7 @@ export function MapClient({
   const [selectedDate, setSelectedDate] = useState<string | null>(tripData.start_date);
   const [overlayHour, setOverlayHour] = useState(12);
   const [weatherNow, setWeatherNow] = useState(() => new Date());
-  const [weatherMapMode, setWeatherMapMode] = useState<WeatherMapMode>(() => canUseLiveRadar(tripData.start_date, weatherNow) ? "now" : "forecast");
+  const [weatherMapMode, setWeatherMapMode] = useState<WeatherMapMode>("forecast");
   const [weatherLayerEnabled, setWeatherLayerEnabled] = useState(true);
   const simulationAvailable = process.env.NODE_ENV !== "production";
   const [simulationEnabled, setSimulationEnabled] = useState(false);
@@ -212,8 +215,7 @@ export function MapClient({
   }, [initialItems, selectedDate]);
 
   useEffect(() => {
-    const current = new Date();
-    const timer = window.setTimeout(() => setWeatherMapMode(canUseLiveRadar(selectedDate, current) ? "now" : "forecast"), 0);
+    const timer = window.setTimeout(() => setWeatherMapMode("forecast"), 0);
     return () => window.clearTimeout(timer);
   }, [selectedDate]);
 
@@ -749,6 +751,12 @@ export function MapClient({
     window.addEventListener("pointerup", onUp);
   }
 
+  function openAiForSelectedDay() {
+    setActivePanel("ai");
+    setAiCollapsed(false);
+    window.requestAnimationFrame(() => aiInputRef.current?.focus());
+  }
+
   async function requestAiPlan(event?: ReactFormEvent<HTMLFormElement>, selectedState?: string) {
     event?.preventDefault();
     if (aiLoading) return;
@@ -767,9 +775,9 @@ export function MapClient({
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
         signal: controller.signal,
-        body: JSON.stringify({ tripId: tripData.id, preference: aiPreference.trim(), locale, ...((selectedState ?? aiSelectedState) ? { selectedState: selectedState ?? aiSelectedState } : {}) }),
+        body: JSON.stringify({ tripId: tripData.id, preference: aiPreference.trim(), locale, selectedDate, travelMode: mode, ...((selectedState ?? aiSelectedState) ? { selectedState: selectedState ?? aiSelectedState } : {}) }),
       });
-      const body = await response.json() as { data?: { suggestions?: TripPlanSuggestion[]; mode?: string; scope?: TripPlanScope }; error?: { code?: string } };
+      const body = await response.json() as { data?: { suggestions?: TripPlanSuggestion[]; mode?: string; scope?: TripPlanScope; directAdd?: boolean; targetDate?: string | null; requestedCount?: number; requestedTotal?: number; requestedGroups?: Array<{ categorySlug: string; requestedCount: number }>; batchOrder?: string[]; routeOrderSource?: "matrix" | "approximate"; invalidDay?: boolean }; error?: { code?: string } };
       if (controller.signal.aborted || aiRequestRef.current !== controller) {
         if (timedOut) setAiError(tCustomer("strictMigration.tripPlanner.ai.timeout"));
         return;
@@ -785,6 +793,53 @@ export function MapClient({
       setAiMode(body.data.mode ?? "");
       setAiScope(body.data.scope ?? null);
       setAiSuggestions(body.data.suggestions ?? []);
+      setTripActionStatus("");
+      if (body.data.directAdd && body.data.targetDate && body.data.suggestions?.length && body.data.batchOrder?.length) {
+        const suggestions = body.data.suggestions;
+        const receipt = await trip.addBatch({ selections: suggestions.map((suggestion) => ({ productId: suggestion.productId, outletId: suggestion.outletId })), date: body.data.targetDate, order: body.data.batchOrder });
+        if (receipt) {
+          if (receipt.reconciled) {
+            const confirmedCount = receipt.resolved_product_ids.length;
+            if (confirmedCount === suggestions.length) {
+              const categories = (body.data.requestedGroups ?? []).map((group) => {
+                const groupCount = suggestions.filter((suggestion) => suggestion.categorySlug === group.categorySlug && receipt.resolved_product_ids.includes(suggestion.productId)).length;
+                return `${tCustomer(`strictMigration.tripPlanner.ai.category.${group.categorySlug}`)} ${groupCount}/${group.requestedCount}`;
+              }).join(" · ");
+              setTripActionStatus(tCustomer("strictMigration.tripPlanner.ai.batchReconciled", { count: confirmedCount, date: formatTripDay(body.data.targetDate), categories }));
+              setAiSuggestions([]);
+              setSelectedDate(body.data.targetDate);
+              setActivePanel("itinerary");
+            } else {
+              setTripActionStatus(tCustomer("strictMigration.tripPlanner.ai.batchVerified", { count: confirmedCount }));
+            }
+            return;
+          }
+          const addedSuggestions = suggestions.filter((suggestion) => !receipt.skipped_product_ids.includes(suggestion.productId));
+          const addedCount = addedSuggestions.length;
+          const names = addedSuggestions.map((suggestion) => suggestion.productName).join(", ");
+          const categories = (body.data.requestedGroups ?? []).map((group) => {
+            const groupCount = addedSuggestions.filter((suggestion) => suggestion.categorySlug === group.categorySlug).length;
+            return `${tCustomer(`strictMigration.tripPlanner.ai.category.${group.categorySlug}`)} ${groupCount}/${group.requestedCount}`;
+          }).join(" · ");
+          const addedMessage = addedCount === 0
+            ? tCustomer("strictMigration.tripPlanner.ai.batchAlreadyPresent")
+            : tCustomer(addedCount < (body.data.requestedTotal ?? body.data.requestedCount ?? addedCount) ? "strictMigration.tripPlanner.ai.batchAddedPartialByCategory" : "strictMigration.tripPlanner.ai.batchAddedByCategory", { count: addedCount, names, date: formatTripDay(body.data.targetDate), order: tCustomer(body.data.routeOrderSource === "matrix" ? "strictMigration.tripPlanner.ai.matrixOrder" : "strictMigration.tripPlanner.ai.approximateOrder"), categories });
+          setTripActionStatus(addedMessage);
+          setAiSuggestions([]);
+          setSelectedDate(body.data.targetDate);
+          setActivePanel("itinerary");
+        }
+      } else if (body.data.mode === "needs-day") {
+        setTripActionStatus(tCustomer(body.data.invalidDay ? "strictMigration.tripPlanner.ai.invalidDay" : "strictMigration.tripPlanner.ai.needsDay"));
+      } else if (body.data.mode === "needs-category") {
+        setTripActionStatus(tCustomer("strictMigration.tripPlanner.ai.needsCategory"));
+      } else if (body.data.mode === "limit-exceeded") {
+        setTripActionStatus(tCustomer("strictMigration.tripPlanner.ai.limitExceeded"));
+      } else if (body.data.mode === "no-candidates" && body.data.directAdd) {
+        setTripActionStatus(tCustomer("strictMigration.tripPlanner.ai.noMatches"));
+      } else if (body.data.mode === "needs-destination" && body.data.directAdd) {
+        setTripActionStatus(tCustomer("strictMigration.tripPlanner.ai.needsDestination"));
+      }
     } catch {
       if (controller.signal.aborted || aiRequestRef.current !== controller) {
         if (timedOut) setAiError(tCustomer("strictMigration.tripPlanner.ai.timeout"));
@@ -892,6 +947,15 @@ export function MapClient({
     const editing = editingStopId === item.id;
     const weatherTargetKey = weatherPlan.itemTargetKeyById[item.id];
     const weatherResult = weatherTargetKey ? weatherState.results[weatherTargetKey] ?? null : null;
+    const showHourlyFallback = selectedDate !== null && item.scheduled_date === selectedDate
+      && weatherLayerEnabled && activeWeatherMapMode === "forecast" && !simulationActive
+      && (overlayState.status === "error" || (overlayState.status === "ready" && !overlayState.result?.spatialCoverageComplete));
+    const dayWeatherKey = showHourlyFallback ? weatherPlan.dayTargetKeyByDate[selectedDate] : undefined;
+    const dayWeather = dayWeatherKey ? weatherState.results[dayWeatherKey] : undefined;
+    const pointWeather = weatherResult ?? (
+      dayWeather?.target.latitude === Number(item.lat.toFixed(4))
+      && dayWeather?.target.longitude === Number(item.lng.toFixed(4)) ? dayWeather : undefined
+    );
     const activity = activitiesById.get(item.experience_id ?? item.id);
     const timeBounds = getTripItemTimeBounds(trip.items, item.id);
     const categoryKey = activity ? getOptionalDiscoveryCategoryLabelKey(activity.categorySlug) : null;
@@ -964,7 +1028,7 @@ export function MapClient({
               <span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)]">
                 <span className="min-w-0 break-words whitespace-normal text-left text-xs font-bold text-foreground [overflow-wrap:anywhere]">{item.label}</span>
                 <span className="mt-0.5 min-w-0 break-words whitespace-normal text-[11px] text-muted-foreground [overflow-wrap:anywhere]">{sublabel}</span>
-                <TripWeatherItemMarker result={weatherResult} />
+                <TripWeatherItemMarker result={weatherResult} hourlyForecast={showHourlyFallback ? pointWeather?.forecast : undefined} forecastHour={overlayHour} />
               </span>
               {(isLocation || isCustom) && (
                 <button
@@ -1194,12 +1258,13 @@ export function MapClient({
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 md:space-y-4 md:p-4">
               <form onSubmit={requestAiPlan} className="space-y-2">
                 <label htmlFor="trip-ai-preference" className="text-xs font-semibold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.preferenceLabel")}</label>
-                <input id="trip-ai-preference" value={aiPreference} onChange={(event) => { setAiPreference(event.target.value); setAiSelectedState(null); setAiSuggestions([]); setAiScope(null); setAiMode(""); }} maxLength={140} placeholder={tCustomer("strictMigration.tripPlanner.ai.preferencePlaceholder")} className="min-h-11 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10 md:min-h-0" />
+                <input ref={aiInputRef} id="trip-ai-preference" value={aiPreference} onChange={(event) => { setAiPreference(event.target.value); setAiSelectedState(null); setAiSuggestions([]); setAiScope(null); setAiMode(""); }} maxLength={140} placeholder={tCustomer("strictMigration.tripPlanner.ai.preferencePlaceholder")} className="min-h-11 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10 md:min-h-0" />
                 <button type="submit" disabled={aiLoading} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-xs font-bold text-white transition hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 md:min-h-0">
                   {aiLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}{aiLoading ? tCustomer("strictMigration.tripPlanner.ai.loading") : tCustomer("strictMigration.tripPlanner.ai.planAction")}
                 </button>
               </form>
               {aiError && <p role="alert" className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">{aiError}</p>}
+              {tripActionStatus && <p role="status" className="rounded-xl border border-primary/20 bg-secondary px-3 py-2 text-xs text-foreground">{tripActionStatus}</p>}
               {aiScope && aiScope.ambiguousStates.length === 0 && <p role="status" className="rounded-lg bg-secondary px-3 py-2 text-xs text-muted-foreground">{tCustomer(aiScope.categorySlug ? "strictMigration.tripPlanner.ai.scopeAppliedWithCategory" : "strictMigration.tripPlanner.ai.scopeApplied", { state: aiScope.state ? tCustomer(`ui.malaysiaStates.${malaysiaStateKey(aiScope.state)}`) : tCustomer("ui.malaysiaStates.allMalaysia"), category: aiScope.categorySlug ? tCustomer(`strictMigration.tripPlanner.ai.category.${aiScope.categorySlug}`) : "" })}</p>}
               {aiScope && aiScope.ambiguousStates.length > 0 && <section aria-label={tCustomer("strictMigration.tripPlanner.ai.chooseState")} className="rounded-xl border border-border bg-background p-3"><p className="text-xs font-semibold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.chooseState")}</p><div className="mt-2 flex flex-wrap gap-2">{aiScope.ambiguousStates.map((state) => <button key={state} type="button" disabled={aiLoading} onClick={() => { setAiSelectedState(state); void requestAiPlan(undefined, state); }} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-primary hover:bg-secondary disabled:opacity-60">{tCustomer(`ui.malaysiaStates.${malaysiaStateKey(state)}`)}</button>)}</div></section>}
               {aiSuggestions.length > 0 && <section aria-label={tCustomer("strictMigration.tripPlanner.ai.suggestions")} className="space-y-2">
@@ -1217,7 +1282,7 @@ export function MapClient({
               </section>}
               {aiMode === "rule-based" && <p role="status" className="text-xs text-muted-foreground">{tCustomer("strictMigration.tripPlanner.ai.basicSuggestions")}</p>}
               {!aiLoading && !aiError && aiSuggestions.length === 0 && aiMode === "no-candidates" && <p className="rounded-xl border border-dashed border-border px-3 py-3 text-center text-xs text-muted-foreground md:py-4">{tCustomer("strictMigration.tripPlanner.ai.noMatches")}</p>}
-              {!aiLoading && !aiError && aiSuggestions.length === 0 && aiMode !== "no-candidates" && aiMode !== "needs-destination" && <p className="rounded-xl border border-dashed border-border px-3 py-3 text-center text-xs text-muted-foreground md:py-4">{tCustomer("strictMigration.tripPlanner.ai.empty")}</p>}
+              {!aiLoading && !aiError && aiSuggestions.length === 0 && aiMode !== "no-candidates" && aiMode !== "needs-destination" && aiMode !== "needs-category" && aiMode !== "needs-day" && <p className="rounded-xl border border-dashed border-border px-3 py-3 text-center text-xs text-muted-foreground md:py-4">{tCustomer("strictMigration.tripPlanner.ai.empty")}</p>}
               <details className="rounded-xl border border-border bg-background px-3 py-2">
                 <summary className="cursor-pointer list-none text-xs font-semibold text-foreground">{tCustomer("strictMigration.tripPlanner.ai.budget")}</summary>
                 <div className="pt-3"><TripBudgetGuard tripId={tripData.id} items={trip.items} activities={[...activitiesById.values()]} onShowOnMap={(pin) => { setSuggestedPins((current) => current.some((existing) => existing.id === pin.id) ? current : [...current, pin]); focusPin(pin); }} /></div>
@@ -1227,15 +1292,16 @@ export function MapClient({
         </aside>
 
         <main aria-label={tCustomer("strictMigration.tripPlanner.itinerary")} className={(activePanel === "itinerary" ? "flex" : "hidden") + " relative min-h-0 flex-col bg-background xl:flex"}>
-          <header className="flex shrink-0 flex-col items-stretch gap-1.5 border-b border-border bg-card px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5 sm:py-3">
-            <div className="min-w-0">
+          <header className="flex shrink-0 flex-col items-stretch gap-1.5 border-b border-border bg-card px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5 sm:py-3 xl:flex-col xl:items-stretch">
+            <div className="min-w-0 xl:w-full">
               <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-primary">{tCustomer("strictMigration.tripPlanner.itineraryTab")}</p>
-              <h2 className="mt-0.5 break-words whitespace-normal text-lg font-bold text-foreground">{selectedDay ? tCustomer("strictMigration.tripPlanner.dayNumber", { number: selectedDayIndex + 1 }) : tCustomer("strictMigration.tripPlanner.planDays")}</h2>
-              <p className="text-xs text-muted-foreground">{selectedDay ? formatTripDay(selectedDay.date) : tCustomer("strictMigration.tripPlanner.planned", { scheduled: scheduledItemCount, total: trip.items.length })}</p>
+              <h2 className="mt-0.5 whitespace-nowrap text-lg font-bold text-foreground">{selectedDay ? tCustomer("strictMigration.tripPlanner.dayNumber", { number: selectedDayIndex + 1 }) : tCustomer("strictMigration.tripPlanner.planDays")}</h2>
+              <p className="whitespace-nowrap text-xs text-muted-foreground">{selectedDay ? formatTripDay(selectedDay.date) : tCustomer("strictMigration.tripPlanner.planned", { scheduled: scheduledItemCount, total: trip.items.length })}</p>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:shrink-0 xl:w-full xl:shrink">
               {selectedDay && <label className="sr-only" htmlFor="planner-selected-day">{tCustomer("strictMigration.tripPlanner.selectDay")}</label>}
-              {selectedDay && <select id="planner-selected-day" value={selectedDay.date} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-11 min-w-0 flex-1 rounded-lg border border-border bg-background px-2 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary sm:max-w-52 md:min-h-0">{groupedItems.days.map((day, index) => <option key={day.date} value={day.date}>{tCustomer("strictMigration.tripPlanner.dayNumber", { number: index + 1 })} · {formatTripDay(day.date)}</option>)}</select>}
+              {selectedDay && <select id="planner-selected-day" value={selectedDay.date} onChange={(event) => setSelectedDate(event.target.value)} className="min-h-11 min-w-[8rem] flex-1 rounded-lg border border-border bg-background px-2 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary sm:max-w-52 md:min-h-0">{groupedItems.days.map((day, index) => <option key={day.date} value={day.date}>{tCustomer("strictMigration.tripPlanner.dayNumber", { number: index + 1 })} · {formatTripDay(day.date)}</option>)}</select>}
+              {selectedDay && <Button type="button" variant="outline" className="min-h-11 shrink-0 px-3 text-xs md:min-h-0 md:h-9" onClick={openAiForSelectedDay}><Sparkles size={14} />{tCustomer("strictMigration.tripPlanner.ai.planThisDay")}</Button>}
               <button type="button" onClick={handleCheckout} disabled={checkingOut || purchasableCount === 0} aria-label={tCustomer("ui.tripCheckout.button", { count: purchasableCount })} title={tCustomer("ui.tripCheckout.button", { count: purchasableCount })} className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-40 md:min-h-0 md:h-9">{checkingOut ? <Loader2 size={15} className="animate-spin" /> : <ShoppingCart size={15} />}{tCustomer("ui.tripCheckout.buy", { count: purchasableCount })}</button>
             </div>
           </header>
@@ -1375,7 +1441,7 @@ export function MapClient({
         <section data-trip-route-map aria-label={tCustomer("strictMigration.tripPlanner.mapTab")} className={(activePanel === "map" ? "flex" : "hidden") + " relative min-h-0 flex-col bg-muted pb-16 xl:flex xl:pb-0"}>
           <div className="min-h-0 flex-1">
             <MapView pins={pins} center={center} zoom={near ? 12 : 7} height="100%" cluster radiusCenter={discoveryNear && placeFilters.distanceKm !== null ? [discoveryNear.lat, discoveryNear.lng] : undefined} radiusKm={discoveryNear ? placeFilters.distanceKm ?? undefined : undefined} onAddStop={toggleStop} stopIds={selectedRouteStops.map((stop) => stop.id)} suggestedIds={suggestedPins.map((pin) => pin.id)} routes={activeRoutes.map((route, index) => ({ path: route.geometry, selected: index === selectedRouteIdx, trafficSegments: route.traffic?.segments }))} fitCoordinates={selectedRouteCoordinates} routeColor={MODE_STYLE[mode].color} routeDashed={MODE_STYLE[mode].dashed} focusRequest={focusRequest} onMapMovingChange={setMapMoving}>
-              <TripWeatherMapOverlay result={displayedWeatherOverlay} status={displayedWeatherOverlayStatus} radarResult={radarState.result} radarStatus={radarState.status} mode={activeWeatherMapMode} date={selectedDate} liveRadarAvailable={liveRadarAvailable} grayShadeCenter={discoveryNear ? [discoveryNear.lat, discoveryNear.lng] : undefined} grayShadeRadiusKm={discoveryNear ? placeFilters.distanceKm : null} enabled={weatherLayerEnabled} hour={overlayHour} onHourChange={setOverlayHour} onModeChange={setWeatherMapMode} onEnabledChange={setWeatherLayerEnabled} simulationAvailable={simulationAvailable} simulationEnabled={simulationActive} onSimulationEnabledChange={setSimulationEnabled} mapMoving={mapMoving} />
+              <TripWeatherMapOverlay result={displayedWeatherOverlay} status={displayedWeatherOverlayStatus} radarResult={radarState.result} radarStatus={radarState.status} mode={activeWeatherMapMode} date={selectedDate} liveRadarAvailable={liveRadarAvailable} tripCoordinates={selectedRouteCoordinates} grayShadeCenter={discoveryNear ? [discoveryNear.lat, discoveryNear.lng] : undefined} grayShadeRadiusKm={discoveryNear ? placeFilters.distanceKm : null} enabled={weatherLayerEnabled} hour={overlayHour} onHourChange={setOverlayHour} onModeChange={setWeatherMapMode} onEnabledChange={setWeatherLayerEnabled} simulationAvailable={simulationAvailable} simulationEnabled={simulationActive} onSimulationEnabledChange={setSimulationEnabled} mapMoving={mapMoving} />
             </MapView>
           </div>
         </section>

@@ -640,6 +640,7 @@
       "ticketReopened": "Tiket dibuka semula.",
       "reopenRetry": "Tiket tidak dapat dibuka semula. Sila cuba lagi.",
       "ticketLoadError": "Tiket ini tidak dapat dimuatkan",
+      "ticketLoadRetry": "Tiket tidak dapat dicapai. Sila cuba lagi.",
       "ticketNotFound": "Tiket mungkin tidak wujud atau bukan milik anda.",
       "opened": "dibuka",
       "reopening": "Membuka semula…",
@@ -2173,6 +2174,7 @@
       "found_other": "{{count}} pesanan ditemui",
       "moreItems_one": " +{{count}} lagi",
       "moreItems_other": " +{{count}} lagi",
+      "askSupport": "Tanya tentang pesanan ini",
       "details": "Butiran pesanan"
     },
     "outletMenu": {
@@ -2511,6 +2513,11 @@
       "aiNamePhoneRequired": "Sahkan telefon anda untuk menggunakan penamaan AI. Anda masih boleh mencipta perjalanan dengan nama sendiri.",
       "startDate": "Tarikh Mula",
       "endDate": "Tarikh Tamat",
+      "editDates": "Ubah tarikh perjalanan",
+      "saveDates": "Simpan tarikh",
+      "savingDates": "Menyimpan…",
+      "dateRangeConflict": "Beberapa hentian yang dijadualkan berada di luar julat tarikh baharu. Pilih tempoh lebih panjang atau jadualkan semula hentian itu dahulu.",
+      "dateUpdateFailed": "Tarikh perjalanan tidak dapat dikemas kini. Pelan tersimpan anda tidak berubah.",
       "createAndStart": "Cipta & Mula Merancang",
       "emptyTitle": "Belum ada perjalanan",
       "emptyDescription": "Anda belum mencipta sebarang perjalanan. Mula merancang pengembaraan seterusnya!",
@@ -2892,7 +2899,8 @@
       "productsAvailable_one": "{{count}} produk tersedia",
       "productsAvailable_other": "{{count}} produk tersedia",
       "moreProducts_one": "+{{count}} lagi",
-      "moreProducts_other": "+{{count}} lagi"
+      "moreProducts_other": "+{{count}} lagi",
+      "endsShort": "Tamat"
     },
     "promotionCampaigns": {
       "locationVendorSummary": "{{locations}} · {{vendors}}",
@@ -2991,12 +2999,38 @@
         "unlocatedCount_other": "{{count}} acara tidak dapat dipadankan dengan negeri atau wilayah persekutuan.",
         "emptyStateTitle": "Belum ada acara akan datang di {{state}}",
         "emptyMalaysiaTitle": "Tiada acara akan datang untuk dipaparkan",
-        "emptyDescription": "Pilih negeri lain atau lihat seluruh Malaysia."
+        "emptyDescription": "Pilih negeri lain atau lihat seluruh Malaysia.",
+        "peninsularLabel": "SEMENANJUNG MALAYSIA",
+        "eastLabel": "MALAYSIA TIMUR",
+        "seaLabel": "Laut China Selatan",
+        "northLabel": "U",
+        "regions": {
+          "north": {
+            "name": "Utara",
+            "title": "Wilayah Utara"
+          },
+          "central": {
+            "name": "Tengah",
+            "title": "Wilayah Tengah"
+          },
+          "south": {
+            "name": "Selatan",
+            "title": "Wilayah Selatan"
+          },
+          "east-coast": {
+            "name": "Pantai Timur",
+            "title": "Pantai Timur"
+          },
+          "east-malaysia": {
+            "name": "Malaysia Timur",
+            "title": "Malaysia Timur"
+          }
+        }
       },
       "views": {
         "label": "Pilih cara melihat acara",
         "list": "Senarai",
-        "map": "Peta & acara",
+        "map": "Peta",
         "unpinned_one": "{{count}} lokasi belum ada pin peta. Lihat paparan Senarai untuk alamatnya.",
         "unpinned_other": "{{count}} lokasi belum ada pin peta. Lihat paparan Senarai untuk alamatnya."
       },
@@ -3394,7 +3428,8 @@
         "shortTitle": "Perancang AI",
         "label": "RANCANG DENGAN AI",
         "preferenceLabel": "Apa yang anda ingin lakukan?",
-        "preferencePlaceholder": "Makanan tempatan, budaya, hari santai…",
+        "preferencePlaceholder": "Hari kedua: tiga tarikan dan dua tempat makan berdekatan…",
+        "planThisDay": "Rancang hari ini",
         "planAction": "Cari idea",
         "loading": "Sedang mencari idea…",
         "calculating": "Mengira laluan…",
@@ -3404,6 +3439,24 @@
         "empty": "Idea perjalanan anda akan dipaparkan di sini.",
         "suggestions": "Idea untuk perjalanan anda",
         "addToDay": "Tambah ke hari dipilih",
+        "batchAdded": "{{count}} tempat ditambah pada {{date}}: {{names}}. Susunan menggunakan {{order}}.",
+        "batchAddedPartial": "{{count}} tempat yang tersedia ditambah pada {{date}}: {{names}}. Susunan menggunakan {{order}}.",
+        "batchAddedByCategory_one": "{{count}} tempat ditambah pada {{date}}: {{names}}. Mengikut kategori: {{categories}}. Susunan menggunakan {{order}}.",
+        "batchAddedByCategory_other": "{{count}} tempat ditambah pada {{date}}: {{names}}. Mengikut kategori: {{categories}}. Susunan menggunakan {{order}}.",
+        "batchAddedPartialByCategory_one": "{{count}} tempat yang ditemui ditambah pada {{date}}: {{names}}. Mengikut kategori: {{categories}}. Susunan menggunakan {{order}}.",
+        "batchAddedPartialByCategory_other": "{{count}} tempat yang ditemui ditambah pada {{date}}: {{names}}. Mengikut kategori: {{categories}}. Susunan menggunakan {{order}}.",
+        "batchAlreadyPresent": "Tempat yang sepadan sudah ada dalam perjalanan ini.",
+        "batchReconciled_one": "Disahkan: {{count}} tempat telah disimpan pada {{date}}. Mengikut kategori: {{categories}}.",
+        "batchReconciled_other": "Disahkan: {{count}} tempat telah disimpan pada {{date}}. Mengikut kategori: {{categories}}.",
+        "batchVerified_one": "Perjalanan disegerakkan selepas respons simpanan lewat. {{count}} tempat yang diminta sudah ada; semak jadual perjalanan sebelum mencuba lagi.",
+        "batchVerified_other": "Perjalanan disegerakkan selepas respons simpanan lewat. {{count}} tempat yang diminta sudah ada; semak jadual perjalanan sebelum mencuba lagi.",
+        "matrixOrder": "masa perjalanan jalan raya",
+        "approximateOrder": "lokasi berdekatan; anggaran",
+        "needsDay": "Pilih hari perjalanan sebelum menambah tempat.",
+        "invalidDay": "Hari itu di luar tarikh perjalanan ini. Pilih hari dalam julat perjalanan.",
+        "needsCategory": "Apakah jenis tempat yang perlu ditambah: makanan, aktiviti, penginapan atau beli-belah?",
+        "limitExceeded": "Rancang maksimum 10 tempat pada satu masa. Bahagikan permintaan yang lebih besar.",
+        "needsDestination": "Nyatakan bandar atau negeri supaya saya dapat mencari tempat berdekatan.",
         "showMap": "Tunjuk peta",
         "hideMap": "Sembunyikan peta",
         "budget": "Bajet perjalanan",
@@ -3496,7 +3549,9 @@
         "basedOnForecast": "Berdasarkan ramalan cuaca",
         "forecastUnavailable": "Ramalan cuaca tidak tersedia",
         "coverageInsufficient": "Liputan terlalu terhad untuk menentukan lokasi hujan dengan tepat",
-        "rainBeyondCoverage": "Hujan berlanjutan di luar kawasan sampel; liputan penuhnya tidak diketahui",
+        "rainBeyondCoverage": "Hujan dijangka di beberapa kawasan. Ramalan hanya meliputi sebahagian kawasan hujan.",
+        "hourlyRainProbability": "Kebarangkalian hujan {{value}}",
+        "hourlyRainAmount": "Jumlah hujan {{value}}",
         "forecastAvailableNearerDeparture": "Ramalan cuaca tersedia apabila tarikh perjalanan semakin hampir",
         "stale": "Menunjukkan ramalan terakhir yang tersedia",
         "lastRetrieved": "Diperoleh pada {{date}}",
@@ -3517,6 +3572,12 @@
         "forecast": "Ramalan",
         "rainOnRoute": "Hujan di laluan anda",
         "rainAreaLegend": "Kawasan hujan ramalan",
+        "viewNearbyRadar": "Lihat radar berdekatan",
+        "backToTripMap": "Kembali ke peta perjalanan",
+        "nearbyRadarNeedsStop": "Tambah hentian pada peta untuk melihat radar berdekatan.",
+        "radarEchoStrength": "Keamatan gema radar",
+        "radarEchoWeak": "Lemah",
+        "radarEchoStrong": "Kuat",
         "centerWeather": "Pusatkan kawasan cuaca",
         "showControls": "Tunjukkan kawalan cuaca",
         "hideControls": "Sembunyikan kawalan cuaca",

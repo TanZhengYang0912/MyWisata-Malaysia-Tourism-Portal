@@ -640,6 +640,7 @@
       "ticketReopened": "工单已重新开启。",
       "reopenRetry": "无法重新开启工单，请重试。",
       "ticketLoadError": "无法加载此工单",
+      "ticketLoadRetry": "暂时无法连接工单，请重试。",
       "ticketNotFound": "该工单可能不存在，或不属于你。",
       "opened": "创建于",
       "reopening": "正在重新开启…",
@@ -2173,6 +2174,7 @@
       "found_other": "找到 {{count}} 个订单",
       "moreItems_one": "，另有 {{count}} 项",
       "moreItems_other": "，另有 {{count}} 项",
+      "askSupport": "咨询此订单",
       "details": "订单详情"
     },
     "outletMenu": {
@@ -2511,6 +2513,11 @@
       "aiNamePhoneRequired": "验证手机后即可使用 AI 命名；你仍然可以使用自己的名称创建行程。",
       "startDate": "开始日期",
       "endDate": "结束日期",
+      "editDates": "修改行程日期",
+      "saveDates": "保存日期",
+      "savingDates": "正在保存…",
+      "dateRangeConflict": "部分已安排的项目超出了新日期范围。请延长行程，或先调整这些项目的日期。",
+      "dateUpdateFailed": "无法修改行程日期，已保留原有安排。",
       "createAndStart": "创建并开始规划",
       "emptyTitle": "暂无行程",
       "emptyDescription": "你还没有创建任何行程。开始规划下一次冒险吧！",
@@ -2892,7 +2899,8 @@
       "productsAvailable_one": "{{count}} 件商品适用",
       "productsAvailable_other": "{{count}} 件商品适用",
       "moreProducts_one": "另有 {{count}} 件",
-      "moreProducts_other": "另有 {{count}} 件"
+      "moreProducts_other": "另有 {{count}} 件",
+      "endsShort": "截止"
     },
     "promotionCampaigns": {
       "locationVendorSummary": "{{locations}} · {{vendors}}",
@@ -2991,12 +2999,38 @@
         "unlocatedCount_other": "有 {{count}} 个活动无法对应到具体州。",
         "emptyStateTitle": "{{state}}暂时没有即将开始的活动",
         "emptyMalaysiaTitle": "目前没有即将开始的活动",
-        "emptyDescription": "请选择其他州，或查看全马活动。"
+        "emptyDescription": "请选择其他州，或查看全马活动。",
+        "peninsularLabel": "马来西亚半岛",
+        "eastLabel": "东马来西亚",
+        "seaLabel": "南中国海",
+        "northLabel": "北",
+        "regions": {
+          "north": {
+            "name": "北部",
+            "title": "北部地区"
+          },
+          "central": {
+            "name": "中部",
+            "title": "中部地区"
+          },
+          "south": {
+            "name": "南部",
+            "title": "南部地区"
+          },
+          "east-coast": {
+            "name": "东海岸",
+            "title": "东海岸"
+          },
+          "east-malaysia": {
+            "name": "东马",
+            "title": "东马"
+          }
+        }
       },
       "views": {
         "label": "选择活动查看方式",
         "list": "列表",
-        "map": "地图与活动",
+        "map": "地图",
         "unpinned_one": "{{count}} 个地点尚未设置地图标记，请在列表视图中查看地址。",
         "unpinned_other": "{{count}} 个地点尚未设置地图标记，请在列表视图中查看地址。"
       },
@@ -3394,7 +3428,8 @@
         "shortTitle": "AI 规划",
         "label": "使用 AI 规划",
         "preferenceLabel": "你想体验什么？",
-        "preferencePlaceholder": "本地美食、文化、轻松的一天…",
+        "preferencePlaceholder": "第二天安排三个景点，再加两家顺路美食…",
+        "planThisDay": "帮我安排这一天",
         "planAction": "查找灵感",
         "loading": "正在查找灵感…",
         "calculating": "正在计算路线…",
@@ -3404,6 +3439,24 @@
         "empty": "你的旅程灵感会显示在这里。",
         "suggestions": "旅程推荐",
         "addToDay": "添加到当前日期",
+        "batchAdded": "已将 {{count}} 个地点加入 {{date}}：{{names}}。排序依据：{{order}}。",
+        "batchAddedPartial": "已将目前可用的 {{count}} 个地点加入 {{date}}：{{names}}。排序依据：{{order}}。",
+        "batchAddedByCategory_one": "已将 {{count}} 个地点加入 {{date}}：{{names}}。类别数量：{{categories}}。排序依据：{{order}}。",
+        "batchAddedByCategory_other": "已将 {{count}} 个地点加入 {{date}}：{{names}}。类别数量：{{categories}}。排序依据：{{order}}。",
+        "batchAddedPartialByCategory_one": "已将目前找到的 {{count}} 个地点加入 {{date}}：{{names}}。类别数量：{{categories}}。排序依据：{{order}}。",
+        "batchAddedPartialByCategory_other": "已将目前找到的 {{count}} 个地点加入 {{date}}：{{names}}。类别数量：{{categories}}。排序依据：{{order}}。",
+        "batchAlreadyPresent": "匹配的地点已经在这趟行程里了。",
+        "batchReconciled_one": "已核对：{{count}} 个地点已保存到 {{date}}。类别数量：{{categories}}。",
+        "batchReconciled_other": "已核对：{{count}} 个地点已保存到 {{date}}。类别数量：{{categories}}。",
+        "batchVerified_one": "保存响应延迟后，行程已重新核对。请求的 {{count}} 个地点已存在；重试前请先检查行程。",
+        "batchVerified_other": "保存响应延迟后，行程已重新核对。请求的 {{count}} 个地点已存在；重试前请先检查行程。",
+        "matrixOrder": "道路行驶时间",
+        "approximateOrder": "附近位置估算",
+        "needsDay": "请先选择行程日期，再加入地点。",
+        "invalidDay": "指定日期不在这趟行程内，请选择行程日期范围中的一天。",
+        "needsCategory": "想加入哪类地点：美食、活动、住宿还是购物？",
+        "limitExceeded": "一次最多安排 10 个地点。请把更多地点分成几次安排。",
+        "needsDestination": "请在请求中注明城市或州属，我才能查找附近地点。",
         "showMap": "显示地图",
         "hideMap": "隐藏地图",
         "budget": "旅程预算",
@@ -3496,7 +3549,9 @@
         "basedOnForecast": "根据天气预报",
         "forecastUnavailable": "暂时无法取得天气预报",
         "coverageInsufficient": "天气覆盖不足，无法准确定位降雨区域",
-        "rainBeyondCoverage": "降雨信号延伸到采样范围之外，无法确认完整雨区",
+        "rainBeyondCoverage": "部分地区预计有雨，雨区可能延伸到预报范围外",
+        "hourlyRainProbability": "降雨概率 {{value}}",
+        "hourlyRainAmount": "预报雨量 {{value}}",
         "forecastAvailableNearerDeparture": "临近出发日期后可查看天气预报",
         "stale": "正在显示最近取得的预报",
         "lastRetrieved": "取得时间：{{date}}",
@@ -3517,6 +3572,12 @@
         "forecast": "天气预报",
         "rainOnRoute": "行程路线有降雨",
         "rainAreaLegend": "预报降雨范围",
+        "viewNearbyRadar": "查看附近雷达",
+        "backToTripMap": "返回行程地图",
+        "nearbyRadarNeedsStop": "添加有坐标的停靠点后可查看附近雷达",
+        "radarEchoStrength": "雷达回波强度",
+        "radarEchoWeak": "弱",
+        "radarEchoStrong": "强",
         "centerWeather": "定位天气区域",
         "showControls": "展开天气控制",
         "hideControls": "收起天气控制",

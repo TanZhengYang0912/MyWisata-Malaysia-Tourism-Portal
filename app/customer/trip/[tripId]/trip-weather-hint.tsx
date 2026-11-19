@@ -214,11 +214,32 @@ export function TripWeatherHint({ date, anchorLabel, result, loading, onSelectRi
   );
 }
 
-export function TripWeatherItemMarker({ result }: { result: WeatherTargetResult | null }) {
+export function TripWeatherItemMarker({ result, hourlyForecast, forecastHour }: {
+  result: WeatherTargetResult | null;
+  hourlyForecast?: WeatherTargetResult["forecast"];
+  forecastHour?: number;
+}) {
   const { t } = useTranslation("customer");
-  if (!result || (result.risk.level !== "caution" && result.risk.level !== "high")) return null;
+  const hour = hourlyForecast?.availability === "forecast"
+    ? hourlyForecast.hours.find((entry) => entry.hour === forecastHour)
+    : undefined;
+  const key = "strictMigration.tripPlanner.weather";
+  let hourlyDetails: string | null = null;
+  if (hour && (hour.precipitationProbability !== null || hour.precipitationMm !== null)) {
+    const metrics = [
+      t(`${key}.timeLabel`, { hour: String(hour.hour).padStart(2, "0") }),
+      hour.precipitationProbability === null ? null
+        : t(`${key}.hourlyRainProbability`, { value: metric(hour.precipitationProbability, "%") }),
+      hour.precipitationMm === null ? null
+        : t(`${key}.hourlyRainAmount`, { value: metric(hour.precipitationMm, " mm") }),
+      hourlyForecast?.stale ? t(`${key}.stale`) : null,
+    ];
+    hourlyDetails = metrics.filter(Boolean).join(" · ");
+  }
+  const showRisk = result && (result.risk.level === "caution" || result.risk.level === "high");
   return (
-    <Badge
+    <>
+    {showRisk && <Badge
       variant={result.risk.level === "high" ? "destructive" : "outline"}
       className={cn(
         "mt-1 px-1.5 py-0.5 text-[9px]",
@@ -228,6 +249,8 @@ export function TripWeatherItemMarker({ result }: { result: WeatherTargetResult 
       <CloudRain size={10} aria-hidden="true" />
       {t("strictMigration.tripPlanner.weather.mayAffectOutdoorPlans")}
       {result.target.scheduledTime && <time className="tabular-nums">· {result.target.scheduledTime.slice(0, 5)}</time>}
-    </Badge>
+    </Badge>}
+    {hourlyDetails && <span className="mt-1 text-[10px] text-muted-foreground">{hourlyDetails}</span>}
+    </>
   );
 }

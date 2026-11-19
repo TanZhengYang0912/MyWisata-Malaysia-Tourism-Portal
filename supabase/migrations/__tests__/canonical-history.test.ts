@@ -19,6 +19,8 @@ const approvedForwardMigrations = [
   "20261114072629_vendor_media_objects.sql",
   "20261114072657_vendor_media_cleanup_sweep.sql",
   "20261116193730_drop_account_language_preference.sql",
+  "20261117070806_event_staff_member_approval.sql",
+  "20261117073833_event_staff_location_scope.sql",
   "20261106014314_chat_thread_summaries.sql",
   "20261107120518_repair_tng_ewallet_destination_label.sql",
   "20261107124912_vendor_outlet_listing_summary.sql",
@@ -388,6 +390,12 @@ const approvedForwardMigrations = [
   "20261106093324_staff_jit_role_permissions.sql",
   "20261106113000_admin_support_queue_pagination.sql",
   "20261106115747_staff_jit_kyc_operation_tickets.sql",
+  "20261117110220_restore_set_my_preferred_locale.sql",
+  "20261116193729_preserve_account_ui_language.sql",
+  "20261117112128_restore_account_ui_language.sql",
+  "20261117134300_customer_trip_batch_add.sql",
+  "20261117160000_support_chat_ticket_idempotency.sql",
+  "20261117173500_update_customer_trip_dates.sql",
 ];
 
 function migrationFiles() {

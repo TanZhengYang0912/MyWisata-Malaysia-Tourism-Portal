@@ -12,5 +12,5 @@ export async function GET(_request: Request, { params }: Props) {
   const { link, error } = await resolveActiveStaffLink(createServiceClient(), token);
   if (error) return apiFail("DB_ERROR", "Unable to load this link", 500);
   if (!link) return apiFail("LINK_INVALID", "This link is invalid or has expired", 404);
-  return apiOk({ vendorName: link.vendorName, campaignTitle: link.campaignTitle, expiresAt: link.expiresAt });
+  return apiOk({ vendorName: link.vendorName, campaignTitle: link.campaignTitle, locationName: link.locationName, expiresAt: link.expiresAt });
 }

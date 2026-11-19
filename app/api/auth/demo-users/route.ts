@@ -30,10 +30,11 @@ type DemoUserRow = {
  * Auth identity existence is checked against the bounded server-side demo ID
  * projection; this avoids paging through the platform's complete Auth table.
  */
-export async function GET() {
+export async function GET(request: Request) {
   if (!isDemoToolRuntimeEnabled()) return NextResponse.json([]);
+  const signal = AbortSignal.any([request.signal, AbortSignal.timeout(15_000)]);
   try {
-    const db = createServiceClient();
+    const db = createServiceClient({ signal });
     const [{ data: loginableData, error: authError }, { data, error }] = await Promise.all([
       db.rpc('list_loginable_demo_user_ids'),
       db
@@ -86,10 +87,12 @@ export async function GET() {
     return NextResponse.json(users);
   } catch {
     const requestId = randomUUID();
-    console.error('Demo account lookup failed', { requestId, code: 'DEMO_ACCOUNTS_UNAVAILABLE' });
+    const timedOut = signal.reason instanceof DOMException && signal.reason.name === 'TimeoutError';
+    const code = timedOut ? 'DEMO_ACCOUNTS_TIMEOUT' : 'DEMO_ACCOUNTS_UNAVAILABLE';
+    console.error('Demo account lookup failed', { requestId, code });
     return NextResponse.json(
-      { error: { code: 'DEMO_ACCOUNTS_UNAVAILABLE', requestId } },
-      { status: 500 },
+      { error: { code, requestId } },
+      { status: timedOut ? 504 : 500 },
     );
   }
 }

@@ -635,6 +635,7 @@
       "ticketReopened": "Ticket reopened.",
       "reopenRetry": "Could not reopen ticket. Please try again.",
       "ticketLoadError": "Couldn't load this ticket",
+      "ticketLoadRetry": "The ticket could not be reached. Try again.",
       "ticketNotFound": "It may not exist, or it is not yours.",
       "opened": "opened",
       "reopening": "Reopening…",
@@ -2168,6 +2169,7 @@
       "found_other": "{{count}} orders found",
       "moreItems_one": " +{{count}} more",
       "moreItems_other": " +{{count}} more",
+      "askSupport": "Ask about this order",
       "details": "Order details"
     },
     "outletMenu": {
@@ -2506,6 +2508,11 @@
       "aiNamePhoneRequired": "Verify your phone to use AI naming. You can still create this trip with your own name.",
       "startDate": "Start Date",
       "endDate": "End Date",
+      "editDates": "Change trip dates",
+      "saveDates": "Save dates",
+      "savingDates": "Saving…",
+      "dateRangeConflict": "Some planned stops would fall outside these dates. Choose a longer range or reschedule those stops first.",
+      "dateUpdateFailed": "Trip dates could not be updated. Your saved plan is unchanged.",
       "createAndStart": "Create & Start Planning",
       "emptyTitle": "No trips yet",
       "emptyDescription": "You haven't created any trips. Start planning your next adventure!",
@@ -2887,7 +2894,8 @@
       "productsAvailable_one": "{{count}} products available",
       "productsAvailable_other": "{{count}} products available",
       "moreProducts_one": "+{{count}} more",
-      "moreProducts_other": "+{{count}} more"
+      "moreProducts_other": "+{{count}} more",
+      "endsShort": "Ends"
     },
     "promotionCampaigns": {
       "locationVendorSummary": "{{locations}} · {{vendors}}",
@@ -2986,12 +2994,38 @@
         "unlocatedCount_other": "{{count}} events could not be matched to a state.",
         "emptyStateTitle": "No upcoming events in {{state}}",
         "emptyMalaysiaTitle": "No upcoming events to show",
-        "emptyDescription": "Choose another state or view all Malaysia."
+        "emptyDescription": "Choose another state or view all Malaysia.",
+        "peninsularLabel": "PENINSULAR MALAYSIA",
+        "eastLabel": "EAST MALAYSIA",
+        "seaLabel": "South China Sea",
+        "northLabel": "N",
+        "regions": {
+          "north": {
+            "name": "Northern",
+            "title": "Northern region"
+          },
+          "central": {
+            "name": "Central",
+            "title": "Central region"
+          },
+          "south": {
+            "name": "Southern",
+            "title": "Southern region"
+          },
+          "east-coast": {
+            "name": "East Coast",
+            "title": "East Coast"
+          },
+          "east-malaysia": {
+            "name": "East Malaysia",
+            "title": "East Malaysia"
+          }
+        }
       },
       "views": {
         "label": "Choose how to view events",
         "list": "List",
-        "map": "Map & events",
+        "map": "Map",
         "unpinned_one": "{{count}} location has no map pin yet. See the List view for its address.",
         "unpinned_other": "{{count}} locations have no map pin yet. See the List view for their addresses."
       },
@@ -3389,7 +3423,8 @@
         "shortTitle": "AI planner",
         "label": "PLAN WITH AI",
         "preferenceLabel": "What would you like to do?",
-        "preferencePlaceholder": "Local food, culture, a relaxed day…",
+        "preferencePlaceholder": "Day two: three attractions and two nearby food stops…",
+        "planThisDay": "Plan this day",
         "planAction": "Find ideas",
         "loading": "Finding ideas…",
         "calculating": "Calculating route…",
@@ -3399,6 +3434,24 @@
         "empty": "Your trip ideas will appear here.",
         "suggestions": "Ideas for your trip",
         "addToDay": "Add to selected day",
+        "batchAdded": "Added {{count}} places to {{date}}: {{names}}. Order uses {{order}}.",
+        "batchAddedPartial": "Added {{count}} available places to {{date}}: {{names}}. Order uses {{order}}.",
+        "batchAddedByCategory_one": "Added {{count}} place to {{date}}: {{names}}. By category: {{categories}}. Order uses {{order}}.",
+        "batchAddedByCategory_other": "Added {{count}} places to {{date}}: {{names}}. By category: {{categories}}. Order uses {{order}}.",
+        "batchAddedPartialByCategory_one": "Added {{count}} available place to {{date}}: {{names}}. By category: {{categories}}. Order uses {{order}}.",
+        "batchAddedPartialByCategory_other": "Added {{count}} available places to {{date}}: {{names}}. By category: {{categories}}. Order uses {{order}}.",
+        "batchAlreadyPresent": "Those matching places are already in this trip.",
+        "batchReconciled_one": "Verified: {{count}} place is saved on {{date}}. By category: {{categories}}.",
+        "batchReconciled_other": "Verified: {{count}} places are saved on {{date}}. By category: {{categories}}.",
+        "batchVerified_one": "Trip refreshed after a delayed save response. {{count}} requested place is already present; check the itinerary before trying again.",
+        "batchVerified_other": "Trip refreshed after a delayed save response. {{count}} requested places are already present; check the itinerary before trying again.",
+        "matrixOrder": "road travel times",
+        "approximateOrder": "nearby locations; approximate",
+        "needsDay": "Select a trip day before adding places.",
+        "invalidDay": "That day is outside this trip. Choose a day within its dates.",
+        "needsCategory": "What kind of places should I add: food, activities, stays, or shopping?",
+        "limitExceeded": "Arrange up to 10 places at a time. Split a larger request into a few requests.",
+        "needsDestination": "Add a city or state to your request so I can find nearby places.",
         "showMap": "Show map",
         "hideMap": "Hide map",
         "budget": "Trip budget",
@@ -3491,7 +3544,9 @@
         "basedOnForecast": "Based on forecast",
         "forecastUnavailable": "Forecast unavailable",
         "coverageInsufficient": "Coverage is too limited to locate rain accurately",
-        "rainBeyondCoverage": "Rain extends beyond the sampled area; its full extent is unknown",
+        "rainBeyondCoverage": "Rain expected in some areas. The forecast covers only part of the rain area.",
+        "hourlyRainProbability": "{{value}} chance of rain",
+        "hourlyRainAmount": "{{value}} of rain",
         "forecastAvailableNearerDeparture": "Forecast available nearer departure",
         "stale": "Showing the last available forecast",
         "lastRetrieved": "Retrieved {{date}}",
@@ -3512,6 +3567,12 @@
         "forecast": "Forecast",
         "rainOnRoute": "Rain on your route",
         "rainAreaLegend": "Forecast rain area",
+        "viewNearbyRadar": "View nearby radar",
+        "backToTripMap": "Back to trip map",
+        "nearbyRadarNeedsStop": "Add a mapped stop to view nearby radar.",
+        "radarEchoStrength": "Radar echo strength",
+        "radarEchoWeak": "Weak",
+        "radarEchoStrong": "Strong",
         "centerWeather": "Center weather area",
         "showControls": "Show weather controls",
         "hideControls": "Hide weather controls",

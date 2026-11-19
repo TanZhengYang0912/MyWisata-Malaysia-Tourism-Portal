@@ -10,13 +10,14 @@ import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatMalaysiaDateTime } from "@/lib/weather/overlay-time";
-import { buildForecastIntensitySampler, hasBoundedForecastRain, retainRainParticleCandidate, sampleRadarIntensityAt, tilePixelForCoordinate, weatherAtmosphereFade } from "@/lib/weather/rain-mask";
+import { buildForecastIntensitySampler, hasBoundedForecastRain, isForecastRainSample, RADAR_ECHO_STRONG, RADAR_ECHO_WEAK, radarEchoShade, retainRainParticleCandidate, sampleRadarIntensityAt, tilePixelForCoordinate, weatherAtmosphereFade } from "@/lib/weather/rain-mask";
 import type { RadarFrame, RadarOverlayResult, WeatherMapMode, WeatherOverlayResult } from "@/lib/weather/types";
 import type { WeatherOverlayStatus } from "./use-weather-overlay";
 import { SIMULATED_WEATHER_HOURS, simulatedWeatherConditionKeyForHour } from "./trip-weather-simulation";
 
 type RadarMaskTile = { radar: ImageData; coverage: ImageData };
 type RainDrop = { coordinates: [number, number]; phase: number; intensity: number; cellX: number; cellY: number };
+type TripCamera = { date: string; center: [number, number]; zoom: number; pitch: number; bearing: number };
 
 const MAX_RADAR_MASK_ZOOM = 7;
 const MAX_VISIBLE_RADAR_TILES = 16;
@@ -140,7 +141,7 @@ function WeatherMaskCanvas({
   useEffect(() => {
     const currentResult = resultRef.current;
     if (!map || !active || (mode === "now" && (!frame || !radarZoomSupported))
-      || (mode === "forecast" && (!currentResult || !hasBoundedForecastRain(currentResult.samples)))) {
+      || (mode === "forecast" && (!currentResult?.spatialCoverageComplete || !currentResult.samples.some(isForecastRainSample)))) {
       maskReadyRef.current = false;
       dropsRef.current = [];
       onMaskStatus(mode, "idle");
@@ -236,27 +237,25 @@ function WeatherMaskCanvas({
       const cellColumns = Math.ceil(maskWidth / cellStep);
       const cellRows = Math.ceil(maskHeight / cellStep);
       const cellIntensities = new Float32Array(cellColumns * cellRows);
+      const paintAtmosphere = (cellX: number, cellY: number, fade: number) => {
+        const alpha = Math.round(WEATHER_ATMOSPHERE_ALPHA * fade);
+        if (alpha === 0) return;
+        for (let y = cellY * cellStep; y < Math.min(maskHeight, (cellY + 1) * cellStep); y += 1) {
+          for (let x = cellX * cellStep; x < Math.min(maskWidth, (cellX + 1) * cellStep); x += 1) {
+            const pixel = (y * maskWidth + x) * 4;
+            imageData.data[pixel] = 112;
+            imageData.data[pixel + 1] = 112;
+            imageData.data[pixel + 2] = 112;
+            imageData.data[pixel + 3] = alpha;
+          }
+        }
+      };
+      const forecastShade = sampleForecast ? new Float32Array(cellIntensities.length) : null;
       for (let y = 0; y < maskHeight; y += cellStep) {
         for (let x = 0; x < maskWidth; x += cellStep) {
           const coordinate = map.unproject([x / scale, y / scale]);
           const cellX = x / cellStep;
           const cellY = y / cellStep;
-          const atmosphereFade = weatherAtmosphereFade(
-            distanceFromGrayShadeCenterKm(coordinate.lat, coordinate.lng, grayShadeLatitude, grayShadeLongitude),
-            grayShadeRadiusKm,
-          );
-          if (atmosphereFade > 0) {
-            const alpha = Math.round(WEATHER_ATMOSPHERE_ALPHA * atmosphereFade);
-            for (let pixelY = cellY * cellStep; pixelY < Math.min(maskHeight, (cellY + 1) * cellStep); pixelY += 1) {
-              for (let pixelX = cellX * cellStep; pixelX < Math.min(maskWidth, (cellX + 1) * cellStep); pixelX += 1) {
-                const pixelIndex = (pixelY * maskWidth + pixelX) * 4;
-                imageData.data[pixelIndex] = 112;
-                imageData.data[pixelIndex + 1] = 112;
-                imageData.data[pixelIndex + 2] = 112;
-                imageData.data[pixelIndex + 3] = alpha;
-              }
-            }
-          }
           let intensity: number | null = null;
           if (sampleForecast) {
             intensity = sampleForecast(coordinate.lat, coordinate.lng);
@@ -271,9 +270,17 @@ function WeatherMaskCanvas({
               intensity = sampleRadarIntensityAt(tile.radar.data, pixelIndex, isCovered);
             }
           }
+          const cellIndex = cellY * cellColumns + cellX;
+          if (mode === "forecast" && intensity !== null && intensity > 0) {
+            const fade = sampleForecast && grayShadeRadiusKm == null ? 1 : weatherAtmosphereFade(
+              distanceFromGrayShadeCenterKm(coordinate.lat, coordinate.lng, grayShadeLatitude, grayShadeLongitude),
+              grayShadeRadiusKm,
+            );
+            if (forecastShade) forecastShade[cellIndex] = fade;
+            else paintAtmosphere(cellX, cellY, fade);
+          }
           if (intensity === null) continue;
           if (intensity > 0) rainySamples += 1;
-          const cellIndex = cellY * cellColumns + cellX;
           cellIntensities[cellIndex] = intensity;
           const visualIntensity = Math.pow(intensity, 0.35);
           if (intensity > 0 && randomness() < visualIntensity * 0.02) {
@@ -309,6 +316,43 @@ function WeatherMaskCanvas({
         const progress = Math.min(1, wetDepth / featherCells);
         return progress * progress * (3 - 2 * progress);
       };
+      if (rainySamples > 0 && (forecastShade || mode === "now")) {
+        // Two passes measure distance to dry or unknown cells in linear time.
+        const depth = Uint8Array.from(cellIntensities, (intensity) => intensity > 0 ? 6 : 0);
+        for (let index = 0; index < depth.length; index += 1) {
+          if (index % cellColumns > 0) depth[index] = Math.min(depth[index], depth[index - 1] + 1);
+          if (index >= cellColumns) depth[index] = Math.min(depth[index], depth[index - cellColumns] + 1);
+        }
+        const edgeFadeByCell = new Float32Array(depth.length);
+        for (let index = depth.length - 1; index >= 0; index -= 1) {
+          if (index % cellColumns < cellColumns - 1) depth[index] = Math.min(depth[index], depth[index + 1] + 1);
+          if (index + cellColumns < depth.length) depth[index] = Math.min(depth[index], depth[index + cellColumns] + 1);
+          const progress = Math.max(0, Math.min(1, (depth[index] - 0.5) / 5));
+          edgeFadeByCell[index] = progress * progress * (3 - 2 * progress);
+          if (forecastShade) {
+            paintAtmosphere(index % cellColumns, Math.floor(index / cellColumns), forecastShade[index] * edgeFadeByCell[index]);
+          }
+        }
+        if (mode === "now") {
+          for (let index = 0; index < cellIntensities.length; index += 1) {
+            const shade = radarEchoShade(cellIntensities[index]);
+            if (!shade) continue;
+            const alpha = Math.round(shade[3] * edgeFadeByCell[index]);
+            if (alpha === 0) continue;
+            const cellX = index % cellColumns;
+            const cellY = Math.floor(index / cellColumns);
+            for (let y = cellY * cellStep; y < Math.min(maskHeight, (cellY + 1) * cellStep); y += 1) {
+              for (let x = cellX * cellStep; x < Math.min(maskWidth, (cellX + 1) * cellStep); x += 1) {
+                const pixel = (y * maskWidth + x) * 4;
+                imageData.data[pixel] = shade[0];
+                imageData.data[pixel + 1] = shade[1];
+                imageData.data[pixel + 2] = shade[2];
+                imageData.data[pixel + 3] = alpha;
+              }
+            }
+          }
+        }
+      }
       if (rainySamples === 0) imageData.data.fill(0);
       context.putImageData(imageData, 0, 0);
       maskImageRef.current = imageData;
@@ -429,6 +473,7 @@ export function TripWeatherMapOverlay({
   mode,
   date,
   liveRadarAvailable,
+  tripCoordinates,
   grayShadeCenter,
   grayShadeRadiusKm,
   enabled,
@@ -448,6 +493,7 @@ export function TripWeatherMapOverlay({
   mode: WeatherMapMode;
   date: string | null;
   liveRadarAvailable: boolean;
+  tripCoordinates: ReadonlyArray<readonly [latitude: number, longitude: number]>;
   grayShadeCenter?: [number, number];
   grayShadeRadiusKm?: number | null;
   enabled: boolean;
@@ -463,16 +509,14 @@ export function TripWeatherMapOverlay({
   const { t } = useTranslation("customer");
   const { current: map } = useMap();
   const reducedMotion = useMotionPreference();
+  const tripCameraRef = useRef<TripCamera | null>(null);
   const [controlsExpanded, setControlsExpanded] = useState(false);
   const [pageHidden, setPageHidden] = useState(false);
   const [maskStatusByMode, setMaskStatusByMode] = useState<Record<WeatherMapMode, "idle" | "ready" | "dry" | "insufficient" | "error">>({ now: "idle", forecast: "idle" });
+  const [radarMaskFrameTime, setRadarMaskFrameTime] = useState<string | null>(null);
   const [rainPlaying, setRainPlaying] = useState(true);
   const [radarFrameSelection, setRadarFrameSelection] = useState<{ fetchedAt: string; index: number } | null>(null);
   const [radarPlaying, setRadarPlaying] = useState(false);
-  const maskStatus = maskStatusByMode[mode];
-  const reportMaskStatus = useCallback((sourceMode: WeatherMapMode, next: "idle" | "ready" | "dry" | "insufficient" | "error") => {
-    setMaskStatusByMode((current) => current[sourceMode] === next ? current : { ...current, [sourceMode]: next });
-  }, []);
   const radarFrames = radarResult?.frames ?? [];
   const latestRadarFrameIndex = Math.max(radarFrames.length - 1, 0);
   const selectedRadarFrameIndex = radarResult && radarFrameSelection?.fetchedAt === radarResult.fetchedAt
@@ -480,6 +524,58 @@ export function TripWeatherMapOverlay({
     : latestRadarFrameIndex;
   const selectedRadarFrame = radarFrames[selectedRadarFrameIndex] ?? null;
   const showingLatestRadarFrame = selectedRadarFrameIndex === radarFrames.length - 1;
+  const maskStatus = mode === "now" && radarMaskFrameTime !== selectedRadarFrame?.frameTime
+    ? "idle"
+    : maskStatusByMode[mode];
+  const reportMaskStatus = useCallback((sourceMode: WeatherMapMode, next: "idle" | "ready" | "dry" | "insufficient" | "error", frameTime?: string) => {
+    setMaskStatusByMode((current) => current[sourceMode] === next ? current : { ...current, [sourceMode]: next });
+    if (sourceMode === "now") setRadarMaskFrameTime(frameTime ?? null);
+  }, []);
+  const reportCurrentMaskStatus = useCallback(
+    (sourceMode: WeatherMapMode, next: "idle" | "ready" | "dry" | "insufficient" | "error") => reportMaskStatus(sourceMode, next, selectedRadarFrame?.frameTime),
+    [reportMaskStatus, selectedRadarFrame?.frameTime],
+  );
+  const canOpenNearbyRadar = Boolean(date && liveRadarAvailable && !simulationEnabled && tripCoordinates.length > 0);
+  const cameraDuration = reducedMotion ? 0 : 450;
+
+  function openNearbyRadar() {
+    if (!map || !date || !canOpenNearbyRadar) return;
+    if (tripCameraRef.current?.date !== date) {
+      const { lng, lat } = map.getCenter();
+      tripCameraRef.current = {
+        date, center: [lng, lat], zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(),
+      };
+    }
+    setRadarPlaying(false);
+    setRadarFrameSelection(null);
+    onModeChange("now");
+    const lats = tripCoordinates.map(([latitude]) => latitude);
+    const lngs = tripCoordinates.map(([, longitude]) => longitude);
+    const west = Math.min(...lngs), south = Math.min(...lats);
+    const east = Math.max(...lngs), north = Math.max(...lats);
+    if (east - west < 0.00001 && north - south < 0.00001) {
+      map.easeTo({ center: [west, south], zoom: MAX_RADAR_MASK_ZOOM, duration: cameraDuration });
+    } else {
+      map.fitBounds([[west, south], [east, north]], {
+        padding: 42, maxZoom: MAX_RADAR_MASK_ZOOM, duration: cameraDuration,
+      });
+    }
+  }
+
+  function returnToTripMap() {
+    const camera = tripCameraRef.current;
+    tripCameraRef.current = null;
+    setRadarPlaying(false);
+    onModeChange("forecast");
+    if (camera?.date === date) {
+      const { center, zoom, pitch, bearing } = camera;
+      map?.easeTo({ center, zoom, pitch, bearing, duration: cameraDuration });
+    }
+  }
+
+  useEffect(() => {
+    if (tripCameraRef.current?.date !== date) tripCameraRef.current = null;
+  }, [date]);
   const hasRadar = enabled && mode === "now" && radarResult?.availability === "radar" && Boolean(selectedRadarFrame);
   const setRadarFrameIndex = useCallback((index: number) => setRadarFrameSelection({
     fetchedAt: radarResult?.fetchedAt ?? "",
@@ -533,10 +629,9 @@ export function TripWeatherMapOverlay({
   const hasCurrentResult = Boolean(result && result.date === date && result.hour === hour);
   const hasCurrentForecast = hasCurrentResult && result?.availability === "forecast";
   const hasForecast = enabled && mode === "forecast" && hasCurrentForecast;
-  const hasAnyForecastRain = Boolean(result?.samples.some((sample) => sample.precipitationProbability !== null
-    && sample.precipitationProbability >= 40 && sample.precipitationMm >= 0.1));
-  const hasForecastRain = Boolean(result && hasBoundedForecastRain(result.samples));
-  const hasUnboundedForecastRain = hasAnyForecastRain && !hasForecastRain;
+  const hasForecastRain = Boolean(result?.samples.some(isForecastRainSample));
+  const hasUnboundedForecastRain = Boolean(hasCurrentForecast && result.spatialCoverageComplete
+    && hasForecastRain && !hasBoundedForecastRain(result.samples));
   const activeStatus = mode === "now" ? radarStatus : status;
   const rainAnimationAvailable = Boolean(hasForecast && result.spatialCoverageComplete && hasForecastRain);
   const radarZoomSupported = Boolean(!map || map.getZoom() <= MAX_RADAR_MASK_ZOOM);
@@ -595,7 +690,8 @@ export function TripWeatherMapOverlay({
   function toggleSimulation() {
     const next = !simulationEnabled;
     if (next) {
-      onModeChange("forecast");
+      if (mode === "now") returnToTripMap();
+      else onModeChange("forecast");
       onHourChange(simulationMinHour);
     }
     onSimulationEnabledChange(next);
@@ -613,7 +709,7 @@ export function TripWeatherMapOverlay({
           grayShadeCenter={grayShadeCenter}
           grayShadeRadiusKm={grayShadeRadiusKm}
           paused={!enabled || (mode === "forecast" && !rainPlaying) || reducedMotion || pageHidden || mapMoving}
-          onMaskStatus={reportMaskStatus}
+          onMaskStatus={reportCurrentMaskStatus}
         />
       )}
 
@@ -632,7 +728,7 @@ export function TripWeatherMapOverlay({
           <button type="button" aria-label={t(controlsExpanded ? "strictMigration.tripPlanner.weather.hideControls" : "strictMigration.tripPlanner.weather.showControls")} aria-expanded={controlsExpanded} onClick={() => setControlsExpanded((expanded) => !expanded)} className="grid h-9 w-9 place-items-center rounded-full text-foreground transition hover:bg-muted">
             <ChevronDown size={15} className={controlsExpanded ? "rotate-180 transition-transform" : "transition-transform"} />
           </button>
-          <button type="button" disabled={mode === "forecast" && hasCurrentForecast && !result?.spatialCoverageComplete} aria-label={t("strictMigration.tripPlanner.weather.centerWeather")} onClick={() => map?.easeTo({ center: result?.dominantCenter ?? map.getCenter(), zoom: result?.dominantCenter ? Math.max(map.getZoom(), 9) : map.getZoom(), duration: 450 })} className="grid h-9 w-9 place-items-center rounded-full text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40">
+          <button type="button" disabled={mode === "forecast" && hasCurrentForecast && !result?.spatialCoverageComplete} aria-label={t("strictMigration.tripPlanner.weather.centerWeather")} onClick={() => mode === "now" ? openNearbyRadar() : map?.easeTo({ center: result?.dominantCenter ?? map.getCenter(), zoom: result?.dominantCenter ? Math.max(map.getZoom(), 9) : map.getZoom(), duration: 450 })} className="grid h-9 w-9 place-items-center rounded-full text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40">
             <LocateFixed size={17} />
           </button>
         </div>
@@ -647,8 +743,8 @@ export function TripWeatherMapOverlay({
         {controlsExpanded && enabled && (
           <div className="pointer-events-auto absolute right-4 top-16 w-[min(360px,calc(100%-32px))] max-h-[calc(100%-5rem)] overflow-y-auto overscroll-contain rounded-2xl border border-white/70 bg-white/92 dark:bg-card/92 px-4 py-3 shadow-[0_14px_45px_rgba(15,23,42,0.18)] backdrop-blur-xl">
             <div className="mb-3 flex gap-1 rounded-xl bg-muted p-1 text-[11px] font-bold">
-              <button type="button" disabled={!liveRadarAvailable || simulationEnabled} aria-pressed={mode === "now"} onClick={() => { setRadarFrameSelection(null); onModeChange("now"); }} className={"flex-1 rounded-lg px-3 py-1.5 transition disabled:cursor-not-allowed disabled:opacity-40 " + (mode === "now" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-card")}>{t("strictMigration.tripPlanner.weather.now")}</button>
-              <button type="button" aria-pressed={mode === "forecast"} onClick={() => onModeChange("forecast")} className={"flex-1 rounded-lg px-3 py-1.5 transition " + (mode === "forecast" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-card")}>{t("strictMigration.tripPlanner.weather.forecast")}</button>
+              <button type="button" disabled={!canOpenNearbyRadar} aria-describedby={tripCoordinates.length === 0 && liveRadarAvailable && !simulationEnabled ? "weather-nearby-radar-no-stops" : undefined} aria-pressed={mode === "now"} onClick={openNearbyRadar} className={"flex-1 rounded-lg px-3 py-1.5 transition disabled:cursor-not-allowed disabled:opacity-40 " + (mode === "now" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-card")}>{t("strictMigration.tripPlanner.weather.now")}</button>
+              <button type="button" aria-pressed={mode === "forecast"} onClick={returnToTripMap} className={"flex-1 rounded-lg px-3 py-1.5 transition " + (mode === "forecast" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-card")}>{t("strictMigration.tripPlanner.weather.forecast")}</button>
             </div>
 
             {simulationAvailable && (
@@ -713,7 +809,7 @@ export function TripWeatherMapOverlay({
                       : "strictMigration.tripPlanner.weather.liveRadar"
                     : "strictMigration.tripPlanner.weather.forecast")}
                 </p>
-                <h2 className="mt-1 truncate text-[20px] font-black leading-tight tracking-tight sm:text-[22px]" data-weather-status-title>
+                <h2 className="mt-1 break-words text-[20px] font-black leading-tight tracking-tight sm:text-[22px]" data-weather-status-title>
                   {cardTitle}
                 </h2>
                 <p className="mt-1 text-xs text-slate-500">
@@ -723,6 +819,14 @@ export function TripWeatherMapOverlay({
                       : t("strictMigration.tripPlanner.weather.radarUnavailable")
                     : `${t("strictMigration.tripPlanner.weather.forecastHour")} · ${t("strictMigration.tripPlanner.weather.timeLabel", { hour: String(hour).padStart(2, "0") })}`}
                 </p>
+                {mode === "now" && maskStatus === "ready" && hasRadar && radarZoomSupported && (
+                  <div data-radar-echo-legend className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold text-slate-600">
+                    <span>{t("strictMigration.tripPlanner.weather.radarEchoStrength")}</span>
+                    <span>{t("strictMigration.tripPlanner.weather.radarEchoWeak")}</span>
+                    <span aria-hidden="true" className="h-2 w-24 rounded-full" style={{ background: `linear-gradient(90deg, rgb(${RADAR_ECHO_WEAK.join(",")}), rgb(${RADAR_ECHO_STRONG.join(",")}))` }} />
+                    <span>{t("strictMigration.tripPlanner.weather.radarEchoStrong")}</span>
+                  </div>
+                )}
               </div>
               <div className="relative grid size-[92px] place-items-center justify-self-end" aria-hidden="true" data-weather-progress={showProgressRing ? ringProgress.toFixed(3) : "unavailable"}>
                 {showProgressRing && (
@@ -734,6 +838,35 @@ export function TripWeatherMapOverlay({
               </div>
             </div>
 
+            {mode === "forecast" && liveRadarAvailable && !simulationEnabled && (
+              <div className="flex flex-wrap items-center gap-2 px-4 pb-3 sm:px-5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  data-weather-nearby-radar
+                  aria-describedby={tripCoordinates.length === 0 ? "weather-nearby-radar-no-stops" : undefined}
+                  disabled={!canOpenNearbyRadar}
+                  onClick={openNearbyRadar}
+                  className="min-h-10 px-3 text-xs"
+                >
+                  {t("strictMigration.tripPlanner.weather.viewNearbyRadar")}
+                </Button>
+                {tripCoordinates.length === 0 && <span id="weather-nearby-radar-no-stops" className="text-[10px] text-slate-500">{t("strictMigration.tripPlanner.weather.nearbyRadarNeedsStop")}</span>}
+              </div>
+            )}
+            {mode === "now" && (
+              <div className="flex flex-wrap items-center gap-2 px-4 pb-3 sm:px-5">
+                <Button type="button" variant="outline" data-weather-return-to-trip onClick={returnToTripMap} className="min-h-10 px-3 text-xs">
+                  {t("strictMigration.tripPlanner.weather.backToTripMap")}
+                </Button>
+                {!radarZoomSupported && (
+                  <Button type="button" variant="outline" data-weather-nearby-radar onClick={openNearbyRadar} className="min-h-10 px-3 text-xs">
+                    {t("strictMigration.tripPlanner.weather.viewNearbyRadar")}
+                  </Button>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-[38px_minmax(0,1fr)] items-center gap-3 border-t border-slate-200/80 px-4 py-3 sm:grid-cols-[38px_minmax(0,1fr)_auto] sm:px-5" data-weather-timeline>
               {mode === "now" && radarFrames.length > 1 ? (
                 <>
@@ -743,7 +876,7 @@ export function TripWeatherMapOverlay({
                     size="icon"
                     aria-label={t(radarPlaying ? "strictMigration.tripPlanner.weather.pauseRadar" : "strictMigration.tripPlanner.weather.playRadar")}
                     aria-pressed={radarPlaying}
-                    disabled={reducedMotion}
+                    disabled={reducedMotion || !radarZoomSupported || radarStatus !== "ready"}
                     onClick={() => {
                       if (radarPlaying) setRadarPlaying(false);
                       else {
@@ -760,7 +893,7 @@ export function TripWeatherMapOverlay({
                       <span>{t("strictMigration.tripPlanner.weather.historicalRadar")}</span>
                       {selectedRadarFrame && <time>{t("strictMigration.tripPlanner.weather.radarFrameTime", { time: formatMalaysiaDateTime(selectedRadarFrame.frameTime) })}</time>}
                     </div>
-                    <input aria-label={t("strictMigration.tripPlanner.weather.historicalRadar")} type="range" min={0} max={radarFrames.length - 1} step={1} value={selectedRadarFrameIndex} onChange={(event) => { setRadarPlaying(false); setRadarFrameIndex(Number(event.target.value)); }} className="h-1.5 w-full cursor-pointer accent-emerald-700" />
+                    <input aria-label={t("strictMigration.tripPlanner.weather.historicalRadar")} type="range" min={0} max={radarFrames.length - 1} step={1} value={selectedRadarFrameIndex} disabled={!radarZoomSupported || radarStatus !== "ready"} onChange={(event) => { setRadarPlaying(false); setRadarFrameIndex(Number(event.target.value)); }} className="h-1.5 w-full cursor-pointer accent-emerald-700 disabled:cursor-not-allowed disabled:opacity-40" />
                   </div>
                   <a href={radarResult?.attributionUrl ?? "https://www.rainviewer.com/"} target="_blank" rel="noreferrer" className="col-span-2 max-w-28 justify-self-end text-right text-[10px] leading-tight font-semibold text-slate-500 underline-offset-2 hover:underline sm:col-span-1">{t("strictMigration.tripPlanner.weather.rainViewerAttribution")}</a>
                 </>
@@ -772,7 +905,7 @@ export function TripWeatherMapOverlay({
                     size="icon"
                     aria-label={t(rainPlaying ? "strictMigration.tripPlanner.weather.pauseRainAnimation" : "strictMigration.tripPlanner.weather.playRainAnimation")}
                     aria-pressed={rainPlaying}
-                    disabled={reducedMotion || !hasForecast || !result.spatialCoverageComplete || !hasForecastRain}
+                    disabled={reducedMotion || !rainAnimationAvailable}
                     onClick={() => setRainPlaying((playing) => !playing)}
                     className="size-9 rounded-full bg-slate-900 text-white hover:bg-slate-800"
                   >

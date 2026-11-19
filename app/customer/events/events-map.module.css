@@ -1,0 +1,299 @@
+/* Events Map atlas: Sea background from the approved sample (docs/plans/2026-11-17-1803-events-map-view.md §6). */
+.atlas {
+  --atlas-paper: #e6eefb;
+  --atlas-edge: #c9d5ee;
+  --atlas-dot: #0100661a;
+  --atlas-grid: #010066;
+  --atlas-ink: #3c4470;
+  --atlas-water: #5a6390;
+  --land: #fff;
+  --land-stroke: #b4bfdb;
+  --land-events: #d9dafc;
+  --land-events-stroke: #6f6cc4;
+  --land-region: #ecebff;
+  --land-region-stroke: #8c88cf;
+  --land-hit: #ffe17a;
+  --land-hit-stroke: #967419;
+  --pin-bg: #fff;
+  --pin-ink: #010066;
+  --pin-edge: #c5cce0;
+  --pin-badge: #010066;
+  --pin-badge-ink: #fff;
+  --pin-on-bg: #010066;
+  --pin-on-ink: #fff;
+  --pin-on-badge: #ffcc00;
+  --pin-on-badge-ink: #010066;
+  --pin-ring: #ffcc00;
+  --pin-off-bg: #f2f5fc;
+  --pin-off-badge: #dde3f0;
+  --pin-off-ink: #7b84a3;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 40px;
+  padding: 18px 18px 14px;
+  border: 1px solid var(--atlas-edge);
+  border-radius: 16px;
+  background: var(--atlas-paper) radial-gradient(var(--atlas-dot) 1px, transparent 1px) 0 0 / 10px 10px;
+  outline: none;
+}
+
+/* The app's theme class (app/globals.css). */
+:global(.dark) .atlas {
+  --atlas-paper: #121a2c;
+  --atlas-edge: #26304a;
+  --atlas-dot: #7c8bff1f;
+  --atlas-grid: #7c8bff;
+  --atlas-ink: #8b93ad;
+  --atlas-water: #7d86a3;
+  --land: #1d2740;
+  --land-stroke: #3a4668;
+  --land-events: #2d3878;
+  --land-events-stroke: #7c8bff;
+  --land-region: #26305a;
+  --land-region-stroke: #5d6ab8;
+  --land-hit: #e6b800;
+  --land-hit-stroke: #fff1b8;
+  --pin-bg: #131b2e;
+  --pin-ink: #e8ecf5;
+  --pin-edge: #3a4668;
+  --pin-badge: #7c8bff;
+  --pin-badge-ink: #0b1120;
+  --pin-on-bg: #7c8bff;
+  --pin-on-ink: #0b1120;
+  --pin-on-badge: #ffcc00;
+  --pin-on-badge-ink: #0b1120;
+  --pin-ring: #ffcc00;
+  --pin-off-bg: #131b2e;
+  --pin-off-badge: #26304a;
+  --pin-off-ink: #64708f;
+}
+
+.frame {
+  position: relative;
+  aspect-ratio: 850 / 328;
+}
+
+.art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.grid {
+  stroke: var(--atlas-grid);
+  stroke-opacity: 0.2;
+}
+
+.land {
+  fill: var(--land);
+  stroke: var(--land-stroke);
+  stroke-width: 0.8;
+  stroke-linejoin: round;
+  transition: fill 0.22s, stroke 0.22s;
+}
+
+.hasEvents {
+  fill: var(--land-events);
+  stroke: var(--land-events-stroke);
+}
+
+.inRegion {
+  fill: var(--land-region);
+  stroke: var(--land-region-stroke);
+}
+
+.inRegion.hasEvents {
+  fill: var(--land-hit);
+  stroke: var(--land-hit-stroke);
+  stroke-width: 1.3;
+}
+
+.label {
+  font: 800 12px var(--font-plus-jakarta-sans), sans-serif;
+  letter-spacing: 0.13em;
+  fill: var(--atlas-ink);
+}
+
+.water {
+  font: italic 14px Georgia, serif;
+  letter-spacing: 0.11em;
+  fill: var(--atlas-water);
+}
+
+.compass {
+  fill: none;
+  stroke: var(--atlas-ink);
+}
+
+.pin {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 3px 10px 3px 4px;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--pin-edge);
+  border-radius: 24px;
+  background: var(--pin-bg);
+  color: var(--pin-ink);
+  box-shadow: 0 4px 9px #37273130;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  transition: background 0.16s, color 0.16s, scale 0.19s var(--ease);
+}
+
+.pin b {
+  display: grid;
+  place-items: center;
+  min-width: 29px;
+  height: 29px;
+  padding: 0 4px;
+  border-radius: 99px;
+  background: var(--pin-badge);
+  color: var(--pin-badge-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.pin:not(:disabled):hover {
+  scale: 1.05;
+}
+
+.pin[aria-pressed="true"] {
+  z-index: 2;
+  border-color: var(--pin-on-bg);
+  background: var(--pin-on-bg);
+  color: var(--pin-on-ink);
+}
+
+.pin[aria-pressed="true"] b {
+  background: var(--pin-on-badge);
+  color: var(--pin-on-badge-ink);
+}
+
+.pin:disabled {
+  cursor: default;
+  border-style: dashed;
+  background: var(--pin-off-bg);
+  color: var(--pin-off-ink);
+  box-shadow: none;
+}
+
+.pin:disabled b {
+  background: var(--pin-off-badge);
+  color: var(--pin-off-ink);
+}
+
+.pin:focus-visible,
+.reset:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+.confirm {
+  position: absolute;
+  inset: -2px;
+  border: 2px solid var(--pin-ring);
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  animation: confirm 0.25s var(--ease) both;
+}
+
+@keyframes confirm {
+  from {
+    opacity: 0.7;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+
+.reset {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px 0 10px;
+  border: 1px solid var(--pin-edge);
+  border-radius: 999px;
+  background: var(--pin-bg);
+  color: var(--pin-ink);
+  box-shadow: 0 3px 8px #37273120;
+  font-size: 12px;
+  font-weight: 700;
+  transition: scale 0.19s var(--ease);
+}
+
+.reset:hover {
+  scale: 1.04;
+}
+
+/* Phones: count-only pins so the peninsula stays visible; the list heading names the region. */
+@media (max-width: 560px) {
+  .atlas {
+    padding: 10px 8px 8px;
+    border-radius: 12px;
+  }
+
+  .frame {
+    aspect-ratio: 850 / 370;
+    margin-top: 34px;
+  }
+
+  .label,
+  .water {
+    display: none;
+  }
+
+  .pin {
+    min-height: 0;
+    gap: 0;
+    padding: 2px;
+  }
+
+  .pin b {
+    min-width: 28px;
+    height: 28px;
+  }
+
+  .pinName {
+    display: none;
+  }
+
+  .reset {
+    top: 8px;
+    right: 8px;
+    min-height: 32px;
+    font-size: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .land,
+  .pin,
+  .reset {
+    transition: none;
+  }
+
+  .confirm {
+    animation: none;
+  }
+
+  .pin:not(:disabled):hover,
+  .reset:hover {
+    scale: 1;
+  }
+}

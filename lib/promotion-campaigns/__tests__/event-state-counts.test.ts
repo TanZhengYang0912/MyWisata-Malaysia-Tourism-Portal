@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { PromotionCampaignPublic, PromotionCampaignPublicLocation } from "@/lib/promotion-campaigns/types";
-import { buildEventStateBreakdown, resolveEventLocationState } from "../event-state-counts";
+import { DEMO_STATES } from "@/lib/demo-map/data";
+import {
+  buildEventStateBreakdown,
+  EVENT_MAP_REGION_IDS,
+  EVENT_MAP_REGION_STATES,
+  eventMapRegionIds,
+  eventMapStateIds,
+  resolveEventLocationState,
+} from "../event-state-counts";
 
 const TODAY = "2026-10-03";
 
@@ -71,5 +79,43 @@ describe("promotion campaign event-state breakdown", () => {
     expect(result.allCampaigns.map((item) => item.id)).toEqual(["unknown"]);
     expect(result.unlocatedCampaigns.map((item) => item.id)).toEqual(["unknown"]);
     expect(Object.values(result.campaignsByState).flat()).toEqual([]);
+  });
+});
+
+describe("Events map regions", () => {
+  const KL = { lat: 3.139, lng: 101.6869 };
+  const IPOH = { lat: 4.5975, lng: 101.079 };
+  const JOHOR_BAHRU = { lat: 1.548, lng: 103.7956 };
+
+  it("puts every state in exactly one region, with Pahang on the East Coast", () => {
+    const regionsOf = (stateId: string) => EVENT_MAP_REGION_IDS.filter((region) => EVENT_MAP_REGION_STATES[region].includes(stateId));
+    for (const state of DEMO_STATES) expect(regionsOf(state.id), state.id).toHaveLength(1);
+    expect(regionsOf("pahang")).toEqual(["east-coast"]);
+    expect(Object.values(EVENT_MAP_REGION_STATES).flat()).toHaveLength(DEMO_STATES.length);
+  });
+
+  it("without a day, uses the stops that have not ended", () => {
+    const fair = campaign("fair", [
+      location("kl", { ...KL, endsOn: "2026-10-05" }),
+      location("jb-ended", { ...JOHOR_BAHRU, startsOn: "2026-09-01", endsOn: "2026-10-02" }),
+    ]);
+    const states = eventMapStateIds(fair, TODAY, null);
+    expect([...states]).toEqual(["kuala-lumpur"]);
+    expect([...eventMapRegionIds(states)]).toEqual(["central"]);
+  });
+
+  it("with a day, uses only the stops running that day", () => {
+    const tour = campaign("tour", [
+      location("kl", { ...KL, startsOn: "2026-12-01", endsOn: "2026-12-02" }),
+      location("ipoh", { ...IPOH, startsOn: "2026-11-28", endsOn: "2026-11-30" }),
+    ]);
+    expect([...eventMapRegionIds(eventMapStateIds(tour, TODAY, "2026-11-29"))]).toEqual(["north"]);
+    expect([...eventMapRegionIds(eventMapStateIds(tour, TODAY, "2026-12-02"))]).toEqual(["central"]);
+    expect(eventMapStateIds(tour, TODAY, "2026-11-27").size).toBe(0);
+  });
+
+  it("gives no region when no active stop resolves to a state", () => {
+    const unknown = campaign("unknown", [location("no-state")]);
+    expect(eventMapRegionIds(eventMapStateIds(unknown, TODAY, null)).size).toBe(0);
   });
 });

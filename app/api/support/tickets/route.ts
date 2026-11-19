@@ -3,15 +3,8 @@
 // CLAUDE.md Step 8.
 // GET  /api/support/tickets — "My Tickets" list (CLAUDE-FIXES.md Fix 2).
 //
-// support_tickets has real RLS policies (support_own_or_admin SELECT,
-// support_insert_own INSERT WITH CHECK user_id = auth.uid() OR NULL —
-// 007_public_read_policies.sql). chatbot_sessions is no longer readable by
-// guests (20261014120000), so linking a session reads it with the service
-// client and checks ownership here. Guest ticket submission is intentionally allowed by the schema
-// (user_id nullable, RLS explicitly permits NULL), so this doesn't require
-// login the way affiliate link creation does. GET, unlike POST, DOES
-// require login — a guest has no stable identity across requests to list
-// tickets "by".
+// Ticket creation uses the service client after checking the caller's ownership.
+// Guests may submit unlinked tickets. Listing and chat handoffs require sign-in.
 
 import { createClient } from '@/lib/supabase/server';
 import { parseBody, apiOk, apiFail } from '@/lib/validation/schemas';
@@ -60,7 +53,22 @@ export async function POST(request: Request) {
 
   const parsed = await parseBody(request, supportTicketSchema);
   if (!parsed.ok) return parsed.response;
-  const { sessionKey, withdrawalId, subject, body } = parsed.data;
+  const { sessionKey, withdrawalId, orderId, messageId, subject, body } = parsed.data;
+  const supportService = createServiceClient();
+
+  let verifiedOrderReference: string | null = null;
+  if (orderId) {
+    if (!user) return apiFail('UNAUTHORIZED', 'Sign in to link an order to a support ticket', 401);
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .select('id, display_id')
+      .eq('id', orderId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (orderError) return apiFail('DB_ERROR', orderError.message, 503);
+    if (!order) return apiFail('NOT_FOUND', 'Order not found.', 404);
+    verifiedOrderReference = order.display_id || order.id.slice(0, 8).toUpperCase();
+  }
 
   if (withdrawalId) {
     if (!user) return apiFail('UNAUTHORIZED', 'Sign in to link a withdrawal to a support ticket', 401);
@@ -76,7 +84,7 @@ export async function POST(request: Request) {
 
   let sessionId: string | null = null;
   if (sessionKey) {
-    const { data: session, error: sessionError } = await createServiceClient()
+    const { data: session, error: sessionError } = await supportService
       .from('chatbot_sessions')
       .select('id,user_id,session_key')
       .eq('session_key', sessionKey)
@@ -87,14 +95,39 @@ export async function POST(request: Request) {
     sessionId = session?.id ?? null;
   }
 
+  if (messageId) {
+    if (!user) return apiFail('UNAUTHORIZED', 'Sign in before opening a support ticket.', 401);
+    if (!sessionId) return apiFail('INVALID_SESSION', 'Start a support conversation before opening a ticket.', 400);
+    const { data: message, error: messageError } = await supportService
+      .from('chatbot_messages')
+      .select('id, role')
+      .eq('id', messageId)
+      .eq('session_id', sessionId)
+      .maybeSingle();
+    if (messageError) return apiFail('DB_ERROR', 'Unable to verify the chat reply.', 503);
+    if (!message || message.role !== 'bot') return apiFail('FORBIDDEN', 'This chat reply cannot open a support ticket.', 403);
+
+    const { data: existing, error: existingError } = await supportService
+      .from('support_tickets')
+      .select('id, category')
+      .eq('user_id', user.id)
+      .eq('chatbot_message_id', messageId)
+      .maybeSingle();
+    if (existingError) return apiFail('DB_ERROR', 'Unable to check the existing support ticket.', 503);
+    if (existing) return apiOk({ id: existing.id, category: existing.category, replayed: true });
+  }
+
   // CLAUDE-MODERATION.md: mask, never block — a ticket is often filed by an
   // upset user, and this is exactly the input that must never be rejected
   // for content. Classification runs on the cleaned (masked) text too, so a
   // masked swear word doesn't skew category detection any differently than
   // the real one would have.
-  const moderationService = createServiceClient();
-  const cleanedSubject = await cleanUserContent(subject, moderationService);
-  const cleanedBody = await cleanUserContent(body, moderationService);
+  const cleanedSubject = await cleanUserContent(subject, supportService);
+  const cleanedBody = await cleanUserContent(body, supportService);
+  // The account's verified order reference belongs in the ticket record only.
+  const ticketBody = verifiedOrderReference
+    ? `Order reference: ${verifiedOrderReference}\n\n${cleanedBody.display}`.slice(0, 2000)
+    : cleanedBody.display;
 
   // AI classification (Gemini) with the keyword classifier as a safety net —
   // CLAUDE-FIXES-2.md item 6. classifyTicketSmart() never throws: no
@@ -105,14 +138,15 @@ export async function POST(request: Request) {
   // Signed-in and guest users can no longer insert support tickets directly
   // (live column/write lockdown). The owner comes from the session above, never
   // from the request body, so writing through the service client is safe.
-  const { data, error } = await moderationService
+  const { data, error } = await supportService
     .from('support_tickets')
     .insert({
       user_id: user?.id ?? null,
       session_id: sessionId,
       withdrawal_id: withdrawalId ?? null,
+      ...(messageId ? { chatbot_message_id: messageId } : {}),
       subject: cleanedSubject.display,
-      body: cleanedBody.display,
+      body: ticketBody,
       category,
       classification_method: method,
       status: 'open',
@@ -120,11 +154,21 @@ export async function POST(request: Request) {
     .select('id')
     .single();
 
-  if (error) return apiFail('DB_ERROR', error.message, 500);
+  if (error) {
+    if (error.code === '23505' && messageId && user) {
+      const { data: existing, error: existingError } = await supportService
+        .from('support_tickets')
+        .select('id, category')
+        .eq('user_id', user.id)
+        .eq('chatbot_message_id', messageId)
+        .maybeSingle();
+      if (!existingError && existing) return apiOk({ id: existing.id, category: existing.category, replayed: true });
+    }
+    return apiFail('DB_ERROR', error.message, 500);
+  }
 
   if (cleanedSubject.hadSlur || cleanedBody.hadSlur) {
-    const service = createServiceClient();
-    await logModerationFlag(service, {
+    await logModerationFlag(supportService, {
       sourceType: 'ticket',
       sourceId: data.id,
       userId: user?.id ?? null,

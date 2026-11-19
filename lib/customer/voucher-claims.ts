@@ -24,6 +24,7 @@ export interface CustomerVoucher {
   productName: string | null;
   eligibleProductCount: number;
   eligibleProductNames: string[];
+  eligibleProducts: Array<{ name: string; imageUrl: string | null }>;
   code: string;
   name: string;
   voucherType: "percent" | "fixed" | "bogo";

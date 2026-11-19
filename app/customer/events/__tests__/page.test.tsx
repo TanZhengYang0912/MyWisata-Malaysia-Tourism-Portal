@@ -78,14 +78,17 @@ describe("customer promotion campaign listing", () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  it("titles the page with the standard header, a calendar button and no date heading or List/Map switch", async () => {
+  it("titles the page with the standard header, a List/Map switch on List, a calendar button and no map", async () => {
     const markup = await render();
 
     expect(markup).toMatch(/<h1 [^>]*>ui\.promotionCampaigns\.pageTitle<\/h1>/);
     expect(markup.match(/<h1 /g)).toHaveLength(1);
     expect(markup).toContain('aria-label="ui.promotionCampaigns.datePicker.openCalendar"');
     expect(markup).not.toContain("ui.promotionCampaigns.datePicker.previousDay");
-    expect(markup).not.toContain("ui.promotionCampaigns.views.");
+    expect(markup).toContain('role="group" aria-label="ui.promotionCampaigns.views.label"');
+    expect(markup).toMatch(/<button type="button" aria-pressed="true"[^>]*>.*?ui\.promotionCampaigns\.views\.list<\/button>/);
+    expect(markup).toMatch(/<button type="button" aria-pressed="false"[^>]*>.*?ui\.promotionCampaigns\.views\.map<\/button>/);
+    expect(markup).not.toContain("ui.promotionCampaigns.map.mapRegion");
     expect(mocks.getPublicPromotionCampaigns).toHaveBeenCalledOnce();
   });
 

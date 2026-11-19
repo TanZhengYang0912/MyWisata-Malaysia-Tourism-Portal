@@ -96,6 +96,7 @@ export function ChatThreadPanel({
   onToggleMute,
 }: ChatThreadPanelProps) {
   const { t } = useTranslation("customer");
+  const productContext = pendingContext?.type === "product" ? pendingContext : null;
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -222,7 +223,7 @@ export function ChatThreadPanel({
     setSending(true);
     setError(null);
     try {
-      const message = await onSend(messageText, replyingTo?.id, pendingContext?.productId);
+      const message = await onSend(messageText, replyingTo?.id, productContext?.productId);
       setText("");
       setReplyingTo(null);
       onMessageSent?.(message);
@@ -550,18 +551,18 @@ export function ChatThreadPanel({
         <div className="border-t border-border bg-background px-4 py-3 sm:px-7 sm:py-4">
           {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
           {speech.error && <p className="mb-2 text-xs text-destructive">{SPEECH_ERROR_TEXT[speech.error]}</p>}
-          {pendingContext && (
+          {productContext && (
             <div className="mx-auto mb-2 flex max-w-2xl items-center gap-3 rounded-xl border border-border bg-secondary/60 px-3 py-2">
-              {pendingContext.imageUrl ? (
+              {productContext.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- remote URL, not an optimizable static asset
-                <img src={pendingContext.imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                <img src={productContext.imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
               ) : (
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground"><Tag size={15} /></span>
               )}
               <div className="min-w-0 flex-1">
                 <p className="text-[0.6875rem] font-semibold text-muted-foreground">{t("ui.chat.inquiryBanner.title")}</p>
-                <p className="break-words whitespace-normal text-xs font-semibold text-foreground">{pendingContext.title}</p>
-                {pendingContext.subtitle && <p className="break-words whitespace-normal text-[0.6875rem] text-muted-foreground">{pendingContext.subtitle}</p>}
+                <p className="break-words whitespace-normal text-xs font-semibold text-foreground">{productContext.title}</p>
+                {productContext.subtitle && <p className="break-words whitespace-normal text-[0.6875rem] text-muted-foreground">{productContext.subtitle}</p>}
               </div>
               {onDismissContext && (
                 <button type="button" onClick={onDismissContext} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label={t("ui.chat.inquiryBanner.dismiss")}>

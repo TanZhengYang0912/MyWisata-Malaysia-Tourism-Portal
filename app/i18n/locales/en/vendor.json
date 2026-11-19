@@ -1893,7 +1893,8 @@
         "count": "{{count}} location",
         "count_one": "{{count}} location",
         "count_other": "{{count}} locations",
-        "joined": "Joined {{joined}} of {{total}}"
+        "joined": "Joined {{joined}} of {{total}}",
+        "stallShort": "Stall {{stall}}"
       },
       "registrationStatus": {
         "withdrawn": "Withdrawn",
@@ -1980,9 +1981,22 @@
         "membersEmpty": "No staff yet",
         "joinedAt": "Joined {{date}}",
         "remove": "Remove",
-        "removeConfirm": "Remove {{name}}? They can no longer scan for this event, even with the link.",
-        "loadError": "Unable to load staff"
-      }
+        "removeConfirm": "Remove {{name}}? They can no longer scan at this stall, even with the link.",
+        "loadError": "Unable to load staff",
+        "pendingTitle_one": "Waiting for approval · {{count}}",
+        "pendingTitle_other": "Waiting for approval · {{count}}",
+        "activeTitle_one": "Active · {{count}}",
+        "activeTitle_other": "Active · {{count}}",
+        "removedTitle_one": "Removed · {{count}}",
+        "removedTitle_other": "Removed · {{count}}",
+        "approve": "Approve",
+        "decline": "Decline",
+        "restore": "Restore",
+        "approved": "{{name}} can now scan",
+        "restored": "{{name}} can scan again",
+        "declineConfirm": "Decline {{name}}? They cannot scan at this stall unless you restore them."
+      },
+      "stallEnded": "This stall has ended."
     },
     "eventOrders": {
       "title": "Event reservations",
@@ -2005,7 +2019,11 @@
       "showAll": "All reservations",
       "viewFilter": "Reservation view",
       "allCollected": "Everything here has been collected.",
-      "retry": "Retry"
+      "retry": "Retry",
+      "thisEvent": "This event",
+      "clearEvent": "Show all events instead of {{name}}",
+      "toCollectCount_one": "{{count}} to collect",
+      "toCollectCount_other": "{{count}} to collect"
     },
     "eventStaff": {
       "join": {
@@ -2020,13 +2038,19 @@
         "signedInAs": "Signed in as {{email}}",
         "useAnotherEmail": "Use another email",
         "invalidLink": "This link is invalid or has expired.",
-        "removed": "You were removed from this event's staff."
+        "removed": "You were removed from this event's staff.",
+        "removedNext": "Ask {{vendor}} to restore your access.",
+        "pendingTitle": "Request sent",
+        "pendingBody": "{{vendor}} needs to approve you before you can scan.",
+        "goToStaffHome": "Go to event staff",
+        "codeSent": "Code sent to {{email}}"
       },
       "home": {
         "title": "Event scanning",
         "empty": "No active events",
         "scan": "Scan",
-        "notToday": "Not today"
+        "notToday": "Not today",
+        "pending": "Waiting for approval"
       },
       "scan": {
         "back": "Back to events"

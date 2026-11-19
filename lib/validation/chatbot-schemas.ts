@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 export const chatbotAskSchema = z.object({
   sessionKey: z.string().min(1).max(64).optional(),
+  orderId: z.string().uuid().optional(),
   question: z.string().trim().min(1).max(500),
 }).strict();
 
@@ -32,6 +33,8 @@ export type ChatbotFeedbackInput = z.infer<typeof chatbotFeedbackSchema>;
 export const supportTicketSchema = z.object({
   sessionKey: z.string().min(1).max(64).optional(),
   withdrawalId: z.string().uuid().optional(),
+  orderId: z.string().uuid().optional(),
+  messageId: z.string().uuid().optional(),
   subject: z.string().trim().min(1).max(255),
   body: z.string().trim().min(1).max(2000),
 }).strict();

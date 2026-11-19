@@ -1,8 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { createTrip, deleteTrip, getTripById, getTripItems, getTripNameSequence, getTrips } from "@/backend/domains/trips";
-import type { AddTripItemInput, TripWrite, TripMutationCode } from "@/backend/domains/trips";
+import { createTrip, deleteTrip, getTripById, getTripItems, getTripNameSequence, getTrips, updateTripDates } from "@/backend/domains/trips";
+import type { AddTripItemInput, AddTripItemsBatchInput, TripWrite, TripMutationCode } from "@/backend/domains/trips";
 import { searchTripActivities } from "@/backend/domains/catalogue";
 import { getCachedDiscoveryActivityData } from "@/lib/cache/catalogue-cache";
 import { getTripDiscoveryAnchor } from "@/lib/customer/trip-planner";
@@ -64,11 +64,12 @@ export async function deleteTripAction(tripId: string, version: string) {
 
 export type TripMutationResult<T> = {ok:true;value:T;version:string;refreshRequired?:true} | {ok:false;code:TripMutationCode};
 
-async function mutateTrip<T>(tripId:string,operation:string,write:()=>Promise<TripWrite<T>>):Promise<TripMutationResult<T>> {
+async function mutateTrip<T>(tripId:string,operation:string,write:()=>Promise<TripWrite<T>>,additionalPaths:string[]=[]):Promise<TripMutationResult<T>> {
   try {
     const receipt=await write();
     try {
       revalidatePath(`/customer/trip/${tripId}`);
+      for (const path of additionalPaths) revalidatePath(path);
       return {ok:true,...receipt};
     } catch {
       console.warn("Trip mutation committed; cache refresh deferred",{operation});
@@ -84,10 +85,48 @@ async function mutateTrip<T>(tripId:string,operation:string,write:()=>Promise<Tr
   }
 }
 
+export async function updateTripDatesAction(
+  tripId: string,
+  dates: { start_date: unknown; end_date: unknown },
+  version: string,
+) {
+  let parsedDates: { startDate?: string; endDate?: string };
+  try {
+    parsedDates = parseSubmittedTripDates(dates.start_date, dates.end_date);
+  } catch {
+    return { ok: false as const, code: "TRIP_INVALID" as const };
+  }
+  if (!parsedDates.startDate || !parsedDates.endDate) {
+    return { ok: false as const, code: "TRIP_INVALID" as const };
+  }
+  return mutateTrip(
+    tripId,
+    "update_dates",
+    async () => updateTripDates(tripId, { start_date: parsedDates.startDate!, end_date: parsedDates.endDate! }, await createClient(), version),
+    ["/customer/trip"],
+  );
+}
+
 export async function addTripItemAction(input: AddTripItemInput,version:string) {
   return mutateTrip(input.trip_id,"add",async()=>{
     const db=await createClient();
     return import("@/backend/domains/trips").then(m=>m.addTripItem(input,db,version));
+  });
+}
+
+const addTripItemsBatchSchema = z.object({
+  trip_id: z.string().min(1).max(128),
+  selections: z.array(z.object({ product_id: z.string().uuid(), outlet_id: z.string().uuid() }).strict()).min(1).max(10),
+  scheduled_date: z.string().date(),
+  order: z.array(z.string().min(1).max(140)).min(1).max(1000),
+}).strict();
+
+export async function addTripItemsBatchAction(input: AddTripItemsBatchInput,version:string) {
+  const parsed = addTripItemsBatchSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, code: "TRIP_INVALID" as const };
+  return mutateTrip(input.trip_id,"add-batch",async()=>{
+    const db=await createClient();
+    return import("@/backend/domains/trips").then(m=>m.addTripItemsBatch(parsed.data,db,version));
   });
 }
 

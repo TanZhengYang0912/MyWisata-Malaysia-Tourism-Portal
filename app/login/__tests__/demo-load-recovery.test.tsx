@@ -14,6 +14,7 @@ describe("login demo account recovery", () => {
 
   it("aborts stale loads and ignores responses from an earlier retry", () => {
     expect(page).toContain("const controller = new AbortController()");
+    expect(page).toContain("AbortSignal.timeout(20_000)");
     expect(page).toContain("generation !== demoRequestGeneration.current");
     expect(page).toContain("return () => controller.abort()");
   });

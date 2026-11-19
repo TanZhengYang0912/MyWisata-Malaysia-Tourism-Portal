@@ -55,9 +55,10 @@ describe("journey canvas weather overlay contract", () => {
     expect(source).toContain("context.lineCap = \"round\"");
   });
 
-  it("only animates bounded precipitation and reports unknown coverage honestly", () => {
+  it("animates supported rain even when its full extent is unknown", () => {
     const source = fs.readFileSync(path.join(routeDir, "trip-weather-map-overlay.tsx"), "utf8");
-    expect(source).toContain("hasBoundedForecastRain(currentResult.samples)");
+    expect(source).toContain("currentResult.samples.some(isForecastRainSample)");
+    expect(source).not.toContain("hasBoundedForecastRain(currentResult.samples)");
     expect(source).toContain("result.spatialCoverageComplete && hasForecastRain");
     expect(source).toContain("strictMigration.tripPlanner.weather.coverageInsufficient");
     expect(source).toContain("strictMigration.tripPlanner.weather.rainBeyondCoverage");
@@ -77,6 +78,24 @@ describe("journey canvas weather overlay contract", () => {
     expect(source).toContain("simulationAvailable");
     expect(source).toContain("simulationEnabled");
     expect(source).toContain("strictMigration.tripPlanner.weather.simulation.testData");
-    expect(source).toContain("disabled={!liveRadarAvailable || simulationEnabled}");
+    expect(source).toContain("disabled={!canOpenNearbyRadar}");
+  });
+
+  it("opens nearby radar from the trip stops and restores the trip camera", () => {
+    const source = fs.readFileSync(path.join(routeDir, "trip-weather-map-overlay.tsx"), "utf8");
+    expect(source).toContain("data-weather-nearby-radar");
+    expect(source).toContain("data-weather-return-to-trip");
+    expect(source).toContain("tripCoordinates: ReadonlyArray<readonly [latitude: number, longitude: number]>");
+    expect(source).toContain("tripCameraRef.current = {");
+    expect(source).toContain("map.fitBounds([[west, south], [east, north]]");
+    expect(source).toContain("maxZoom: MAX_RADAR_MASK_ZOOM");
+    expect(source).toContain('onModeChange("forecast")');
+  });
+
+  it("paints observed radar echoes with a relative strength legend", () => {
+    const source = fs.readFileSync(path.join(routeDir, "trip-weather-map-overlay.tsx"), "utf8");
+    expect(source).toContain("radarEchoShade(cellIntensities[index])");
+    expect(source).toContain("data-radar-echo-legend");
+    expect(source).toContain("disabled={!radarZoomSupported || radarStatus !== \"ready\"}");
   });
 });

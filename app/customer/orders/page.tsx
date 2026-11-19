@@ -3,7 +3,7 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, ChevronRight, Clock3, Package, ReceiptText, Search, SlidersHorizontal, X } from "lucide-react";
+import { CalendarDays, ChevronRight, Clock3, Package, ReceiptText, X } from "lucide-react";
 import { Pagination } from "@/components/shared/pagination";
 import { useAuth } from "@/components/providers/auth";
 import { productImageUrl } from "@/lib/storage/product-image";
@@ -11,6 +11,8 @@ import { supabase } from "@/backend/supabase";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DiscoveryToolbar } from "@/components/customer/discovery-filters";
 import type { Order, Outlet } from "@/backend/core/types";
 import { activityHref } from "@/lib/customer/activity-navigation";
 import { CustomerPageShell, CustomerPageTitle } from "@/components/customer/customer-page-shell";
@@ -139,28 +141,44 @@ export default function OrdersPage() {
 
         {data && <p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-muted-foreground"><span className="tabular-nums text-base font-bold text-foreground">{stats.total}</span> {tCustomer("ui.orders.summaryOrders")} <span className="text-muted-foreground/50">·</span> <span className="tabular-nums text-base font-bold text-foreground">{stats.paid}</span> {tCustomer("ui.orders.summaryPaid")} <span className="text-muted-foreground/50">·</span> <span className="tabular-nums text-base font-bold text-foreground">{stats.bookings}</span> {tCustomer("ui.orders.summaryBookings")}</p>}
 
-        <section className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-          <div className="flex min-w-0 items-center gap-2 lg:gap-3">
-            <label className="relative min-w-0 flex-1">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input maxLength={200} value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={tCustomer("ui.orders.search")} aria-label={tCustomer("ui.orders.search")} className="h-11 w-full rounded-xl border border-border bg-secondary/50 pl-10 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-[rgba(1,0,102,0.12)]" />
-            </label>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setFiltersOpen((open) => !open)}
-              aria-expanded={filtersOpen}
-              aria-controls="order-filters"
-              className={`h-11 shrink-0 gap-2 rounded-full border-2 px-4 py-0 text-sm font-bold transition focus-visible:ring-2 focus-visible:ring-primary/20 has-[>svg]:px-4 lg:rounded-xl lg:border ${filtersOpen || hasFilters ? "border-primary bg-secondary text-primary hover:text-primary" : "border-foreground/60 bg-card text-foreground hover:border-primary/30 hover:text-primary lg:border-border lg:text-muted-foreground"}`}
-            >
-              <SlidersHorizontal size={15} aria-hidden="true" />
-              {tCustomer("ui.orders.filters")}
-              {activeFilterCount > 0 && <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] text-white">{activeFilterCount}</span>}
-            </Button>
-          </div>
-          {filtersOpen && <div id="order-filters" className="mt-3 grid gap-2 border-t border-border pt-3 sm:grid-cols-2 lg:grid-cols-5"><select value={status} onChange={(event) => { setStatus(event.target.value as OrderFilterStatus); setPage(1); }} aria-label={tCustomer("ui.labels.status")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary">{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{tCustomer(option.key)}</option>)}</select><select value={type} onChange={(event) => { setType(event.target.value as OrderFilterType); setPage(1); }} aria-label={tCustomer("ui.orders.allTypes")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.orders.allTypes")}</option><option value="booking">{tCustomer("ui.orders.bookingOrder")}</option><option value="product">{tCustomer("ui.orders.productOrder")}</option><option value="mixed">{tCustomer("ui.orders.mixedOrder")}</option></select><select value={outletId} onChange={(event) => { setOutletId(event.target.value); setPage(1); }} aria-label={tCustomer("ui.orders.allOutlets")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.orders.allOutlets")}</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}</select><input type="date" value={from} onFocus={primeDateRange} onChange={(event) => { setFrom(event.target.value); setPage(1); }} aria-label={tCustomer("ui.orders.fromDate")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /><input type="date" value={to} onFocus={primeDateRange} onChange={(event) => { setTo(event.target.value); setPage(1); }} aria-label={tCustomer("ui.orders.toDate")} className="h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /></div>}
+        <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <DiscoveryToolbar
+            className="mt-6"
+            query={query}
+            onQueryChange={(value) => { setQuery(value); setPage(1); }}
+            placeholder={tCustomer("ui.orders.search")}
+            searchLabel={tCustomer("ui.orders.search")}
+            maxLength={200}
+            filterCount={activeFilterCount}
+            labels={{ filters: tCustomer("ui.orders.filters") }}
+          />
           {hasFilters && <button type="button" onClick={clearFilters} className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><X size={13} /> {tCustomer("ui.actions.clearFilters")}</button>}
-        </section>
+          <DialogContent
+            id="order-filters"
+            aria-describedby={undefined}
+            className="fixed inset-y-0 right-0 left-auto top-0 z-50 flex h-dvh max-h-dvh w-full max-w-[430px] translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-y-0 border-r-0 p-0 shadow-xl duration-200 data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right sm:max-w-[430px]"
+          >
+            <DialogHeader className="shrink-0 border-b border-border px-5 py-5 pr-14">
+              <DialogTitle className="text-primary">{tCustomer("ui.orders.filters")}</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-5">
+              <select value={status} onChange={(event) => { setStatus(event.target.value as OrderFilterStatus); setPage(1); }} aria-label={tCustomer("ui.labels.status")} className="h-10 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary">{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{tCustomer(option.key)}</option>)}</select>
+              <select value={type} onChange={(event) => { setType(event.target.value as OrderFilterType); setPage(1); }} aria-label={tCustomer("ui.orders.allTypes")} className="h-10 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.orders.allTypes")}</option><option value="booking">{tCustomer("ui.orders.bookingOrder")}</option><option value="product">{tCustomer("ui.orders.productOrder")}</option><option value="mixed">{tCustomer("ui.orders.mixedOrder")}</option></select>
+              <select value={outletId} onChange={(event) => { setOutletId(event.target.value); setPage(1); }} aria-label={tCustomer("ui.orders.allOutlets")} className="h-10 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"><option value="all">{tCustomer("ui.orders.allOutlets")}</option>{outlets.map((outlet) => <option key={outlet.id} value={outlet.id}>{outlet.name}</option>)}</select>
+              <label className="block text-xs font-semibold text-muted-foreground">{tCustomer("ui.orders.fromDate")}<input type="date" value={from} onFocus={primeDateRange} onChange={(event) => { setFrom(event.target.value); setPage(1); }} aria-label={tCustomer("ui.orders.fromDate")} className="mt-1.5 h-10 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /></label>
+              <label className="block text-xs font-semibold text-muted-foreground">{tCustomer("ui.orders.toDate")}<input type="date" value={to} onFocus={primeDateRange} onChange={(event) => { setTo(event.target.value); setPage(1); }} aria-label={tCustomer("ui.orders.toDate")} className="mt-1.5 h-10 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary" /></label>
+              {invalidDateRange && <p role="alert" className="text-xs font-semibold text-destructive">{tCustomer("ui.orders.invalidDateRange")}</p>}
+            </div>
+            <div className="flex shrink-0 items-center gap-4 border-t border-border bg-background px-5 py-4">
+              <button type="button" onClick={clearFilters} className="px-0.5 py-1.5 text-[13px] font-bold text-primary underline underline-offset-4 hover:text-primary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                {tCustomer("ui.actions.clearFilters")}
+              </button>
+              <Button type="button" className="h-11 flex-1 rounded-xl font-bold" disabled={invalidDateRange} onClick={() => setFiltersOpen(false)}>
+                {currentData ? tCustomer("ui.explore.showResultsCount", { count: total }) : tCustomer("ui.actions.apply")}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
         {invalidDateRange && <p role="alert" className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{tCustomer("ui.orders.invalidDateRange")}</p>}
 
         {error && <div role="alert" className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"><span>{error}</span><Button type="button" variant="outline" onClick={refresh}>{tCustomer("ui.actions.retry")}</Button></div>}

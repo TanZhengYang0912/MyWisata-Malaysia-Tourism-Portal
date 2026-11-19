@@ -1,28 +1,32 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
+import { Clock, Loader2, UserX } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { HumanVerification, useHumanVerification } from '@/components/shared/human-verification';
 import { createClient } from '@/lib/supabase/client';
+import { formatDate } from '@/lib/i18n/format';
+import { DEFAULT_LOCALE, isAppLocale } from '@/lib/i18n/locale';
 
-interface LinkInfo { vendorName: string; campaignTitle: string }
-type Step = 'details' | 'code';
+interface LinkInfo { vendorName: string; campaignTitle: string; locationName: string; expiresAt: string }
+// 'pending': joined, waiting for the vendor owner to approve scan access.
+type Step = 'details' | 'code' | 'pending';
 type Blocked = 'invalid' | 'removed' | null;
 
 const jsonPost = (url: string, body: unknown) => fetch(url, {
   method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
 });
 
-/** Public join page for an event staff link: verify an email, then join. */
+/** Public join page for an event staff link: verify an email, then ask to join. */
 export default function EventStaffJoinPage() {
   const { token } = useParams<{ token: string }>();
   const router = useRouter();
-  const { t } = useTranslation('vendor');
+  const { t, i18n } = useTranslation('vendor');
+  const locale = isAppLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE;
   const { t: tAuth } = useTranslation('auth');
   const { user, loading: authLoading } = useAuth();
   const human = useHumanVerification('event_staff_email_send');
@@ -59,10 +63,13 @@ export default function EventStaffJoinPage() {
     else setError(body.error?.code === 'HUMAN_VERIFICATION_FAILED' ? tAuth('humanVerification.required') : generic);
   }
 
-  async function joinNow() {
+  /** Joins; an approved member goes to the staff home, a pending one sees the waiting state here. */
+  async function joinNow(goHome: () => void) {
     const response = await jsonPost('/api/event-staff/join', { token, displayName });
-    if (!response.ok) { await handleFailure(response); return false; }
-    return true;
+    if (!response.ok) { await handleFailure(response); return; }
+    const body = await response.json().catch(() => ({})) as { data?: { status?: string } };
+    if (body.data?.status === 'active') goHome();
+    else setStep('pending');
   }
 
   async function sendCode(event?: FormEvent) {
@@ -91,7 +98,7 @@ export default function EventStaffJoinPage() {
       if (!response.ok) { await handleFailure(response); return; }
       // Full navigation so the auth provider picks up the session the server just set.
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a client-side push would keep the signed-out auth state
-      if (await joinNow()) window.location.assign('/event-staff');
+      await joinNow(() => window.location.assign('/event-staff'));
     } catch {
       setError(generic);
     } finally {
@@ -103,7 +110,7 @@ export default function EventStaffJoinPage() {
     setBusy(true);
     setError(null);
     try {
-      if (await joinNow()) router.replace('/event-staff');
+      await joinNow(() => router.replace('/event-staff'));
     } catch {
       setError(generic);
     } finally {
@@ -119,58 +126,92 @@ export default function EventStaffJoinPage() {
   }
 
   const errorLine = error && <p role="alert" className="text-sm text-destructive">{error}</p>;
+  const vendorName = info?.vendorName ?? '';
+
+  /** One quiet state block: what happened and the next step. */
+  const statePanel = (icon: ReactNode, title: string, body?: string, role: 'status' | 'alert' = 'status') => (
+    <div role={role} className="flex gap-3">
+      <span className="mt-0.5 shrink-0 text-muted-foreground">{icon}</span>
+      <div className="min-w-0 space-y-1">
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        {body && <p className="text-sm text-muted-foreground">{body}</p>}
+      </div>
+    </div>
+  );
 
   return (
     <main className="mx-auto w-full max-w-md px-4 py-10">
-      <div className="space-y-4 rounded-2xl border border-border bg-card p-6">
-        {blocked ? (
-          <p role="alert" className="text-sm text-foreground">{t(blocked === 'invalid' ? 'ui.eventStaff.join.invalidLink' : 'ui.eventStaff.join.removed')}</p>
-        ) : !info || authLoading ? (
-          error ? errorLine : <Loader2 size={20} className="mx-auto animate-spin text-muted-foreground" aria-label={t('ui.events.loading')} />
-        ) : (
-          <>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">{t('ui.eventStaff.join.title')}</h1>
-              <p className="mt-1 text-sm text-muted-foreground">{info.vendorName} · {info.campaignTitle}</p>
-            </div>
-            {user ? (
-              <>
-                <p className="text-sm text-muted-foreground">{t('ui.eventStaff.join.signedInAs', { email: user.email })}</p>
-                <label className="block space-y-1 text-sm font-semibold text-foreground">
-                  <span>{t('ui.eventStaff.join.nameLabel')}</span>
-                  <Input value={name ?? user.fullName ?? ''} maxLength={80} required onChange={(event) => setName(event.target.value)} />
-                </label>
-                {errorLine}
-                <Button type="button" className="w-full" disabled={busy || !displayName} onClick={() => void joinSignedIn()}>{t('ui.eventStaff.join.join')}</Button>
-                <button type="button" disabled={busy} onClick={() => void switchEmail()} className="w-full text-sm font-semibold text-primary hover:underline disabled:opacity-50">{t('ui.eventStaff.join.useAnotherEmail')}</button>
-              </>
-            ) : step === 'details' ? (
-              <form onSubmit={(event) => void sendCode(event)} className="space-y-4">
-                <label className="block space-y-1 text-sm font-semibold text-foreground">
-                  <span>{t('ui.eventStaff.join.nameLabel')}</span>
-                  <Input value={name ?? ''} maxLength={80} autoComplete="name" required onChange={(event) => setName(event.target.value)} />
-                </label>
-                <label className="block space-y-1 text-sm font-semibold text-foreground">
-                  <span>{t('ui.eventStaff.join.emailLabel')}</span>
-                  <Input type="email" value={email} maxLength={254} autoComplete="email" required onChange={(event) => setEmail(event.target.value)} />
-                </label>
-                <HumanVerification {...human} />
-                {errorLine}
-                <Button type="submit" className="w-full" disabled={busy || !displayName || !email.trim()}>{t('ui.eventStaff.join.sendCode')}</Button>
-              </form>
-            ) : (
-              <form onSubmit={(event) => void verifyAndJoin(event)} className="space-y-4">
-                <label className="block text-sm font-semibold text-foreground">{t('ui.eventStaff.join.codeLabel')}
-                  <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} required value={code} onChange={(event) => { setCode(event.target.value.replace(/\D/g, '').slice(0, 6)); setError(null); }} className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-center text-lg tracking-[0.35em] font-normal" />
-                </label>
-                {errorLine}
-                <Button type="submit" className="w-full" disabled={busy || code.length !== 6}>{t('ui.eventStaff.join.verifyAndJoin')}</Button>
-                <HumanVerification {...human} />
-                <button type="button" disabled={busy} onClick={() => void sendCode()} className="w-full text-sm font-semibold text-primary hover:underline disabled:opacity-50">{t('ui.eventStaff.join.resendCode')}</button>
-              </form>
-            )}
-          </>
-        )}
+      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        {/* The event is the protagonist; the page's purpose is the eyebrow. */}
+        <header className="space-y-1 border-b border-border px-5 py-5 sm:px-6">
+          {info ? (
+            <>
+              <p className="text-xs font-semibold text-muted-foreground">{t('ui.eventStaff.join.title')}</p>
+              <h1 className="text-balance text-xl font-bold text-foreground">{info.campaignTitle}</h1>
+              {/* The stall is the scope of access, so it reads first. */}
+              <p className="text-sm font-medium text-foreground">{info.locationName}</p>
+              <p className="text-sm text-muted-foreground">
+                {info.vendorName} · {t('ui.events.staff.validUntil', { date: formatDate(info.expiresAt, locale, { timeZone: 'Asia/Kuala_Lumpur' }) })}
+              </p>
+            </>
+          ) : (
+            <h1 className="text-xl font-bold text-foreground">{t('ui.eventStaff.join.title')}</h1>
+          )}
+        </header>
+
+        {/* px-5 on phones leaves room for the fixed 300px Turnstile widget. */}
+        <div className="space-y-4 px-5 py-5 sm:px-6">
+          {blocked === 'invalid' ? (
+            statePanel(<UserX size={18} aria-hidden="true" />, t('ui.eventStaff.join.invalidLink'), undefined, 'alert')
+          ) : blocked === 'removed' ? (
+            statePanel(<UserX size={18} aria-hidden="true" />, t('ui.eventStaff.join.removed'), t('ui.eventStaff.join.removedNext', { vendor: vendorName }), 'alert')
+          ) : !info || authLoading ? (
+            error ? errorLine : <Loader2 size={20} className="mx-auto animate-spin text-muted-foreground" aria-label={t('ui.events.loading')} />
+          ) : step === 'pending' ? (
+            <>
+              {statePanel(<Clock size={18} aria-hidden="true" />, t('ui.eventStaff.join.pendingTitle'), t('ui.eventStaff.join.pendingBody', { vendor: vendorName }))}
+              {/* Full navigation: after an email sign-in the auth provider must reload the new session. */}
+              <a href="/event-staff" className="inline-flex text-sm font-semibold text-primary underline-offset-4 hover:underline">{t('ui.eventStaff.join.goToStaffHome')}</a>
+            </>
+          ) : user ? (
+            <>
+              <p className="text-sm text-muted-foreground">{t('ui.eventStaff.join.signedInAs', { email: user.email })}</p>
+              <label className="block space-y-1 text-sm font-semibold text-foreground">
+                <span>{t('ui.eventStaff.join.nameLabel')}</span>
+                <Input value={name ?? user.fullName ?? ''} maxLength={80} autoComplete="name" required onChange={(event) => setName(event.target.value)} />
+              </label>
+              {errorLine}
+              <Button type="button" className="w-full" disabled={busy || !displayName} onClick={() => void joinSignedIn()}>{t('ui.eventStaff.join.join')}</Button>
+              <button type="button" disabled={busy} onClick={() => void switchEmail()} className="w-full text-sm font-semibold text-primary hover:underline disabled:opacity-50">{t('ui.eventStaff.join.useAnotherEmail')}</button>
+            </>
+          ) : step === 'details' ? (
+            <form onSubmit={(event) => void sendCode(event)} className="space-y-4">
+              <label className="block space-y-1 text-sm font-semibold text-foreground">
+                <span>{t('ui.eventStaff.join.nameLabel')}</span>
+                <Input value={name ?? ''} maxLength={80} autoComplete="name" required onChange={(event) => setName(event.target.value)} />
+              </label>
+              <label className="block space-y-1 text-sm font-semibold text-foreground">
+                <span>{t('ui.eventStaff.join.emailLabel')}</span>
+                <Input type="email" value={email} maxLength={254} autoComplete="email" required onChange={(event) => setEmail(event.target.value)} />
+              </label>
+              <HumanVerification {...human} showDescription={false} />
+              {errorLine}
+              <Button type="submit" className="w-full" disabled={busy || !displayName || !email.trim()}>{t('ui.eventStaff.join.sendCode')}</Button>
+            </form>
+          ) : (
+            <form onSubmit={(event) => void verifyAndJoin(event)} className="space-y-4">
+              <p className="text-sm text-muted-foreground">{t('ui.eventStaff.join.codeSent', { email })}</p>
+              <label className="block space-y-1 text-sm font-semibold text-foreground">
+                <span>{t('ui.eventStaff.join.codeLabel')}</span>
+                <Input inputMode="numeric" autoComplete="one-time-code" maxLength={6} required value={code} onChange={(event) => { setCode(event.target.value.replace(/\D/g, '').slice(0, 6)); setError(null); }} className="text-center text-lg tracking-[0.35em] tabular-nums" />
+              </label>
+              {errorLine}
+              <Button type="submit" className="w-full" disabled={busy || code.length !== 6}>{t('ui.eventStaff.join.verifyAndJoin')}</Button>
+              <HumanVerification {...human} showDescription={false} />
+              <button type="button" disabled={busy} onClick={() => void sendCode()} className="w-full text-sm font-semibold text-primary hover:underline disabled:opacity-50">{t('ui.eventStaff.join.resendCode')}</button>
+            </form>
+          )}
+        </div>
       </div>
     </main>
   );
