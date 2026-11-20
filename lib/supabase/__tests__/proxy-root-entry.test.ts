@@ -99,6 +99,8 @@ describe("Supabase proxy root entry redirect", () => {
     expect(new URL(response.headers.get("location")!).pathname).toBe(expected);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(roleLookups(rpc)).toBe(1);
+    // The redirect target's own page load reads the account language.
+    expect(rpc).not.toHaveBeenCalledWith("get_my_preferred_locale");
   });
 
   it("falls through to the client fallback when the role lookup fails", async () => {

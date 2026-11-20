@@ -91,9 +91,15 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     && !request.nextUrl.pathname.startsWith('/api/')
     && (fetchDestination === 'document' || !fetchDestination || request.headers.get('rsc') === '1');
   const isPrefetch = request.headers.has('next-router-prefetch') || request.headers.get('purpose') === 'prefetch';
+  const isDocumentNavigation = isPageRead && !isPrefetch && fetchDestination === 'document';
+  const gate = adminAssuranceGate(request.nextUrl.pathname, claims);
+  const isRootEntry = !gate && request.nextUrl.pathname === '/' && (request.method === 'GET' || request.method === 'HEAD');
   const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
   let accountLocale: unknown;
-  if (typeof claims?.sub === 'string' && claims.sub && claims.is_anonymous !== true && isPageRead && !isPrefetch) {
+  // The account language is read once per full page load, which also writes it to
+  // the locale cookie; in-app navigations then use that cookie, and a change saved
+  // on this device sets the cookie itself. `/` only redirects, so it never needs it.
+  if (typeof claims?.sub === 'string' && claims.sub && claims.is_anonymous !== true && isDocumentNavigation && !isRootEntry) {
     try {
       const { data, error } = await supabase.rpc('get_my_preferred_locale');
       if (!error) accountLocale = data;
@@ -110,7 +116,6 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   forwardedHeaders.set('x-app-locale', locale);
   // The root layout picks which translations to inline from this; set, never trust the client's.
   forwardedHeaders.set('x-app-pathname', request.nextUrl.pathname);
-  const gate = adminAssuranceGate(request.nextUrl.pathname, claims);
   let supabaseResponse = gate === 'api'
     ? NextResponse.json({ data: null, error: { code: 'MFA_REQUIRED', message: 'Authenticator verification required' } }, { status: 403 })
     : gate === 'page'
@@ -134,7 +139,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   // `/` is redirected here rather than with redirect() in app/page.tsx: the root
   // loading.tsx makes a page redirect a streamed client-side meta refresh, while
   // this is a 307 sent before any HTML or JavaScript.
-  if (!gate && request.nextUrl.pathname === '/' && (request.method === 'GET' || request.method === 'HEAD')) {
+  if (isRootEntry) {
     const isSignedIn = typeof claims?.sub === 'string' && claims.sub.length > 0;
     let roleRows: Array<{ role_name?: string | null }> | null = null;
     if (isSignedIn) {
@@ -157,7 +162,6 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   // Background responses may finish after /api/locale saves a newer preference.
   // Only full document navigations initialize/sync this cookie; RSC and API
   // reads still receive x-app-locale without persisting an older request snapshot.
-  const isDocumentNavigation = isPageRead && !isPrefetch && fetchDestination === 'document';
   if (isDocumentNavigation && cookieLocale !== locale) {
     supabaseResponse.cookies.set(LOCALE_COOKIE, locale, localeCookieOptions);
   }

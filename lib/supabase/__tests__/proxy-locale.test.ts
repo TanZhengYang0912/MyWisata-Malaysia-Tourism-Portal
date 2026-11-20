@@ -125,11 +125,18 @@ describe("Supabase proxy locale resolution", () => {
     expect(response.cookies.get("NEXT_LOCALE")?.value).toBe("zh-CN");
   });
 
-  it("applies the signed-in account language on a router refresh without writing a cookie", async () => {
-    setupSupabase({ accountLocale: "ms", claimsSub: "user-123" });
-    const response = await updateSession(makeRequest({ cookie: "NEXT_LOCALE=en", fetchDestination: "empty", extraHeaders: { rsc: "1" } }));
+  // The full page load already synced the cookie to the account; a change saved on
+  // this device sets the cookie itself, and one from another device applies on the
+  // next full load.
+  it.each([
+    { label: "an in-app navigation or refresh", fetchDestination: "empty", extraHeaders: { rsc: "1" } },
+    { label: "a request without Fetch Metadata", fetchDestination: "" },
+  ])("uses the locale cookie without an account read on $label", async (request) => {
+    const { rpc } = setupSupabase({ accountLocale: "ms", claimsSub: "user-123" });
+    const response = await updateSession(makeRequest({ cookie: "NEXT_LOCALE=en", ...request }));
 
-    expect(localeFromResponse(response)).toBe("ms");
+    expect(localeFromResponse(response)).toBe("en");
+    expect(rpc).not.toHaveBeenCalled();
     expect(response.cookies.has("NEXT_LOCALE")).toBe(false);
   });
 
