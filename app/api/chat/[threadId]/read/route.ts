@@ -32,5 +32,16 @@ export async function POST(_request: Request, { params }: Props) {
   const { data: readCount, error: readError } = await service.rpc('mark_chat_thread_read', { p_user_id: user.id, p_thread_id: threadId });
   if (readError) return apiFail('DB_ERROR', readError.message, 500);
 
+  // lib/chat/notify.ts keeps one bell notification per (thread, recipient);
+  // opening the conversation has read it, so clear the bell too. Best-effort:
+  // the messages are already marked read, and the bell catches up on its own.
+  const { error: notificationError } = await service
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('event_key', `chat:${threadId}:${user.id}`)
+    .eq('user_id', user.id)
+    .is('read_at', null);
+  if (notificationError) console.error('[chat/read] notification clear failed', notificationError.message);
+
   return apiOk({ threadId, readCount: Number(readCount ?? 0) });
 }
